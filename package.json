@@ -1,0 +1,40 @@
+{
+  "name": "web-app-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "bun test",
+    "format": "prettier --write .",
+    "convex:dev": "bunx convex dev"
+  },
+  "dependencies": {
+    "@radix-ui/react-icons": "latest",
+    "@radix-ui/react-slot": "latest",
+    "better-auth": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "convex": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest",
+    "tailwindcss-animate": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "postcss": "latest",
+    "prettier": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest"
+  }
+}
