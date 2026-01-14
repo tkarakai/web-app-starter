@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+bun.lockb
+convex/.env.local
+convex/.env
+
+# Editor/OS
+.DS_Store
