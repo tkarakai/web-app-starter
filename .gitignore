@@ -1,0 +1,15 @@
+node_modules
+.bun
+.next
+out
+dist
+
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+
+# Auto Claude data directory
+.auto-claude/

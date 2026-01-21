@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-border: hsl(var(--border));
+  --color-ring: hsl(var(--ring));
+}
+
+:root {
+  --background: 30 33% 98%;
+  --foreground: 222 20% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 20% 12%;
+  --primary: 18 88% 53%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 30 10% 92%;
+  --muted-foreground: 222 12% 42%;
+  --accent: 200 55% 45%;
+  --accent-foreground: 0 0% 100%;
+  --border: 25 18% 86%;
+  --ring: 18 88% 53%;
+  --radius: 16px;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.15);
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
