@@ -51,3 +51,37 @@ export const create = mutation({
     });
   },
 });
+
+export const update = mutation({
+  args: {
+    id: v.id("launchItems"),
+    title: v.string(),
+    description: v.string(),
+    status: v.union(v.literal("idea"), v.literal("building"), v.literal("shipping")),
+    priority: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    const ownerId = (user.userId ?? user._id).toString();
+
+    const item = await ctx.db.get(args.id);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    if (item.ownerId !== ownerId) {
+      throw new Error("Not authorized to update this item");
+    }
+
+    return ctx.db.patch(args.id, {
+      title: args.title,
+      description: args.description,
+      status: args.status,
+      priority: args.priority,
+    });
+  },
+});
