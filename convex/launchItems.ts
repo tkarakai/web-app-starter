@@ -55,10 +55,10 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("launchItems"),
-    title: v.string(),
-    description: v.string(),
-    status: v.union(v.literal("idea"), v.literal("building"), v.literal("shipping")),
-    priority: v.number(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("idea"), v.literal("building"), v.literal("shipping"))),
+    priority: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -77,11 +77,19 @@ export const update = mutation({
       throw new Error("Not authorized to update this item");
     }
 
-    return ctx.db.patch(args.id, {
-      title: args.title,
-      description: args.description,
-      status: args.status,
-      priority: args.priority,
-    });
+    // Only patch fields that are provided
+    const updates: Partial<{
+      title: string;
+      description: string;
+      status: "idea" | "building" | "shipping";
+      priority: number;
+    }> = {};
+
+    if (args.title !== undefined) updates.title = args.title;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.priority !== undefined) updates.priority = args.priority;
+
+    return ctx.db.patch(args.id, updates);
   },
 });
