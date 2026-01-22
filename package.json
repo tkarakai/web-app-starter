@@ -4,12 +4,15 @@
   "private": true,
   "packageManager": "bun@1.1.43",
   "scripts": {
-    "dev": "next dev",
+    "dev": "./scripts/dev-start.sh",
+    "dev:stop": "./scripts/dev-stop.sh",
+    "dev:status": "./scripts/dev-status.sh",
+    "dev:next": "next dev",
+    "dev:convex": "bunx convex dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "bun test",
-    "convex:dev": "bunx convex dev"
+    "test": "bun test"
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.10.10",
@@ -25,7 +28,7 @@
     "better-auth": "1.4.12",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "convex": "1.31.4",
+    "convex": "1.31.6",
     "lucide-react": "0.562.0",
     "next": "16.1.1",
     "react": "19.2.3",
