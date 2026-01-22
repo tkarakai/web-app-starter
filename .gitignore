@@ -10,6 +10,7 @@ dist
 
 *.log
 .DS_Store
+.dev-pids
 
 # Auto Claude data directory
 .auto-claude/
