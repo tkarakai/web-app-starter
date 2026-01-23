@@ -11,17 +11,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$PROJECT_DIR/.env.local"
 PID_FILE="$PROJECT_DIR/.dev-pids"
-CONVEX_STATE_DIR="$HOME/.convex/convex-backend-state"
-
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  Development Environment Status${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
+CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 
 # Get deployment name from .env.local
 get_deployment_name() {
     if [ -f "$ENV_FILE" ]; then
-        grep "^CONVEX_DEPLOYMENT=" "$ENV_FILE" 2>/dev/null | sed 's/CONVEX_DEPLOYMENT=//' | sed 's/ #.*//' | sed 's/local://'
+        grep "^CONVEX_DEPLOYMENT=" "$ENV_FILE" 2>/dev/null | sed 's/CONVEX_DEPLOYMENT=//' | sed 's/ #.*//' | sed 's/anonymous://'
+    fi
+}
+
+# Extract local Dashboard URL from Convex log
+get_dashboard_url() {
+    local log_file="$PROJECT_DIR/.convex-dev.log"
+    if [ -f "$log_file" ]; then
+        grep -o 'http://127\.0\.0\.1:[0-9]*/?d=[^ ]*' "$log_file" | head -1
     fi
 }
 
@@ -164,10 +167,7 @@ fi
 
 if [ "$CONVEX_RUNNING" = true ] || [ "$NEXT_RUNNING" = true ]; then
     echo ""
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}  Services Running${NC}"
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
+    echo -e "${GREEN}Services Running:${NC}"
 
     if [ "$NEXT_RUNNING" = true ] && [ -n "$NEXT_PORT" ]; then
         echo -e "  ${BLUE}App:${NC}        http://localhost:$NEXT_PORT"
@@ -181,8 +181,9 @@ if [ "$CONVEX_RUNNING" = true ] || [ "$NEXT_RUNNING" = true ]; then
         echo -e "  ${BLUE}Site API:${NC}   http://127.0.0.1:$SITE_PORT"
     fi
 
-    if [ -n "$DEPLOYMENT_NAME" ]; then
-        echo -e "  ${BLUE}Dashboard:${NC}  https://dashboard.convex.dev/d/$DEPLOYMENT_NAME"
+    DASHBOARD_URL=$(get_dashboard_url)
+    if [ -n "$DASHBOARD_URL" ]; then
+        echo -e "  ${BLUE}Dashboard:${NC}  $DASHBOARD_URL"
     fi
 
     # Show PIDs if we have them

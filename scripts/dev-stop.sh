@@ -11,14 +11,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  Stopping Development Environment${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}  Stopping Development Environment...${NC}"
 echo ""
 
 stopped_something=false
 
-# Function to kill process and all its children
+# Function to recursively get all descendant PIDs
+get_descendants() {
+    local pid=$1
+    local children=$(pgrep -P $pid 2>/dev/null)
+    for child in $children; do
+        echo $child
+        get_descendants $child
+    done
+}
+
+# Function to kill process and all its descendants
 kill_pid() {
     local pid=$1
     local name=$2
@@ -26,16 +34,25 @@ kill_pid() {
     if kill -0 $pid 2>/dev/null; then
         local proc_name=$(ps -p $pid -o comm= 2>/dev/null || echo "unknown")
 
-        # First, kill all child processes
-        pkill -P $pid 2>/dev/null || true
+        # Get all descendant PIDs first
+        local descendants=$(get_descendants $pid)
+
+        # Kill all descendants
+        for desc_pid in $descendants; do
+            kill $desc_pid 2>/dev/null || true
+        done
 
         # Then kill the main process
         kill $pid 2>/dev/null || true
         sleep 0.5
 
-        # Force kill if still running
+        # Force kill any survivors
+        for desc_pid in $descendants; do
+            if kill -0 $desc_pid 2>/dev/null; then
+                kill -9 $desc_pid 2>/dev/null || true
+            fi
+        done
         if kill -0 $pid 2>/dev/null; then
-            pkill -9 -P $pid 2>/dev/null || true
             kill -9 $pid 2>/dev/null || true
         fi
 
@@ -48,7 +65,7 @@ kill_pid() {
     fi
 }
 
-# Stop processes from PID file only
+# Stop processes from PID file
 if [ -f "$PID_FILE" ]; then
     echo -e "${YELLOW}Tracked processes:${NC}"
 
@@ -65,15 +82,31 @@ else
     echo -e "${YELLOW}No tracked processes found (.dev-pids not present)${NC}"
 fi
 
+# Clean up any orphaned Convex backend processes
+ORPHANED_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
+if [ -n "$ORPHANED_CONVEX" ]; then
+    echo ""
+    echo -e "${YELLOW}Cleaning up orphaned Convex processes:${NC}"
+    for pid in $ORPHANED_CONVEX; do
+        if kill -0 $pid 2>/dev/null; then
+            kill $pid 2>/dev/null || true
+            sleep 0.3
+            if kill -0 $pid 2>/dev/null; then
+                kill -9 $pid 2>/dev/null || true
+            fi
+            echo -e "${GREEN}✔ Stopped orphaned convex-local-backend (PID: $pid)${NC}"
+            stopped_something=true
+        fi
+    done
+fi
+
 # Clean up log files
 rm -f "$PROJECT_DIR/.convex-dev.log" 2>/dev/null
 rm -f "$PROJECT_DIR/.next-dev.log" 2>/dev/null
 
 echo ""
 if [ "$stopped_something" = true ]; then
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}  Development environment stopped${NC}"
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}Development environment stopped${NC}"
 else
     echo -e "${YELLOW}Nothing to stop${NC}"
 fi

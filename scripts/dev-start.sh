@@ -12,19 +12,48 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$PROJECT_DIR/.env.local"
 PID_FILE="$PROJECT_DIR/.dev-pids"
-CONVEX_STATE_DIR="$HOME/.convex/convex-backend-state"
+CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  Starting Development Environment${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}  Starting Development Environment...${NC}"
 
 cd "$PROJECT_DIR"
 
 # Function to get deployment name from .env.local
 get_deployment_name() {
     if [ -f "$ENV_FILE" ]; then
-        grep "^CONVEX_DEPLOYMENT=" "$ENV_FILE" 2>/dev/null | sed 's/CONVEX_DEPLOYMENT=//' | sed 's/ #.*//' | sed 's/local://'
+        grep "^CONVEX_DEPLOYMENT=" "$ENV_FILE" 2>/dev/null | sed 's/CONVEX_DEPLOYMENT=//' | sed 's/ #.*//' | sed 's/anonymous://'
     fi
+}
+
+# Function to update a single env variable in .env.local
+update_env_var() {
+    local var_name="$1"
+    local var_value="$2"
+    local temp_file=$(mktemp)
+    local found=false
+
+    if [ -f "$ENV_FILE" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            if [[ "$line" =~ ^${var_name}= ]]; then
+                echo "${var_name}=${var_value}"
+                found=true
+            else
+                echo "$line"
+            fi
+        done < "$ENV_FILE" > "$temp_file"
+    fi
+
+    if [ "$found" = false ]; then
+        echo "${var_name}=${var_value}" >> "$temp_file"
+    fi
+
+    mv "$temp_file" "$ENV_FILE"
+}
+
+# Function to extract local Dashboard URL from Convex log
+extract_dashboard_url() {
+    local log_file="$1"
+    grep -o 'http://127\.0\.0\.1:[0-9]*/?d=[^ ]*' "$log_file" | head -1
 }
 
 # Function to get ports from Convex config
@@ -93,10 +122,10 @@ if [ -f "$PID_FILE" ]; then
         echo -e "$RUNNING_PIDS"
         echo ""
         echo -e "  ${YELLOW}Options:${NC}"
-        echo -e "    [s] Stop them and start fresh (recommended)"
+        echo -e "    [s] Stop them and start fresh"
         echo -e "    [q] Quit and leave them running"
         echo ""
-        read -p "Choice [s/q]: " -n 1 -r
+        read -p "Choice [s/Q]: " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Ss]$ ]]; then
             echo ""
@@ -104,7 +133,7 @@ if [ -f "$PID_FILE" ]; then
             "$SCRIPT_DIR/dev-stop.sh"
             echo ""
         else
-            echo -e "${YELLOW}Aborted. Use 'bun run dev:stop' to stop running processes.${NC}"
+            echo -e "${YELLOW}Aborted. Use 'bun dev:stop' to stop running processes.${NC}"
             exit 0
         fi
     else
@@ -113,58 +142,13 @@ if [ -f "$PID_FILE" ]; then
     fi
 fi
 
-# Check if configured ports are in use
-DEPLOYMENT_NAME=$(get_deployment_name)
-if [ -n "$DEPLOYMENT_NAME" ] && [[ "$DEPLOYMENT_NAME" == local-* ]]; then
-    PORTS=$(get_convex_ports "$DEPLOYMENT_NAME")
-    if [ -n "$PORTS" ]; then
-        CLOUD_PORT=$(echo $PORTS | cut -d' ' -f1)
-        SITE_PORT=$(echo $PORTS | cut -d' ' -f2)
-
-        echo -e "${YELLOW}Checking ports...${NC}"
-        echo -e "  Configured: $CLOUD_PORT/$SITE_PORT (deployment: $DEPLOYMENT_NAME)"
-
-        PORT_CONFLICT=false
-        if lsof -i :$CLOUD_PORT > /dev/null 2>&1; then
-            BLOCKING_PROC=$(lsof -i :$CLOUD_PORT | tail -1 | awk '{print $1 " (PID: " $2 ")"}')
-            echo -e "  ${RED}✖${NC} Port $CLOUD_PORT in use by: $BLOCKING_PROC"
-            PORT_CONFLICT=true
-        fi
-
-        if lsof -i :$SITE_PORT > /dev/null 2>&1; then
-            BLOCKING_PROC=$(lsof -i :$SITE_PORT | tail -1 | awk '{print $1 " (PID: " $2 ")"}')
-            echo -e "  ${RED}✖${NC} Port $SITE_PORT in use by: $BLOCKING_PROC"
-            PORT_CONFLICT=true
-        fi
-
-        if [ "$PORT_CONFLICT" = true ]; then
-            echo ""
-            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${RED}  Port Conflict - Cannot Start${NC}"
-            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo ""
-            echo -e "  ${YELLOW}Another Convex deployment is using your configured ports.${NC}"
-            echo ""
-            echo -e "  ${YELLOW}Options:${NC}"
-            echo -e "    1. Stop the other project first"
-            echo -e "    2. Kill the blocking process:"
-            echo -e "       ${GREEN}kill \$(lsof -t -i :$CLOUD_PORT)${NC}"
-            echo ""
-            exit 1
-        fi
-
-        echo -e "  ${GREEN}✔${NC} Ports available"
-    fi
-fi
-
-echo ""
 
 # ============================================================
 # START CONVEX
 # ============================================================
-echo -e "${GREEN}▶ Starting Convex...${NC}"
+echo -e "${GREEN}▶ Starting Convex (anonymous mode)...${NC}"
 
-bunx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
+CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
 CONVEX_PID=$!
 echo "convex:$CONVEX_PID" > "$PID_FILE"
 
@@ -183,6 +167,8 @@ while [ $WAITED -lt $MAX_WAIT ]; do
         echo -e "${RED}✖ Convex process exited${NC}"
         echo -e "${RED}  Log output:${NC}"
         cat "$PROJECT_DIR/.convex-dev.log"
+        echo ""
+        echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
         rm -f "$PID_FILE"
         exit 1
     fi
@@ -201,6 +187,8 @@ if [ "$CONVEX_READY" = false ]; then
     echo -e "${RED}✖ Timeout waiting for Convex to start${NC}"
     echo -e "${RED}  Log output:${NC}"
     cat "$PROJECT_DIR/.convex-dev.log"
+    echo ""
+    echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
     kill $CONVEX_PID 2>/dev/null || true
     rm -f "$PID_FILE"
     exit 1
@@ -210,8 +198,9 @@ fi
 DEPLOYMENT_NAME=$(get_deployment_name)
 CLOUD_PORT=""
 SITE_PORT=""
+DASHBOARD_URL=""
 
-if [ -n "$DEPLOYMENT_NAME" ] && [[ "$DEPLOYMENT_NAME" == local-* ]]; then
+if [ -n "$DEPLOYMENT_NAME" ]; then
     PORTS=$(get_convex_ports "$DEPLOYMENT_NAME")
     if [ -n "$PORTS" ]; then
         CLOUD_PORT=$(echo $PORTS | cut -d' ' -f1)
@@ -220,11 +209,42 @@ if [ -n "$DEPLOYMENT_NAME" ] && [[ "$DEPLOYMENT_NAME" == local-* ]]; then
     fi
 fi
 
+# Extract Dashboard URL from Convex output
+DASHBOARD_URL=$(extract_dashboard_url "$PROJECT_DIR/.convex-dev.log")
+
 echo -e "${GREEN}✔ Convex ready (PID: $CONVEX_PID)${NC}"
 echo -e "  ${BLUE}Deployment:${NC} $DEPLOYMENT_NAME"
 echo -e "  ${BLUE}Convex URL:${NC} http://127.0.0.1:$CLOUD_PORT"
 echo -e "  ${BLUE}Site URL:${NC}   http://127.0.0.1:$SITE_PORT"
-echo -e "  ${BLUE}Dashboard:${NC}  https://dashboard.convex.dev/d/$DEPLOYMENT_NAME"
+if [ -n "$DASHBOARD_URL" ]; then
+    echo -e "  ${BLUE}Dashboard:${NC}  $DASHBOARD_URL"
+fi
+
+# ============================================================
+# SETUP BETTER AUTH (if needed)
+# ============================================================
+echo ""
+echo -e "${GREEN}▶ Checking Better Auth configuration...${NC}"
+
+# Check if BETTER_AUTH_SECRET is set
+AUTH_SECRET_SET=false
+if bunx convex env get BETTER_AUTH_SECRET > /dev/null 2>&1; then
+    EXISTING_SECRET=$(bunx convex env get BETTER_AUTH_SECRET 2>/dev/null)
+    if [ -n "$EXISTING_SECRET" ] && [ "$EXISTING_SECRET" != "undefined" ]; then
+        AUTH_SECRET_SET=true
+    fi
+fi
+
+if [ "$AUTH_SECRET_SET" = false ]; then
+    echo -e "  ${YELLOW}Generating BETTER_AUTH_SECRET...${NC}"
+    NEW_SECRET=$(openssl rand -base64 32)
+    bunx convex env set BETTER_AUTH_SECRET "$NEW_SECRET" > /dev/null 2>&1
+    echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET configured"
+else
+    echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET already set"
+fi
+
+# SITE_URL will be set after Next.js starts with the actual port
 
 # ============================================================
 # START NEXT.JS
@@ -274,29 +294,27 @@ if [ -z "$NEXT_URL" ]; then
     NEXT_URL="http://localhost:3000"
 fi
 
+# Update NEXT_PUBLIC_SITE_URL with the actual port
+NEXT_PORT=$(echo "$NEXT_URL" | grep -o '[0-9]*$')
+if [ -n "$NEXT_PORT" ]; then
+    update_env_var "NEXT_PUBLIC_SITE_URL" "http://localhost:$NEXT_PORT"
+    # Always sync Convex SITE_URL with actual Next.js port
+    bunx convex env set SITE_URL "http://localhost:$NEXT_PORT" > /dev/null 2>&1
+fi
+
 echo -e "${GREEN}✔ Next.js ready (PID: $NEXT_PID)${NC}"
 echo -e "  ${BLUE}App URL:${NC}    $NEXT_URL"
+echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex"
 
 # ============================================================
 # SUMMARY
 # ============================================================
 echo ""
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  Development Environment Ready!${NC}"
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "  ${BLUE}App:${NC}        $NEXT_URL"
-echo -e "  ${BLUE}Convex:${NC}     http://127.0.0.1:$CLOUD_PORT"
-echo -e "  ${BLUE}Site API:${NC}   http://127.0.0.1:$SITE_PORT"
-echo -e "  ${BLUE}Dashboard:${NC}  https://dashboard.convex.dev/d/$DEPLOYMENT_NAME"
-echo ""
-echo -e "  ${YELLOW}PIDs:${NC}"
-echo -e "    Convex:  $CONVEX_PID"
-echo -e "    Next.js: $NEXT_PID"
 echo ""
 echo -e "  ${YELLOW}Logs:${NC}"
 echo -e "    Convex:  tail -f .convex-dev.log"
 echo -e "    Next.js: tail -f .next-dev.log"
 echo ""
-echo -e "  ${YELLOW}Stop with:${NC} bun run dev:stop"
+echo -e "  ${YELLOW}Stop with:${NC} bun dev:stop"
 echo ""

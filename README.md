@@ -30,28 +30,54 @@ A production-shaped Next.js starter that wires Bun, Tailwind, shadcn/ui, Convex,
 bun install
 ```
 
-2. Start Convex (keeps types generated and syncs env):
+2. Start the development environment:
 
 ```bash
-bunx convex dev
+bun dev
 ```
 
-3. Set Convex environment variables for Better Auth:
+This starts both Convex and Next.js in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path.
+
+3. Open `http://localhost:3000` and create an account.
+
+4. When you're done, stop everything:
 
 ```bash
-bunx convex env set BETTER_AUTH_SECRET $(openssl rand -base64 32)
-bunx convex env set SITE_URL http://localhost:3000
+bun dev:stop
 ```
 
-4. Ensure `.env.local` contains the values from Convex and add `NEXT_PUBLIC_SITE_URL` if needed (see `.env.example`).
-
-5. Run the app:
+5. Check status of running services:
 
 ```bash
-bun run dev
+bun dev:status
 ```
 
-6. Open `http://localhost:3000` and create an account.
+### Branch and worktree isolation
+
+Each git branch or worktree gets its own independent Convex deployment automatically. The deployment name is derived from the working directory path, so:
+
+- **Main repo on `main` branch**: `web-app-starter` deployment
+- **Worktree for `feature-x`**: `web-app-starter-feature-x` deployment
+- **Separate clone in different folder**: Different deployment based on that path
+
+Each deployment has its own:
+- Database with separate tables and data
+- File storage
+- Environment variables (set via `bunx convex env set`)
+
+This means you can switch branches or work in multiple worktrees simultaneously without data conflicts.
+
+### Offline development
+
+The local Convex backend runs entirely on your machine—no internet connection required. Data persists in `~/.convex/anonymous-convex-backend-state/<deployment-name>/` between sessions.
+
+### Better Auth auto-configuration
+
+On the first run for a new deployment, the startup script automatically:
+- Generates a `BETTER_AUTH_SECRET` and sets it in Convex
+- Configures `SITE_URL` to match your Next.js URL
+
+These values persist in the local Convex backend between sessions.
 
 ## Run against cloud Convex + Better Auth
 
@@ -155,7 +181,7 @@ bun test
 
 ### Convex data and files
 
-- Local: `bunx convex dev` runs a local Convex backend. Data and file storage live in a local Convex dev database managed by the CLI (outside this repo). The supported way to access local data is through Convex queries/mutations (your app or admin-only functions).
+- Local: `bun dev` runs a local Convex backend in anonymous mode. Data and file storage persist in `~/.convex/anonymous-convex-backend-state/<deployment-name>/`. Each branch or worktree gets its own isolated deployment. The supported way to access local data is through Convex queries/mutations (your app or admin-only functions).
 - Cloud: data and files live in Convex-managed cloud storage. Use the Convex dashboard and deployment tooling to inspect or export data.
 
 ### Better Auth data
@@ -171,7 +197,7 @@ bun test
 
 ### Environment differences
 
-- Local env uses `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` pointing to localhost ports (typically `3210` and `3211`).
+- Local env uses `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun dev`.
 - Cloud env uses `https://<deployment>.convex.cloud` (API) and `https://<deployment>.convex.site` (site proxy).
 - `NEXT_PUBLIC_SITE_URL` and the Convex `SITE_URL` env var should match your app URL for each environment.
 
@@ -181,10 +207,11 @@ Use this mental model to avoid surprises when switching between local and cloud.
 
 ### Fully local
 
-- Run: `bunx convex dev`
-- Convex starts a local backend and syncs your local functions/schema into it.
-- Point the app at `http://127.0.0.1:3210`.
+- Run: `bun dev`
+- Convex starts a local backend in anonymous mode and syncs your local functions/schema into it.
+- The app automatically points at the correct local ports (dynamically assigned).
 - Changes apply immediately because the local backend is the one you are using.
+- Stop with: `bun dev:stop`
 
 ### Hybrid (local app + cloud Convex)
 
@@ -202,24 +229,26 @@ Use this mental model to avoid surprises when switching between local and cloud.
 ### Mental model
 
 - `NEXT_PUBLIC_CONVEX_URL` = where your app sends requests.
-- `bunx convex dev` / `bunx convex deploy` = how local code is pushed to that backend.
+- `bun dev` (local) / `bunx convex deploy` (cloud) = how local code is pushed to that backend.
 
 ## Environment conventions
 
 This repo does not enforce a naming scheme, but the following conventions are clear and common:
 
-- Fully local (app + Convex local): `.env.local`
+- Fully local (app + Convex local): `.env.local` (managed automatically by `bun dev`)
 - Hybrid (app local + Convex cloud): `.env.cloud`
 - Fully cloud (app + Convex cloud): `.env.production` (or provider env vars)
 
 ### Example: fully local
 
 ```env
-CONVEX_DEPLOYMENT=local:<name>
-NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
-NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211
+CONVEX_DEPLOYMENT=anonymous:<deployment-name>
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:<cloud-port>
+NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:<site-port>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+Note: `bun dev` automatically manages these values. Ports are dynamically assigned per deployment.
 
 ### Example: hybrid (local app + cloud Convex)
 
