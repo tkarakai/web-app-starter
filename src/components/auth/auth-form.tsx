@@ -55,7 +55,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         });
 
         if (result.error) {
-          setError(result.error.message);
+          setError(result.error.message ?? "An error occurred");
         } else {
           router.push("/dashboard");
         }
@@ -70,7 +70,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (result.error) {
-        setError(result.error.message);
+        setError(result.error.message ?? "An error occurred");
       } else {
         router.push("/dashboard");
       }

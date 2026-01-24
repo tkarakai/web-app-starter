@@ -69,12 +69,22 @@ convex/           # Backend serverless functions
 |-----------|------|---------|
 | TypeScript check | ~3s | `bunx tsc --noEmit` |
 | Lint | ~2s | `bun run lint` |
-| Unit tests | ~50ms | `bun test` |
+| Unit tests | ~50ms | `bun run test` |
 | Component tests | ~2s | `bun run test:unit` |
 | E2E tests | ~10s | `bun run test:e2e` |
 | Full verification | ~15s | `bun run test:all` |
 
 **Assessment**: Fast enough for TDD workflows. AI agents can run unit tests after every change with minimal latency.
+
+> **CRITICAL WARNING FOR AI AGENTS**
+>
+> **Never use bare `bun test`** - always use `bun run test` (with `run`).
+>
+> Bare `bun test` picks up ALL test files (including `.tsx` and `convex/*.test.ts`) and will fail because:
+> - `.test.tsx` files require Vitest's DOM environment (happy-dom)
+> - `convex/*.test.ts` files require Vitest's `import.meta.glob` support
+>
+> The `bun run test` command runs the scoped npm script: `bun test tests/*.test.ts`
 
 ### 1.4 Agentic Development Patterns Already Present
 
@@ -120,7 +130,7 @@ export function toPriorityLabel(priority: number): string { ... }
 1. Identify pure functions in `src/lib/`
 2. Create test file: `tests/{module}.test.ts`
 3. Write tests using `describe/it/expect` pattern
-4. Run `bun test` to verify
+4. Run `bun run test` to verify
 5. Repeat TDD cycle
 
 ### 2.2 Integration Testing
@@ -230,7 +240,7 @@ The `CLAUDE.md` file serves as the **authoritative reference** for AI agents wor
 ```bash
 # Always use Bun (not npm/yarn)
 bun install    # Install dependencies
-bun test       # Run unit tests
+bun run test   # Run unit tests (ALWAYS use "bun run test", never bare "bun test")
 bun run dev    # Start development
 
 # Path aliases (use these, not relative paths)
@@ -254,7 +264,7 @@ e2e/*.spec.ts        # Playwright E2E tests
 │  1. UNDERSTAND: Read related files, understand context      │
 │                                                             │
 │  2. TEST FIRST: Write a failing test defining behavior      │
-│     └─> bun test (unit) / vitest run (component)            │
+│     └─> bun run test (unit) / vitest run (component)        │
 │                                                             │
 │  3. IMPLEMENT: Write minimal code to pass the test          │
 │     └─> See test pass (green)                               │
@@ -271,7 +281,7 @@ e2e/*.spec.ts        # Playwright E2E tests
 
 | Task Type | Agent Strategy | Verification |
 |-----------|----------------|--------------|
-| Pure function | Create test → implement → verify | `bun test` |
+| Pure function | Create test → implement → verify | `bun run test` |
 | React component | Create test → implement → verify | `vitest run` |
 | User flow | Create spec → implement → verify | `playwright test` |
 | Backend function | Create test → implement → verify | `convex-test` |
@@ -288,12 +298,12 @@ e2e/*.spec.ts        # Playwright E2E tests
 
 **Fast Path (< 100ms):**
 ```bash
-bun test tests/specific-file.test.ts  # Single unit test
+bun run test tests/specific-file.test.ts  # Single unit test
 ```
 
 **Medium Path (< 5s):**
 ```bash
-bun test && vitest run tests/specific.test.tsx  # Unit + component
+bun run test && vitest run tests/specific.test.tsx  # Unit + component
 ```
 
 **Full Verification (< 30s):**
@@ -354,10 +364,10 @@ AI agents can immediately perform these tasks with full test verification:
 
 | Capability | How to Verify | Files |
 |------------|---------------|-------|
-| Create pure utility functions | `bun test` | `tests/*.test.ts` |
+| Create pure utility functions | `bun run test` | `tests/*.test.ts` |
 | Create React components | `vitest run` | `tests/*.test.tsx` |
 | Create UI primitives (Radix-based) | `vitest run` | `tests/*.test.tsx` |
-| Modify existing utilities | `bun test` existing tests | - |
+| Modify existing utilities | `bun run test` existing tests | - |
 | Add new pages | `playwright test` navigation | `e2e/*.spec.ts` |
 | Fix bugs (with test first) | Appropriate test framework | - |
 | Refactor code | Run all tests | - |
@@ -469,7 +479,7 @@ bun run dev              # Start all services
 bun run dev:stop         # Stop all services
 
 # Testing
-bun test                 # Bun unit tests
+bun run test             # Bun unit tests (NEVER use bare "bun test")
 bun run test:unit        # Vitest component tests
 bun run test:coverage    # Vitest with coverage report
 bun run test:e2e         # Playwright E2E tests

@@ -8,9 +8,10 @@ This document provides project-specific guidance for AI agents working on this c
 # Start development server (Next.js + Convex)
 bun run dev
 
-# Run all tests
-bun test                    # Bun tests (fast, utility functions)
+# Run tests (ALWAYS use "bun run test", never bare "bun test")
+bun run test                # Bun unit tests (fast, utility functions)
 bun run test:unit           # Vitest tests (React components)
+bun run test:convex         # Convex backend tests
 bun run test:e2e            # Playwright E2E tests (requires browser)
 
 # Type checking and linting
@@ -20,6 +21,8 @@ bunx tsc --noEmit           # TypeScript type check
 # Build for production
 bun run build
 ```
+
+> **WARNING**: Never use bare `bun test` - it picks up ALL test files including those requiring Vitest's DOM environment. Always use `bun run test` which runs the scoped npm script.
 
 ## Project Overview
 
@@ -84,10 +87,13 @@ bun run dev:stop
 
 ### Testing Commands
 
+> **CRITICAL**: Always use `bun run test` (with `run`), never bare `bun test`.
+> Bare `bun test` picks up ALL test files and fails because some require Vitest's DOM environment.
+
 ```bash
 # Bun Tests (fast, for utility functions)
-bun test                     # Run all Bun tests
-bun test tests/format.test.ts  # Run specific test file
+bun run test                 # Run all Bun unit tests (scoped to tests/*.test.ts)
+bun run test tests/format.test.ts  # Run specific test file
 
 # Vitest Tests (React components with DOM)
 bun run test:unit            # Run Vitest once
@@ -96,8 +102,7 @@ bun run test:coverage        # With coverage report (HTML + JSON output)
 bunx vitest run tests/vitest-example.test.tsx  # Specific file
 
 # Convex Tests (backend functions)
-npx convex-test              # Run Convex backend tests
-bunx vitest run convex/      # Run via Vitest
+bun run test:convex          # Run Convex backend tests via Vitest
 
 # Playwright E2E Tests
 bun run test:e2e             # Run all E2E tests
@@ -446,6 +451,7 @@ export function MyComponent() {
 
 ### DO NOT
 
+- **Use bare `bun test`** - Always use `bun run test` (with `run`). Bare `bun test` picks up all test files and fails
 - **Edit `convex/_generated/`** - These files are auto-generated
 - **Use `npm` or `yarn`** - This project uses Bun exclusively
 - **Skip TypeScript types** - Strict mode catches bugs early

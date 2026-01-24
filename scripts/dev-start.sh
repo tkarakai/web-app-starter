@@ -18,6 +18,14 @@ echo -e "${BLUE}  Starting Development Environment...${NC}"
 
 cd "$PROJECT_DIR"
 
+# ============================================================
+# ENSURE LOCAL DEPENDENCIES (worktree isolation)
+# ============================================================
+# This checks for symlinked node_modules and other directories
+# that should be local to this worktree. Symlinks cause issues
+# with test runners and concurrent development.
+"$SCRIPT_DIR/ensure-local-deps.sh" --quiet
+
 # Function to get deployment name from .env.local
 get_deployment_name() {
     if [ -f "$ENV_FILE" ]; then
