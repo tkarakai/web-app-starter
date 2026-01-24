@@ -26,6 +26,13 @@ cd "$PROJECT_DIR"
 # with test runners and concurrent development.
 "$SCRIPT_DIR/ensure-local-deps.sh" --quiet
 
+# ============================================================
+# ENSURE WORKTREE GIT CONFIG (push protection)
+# ============================================================
+# This configures git to prevent accidental pushes to main.
+# Only applies when running inside a worktree (not main working tree).
+"$SCRIPT_DIR/ensure-worktree-config.sh" --quiet
+
 # Function to get deployment name from .env.local
 get_deployment_name() {
     if [ -f "$ENV_FILE" ]; then
