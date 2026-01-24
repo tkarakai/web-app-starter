@@ -69,7 +69,7 @@ export function DashboardClient({ preloadedUser }: DashboardClientProps) {
   const router = useRouter();
   const user = usePreloadedAuthQuery(preloadedUser);
   const session = authClient.useSession();
-  const items = (useQuery(api.launchItems.list) ?? []) as LaunchItem[];
+  const items = useQuery(api.launchItems.list) ?? [];
   const createLaunchItem = useMutation(api.launchItems.create);
   const updateLaunchItem = useMutation(api.launchItems.update);
 

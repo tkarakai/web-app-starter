@@ -3,11 +3,12 @@ import { Calendar, Flag, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatDateTime } from "@/lib/format";
 import { toPriorityLabel, toStatusCopy, type LaunchStatus } from "@/lib/launchpad";
 
 export type LaunchItem = {
-  _id: string;
+  _id: Id<"launchItems">;
   title: string;
   description: string;
   status: LaunchStatus;
