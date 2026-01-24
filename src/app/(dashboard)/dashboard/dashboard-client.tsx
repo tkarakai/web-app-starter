@@ -71,9 +71,12 @@ export function DashboardClient({ preloadedUser }: DashboardClientProps) {
   const session = authClient.useSession();
   const items = (useQuery(api.launchItems.list) ?? []) as LaunchItem[];
   const createLaunchItem = useMutation(api.launchItems.create);
+  const updateLaunchItem = useMutation(api.launchItems.update);
 
   const [tab, setTab] = React.useState<"all" | "idea" | "building" | "shipping">("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<LaunchItem | null>(null);
   const [formState, setFormState] = React.useState<FormState>(defaultFormState);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -115,6 +118,51 @@ export function DashboardClient({ preloadedUser }: DashboardClientProps) {
     } catch (createError) {
       setError(
         createError instanceof Error ? createError.message : "Could not create item."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (item: LaunchItem) => {
+    setEditingItem(item);
+    setFormState({
+      title: item.title,
+      description: item.description,
+      status: item.status,
+      priority: String(item.priority),
+    });
+    setError(null);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (!editingItem) return;
+
+    const title = normalizeTitle(formState.title);
+    if (!title) {
+      setError("Title is required.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await updateLaunchItem({
+        id: editingItem._id,
+        title,
+        description: normalizeTitle(formState.description),
+        status: formState.status,
+        priority: Number(formState.priority),
+      });
+      setFormState(defaultFormState);
+      setEditingItem(null);
+      setEditDialogOpen(false);
+    } catch (updateError) {
+      setError(
+        updateError instanceof Error ? updateError.message : "Could not update item."
       );
     } finally {
       setSubmitting(false);
@@ -311,12 +359,105 @@ export function DashboardClient({ preloadedUser }: DashboardClientProps) {
                 ) : (
                   <div className="space-y-3">
                     {filteredItems.map((item) => (
-                      <LaunchItemCard key={item._id} item={item} />
+                      <LaunchItemCard key={item._id} item={item} onEdit={handleEdit} />
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit launch item</DialogTitle>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={handleUpdate}>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-title">Title</Label>
+                    <Input
+                      id="edit-title"
+                      name="title"
+                      placeholder="Polish onboarding microcopy"
+                      value={formState.title}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          title: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea
+                      id="edit-description"
+                      name="description"
+                      placeholder="Quick context for the build team."
+                      value={formState.description}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          description: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-status">Status</Label>
+                      <select
+                        id="edit-status"
+                        name="status"
+                        className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+                        value={formState.status}
+                        onChange={(event) =>
+                          setFormState((prev) => ({
+                            ...prev,
+                            status: event.target.value as LaunchStatus,
+                          }))
+                        }
+                      >
+                        {launchStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-priority">Priority</Label>
+                      <select
+                        id="edit-priority"
+                        name="priority"
+                        className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+                        value={formState.priority}
+                        onChange={(event) =>
+                          setFormState((prev) => ({
+                            ...prev,
+                            priority: event.target.value,
+                          }))
+                        }
+                      >
+                        {[4, 3, 2, 1].map((level) => (
+                          <option key={level} value={level}>
+                            {toPriorityLabel(level)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {error ? (
+                    <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm">
+                      {error}
+                    </div>
+                  ) : null}
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Saving" : "Update item"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
 
             <div className="space-y-6">
               <Card className="border-border/60 bg-card/80">
