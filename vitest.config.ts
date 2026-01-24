@@ -16,5 +16,26 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
     exclude: ["node_modules", ".next"],
+    // Coverage configuration
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
+      exclude: [
+        "**/*.d.ts",
+        "**/*.test.{ts,tsx}",
+        "**/node_modules/**",
+        "**/_generated/**",
+        "**/types/**",
+      ],
+      thresholds: {
+        // Minimum coverage thresholds (start low, increase over time)
+        lines: 50,
+        branches: 50,
+        functions: 50,
+        statements: 50,
+      },
+    },
   },
 });

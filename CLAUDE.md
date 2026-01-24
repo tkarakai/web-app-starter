@@ -49,9 +49,17 @@ This is a **Next.js 16** web application with **Convex** as the backend. It uses
 │   └── *.ts                 # Server functions (queries, mutations, actions)
 ├── tests/                   # Test files
 │   ├── *.test.ts            # Bun unit tests (utility functions)
-│   └── *.test.tsx           # Vitest component tests
+│   ├── *.test.tsx           # Vitest component tests
+│   ├── helpers/             # Test utilities
+│   │   ├── auth-mock.ts     # Authentication mocking helpers
+│   │   └── visual-regression.ts  # Playwright screenshot testing
+│   └── fixtures/            # Test data
+│       └── data.ts          # Pre-defined test fixtures
 ├── e2e/                     # Playwright E2E test files
 │   └── *.spec.ts            # End-to-end test specs
+├── .github/
+│   └── workflows/
+│       └── ci.yml           # GitHub Actions CI/CD workflow
 └── scripts/                 # Development scripts
 ```
 
@@ -84,8 +92,12 @@ bun test tests/format.test.ts  # Run specific test file
 # Vitest Tests (React components with DOM)
 bun run test:unit            # Run Vitest once
 bun run test:watch           # Watch mode for development
-bun run test:coverage        # With coverage report
+bun run test:coverage        # With coverage report (HTML + JSON output)
 bunx vitest run tests/vitest-example.test.tsx  # Specific file
+
+# Convex Tests (backend functions)
+npx convex-test              # Run Convex backend tests
+bunx vitest run convex/      # Run via Vitest
 
 # Playwright E2E Tests
 bun run test:e2e             # Run all E2E tests
@@ -173,6 +185,110 @@ test.describe("Homepage", () => {
     await page.click('a[href="/dashboard"]');
     await expect(page).toHaveURL(/dashboard/);
   });
+});
+```
+
+### Convex Backend Test Pattern
+
+```typescript
+import { convexTest } from "convex-test";
+import { expect, test, describe } from "vitest";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+describe("launchItems", () => {
+  test("returns items for authenticated user", async () => {
+    const t = convexTest(schema);
+
+    // Seed test data
+    await t.run(async (ctx) => {
+      await ctx.db.insert("launchItems", {
+        title: "Test Item",
+        description: "Description",
+        status: "idea",
+        priority: 1,
+        ownerId: "test-user",
+        createdAt: Date.now(),
+      });
+    });
+
+    // Query and verify
+    const items = await t.run(async (ctx) => {
+      return ctx.db.query("launchItems").collect();
+    });
+
+    expect(items).toHaveLength(1);
+  });
+});
+```
+
+## Test Helpers
+
+### Authentication Mocking (`tests/helpers/auth-mock.ts`)
+
+```typescript
+import { createMockUser, mockUseAuth, createMockAuthContext } from "@/tests/helpers/auth-mock";
+
+// Create a mock user
+const user = createMockUser({ name: "Test User", email: "test@example.com" });
+
+// Mock the useAuth hook for component testing
+const auth = mockUseAuth({ isAuthenticated: true, user });
+
+// Create mock auth context for Convex testing
+const authCtx = createMockAuthContext(user);
+```
+
+### Test Fixtures (`tests/fixtures/data.ts`)
+
+```typescript
+import {
+  launchItemFixtures,
+  createLaunchItem,
+  createManyLaunchItems,
+  scenarios,
+} from "@/tests/fixtures/data";
+
+// Use pre-defined fixtures
+const items = scenarios.multiUser.launchItems;
+
+// Create a custom fixture
+const customItem = createLaunchItem({
+  title: "My Custom Item",
+  status: "building",
+  priority: 2,
+});
+
+// Bulk create for pagination testing
+const manyItems = createManyLaunchItems(50, "owner-id");
+```
+
+### Visual Regression (`tests/helpers/visual-regression.ts`)
+
+```typescript
+import {
+  expectPageSnapshot,
+  expectResponsiveSnapshot,
+  expectElementSnapshot,
+  fullVisualTest,
+} from "@/tests/helpers/visual-regression";
+
+// Full page screenshot comparison
+await expectPageSnapshot(page, "homepage");
+
+// Responsive viewport testing
+await expectResponsiveSnapshot(page, "dashboard", "mobile");
+await expectResponsiveSnapshot(page, "dashboard", "tablet");
+await expectResponsiveSnapshot(page, "dashboard", "desktop");
+
+// Element-specific screenshot
+const button = page.getByRole("button", { name: "Submit" });
+await expectElementSnapshot(button, "submit-button");
+
+// Full visual test (multiple viewports and themes)
+await fullVisualTest(page, "settings-page", {
+  viewports: ["mobile", "desktop"],
+  themes: ["light", "dark"],
 });
 ```
 
