@@ -122,7 +122,11 @@ test.describe("Navigation", () => {
     // Click the first dashboard link
     await page.getByRole("link", { name: /View dashboard/i }).first().click();
 
-    // Unauthenticated users should be redirected to sign-in
+    // Wait for the server-side auth check and redirect to complete
+    // On CI, the auth check via Convex can be slower, so we need a longer timeout
+    await page.waitForURL("/sign-in", { timeout: 15000 });
+
+    // Verify we're on the sign-in page
     await expect(page).toHaveURL("/sign-in");
   });
 });
