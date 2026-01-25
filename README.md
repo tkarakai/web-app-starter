@@ -1,5 +1,7 @@
 # web-app-starter
 
+[![CI](https://github.com/tkarakai/web-app-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci.yml)
+
 A production-shaped Next.js starter that wires Bun, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend foundation. It includes a functional demo flow, Convex-backed APIs, and sample tests.
 
 ## What this starter gives you
