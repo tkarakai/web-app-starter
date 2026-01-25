@@ -2,13 +2,17 @@
 #
 # ensure-branch-tracking.sh
 #
-# Ensures the current branch tracks its own remote branch (not main).
-# This prevents accidental pushes to main when using Sync/Push buttons.
+# Checks if the current branch tracks a remote branch with a matching name.
+# If not, warns the user and suggests how to fix it.
 #
-# Also installs a pre-push hook as a safety net.
+# This script NEVER pushes or modifies git configuration automatically.
+# It only informs the user and lets them decide what to do.
+#
+# Also installs a pre-push hook as a safety net to warn about
+# pushes to differently-named branches.
 #
 # Usage:
-#   ./scripts/ensure-branch-tracking.sh [--quiet]
+#   ./scripts/ensure-branch-tracking.sh
 #
 
 set -e
@@ -23,22 +27,9 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-QUIET=false
-if [[ "$1" == "--quiet" ]]; then
-    QUIET=true
-fi
-
-log() {
-    if [[ "$QUIET" == false ]]; then
-        echo -e "$1"
-    fi
-}
-
-log_always() {
-    echo -e "$1"
-}
-
 cd "$PROJECT_DIR"
+
+echo -e "${BLUE}Checking branch tracking...${NC}"
 
 # ============================================================
 # GET CURRENT BRANCH INFO
@@ -46,62 +37,66 @@ cd "$PROJECT_DIR"
 CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 
 if [ -z "$CURRENT_BRANCH" ]; then
-    log "${YELLOW}Not on a branch (detached HEAD) - skipping${NC}"
+    echo -e "  ${YELLOW}Not on a branch (detached HEAD) - skipping checks${NC}"
     exit 0
 fi
 
-# Skip if we're on main - nothing to fix
-if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
-    log "${BLUE}On main branch - skipping tracking fix${NC}"
-    exit 0
-fi
-
-log "${BLUE}Checking branch tracking configuration...${NC}"
+echo -e "  Current branch:  ${BLUE}$CURRENT_BRANCH${NC}"
 
 # ============================================================
-# CHECK AND FIX BRANCH TRACKING
+# CHECK BRANCH TRACKING
 # ============================================================
-# Get the current upstream branch (what this branch tracks)
 UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
 
 if [ -z "$UPSTREAM" ]; then
-    # No upstream set - need to push and set one
-    log "  ${YELLOW}No upstream configured${NC}"
-    log "  ${BLUE}Creating remote branch and setting upstream...${NC}"
-
-    if git push -u origin "$CURRENT_BRANCH" 2>/dev/null; then
-        log "  ${GREEN}✔ Remote branch created and tracking configured${NC}"
-    else
-        log_always "  ${YELLOW}Warning: Could not push to origin${NC}"
-        log_always "  ${YELLOW}  You may need to run: git push -u origin $CURRENT_BRANCH${NC}"
-    fi
-elif [ "$UPSTREAM" = "origin/main" ] || [ "$UPSTREAM" = "origin/master" ]; then
-    # Tracking main but we're on a feature branch - fix it
-    log "  ${YELLOW}Branch is tracking $UPSTREAM (should track origin/$CURRENT_BRANCH)${NC}"
-    log "  ${BLUE}Fixing upstream tracking...${NC}"
-
-    # Check if remote branch already exists
-    if git ls-remote --heads origin "$CURRENT_BRANCH" | grep -q "$CURRENT_BRANCH"; then
-        # Remote branch exists - just update tracking
-        git branch --set-upstream-to="origin/$CURRENT_BRANCH" "$CURRENT_BRANCH"
-        log "  ${GREEN}✔ Tracking updated to origin/$CURRENT_BRANCH${NC}"
-    else
-        # Remote branch doesn't exist - push and create it
-        if git push -u origin "$CURRENT_BRANCH" 2>/dev/null; then
-            log "  ${GREEN}✔ Remote branch created and tracking configured${NC}"
-        else
-            log_always "  ${YELLOW}Warning: Could not push to origin${NC}"
-            log_always "  ${YELLOW}  You may need to run: git push -u origin $CURRENT_BRANCH${NC}"
-        fi
-    fi
+    # No upstream configured
+    echo -e "  Upstream: ${YELLOW}not configured${NC}"
+    echo ""
+    echo -e "  ${YELLOW}Warning: No upstream tracking configured${NC}"
+    echo -e "  Push and Sync operations may not work as expected."
+    echo ""
+    echo -e "  To set up tracking (this will push your commits), run:"
+    echo -e "    ${BLUE}git push -u origin $CURRENT_BRANCH${NC}"
+    echo ""
+    TRACKING_OK=false
 else
-    # Already tracking something other than main - assume it's correct
-    log "  ${GREEN}✔ Branch tracking: $UPSTREAM${NC}"
+    echo -e "  Upstream: ${BLUE}$UPSTREAM${NC}"
+
+    # Extract the remote branch name (part after the remote name)
+    REMOTE_NAME=$(echo "$UPSTREAM" | cut -d'/' -f1)
+    REMOTE_BRANCH=$(echo "$UPSTREAM" | cut -d'/' -f2-)
+
+    if [ "$REMOTE_BRANCH" != "$CURRENT_BRANCH" ]; then
+        # Tracking a differently-named remote branch
+        echo ""
+        echo -e "  ${YELLOW}Warning: Branch tracking mismatch${NC}"
+        echo -e "  Push/Sync will go to '${RED}$REMOTE_BRANCH${NC}', not '$CURRENT_BRANCH'."
+        echo ""
+
+        # Check if a matching remote branch already exists
+        if git ls-remote --heads "$REMOTE_NAME" "$CURRENT_BRANCH" 2>/dev/null | grep -q "$CURRENT_BRANCH"; then
+            echo -e "  Remote branch '${BLUE}$REMOTE_NAME/$CURRENT_BRANCH${NC}' exists."
+            echo -e "  To fix tracking without pushing, run:"
+            echo -e "    ${BLUE}git branch --set-upstream-to=$REMOTE_NAME/$CURRENT_BRANCH${NC}"
+        else
+            echo -e "  Remote branch '${BLUE}$REMOTE_NAME/$CURRENT_BRANCH${NC}' does not exist yet."
+            echo -e "  To create it and fix tracking (this will push your commits), run:"
+            echo -e "    ${BLUE}git push -u $REMOTE_NAME $CURRENT_BRANCH${NC}"
+        fi
+        echo ""
+        TRACKING_OK=false
+    else
+        echo -e "  ${GREEN}✔ Tracking matches branch name${NC}"
+        TRACKING_OK=true
+    fi
 fi
 
 # ============================================================
 # INSTALL PRE-PUSH HOOK (safety net)
 # ============================================================
+echo ""
+echo -e "${BLUE}Checking pre-push hook...${NC}"
+
 GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)
 HOOK_PATH="$GIT_COMMON_DIR/hooks/pre-push"
 
@@ -110,29 +105,29 @@ install_hook() {
     cat > "$HOOK_PATH" << 'HOOK_EOF'
 #!/bin/bash
 #
-# Pre-push hook: Prevents accidental pushes to main from feature branches
+# Pre-push hook: Warns when pushing to a branch different from the current branch
 #
 # This hook is installed by ensure-branch-tracking.sh
 #
 
-protected_branch="main"
 current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 
 while read local_ref local_sha remote_ref remote_sha; do
-    if [[ "$remote_ref" == "refs/heads/$protected_branch" ]]; then
-        if [[ "$current_branch" == "$protected_branch" ]]; then
-            continue
-        fi
+    # Extract the remote branch name from refs/heads/xxx
+    remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+
+    if [ -n "$current_branch" ] && [ "$remote_branch" != "$current_branch" ]; then
         echo ""
-        echo "ERROR: Direct push to '$protected_branch' blocked."
+        echo "WARNING: Pushing to a different branch than your current branch!"
         echo ""
-        echo "  You're on branch: $current_branch"
-        echo "  Attempting to push to: $protected_branch"
+        echo "  Current branch: $current_branch"
+        echo "  Pushing to:     $remote_branch"
         echo ""
-        echo "  To push to your feature branch instead:"
+        echo "  If this is intentional, the push will proceed."
+        echo "  To push to your own branch instead, run:"
         echo "    git push -u origin $current_branch"
         echo ""
-        exit 1
+        # Allow the push but warn - user can Ctrl+C if unintended
     fi
 done
 
@@ -142,13 +137,24 @@ HOOK_EOF
 }
 
 if [ ! -f "$HOOK_PATH" ]; then
-    log "  ${BLUE}Installing pre-push hook (safety net)...${NC}"
+    echo -e "  Installing pre-push safety hook..."
     install_hook
-    log "  ${GREEN}✔ Pre-push hook installed${NC}"
+    echo -e "  ${GREEN}✔ Pre-push hook installed${NC}"
+    HOOK_INSTALLED=true
 elif grep -q "ensure-branch-tracking.sh" "$HOOK_PATH" 2>/dev/null; then
-    log "  ${GREEN}✔ Pre-push hook already installed${NC}"
+    echo -e "  ${GREEN}✔ Pre-push hook already installed${NC}"
+    HOOK_INSTALLED=true
 else
-    log "  ${YELLOW}Pre-push hook exists (not ours) - skipping${NC}"
+    echo -e "  ${YELLOW}Pre-push hook exists but was installed by something else - not modifying${NC}"
+    HOOK_INSTALLED=false
 fi
 
-log "${GREEN}✔ Branch configuration complete${NC}"
+# ============================================================
+# SUMMARY
+# ============================================================
+echo ""
+if [ "$TRACKING_OK" = true ] && [ "$HOOK_INSTALLED" = true ]; then
+    echo -e "${GREEN}✔ Branch tracking configuration OK${NC}"
+else
+    echo -e "${YELLOW}Branch tracking check complete - see warnings above${NC}"
+fi

@@ -29,9 +29,10 @@ cd "$PROJECT_DIR"
 # ============================================================
 # ENSURE BRANCH TRACKING (push protection)
 # ============================================================
-# Ensures the branch tracks its own remote (not origin/main).
+# Warns if the branch tracks a differently-named remote branch.
 # Also installs a pre-push hook as a safety net.
-"$SCRIPT_DIR/ensure-branch-tracking.sh" --quiet
+# This script never modifies git config - only informs the user.
+"$SCRIPT_DIR/ensure-branch-tracking.sh"
 
 # Function to get deployment name from .env.local
 get_deployment_name() {
