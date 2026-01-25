@@ -8,6 +8,10 @@ This document provides project-specific guidance for AI agents working on this c
 # Start development server (Next.js + Convex)
 bun run dev
 
+# Run all CI checks locally before pushing (recommended!)
+bun run ci                  # Full CI: lint, types, tests, build, e2e
+bun run ci:quick            # Skip E2E tests for faster feedback
+
 # Run tests (ALWAYS use "bun run test", never bare "bun test")
 bun run test                # Bun unit tests (fast, utility functions)
 bun run test:unit           # Vitest tests (React components)
@@ -121,6 +125,25 @@ bun run build                # Production build
 bun run lint                 # ESLint check
 bun run start                # Start production server
 ```
+
+### Local CI (Pre-Push Checks)
+
+Run the same checks that GitHub Actions CI runs before pushing:
+
+```bash
+bun run ci                   # Full CI check (runs everything)
+bun run ci:quick             # Skip E2E tests for faster feedback
+```
+
+The `bun run ci` command runs these checks in order:
+1. **TypeScript check** (`bunx tsc --noEmit`)
+2. **ESLint** (`bun run lint`)
+3. **Bun unit tests** (`bun run test`)
+4. **Vitest component tests** (`bun run test:coverage`)
+5. **Production build** (`bun run build`)
+6. **Playwright E2E tests** (`bun run test:e2e`)
+
+Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
 
 ## Testing Patterns
 
@@ -579,12 +602,22 @@ bun run dev:convex  # Restart Convex dev server
 
 ## Verification Checklist
 
-Before committing changes:
+Before pushing changes, run the local CI check:
 
+```bash
+bun run ci          # Full check (recommended before push)
+bun run ci:quick    # Faster check (skips E2E)
+```
+
+Or verify individually:
 - [ ] TypeScript compiles: `bunx tsc --noEmit`
 - [ ] Linting passes: `bun run lint`
-- [ ] Unit tests pass: `bun test`
+- [ ] Unit tests pass: `bun run test`
 - [ ] Component tests pass: `bun run test:unit`
+- [ ] Build succeeds: `bun run build`
+- [ ] E2E tests pass: `bun run test:e2e`
+
+Code quality:
 - [ ] No console.log debugging statements
 - [ ] Proper error handling in place
 - [ ] Types are explicit, not `any`

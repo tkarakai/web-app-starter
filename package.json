@@ -23,7 +23,9 @@
     "test:convex": "vitest run --config vitest.config.convex.ts",
     "test:all": "bun test tests/*.test.ts && vitest run && playwright test",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "ci": "./scripts/ci-local.sh",
+    "ci:quick": "./scripts/ci-local.sh --skip-e2e"
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.10.10",

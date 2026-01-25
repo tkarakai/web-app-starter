@@ -134,23 +134,30 @@ if [ -f "$PID_FILE" ]; then
     done < "$PID_FILE"
 
     if [ "$HAS_RUNNING_PROCESSES" = true ]; then
-        echo -e "${YELLOW}Already running processes found:${NC}"
-        echo -e "$RUNNING_PIDS"
-        echo ""
-        echo -e "  ${YELLOW}Options:${NC}"
-        echo -e "    [s] Stop them and start fresh"
-        echo -e "    [q] Quit and leave them running"
-        echo ""
-        read -p "Choice [s/Q]: " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Ss]$ ]]; then
-            echo ""
-            echo -e "${YELLOW}Stopping existing processes...${NC}"
+        # Non-interactive mode (CI/Playwright) - auto-stop existing processes
+        if [ ! -t 0 ]; then
+            echo -e "${YELLOW}Non-interactive mode: stopping existing processes...${NC}"
             "$SCRIPT_DIR/dev-stop.sh"
             echo ""
         else
-            echo -e "${YELLOW}Aborted. Use 'bun dev:stop' to stop running processes.${NC}"
-            exit 0
+            echo -e "${YELLOW}Already running processes found:${NC}"
+            echo -e "$RUNNING_PIDS"
+            echo ""
+            echo -e "  ${YELLOW}Options:${NC}"
+            echo -e "    [s] Stop them and start fresh"
+            echo -e "    [q] Quit and leave them running"
+            echo ""
+            read -p "Choice [s/Q]: " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Ss]$ ]]; then
+                echo ""
+                echo -e "${YELLOW}Stopping existing processes...${NC}"
+                "$SCRIPT_DIR/dev-stop.sh"
+                echo ""
+            else
+                echo -e "${YELLOW}Aborted. Use 'bun dev:stop' to stop running processes.${NC}"
+                exit 0
+            fi
         fi
     else
         # PID file exists but processes aren't running - clean it up
@@ -164,13 +171,11 @@ fi
 # ============================================================
 echo -e "${GREEN}▶ Starting Convex (anonymous mode)...${NC}"
 
-CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
+CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
 CONVEX_PID=$!
 echo "convex:$CONVEX_PID" > "$PID_FILE"
 
-echo -e "${YELLOW}  Waiting for Convex to initialize...${NC}"
-
-MAX_WAIT=60
+MAX_WAIT=30
 WAITED=0
 CONVEX_READY=false
 

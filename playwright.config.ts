@@ -1,4 +1,19 @@
 import { defineConfig, devices } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
+
+/**
+ * Read a value from .env.local (updated by dev-start.sh with actual ports)
+ */
+function getEnvValue(name: string, fallback: string): string {
+  const envPath = path.join(__dirname, ".env.local");
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, "utf-8");
+    const match = content.match(new RegExp(`^${name}=(.*)`, "m"));
+    if (match) return match[1].trim();
+  }
+  return fallback;
+}
 
 /**
  * Playwright configuration for E2E testing.
@@ -25,8 +40,8 @@ export default defineConfig({
 
   // Shared settings for all projects
   use: {
-    // Base URL for navigation actions
-    baseURL: "http://localhost:3000",
+    // Base URL for navigation actions (read from .env.local for dynamic ports)
+    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3000"),
 
     // Collect trace on first retry for debugging failures
     trace: "on-first-retry",
@@ -43,11 +58,12 @@ export default defineConfig({
     },
   ],
 
-  // Run local dev server before starting tests
+  // Run full dev environment (Convex + Next.js) before starting tests
+  // Ports are read from .env.local which dev-start.sh updates with actual values
   webServer: {
-    command: "bun run dev:next",
-    url: "http://localhost:3000",
+    command: "bun run dev",
+    url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3000"),
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 180 * 1000, // longer timeout for both services to start
   },
 });
