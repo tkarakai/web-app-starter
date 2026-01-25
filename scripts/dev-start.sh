@@ -14,9 +14,37 @@ ENV_FILE="$PROJECT_DIR/.env.local"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 
+# Detect if running in non-interactive mode (CI/Playwright)
+# In this mode, we stay in foreground and stream logs
+# Can be triggered by: --ci flag, CI env var, or non-TTY stdin
+if [[ "$1" == "--ci" ]] || [[ "$CI" == "true" ]] || [ ! -t 0 ]; then
+    NON_INTERACTIVE=true
+    echo "[CI MODE] Running in non-interactive/foreground mode"
+    echo "[CI MODE] Current directory: $(pwd)"
+    echo "[CI MODE] Script directory: $SCRIPT_DIR"
+    echo "[CI MODE] Project directory: $PROJECT_DIR"
+else
+    NON_INTERACTIVE=false
+fi
+
 echo -e "${BLUE}  Starting Development Environment...${NC}"
 
 cd "$PROJECT_DIR"
+
+# In CI mode, show environment info
+if [ "$NON_INTERACTIVE" = true ]; then
+    echo "[CI MODE] Environment check:"
+    echo "  - bun version: $(bun --version 2>/dev/null || echo 'not found')"
+    echo "  - node version: $(node --version 2>/dev/null || echo 'not found')"
+    echo "  - npx version: $(npx --version 2>/dev/null || echo 'not found')"
+    echo "  - HOME: $HOME"
+    echo "  - .env.local exists: $([ -f "$ENV_FILE" ] && echo 'yes' || echo 'no (will be created by Convex)')"
+    if [ -f "$ENV_FILE" ]; then
+        echo "  - .env.local contents (before startup):"
+        cat "$ENV_FILE" | sed 's/^/      /'
+    fi
+    echo ""
+fi
 
 # ============================================================
 # ENSURE LOCAL DEPENDENCIES (worktree isolation)
@@ -24,7 +52,25 @@ cd "$PROJECT_DIR"
 # This checks for symlinked node_modules and other directories
 # that should be local to this worktree. Symlinks cause issues
 # with test runners and concurrent development.
-"$SCRIPT_DIR/ensure-local-deps.sh" --quiet
+# Skip in CI mode - not needed there.
+if [ "$NON_INTERACTIVE" = false ]; then
+    "$SCRIPT_DIR/ensure-local-deps.sh" --quiet
+else
+    echo "[CI MODE] Skipping ensure-local-deps.sh (not needed in CI)"
+fi
+
+# ============================================================
+# ENSURE BRANCH TRACKING (push protection)
+# ============================================================
+# Warns if the branch tracks a differently-named remote branch.
+# Also installs a pre-push hook as a safety net.
+# This script never modifies git config - only informs the user.
+# Skip in CI mode - not needed there.
+if [ "$NON_INTERACTIVE" = false ]; then
+    "$SCRIPT_DIR/ensure-branch-tracking.sh"
+else
+    echo "[CI MODE] Skipping ensure-branch-tracking.sh (not needed in CI)"
+fi
 
 # Function to get deployment name from .env.local
 get_deployment_name() {
@@ -126,23 +172,30 @@ if [ -f "$PID_FILE" ]; then
     done < "$PID_FILE"
 
     if [ "$HAS_RUNNING_PROCESSES" = true ]; then
-        echo -e "${YELLOW}Already running processes found:${NC}"
-        echo -e "$RUNNING_PIDS"
-        echo ""
-        echo -e "  ${YELLOW}Options:${NC}"
-        echo -e "    [s] Stop them and start fresh"
-        echo -e "    [q] Quit and leave them running"
-        echo ""
-        read -p "Choice [s/Q]: " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Ss]$ ]]; then
-            echo ""
-            echo -e "${YELLOW}Stopping existing processes...${NC}"
+        # Non-interactive mode (CI/Playwright) - auto-stop existing processes
+        if [ ! -t 0 ]; then
+            echo -e "${YELLOW}Non-interactive mode: stopping existing processes...${NC}"
             "$SCRIPT_DIR/dev-stop.sh"
             echo ""
         else
-            echo -e "${YELLOW}Aborted. Use 'bun dev:stop' to stop running processes.${NC}"
-            exit 0
+            echo -e "${YELLOW}Already running processes found:${NC}"
+            echo -e "$RUNNING_PIDS"
+            echo ""
+            echo -e "  ${YELLOW}Options:${NC}"
+            echo -e "    [s] Stop them and start fresh"
+            echo -e "    [q] Quit and leave them running"
+            echo ""
+            read -p "Choice [s/Q]: " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Ss]$ ]]; then
+                echo ""
+                echo -e "${YELLOW}Stopping existing processes...${NC}"
+                "$SCRIPT_DIR/dev-stop.sh"
+                echo ""
+            else
+                echo -e "${YELLOW}Aborted. Use 'bun dev:stop' to stop running processes.${NC}"
+                exit 0
+            fi
         fi
     else
         # PID file exists but processes aren't running - clean it up
@@ -156,13 +209,19 @@ fi
 # ============================================================
 echo -e "${GREEN}▶ Starting Convex (anonymous mode)...${NC}"
 
-CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
-CONVEX_PID=$!
+if [ "$NON_INTERACTIVE" = true ]; then
+    echo "[CI MODE] Convex state dir: $CONVEX_STATE_DIR"
+    echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev"
+    CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
+    CONVEX_PID=$!
+    echo "[CI MODE] Convex process started with PID: $CONVEX_PID"
+else
+    CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1 &
+    CONVEX_PID=$!
+fi
 echo "convex:$CONVEX_PID" > "$PID_FILE"
 
-echo -e "${YELLOW}  Waiting for Convex to initialize...${NC}"
-
-MAX_WAIT=60
+MAX_WAIT=60  # Increased timeout for CI
 WAITED=0
 CONVEX_READY=false
 
@@ -186,7 +245,14 @@ while [ $WAITED -lt $MAX_WAIT ]; do
         break
     fi
 
-    printf "\r${YELLOW}  Waiting for Convex to initialize... %ds${NC}" $WAITED
+    # In CI mode, show progress every 5 seconds with log tail
+    if [ "$NON_INTERACTIVE" = true ] && [ $((WAITED % 5)) -eq 0 ]; then
+        echo "[CI MODE] Waiting for Convex... ${WAITED}s elapsed"
+        echo "[CI MODE] Last 5 lines of Convex log:"
+        tail -5 "$PROJECT_DIR/.convex-dev.log" 2>/dev/null | sed 's/^/  /' || echo "  (no log yet)"
+    else
+        printf "\r${YELLOW}  Waiting for Convex to initialize... %ds${NC}" $WAITED
+    fi
 done
 
 printf "\n"
@@ -234,6 +300,10 @@ fi
 echo ""
 echo -e "${GREEN}▶ Checking Better Auth configuration...${NC}"
 
+if [ "$NON_INTERACTIVE" = true ]; then
+    echo "[CI MODE] Checking/setting BETTER_AUTH_SECRET..."
+fi
+
 # Check if BETTER_AUTH_SECRET is set
 AUTH_SECRET_SET=false
 if bunx convex env get BETTER_AUTH_SECRET > /dev/null 2>&1; then
@@ -246,8 +316,14 @@ fi
 if [ "$AUTH_SECRET_SET" = false ]; then
     echo -e "  ${YELLOW}Generating BETTER_AUTH_SECRET...${NC}"
     NEW_SECRET=$(openssl rand -base64 32)
-    bunx convex env set BETTER_AUTH_SECRET "$NEW_SECRET" > /dev/null 2>&1
-    echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET configured"
+    if ! bunx convex env set BETTER_AUTH_SECRET "$NEW_SECRET" 2>&1; then
+        echo -e "  ${RED}Failed to set BETTER_AUTH_SECRET${NC}"
+        if [ "$NON_INTERACTIVE" = true ]; then
+            echo "[CI MODE] This might be expected if Convex env commands aren't available"
+        fi
+    else
+        echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET configured"
+    fi
 else
     echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET already set"
 fi
@@ -263,7 +339,7 @@ bunx next dev > "$PROJECT_DIR/.next-dev.log" 2>&1 &
 NEXT_PID=$!
 echo "next:$NEXT_PID" >> "$PID_FILE"
 
-MAX_WAIT=30
+MAX_WAIT=60  # Increased timeout for CI
 WAITED=0
 NEXT_READY=false
 
@@ -285,7 +361,14 @@ while [ $WAITED -lt $MAX_WAIT ]; do
         break
     fi
 
-    printf "\r${YELLOW}  Waiting for Next.js to start... %ds${NC}" $WAITED
+    # In CI mode, show progress every 5 seconds with log tail
+    if [ "$NON_INTERACTIVE" = true ] && [ $((WAITED % 5)) -eq 0 ]; then
+        echo "[CI MODE] Waiting for Next.js... ${WAITED}s elapsed"
+        echo "[CI MODE] Last 5 lines of Next.js log:"
+        tail -5 "$PROJECT_DIR/.next-dev.log" 2>/dev/null | sed 's/^/  /' || echo "  (no log yet)"
+    else
+        printf "\r${YELLOW}  Waiting for Next.js to start... %ds${NC}" $WAITED
+    fi
 done
 
 printf "\n"
@@ -314,6 +397,13 @@ echo -e "${GREEN}✔ Next.js ready (PID: $NEXT_PID)${NC}"
 echo -e "  ${BLUE}App URL:${NC}    $NEXT_URL"
 echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex"
 
+# In CI mode, show final .env.local contents
+if [ "$NON_INTERACTIVE" = true ]; then
+    echo ""
+    echo "[CI MODE] Final .env.local contents:"
+    cat "$ENV_FILE" 2>/dev/null | sed 's/^/  /' || echo "  (file not found)"
+fi
+
 # ============================================================
 # SUMMARY
 # ============================================================
@@ -326,3 +416,52 @@ echo -e "    Next.js: tail -f .next-dev.log"
 echo ""
 echo -e "  ${YELLOW}Stop with:${NC} bun dev:stop"
 echo ""
+
+# ============================================================
+# FOREGROUND MODE (CI/Playwright)
+# ============================================================
+# In non-interactive mode, stay running and stream logs so Playwright
+# knows we're alive. Also handle cleanup on exit.
+if [ "$NON_INTERACTIVE" = true ]; then
+    echo "[CI MODE] Staying in foreground, streaming logs..."
+    echo "[CI MODE] Press Ctrl+C to stop"
+    echo ""
+
+    # Cleanup function for graceful shutdown
+    cleanup() {
+        echo ""
+        echo "[CI MODE] Shutting down..."
+        kill $CONVEX_PID 2>/dev/null || true
+        kill $NEXT_PID 2>/dev/null || true
+        rm -f "$PID_FILE"
+        exit 0
+    }
+
+    # Trap signals for cleanup
+    trap cleanup SIGINT SIGTERM EXIT
+
+    # Stream both log files - this keeps the script running
+    tail -f "$PROJECT_DIR/.convex-dev.log" "$PROJECT_DIR/.next-dev.log" &
+    TAIL_PID=$!
+
+    # Wait for either child process to exit (indicates failure)
+    while true; do
+        if ! kill -0 $CONVEX_PID 2>/dev/null; then
+            echo ""
+            echo -e "${RED}[CI MODE] Convex process died unexpectedly${NC}"
+            echo -e "${RED}[CI MODE] Convex log:${NC}"
+            cat "$PROJECT_DIR/.convex-dev.log"
+            kill $TAIL_PID 2>/dev/null || true
+            exit 1
+        fi
+        if ! kill -0 $NEXT_PID 2>/dev/null; then
+            echo ""
+            echo -e "${RED}[CI MODE] Next.js process died unexpectedly${NC}"
+            echo -e "${RED}[CI MODE] Next.js log:${NC}"
+            cat "$PROJECT_DIR/.next-dev.log"
+            kill $TAIL_PID 2>/dev/null || true
+            exit 1
+        fi
+        sleep 5
+    done
+fi

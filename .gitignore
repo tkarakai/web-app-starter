@@ -1,6 +1,7 @@
 node_modules
 .bun
 .next
+next-env.d.ts
 out
 dist
 
