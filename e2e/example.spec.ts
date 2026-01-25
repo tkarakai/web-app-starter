@@ -63,9 +63,10 @@ test.describe("Homepage", () => {
     const consoleErrors: ConsoleMessage[] = [];
 
     // Known errors that are expected in CI/test environments
+    // Note: patterns are scoped to specific endpoints to avoid masking unrelated errors
     const expectedErrorPatterns = [
-      /\/api\/auth\/get-session/, // Auth session check fails without auth config
-      /Failed to load resource.*400/, // Related to auth endpoints
+      /\/api\/auth\/get-session.*400/, // Auth session check returns 400 without auth config
+      /Failed to load resource.*\/api\/auth\/get-session/, // Browser error for auth session 400
     ];
 
     // Listen for console errors, filtering out expected ones
