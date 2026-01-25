@@ -62,22 +62,32 @@ test.describe("Homepage", () => {
   test("has no console errors on load", async ({ page }) => {
     const consoleErrors: ConsoleMessage[] = [];
 
-    // Known errors that are expected in CI/test environments
-    // Note: patterns are scoped to specific endpoints to avoid masking unrelated errors
-    const expectedErrorPatterns = [
-      /\/api\/auth\/get-session.*400/, // Auth session check returns 400 without auth config
-      /Failed to load resource.*\/api\/auth\/get-session/, // Browser error for auth session 400
-    ];
+    // Check if an error is expected (known CI/test environment errors)
+    const isExpectedError = (text: string, locationUrl: string): boolean => {
+      // Auth session 400 errors are expected when auth is not fully configured
+      // In CI, the text is generic "Failed to load resource: ...400..." and the URL is separate
+      const isAuthSessionUrl = /\/api\/auth\/get-session/.test(locationUrl);
+      const is400Error = /400|Bad Request/.test(text);
+      const isFailedToLoad = /Failed to load resource/.test(text);
+
+      if (isAuthSessionUrl && (is400Error || isFailedToLoad)) {
+        return true;
+      }
+
+      // Also check if both path and status are in the same string (some browsers combine them)
+      if (/\/api\/auth\/get-session.*400/.test(text)) {
+        return true;
+      }
+
+      return false;
+    };
 
     // Listen for console errors, filtering out expected ones
     page.on("console", (message) => {
       if (message.type() === "error") {
         const text = message.text();
-        const location = message.location().url;
-        const isExpected = expectedErrorPatterns.some(
-          (pattern) => pattern.test(text) || pattern.test(location)
-        );
-        if (!isExpected) {
+        const locationUrl = message.location().url;
+        if (!isExpectedError(text, locationUrl)) {
           consoleErrors.push(message);
         }
       }
