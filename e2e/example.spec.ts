@@ -104,14 +104,16 @@ test.describe("Navigation", () => {
     await expect(page).toHaveURL("/sign-up");
   });
 
-  test("dashboard link navigates to dashboard page", async ({ page }) => {
+  test("dashboard link redirects unauthenticated users to sign-in", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     // Click the first dashboard link
     await page.getByRole("link", { name: /View dashboard/i }).first().click();
 
-    // Verify navigation to dashboard page
-    await expect(page).toHaveURL("/dashboard");
+    // Unauthenticated users should be redirected to sign-in
+    await expect(page).toHaveURL("/sign-in");
   });
 });
 
