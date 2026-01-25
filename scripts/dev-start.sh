@@ -27,11 +27,11 @@ cd "$PROJECT_DIR"
 "$SCRIPT_DIR/ensure-local-deps.sh" --quiet
 
 # ============================================================
-# ENSURE WORKTREE GIT CONFIG (push protection)
+# ENSURE BRANCH TRACKING (push protection)
 # ============================================================
-# This configures git to prevent accidental pushes to main.
-# Only applies when running inside a worktree (not main working tree).
-"$SCRIPT_DIR/ensure-worktree-config.sh" --quiet
+# Ensures the branch tracks its own remote (not origin/main).
+# Also installs a pre-push hook as a safety net.
+"$SCRIPT_DIR/ensure-branch-tracking.sh" --quiet
 
 # Function to get deployment name from .env.local
 get_deployment_name() {
