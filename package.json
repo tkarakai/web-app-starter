@@ -6,6 +6,7 @@
   "scripts": {
     "predev": "./scripts/ensure-local-deps.sh --quiet",
     "dev": "./scripts/dev-start.sh",
+    "dev:ci": "./scripts/dev-start.sh --ci",
     "ensure-local": "./scripts/ensure-local-deps.sh",
     "dev:stop": "./scripts/dev-stop.sh",
     "dev:status": "./scripts/dev-status.sh",

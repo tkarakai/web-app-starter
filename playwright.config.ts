@@ -59,9 +59,10 @@ export default defineConfig({
   ],
 
   // Run full dev environment (Convex + Next.js) before starting tests
+  // Uses dev:ci which runs in foreground mode with verbose logging
   // Ports are read from .env.local which dev-start.sh updates with actual values
   webServer: {
-    command: "bun run dev",
+    command: "bun run dev:ci",
     url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3000"),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000, // longer timeout for both services to start
