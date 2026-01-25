@@ -113,8 +113,14 @@ install_hook() {
 current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 
 while read local_ref local_sha remote_ref remote_sha; do
+    # Skip non-branch refs (tags, notes, etc.) - only check refs/heads/*
+    case "$remote_ref" in
+        refs/heads/*) ;;
+        *) continue ;;
+    esac
+
     # Extract the remote branch name from refs/heads/xxx
-    remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    remote_branch="${remote_ref#refs/heads/}"
 
     if [ -n "$current_branch" ] && [ "$remote_branch" != "$current_branch" ]; then
         echo ""
