@@ -107,6 +107,6 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-          deny-licenses: GPL-3.0, AGPL-3.0
-          # Allow AGPL-3.0 for CI tools (not runtime dependencies)
-          allow-dependencies-licenses: "pkg:githubactions/trufflesecurity/trufflehog"
+          # Only deny GPL-3.0 for runtime dependencies
+          # AGPL-3.0 removed since our only AGPL dep (TruffleHog) is a CI tool
+          deny-licenses: GPL-3.0
