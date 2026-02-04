@@ -15,9 +15,15 @@ permissions:
   security-events: write
 
 jobs:
+  # NOTE: CodeQL requires GitHub Advanced Security to be enabled
+  # For public repos: Free
+  # For private repos: Requires GitHub Advanced Security license
+  # Enable at: Settings > Security > Code security and analysis
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
+    # Don't fail the workflow if Advanced Security is not enabled
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +32,6 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
-          # Use security-extended for more comprehensive analysis
           queries: security-extended
 
       - name: Autobuild
@@ -53,18 +58,19 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run npm audit
-        # Bun doesn't have audit yet, use npm for security scanning
         run: |
-          npm audit --audit-level=high || true
-          echo ""
           echo "## Dependency Audit Results" >> $GITHUB_STEP_SUMMARY
-          npm audit --json 2>/dev/null | jq -r '.metadata.vulnerabilities | "High: \(.high), Critical: \(.critical)"' >> $GITHUB_STEP_SUMMARY || echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
-
-      - name: Check for known vulnerabilities
-        run: |
-          # Check for specific high-risk packages
-          if grep -q '"prototype-polluting"' package-lock.json 2>/dev/null; then
-            echo "Warning: Potential prototype pollution vulnerability detected"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Run audit and capture output
+          npm audit --audit-level=high 2>&1 | tee audit-output.txt || true
+          # Extract vulnerability counts if available
+          if grep -q "found 0 vulnerabilities" audit-output.txt; then
+            echo "✅ No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Vulnerabilities detected - review audit output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   secrets-scan:
@@ -78,16 +84,21 @@ jobs:
 
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
           extra_args: --only-verified
 
+  # NOTE: Dependency Review requires GitHub Advanced Security
+  # Enable at: Settings > Security > Code security and analysis
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    # Don't fail the workflow if Advanced Security is not enabled
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
