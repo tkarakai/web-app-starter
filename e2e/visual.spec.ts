@@ -2,10 +2,16 @@
  * Visual Regression Tests
  *
  * These tests capture screenshots and compare them against baseline images
- * to detect unintended visual changes. On first run, baselines are created.
+ * to detect unintended visual changes.
  *
- * Run with: bunx playwright test e2e/visual.spec.ts
- * Update baselines: bunx playwright test e2e/visual.spec.ts --update-snapshots
+ * BASELINE MANAGEMENT:
+ * - First run: Baselines are auto-created (updateSnapshots: 'missing' in config)
+ * - CI uploads generated snapshots as artifacts for review
+ * - To update baselines: bunx playwright test e2e/visual.spec.ts --update-snapshots
+ * - Commit baseline images in e2e/__screenshots__/ to the repo
+ *
+ * Run locally: bunx playwright test e2e/visual.spec.ts
+ * Run specific browser: bunx playwright test e2e/visual.spec.ts --project=chromium
  *
  * @tags visual
  */

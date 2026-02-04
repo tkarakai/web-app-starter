@@ -235,11 +235,12 @@ jobs:
 
       - name: Upload visual snapshots
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: visual-regression-diffs-${{ matrix.browser }}
+          name: visual-snapshots-${{ matrix.browser }}
           path: e2e/__screenshots__/
           retention-days: 7
+          if-no-files-found: ignore
 
   build:
     name: Build

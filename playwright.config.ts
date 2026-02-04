@@ -38,6 +38,21 @@ export default defineConfig({
   // Reporter configuration
   reporter: process.env.CI ? "github" : "html",
 
+  // Snapshot configuration for visual regression tests
+  // 'missing' creates new baselines but fails on actual differences
+  updateSnapshots: "missing",
+  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
+
+  // Expect configuration for visual comparisons
+  expect: {
+    toHaveScreenshot: {
+      // Allow small differences due to anti-aliasing
+      maxDiffPixelRatio: 0.01,
+      // Threshold for color difference (0-1)
+      threshold: 0.2,
+    },
+  },
+
   // Shared settings for all projects
   use: {
     // Base URL for navigation actions (read from .env.local for dynamic ports)
