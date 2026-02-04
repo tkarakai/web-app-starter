@@ -133,9 +133,13 @@ jobs:
         run: bun run test:convex
 
   test-e2e:
-    name: E2E Tests (Playwright)
+    name: E2E Tests (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -161,20 +165,20 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/bun.lockb') }}
+          key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/bun.lockb') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            ${{ runner.os }}-playwright-${{ matrix.browser }}-
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: bunx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Install Playwright deps (if cached)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: bunx playwright install-deps chromium
+        run: bunx playwright install-deps ${{ matrix.browser }}
 
       - name: Run Playwright tests
-        run: bun run test:e2e
+        run: bunx playwright test --project=${{ matrix.browser }}
         env:
           CI: true
 
@@ -191,7 +195,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 7
 
@@ -199,7 +203,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: dev-logs
+          name: dev-logs-${{ matrix.browser }}
           path: |
             .convex-dev.log
             .next-dev.log
@@ -209,7 +213,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: visual-regression-diffs
+          name: visual-regression-diffs-${{ matrix.browser }}
           path: e2e/__screenshots__/
           retention-days: 7
 
