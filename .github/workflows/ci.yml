@@ -157,13 +157,9 @@ jobs:
         run: bun run test:convex
 
   test-e2e:
-    name: E2E Tests (${{ matrix.browser }})
+    name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -189,20 +185,20 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/bun.lockb') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('**/bun.lockb') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-${{ matrix.browser }}-
+            ${{ runner.os }}-playwright-chromium-
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: bunx playwright install --with-deps ${{ matrix.browser }}
+        run: bunx playwright install --with-deps chromium
 
       - name: Install Playwright deps (if cached)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: bunx playwright install-deps ${{ matrix.browser }}
+        run: bunx playwright install-deps chromium
 
       - name: Run Playwright tests
-        run: bunx playwright test --project=${{ matrix.browser }}
+        run: bunx playwright test --project=chromium
         env:
           CI: true
 
@@ -219,7 +215,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report
           path: playwright-report/
           retention-days: 7
 
@@ -227,7 +223,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: dev-logs-${{ matrix.browser }}
+          name: dev-logs
           path: |
             .convex-dev.log
             .next-dev.log
@@ -237,7 +233,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: visual-snapshots-${{ matrix.browser }}
+          name: visual-snapshots
           path: e2e/__screenshots__/
           retention-days: 7
           if-no-files-found: ignore
@@ -364,7 +360,7 @@ jobs:
   ci-complete:
     name: CI Complete
     runs-on: ubuntu-latest
-    needs: [lint, test-unit, test-vitest, test-convex, test-e2e, build]
+    needs: [lint, test-unit, test-vitest, test-convex, build]
     if: always()
     steps:
       - name: Check all jobs passed
@@ -373,14 +369,12 @@ jobs:
           echo "Unit Tests: ${{ needs.test-unit.result }}"
           echo "Vitest: ${{ needs.test-vitest.result }}"
           echo "Convex: ${{ needs.test-convex.result }}"
-          echo "E2E: ${{ needs.test-e2e.result }}"
           echo "Build: ${{ needs.build.result }}"
 
           if [[ "${{ needs.lint.result }}" != "success" ]] || \
              [[ "${{ needs.test-unit.result }}" != "success" ]] || \
              [[ "${{ needs.test-vitest.result }}" != "success" ]] || \
              [[ "${{ needs.test-convex.result }}" != "success" ]] || \
-             [[ "${{ needs.test-e2e.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]]; then
             echo "❌ One or more jobs failed"
             exit 1

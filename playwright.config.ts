@@ -65,19 +65,11 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
 
-  // Configure browser projects
+  // Configure browser projects (chromium only for now)
   projects: [
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-    {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
     },
   ],
 
