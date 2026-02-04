@@ -108,3 +108,5 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0
+          # Allow AGPL-3.0 for CI tools (not runtime dependencies)
+          allow-dependencies-licenses: "pkg:githubactions/trufflesecurity/trufflehog"
