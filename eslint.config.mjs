@@ -10,6 +10,7 @@ export default [
     ignores: [
       "node_modules/**",
       ".next/**",
+      ".auto-claude/**",
       "convex/_generated/**",
       "coverage/**",
       "playwright-report/**",
