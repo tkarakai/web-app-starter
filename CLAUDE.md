@@ -11,6 +11,8 @@ bun run dev
 # Run all CI checks locally before pushing (recommended!)
 bun run ci                  # Full CI: lint, types, tests, build, e2e
 bun run ci:quick            # Skip E2E tests for faster feedback
+bun run ci:act              # Run in Docker via act (first run populates caches)
+bun run ci:act:offline      # Offline mode (fast, no network required)
 
 # Run tests (ALWAYS use "bun run test", never bare "bun test")
 bun run test                # Bun unit tests (fast, utility functions)
@@ -66,8 +68,14 @@ This is a **Next.js 16** web application with **Convex** as the backend. It uses
 │   └── *.spec.ts            # End-to-end test specs
 ├── .github/
 │   └── workflows/
-│       └── ci.yml           # GitHub Actions CI/CD workflow
-└── scripts/                 # Development scripts
+│       ├── ci.yml           # GitHub Actions CI/CD workflow
+│       └── security.yml     # CodeQL, dependency audit, secrets scan
+├── scripts/
+│   ├── ci-local.sh          # Native CI checks (bun run ci)
+│   ├── ci-local-act.sh      # Docker-based CI via act (bun run ci:act)
+│   ├── dev-start.sh         # Start dev environment
+│   └── dev-stop.sh          # Stop dev environment
+└── .actrc                   # act configuration (M-series, runner image)
 ```
 
 ## Development Commands
@@ -140,10 +148,131 @@ The `bun run ci` command runs these checks in order:
 2. **ESLint** (`bun run lint`)
 3. **Bun unit tests** (`bun run test`)
 4. **Vitest component tests** (`bun run test:coverage`)
-5. **Production build** (`bun run build`)
-6. **Playwright E2E tests** (`bun run test:e2e`)
+5. **Convex backend tests** (`bun run test:convex`)
+6. **Production build** (`bun run build`)
+7. **Bundle size check** (`bun run size`)
+8. **Playwright E2E tests** (`bun run test:e2e`)
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
+
+> **Note**: Lighthouse performance audits are only run in GitHub Actions CI, not locally.
+
+### Running GitHub Actions Locally with `act`
+
+[act](https://github.com/nektos/act) runs GitHub Actions workflows locally in Docker containers:
+
+```bash
+# Install act (requires Docker)
+brew install act
+
+# Run CI workflow
+bun run ci:act                # Full output + summary
+bun run ci:act:quick          # Quiet mode, summary only
+bun run ci:act:offline        # Offline mode (after caches are populated)
+
+# Run specific jobs
+./scripts/ci-local-act.sh -j lint   # Just linting
+./scripts/ci-local-act.sh -l        # List available jobs
+./scripts/ci-local-act.sh -o        # Offline mode
+```
+
+**Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation).
+
+**When to use which**:
+- `bun run ci` — Fast native checks, no Docker required
+- `bun run ci:act` — Full GitHub Actions simulation in Docker
+- `bun run ci:act:offline` — Fast offline execution (no network required)
+
+### Offline CI Mode (act)
+
+#### Rationale
+
+Running CI tests locally should be fast and not require internet access for every run. When you're iterating on code without changing dependencies, there's no need to re-download tools, packages, or browser binaries. Offline mode enables:
+
+1. **Fast iteration** — Skip network downloads on subsequent runs
+2. **Airplane mode development** — Work without internet connectivity
+3. **Reduced bandwidth** — Don't re-download the same artifacts repeatedly
+4. **Consistent environments** — Use the exact same cached binaries across runs
+
+#### How It Works
+
+The `ci-local-act.sh` script uses **Docker volumes** to persist downloaded artifacts between runs:
+
+| Volume Name | Container Path | Contents |
+|-------------|----------------|----------|
+| `act-bun-cache` | `/root/.bun` | Bun binary + package cache (node_modules) |
+| `act-playwright-cache` | `/root/.cache/ms-playwright` | Chromium browser binaries |
+| `act-toolcache` | `/opt/act-toolcache` | Node.js installations |
+
+**First run (online):** Downloads and caches everything to Docker volumes
+**Subsequent runs:** Uses cached artifacts from volumes (fast, works offline)
+
+#### Usage
+
+```bash
+# First run: populate caches (requires internet)
+bun run ci:act
+
+# Subsequent runs: use offline mode (no internet required)
+bun run ci:act:offline
+```
+
+The offline flag (`-o`) adds:
+- `--pull=false` — Don't pull Docker images
+- `--action-offline-mode` — Don't fetch GitHub Actions
+
+#### Pattern for Adding New Tools
+
+When introducing a new tool that downloads from the internet (like Bun, Playwright, etc.), follow this pattern in `.github/workflows/ci.yml`:
+
+```yaml
+# Standard GitHub Actions (uses official setup action)
+- name: Setup ToolName
+  if: ${{ !env.ACT }}
+  uses: vendor/setup-toolname@v1
+  with:
+    version: "1.2.3"
+
+# act offline mode (checks cache first, downloads if needed)
+- name: Setup ToolName (act)
+  if: ${{ env.ACT }}
+  run: |
+    TOOL_DIR="/path/to/cache"
+    if [ -x "$TOOL_DIR/bin/tool" ]; then
+      echo "Tool already installed"
+    else
+      # Download and install tool
+      curl -fsSL https://example.com/install.sh | bash
+    fi
+    echo "$TOOL_DIR/bin" >> $GITHUB_PATH
+```
+
+**Key principles:**
+1. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup steps
+2. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
+3. Check if the tool exists before downloading
+4. Install to a path that's mounted as a Docker volume
+5. Add the tool to `$GITHUB_PATH`
+
+#### Currently Cached Tools
+
+| Tool | Cache Location | Setup Pattern |
+|------|----------------|---------------|
+| Bun | `/root/.bun/bin/bun` | Custom script checks existence |
+| Node.js | `/opt/act-toolcache/node/` | `setup-node` respects `RUNNER_TOOL_CACHE` |
+| Playwright | `/root/.cache/ms-playwright/` | Volume persists browser binaries |
+| npm packages | `/root/.bun/install/cache/` | Bun's package cache |
+
+#### Troubleshooting
+
+**Cache issues (tar errors):** The `actions/cache` step is skipped in act (`if: ${{ !env.ACT }}`) because multiple parallel jobs sharing the same volume causes race conditions. Docker volumes provide persistence instead.
+
+**Tool not found offline:** Run `bun run ci:act` once online to populate caches.
+
+**Clearing caches:** Remove Docker volumes to start fresh:
+```bash
+docker volume rm act-bun-cache act-playwright-cache act-toolcache
+```
 
 ## Testing Patterns
 

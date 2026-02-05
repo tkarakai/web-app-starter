@@ -27,6 +27,9 @@
     "test:e2e:ui": "playwright test --ui",
     "ci": "./scripts/ci-local.sh",
     "ci:quick": "./scripts/ci-local.sh --skip-e2e",
+    "ci:act": "./scripts/ci-local-act.sh",
+    "ci:act:quick": "./scripts/ci-local-act.sh -q",
+    "ci:act:offline": "./scripts/ci-local-act.sh -o",
     "size": "size-limit",
     "size:check": "size-limit --json"
   },
