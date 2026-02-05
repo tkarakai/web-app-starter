@@ -36,7 +36,9 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   // Reporter configuration
-  reporter: process.env.CI ? "github" : "html",
+  // In CI: use github reporter for annotations + html for downloadable report
+  // Locally: just use html reporter
+  reporter: process.env.CI ? [["github"], ["html"]] : "html",
 
   // Snapshot configuration for visual regression tests
   // 'missing' creates new baselines but fails on actual differences

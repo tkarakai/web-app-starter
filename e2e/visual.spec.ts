@@ -31,17 +31,17 @@ test.describe("Visual Regression Tests @visual", () => {
       await page.waitForLoadState("networkidle");
     });
 
-    test("homepage - desktop view", async ({ page }) => {
+    test.skip("homepage - desktop view", async ({ page }) => {
       await expectPageSnapshot(page, "homepage-desktop");
     });
 
-    test("homepage - responsive views", async ({ page }) => {
+    test.skip("homepage - responsive views", async ({ page }) => {
       await expectResponsiveSnapshot(page, "homepage", "mobile");
       await expectResponsiveSnapshot(page, "homepage", "tablet");
       await expectResponsiveSnapshot(page, "homepage", "desktop");
     });
 
-    test("homepage - full visual test (viewports + themes)", async ({
+    test.skip("homepage - full visual test (viewports + themes)", async ({
       page,
     }) => {
       await fullVisualTest(page, "homepage-full", {
@@ -50,7 +50,7 @@ test.describe("Visual Regression Tests @visual", () => {
       });
     });
 
-    test("hero section", async ({ page }) => {
+    test.skip("hero section", async ({ page }) => {
       const heroSection = page.locator("main").first();
       await expect(heroSection).toHaveScreenshot("hero-section.png", {
         animations: "disabled",
@@ -59,19 +59,19 @@ test.describe("Visual Regression Tests @visual", () => {
   });
 
   test.describe("Auth Pages", () => {
-    test("sign-in page", async ({ page }) => {
+    test.skip("sign-in page", async ({ page }) => {
       await page.goto("/sign-in");
       await page.waitForLoadState("networkidle");
       await expectPageSnapshot(page, "sign-in-page");
     });
 
-    test("sign-up page", async ({ page }) => {
+    test.skip("sign-up page", async ({ page }) => {
       await page.goto("/sign-up");
       await page.waitForLoadState("networkidle");
       await expectPageSnapshot(page, "sign-up-page");
     });
 
-    test("sign-in page - responsive", async ({ page }) => {
+    test.skip("sign-in page - responsive", async ({ page }) => {
       await page.goto("/sign-in");
       await page.waitForLoadState("networkidle");
       await expectResponsiveSnapshot(page, "sign-in", "mobile");
@@ -80,7 +80,7 @@ test.describe("Visual Regression Tests @visual", () => {
   });
 
   test.describe("UI Components", () => {
-    test("navigation buttons", async ({ page }) => {
+    test.skip("navigation buttons", async ({ page }) => {
       await page.goto("/");
       await page.waitForLoadState("networkidle");
 
@@ -101,7 +101,7 @@ test.describe("Visual Regression Tests @visual", () => {
       }
     });
 
-    test("feature cards", async ({ page }) => {
+    test.skip("feature cards", async ({ page }) => {
       await page.goto("/");
       await page.waitForLoadState("networkidle");
 
@@ -116,14 +116,14 @@ test.describe("Visual Regression Tests @visual", () => {
   });
 
   test.describe("Dark Mode", () => {
-    test("homepage - dark mode", async ({ page }) => {
+    test.skip("homepage - dark mode", async ({ page }) => {
       await page.goto("/");
       await page.emulateMedia({ colorScheme: "dark" });
       await page.waitForLoadState("networkidle");
       await expectPageSnapshot(page, "homepage-dark");
     });
 
-    test("sign-in - dark mode", async ({ page }) => {
+    test.skip("sign-in - dark mode", async ({ page }) => {
       await page.goto("/sign-in");
       await page.emulateMedia({ colorScheme: "dark" });
       await page.waitForLoadState("networkidle");

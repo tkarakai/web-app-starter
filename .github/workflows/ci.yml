@@ -163,17 +163,22 @@ jobs:
       - name: Display coverage summary
         if: always()
         run: |
-          echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Write to both GITHUB_STEP_SUMMARY and a local file (for act compatibility)
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-.act-step-summary.md}"
+          if [ -n "$ACT" ]; then
+            SUMMARY_FILE=".act-step-summary.md"
+          fi
+          echo "## Coverage Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
           if [ -f coverage/coverage-summary.json ]; then
-            echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Lines | $(jq -r '.total.lines.pct' coverage/coverage-summary.json)% |" >> $GITHUB_STEP_SUMMARY
-            echo "| Branches | $(jq -r '.total.branches.pct' coverage/coverage-summary.json)% |" >> $GITHUB_STEP_SUMMARY
-            echo "| Functions | $(jq -r '.total.functions.pct' coverage/coverage-summary.json)% |" >> $GITHUB_STEP_SUMMARY
-            echo "| Statements | $(jq -r '.total.statements.pct' coverage/coverage-summary.json)% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
+            echo "|--------|----------|" >> "$SUMMARY_FILE"
+            echo "| Lines | $(jq -r '.total.lines.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Branches | $(jq -r '.total.branches.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Functions | $(jq -r '.total.functions.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Statements | $(jq -r '.total.statements.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
           else
-            echo "No coverage summary found" >> $GITHUB_STEP_SUMMARY
+            echo "No coverage summary found" >> "$SUMMARY_FILE"
           fi
 
       - name: Upload coverage to Codecov
@@ -187,12 +192,23 @@ jobs:
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
           name: coverage-report
           path: coverage/
           retention-days: 7
+
+      # Generic act artifact/summary collection
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/test-vitest"
+          mkdir -p "$JOB_DIR/artifacts"
+          # Save step summary (from local file since GITHUB_STEP_SUMMARY doesn't persist in act)
+          [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
+          # Save artifacts
+          [ -d "coverage" ] && cp -r coverage "$JOB_DIR/artifacts/" 2>/dev/null || true
 
   test-convex:
     name: Backend Tests (Convex)
@@ -242,6 +258,7 @@ jobs:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: github.event.pull_request.draft == false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -314,7 +331,7 @@ jobs:
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
           name: playwright-report
@@ -323,7 +340,7 @@ jobs:
 
       - name: Upload dev logs
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ failure() && !env.ACT }}
         continue-on-error: true
         with:
           name: dev-logs
@@ -334,13 +351,23 @@ jobs:
 
       - name: Upload visual snapshots
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
           name: visual-snapshots
           path: e2e/__screenshots__/
           retention-days: 7
           if-no-files-found: ignore
+
+      # Generic act artifact/summary collection
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/test-e2e"
+          mkdir -p "$JOB_DIR/artifacts"
+          # Save artifacts (no step summary for this job)
+          [ -d "playwright-report" ] && cp -r playwright-report "$JOB_DIR/artifacts/" 2>/dev/null || true
+          [ -d "e2e/__screenshots__" ] && cp -r e2e/__screenshots__ "$JOB_DIR/artifacts/visual-snapshots" 2>/dev/null || true
 
   build:
     name: Build
@@ -486,11 +513,25 @@ jobs:
 
       - name: Report bundle size
         run: |
-          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          bun run size 2>&1 || true
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          # Write to both GITHUB_STEP_SUMMARY and a local file (for act compatibility)
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-.act-step-summary.md}"
+          if [ -n "$ACT" ]; then
+            SUMMARY_FILE=".act-step-summary.md"
+          fi
+          echo "## Bundle Size Report" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "\`\`\`" >> "$SUMMARY_FILE"
+          bun run size 2>&1 | tee -a "$SUMMARY_FILE" || true
+          echo "\`\`\`" >> "$SUMMARY_FILE"
+
+      # Generic act artifact/summary collection
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/bundle-size"
+          mkdir -p "$JOB_DIR"
+          # Save step summary (from local file since GITHUB_STEP_SUMMARY doesn't persist in act)
+          [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
 
   # Summary job for branch protection - provides single status check
   ci-complete:
