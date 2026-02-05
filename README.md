@@ -15,7 +15,7 @@ A production-shaped Next.js starter that wires Bun, Tailwind, shadcn/ui, Convex,
 
 ## Stack (latest stable)
 
-- Next.js 16.1.1
+- Next.js 16.1.5
 - React 19.2.3
 - TypeScript 5.9.3
 - Bun 1.1.43
