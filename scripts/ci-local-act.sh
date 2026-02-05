@@ -122,6 +122,8 @@ CACHE_VOLUMES="-v act-bun-cache:/root/.bun -v act-playwright-cache:/root/.cache/
 ACT_ARGS=(-W "$WORKFLOW")
 ACT_ARGS+=(--container-options "$CACHE_VOLUMES")
 ACT_ARGS+=(--env "RUNNER_TOOL_CACHE=/opt/act-toolcache")
+# Set ACT_LOCAL var for job-level conditionals (env.ACT only works in steps)
+ACT_ARGS+=(--var "ACT_LOCAL=true")
 if [ -n "$JOB" ]; then
     ACT_ARGS+=(-j "$JOB")
 fi
