@@ -36,7 +36,24 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   // Reporter configuration
-  reporter: process.env.CI ? "github" : "html",
+  // In CI: use github reporter for annotations + html for downloadable report
+  // Locally: just use html reporter
+  reporter: process.env.CI ? [["github"], ["html"]] : "html",
+
+  // Snapshot configuration for visual regression tests
+  // 'missing' creates new baselines but fails on actual differences
+  updateSnapshots: "missing",
+  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
+
+  // Expect configuration for visual comparisons
+  expect: {
+    toHaveScreenshot: {
+      // Allow small differences due to anti-aliasing
+      maxDiffPixelRatio: 0.01,
+      // Threshold for color difference (0-1)
+      threshold: 0.2,
+    },
+  },
 
   // Shared settings for all projects
   use: {
@@ -50,7 +67,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
 
-  // Configure browser projects
+  // Configure browser projects (chromium only for now)
   projects: [
     {
       name: "chromium",

@@ -22,6 +22,9 @@ playwright-report/
 test-results/
 e2e/__screenshots__/
 
+# act local CI artifacts
+.act-artifacts/
+
 # Auto Claude data directory
 .auto-claude/
 

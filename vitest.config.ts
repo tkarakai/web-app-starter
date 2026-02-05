@@ -30,7 +30,7 @@ export default defineConfig({
     // Coverage configuration
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html", "lcov"],
+      reporter: ["text", "json", "json-summary", "html", "lcov"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
       exclude: [
@@ -41,11 +41,14 @@ export default defineConfig({
         "**/types/**",
       ],
       thresholds: {
-        // Minimum coverage thresholds (start low, increase over time)
+        // Minimum coverage thresholds - enforced in CI
+        // These are starting points; increase as coverage improves
         lines: 2,
         branches: 40,
         functions: 40,
         statements: 2,
+        // Fail build if thresholds not met
+        autoUpdate: false,
       },
     },
   },

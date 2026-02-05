@@ -3,7 +3,21 @@
 # Run all CI checks locally before pushing to GitHub.
 # This mirrors what runs in .github/workflows/ci.yml
 #
+# Checks included:
+#   1. TypeScript check
+#   2. ESLint
+#   3. Bun unit tests
+#   4. Vitest component tests (with coverage)
+#   5. Convex backend tests
+#   6. Production build
+#   7. Bundle size check
+#   8. E2E tests (Playwright) - optional, skip with --skip-e2e
+#
+# NOT included (CI-only):
+#   - Lighthouse performance audits (requires browser automation setup)
+#
 # Usage: bun run ci
+#        bun run ci:quick  # Skip E2E tests
 #
 
 set -e
@@ -37,10 +51,10 @@ print_warning() {
 START_TIME=$(date +%s)
 
 echo -e "${BLUE}"
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                    Local CI Check                            ║"
-echo "║  Running the same checks as GitHub Actions CI workflow       ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
+echo "┌──────────────────────────────────────────────────────────────┐"
+echo "│                    Local CI Check                            │"
+echo "│  Running the same checks as GitHub Actions CI workflow       │"
+echo "└──────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 
 # Step 1: TypeScript
@@ -79,7 +93,16 @@ else
   exit 1
 fi
 
-# Step 5: Build
+# Step 5: Convex Backend Tests
+print_step "Backend Tests (Convex)"
+if bun run test:convex; then
+  print_success "Convex tests passed"
+else
+  print_error "Convex tests failed"
+  exit 1
+fi
+
+# Step 6: Build
 print_step "Production Build"
 if bun run build; then
   print_success "Build succeeded"
@@ -88,7 +111,16 @@ else
   exit 1
 fi
 
-# Step 6: E2E Tests (optional - can be slow)
+# Step 7: Bundle Size Check
+print_step "Bundle Size Check"
+if bun run size; then
+  print_success "Bundle size check passed"
+else
+  print_error "Bundle size check failed"
+  exit 1
+fi
+
+# Step 8: E2E Tests (optional - can be slow)
 if [[ "$1" == "--skip-e2e" ]]; then
   print_warning "Skipping E2E tests (--skip-e2e flag)"
 else
@@ -101,6 +133,10 @@ else
   fi
 fi
 
+# Note: Lighthouse performance audits are not included in local CI.
+# They require browser automation setup and are better suited for CI environments.
+# Run manually with: bunx lhci autorun (requires lighthouserc.json config)
+
 # Calculate duration
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -108,9 +144,9 @@ MINUTES=$((DURATION / 60))
 SECONDS=$((DURATION % 60))
 
 echo -e "\n${GREEN}"
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                    All CI Checks Passed!                     ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
+echo "┌──────────────────────────────────────────────────────────────┐"
+echo "│                  ✅ All CI Checks Passed!                    │"
+echo "└──────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 echo -e "Total time: ${MINUTES}m ${SECONDS}s"
 echo ""

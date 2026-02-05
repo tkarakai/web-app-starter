@@ -15,6 +15,23 @@ env:
   # Prevent Playwright from downloading browsers on every run
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
 
+# =============================================================================
+# OFFLINE MODE SUPPORT (using "act")
+# =============================================================================
+# This workflow supports offline execution when run locally via `act`.
+# The `env.ACT` variable is automatically set by act.
+#
+# Pattern for tools that download from the internet:
+# 1. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup
+# 2. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
+# 3. Check if tool exists before downloading (enables offline mode)
+# 4. Install to paths mounted as Docker volumes by ci-local-act.sh
+#
+# See scripts/ci-local-act.sh for the Docker volumes for the caches.
+#
+# See CLAUDE.md "Offline CI Mode (act)" for full documentation.
+# =============================================================================
+
 jobs:
   lint:
     name: Lint
@@ -23,10 +40,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Setup Bun
+        if: ${{ !env.ACT }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.43
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_VERSION="1.3.6"
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed at $BUN_DIR"
+          else
+            echo "Installing Bun $BUN_VERSION..."
+            curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -44,10 +89,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Setup Bun
+        if: ${{ !env.ACT }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.43
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -62,16 +133,63 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Setup Bun
+        if: ${{ !env.ACT }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.43
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Run Vitest with coverage
         run: bun run test:coverage
+
+      - name: Display coverage summary
+        if: always()
+        run: |
+          # Write to both GITHUB_STEP_SUMMARY and a local file (for act compatibility)
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-.act-step-summary.md}"
+          if [ -n "$ACT" ]; then
+            SUMMARY_FILE=".act-step-summary.md"
+          fi
+          echo "## Coverage Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
+            echo "|--------|----------|" >> "$SUMMARY_FILE"
+            echo "| Lines | $(jq -r '.total.lines.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Branches | $(jq -r '.total.branches.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Functions | $(jq -r '.total.functions.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Statements | $(jq -r '.total.statements.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+          else
+            echo "No coverage summary found" >> "$SUMMARY_FILE"
+          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -82,27 +200,133 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  test-e2e:
-    name: E2E Tests (Playwright)
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && !env.ACT }}
+        continue-on-error: true
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+      # Generic act artifact/summary collection
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/test-vitest"
+          mkdir -p "$JOB_DIR/artifacts"
+          # Save step summary (from local file since GITHUB_STEP_SUMMARY doesn't persist in act)
+          [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
+          # Save artifacts
+          [ -d "coverage" ] && cp -r coverage "$JOB_DIR/artifacts/" 2>/dev/null || true
+
+  test-convex:
+    name: Backend Tests (Convex)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Setup Bun
+        if: ${{ !env.ACT }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.43
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Run Convex tests
+        run: bun run test:convex
+
+  test-e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        if: ${{ !env.ACT }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true' || env.ACT
         run: bunx playwright install --with-deps chromium
 
+      - name: Install Playwright deps (if cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true' && !env.ACT
+        run: bunx playwright install-deps chromium
+
       - name: Run Playwright tests
-        run: bun run test:e2e
+        run: bunx playwright test --project=chromium
         env:
           CI: true
 
@@ -117,7 +341,8 @@ jobs:
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && !env.ACT }}
+        continue-on-error: true
         with:
           name: playwright-report
           path: playwright-report/
@@ -125,7 +350,8 @@ jobs:
 
       - name: Upload dev logs
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ failure() && !env.ACT }}
+        continue-on-error: true
         with:
           name: dev-logs
           path: |
@@ -135,24 +361,62 @@ jobs:
 
       - name: Upload visual snapshots
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ always() && !env.ACT }}
+        continue-on-error: true
         with:
-          name: visual-regression-diffs
+          name: visual-snapshots
           path: e2e/__screenshots__/
           retention-days: 7
+          if-no-files-found: ignore
+
+      # Generic act artifact/summary collection
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/test-e2e"
+          mkdir -p "$JOB_DIR/artifacts"
+          # Save artifacts (no step summary for this job)
+          [ -d "playwright-report" ] && cp -r playwright-report "$JOB_DIR/artifacts/" 2>/dev/null || true
+          [ -d "e2e/__screenshots__" ] && cp -r e2e/__screenshots__ "$JOB_DIR/artifacts/visual-snapshots" 2>/dev/null || true
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test-unit, test-vitest]
+    needs: [lint, test-unit, test-vitest, test-convex]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Setup Bun
+        if: ${{ !env.ACT }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.43
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -162,3 +426,149 @@ jobs:
         env:
           NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
           NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    needs: [build]
+    # Skip in act - puppeteer-core has ESM module resolution issues in Docker
+    if: ${{ !vars.ACT_LOCAL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        env:
+          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+
+  bundle-size:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        if: ${{ !env.ACT }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Setup Bun (act)
+        if: ${{ env.ACT }}
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+
+      - name: Check bundle size
+        run: bun run size
+
+      - name: Report bundle size
+        run: |
+          # Write to both GITHUB_STEP_SUMMARY and a local file (for act compatibility)
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-.act-step-summary.md}"
+          if [ -n "$ACT" ]; then
+            SUMMARY_FILE=".act-step-summary.md"
+          fi
+          echo "## Bundle Size Report" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "\`\`\`" >> "$SUMMARY_FILE"
+          bun run size 2>&1 | tee -a "$SUMMARY_FILE" || true
+          echo "\`\`\`" >> "$SUMMARY_FILE"
+
+      # Generic act artifact/summary collection
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/bundle-size"
+          mkdir -p "$JOB_DIR"
+          # Save step summary (from local file since GITHUB_STEP_SUMMARY doesn't persist in act)
+          [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
+
+  # Summary job for branch protection - provides single status check
+  ci-complete:
+    name: CI Complete
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit, test-vitest, test-convex, build]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Unit Tests: ${{ needs.test-unit.result }}"
+          echo "Vitest: ${{ needs.test-vitest.result }}"
+          echo "Convex: ${{ needs.test-convex.result }}"
+          echo "Build: ${{ needs.build.result }}"
+
+          if [[ "${{ needs.lint.result }}" != "success" ]] || \
+             [[ "${{ needs.test-unit.result }}" != "success" ]] || \
+             [[ "${{ needs.test-vitest.result }}" != "success" ]] || \
+             [[ "${{ needs.test-convex.result }}" != "success" ]] || \
+             [[ "${{ needs.build.result }}" != "success" ]]; then
+            echo "❌ One or more jobs failed"
+            exit 1
+          fi
+
+          echo "✅ All CI jobs passed successfully"
