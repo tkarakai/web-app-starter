@@ -43,6 +43,7 @@ fi
 START_WEB=false
 START_ADMIN=false
 START_LANDING=false
+START_DESIGN=false
 NEED_CONVEX=false
 
 if [ -z "$SELECTED_APPS" ]; then
@@ -50,6 +51,7 @@ if [ -z "$SELECTED_APPS" ]; then
     START_WEB=true
     START_ADMIN=true
     START_LANDING=true
+    START_DESIGN=true
     NEED_CONVEX=true
 else
     # Parse comma-separated app names
@@ -68,9 +70,13 @@ else
                 START_LANDING=true
                 # Landing doesn't need Convex
                 ;;
+            design)
+                START_DESIGN=true
+                # Design showcase doesn't need Convex
+                ;;
             *)
                 echo -e "${RED}Unknown app: $app${NC}"
-                echo "Available apps: web, admin, landing"
+                echo "Available apps: web, admin, landing, design"
                 exit 1
                 ;;
         esac
@@ -82,7 +88,7 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Current directory: $(pwd)"
     echo "[CI MODE] Script directory: $SCRIPT_DIR"
     echo "[CI MODE] Project directory: $PROJECT_DIR"
-    echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING convex=$NEED_CONVEX"
+    echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING design=$START_DESIGN convex=$NEED_CONVEX"
 fi
 
 echo -e "${BLUE}  Starting Development Environment...${NC}"
@@ -510,10 +516,14 @@ if [ "$START_LANDING" = true ]; then
     start_next_app "landing" 3000
 fi
 
+if [ "$START_DESIGN" = true ]; then
+    start_next_app "design" 3003
+fi
+
 # In CI mode, show final env contents
 if [ "$NON_INTERACTIVE" = true ]; then
     echo ""
-    for app_name in web admin landing; do
+    for app_name in web admin landing design; do
         local_env="$PROJECT_DIR/apps/$app_name/.env.local"
         if [ -f "$local_env" ]; then
             echo "[CI MODE] apps/$app_name/.env.local:"
@@ -538,6 +548,9 @@ if [ "$START_WEB" = true ]; then
 fi
 if [ "$START_ADMIN" = true ]; then
     echo -e "    Admin:     tail -f .next-admin.log"
+fi
+if [ "$START_DESIGN" = true ]; then
+    echo -e "    Design:    tail -f .next-design.log"
 fi
 echo ""
 echo -e "  ${YELLOW}Stop with:${NC} bun dev:stop"
@@ -565,6 +578,7 @@ if [ "$NON_INTERACTIVE" = true ]; then
     [ "$START_LANDING" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-landing.log"
     [ "$START_WEB" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-web.log"
     [ "$START_ADMIN" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-admin.log"
+    [ "$START_DESIGN" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-design.log"
 
     tail -f $LOG_FILES &
     TAIL_PID=$!
