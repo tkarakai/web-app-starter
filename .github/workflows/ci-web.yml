@@ -225,11 +225,6 @@ jobs:
             exit 0
           fi
 
-          # Test and build must succeed
-          for JOB in test build; do
-            RESULT="${{ needs[JOB].result }}"
-          done
-
           if [[ "${{ needs.test.result }}" != "success" ]]; then
             echo "Test failed: ${{ needs.test.result }}"
             exit 1
