@@ -8,11 +8,11 @@
 # Checks included:
 #   1. TypeScript check (all packages)
 #   2. ESLint (all packages)
-#   3. Bun unit tests (apps/web)
-#   4. Vitest component tests with coverage (apps/web)
+#   3. Bun unit tests (all apps)
+#   4. Vitest component tests (all apps)
 #   5. Convex backend tests (packages/backend)
 #   6. Production build (all apps)
-#   7. Bundle size check (apps/web)
+#   7. Bundle size check (all apps with .size-limit.json)
 #   8. E2E tests (Playwright) - optional, skip with --skip-e2e
 #
 # NOT included (CI-only):
@@ -113,12 +113,21 @@ else
   exit 1
 fi
 
-# Step 7: Bundle Size Check
-print_step "Bundle Size Check"
-if (cd apps/web && bun run size); then
-  print_success "Bundle size check passed"
-else
-  print_error "Bundle size check failed"
+# Step 7: Bundle Size Check (all apps with .size-limit.json)
+print_step "Bundle Size Check (all apps)"
+BUNDLE_FAILED=false
+for APP_DIR in apps/*/; do
+  if [ -f "$APP_DIR/.size-limit.json" ]; then
+    APP_NAME=$(basename "$APP_DIR")
+    if (cd "$APP_DIR" && bun run size); then
+      print_success "Bundle size check passed ($APP_NAME)"
+    else
+      print_error "Bundle size check failed ($APP_NAME)"
+      BUNDLE_FAILED=true
+    fi
+  fi
+done
+if [ "$BUNDLE_FAILED" = true ]; then
   exit 1
 fi
 

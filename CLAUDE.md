@@ -71,9 +71,15 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │       │   └── fixtures/    # Test data
 │   │       └── e2e/             # Playwright E2E specs
 │   ├── admin/                   # Admin dashboard (@repo/admin, port 3002)
-│   │   └── src/
+│   │   ├── src/
+│   │   └── qa/                  # Testing artifacts (same structure as web)
+│   │       ├── tests/           # Unit + component tests
+│   │       └── e2e/             # Playwright E2E specs
 │   └── landing/                 # Landing/marketing page (@repo/landing, port 3000)
-│       └── src/
+│       ├── src/
+│       └── qa/                  # Testing artifacts (same structure as web)
+│           ├── tests/           # Unit + component tests
+│           └── e2e/             # Playwright E2E specs
 ├── packages/
 │   ├── backend/                 # Convex backend (@repo/backend)
 │   │   ├── convex/              # Schema, queries, mutations, actions
@@ -194,7 +200,7 @@ The `bun run ci` command runs these checks in order (all via `turbo`):
 4. **Vitest component tests** (`turbo test:unit`)
 5. **Convex backend tests** (`turbo test:convex`)
 6. **Production build** (`turbo build`)
-7. **Bundle size check** (`cd apps/web && bun run size`)
+7. **Bundle size check** (all apps with `.size-limit.json`)
 8. **Playwright E2E tests** (`turbo test:e2e`)
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
@@ -324,9 +330,9 @@ docker volume rm act-bun-cache act-playwright-cache act-toolcache
 
 | Test Type | Framework | Use For | Location |
 |-----------|-----------|---------|----------|
-| Unit | Bun | Pure functions, utilities, helpers | `apps/web/qa/tests/*.test.ts` |
-| Component | Vitest | React components, UI interactions | `apps/web/qa/tests/*.test.tsx` |
-| E2E | Playwright | Full user flows, navigation, auth | `apps/web/qa/e2e/*.spec.ts` |
+| Unit | Bun | Pure functions, utilities, helpers | `apps/*/qa/tests/*.test.ts` |
+| Component | Vitest | React components, UI interactions | `apps/*/qa/tests/*.test.tsx` |
+| E2E | Playwright | Full user flows, navigation, auth | `apps/*/qa/e2e/*.spec.ts` |
 | Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` |
 
 ### Bun Test Pattern (Utility Functions)
@@ -750,9 +756,9 @@ bun run test:watch
 | Task Type | Recommended Approach |
 |-----------|---------------------|
 | **Research** | Read files, grep patterns, understand codebase |
-| **Unit Test** | Create test in `apps/web/qa/tests/`, implement function, verify with `bun run test` |
-| **Component** | Create test in `apps/web/qa/tests/`, implement component, verify with Vitest |
-| **E2E Flow** | Create spec in `apps/web/qa/e2e/`, implement, verify with Playwright |
+| **Unit Test** | Create test in `apps/<app>/qa/tests/`, implement function, verify with `bun run test` |
+| **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
+| **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
 | **Shared UI** | Add component in `packages/ui/src/`, export from index.ts |
 

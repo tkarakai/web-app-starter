@@ -219,8 +219,8 @@ jobs:
                 needs.changes.outputs.auth == 'true' ||
                 needs.changes.outputs.root == 'true'
               }}
-            has_tests: false
-            has_bundle_check: false
+            has_tests: true
+            has_bundle_check: true
           - app: landing
             run_if: >-
               ${{
@@ -228,8 +228,8 @@ jobs:
                 needs.changes.outputs.ui == 'true' ||
                 needs.changes.outputs.root == 'true'
               }}
-            has_tests: false
-            has_bundle_check: false
+            has_tests: true
+            has_bundle_check: true
     if: ${{ !vars.ACT_LOCAL && always() && needs.lint.result == 'success' }}
     steps:
       - name: Check if should run
@@ -353,6 +353,24 @@ jobs:
                 needs.changes.outputs.backend == 'true' ||
                 needs.changes.outputs.ui == 'true' ||
                 needs.changes.outputs.auth == 'true' ||
+                needs.changes.outputs.root == 'true'
+              }}
+          - app: admin
+            port: 3002
+            run_if: >-
+              ${{
+                needs.changes.outputs.admin == 'true' ||
+                needs.changes.outputs.backend == 'true' ||
+                needs.changes.outputs.ui == 'true' ||
+                needs.changes.outputs.auth == 'true' ||
+                needs.changes.outputs.root == 'true'
+              }}
+          - app: landing
+            port: 3000
+            run_if: >-
+              ${{
+                needs.changes.outputs.landing == 'true' ||
+                needs.changes.outputs.ui == 'true' ||
                 needs.changes.outputs.root == 'true'
               }}
     steps:
@@ -540,8 +558,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run Vitest with coverage
-        run: cd apps/web && bun run test:coverage
+      - name: Run Vitest with coverage (all apps)
+        run: bunx turbo test:coverage
 
       - name: Display coverage summary
         if: always()
@@ -550,19 +568,21 @@ jobs:
           if [ -n "$ACT" ]; then
             SUMMARY_FILE=".act-step-summary.md"
           fi
-          echo "## Coverage Summary" >> "$SUMMARY_FILE"
-          echo "" >> "$SUMMARY_FILE"
-          COVERAGE_FILE="apps/web/qa/coverage/coverage-summary.json"
-          if [ -f "$COVERAGE_FILE" ]; then
-            echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
-            echo "|--------|----------|" >> "$SUMMARY_FILE"
-            echo "| Lines | $(jq -r '.total.lines.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-            echo "| Branches | $(jq -r '.total.branches.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-            echo "| Functions | $(jq -r '.total.functions.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-            echo "| Statements | $(jq -r '.total.statements.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-          else
-            echo "No coverage summary found" >> "$SUMMARY_FILE"
-          fi
+          for APP_DIR in apps/*/; do
+            APP_NAME=$(basename "$APP_DIR")
+            COVERAGE_FILE="$APP_DIR/qa/coverage/coverage-summary.json"
+            if [ -f "$COVERAGE_FILE" ]; then
+              echo "## Coverage Summary ($APP_NAME)" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
+              echo "|--------|----------|" >> "$SUMMARY_FILE"
+              echo "| Lines | $(jq -r '.total.lines.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+              echo "| Branches | $(jq -r '.total.branches.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+              echo "| Functions | $(jq -r '.total.functions.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+              echo "| Statements | $(jq -r '.total.statements.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+            fi
+          done
 
       - name: Save job outputs (act)
         if: ${{ always() && env.ACT }}
@@ -570,7 +590,10 @@ jobs:
           JOB_DIR="/act-artifacts/test-vitest-act"
           mkdir -p "$JOB_DIR/artifacts"
           [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
-          [ -d "apps/web/qa/coverage" ] && cp -r apps/web/qa/coverage "$JOB_DIR/artifacts/" 2>/dev/null || true
+          for APP_DIR in apps/*/; do
+            APP_NAME=$(basename "$APP_DIR")
+            [ -d "$APP_DIR/qa/coverage" ] && cp -r "$APP_DIR/qa/coverage" "$JOB_DIR/artifacts/coverage-$APP_NAME" 2>/dev/null || true
+          done
 
   # E2E Tests (act-only)
   test-e2e-act:
@@ -612,8 +635,8 @@ jobs:
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: cd apps/web && bunx playwright test --project=chromium
+      - name: Run Playwright tests (all apps)
+        run: bunx turbo test:e2e
         env:
           CI: true
 
@@ -622,17 +645,23 @@ jobs:
         run: |
           echo "=== Convex Dev Log ==="
           cat .convex-dev.log 2>/dev/null || echo "No Convex log found"
-          echo ""
-          echo "=== Next.js Dev Log (web) ==="
-          cat .next-web.log 2>/dev/null || echo "No Next.js log found"
+          for APP_DIR in apps/*/; do
+            APP_NAME=$(basename "$APP_DIR")
+            echo ""
+            echo "=== Next.js Dev Log ($APP_NAME) ==="
+            cat ".next-$APP_NAME.log" 2>/dev/null || echo "No Next.js log found for $APP_NAME"
+          done
 
       - name: Save job outputs (act)
         if: ${{ always() && env.ACT }}
         run: |
           JOB_DIR="/act-artifacts/test-e2e-act"
           mkdir -p "$JOB_DIR/artifacts"
-          [ -d "apps/web/qa/playwright-report" ] && cp -r apps/web/qa/playwright-report "$JOB_DIR/artifacts/" 2>/dev/null || true
-          [ -d "apps/web/qa/e2e/__screenshots__" ] && cp -r apps/web/qa/e2e/__screenshots__ "$JOB_DIR/artifacts/visual-snapshots" 2>/dev/null || true
+          for APP_DIR in apps/*/; do
+            APP_NAME=$(basename "$APP_DIR")
+            [ -d "$APP_DIR/qa/playwright-report" ] && cp -r "$APP_DIR/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-$APP_NAME" 2>/dev/null || true
+            [ -d "$APP_DIR/qa/e2e/__screenshots__" ] && cp -r "$APP_DIR/qa/e2e/__screenshots__" "$JOB_DIR/artifacts/visual-snapshots-$APP_NAME" 2>/dev/null || true
+          done
 
   # Build (act-only)
   build-act:
@@ -720,8 +749,15 @@ jobs:
           NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
           NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
 
-      - name: Check bundle size
-        run: cd apps/web && bun run size
+      - name: Check bundle size (all apps)
+        run: |
+          for APP_DIR in apps/*/; do
+            if [ -f "$APP_DIR/.size-limit.json" ]; then
+              APP_NAME=$(basename "$APP_DIR")
+              echo "=== Bundle size: $APP_NAME ==="
+              (cd "$APP_DIR" && bun run size)
+            fi
+          done
 
       - name: Report bundle size
         run: |
@@ -731,9 +767,16 @@ jobs:
           fi
           echo "## Bundle Size Report" >> "$SUMMARY_FILE"
           echo "" >> "$SUMMARY_FILE"
-          echo "\`\`\`" >> "$SUMMARY_FILE"
-          cd apps/web && bun run size 2>&1 | tee -a "$SUMMARY_FILE" || true
-          echo "\`\`\`" >> "$SUMMARY_FILE"
+          for APP_DIR in apps/*/; do
+            if [ -f "$APP_DIR/.size-limit.json" ]; then
+              APP_NAME=$(basename "$APP_DIR")
+              echo "### $APP_NAME" >> "$SUMMARY_FILE"
+              echo "\`\`\`" >> "$SUMMARY_FILE"
+              (cd "$APP_DIR" && bun run size 2>&1) | tee -a "$SUMMARY_FILE" || true
+              echo "\`\`\`" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+            fi
+          done
 
       - name: Save job outputs (act)
         if: ${{ always() && env.ACT }}
