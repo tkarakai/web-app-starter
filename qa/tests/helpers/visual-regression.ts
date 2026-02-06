@@ -4,7 +4,7 @@
  * This module provides utilities for visual regression testing with Playwright.
  * It enables screenshot comparison testing to catch unintended visual changes.
  *
- * @module tests/helpers/visual-regression
+ * @module qa/tests/helpers/visual-regression
  */
 
 import type { Page, Locator, PageScreenshotOptions } from "@playwright/test";
@@ -36,7 +36,7 @@ export interface VisualRegressionConfig {
  * Default configuration
  */
 export const defaultConfig: VisualRegressionConfig = {
-  screenshotsDir: "e2e/__screenshots__",
+  screenshotsDir: "qa/e2e/__screenshots__",
   threshold: 0.1,
   maxDiffPixelRatio: 0.01,
 };

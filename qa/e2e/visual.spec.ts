@@ -7,11 +7,11 @@
  * BASELINE MANAGEMENT:
  * - First run: Baselines are auto-created (updateSnapshots: 'missing' in config)
  * - CI uploads generated snapshots as artifacts for review
- * - To update baselines: bunx playwright test e2e/visual.spec.ts --update-snapshots
- * - Commit baseline images in e2e/__screenshots__/ to the repo
+ * - To update baselines: bunx playwright test qa/e2e/visual.spec.ts --update-snapshots
+ * - Commit baseline images in qa/e2e/__screenshots__/ to the repo
  *
- * Run locally: bunx playwright test e2e/visual.spec.ts
- * Run specific browser: bunx playwright test e2e/visual.spec.ts --project=chromium
+ * Run locally: bunx playwright test qa/e2e/visual.spec.ts
+ * Run specific browser: bunx playwright test qa/e2e/visual.spec.ts --project=chromium
  *
  * @tags visual
  */

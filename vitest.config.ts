@@ -15,10 +15,10 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     globals: true,
-    setupFiles: ["./tests/setup.ts"],
+    setupFiles: ["./qa/tests/setup.ts"],
     // Only include .test.tsx files - .test.ts files use bun:test and run with Bun
     // Convex tests should be run with `npx convex-test` (has import.meta.glob support)
-    include: ["tests/**/*.test.tsx"],
+    include: ["qa/tests/**/*.test.tsx"],
     exclude: ["node_modules", ".next", "convex/**/*.test.ts"],
     // Worktree isolation settings
     pool: "forks", // Use forks instead of threads for better isolation
@@ -31,7 +31,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "json-summary", "html", "lcov"],
-      reportsDirectory: "./coverage",
+      reportsDirectory: "./qa/coverage",
       include: ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
       exclude: [
         "**/*.d.ts",

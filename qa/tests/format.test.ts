@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { formatBytes, formatDateTime } from "../src/lib/format";
+import { formatBytes, formatDateTime } from "../../src/lib/format";
 
 describe("formatBytes", () => {
   it("formats bytes into human readable output", () => {

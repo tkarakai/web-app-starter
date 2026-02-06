@@ -180,13 +180,13 @@ jobs:
           fi
           echo "## Coverage Summary" >> "$SUMMARY_FILE"
           echo "" >> "$SUMMARY_FILE"
-          if [ -f coverage/coverage-summary.json ]; then
+          if [ -f qa/coverage/coverage-summary.json ]; then
             echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
             echo "|--------|----------|" >> "$SUMMARY_FILE"
-            echo "| Lines | $(jq -r '.total.lines.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
-            echo "| Branches | $(jq -r '.total.branches.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
-            echo "| Functions | $(jq -r '.total.functions.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
-            echo "| Statements | $(jq -r '.total.statements.pct' coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Lines | $(jq -r '.total.lines.pct' qa/coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Branches | $(jq -r '.total.branches.pct' qa/coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Functions | $(jq -r '.total.functions.pct' qa/coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
+            echo "| Statements | $(jq -r '.total.statements.pct' qa/coverage/coverage-summary.json)% |" >> "$SUMMARY_FILE"
           else
             echo "No coverage summary found" >> "$SUMMARY_FILE"
           fi
@@ -194,7 +194,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage/coverage-final.json
+          files: ./qa/coverage/coverage-final.json
           fail_ci_if_error: false
           verbose: true
         env:
@@ -206,7 +206,7 @@ jobs:
         continue-on-error: true
         with:
           name: coverage-report
-          path: coverage/
+          path: qa/coverage/
           retention-days: 7
 
       # Generic act artifact/summary collection
@@ -218,7 +218,7 @@ jobs:
           # Save step summary (from local file since GITHUB_STEP_SUMMARY doesn't persist in act)
           [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
           # Save artifacts
-          [ -d "coverage" ] && cp -r coverage "$JOB_DIR/artifacts/" 2>/dev/null || true
+          [ -d "qa/coverage" ] && cp -r qa/coverage "$JOB_DIR/artifacts/" 2>/dev/null || true
 
   test-convex:
     name: Backend Tests (Convex)
@@ -345,7 +345,7 @@ jobs:
         continue-on-error: true
         with:
           name: playwright-report
-          path: playwright-report/
+          path: qa/playwright-report/
           retention-days: 7
 
       - name: Upload dev logs
@@ -365,7 +365,7 @@ jobs:
         continue-on-error: true
         with:
           name: visual-snapshots
-          path: e2e/__screenshots__/
+          path: qa/e2e/__screenshots__/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -376,8 +376,8 @@ jobs:
           JOB_DIR="/act-artifacts/test-e2e"
           mkdir -p "$JOB_DIR/artifacts"
           # Save artifacts (no step summary for this job)
-          [ -d "playwright-report" ] && cp -r playwright-report "$JOB_DIR/artifacts/" 2>/dev/null || true
-          [ -d "e2e/__screenshots__" ] && cp -r e2e/__screenshots__ "$JOB_DIR/artifacts/visual-snapshots" 2>/dev/null || true
+          [ -d "qa/playwright-report" ] && cp -r qa/playwright-report "$JOB_DIR/artifacts/" 2>/dev/null || true
+          [ -d "qa/e2e/__screenshots__" ] && cp -r qa/e2e/__screenshots__ "$JOB_DIR/artifacts/visual-snapshots" 2>/dev/null || true
 
   build:
     name: Build

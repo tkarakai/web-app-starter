@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { normalizeTitle, toPriorityLabel, toStatusCopy } from "../src/lib/launchpad";
+import { normalizeTitle, toPriorityLabel, toStatusCopy } from "../../src/lib/launchpad";
 
 describe("normalizeTitle", () => {
   it("trims and normalizes whitespace", () => {

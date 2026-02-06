@@ -21,7 +21,10 @@ function getEnvValue(name: string, fallback: string): string {
  */
 export default defineConfig({
   // Directory containing E2E test files
-  testDir: "./e2e",
+  testDir: "./qa/e2e",
+
+  // Output directory for test results (traces, screenshots on failure)
+  outputDir: "./qa/test-results",
 
   // Run tests in parallel for faster execution
   fullyParallel: true,
@@ -38,7 +41,9 @@ export default defineConfig({
   // Reporter configuration
   // In CI: use github reporter for annotations + html for downloadable report
   // Locally: just use html reporter
-  reporter: process.env.CI ? [["github"], ["html"]] : "html",
+  reporter: process.env.CI
+    ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
+    : [["html", { outputFolder: "qa/playwright-report" }]],
 
   // Snapshot configuration for visual regression tests
   // 'missing' creates new baselines but fails on actual differences

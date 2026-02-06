@@ -56,16 +56,17 @@ This is a **Next.js 16** web application with **Convex** as the backend. It uses
 │   ├── _generated/          # Auto-generated Convex files (DO NOT EDIT)
 │   ├── schema.ts            # Database schema definition
 │   └── *.ts                 # Server functions (queries, mutations, actions)
-├── tests/                   # Test files
-│   ├── *.test.ts            # Bun unit tests (utility functions)
-│   ├── *.test.tsx           # Vitest component tests
-│   ├── helpers/             # Test utilities
-│   │   ├── auth-mock.ts     # Authentication mocking helpers
-│   │   └── visual-regression.ts  # Playwright screenshot testing
-│   └── fixtures/            # Test data
-│       └── data.ts          # Pre-defined test fixtures
-├── e2e/                     # Playwright E2E test files
-│   └── *.spec.ts            # End-to-end test specs
+├── qa/                      # All testing and QA artifacts
+│   ├── tests/               # Test files
+│   │   ├── *.test.ts        # Bun unit tests (utility functions)
+│   │   ├── *.test.tsx       # Vitest component tests
+│   │   ├── helpers/         # Test utilities
+│   │   │   ├── auth-mock.ts # Authentication mocking helpers
+│   │   │   └── visual-regression.ts  # Playwright screenshot testing
+│   │   └── fixtures/        # Test data
+│   │       └── data.ts      # Pre-defined test fixtures
+│   └── e2e/                 # Playwright E2E test files
+│       └── *.spec.ts        # End-to-end test specs
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml           # GitHub Actions CI/CD workflow
@@ -104,14 +105,14 @@ bun run dev:stop
 
 ```bash
 # Bun Tests (fast, for utility functions)
-bun run test                 # Run all Bun unit tests (scoped to tests/*.test.ts)
-bun run test tests/format.test.ts  # Run specific test file
+bun run test                 # Run all Bun unit tests (scoped to qa/tests/*.test.ts)
+bun run test qa/tests/format.test.ts  # Run specific test file
 
 # Vitest Tests (React components with DOM)
 bun run test:unit            # Run Vitest once
 bun run test:watch           # Watch mode for development
 bun run test:coverage        # With coverage report (HTML + JSON output)
-bunx vitest run tests/vitest-example.test.tsx  # Specific file
+bunx vitest run qa/tests/vitest-example.test.tsx  # Specific file
 
 # Convex Tests (backend functions)
 bun run test:convex          # Run Convex backend tests via Vitest
@@ -120,7 +121,7 @@ bun run test:convex          # Run Convex backend tests via Vitest
 bun run test:e2e             # Run all E2E tests
 bun run test:e2e:ui          # Interactive UI mode
 bunx playwright test --list  # List available tests
-bunx playwright test e2e/example.spec.ts  # Run specific spec
+bunx playwright test qa/e2e/example.spec.ts  # Run specific spec
 
 # Run everything
 bun run test:all             # Bun + Vitest + Playwright
@@ -280,16 +281,16 @@ docker volume rm act-bun-cache act-playwright-cache act-toolcache
 
 | Test Type | Framework | Use For | Location |
 |-----------|-----------|---------|----------|
-| Unit | Bun | Pure functions, utilities, helpers | `tests/*.test.ts` |
-| Component | Vitest | React components, UI interactions | `tests/*.test.tsx` |
-| E2E | Playwright | Full user flows, navigation, auth | `e2e/*.spec.ts` |
+| Unit | Bun | Pure functions, utilities, helpers | `qa/tests/*.test.ts` |
+| Component | Vitest | React components, UI interactions | `qa/tests/*.test.tsx` |
+| E2E | Playwright | Full user flows, navigation, auth | `qa/e2e/*.spec.ts` |
 | Backend | convex-test | Convex functions (queries, mutations) | `convex/*.test.ts` |
 
 ### Bun Test Pattern (Utility Functions)
 
 ```typescript
 import { describe, expect, it } from "bun:test";
-import { myFunction } from "../src/lib/myModule";
+import { myFunction } from "../../src/lib/myModule";
 
 describe("myFunction", () => {
   it("handles happy path", () => {
@@ -381,10 +382,10 @@ describe("launchItems", () => {
 
 ## Test Helpers
 
-### Authentication Mocking (`tests/helpers/auth-mock.ts`)
+### Authentication Mocking (`qa/tests/helpers/auth-mock.ts`)
 
 ```typescript
-import { createMockUser, mockUseAuth, createMockAuthContext } from "@/tests/helpers/auth-mock";
+import { createMockUser, mockUseAuth, createMockAuthContext } from "../qa/tests/helpers/auth-mock";
 
 // Create a mock user
 const user = createMockUser({ name: "Test User", email: "test@example.com" });
@@ -396,7 +397,7 @@ const auth = mockUseAuth({ isAuthenticated: true, user });
 const authCtx = createMockAuthContext(user);
 ```
 
-### Test Fixtures (`tests/fixtures/data.ts`)
+### Test Fixtures (`qa/tests/fixtures/data.ts`)
 
 ```typescript
 import {
@@ -404,7 +405,7 @@ import {
   createLaunchItem,
   createManyLaunchItems,
   scenarios,
-} from "@/tests/fixtures/data";
+} from "../qa/tests/fixtures/data";
 
 // Use pre-defined fixtures
 const items = scenarios.multiUser.launchItems;
@@ -420,7 +421,7 @@ const customItem = createLaunchItem({
 const manyItems = createManyLaunchItems(50, "owner-id");
 ```
 
-### Visual Regression (`tests/helpers/visual-regression.ts`)
+### Visual Regression (`qa/tests/helpers/visual-regression.ts`)
 
 ```typescript
 import {
@@ -428,7 +429,7 @@ import {
   expectResponsiveSnapshot,
   expectElementSnapshot,
   fullVisualTest,
-} from "@/tests/helpers/visual-regression";
+} from "../qa/tests/helpers/visual-regression";
 
 // Full page screenshot comparison
 await expectPageSnapshot(page, "homepage");
@@ -663,7 +664,7 @@ bun run test:all
 
 ```bash
 # 1. Create test file
-# tests/newFeature.test.ts
+# qa/tests/newFeature.test.ts
 
 # 2. Run in watch mode
 bun run test:watch

@@ -4,7 +4,7 @@
  * These tests use axe-core to automatically detect accessibility violations.
  * They help ensure the application meets WCAG 2.1 AA standards.
  *
- * Run with: bunx playwright test e2e/a11y.spec.ts
+ * Run with: bunx playwright test qa/e2e/a11y.spec.ts
  *
  * @tags a11y accessibility
  */
