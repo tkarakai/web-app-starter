@@ -248,6 +248,8 @@ done < "$LOG_FILE"
 # Add any jobs that didn't run (not found in log) as skipped
 while IFS='|' read -r stage job_id job_name; do
     [ -z "$job_id" ] && continue
+    # Skip jobs with unexpanded matrix variables (act doesn't support matrix)
+    [[ "$job_name" == *'${{ matrix.'* ]] && continue
     if [[ "$SEEN_JOB_IDS" != *"|$job_id"* ]]; then
         JOB_RESULTS="$JOB_RESULTS
 $stage|$job_id|$job_name|⏭️"

@@ -1,4 +1,6 @@
-# Environment Configuration Fix
+# Environment Configuration Fix (Historical)
+
+> **Note**: This is a historical troubleshooting note from before the monorepo conversion. The web app now runs on port 3001 (not 3000). The general principles still apply.
 
 ## Issue
 When attempting to sign up or log in, a 403 (Forbidden) error occurred in the browser console:

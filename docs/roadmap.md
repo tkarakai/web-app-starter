@@ -2,7 +2,7 @@
 
 - dark theme with selector
 - i18n
-- a11n
+- a11y
 - next.js bundle analyzer and production optimization
 - SEO for landing page
 - Add security headers via Next.js middleware or config

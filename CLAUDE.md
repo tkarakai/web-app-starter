@@ -5,78 +5,108 @@ This document provides project-specific guidance for AI agents working on this c
 ## Quick Reference
 
 ```bash
-# Start development server (Next.js + Convex)
-bun run dev
+# Start development (Convex + all apps via dev-start.sh)
+bun run dev                  # All apps (landing:3000, web:3001, admin:3002)
+bun run dev:web              # Convex + web app only (port 3001)
+bun run dev:admin            # Convex + admin app only (port 3002)
+bun run dev:landing          # Landing page only (port 3000, no Convex)
+bun run dev:stop             # Stop all services
+bun run dev:status           # Show running processes
 
 # Run all CI checks locally before pushing (recommended!)
-bun run ci                  # Full CI: lint, types, tests, build, e2e
-bun run ci:quick            # Skip E2E tests for faster feedback
-bun run ci:act              # Run in Docker via act (first run populates caches)
-bun run ci:act:offline      # Offline mode (fast, no network required)
+bun run ci                   # Full CI: lint, types, tests, build, e2e
+bun run ci:quick             # Skip E2E tests for faster feedback
+bun run ci:act               # Run in Docker via act (first run populates caches)
+bun run ci:act:offline       # Offline mode (fast, no network required)
 
-# Run tests (ALWAYS use "bun run test", never bare "bun test")
-bun run test                # Bun unit tests (fast, utility functions)
-bun run test:unit           # Vitest tests (React components)
-bun run test:convex         # Convex backend tests
-bun run test:e2e            # Playwright E2E tests (requires browser)
+# Run tests via Turborepo (ALWAYS use "bun run test", never bare "bun test")
+bun run test                 # Bun unit tests (across all workspaces)
+bun run test:unit            # Vitest component tests
+bun run test:convex          # Convex backend tests
+bun run test:e2e             # Playwright E2E tests (requires browser)
+bun run test:all             # All of the above
 
-# Type checking and linting
-bun run lint                # ESLint
-bunx tsc --noEmit           # TypeScript type check
+# Type checking and linting (via Turborepo)
+bun run lint                 # ESLint (all packages)
+bun run typecheck            # TypeScript check (all packages)
 
 # Build for production
-bun run build
+bun run build                # Build all apps via Turborepo
 ```
 
 > **WARNING**: Never use bare `bun test` - it picks up ALL test files including those requiring Vitest's DOM environment. Always use `bun run test` which runs the scoped npm script.
 
 ## Project Overview
 
-This is a **Next.js 16** web application with **Convex** as the backend. It uses:
-- **Bun** as the package manager and runtime
+This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
+- **Three Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002)
+- **Three shared packages**: `@repo/ui`, `@repo/auth`, `@repo/backend`
+- **Convex** as the backend (database, file storage, API functions)
+- **Better Auth** wired to Convex for authentication
 - **React 19** with Server Components (App Router)
-- **Radix UI** for accessible UI primitives
+- **Radix UI** for accessible UI primitives (in `@repo/ui`)
 - **Tailwind CSS v4** for styling
 - **TypeScript** with strict mode enabled
 
 ## Directory Structure
 
 ```
-├── src/
-│   ├── app/                 # Next.js App Router pages
-│   │   ├── (auth)/          # Authentication routes (grouped)
-│   │   ├── (dashboard)/     # Dashboard routes (grouped)
-│   │   └── api/             # API routes
-│   ├── components/
-│   │   ├── ui/              # Reusable UI primitives (Button, Input, etc.)
-│   │   ├── auth/            # Authentication components
-│   │   └── launchpad/       # Feature-specific components
-│   └── lib/                 # Utility functions and helpers
-├── convex/                  # Convex backend
-│   ├── _generated/          # Auto-generated Convex files (DO NOT EDIT)
-│   ├── schema.ts            # Database schema definition
-│   └── *.ts                 # Server functions (queries, mutations, actions)
-├── qa/                      # All testing and QA artifacts
-│   ├── tests/               # Test files
-│   │   ├── *.test.ts        # Bun unit tests (utility functions)
-│   │   ├── *.test.tsx       # Vitest component tests
-│   │   ├── helpers/         # Test utilities
-│   │   │   ├── auth-mock.ts # Authentication mocking helpers
-│   │   │   └── visual-regression.ts  # Playwright screenshot testing
-│   │   └── fixtures/        # Test data
-│   │       └── data.ts      # Pre-defined test fixtures
-│   └── e2e/                 # Playwright E2E test files
-│       └── *.spec.ts        # End-to-end test specs
+├── apps/
+│   ├── web/                     # Main web app (@repo/web, port 3001)
+│   │   ├── src/
+│   │   │   ├── app/             # Next.js App Router pages
+│   │   │   │   ├── (auth)/      # Authentication routes (grouped)
+│   │   │   │   ├── (dashboard)/ # Dashboard routes (grouped)
+│   │   │   │   └── api/auth/    # Auth API route handler
+│   │   │   ├── components/
+│   │   │   │   ├── ui/          # App-specific UI components
+│   │   │   │   ├── auth/        # Authentication components
+│   │   │   │   └── launchpad/   # Feature-specific components
+│   │   │   └── lib/             # Utility functions and helpers
+│   │   └── qa/                  # Testing artifacts
+│   │       ├── tests/           # Unit + component tests
+│   │       │   ├── *.test.ts    # Bun unit tests (utility functions)
+│   │       │   ├── *.test.tsx   # Vitest component tests
+│   │       │   ├── helpers/     # Test utilities (auth-mock, visual-regression)
+│   │       │   └── fixtures/    # Test data
+│   │       └── e2e/             # Playwright E2E specs
+│   ├── admin/                   # Admin dashboard (@repo/admin, port 3002)
+│   │   └── src/
+│   └── landing/                 # Landing/marketing page (@repo/landing, port 3000)
+│       └── src/
+├── packages/
+│   ├── backend/                 # Convex backend (@repo/backend)
+│   │   ├── convex/              # Schema, queries, mutations, actions
+│   │   │   ├── _generated/      # Auto-generated Convex files (DO NOT EDIT)
+│   │   │   ├── schema.ts        # Database schema definition
+│   │   │   └── *.ts             # Server functions
+│   │   ├── index.ts             # Main export (re-exports convex/_generated/api)
+│   │   └── vitest.config.ts     # Backend test configuration
+│   ├── auth/                    # Authentication (@repo/auth)
+│   │   └── src/
+│   │       ├── client.ts        # Client-side auth hooks
+│   │       ├── server.ts        # Server-side auth utilities
+│   │       └── provider.tsx     # Auth context provider
+│   └── ui/                      # Shared UI components (@repo/ui)
+│       ├── src/                 # Radix UI + shadcn/ui components
+│       │   └── index.ts         # Component exports
+│       ├── styles/
+│       │   └── globals.css      # Global styles
+│       └── tailwind.config.ts   # Shared Tailwind configuration
+├── scripts/
+│   ├── dev-start.sh             # Start dev environment (Convex + apps)
+│   ├── dev-stop.sh              # Stop all services
+│   ├── dev-status.sh            # Show running services
+│   ├── ci-local.sh              # Native CI checks (bun run ci)
+│   ├── ci-local-act.sh          # Docker-based CI via act
+│   ├── ensure-local-deps.sh     # Dependency setup
+│   └── ensure-branch-tracking.sh # Git utility
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml           # GitHub Actions CI/CD workflow
-│       └── security.yml     # CodeQL, dependency audit, secrets scan
-├── scripts/
-│   ├── ci-local.sh          # Native CI checks (bun run ci)
-│   ├── ci-local-act.sh      # Docker-based CI via act (bun run ci:act)
-│   ├── dev-start.sh         # Start dev environment
-│   └── dev-stop.sh          # Stop dev environment
-└── .actrc                   # act configuration (M-series, runner image)
+│       ├── ci.yml               # GitHub Actions CI/CD workflow
+│       └── security.yml         # CodeQL, dependency audit, secrets scan
+├── turbo.json                   # Turborepo task configuration
+└── package.json                 # Root workspace definition (Bun workspaces)
 ```
 
 ## Development Commands
@@ -84,12 +114,13 @@ This is a **Next.js 16** web application with **Convex** as the backend. It uses
 ### Starting Development
 
 ```bash
-# Full development environment (recommended)
-bun run dev                  # Starts Next.js + Convex together
+# Start all apps + Convex (recommended)
+bun run dev                  # Uses scripts/dev-start.sh
 
-# Individual services (for debugging)
-bun run dev:next             # Next.js dev server only (port 3000)
-bun run dev:convex           # Convex dev server only (port 3210)
+# Start a specific app + Convex
+bun run dev:web              # Convex + web app (port 3001)
+bun run dev:admin            # Convex + admin app (port 3002)
+bun run dev:landing          # Landing only (port 3000, no Convex needed)
 
 # Check service status
 bun run dev:status           # Shows running processes
@@ -98,41 +129,53 @@ bun run dev:status           # Shows running processes
 bun run dev:stop
 ```
 
+> **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
+
 ### Testing Commands
 
 > **CRITICAL**: Always use `bun run test` (with `run`), never bare `bun test`.
 > Bare `bun test` picks up ALL test files and fails because some require Vitest's DOM environment.
 
+All test commands run via Turborepo from the project root:
+
 ```bash
 # Bun Tests (fast, for utility functions)
-bun run test                 # Run all Bun unit tests (scoped to qa/tests/*.test.ts)
-bun run test qa/tests/format.test.ts  # Run specific test file
+bun run test                 # Run all Bun unit tests across workspaces
 
 # Vitest Tests (React components with DOM)
-bun run test:unit            # Run Vitest once
-bun run test:watch           # Watch mode for development
-bun run test:coverage        # With coverage report (HTML + JSON output)
-bunx vitest run qa/tests/vitest-example.test.tsx  # Specific file
+bun run test:unit            # Run Vitest once (apps/web)
+bun run test:watch           # Watch mode for development (run from apps/web)
 
 # Convex Tests (backend functions)
-bun run test:convex          # Run Convex backend tests via Vitest
+bun run test:convex          # Run Convex backend tests (packages/backend)
 
 # Playwright E2E Tests
 bun run test:e2e             # Run all E2E tests
-bun run test:e2e:ui          # Interactive UI mode
-bunx playwright test --list  # List available tests
-bunx playwright test qa/e2e/example.spec.ts  # Run specific spec
 
 # Run everything
-bun run test:all             # Bun + Vitest + Playwright
+bun run test:all             # Bun + Vitest + Convex + Playwright
+```
+
+To run tests for a specific workspace directly:
+
+```bash
+# From apps/web/
+cd apps/web
+bun run test                 # Bun unit tests for web app
+bun run test:unit            # Vitest component tests
+bun run test:e2e             # Playwright E2E
+
+# From packages/backend/
+cd packages/backend
+bun run test:convex          # Convex backend tests
 ```
 
 ### Build and Lint
 
 ```bash
-bun run build                # Production build
-bun run lint                 # ESLint check
-bun run start                # Start production server
+bun run build                # Production build (all apps via Turborepo)
+bun run lint                 # ESLint (all packages via Turborepo)
+bun run typecheck            # TypeScript check (all packages via Turborepo)
 ```
 
 ### Local CI (Pre-Push Checks)
@@ -144,15 +187,15 @@ bun run ci                   # Full CI check (runs everything)
 bun run ci:quick             # Skip E2E tests for faster feedback
 ```
 
-The `bun run ci` command runs these checks in order:
-1. **TypeScript check** (`bunx tsc --noEmit`)
-2. **ESLint** (`bun run lint`)
-3. **Bun unit tests** (`bun run test`)
-4. **Vitest component tests** (`bun run test:coverage`)
-5. **Convex backend tests** (`bun run test:convex`)
-6. **Production build** (`bun run build`)
-7. **Bundle size check** (`bun run size`)
-8. **Playwright E2E tests** (`bun run test:e2e`)
+The `bun run ci` command runs these checks in order (all via `turbo`):
+1. **TypeScript check** (`turbo typecheck`)
+2. **ESLint** (`turbo lint`)
+3. **Bun unit tests** (`turbo test`)
+4. **Vitest component tests** (`turbo test:unit`)
+5. **Convex backend tests** (`turbo test:convex`)
+6. **Production build** (`turbo build`)
+7. **Bundle size check** (`cd apps/web && bun run size`)
+8. **Playwright E2E tests** (`turbo test:e2e`)
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
 
@@ -281,14 +324,15 @@ docker volume rm act-bun-cache act-playwright-cache act-toolcache
 
 | Test Type | Framework | Use For | Location |
 |-----------|-----------|---------|----------|
-| Unit | Bun | Pure functions, utilities, helpers | `qa/tests/*.test.ts` |
-| Component | Vitest | React components, UI interactions | `qa/tests/*.test.tsx` |
-| E2E | Playwright | Full user flows, navigation, auth | `qa/e2e/*.spec.ts` |
-| Backend | convex-test | Convex functions (queries, mutations) | `convex/*.test.ts` |
+| Unit | Bun | Pure functions, utilities, helpers | `apps/web/qa/tests/*.test.ts` |
+| Component | Vitest | React components, UI interactions | `apps/web/qa/tests/*.test.tsx` |
+| E2E | Playwright | Full user flows, navigation, auth | `apps/web/qa/e2e/*.spec.ts` |
+| Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` |
 
 ### Bun Test Pattern (Utility Functions)
 
 ```typescript
+// apps/web/qa/tests/myFunction.test.ts
 import { describe, expect, it } from "bun:test";
 import { myFunction } from "../../src/lib/myModule";
 
@@ -307,9 +351,10 @@ describe("myFunction", () => {
 ### Vitest Component Test Pattern
 
 ```typescript
+// apps/web/qa/tests/button.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@repo/ui";
 
 describe("Button", () => {
   it("renders with text", () => {
@@ -329,6 +374,7 @@ describe("Button", () => {
 ### Playwright E2E Test Pattern
 
 ```typescript
+// apps/web/qa/e2e/homepage.spec.ts
 import { expect, test } from "@playwright/test";
 
 test.describe("Homepage", () => {
@@ -349,6 +395,7 @@ test.describe("Homepage", () => {
 ### Convex Backend Test Pattern
 
 ```typescript
+// packages/backend/convex/launchItems.test.ts
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
@@ -356,7 +403,8 @@ import schema from "./schema";
 
 describe("launchItems", () => {
   test("returns items for authenticated user", async () => {
-    const t = convexTest(schema);
+    // IMPORTANT: In monorepos, pass glob as second arg for module discovery
+    const t = convexTest(schema, import.meta.glob("./**/*.*s"));
 
     // Seed test data
     await t.run(async (ctx) => {
@@ -380,9 +428,11 @@ describe("launchItems", () => {
 });
 ```
 
+> **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails.
+
 ## Test Helpers
 
-### Authentication Mocking (`qa/tests/helpers/auth-mock.ts`)
+### Authentication Mocking (`apps/web/qa/tests/helpers/auth-mock.ts`)
 
 ```typescript
 import { createMockUser, mockUseAuth, createMockAuthContext } from "../qa/tests/helpers/auth-mock";
@@ -397,7 +447,7 @@ const auth = mockUseAuth({ isAuthenticated: true, user });
 const authCtx = createMockAuthContext(user);
 ```
 
-### Test Fixtures (`qa/tests/fixtures/data.ts`)
+### Test Fixtures (`apps/web/qa/tests/fixtures/data.ts`)
 
 ```typescript
 import {
@@ -421,7 +471,7 @@ const customItem = createLaunchItem({
 const manyItems = createManyLaunchItems(50, "owner-id");
 ```
 
-### Visual Regression (`qa/tests/helpers/visual-regression.ts`)
+### Visual Regression (`apps/web/qa/tests/helpers/visual-regression.ts`)
 
 ```typescript
 import {
@@ -474,22 +524,27 @@ export function formatPrice(amount) {
 ### React Components
 
 - Use **function components** exclusively (no class components)
-- Use **Radix UI primitives** for accessibility
-- Components go in `src/components/` with clear organization
-- Use **path aliases**: `@/` for `src/`, `@/convex/` for `convex/`
+- Use **Radix UI primitives** from `@repo/ui` for accessibility
+- Shared components go in `packages/ui/src/`, app-specific in `apps/<app>/src/components/`
+- Use package imports for shared code, path aliases for app-internal code
 
 ```typescript
-// Component file: src/components/ui/my-component.tsx
+// App component: apps/web/src/components/launchpad/item-card.tsx
 "use client";
 
-import { cn } from "@/lib/utils";
+import { Button } from "@repo/ui";            // Shared UI
+import { cn } from "@repo/ui";                 // Utility from shared package
+import { api } from "@repo/backend";           // Convex API
+import { useMutation } from "convex/react";
 
-interface MyComponentProps {
+interface ItemCardProps {
   className?: string;
   children: React.ReactNode;
 }
 
-export function MyComponent({ className, children }: MyComponentProps) {
+export function ItemCard({ className, children }: ItemCardProps) {
+  const deleteItem = useMutation(api.launchItems.remove);
+
   return (
     <div className={cn("base-styles", className)}>
       {children}
@@ -500,13 +555,13 @@ export function MyComponent({ className, children }: MyComponentProps) {
 
 ### Convex Backend
 
-- **Schema** is defined in `convex/schema.ts`
+- **Schema** is defined in `packages/backend/convex/schema.ts`
 - Use `v` validator for all fields
 - Queries are read-only, mutations modify data
 - Always validate inputs and handle errors
 
 ```typescript
-// convex/myModule.ts
+// packages/backend/convex/myModule.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -532,12 +587,12 @@ export const createItem = mutation({
 ### CSS/Styling
 
 - Use **Tailwind CSS v4** utility classes
-- Use `cn()` utility from `@/lib/utils` for conditional classes
+- Use `cn()` utility from `@repo/ui` for conditional classes
 - Follow **mobile-first** responsive design
 - Use **CSS variables** for theming (`--foreground`, `--background`, etc.)
 
 ```typescript
-import { cn } from "@/lib/utils";
+import { cn } from "@repo/ui";
 
 <div className={cn(
   "flex items-center gap-2 p-4",
@@ -546,14 +601,30 @@ import { cn } from "@/lib/utils";
 )}>
 ```
 
-## Path Aliases
+## Cross-Package Import Patterns
 
-Configure in `tsconfig.json`, resolved by bundler:
+### Shared Package Imports
 
-| Alias | Path | Usage |
-|-------|------|-------|
-| `@/*` | `src/*` | `import { Button } from "@/components/ui/button"` |
-| `@/convex/*` | `convex/*` | `import { api } from "@/convex/_generated/api"` |
+| Package | Import | Example |
+|---------|--------|---------|
+| `@repo/ui` | Components, utilities | `import { Button, cn } from "@repo/ui"` |
+| `@repo/ui` | Global styles | `import "@repo/ui/styles/globals.css"` |
+| `@repo/auth` | Client hooks | `import { authClient } from "@repo/auth/client"` |
+| `@repo/auth` | Server utilities | `import { auth } from "@repo/auth/server"` |
+| `@repo/auth` | Provider component | `import { AuthProvider } from "@repo/auth/provider"` |
+| `@repo/backend` | Convex API | `import { api } from "@repo/backend"` |
+
+### App-Internal Path Aliases
+
+Within each app, use `@/` as a path alias for `src/`:
+
+```typescript
+// Inside apps/web/
+import { formatDate } from "@/lib/format";
+import { DashboardLayout } from "@/components/dashboard-layout";
+```
+
+> **Note**: `@/` is app-internal only. For cross-package imports, always use `@repo/` package names.
 
 ## Common Patterns
 
@@ -582,14 +653,14 @@ export function ClientComponent() {
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { api } from "@repo/backend";
 
 export function MyComponent() {
   // Queries subscribe to real-time updates
-  const items = useQuery(api.items.list);
+  const items = useQuery(api.launchItems.list);
 
   // Mutations for creating/updating/deleting
-  const createItem = useMutation(api.items.create);
+  const createItem = useMutation(api.launchItems.create);
 
   const handleCreate = async () => {
     await createItem({ title: "New Item" });
@@ -605,8 +676,9 @@ export function MyComponent() {
 ### DO NOT
 
 - **Use bare `bun test`** - Always use `bun run test` (with `run`). Bare `bun test` picks up all test files and fails
-- **Edit `convex/_generated/`** - These files are auto-generated
+- **Edit `packages/backend/convex/_generated/`** - These files are auto-generated
 - **Use `npm` or `yarn`** - This project uses Bun exclusively
+- **Use `turbo dev`** - Use `bun run dev` (which calls `dev-start.sh`) for proper port and Convex management
 - **Skip TypeScript types** - Strict mode catches bugs early
 - **Test Server Components with Vitest** - Use Playwright E2E instead
 - **Commit `.env.local`** - Contains secrets, use `.env.example` as template
@@ -617,8 +689,9 @@ export function MyComponent() {
 - **Convex functions** run on the server - no browser APIs available
 - **Server Components** cannot use React hooks or browser APIs
 - **Client Components** must have `"use client"` directive at top
-- **Path aliases** must match both `tsconfig.json` and `vitest.config.ts`
+- **Path aliases** (`@/`) are app-internal only; use `@repo/` for cross-package imports
 - **Playwright tests** require Chromium browser installed (`npx playwright install chromium`)
+- **convex-test in monorepos**: Must pass `import.meta.glob("./**/*.*s")` as second arg to `convexTest()`
 
 ## Environment Variables
 
@@ -627,15 +700,11 @@ Required variables (see `.env.example`):
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `CONVEX_DEPLOYMENT` | Convex deployment identifier | Yes |
-| `NEXT_PUBLIC_CONVEX_URL` | Convex API URL (usually `http://127.0.0.1:3210`) | Yes |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex site URL (usually `http://127.0.0.1:3211`) | Yes |
-| `NEXT_PUBLIC_SITE_URL` | App URL (usually `http://localhost:3000`) | Yes |
+| `NEXT_PUBLIC_CONVEX_URL` | Convex API URL (dynamically assigned port) | Yes |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex site URL (dynamically assigned port) | Yes |
+| `NEXT_PUBLIC_SITE_URL` | App URL (e.g., `http://localhost:3001` for web) | Yes |
 
-For tests:
-```bash
-# Copy example and fill in values
-cp .env.example .env.local
-```
+> **Note**: `bun run dev` auto-manages `.env.local` with the correct ports. You rarely need to edit these manually for local development.
 
 ## TDD Workflow for AI Agents
 
@@ -650,13 +719,13 @@ cp .env.example .env.local
 ### Quick Feedback Loop
 
 ```bash
-# For utility functions (fastest)
-bun test --watch
+# For utility functions (fastest, from apps/web/)
+bun run test --watch
 
-# For React components
+# For React components (from apps/web/)
 bun run test:watch
 
-# For full integration
+# For full integration (from root)
 bun run test:all
 ```
 
@@ -664,9 +733,9 @@ bun run test:all
 
 ```bash
 # 1. Create test file
-# qa/tests/newFeature.test.ts
+# apps/web/qa/tests/newFeature.test.ts
 
-# 2. Run in watch mode
+# 2. Run in watch mode (from apps/web/)
 bun run test:watch
 
 # 3. Write test, see it fail (red)
@@ -681,15 +750,16 @@ bun run test:watch
 | Task Type | Recommended Approach |
 |-----------|---------------------|
 | **Research** | Read files, grep patterns, understand codebase |
-| **Unit Test** | Create test file, implement function, verify with `bun test` |
-| **Component** | Create test, implement component, verify with Vitest |
-| **E2E Flow** | Create spec, implement, verify with Playwright |
-| **Convex Function** | Define in schema, implement handler, test with convex-test |
+| **Unit Test** | Create test in `apps/web/qa/tests/`, implement function, verify with `bun run test` |
+| **Component** | Create test in `apps/web/qa/tests/`, implement component, verify with Vitest |
+| **E2E Flow** | Create spec in `apps/web/qa/e2e/`, implement, verify with Playwright |
+| **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
+| **Shared UI** | Add component in `packages/ui/src/`, export from index.ts |
 
 ### Context Boundaries
 
 - Each file should be self-contained with clear imports
-- Use path aliases consistently (`@/` prefix)
+- Use `@repo/` for cross-package imports, `@/` for app-internal imports
 - Document public APIs with JSDoc comments
 - Keep component files under 200 lines
 
@@ -700,13 +770,14 @@ bun run test:watch
 **Tests not finding modules:**
 ```bash
 # Check path aliases match tsconfig.json
-bunx tsc --noEmit
+bun run typecheck
 ```
 
 **Vitest configuration errors:**
 ```bash
-bunx vitest --version  # Verify installation
-bunx vitest run --reporter=verbose  # Detailed output
+# Run from the specific app directory
+cd apps/web && bunx vitest --version
+cd apps/web && bunx vitest run --reporter=verbose
 ```
 
 **Playwright browser not installed:**
@@ -716,7 +787,14 @@ npx playwright install chromium
 
 **Convex sync issues:**
 ```bash
-bun run dev:convex  # Restart Convex dev server
+# Restart the dev environment
+bun run dev:stop && bun run dev:web
+```
+
+**convex-test module discovery fails in monorepo:**
+```bash
+# Ensure you pass the glob as second arg to convexTest()
+# convexTest(schema, import.meta.glob("./**/*.*s"))
 ```
 
 ## File Naming Conventions
@@ -724,11 +802,12 @@ bun run dev:convex  # Restart Convex dev server
 | Type | Convention | Example |
 |------|------------|---------|
 | Component | kebab-case.tsx | `user-avatar.tsx` |
-| Page | kebab-case in folder | `src/app/sign-up/page.tsx` |
+| Page | kebab-case in folder | `apps/web/src/app/sign-up/page.tsx` |
 | Utility | camelCase.ts | `formatDate.ts` or `format.ts` |
 | Test | same-name.test.ts(x) | `format.test.ts`, `button.test.tsx` |
 | E2E Test | descriptive.spec.ts | `auth-flow.spec.ts` |
 | Convex | camelCase.ts | `launchItems.ts` |
+| Package export | index.ts | `packages/ui/src/index.ts` |
 
 ## Verification Checklist
 
@@ -740,10 +819,11 @@ bun run ci:quick    # Faster check (skips E2E)
 ```
 
 Or verify individually:
-- [ ] TypeScript compiles: `bunx tsc --noEmit`
+- [ ] TypeScript compiles: `bun run typecheck`
 - [ ] Linting passes: `bun run lint`
 - [ ] Unit tests pass: `bun run test`
 - [ ] Component tests pass: `bun run test:unit`
+- [ ] Backend tests pass: `bun run test:convex`
 - [ ] Build succeeds: `bun run build`
 - [ ] E2E tests pass: `bun run test:e2e`
 
@@ -760,3 +840,4 @@ Code quality:
 - [Tailwind CSS v4](https://tailwindcss.com)
 - [Vitest Docs](https://vitest.dev)
 - [Playwright Docs](https://playwright.dev)
+- [Turborepo Docs](https://turbo.build/repo/docs)

@@ -32,18 +32,36 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      ui: ${{ steps.filter.outputs.ui }}
-      auth: ${{ steps.filter.outputs.auth }}
-      web: ${{ steps.filter.outputs.web }}
-      admin: ${{ steps.filter.outputs.admin }}
-      landing: ${{ steps.filter.outputs.landing }}
-      root: ${{ steps.filter.outputs.root }}
+      backend: ${{ steps.act-all.outputs.backend || steps.filter.outputs.backend }}
+      ui: ${{ steps.act-all.outputs.ui || steps.filter.outputs.ui }}
+      auth: ${{ steps.act-all.outputs.auth || steps.filter.outputs.auth }}
+      web: ${{ steps.act-all.outputs.web || steps.filter.outputs.web }}
+      admin: ${{ steps.act-all.outputs.admin || steps.filter.outputs.admin }}
+      landing: ${{ steps.act-all.outputs.landing || steps.filter.outputs.landing }}
+      root: ${{ steps.act-all.outputs.root || steps.filter.outputs.root }}
     steps:
+      # In act (local CI), git worktrees use a .git file pointing to the main
+      # repo which doesn't exist inside the container. Skip change detection
+      # and run all jobs instead.
+      - name: Run all jobs in act
+        if: ${{ env.ACT }}
+        id: act-all
+        run: |
+          echo "Running in act — skipping change detection, all jobs will run"
+          echo "backend=true" >> $GITHUB_OUTPUT
+          echo "ui=true" >> $GITHUB_OUTPUT
+          echo "auth=true" >> $GITHUB_OUTPUT
+          echo "web=true" >> $GITHUB_OUTPUT
+          echo "admin=true" >> $GITHUB_OUTPUT
+          echo "landing=true" >> $GITHUB_OUTPUT
+          echo "root=true" >> $GITHUB_OUTPUT
+
       - name: Checkout
+        if: ${{ !env.ACT }}
         uses: actions/checkout@v4
 
       - name: Detect file changes
+        if: ${{ !env.ACT }}
         uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -170,6 +188,7 @@ jobs:
 
   # ============================================================
   # BUILD & TEST (matrix: per-app, with change detection)
+  # act does not support matrix strategies — use build-and-test-act instead
   # ============================================================
   build-and-test:
     name: Build & Test (${{ matrix.app }})
@@ -210,7 +229,7 @@ jobs:
               }}
             has_tests: false
             has_bundle_check: false
-    if: always() && needs.lint.result == 'success'
+    if: ${{ !vars.ACT_LOCAL && always() && needs.lint.result == 'success' }}
     steps:
       - name: Check if should run
         id: should-run
@@ -313,13 +332,14 @@ jobs:
 
   # ============================================================
   # E2E TESTS (per-app, with change detection)
+  # act does not support matrix strategies — use test-e2e-act instead
   # ============================================================
   test-e2e:
     name: E2E Tests (${{ matrix.app }})
     runs-on: ubuntu-latest
     needs: [changes, build-and-test]
     timeout-minutes: 15
-    if: always() && needs.build-and-test.result == 'success' && github.event.pull_request.draft == false
+    if: ${{ !vars.ACT_LOCAL && always() && needs.build-and-test.result == 'success' && github.event.pull_request.draft == false }}
     strategy:
       fail-fast: false
       matrix:
@@ -438,34 +458,352 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================================
+  # ACT-ONLY JOBS (flat replacements for matrix jobs)
+  # act does not support matrix strategies, so these flat jobs
+  # replicate the same checks. Guarded with vars.ACT_LOCAL
+  # (set by ci-local-act.sh via --var ACT_LOCAL=true).
+  # ============================================================
+
+  # Unit Tests (act-only)
+  test-unit-act:
+    name: Unit Tests (Bun)
+    runs-on: ubuntu-latest
+    if: ${{ vars.ACT_LOCAL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (act)
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Bun tests
+        run: bunx turbo test
+
+  # Component Tests (act-only)
+  test-vitest-act:
+    name: Component Tests (Vitest)
+    runs-on: ubuntu-latest
+    if: ${{ vars.ACT_LOCAL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (act)
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Vitest with coverage
+        run: cd apps/web && bun run test:coverage
+
+      - name: Display coverage summary
+        if: always()
+        run: |
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-.act-step-summary.md}"
+          if [ -n "$ACT" ]; then
+            SUMMARY_FILE=".act-step-summary.md"
+          fi
+          echo "## Coverage Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          COVERAGE_FILE="apps/web/qa/coverage/coverage-summary.json"
+          if [ -f "$COVERAGE_FILE" ]; then
+            echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
+            echo "|--------|----------|" >> "$SUMMARY_FILE"
+            echo "| Lines | $(jq -r '.total.lines.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+            echo "| Branches | $(jq -r '.total.branches.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+            echo "| Functions | $(jq -r '.total.functions.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+            echo "| Statements | $(jq -r '.total.statements.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+          else
+            echo "No coverage summary found" >> "$SUMMARY_FILE"
+          fi
+
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/test-vitest-act"
+          mkdir -p "$JOB_DIR/artifacts"
+          [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
+          [ -d "apps/web/qa/coverage" ] && cp -r apps/web/qa/coverage "$JOB_DIR/artifacts/" 2>/dev/null || true
+
+  # E2E Tests (act-only)
+  test-e2e-act:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ vars.ACT_LOCAL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (act)
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: cd apps/web && bunx playwright test --project=chromium
+        env:
+          CI: true
+
+      - name: Show dev logs on failure
+        if: failure()
+        run: |
+          echo "=== Convex Dev Log ==="
+          cat .convex-dev.log 2>/dev/null || echo "No Convex log found"
+          echo ""
+          echo "=== Next.js Dev Log (web) ==="
+          cat .next-web.log 2>/dev/null || echo "No Next.js log found"
+
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/test-e2e-act"
+          mkdir -p "$JOB_DIR/artifacts"
+          [ -d "apps/web/qa/playwright-report" ] && cp -r apps/web/qa/playwright-report "$JOB_DIR/artifacts/" 2>/dev/null || true
+          [ -d "apps/web/qa/e2e/__screenshots__" ] && cp -r apps/web/qa/e2e/__screenshots__ "$JOB_DIR/artifacts/visual-snapshots" 2>/dev/null || true
+
+  # Build (act-only)
+  build-act:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit-act, test-vitest-act, test-convex]
+    if: ${{ vars.ACT_LOCAL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (act)
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build all apps
+        run: bunx turbo build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+
+  # Bundle Size Check (act-only)
+  bundle-size-act:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    needs: [build-act]
+    if: ${{ vars.ACT_LOCAL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (act)
+        run: |
+          BUN_DIR="/root/.bun"
+          if [ -x "$BUN_DIR/bin/bun" ]; then
+            echo "Bun already installed"
+          else
+            curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"
+          fi
+          echo "$BUN_DIR/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bunx turbo build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+
+      - name: Check bundle size
+        run: cd apps/web && bun run size
+
+      - name: Report bundle size
+        run: |
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-.act-step-summary.md}"
+          if [ -n "$ACT" ]; then
+            SUMMARY_FILE=".act-step-summary.md"
+          fi
+          echo "## Bundle Size Report" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "\`\`\`" >> "$SUMMARY_FILE"
+          cd apps/web && bun run size 2>&1 | tee -a "$SUMMARY_FILE" || true
+          echo "\`\`\`" >> "$SUMMARY_FILE"
+
+      - name: Save job outputs (act)
+        if: ${{ always() && env.ACT }}
+        run: |
+          JOB_DIR="/act-artifacts/bundle-size-act"
+          mkdir -p "$JOB_DIR"
+          [ -f ".act-step-summary.md" ] && cp ".act-step-summary.md" "$JOB_DIR/step-summary.md"
+
+  # ============================================================
   # SUMMARY (single status check for branch protection)
   # ============================================================
   ci-complete:
     name: CI Complete
     runs-on: ubuntu-latest
-    needs: [lint, test-convex, build-and-test, test-e2e]
+    needs: [lint, test-convex, build-and-test, test-e2e, test-unit-act, test-vitest-act, test-e2e-act, build-act, bundle-size-act]
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
           echo "Lint: ${{ needs.lint.result }}"
           echo "Convex: ${{ needs.test-convex.result }}"
-          echo "Build & Test: ${{ needs.build-and-test.result }}"
-          echo "E2E: ${{ needs.test-e2e.result }}"
+          echo "Build & Test (matrix): ${{ needs.build-and-test.result }}"
+          echo "E2E (matrix): ${{ needs.test-e2e.result }}"
+          echo "Unit Tests (act): ${{ needs.test-unit-act.result }}"
+          echo "Vitest (act): ${{ needs.test-vitest-act.result }}"
+          echo "E2E (act): ${{ needs.test-e2e-act.result }}"
+          echo "Build (act): ${{ needs.build-act.result }}"
+          echo "Bundle Size (act): ${{ needs.bundle-size-act.result }}"
 
-          # Lint must pass
+          # Lint must always pass
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
             echo "Lint failed"
             exit 1
           fi
 
-          # Other jobs can be skipped (no relevant changes) or succeed
-          for job in test-convex build-and-test test-e2e; do
-            result="${{ needs[job].result }}"
-            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
-              echo "$job failed with: $result"
-              exit 1
-            fi
-          done
+          # Convex tests must pass or be skipped
+          CONVEX="${{ needs.test-convex.result }}"
+          if [[ "$CONVEX" != "success" && "$CONVEX" != "skipped" ]]; then
+            echo "test-convex failed with: $CONVEX"
+            exit 1
+          fi
+
+          # Build & Test: matrix (GitHub) or act jobs must succeed
+          BUILD="${{ needs.build-and-test.result }}"
+          BUILD_ACT="${{ needs.build-act.result }}"
+          if [[ "$BUILD" != "success" && "$BUILD_ACT" != "success" ]]; then
+            echo "build failed (matrix: $BUILD, act: $BUILD_ACT)"
+            exit 1
+          fi
+
+          # Unit tests: matrix includes them, or act job
+          UNIT_ACT="${{ needs.test-unit-act.result }}"
+          if [[ "$BUILD" != "success" && "$UNIT_ACT" != "success" && "$UNIT_ACT" != "skipped" ]]; then
+            echo "unit tests failed: $UNIT_ACT"
+            exit 1
+          fi
+
+          # Vitest: matrix includes them, or act job
+          VITEST_ACT="${{ needs.test-vitest-act.result }}"
+          if [[ "$BUILD" != "success" && "$VITEST_ACT" != "success" && "$VITEST_ACT" != "skipped" ]]; then
+            echo "vitest failed: $VITEST_ACT"
+            exit 1
+          fi
+
+          # E2E: matrix (GitHub) or act job must succeed/skip
+          E2E="${{ needs.test-e2e.result }}"
+          E2E_ACT="${{ needs.test-e2e-act.result }}"
+          if [[ "$E2E" != "success" && "$E2E" != "skipped" ]] && \
+             [[ "$E2E_ACT" != "success" && "$E2E_ACT" != "skipped" ]]; then
+            echo "e2e failed (matrix: $E2E, act: $E2E_ACT)"
+            exit 1
+          fi
 
           echo "All CI jobs passed successfully"
