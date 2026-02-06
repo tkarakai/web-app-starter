@@ -100,8 +100,12 @@ if [ -n "$ORPHANED_CONVEX" ]; then
     done
 fi
 
-# Clean up log files
+# Clean up log files (per-app logs)
 rm -f "$PROJECT_DIR/.convex-dev.log" 2>/dev/null
+rm -f "$PROJECT_DIR/.next-web.log" 2>/dev/null
+rm -f "$PROJECT_DIR/.next-admin.log" 2>/dev/null
+rm -f "$PROJECT_DIR/.next-landing.log" 2>/dev/null
+# Legacy single-app log
 rm -f "$PROJECT_DIR/.next-dev.log" 2>/dev/null
 
 echo ""
