@@ -4,6 +4,7 @@ node_modules
 next-env.d.ts
 out
 dist
+.turbo
 
 .env
 .env.*
@@ -15,12 +16,12 @@ dist
 *.tsbuildinfo
 
 # Test coverage reports
-qa/coverage/
+**/qa/coverage/
 
 # Playwright
-qa/playwright-report/
-qa/test-results/
-qa/e2e/__screenshots__/
+**/qa/playwright-report/
+**/qa/test-results/
+**/qa/e2e/__screenshots__/
 
 # act local CI artifacts
 .act-artifacts/

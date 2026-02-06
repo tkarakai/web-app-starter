@@ -47,8 +47,9 @@ cd "$PROJECT_DIR"
 # These are either installed dependencies or generated caches
 MUST_BE_LOCAL=(
     "node_modules"
-    ".next"
-    "coverage"
+    "apps/web/.next"
+    "apps/admin/.next"
+    "apps/landing/.next"
     ".turbo"
     ".cache"
 )
@@ -78,12 +79,6 @@ for dir in "${MUST_BE_LOCAL[@]}"; do
                 bun install
                 log_always "${GREEN}✔ Local node_modules installed${NC}"
                 ;;
-            ".next")
-                log "  ${BLUE}ℹ .next will be recreated on next build/dev${NC}"
-                ;;
-            "coverage")
-                log "  ${BLUE}ℹ coverage will be recreated on next test run${NC}"
-                ;;
             *)
                 log "  ${BLUE}ℹ $dir will be recreated as needed${NC}"
                 ;;
@@ -96,16 +91,13 @@ for dir in "${MUST_BE_LOCAL[@]}"; do
 done
 
 # Also check for symlinks in node_modules that point outside the project
-# (This can happen with certain package managers or manual setups)
 if [ -d "node_modules" ]; then
-    # Check a few critical packages
     CRITICAL_PACKAGES=("vitest" "next" "@playwright/test")
 
     for pkg in "${CRITICAL_PACKAGES[@]}"; do
         pkg_path="node_modules/$pkg"
         if [ -L "$pkg_path" ]; then
             target=$(readlink "$pkg_path" 2>/dev/null || echo "unknown")
-            # Check if target points outside the project
             if [[ "$target" == /* ]] || [[ "$target" == ../* && "$target" == *"../.."* ]]; then
                 log_always "${YELLOW}Warning: $pkg_path is a symlink to $target${NC}"
                 log_always "  ${YELLOW}This may cause issues. Consider running 'bun install' fresh.${NC}"
@@ -124,21 +116,19 @@ fi
 # ============================================================
 # ENSURE PLAYWRIGHT BROWSERS ARE INSTALLED
 # ============================================================
-# Playwright requires browsers to be downloaded separately.
-# This ensures chromium is available for E2E testing.
-# The install command is idempotent - it skips if already installed.
+# Check in apps that have Playwright
+for app_dir in apps/web apps/admin; do
+    if [ -d "$app_dir/node_modules/@playwright/test" ] || [ -d "node_modules/@playwright/test" ]; then
+        log "${BLUE}Checking Playwright browsers...${NC}"
 
-if [ -d "node_modules/@playwright/test" ]; then
-    log "${BLUE}Checking Playwright browsers...${NC}"
+        PLAYWRIGHT_OUTPUT=$(npx playwright install chromium 2>&1)
 
-    # Run playwright install - it's smart enough to skip if already installed
-    # Capture output to detect if it actually installed something
-    PLAYWRIGHT_OUTPUT=$(npx playwright install chromium 2>&1)
-
-    if echo "$PLAYWRIGHT_OUTPUT" | grep -q "Downloading"; then
-        log_always "${GREEN}✔ Playwright chromium installed${NC}"
-        CHANGES_MADE=true
-    else
-        log "${GREEN}✔ Playwright browsers ready${NC}"
+        if echo "$PLAYWRIGHT_OUTPUT" | grep -q "Downloading"; then
+            log_always "${GREEN}✔ Playwright chromium installed${NC}"
+            CHANGES_MADE=true
+        else
+            log "${GREEN}✔ Playwright browsers ready${NC}"
+        fi
+        break  # Only need to install once
     fi
-fi
+done

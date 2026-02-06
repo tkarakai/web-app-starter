@@ -3,14 +3,16 @@
 # Run all CI checks locally before pushing to GitHub.
 # This mirrors what runs in .github/workflows/ci.yml
 #
+# Uses Turborepo to orchestrate across all workspace packages.
+#
 # Checks included:
-#   1. TypeScript check
-#   2. ESLint
-#   3. Bun unit tests
-#   4. Vitest component tests (with coverage)
-#   5. Convex backend tests
-#   6. Production build
-#   7. Bundle size check
+#   1. TypeScript check (all packages)
+#   2. ESLint (all packages)
+#   3. Bun unit tests (apps/web)
+#   4. Vitest component tests with coverage (apps/web)
+#   5. Convex backend tests (packages/backend)
+#   6. Production build (all apps)
+#   7. Bundle size check (apps/web)
 #   8. E2E tests (Playwright) - optional, skip with --skip-e2e
 #
 # NOT included (CI-only):
@@ -58,8 +60,8 @@ echo "└───────────────────────�
 echo -e "${NC}"
 
 # Step 1: TypeScript
-print_step "TypeScript Check"
-if bunx tsc --noEmit; then
+print_step "TypeScript Check (all packages)"
+if turbo typecheck; then
   print_success "TypeScript check passed"
 else
   print_error "TypeScript check failed"
@@ -67,8 +69,8 @@ else
 fi
 
 # Step 2: ESLint
-print_step "ESLint"
-if bun run lint; then
+print_step "ESLint (all packages)"
+if turbo lint; then
   print_success "ESLint passed"
 else
   print_error "ESLint failed"
@@ -77,7 +79,7 @@ fi
 
 # Step 3: Bun Unit Tests
 print_step "Unit Tests (Bun)"
-if bun run test; then
+if turbo test; then
   print_success "Bun tests passed"
 else
   print_error "Bun tests failed"
@@ -86,7 +88,7 @@ fi
 
 # Step 4: Vitest Component Tests
 print_step "Component Tests (Vitest)"
-if bun run test:coverage; then
+if turbo test:unit; then
   print_success "Vitest tests passed"
 else
   print_error "Vitest tests failed"
@@ -95,7 +97,7 @@ fi
 
 # Step 5: Convex Backend Tests
 print_step "Backend Tests (Convex)"
-if bun run test:convex; then
+if turbo test:convex; then
   print_success "Convex tests passed"
 else
   print_error "Convex tests failed"
@@ -103,8 +105,8 @@ else
 fi
 
 # Step 6: Build
-print_step "Production Build"
-if bun run build; then
+print_step "Production Build (all apps)"
+if turbo build; then
   print_success "Build succeeded"
 else
   print_error "Build failed"
@@ -113,7 +115,7 @@ fi
 
 # Step 7: Bundle Size Check
 print_step "Bundle Size Check"
-if bun run size; then
+if (cd apps/web && bun run size); then
   print_success "Bundle size check passed"
 else
   print_error "Bundle size check failed"
@@ -125,7 +127,7 @@ if [[ "$1" == "--skip-e2e" ]]; then
   print_warning "Skipping E2E tests (--skip-e2e flag)"
 else
   print_step "E2E Tests (Playwright)"
-  if bun run test:e2e; then
+  if turbo test:e2e; then
     print_success "E2E tests passed"
   else
     print_error "E2E tests failed"
@@ -135,7 +137,6 @@ fi
 
 # Note: Lighthouse performance audits are not included in local CI.
 # They require browser automation setup and are better suited for CI environments.
-# Run manually with: bunx lhci autorun (requires lighthouserc.json config)
 
 # Calculate duration
 END_TIME=$(date +%s)

@@ -9,13 +9,15 @@ export default [
   {
     ignores: [
       "node_modules/**",
-      ".next/**",
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/.turbo/**",
+      "**/convex/_generated/**",
+      "**/qa/coverage/**",
+      "**/qa/playwright-report/**",
+      "**/qa/test-results/**",
+      "**/qa/e2e/__screenshots__/**",
       ".auto-claude/**",
-      "convex/_generated/**",
-      "qa/coverage/**",
-      "qa/playwright-report/**",
-      "qa/test-results/**",
-      "qa/e2e/__screenshots__/**",
     ],
   },
   {
