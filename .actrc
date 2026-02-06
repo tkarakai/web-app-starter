@@ -10,5 +10,10 @@
 # Clean up containers after each run (prevents orphaned containers)
 --rm
 
+# Bind-mount working directory instead of copying from git tree.
+# Required for composite actions (.github/actions/*) to be visible in act,
+# since act's default copy mode only includes committed files.
+-b
+
 # Volume mounts for caching are handled in scripts/ci-local-act.sh
 # (act doesn't properly accumulate multiple --container-options in .actrc)

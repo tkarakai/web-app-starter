@@ -71,9 +71,15 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │       │   └── fixtures/    # Test data
 │   │       └── e2e/             # Playwright E2E specs
 │   ├── admin/                   # Admin dashboard (@repo/admin, port 3002)
-│   │   └── src/
+│   │   ├── src/
+│   │   └── qa/                  # Testing artifacts (same structure as web)
+│   │       ├── tests/           # Unit + component tests
+│   │       └── e2e/             # Playwright E2E specs
 │   └── landing/                 # Landing/marketing page (@repo/landing, port 3000)
-│       └── src/
+│       ├── src/
+│       └── qa/                  # Testing artifacts (same structure as web)
+│           ├── tests/           # Unit + component tests
+│           └── e2e/             # Playwright E2E specs
 ├── packages/
 │   ├── backend/                 # Convex backend (@repo/backend)
 │   │   ├── convex/              # Schema, queries, mutations, actions
@@ -102,8 +108,14 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   ├── ensure-local-deps.sh     # Dependency setup
 │   └── ensure-branch-tracking.sh # Git utility
 ├── .github/
+│   ├── actions/
+│   │   ├── setup-bun/           # Composite action: checkout + Bun + deps
+│   │   └── setup-playwright/    # Composite action: Playwright browser setup
 │   └── workflows/
-│       ├── ci.yml               # GitHub Actions CI/CD workflow
+│       ├── ci-shared.yml        # Shared CI: lint, typecheck, backend tests
+│       ├── ci-web.yml           # Web app CI: test, build, E2E
+│       ├── ci-admin.yml         # Admin app CI: test, build, E2E
+│       ├── ci-landing.yml       # Landing app CI: test, build, E2E
 │       └── security.yml         # CodeQL, dependency audit, secrets scan
 ├── turbo.json                   # Turborepo task configuration
 └── package.json                 # Root workspace definition (Bun workspaces)
@@ -194,7 +206,7 @@ The `bun run ci` command runs these checks in order (all via `turbo`):
 4. **Vitest component tests** (`turbo test:unit`)
 5. **Convex backend tests** (`turbo test:convex`)
 6. **Production build** (`turbo build`)
-7. **Bundle size check** (`cd apps/web && bun run size`)
+7. **Bundle size check** (all apps with `.size-limit.json`)
 8. **Playwright E2E tests** (`turbo test:e2e`)
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
@@ -209,18 +221,32 @@ Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The scri
 # Install act (requires Docker)
 brew install act
 
-# Run CI workflow
+# Run all CI workflows
 bun run ci:act                # Full output + summary
 bun run ci:act:quick          # Quiet mode, summary only
 bun run ci:act:offline        # Offline mode (after caches are populated)
 
-# Run specific jobs
-./scripts/ci-local-act.sh -j lint   # Just linting
-./scripts/ci-local-act.sh -l        # List available jobs
-./scripts/ci-local-act.sh -o        # Offline mode
+# Run a specific workflow
+./scripts/ci-local-act.sh -w shared    # Just lint + backend tests
+./scripts/ci-local-act.sh -w web       # Just web app CI
+./scripts/ci-local-act.sh -w admin     # Just admin app CI
+./scripts/ci-local-act.sh -w landing   # Just landing app CI
+
+# Run a specific job
+./scripts/ci-local-act.sh -j lint      # Just linting
+./scripts/ci-local-act.sh -l           # List available jobs
+./scripts/ci-local-act.sh -o           # Offline mode
 ```
 
-**Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation).
+**CI is split into 4 independent workflows** that `ci-local-act.sh` runs sequentially:
+1. `ci-shared.yml` — Lint, typecheck, backend tests (shared across all packages)
+2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
+3. `ci-admin.yml` — Admin app: same checks as web
+4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)
+
+Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling both GitHub Actions and act-specific cache-aware setup automatically.
+
+**Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation) and bind-mount mode (`-b`) to make composite actions visible to act.
 
 **When to use which**:
 - `bun run ci` — Fast native checks, no Docker required
@@ -267,36 +293,47 @@ The offline flag (`-o`) adds:
 
 #### Pattern for Adding New Tools
 
-When introducing a new tool that downloads from the internet (like Bun, Playwright, etc.), follow this pattern in `.github/workflows/ci.yml`:
+When introducing a new tool that downloads from the internet, create a **composite action** in `.github/actions/<tool-name>/action.yml`:
 
 ```yaml
-# Standard GitHub Actions (uses official setup action)
-- name: Setup ToolName
-  if: ${{ !env.ACT }}
-  uses: vendor/setup-toolname@v1
-  with:
-    version: "1.2.3"
+name: 'Setup ToolName'
+runs:
+  using: 'composite'
+  steps:
+    # Standard GitHub Actions (uses official setup action)
+    - name: Setup ToolName
+      if: ${{ !env.ACT }}
+      uses: vendor/setup-toolname@v1
+      with:
+        version: "1.2.3"
 
-# act offline mode (checks cache first, downloads if needed)
-- name: Setup ToolName (act)
-  if: ${{ env.ACT }}
-  run: |
-    TOOL_DIR="/path/to/cache"
-    if [ -x "$TOOL_DIR/bin/tool" ]; then
-      echo "Tool already installed"
-    else
-      # Download and install tool
-      curl -fsSL https://example.com/install.sh | bash
-    fi
-    echo "$TOOL_DIR/bin" >> $GITHUB_PATH
+    # act offline mode (checks cache first, downloads if needed)
+    - name: Setup ToolName (act)
+      if: ${{ env.ACT }}
+      shell: bash
+      run: |
+        TOOL_DIR="/path/to/cache"
+        if [ -x "$TOOL_DIR/bin/tool" ]; then
+          echo "Tool already installed"
+        else
+          curl -fsSL https://example.com/install.sh | bash
+        fi
+        echo "$TOOL_DIR/bin" >> $GITHUB_PATH
+```
+
+Then use it in any workflow job:
+```yaml
+steps:
+  - uses: ./.github/actions/setup-toolname
 ```
 
 **Key principles:**
-1. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup steps
-2. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
-3. Check if the tool exists before downloading
-4. Install to a path that's mounted as a Docker volume
-5. Add the tool to `$GITHUB_PATH`
+1. Use composite actions to avoid duplicating setup across workflows
+2. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup steps
+3. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
+4. Check if the tool exists before downloading
+5. Install to a path that's mounted as a Docker volume
+6. Add the tool to `$GITHUB_PATH`
 
 #### Currently Cached Tools
 
@@ -324,9 +361,9 @@ docker volume rm act-bun-cache act-playwright-cache act-toolcache
 
 | Test Type | Framework | Use For | Location |
 |-----------|-----------|---------|----------|
-| Unit | Bun | Pure functions, utilities, helpers | `apps/web/qa/tests/*.test.ts` |
-| Component | Vitest | React components, UI interactions | `apps/web/qa/tests/*.test.tsx` |
-| E2E | Playwright | Full user flows, navigation, auth | `apps/web/qa/e2e/*.spec.ts` |
+| Unit | Bun | Pure functions, utilities, helpers | `apps/*/qa/tests/*.test.ts` |
+| Component | Vitest | React components, UI interactions | `apps/*/qa/tests/*.test.tsx` |
+| E2E | Playwright | Full user flows, navigation, auth | `apps/*/qa/e2e/*.spec.ts` |
 | Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` |
 
 ### Bun Test Pattern (Utility Functions)
@@ -750,9 +787,9 @@ bun run test:watch
 | Task Type | Recommended Approach |
 |-----------|---------------------|
 | **Research** | Read files, grep patterns, understand codebase |
-| **Unit Test** | Create test in `apps/web/qa/tests/`, implement function, verify with `bun run test` |
-| **Component** | Create test in `apps/web/qa/tests/`, implement component, verify with Vitest |
-| **E2E Flow** | Create spec in `apps/web/qa/e2e/`, implement, verify with Playwright |
+| **Unit Test** | Create test in `apps/<app>/qa/tests/`, implement function, verify with `bun run test` |
+| **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
+| **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
 | **Shared UI** | Add component in `packages/ui/src/`, export from index.ts |
 
