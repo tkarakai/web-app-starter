@@ -1,5 +1,5 @@
 name: "Setup Bun Environment"
-description: "Checkout, install Node, Bun, cache dependencies, and run bun install"
+description: "Install Node, Bun, cache dependencies, and run bun install. Requires actions/checkout first."
 
 inputs:
   bun-version:
@@ -12,9 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
     - name: Setup Node
       if: ${{ !env.ACT }}
       uses: actions/setup-node@v4

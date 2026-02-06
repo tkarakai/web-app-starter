@@ -74,6 +74,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
 
       - name: Run Bun tests
@@ -129,6 +130,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
 
       - name: Build
@@ -147,6 +149,7 @@ jobs:
     if: needs.changes.outputs.should_run == 'true' && github.event.pull_request.draft == false
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-playwright
 
