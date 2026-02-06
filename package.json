@@ -11,6 +11,7 @@
     "dev:web": "./scripts/dev-start.sh --app=web",
     "dev:admin": "./scripts/dev-start.sh --app=admin",
     "dev:landing": "./scripts/dev-start.sh --app=landing",
+    "dev:design": "./scripts/dev-start.sh --app=design",
     "ensure-local": "./scripts/ensure-local-deps.sh",
     "dev:stop": "./scripts/dev-stop.sh",
     "dev:status": "./scripts/dev-status.sh",

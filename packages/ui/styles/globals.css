@@ -31,6 +31,21 @@
   --radius: 16px;
 }
 
+.dark {
+  --background: 222 20% 10%;
+  --foreground: 30 20% 92%;
+  --card: 222 18% 14%;
+  --card-foreground: 30 20% 92%;
+  --primary: 18 88% 58%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 222 14% 20%;
+  --muted-foreground: 30 10% 62%;
+  --accent: 200 55% 50%;
+  --accent-foreground: 0 0% 100%;
+  --border: 222 14% 22%;
+  --ring: 18 88% 58%;
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));

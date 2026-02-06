@@ -1,0 +1,114 @@
+"use client";
+
+import * as React from "react";
+import { Loader2, Mail, Plus } from "lucide-react";
+import { Button } from "@repo/ui";
+
+import { ComponentPage } from "@/components/component-page";
+import { DemoSection } from "@/components/demo-section";
+
+export default function ButtonPage() {
+  const [loading, setLoading] = React.useState(false);
+
+  function handleLoadingClick() {
+    setLoading(true);
+    setTimeout(() => setLoading(false), 2000);
+  }
+
+  return (
+    <ComponentPage
+      title="Button"
+      description="Trigger actions and events with multiple variants and sizes."
+    >
+      <DemoSection title="Variants">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="default">Default</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="outline">Outline</Button>
+          <Button variant="ghost">Ghost</Button>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Sizes">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button size="sm">Small</Button>
+          <Button size="md">Medium</Button>
+          <Button size="lg">Large</Button>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="With Icons">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button>
+            <Mail className="h-4 w-4" />
+            Send Email
+          </Button>
+          <Button variant="outline">
+            <Plus className="h-4 w-4" />
+            Add Item
+          </Button>
+          <Button variant="secondary" size="sm">
+            <Mail className="h-4 w-4" />
+            Compact
+          </Button>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Loading State">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button disabled onClick={handleLoadingClick}>
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loading ? "Saving..." : "Click to save"}
+          </Button>
+          <Button onClick={handleLoadingClick}>
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loading ? "Saving..." : "Click to save"}
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            {loading
+              ? "Loading for 2 seconds..."
+              : "Click the button to see the loading state."}
+          </p>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Disabled">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button disabled>Default</Button>
+          <Button variant="secondary" disabled>
+            Secondary
+          </Button>
+          <Button variant="outline" disabled>
+            Outline
+          </Button>
+          <Button variant="ghost" disabled>
+            Ghost
+          </Button>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="All Variants × All Sizes">
+        <div className="space-y-3">
+          {(["default", "secondary", "outline", "ghost"] as const).map(
+            (variant) => (
+              <div key={variant} className="flex items-center gap-3">
+                <span className="w-20 text-xs font-mono text-muted-foreground">
+                  {variant}
+                </span>
+                <Button variant={variant} size="sm">
+                  Small
+                </Button>
+                <Button variant={variant} size="md">
+                  Medium
+                </Button>
+                <Button variant={variant} size="lg">
+                  Large
+                </Button>
+              </div>
+            )
+          )}
+        </div>
+      </DemoSection>
+    </ComponentPage>
+  );
+}
