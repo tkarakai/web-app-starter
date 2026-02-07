@@ -155,6 +155,18 @@ export function TaskList({ projectId }: TaskListProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {tasks.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {doneCount} of {tasks.length} tasks done
+              </span>
+              <span>{progress}%</span>
+            </div>
+            <Progress value={progress} />
+          </div>
+        )}
+
         {filteredTasks.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
             No tasks yet. Add one to get started.
@@ -164,18 +176,6 @@ export function TaskList({ projectId }: TaskListProps) {
             {filteredTasks.map((task) => (
               <TaskRow key={task._id} task={task} />
             ))}
-          </div>
-        )}
-
-        {tasks.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {doneCount} of {tasks.length} tasks done
-              </span>
-              <span>{progress}%</span>
-            </div>
-            <Progress value={progress} />
           </div>
         )}
       </CardContent>

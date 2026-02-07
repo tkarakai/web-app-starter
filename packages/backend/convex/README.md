@@ -1,12 +1,7 @@
-# Convex Backend
+# Welcome to your Convex functions directory!
 
-This directory (`packages/backend/convex/`) contains all Convex backend functions (queries, mutations, actions) and the database schema. This is part of the `@repo/backend` shared package in the monorepo.
-
-Apps import the Convex API via `import { api } from "@repo/backend"`.
-
-## Writing Convex Functions
-
-Write your Convex functions here. See https://docs.convex.dev/functions for more.
+Write your Convex functions here.
+See https://docs.convex.dev/functions for more.
 
 A query function that takes two arguments looks like:
 
@@ -91,5 +86,5 @@ function handleButtonPress() {
 ```
 
 Use the Convex CLI to push your functions to a deployment. See everything
-the Convex CLI can do by running `bunx convex -h` in your project root
-directory. To learn more, launch the docs with `bunx convex docs`.
+the Convex CLI can do by running `npx convex -h` in your project root
+directory. To learn more, launch the docs with `npx convex docs`.

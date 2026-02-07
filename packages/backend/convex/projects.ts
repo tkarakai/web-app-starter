@@ -26,6 +26,50 @@ export const list = query({
   },
 });
 
+export const listWithStats = query({
+  args: {},
+  handler: async (ctx) => {
+    let user;
+    try {
+      user = await authComponent.getAuthUser(ctx);
+    } catch {
+      return [];
+    }
+    if (!user) {
+      return [];
+    }
+
+    const ownerId = (user.userId ?? user._id).toString();
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .order("desc")
+      .collect();
+
+    return Promise.all(
+      projects.map(async (project) => {
+        const tasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        const uploads = await ctx.db
+          .query("uploads")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        return {
+          ...project,
+          taskCount: tasks.length,
+          doneCount: tasks.filter((t) => t.status === "done").length,
+          uploadCount: uploads.length,
+        };
+      })
+    );
+  },
+});
+
 export const get = query({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
@@ -130,6 +174,17 @@ export const remove = mutation({
 
     for (const task of tasks) {
       await ctx.db.delete(task._id);
+    }
+
+    // Cascade delete all uploads belonging to this project
+    const uploads = await ctx.db
+      .query("uploads")
+      .withIndex("by_project", (q) => q.eq("projectId", args.id))
+      .collect();
+
+    for (const upload of uploads) {
+      await ctx.storage.delete(upload.storageId);
+      await ctx.db.delete(upload._id);
     }
 
     await ctx.db.delete(args.id);

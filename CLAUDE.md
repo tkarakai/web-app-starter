@@ -678,6 +678,55 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 
 ## Common Patterns
 
+### Route Protection (Authentication)
+
+The web app uses a **three-layer** auth system. New protected pages get all three layers automatically by placing them under `src/app/(dashboard)/`.
+
+| Layer | Where | What it does | Speed |
+|-------|-------|-------------|-------|
+| **Middleware** | `src/middleware.ts` | Cookie-presence check (Edge) | ~1ms |
+| **Layout** | `src/app/(dashboard)/layout.tsx` | Full session validation + user preload (RSC) | ~50ms |
+| **AuthGuard** | `src/components/auth/auth-guard.tsx` | Client-side session watcher + redirect | Ongoing |
+
+**To add a new protected page:** just create it under `src/app/(dashboard)/`:
+
+```
+src/app/(dashboard)/
+  layout.tsx          ← auth check (already exists, shared by all pages)
+  dashboard/page.tsx  ← existing page
+  settings/page.tsx   ← new page — automatically protected!
+```
+
+**To access the current user** in any client component under `(dashboard)/`:
+
+```typescript
+import { useAuthUser } from "@/components/auth/auth-guard";
+
+export function MyComponent() {
+  const user = useAuthUser(); // { name?, email? } | null
+  return <span>{user?.name ?? "Anonymous"}</span>;
+}
+```
+
+**How the layers work together:**
+
+1. **Middleware** (Edge, instant): Checks for the `better-auth.session_token` cookie. No cookie → redirect to `/sign-in`. Also redirects authenticated users away from `/sign-in` and `/sign-up` to `/dashboard`.
+2. **Layout** (Server Component): Calls `isAuthenticated()` for full session validation, then `preloadAuthQuery(api.auth.getCurrentUser)` to SSR the user data. Catches stale-session errors (e.g. signed out in another tab) and redirects.
+3. **AuthGuard** (Client Component): Subscribes to the Convex user query for real-time updates and watches the Better Auth session. If the session is invalidated while the page is open, redirects immediately.
+
+**Backend safety:** The `getCurrentUser` Convex query returns `null` (not throws) when unauthenticated, so client-side subscriptions degrade gracefully instead of crashing.
+
+**To add a route to middleware protection:** edit the `PROTECTED_PREFIXES` array in `src/middleware.ts`. Auth-page redirects use the `AUTH_ROUTES` array.
+
+### Guest Pages (Auth Pages)
+
+Auth pages (`/sign-in`, `/sign-up`) are wrapped by `GuestGuard` via `src/app/(auth)/layout.tsx`. When a user logs in on another tab:
+
+1. **BroadcastChannel** (instant): The auth form calls `broadcastAuth()` on success. Other tabs' `GuestGuard` receives the message and redirects to `/dashboard`.
+2. **Visibility fallback**: When the tab becomes visible, `GuestGuard` calls `authClient.getSession()` to check for an active session and redirects if found.
+
+**To broadcast auth from a new login flow:** call `broadcastAuth()` from `@/lib/auth-broadcast` after successful authentication.
+
 ### Client vs Server Components
 
 ```typescript

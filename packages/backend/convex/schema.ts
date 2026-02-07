@@ -30,7 +30,10 @@ export default defineSchema({
     name: v.string(),
     contentType: v.string(),
     size: v.number(),
+    projectId: v.id("projects"),
     ownerId: v.string(),
     createdAt: v.number(),
-  }).index("by_owner", ["ownerId"]),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_project", ["projectId"]),
 });

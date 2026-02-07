@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { FolderKanban, LogOut, Plus } from "lucide-react";
+import { ChevronRight, LogOut, Monitor, Moon, Plus, Sun } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
+import { useTheme } from "next-themes";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -12,6 +13,9 @@ import {
   Avatar,
   AvatarFallback,
   Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -19,6 +23,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -38,6 +43,7 @@ import {
   useSidebar,
 } from "@repo/design-system";
 import { normalizeText } from "@/lib/projects";
+import { AppLogo } from "@/components/app-logo";
 
 type Project = {
   _id: Id<"projects">;
@@ -52,7 +58,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   displayName: string;
   displayEmail?: string;
   selectedProjectId: Id<"projects"> | null;
-  onSelectProject: (id: Id<"projects">) => void;
+  onSelectProject: (id: Id<"projects"> | null) => void;
 };
 
 export function AppSidebar({
@@ -64,6 +70,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const router = useRouter();
   const { state } = useSidebar();
+  const { setTheme, theme } = useTheme();
   const isCollapsed = state === "collapsed";
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
@@ -73,6 +80,7 @@ export function AppSidebar({
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [projectsOpen, setProjectsOpen] = React.useState(true);
 
   const initials = displayName
     .split(" ")
@@ -115,9 +123,9 @@ export function AppSidebar({
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Projects" className="font-semibold">
-                <FolderKanban className="h-4 w-4" />
-                <span>Projects</span>
+              <SidebarMenuButton tooltip="Web App Starter" className="font-semibold">
+                <AppLogo size={20} />
+                <span>Web App Starter</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -125,37 +133,48 @@ export function AppSidebar({
 
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Projects</SidebarGroupLabel>
-            <SidebarGroupAction onClick={() => setDialogOpen(true)} title="New project">
-              <Plus className="h-4 w-4" />
-            </SidebarGroupAction>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {projects.length === 0 ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className="text-muted-foreground italic"
-                      onClick={() => setDialogOpen(true)}
-                      tooltip="Create your first project"
-                    >
-                      <span>No projects</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ) : (
-                  projects.map((project) => (
-                    <SidebarMenuItem key={project._id}>
-                      <SidebarMenuButton
-                        isActive={project._id === selectedProjectId}
-                        onClick={() => onSelectProject(project._id)}
-                        tooltip={project.name}
-                      >
-                        <span className="truncate">{project.name}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
+            <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="group/projects">
+              <div className="flex items-center">
+                <CollapsibleTrigger asChild>
+                  <SidebarGroupLabel className="flex-1 cursor-pointer">
+                    <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/projects:rotate-90" />
+                    Projects
+                  </SidebarGroupLabel>
+                </CollapsibleTrigger>
+                <SidebarGroupAction onClick={() => setDialogOpen(true)} title="New project">
+                  <Plus className="h-4 w-4" />
+                </SidebarGroupAction>
+              </div>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {projects.length === 0 ? (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          className="text-muted-foreground italic"
+                          onClick={() => setDialogOpen(true)}
+                          tooltip="Create your first project"
+                        >
+                          <span>No projects</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ) : (
+                      projects.map((project) => (
+                        <SidebarMenuItem key={project._id}>
+                          <SidebarMenuButton
+                            isActive={project._id === selectedProjectId}
+                            onClick={() => onSelectProject(project._id)}
+                            tooltip={project.name}
+                          >
+                            <span className="truncate">{project.name}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))
+                    )}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
           </SidebarGroup>
         </SidebarContent>
 
@@ -184,6 +203,22 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-48">
+                  <DropdownMenuItem onSelect={() => setTheme("light")}>
+                    <Sun className="mr-2 h-4 w-4" />
+                    Light
+                    {theme === "light" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setTheme("dark")}>
+                    <Moon className="mr-2 h-4 w-4" />
+                    Dark
+                    {theme === "dark" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setTheme("system")}>
+                    <Monitor className="mr-2 h-4 w-4" />
+                    System
+                    {theme === "system" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out

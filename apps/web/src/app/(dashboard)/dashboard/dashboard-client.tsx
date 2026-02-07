@@ -1,36 +1,41 @@
 "use client";
 
 import * as React from "react";
-import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
-import { Preloaded, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
   Separator,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@repo/design-system";
+import { useAuthUser } from "@/components/auth/auth-guard";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { EmptyState } from "@/components/projects/empty-state";
 import { ProjectHeader } from "@/components/projects/project-header";
+import { ProjectSummary } from "@/components/projects/project-summary";
 import { TaskList } from "@/components/projects/task-list";
 import { UploadPanel } from "@/components/projects/upload-panel";
 
-type DashboardClientProps = {
-  preloadedUser: Preloaded<typeof api.auth.getCurrentUser>;
-};
-
-export function DashboardClient({ preloadedUser }: DashboardClientProps) {
-  const user = usePreloadedAuthQuery(preloadedUser);
-  const session = authClient.useSession();
+export function DashboardClient() {
+  const authUser = useAuthUser();
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<Id<"projects"> | null>(null);
 
-  const displayName = user?.name ?? session.data?.user?.name ?? "Anonymous";
-  const displayEmail = user?.email ?? session.data?.user?.email;
+  const displayName = authUser?.name ?? "Anonymous";
+  const displayEmail = authUser?.email;
 
   return (
     <SidebarProvider>
@@ -47,7 +52,10 @@ export function DashboardClient({ preloadedUser }: DashboardClientProps) {
             orientation="vertical"
             className="mr-2 data-[orientation=vertical]:h-4"
           />
-          <span className="text-sm font-medium text-foreground">Dashboard</span>
+          <DashboardBreadcrumbs
+            selectedProjectId={selectedProjectId}
+            onNavigateToProjects={() => setSelectedProjectId(null)}
+          />
         </header>
 
         <div className="flex flex-1 flex-col">
@@ -57,14 +65,82 @@ export function DashboardClient({ preloadedUser }: DashboardClientProps) {
               onDeleted={() => setSelectedProjectId(null)}
             />
           ) : (
-            <EmptyState
-              title="No project selected"
-              description="Create a project to get started, or select one from the sidebar."
-            />
+            <ProjectsOverview onSelectProject={setSelectedProjectId} />
           )}
         </div>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+function DashboardBreadcrumbs({
+  selectedProjectId,
+  onNavigateToProjects,
+}: {
+  selectedProjectId: Id<"projects"> | null;
+  onNavigateToProjects: () => void;
+}) {
+  const project = useQuery(
+    api.projects.get,
+    selectedProjectId ? { id: selectedProjectId } : "skip"
+  );
+
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        {selectedProjectId ? (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                className="cursor-pointer"
+                onClick={onNavigateToProjects}
+              >
+                Projects
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{project?.name ?? "..."}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : (
+          <BreadcrumbItem>
+            <BreadcrumbPage>Projects</BreadcrumbPage>
+          </BreadcrumbItem>
+        )}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+function ProjectsOverview({
+  onSelectProject,
+}: {
+  onSelectProject: (id: Id<"projects">) => void;
+}) {
+  const projects = useQuery(api.projects.list);
+
+  if (projects === undefined) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="No projects yet"
+        description="Create a project to get started."
+      />
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-4xl p-6">
+      <ProjectSummary onSelectProject={onSelectProject} />
+    </div>
   );
 }
 
@@ -97,8 +173,18 @@ function ProjectContent({
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
       <ProjectHeader project={project} onDeleted={onDeleted} />
-      <TaskList projectId={projectId} />
-      <UploadPanel />
+      <Tabs defaultValue="tasks">
+        <TabsList>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="attachments">Attachments</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tasks" className="mt-4">
+          <TaskList projectId={projectId} />
+        </TabsContent>
+        <TabsContent value="attachments" className="mt-4">
+          <UploadPanel projectId={projectId} collapsible={false} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

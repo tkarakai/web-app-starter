@@ -70,12 +70,20 @@ export function TaskRow({ task }: TaskRowProps) {
   const [description, setDescription] = React.useState(task.description);
   const [status, setStatus] = React.useState<TaskStatus>(task.status);
   const [submitting, setSubmitting] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false);
 
   React.useEffect(() => {
     setTitle(task.title);
     setDescription(task.description);
     setStatus(task.status);
   }, [task.title, task.description, task.status]);
+
+  // Auto-revert the confirm state after 2 seconds
+  React.useEffect(() => {
+    if (!confirming) return;
+    const timer = setTimeout(() => setConfirming(false), 2000);
+    return () => clearTimeout(timer);
+  }, [confirming]);
 
   const handleToggleStatus = async () => {
     await updateTask({ id: task._id, status: statusCycle[task.status] });
@@ -100,7 +108,11 @@ export function TaskRow({ task }: TaskRowProps) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = async () => {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
     await removeTask({ id: task._id });
   };
 
@@ -146,11 +158,15 @@ export function TaskRow({ task }: TaskRowProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={handleDelete}
+              className={`h-7 w-7 p-0 ${confirming ? "text-destructive opacity-100" : "text-muted-foreground hover:text-destructive"}`}
+              onClick={handleDeleteClick}
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span className="sr-only">Delete task</span>
+              {confirming ? (
+                <CircleCheck className="h-3.5 w-3.5" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              <span className="sr-only">{confirming ? "Confirm delete" : "Delete task"}</span>
             </Button>
           </div>
         </div>

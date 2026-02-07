@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Raleway } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
@@ -24,9 +25,11 @@ export default async function RootLayout({
   const token = await getToken();
 
   return (
-    <html lang="en" className={raleway.variable}>
+    <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
-        <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 import { authClient } from "@repo/auth/client";
+import { broadcastAuth } from "@/lib/auth-broadcast";
 import {
   Button,
   Card,
@@ -45,10 +46,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (mode === "sign-up" && password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setPending(true);
 
     try {
@@ -63,6 +71,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         if (result.error) {
           setError(result.error.message ?? "An error occurred");
         } else {
+          broadcastAuth();
           router.push("/dashboard");
         }
         return;
@@ -78,6 +87,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       if (result.error) {
         setError(result.error.message ?? "An error occurred");
       } else {
+        broadcastAuth();
         router.push("/dashboard");
       }
     } finally {
@@ -130,13 +140,28 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               id="password"
               name="password"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder={mode === "sign-in" ? "Your password" : "At least 8 characters"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              minLength={8}
+              {...(mode === "sign-up" ? { minLength: 8 } : {})}
             />
           </div>
+          {mode === "sign-up" ? (
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Input
+                id="confirm-password"
+                name="confirm-password"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+          ) : null}
           {error ? (
             <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
               {error}

@@ -567,6 +567,12 @@ if [ "$START_LANDING" = true ]; then
         echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
     fi
     start_next_app "landing" 3000
+
+    # Set the landing URL in the web app so auth pages can link back
+    if [ "$START_WEB" = true ] && [ -n "$LAST_APP_URL" ]; then
+        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LAST_APP_URL"
+        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LAST_APP_URL for web"
+    fi
 fi
 
 if [ "$START_STORYBOOK" = true ]; then

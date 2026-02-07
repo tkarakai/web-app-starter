@@ -1,12 +1,13 @@
-## Higher Priority
+## Now
 
+i ran "bun ci:act". please review all outputs in the .act-artifacts folder (start with summary.log) and fix the errors you see that should be fixed.
+
+## Higher Priority
+- where t preserve build artifacts in github? both logs (the same as the content of .act-artifacts, but on github), as well as deployable artifacts that can go to vercel
 - i18n
 - a11y
 - next.js bundle analyzer and production optimization
 - SEO for landing page
-- Add security headers via Next.js middleware or config
-  - Content-Security-Policy, X-Frame-Options, and Strict-Transport-Security
-- auth: confirm password field
 - email provider
   - Resend, SendGrid, or Postmark
 - auth: magic link
