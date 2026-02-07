@@ -66,8 +66,6 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       await saveUpload({
         storageId,
         name: file.name,
-        contentType: file.type || "application/octet-stream",
-        size: file.size,
         projectId,
       });
 

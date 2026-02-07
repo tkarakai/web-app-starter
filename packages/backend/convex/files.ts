@@ -15,22 +15,27 @@ export const saveUpload = authedMutation({
   args: {
     storageId: v.id("_storage"),
     name: v.string(),
-    contentType: v.string(),
-    size: v.number(),
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    if (args.size > MAX_FILE_SIZE) {
-      throw new Error("File too large (max 1MB)");
+    await requireProjectAccess(ctx, args.projectId);
+
+    // Read actual file metadata from storage — never trust client-provided values
+    const fileMeta = await ctx.db.system.get(args.storageId);
+    if (!fileMeta) {
+      throw new Error("File not found in storage");
     }
 
-    await requireProjectAccess(ctx, args.projectId);
+    if (fileMeta.size > MAX_FILE_SIZE) {
+      await ctx.storage.delete(args.storageId);
+      throw new Error("File too large (max 1MB)");
+    }
 
     return ctx.db.insert("uploads", {
       storageId: args.storageId,
       name: args.name,
-      contentType: args.contentType,
-      size: args.size,
+      contentType: fileMeta.contentType ?? "application/octet-stream",
+      size: fileMeta.size,
       projectId: args.projectId,
       ownerId: ctx.ownerId,
       createdAt: Date.now(),

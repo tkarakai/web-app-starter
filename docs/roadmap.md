@@ -5,7 +5,7 @@
 ## Higher Priority
 - versioning? all apps version synchronized? yes! Version info visible in app?
 - About page, T&C, Privacy page templates
-- framework level (app independent, but assuming convex and better-auth as foundational) security tests
+- framework level (app independent, but assuming convex and better-auth as foundational) security tests. I am afraid of issues that are present in Google's Firebase where users share tables and the default access control does not address row based access...
 - is packages/backend/convex/meta.ts a public health check endpoint? healthcheck?
 - GitHub built-in: Email notifications for failed workflows
 - uptime page? it can also include deployment status (poll github status API)?
