@@ -1,25 +1,21 @@
 import type { Metadata } from "next";
-import { Fraunces, Space_Grotesk } from "next/font/google";
+import { headers } from "next/headers";
+import { Raleway } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 
-const spaceGrotesk = Space_Grotesk({
+const raleway = Raleway({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Launchpad Starter",
-  description: "A Bun-first Next.js starter wired to Convex and Better Auth.",
+  title: "Web App Starter",
+  description: "A Next.js starter with Convex, Better Auth, and Bun.",
 };
 
 export default async function RootLayout({
@@ -27,12 +23,17 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const token = await getToken();
+  const [token, nonce] = await Promise.all([
+    getToken(),
+    headers().then((h) => h.get("x-nonce") ?? undefined),
+  ]);
 
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${fraunces.variable}`}>
+    <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
-        <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
+          <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

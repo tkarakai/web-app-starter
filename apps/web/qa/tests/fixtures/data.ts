@@ -8,21 +8,22 @@
  * @module tests/fixtures/data
  */
 
-/**
- * LaunchItem fixture type matching convex/schema.ts
- */
-export interface LaunchItemFixture {
-  title: string;
+export interface ProjectFixture {
+  name: string;
   description: string;
-  status: "idea" | "building" | "shipping";
-  priority: number;
   ownerId: string;
   createdAt: number;
 }
 
-/**
- * Upload fixture type matching convex/schema.ts
- */
+export interface TaskFixture {
+  title: string;
+  description: string;
+  status: "todo" | "in_progress" | "done";
+  projectId: string;
+  ownerId: string;
+  createdAt: number;
+}
+
 export interface UploadFixture {
   storageId: string;
   name: string;
@@ -32,70 +33,66 @@ export interface UploadFixture {
   createdAt: number;
 }
 
-/**
- * Test owner IDs for consistent fixture relationships
- */
 export const testOwners = {
   alice: "test-user-alice",
   bob: "test-user-bob",
   charlie: "test-user-charlie",
 } as const;
 
-/**
- * Sample launch item fixtures
- */
-export const launchItemFixtures: LaunchItemFixture[] = [
+export const projectFixtures: ProjectFixture[] = [
   {
-    title: "Build authentication system",
-    description: "Implement user login and registration with email/password",
-    status: "shipping",
-    priority: 1,
+    name: "Website Redesign",
+    description: "Redesign the marketing website with new brand guidelines",
     ownerId: testOwners.alice,
-    createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
+    createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000,
   },
   {
-    title: "Add dark mode support",
-    description: "Implement theme switching with system preference detection",
-    status: "building",
-    priority: 2,
+    name: "Mobile App",
+    description: "Build a cross-platform mobile app",
     ownerId: testOwners.alice,
-    createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000, // 3 days ago
+    createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
   },
   {
-    title: "Mobile responsive design",
-    description: "Ensure all pages work well on mobile devices",
-    status: "building",
-    priority: 3,
+    name: "API Layer",
+    description: "Design and implement the REST API",
     ownerId: testOwners.bob,
-    createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
+    createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000,
   },
+];
+
+export const taskFixtures: TaskFixture[] = [
   {
-    title: "API rate limiting",
-    description: "Implement rate limiting to prevent abuse",
-    status: "idea",
-    priority: 4,
+    title: "Design landing page",
+    description: "Create wireframes and mockups for the new landing page",
+    status: "todo",
+    projectId: "placeholder-project-1",
     ownerId: testOwners.alice,
-    createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000, // 1 day ago
+    createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
   },
   {
-    title: "File upload feature",
-    description: "Allow users to upload and manage files",
-    status: "idea",
-    priority: 5,
-    ownerId: testOwners.charlie,
+    title: "Set up CI pipeline",
+    description: "Configure GitHub Actions for automated testing",
+    status: "in_progress",
+    projectId: "placeholder-project-1",
+    ownerId: testOwners.alice,
+    createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
+  },
+  {
+    title: "Write auth tests",
+    description: "Unit and integration tests for authentication",
+    status: "done",
+    projectId: "placeholder-project-1",
+    ownerId: testOwners.alice,
     createdAt: Date.now(),
   },
 ];
 
-/**
- * Sample upload fixtures
- */
 export const uploadFixtures: UploadFixture[] = [
   {
     storageId: "storage-id-1",
     name: "profile-photo.jpg",
     contentType: "image/jpeg",
-    size: 1024 * 100, // 100KB
+    size: 1024 * 100,
     ownerId: testOwners.alice,
     createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
   },
@@ -103,22 +100,29 @@ export const uploadFixtures: UploadFixture[] = [
     storageId: "storage-id-2",
     name: "document.pdf",
     contentType: "application/pdf",
-    size: 1024 * 500, // 500KB
+    size: 1024 * 500,
     ownerId: testOwners.bob,
     createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
   },
 ];
 
-/**
- * Factory functions for creating custom fixtures
- */
-export const createLaunchItem = (
-  overrides: Partial<LaunchItemFixture> = {}
-): LaunchItemFixture => ({
-  title: "Test Launch Item",
-  description: "A test item for automated testing",
-  status: "idea",
-  priority: 10,
+export const createProject = (
+  overrides: Partial<ProjectFixture> = {}
+): ProjectFixture => ({
+  name: "Test Project",
+  description: "A test project for automated testing",
+  ownerId: testOwners.alice,
+  createdAt: Date.now(),
+  ...overrides,
+});
+
+export const createTask = (
+  overrides: Partial<TaskFixture> = {}
+): TaskFixture => ({
+  title: "Test Task",
+  description: "A test task for automated testing",
+  status: "todo",
+  projectId: "placeholder-project",
   ownerId: testOwners.alice,
   createdAt: Date.now(),
   ...overrides,
@@ -136,83 +140,50 @@ export const createUpload = (
   ...overrides,
 });
 
-/**
- * Bulk fixture generators for testing pagination and lists
- */
-export const createManyLaunchItems = (
+export const createManyTasks = (
   count: number,
-  ownerId: string = testOwners.alice
-): LaunchItemFixture[] => {
+  ownerId: string = testOwners.alice,
+  projectId: string = "placeholder-project"
+): TaskFixture[] => {
   return Array.from({ length: count }, (_, i) =>
-    createLaunchItem({
-      title: `Launch Item ${i + 1}`,
-      description: `Description for item ${i + 1}`,
-      priority: i + 1,
+    createTask({
+      title: `Task ${i + 1}`,
+      description: `Description for task ${i + 1}`,
       ownerId,
-      createdAt: Date.now() - i * 60 * 60 * 1000, // 1 hour apart
+      projectId,
+      createdAt: Date.now() - i * 60 * 60 * 1000,
     })
   );
 };
 
-/**
- * Scenario-based fixtures for common test cases
- */
 export const scenarios = {
-  /**
-   * Empty state - no data
-   */
   empty: {
-    launchItems: [] as LaunchItemFixture[],
+    projects: [] as ProjectFixture[],
+    tasks: [] as TaskFixture[],
     uploads: [] as UploadFixture[],
   },
 
-  /**
-   * Single user with a few items
-   */
   singleUser: {
-    launchItems: launchItemFixtures.filter((item) => item.ownerId === testOwners.alice),
-    uploads: uploadFixtures.filter((upload) => upload.ownerId === testOwners.alice),
+    projects: projectFixtures.filter((p) => p.ownerId === testOwners.alice),
+    tasks: taskFixtures.filter((t) => t.ownerId === testOwners.alice),
+    uploads: uploadFixtures.filter((u) => u.ownerId === testOwners.alice),
   },
 
-  /**
-   * Multiple users with items
-   */
   multiUser: {
-    launchItems: launchItemFixtures,
+    projects: projectFixtures,
+    tasks: taskFixtures,
     uploads: uploadFixtures,
   },
 
-  /**
-   * Items in all status states
-   */
   allStatuses: {
-    launchItems: [
-      createLaunchItem({ status: "idea", title: "Idea Item" }),
-      createLaunchItem({ status: "building", title: "Building Item" }),
-      createLaunchItem({ status: "shipping", title: "Shipping Item" }),
+    tasks: [
+      createTask({ status: "todo", title: "To Do Task" }),
+      createTask({ status: "in_progress", title: "In Progress Task" }),
+      createTask({ status: "done", title: "Done Task" }),
     ],
-    uploads: [],
   },
 
-  /**
-   * Large dataset for pagination testing
-   */
   pagination: {
-    launchItems: createManyLaunchItems(50),
-    uploads: [],
+    tasks: createManyTasks(50),
   },
-};
-
-/**
- * Helper to reset fixture timestamps to relative values
- * Useful when you need consistent time-based testing
- */
-export const withRelativeTime = (
-  fixtures: LaunchItemFixture[],
-  baseTime: number = Date.now()
-): LaunchItemFixture[] => {
-  return fixtures.map((fixture, index) => ({
-    ...fixture,
-    createdAt: baseTime - index * 60 * 60 * 1000,
-  }));
 };

@@ -3,7 +3,7 @@ import { test, expect, type ConsoleMessage } from "@playwright/test";
 test.describe("Admin Homepage", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Admin - Launchpad Starter");
+    await expect(page).toHaveTitle("Admin - Web App Starter");
   });
 
   test("displays the admin dashboard heading", async ({ page }) => {

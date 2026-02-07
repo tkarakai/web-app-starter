@@ -23,11 +23,12 @@
 # =============================================================================
 # MULTI-WORKFLOW ARCHITECTURE
 # =============================================================================
-# CI is split into 4 independent workflows:
-#   - ci-shared.yml:  Lint, typecheck, backend tests (run once across all packages)
-#   - ci-web.yml:     Web app tests, build, E2E
-#   - ci-admin.yml:   Admin app tests, build, E2E
-#   - ci-landing.yml: Landing app tests, build, E2E
+# CI is split into 5 independent workflows:
+#   - ci-shared.yml:    Lint, typecheck, backend tests (run once across all packages)
+#   - ci-web.yml:       Web app tests, build, E2E
+#   - ci-admin.yml:     Admin app tests, build, E2E
+#   - ci-landing.yml:   Landing app tests, build, E2E
+#   - ci-storybook.yml: Storybook app build, E2E
 #
 # Each workflow uses composite actions (.github/actions/setup-bun,
 # .github/actions/setup-playwright) for shared setup steps.
@@ -72,6 +73,7 @@ CI_WORKFLOWS=(
     ".github/workflows/ci-web.yml"
     ".github/workflows/ci-admin.yml"
     ".github/workflows/ci-landing.yml"
+    ".github/workflows/ci-storybook.yml"
 )
 
 # Friendly names for display (parallel arrays)
@@ -80,6 +82,7 @@ CI_WORKFLOW_NAMES=(
     "CI Web"
     "CI Admin"
     "CI Landing"
+    "CI Storybook"
 )
 
 # Short IDs for --workflow flag
@@ -88,6 +91,7 @@ CI_WORKFLOW_IDS=(
     "web"
     "admin"
     "landing"
+    "storybook"
 )
 
 # Table width settings

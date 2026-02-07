@@ -6,10 +6,11 @@ This document provides project-specific guidance for AI agents working on this c
 
 ```bash
 # Start development (Convex + all apps via dev-start.sh)
-bun run dev                  # All apps (landing:3000, web:3001, admin:3002)
+bun run dev                  # All apps (landing:3000, web:3001, admin:3002, storybook:3003)
 bun run dev:web              # Convex + web app only (port 3001)
 bun run dev:admin            # Convex + admin app only (port 3002)
 bun run dev:landing          # Landing page only (port 3000, no Convex)
+bun run dev:storybook        # Component storybook only (port 3003, no Convex)
 bun run dev:stop             # Stop all services
 bun run dev:status           # Show running processes
 
@@ -39,12 +40,12 @@ bun run build                # Build all apps via Turborepo
 ## Project Overview
 
 This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
-- **Three Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002)
-- **Three shared packages**: `@repo/ui`, `@repo/auth`, `@repo/backend`
+- **Four Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002), storybook (port 3003)
+- **Three shared packages**: `@repo/design-system`, `@repo/auth`, `@repo/backend`
 - **Convex** as the backend (database, file storage, API functions)
 - **Better Auth** wired to Convex for authentication
 - **React 19** with Server Components (App Router)
-- **Radix UI** for accessible UI primitives (in `@repo/ui`)
+- **Radix UI** for accessible UI primitives (in `@repo/design-system`)
 - **Tailwind CSS v4** for styling
 - **TypeScript** with strict mode enabled
 
@@ -75,10 +76,18 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │   └── qa/                  # Testing artifacts (same structure as web)
 │   │       ├── tests/           # Unit + component tests
 │   │       └── e2e/             # Playwright E2E specs
-│   └── landing/                 # Landing/marketing page (@repo/landing, port 3000)
+│   ├── landing/                 # Landing/marketing page (@repo/landing, port 3000)
+│   │   ├── src/
+│   │   └── qa/                  # Testing artifacts (same structure as web)
+│   │       ├── tests/           # Unit + component tests
+│   │       └── e2e/             # Playwright E2E specs
+│   └── storybook/               # Component storybook (@repo/storybook, port 3003)
 │       ├── src/
-│       └── qa/                  # Testing artifacts (same structure as web)
-│           ├── tests/           # Unit + component tests
+│       │   ├── app/             # Next.js App Router pages
+│       │   ├── components/      # Sidebar, page layout components
+│       │   ├── lib/             # Component registry
+│       │   └── showcase/        # Per-component demo files
+│       └── qa/
 │           └── e2e/             # Playwright E2E specs
 ├── packages/
 │   ├── backend/                 # Convex backend (@repo/backend)
@@ -93,11 +102,11 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │       ├── client.ts        # Client-side auth hooks
 │   │       ├── server.ts        # Server-side auth utilities
 │   │       └── provider.tsx     # Auth context provider
-│   └── ui/                      # Shared UI components (@repo/ui)
+│   └── design-system/           # Shared UI components (@repo/design-system)
 │       ├── src/                 # Radix UI + shadcn/ui components
 │       │   └── index.ts         # Component exports
-│       ├── styles/
-│       │   └── globals.css      # Global styles
+│       ├── tokens/
+│       │   └── index.css        # Design tokens / global styles
 │       └── tailwind.config.ts   # Shared Tailwind configuration
 ├── scripts/
 │   ├── dev-start.sh             # Start dev environment (Convex + apps)
@@ -116,6 +125,7 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │       ├── ci-web.yml           # Web app CI: test, build, E2E
 │       ├── ci-admin.yml         # Admin app CI: test, build, E2E
 │       ├── ci-landing.yml       # Landing app CI: test, build, E2E
+│       ├── ci-storybook.yml    # Storybook app CI: build, E2E (non-blocking)
 │       └── security.yml         # CodeQL, dependency audit, secrets scan
 ├── turbo.json                   # Turborepo task configuration
 └── package.json                 # Root workspace definition (Bun workspaces)
@@ -133,6 +143,7 @@ bun run dev                  # Uses scripts/dev-start.sh
 bun run dev:web              # Convex + web app (port 3001)
 bun run dev:admin            # Convex + admin app (port 3002)
 bun run dev:landing          # Landing only (port 3000, no Convex needed)
+bun run dev:storybook        # Component storybook only (port 3003, no Convex)
 
 # Check service status
 bun run dev:status           # Shows running processes
@@ -231,6 +242,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ./scripts/ci-local-act.sh -w web       # Just web app CI
 ./scripts/ci-local-act.sh -w admin     # Just admin app CI
 ./scripts/ci-local-act.sh -w landing   # Just landing app CI
+./scripts/ci-local-act.sh -w storybook # Just storybook app CI
 
 # Run a specific job
 ./scripts/ci-local-act.sh -j lint      # Just linting
@@ -238,11 +250,12 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ./scripts/ci-local-act.sh -o           # Offline mode
 ```
 
-**CI is split into 4 independent workflows** that `ci-local-act.sh` runs sequentially:
+**CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:
 1. `ci-shared.yml` — Lint, typecheck, backend tests (shared across all packages)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)
+5. `ci-storybook.yml` — Storybook app: build, E2E (non-blocking, not required for merge)
 
 Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling both GitHub Actions and act-specific cache-aware setup automatically.
 
@@ -391,7 +404,7 @@ describe("myFunction", () => {
 // apps/web/qa/tests/button.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { Button } from "@repo/ui";
+import { Button } from "@repo/design-system";
 
 describe("Button", () => {
   it("renders with text", () => {
@@ -561,16 +574,16 @@ export function formatPrice(amount) {
 ### React Components
 
 - Use **function components** exclusively (no class components)
-- Use **Radix UI primitives** from `@repo/ui` for accessibility
-- Shared components go in `packages/ui/src/`, app-specific in `apps/<app>/src/components/`
+- Use **Radix UI primitives** from `@repo/design-system` for accessibility
+- Shared components go in `packages/design-system/src/`, app-specific in `apps/<app>/src/components/`
 - Use package imports for shared code, path aliases for app-internal code
 
 ```typescript
 // App component: apps/web/src/components/launchpad/item-card.tsx
 "use client";
 
-import { Button } from "@repo/ui";            // Shared UI
-import { cn } from "@repo/ui";                 // Utility from shared package
+import { Button } from "@repo/design-system";            // Shared UI
+import { cn } from "@repo/design-system";                 // Utility from shared package
 import { api } from "@repo/backend";           // Convex API
 import { useMutation } from "convex/react";
 
@@ -624,12 +637,12 @@ export const createItem = mutation({
 ### CSS/Styling
 
 - Use **Tailwind CSS v4** utility classes
-- Use `cn()` utility from `@repo/ui` for conditional classes
+- Use `cn()` utility from `@repo/design-system` for conditional classes
 - Follow **mobile-first** responsive design
 - Use **CSS variables** for theming (`--foreground`, `--background`, etc.)
 
 ```typescript
-import { cn } from "@repo/ui";
+import { cn } from "@repo/design-system";
 
 <div className={cn(
   "flex items-center gap-2 p-4",
@@ -644,8 +657,8 @@ import { cn } from "@repo/ui";
 
 | Package | Import | Example |
 |---------|--------|---------|
-| `@repo/ui` | Components, utilities | `import { Button, cn } from "@repo/ui"` |
-| `@repo/ui` | Global styles | `import "@repo/ui/styles/globals.css"` |
+| `@repo/design-system` | Components, utilities | `import { Button, cn } from "@repo/design-system"` |
+| `@repo/design-system` | Global styles | `import "@repo/design-system/styles/globals.css"` |
 | `@repo/auth` | Client hooks | `import { authClient } from "@repo/auth/client"` |
 | `@repo/auth` | Server utilities | `import { auth } from "@repo/auth/server"` |
 | `@repo/auth` | Provider component | `import { AuthProvider } from "@repo/auth/provider"` |
@@ -664,6 +677,55 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 > **Note**: `@/` is app-internal only. For cross-package imports, always use `@repo/` package names.
 
 ## Common Patterns
+
+### Route Protection (Authentication)
+
+The web app uses a **three-layer** auth system. New protected pages get all three layers automatically by placing them under `src/app/(dashboard)/`.
+
+| Layer | Where | What it does | Speed |
+|-------|-------|-------------|-------|
+| **Proxy** | `src/proxy.ts` | Cookie-presence check + CSP headers (Edge) | ~1ms |
+| **Layout** | `src/app/(dashboard)/layout.tsx` | Full session validation + user preload (RSC) | ~50ms |
+| **AuthGuard** | `src/components/auth/auth-guard.tsx` | Client-side session watcher + redirect | Ongoing |
+
+**To add a new protected page:** just create it under `src/app/(dashboard)/`:
+
+```
+src/app/(dashboard)/
+  layout.tsx          ← auth check (already exists, shared by all pages)
+  dashboard/page.tsx  ← existing page
+  settings/page.tsx   ← new page — automatically protected!
+```
+
+**To access the current user** in any client component under `(dashboard)/`:
+
+```typescript
+import { useAuthUser } from "@/components/auth/auth-guard";
+
+export function MyComponent() {
+  const user = useAuthUser(); // { name?, email? } | null
+  return <span>{user?.name ?? "Anonymous"}</span>;
+}
+```
+
+**How the layers work together:**
+
+1. **Proxy** (Edge, instant): Checks for the `better-auth.session_token` cookie. No cookie → redirect to `/sign-in`. Also redirects authenticated users away from `/sign-in` and `/sign-up` to `/dashboard`. Sets CSP headers with nonce.
+2. **Layout** (Server Component): Calls `isAuthenticated()` for full session validation, then `preloadAuthQuery(api.auth.getCurrentUser)` to SSR the user data. Catches stale-session errors (e.g. signed out in another tab) and redirects.
+3. **AuthGuard** (Client Component): Subscribes to the Convex user query for real-time updates and watches the Better Auth session. If the session is invalidated while the page is open, redirects immediately.
+
+**Backend safety:** The `getCurrentUser` Convex query returns `null` (not throws) when unauthenticated, so client-side subscriptions degrade gracefully instead of crashing.
+
+**To add a route to proxy protection:** edit the `PROTECTED_PREFIXES` array in `src/proxy.ts`. Auth-page redirects use the `AUTH_ROUTES` array.
+
+### Guest Pages (Auth Pages)
+
+Auth pages (`/sign-in`, `/sign-up`) are wrapped by `GuestGuard` via `src/app/(auth)/layout.tsx`. When a user logs in on another tab:
+
+1. **BroadcastChannel** (instant): The auth form calls `broadcastAuth()` on success. Other tabs' `GuestGuard` receives the message and redirects to `/dashboard`.
+2. **Visibility fallback**: When the tab becomes visible, `GuestGuard` calls `authClient.getSession()` to check for an active session and redirects if found.
+
+**To broadcast auth from a new login flow:** call `broadcastAuth()` from `@/lib/auth-broadcast` after successful authentication.
 
 ### Client vs Server Components
 
@@ -791,7 +853,7 @@ bun run test:watch
 | **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
 | **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
-| **Shared UI** | Add component in `packages/ui/src/`, export from index.ts |
+| **Shared UI** | Add component in `packages/design-system/src/`, export from index.ts |
 
 ### Context Boundaries
 
@@ -844,7 +906,7 @@ bun run dev:stop && bun run dev:web
 | Test | same-name.test.ts(x) | `format.test.ts`, `button.test.tsx` |
 | E2E Test | descriptive.spec.ts | `auth-flow.spec.ts` |
 | Convex | camelCase.ts | `launchItems.ts` |
-| Package export | index.ts | `packages/ui/src/index.ts` |
+| Package export | index.ts | `packages/design-system/src/index.ts` |
 
 ## Verification Checklist
 

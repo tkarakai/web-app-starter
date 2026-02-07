@@ -69,15 +69,17 @@ runs:
       run: |
         # Retry logic: when multiple act containers share the same bun cache
         # volume, concurrent `bun install` can race on symlink creation (EEXIST).
-        for attempt in 1 2 3; do
+        MAX_ATTEMPTS=5
+        for attempt in $(seq 1 $MAX_ATTEMPTS); do
           if bun install --frozen-lockfile; then
             break
           fi
-          if [ "$attempt" -lt 3 ]; then
-            echo "bun install failed (attempt $attempt/3), retrying in ${attempt}s..."
-            sleep "$attempt"
+          if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+            delay=$((attempt * 2))
+            echo "bun install failed (attempt $attempt/$MAX_ATTEMPTS), retrying in ${delay}s..."
+            sleep "$delay"
           else
-            echo "bun install failed after 3 attempts"
+            echo "bun install failed after $MAX_ATTEMPTS attempts"
             exit 1
           fi
         done

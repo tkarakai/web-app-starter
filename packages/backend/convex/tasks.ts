@@ -1,0 +1,92 @@
+import { v } from "convex/values";
+
+import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
+
+export const listByProject = authedQuery({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await requireProjectAccess(ctx, args.projectId);
+
+    return ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const create = authedMutation({
+  args: {
+    title: v.string(),
+    description: v.string(),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("done")
+    ),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectAccess(ctx, args.projectId);
+
+    return ctx.db.insert("tasks", {
+      title: args.title,
+      description: args.description,
+      status: args.status,
+      projectId: args.projectId,
+      ownerId: ctx.ownerId,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const update = authedMutation({
+  args: {
+    id: v.id("tasks"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("todo"),
+        v.literal("in_progress"),
+        v.literal("done")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.id);
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, task.projectId);
+
+    const updates: Partial<{
+      title: string;
+      description: string;
+      status: "todo" | "in_progress" | "done";
+    }> = {};
+
+    if (args.title !== undefined) updates.title = args.title;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.status !== undefined) updates.status = args.status;
+
+    return ctx.db.patch(args.id, updates);
+  },
+});
+
+export const remove = authedMutation({
+  args: { id: v.id("tasks") },
+  handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.id);
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, task.projectId);
+
+    await ctx.db.delete(args.id);
+  },
+});
