@@ -200,6 +200,39 @@ update_app_env_urls() {
     update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
 }
 
+# Check if esbuild binary is functional (Convex uses it to bundle functions)
+check_esbuild() {
+    local esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild"
+    if [ ! -x "$esbuild_bin" ]; then
+        # Fall back to the wrapper script
+        esbuild_bin="$PROJECT_DIR/node_modules/.bin/esbuild"
+    fi
+
+    if [ ! -e "$esbuild_bin" ]; then
+        echo "missing"
+        return
+    fi
+
+    # Run with a 3-second timeout — a working esbuild responds instantly
+    local version
+    version=$(perl -e 'alarm 3; exec @ARGV' "$esbuild_bin" --version 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$version" ]; then
+        echo "$version"
+    else
+        echo "broken"
+    fi
+}
+
+# Print esbuild fix instructions
+print_esbuild_fix() {
+    echo -e "${RED}  esbuild binary is missing or corrupted.${NC}"
+    echo -e "${RED}  Convex uses esbuild to bundle functions — it will hang without a working binary.${NC}"
+    echo ""
+    echo -e "${YELLOW}  Fix: reinstall esbuild${NC}"
+    echo -e "    rm -rf node_modules/@esbuild node_modules/esbuild && bun install"
+    echo ""
+}
+
 # ============================================================
 # PRE-FLIGHT CHECKS
 # ============================================================
@@ -255,6 +288,14 @@ CLOUD_PORT=""
 SITE_PORT=""
 
 if [ "$NEED_CONVEX" = true ]; then
+    # Pre-flight: verify esbuild works (Convex hangs if it's corrupted)
+    ESBUILD_STATUS=$(check_esbuild)
+    if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
+        echo -e "${RED}✖ Pre-flight check failed${NC}"
+        print_esbuild_fix
+        exit 1
+    fi
+
     echo -e "${GREEN}▶ Starting Convex (anonymous mode)...${NC}"
 
     # Convex runs from packages/backend/
@@ -309,6 +350,18 @@ if [ "$NEED_CONVEX" = true ]; then
 
     if [ "$CONVEX_READY" = false ]; then
         echo -e "${RED}✖ Timeout waiting for Convex to start${NC}"
+
+        # Check if it got stuck on bundling (esbuild issue)
+        if grep -q "Preparing Convex functions" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
+            ESBUILD_STATUS=$(check_esbuild)
+            if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
+                echo ""
+                print_esbuild_fix
+            else
+                echo -e "${RED}  Stuck bundling functions. Try: CONVEX_VERBOSE=1 npx convex dev${NC}"
+            fi
+        fi
+
         echo -e "${RED}  Log output:${NC}"
         cat "$PROJECT_DIR/.convex-dev.log"
         echo ""
