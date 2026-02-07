@@ -76,6 +76,8 @@ runs:
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
       run: |
+        set -o pipefail
+
         DEPLOY_DIR="deploy/${{ inputs.app }}"
         DEPLOY_FLAGS="--prebuilt --token=${VERCEL_TOKEN} --cwd ${DEPLOY_DIR}"
 
@@ -83,7 +85,15 @@ runs:
           DEPLOY_FLAGS="${DEPLOY_FLAGS} --prod"
         fi
 
-        DEPLOYMENT_URL=$(vercel deploy ${DEPLOY_FLAGS} 2>&1 | tail -1)
+        DEPLOY_OUTPUT=$(vercel deploy ${DEPLOY_FLAGS} 2>&1)
+        DEPLOY_EXIT=$?
+        if [ $DEPLOY_EXIT -ne 0 ]; then
+          echo "::error::Vercel deploy failed with exit code ${DEPLOY_EXIT}"
+          echo "${DEPLOY_OUTPUT}"
+          exit $DEPLOY_EXIT
+        fi
+
+        DEPLOYMENT_URL=$(echo "${DEPLOY_OUTPUT}" | tail -1)
         echo "url=${DEPLOYMENT_URL}" >> "$GITHUB_OUTPUT"
 
         echo "### Deployed: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"

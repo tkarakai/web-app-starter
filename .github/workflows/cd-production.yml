@@ -42,9 +42,9 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Check for staging deployment tag
+            // Check for staging deployment tag (paginate to avoid missing older tags)
             try {
-              const { data: tags } = await github.rest.git.listMatchingRefs({
+              const tags = await github.paginate(github.rest.git.listMatchingRefs, {
                 owner,
                 repo,
                 ref: `tags/deploy/staging/`,
