@@ -44,8 +44,8 @@ jobs:
               - 'apps/web/**'
             backend:
               - 'packages/backend/**'
-            ui:
-              - 'packages/ui/**'
+            design-system:
+              - 'packages/design-system/**'
             auth:
               - 'packages/auth/**'
             root:
@@ -62,7 +62,7 @@ jobs:
         run: |
           if [[ "${{ steps.filter.outputs.web }}" == "true" ]] || \
              [[ "${{ steps.filter.outputs.backend }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.ui }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.design-system }}" == "true" ]] || \
              [[ "${{ steps.filter.outputs.auth }}" == "true" ]] || \
              [[ "${{ steps.filter.outputs.root }}" == "true" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT

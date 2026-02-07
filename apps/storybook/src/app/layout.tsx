@@ -11,7 +11,7 @@ const raleway = Raleway({
 
 export const metadata: Metadata = {
   title: "Component Storybook",
-  description: "Interactive component showcase for the @repo/ui design system.",
+  description: "Interactive component showcase for the @repo/design-system design system.",
 };
 
 export default function RootLayout({

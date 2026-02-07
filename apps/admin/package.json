@@ -20,7 +20,7 @@
   "dependencies": {
     "@repo/auth": "workspace:*",
     "@repo/backend": "workspace:*",
-    "@repo/ui": "workspace:*",
+    "@repo/design-system": "workspace:*",
     "convex": "^1.21.0",
     "lucide-react": "^0.510.0",
     "next": "^16.1.5",

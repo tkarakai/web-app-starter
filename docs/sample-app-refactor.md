@@ -27,13 +27,13 @@ The codebase is a **Turborepo monorepo** with this structure:
 │   ├── landing/      # Landing page (port 3000) — landing page lives here
 │   └── admin/        # Admin app (port 3002)
 ├── packages/
-│   ├── ui/           # Shared UI components (@repo/ui)
+│   ├── design-system/ # Shared UI components (@repo/design-system)
 │   ├── auth/         # Auth utilities (@repo/auth)
 │   └── backend/      # Convex backend (@repo/backend)
 ```
 
 **Import conventions:**
-- `@repo/ui` — UI components (`Button`, `Card`, `Dialog`, etc.)
+- `@repo/design-system` — UI components (`Button`, `Card`, `Dialog`, etc.)
 - `@repo/auth/client` — client-side auth (`authClient`)
 - `@repo/auth/server` — server-side auth (`isAuthenticated`, `preloadAuthQuery`)
 - `@repo/backend` — Convex API (`api`, `Id`, `Doc`)
@@ -323,7 +323,7 @@ The sidebar is the primary navigation element of the dashboard. It follows the p
    - Pinned to the bottom of the sidebar using flexbox (`mt-auto`).
    - **Expanded**: Shows user avatar (initials fallback), display name, and email. Clicking the area opens a dropdown menu with "Sign out" option.
    - **Collapsed**: Shows only the avatar circle. Clicking opens the same dropdown.
-   - Uses the existing `Avatar`, `AvatarFallback`, `DropdownMenu` components from `@repo/ui`.
+   - Uses the existing `Avatar`, `AvatarFallback`, `DropdownMenu` components from `@repo/design-system`.
 
 #### Styling
 
@@ -405,7 +405,7 @@ Below the project header, a card containing the task list:
 ```
 
 - **Header row**: "Tasks" label with count in parentheses, plus an "Add task" button (opens create dialog).
-- **Tab filter**: Uses the existing `Tabs` / `TabsList` / `TabsTrigger` components from `@repo/ui`. Tabs: All, To do, In progress, Done.
+- **Tab filter**: Uses the existing `Tabs` / `TabsList` / `TabsTrigger` components from `@repo/design-system`. Tabs: All, To do, In progress, Done.
 - **Task rows**: Each task is a row (not a separate card — less visual noise than the current approach). Rows have:
   - **Status icon**: A checkbox-style icon. Unchecked circle for "todo", half-filled for "in_progress", checked for "done". Clicking cycles the status via a mutation (quick toggle, no dialog needed).
   - **Title**: `text-sm font-medium`. Struck-through with `line-through text-muted-foreground` when status is "done".
@@ -432,7 +432,7 @@ Below the tasks card, the upload panel appears as a collapsible section:
 
 ### Task Create/Edit Dialogs
 
-Use the existing `Dialog` component from `@repo/ui`. Same pattern as the current launch item dialogs, simplified:
+Use the existing `Dialog` component from `@repo/design-system`. Same pattern as the current launch item dialogs, simplified:
 
 **Create Task Dialog:**
 
@@ -471,7 +471,7 @@ All dashboard components live in `apps/web/src/`:
 | `UploadPanel` | `components/projects/upload-panel.tsx` | Moved from `launchpad/`, relabeled, made collapsible |
 | `EmptyState` | `components/projects/empty-state.tsx` | Reusable empty state (no project selected / no tasks) |
 
-All components import UI primitives from `@repo/ui` and backend API from `@repo/backend`.
+All components import UI primitives from `@repo/design-system` and backend API from `@repo/backend`.
 
 ## 8. Utility Helpers
 

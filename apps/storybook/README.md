@@ -1,12 +1,12 @@
 # Component Storybook (@repo/storybook)
 
 > **This is NOT [@storybook/react](https://storybook.js.org/).** This is a custom Next.js app
-> that showcases the components in `@repo/ui`. Think of it as a lightweight, zero-config
+> that showcases the components in `@repo/design-system`. Think of it as a lightweight, zero-config
 > alternative tailored to this monorepo's design system.
 
 ## Keeping the showcase in sync with the design system
 
-Every component in `@repo/ui` should have a corresponding showcase entry here.
+Every component in `@repo/design-system` should have a corresponding showcase entry here.
 When you add, change, or remove a component from the design system, update this
 app to match.
 
@@ -46,7 +46,7 @@ generated from the registry automatically.
 
 ### Changing a component
 
-If a component's API or visuals change in `@repo/ui`, update its showcase file
+If a component's API or visuals change in `@repo/design-system`, update its showcase file
 in `src/showcase/` to reflect the new behavior. No registry changes needed
 unless the name, slug, category, or description should change.
 

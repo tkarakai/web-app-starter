@@ -41,11 +41,11 @@ bun run build                # Build all apps via Turborepo
 
 This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
 - **Four Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002), storybook (port 3003)
-- **Three shared packages**: `@repo/ui`, `@repo/auth`, `@repo/backend`
+- **Three shared packages**: `@repo/design-system`, `@repo/auth`, `@repo/backend`
 - **Convex** as the backend (database, file storage, API functions)
 - **Better Auth** wired to Convex for authentication
 - **React 19** with Server Components (App Router)
-- **Radix UI** for accessible UI primitives (in `@repo/ui`)
+- **Radix UI** for accessible UI primitives (in `@repo/design-system`)
 - **Tailwind CSS v4** for styling
 - **TypeScript** with strict mode enabled
 
@@ -102,11 +102,11 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │       ├── client.ts        # Client-side auth hooks
 │   │       ├── server.ts        # Server-side auth utilities
 │   │       └── provider.tsx     # Auth context provider
-│   └── ui/                      # Shared UI components (@repo/ui)
+│   └── design-system/           # Shared UI components (@repo/design-system)
 │       ├── src/                 # Radix UI + shadcn/ui components
 │       │   └── index.ts         # Component exports
-│       ├── styles/
-│       │   └── globals.css      # Global styles
+│       ├── tokens/
+│       │   └── index.css        # Design tokens / global styles
 │       └── tailwind.config.ts   # Shared Tailwind configuration
 ├── scripts/
 │   ├── dev-start.sh             # Start dev environment (Convex + apps)
@@ -404,7 +404,7 @@ describe("myFunction", () => {
 // apps/web/qa/tests/button.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { Button } from "@repo/ui";
+import { Button } from "@repo/design-system";
 
 describe("Button", () => {
   it("renders with text", () => {
@@ -574,16 +574,16 @@ export function formatPrice(amount) {
 ### React Components
 
 - Use **function components** exclusively (no class components)
-- Use **Radix UI primitives** from `@repo/ui` for accessibility
-- Shared components go in `packages/ui/src/`, app-specific in `apps/<app>/src/components/`
+- Use **Radix UI primitives** from `@repo/design-system` for accessibility
+- Shared components go in `packages/design-system/src/`, app-specific in `apps/<app>/src/components/`
 - Use package imports for shared code, path aliases for app-internal code
 
 ```typescript
 // App component: apps/web/src/components/launchpad/item-card.tsx
 "use client";
 
-import { Button } from "@repo/ui";            // Shared UI
-import { cn } from "@repo/ui";                 // Utility from shared package
+import { Button } from "@repo/design-system";            // Shared UI
+import { cn } from "@repo/design-system";                 // Utility from shared package
 import { api } from "@repo/backend";           // Convex API
 import { useMutation } from "convex/react";
 
@@ -637,12 +637,12 @@ export const createItem = mutation({
 ### CSS/Styling
 
 - Use **Tailwind CSS v4** utility classes
-- Use `cn()` utility from `@repo/ui` for conditional classes
+- Use `cn()` utility from `@repo/design-system` for conditional classes
 - Follow **mobile-first** responsive design
 - Use **CSS variables** for theming (`--foreground`, `--background`, etc.)
 
 ```typescript
-import { cn } from "@repo/ui";
+import { cn } from "@repo/design-system";
 
 <div className={cn(
   "flex items-center gap-2 p-4",
@@ -657,8 +657,8 @@ import { cn } from "@repo/ui";
 
 | Package | Import | Example |
 |---------|--------|---------|
-| `@repo/ui` | Components, utilities | `import { Button, cn } from "@repo/ui"` |
-| `@repo/ui` | Global styles | `import "@repo/ui/styles/globals.css"` |
+| `@repo/design-system` | Components, utilities | `import { Button, cn } from "@repo/design-system"` |
+| `@repo/design-system` | Global styles | `import "@repo/design-system/styles/globals.css"` |
 | `@repo/auth` | Client hooks | `import { authClient } from "@repo/auth/client"` |
 | `@repo/auth` | Server utilities | `import { auth } from "@repo/auth/server"` |
 | `@repo/auth` | Provider component | `import { AuthProvider } from "@repo/auth/provider"` |
@@ -804,7 +804,7 @@ bun run test:watch
 | **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
 | **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
-| **Shared UI** | Add component in `packages/ui/src/`, export from index.ts |
+| **Shared UI** | Add component in `packages/design-system/src/`, export from index.ts |
 
 ### Context Boundaries
 
@@ -857,7 +857,7 @@ bun run dev:stop && bun run dev:web
 | Test | same-name.test.ts(x) | `format.test.ts`, `button.test.tsx` |
 | E2E Test | descriptive.spec.ts | `auth-flow.spec.ts` |
 | Convex | camelCase.ts | `launchItems.ts` |
-| Package export | index.ts | `packages/ui/src/index.ts` |
+| Package export | index.ts | `packages/design-system/src/index.ts` |
 
 ## Verification Checklist
 

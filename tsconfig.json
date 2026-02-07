@@ -9,7 +9,7 @@
     { "path": "apps/web" },
     { "path": "apps/landing" },
     { "path": "apps/admin" },
-    { "path": "packages/ui" },
+    { "path": "packages/design-system" },
     { "path": "packages/backend" },
     { "path": "packages/auth" }
   ]

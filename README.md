@@ -8,7 +8,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
 - **Three Next.js apps**: landing page (port 3000), web app (port 3001), admin dashboard (port 3002).
-- **Shared packages**: UI component library (`@repo/ui`), authentication (`@repo/auth`), Convex backend (`@repo/backend`).
+- **Shared packages**: UI component library (`@repo/design-system`), authentication (`@repo/auth`), Convex backend (`@repo/backend`).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
 - Tailwind v4 + shadcn/ui styling with a bold, modern interface.
@@ -24,7 +24,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 - Bun 1.3.6
 - Turborepo 2.5+
 - Tailwind CSS 4.1.18
-- shadcn/ui components (in `@repo/ui`)
+- shadcn/ui components (in `@repo/design-system`)
 - Convex 1.31.7
 - Better Auth 1.4.12
 
@@ -122,9 +122,9 @@ These values persist in the local Convex backend between sessions.
 │   │   └── index.ts           # Main export
 │   ├── auth/                  # Authentication (@repo/auth)
 │   │   └── src/               # client.ts, server.ts, provider.tsx
-│   └── ui/                    # Shared UI components (@repo/ui)
+│   └── design-system/         # Shared UI components (@repo/design-system)
 │       ├── src/               # Radix UI + shadcn/ui components
-│       └── styles/            # globals.css
+│       └── tokens/            # Design tokens (globals.css)
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
 │   ├── dev-stop.sh            # Stop all services
@@ -140,12 +140,12 @@ These values persist in the local Convex backend between sessions.
 
 ## Shared packages
 
-### `@repo/ui` — UI Component Library
+### `@repo/design-system` — UI Component Library
 
 Shared Radix UI + shadcn/ui components used by all apps. Import components:
 
 ```typescript
-import { Button, Input, Avatar } from "@repo/ui";
+import { Button, Input, Avatar } from "@repo/design-system";
 ```
 
 ### `@repo/auth` — Authentication
@@ -234,8 +234,8 @@ bun run ci:quick        # Skip E2E for faster feedback
 - Keep server/client boundaries explicit. Client components include `"use client"`.
 - Use Convex for all APIs (queries/mutations/actions). Next.js API routes are only for auth proxying.
 - Prefer small, composable components with single responsibilities.
-- Import shared packages by name: `@repo/ui`, `@repo/auth/client`, `@repo/backend`.
-- UI components live in `@repo/ui`. App-specific components live in `apps/<app>/src/components/`.
+- Import shared packages by name: `@repo/design-system`, `@repo/auth/client`, `@repo/backend`.
+- UI components live in `@repo/design-system`. App-specific components live in `apps/<app>/src/components/`.
 
 ### Testing
 - Bun unit tests for pure functions and utilities (`apps/web/qa/tests/*.test.ts`).
@@ -263,7 +263,7 @@ bun run ci:quick        # Skip E2E for faster feedback
 6. Built the launch dashboard demo with realtime queries and uploads.
 7. Added multi-tier testing: Bun, Vitest, convex-test, Playwright.
 8. Documented setup steps, conventions, and references.
-9. Converted to monorepo with Bun workspaces + Turborepo: extracted `@repo/ui`, `@repo/auth`, `@repo/backend` as shared packages and set up three Next.js apps (landing, web, admin).
+9. Converted to monorepo with Bun workspaces + Turborepo: extracted `@repo/design-system`, `@repo/auth`, `@repo/backend` as shared packages and set up three Next.js apps (landing, web, admin).
 
 ## References consulted
 
@@ -368,4 +368,4 @@ NEXT_PUBLIC_SITE_URL=https://app.example.com
 ## Notes
 
 - `packages/backend/convex/_generated` contains a stub to keep TypeScript happy before you run Convex dev. Convex will regenerate the file with full types.
-- If you upgrade Tailwind or shadcn/ui, revisit `packages/ui/tailwind.config.ts` and `packages/ui/styles/globals.css` to align with new theming defaults.
+- If you upgrade Tailwind or shadcn/ui, revisit `packages/design-system/tailwind.config.ts` and `packages/design-system/tokens/index.css` to align with new theming defaults.
