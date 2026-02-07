@@ -1,0 +1,101 @@
+name: CI Gate
+
+# Aggregates all 4 CI workflow results into a single "ci/gate-passed" commit status.
+# This ensures deployments only proceed when ALL CI checks pass for the same SHA.
+
+on:
+  workflow_run:
+    workflows:
+      - "CI Shared"
+      - "CI Web"
+      - "CI Admin"
+      - "CI Landing"
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  statuses: write
+  actions: read
+
+jobs:
+  check-all-ci:
+    name: CI Gate Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all CI workflows for this SHA
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const requiredWorkflows = [
+              'CI Shared',
+              'CI Web',
+              'CI Admin',
+              'CI Landing',
+            ];
+
+            console.log(`Checking CI status for SHA: ${sha}`);
+
+            // Get all workflow runs for this SHA on main branch
+            const results = {};
+            for (const name of requiredWorkflows) {
+              const { data: { workflow_runs: runs } } = await github.rest.actions.listWorkflowRunsForRepo({
+                owner,
+                repo,
+                head_sha: sha,
+                branch: 'main',
+                per_page: 5,
+              });
+
+              const run = runs.find(r => r.name === name);
+              if (run) {
+                results[name] = {
+                  status: run.status,
+                  conclusion: run.conclusion,
+                  url: run.html_url,
+                };
+                console.log(`  ${name}: ${run.status} / ${run.conclusion}`);
+              } else {
+                results[name] = { status: 'not_found', conclusion: null };
+                console.log(`  ${name}: not found`);
+              }
+            }
+
+            // Check if all workflows completed successfully
+            const allPassed = requiredWorkflows.every(
+              name => results[name].status === 'completed' && results[name].conclusion === 'success'
+            );
+
+            const anyFailed = requiredWorkflows.some(
+              name => results[name].conclusion === 'failure'
+            );
+
+            if (allPassed) {
+              console.log('All CI workflows passed — setting ci/gate-passed status');
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha,
+                state: 'success',
+                context: 'ci/gate-passed',
+                description: 'All CI workflows passed',
+                target_url: `https://github.com/${owner}/${repo}/actions?query=branch%3Amain+event%3Apush`,
+              });
+            } else if (anyFailed) {
+              console.log('One or more CI workflows failed — setting ci/gate-passed to failure');
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha,
+                state: 'failure',
+                context: 'ci/gate-passed',
+                description: 'One or more CI workflows failed',
+              });
+            } else {
+              console.log('Not all CI workflows have completed yet — skipping status update');
+            }

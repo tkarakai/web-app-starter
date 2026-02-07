@@ -1,0 +1,90 @@
+name: "Deploy to Vercel"
+description: "Deploy a prebuilt app artifact to Vercel"
+
+inputs:
+  app:
+    description: "App name (web, admin, or landing)"
+    required: true
+  environment:
+    description: "Target environment (preview or production)"
+    required: true
+  artifact-name:
+    description: "Name of the artifact to download"
+    required: true
+  tarball:
+    description: "Filename of the tarball within the artifact"
+    required: true
+  checksum-file:
+    description: "Filename of the checksum file within the artifact"
+    required: true
+  vercel-token:
+    description: "Vercel API token"
+    required: true
+  vercel-org-id:
+    description: "Vercel organization ID"
+    required: true
+  vercel-project-id:
+    description: "Vercel project ID for this app"
+    required: true
+
+outputs:
+  deployment-url:
+    description: "URL of the Vercel deployment"
+    value: ${{ steps.deploy.outputs.url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: deploy-artifacts
+
+    - name: Verify checksum
+      shell: bash
+      working-directory: deploy-artifacts
+      run: |
+        echo "Verifying checksum for ${{ inputs.tarball }}..."
+        sha256sum -c "${{ inputs.checksum-file }}"
+        echo "Checksum verified successfully"
+
+    - name: Extract artifact
+      shell: bash
+      run: |
+        DEPLOY_DIR="deploy/${{ inputs.app }}"
+        mkdir -p "${DEPLOY_DIR}"
+        tar -xzf "deploy-artifacts/${{ inputs.tarball }}" -C "${DEPLOY_DIR}"
+
+    - name: Install Vercel CLI
+      shell: bash
+      run: bun add -g vercel@latest
+
+    - name: Create Vercel project link
+      shell: bash
+      run: |
+        DEPLOY_DIR="deploy/${{ inputs.app }}"
+        mkdir -p "${DEPLOY_DIR}/.vercel"
+        printf '{"orgId":"%s","projectId":"%s"}' \
+          "${{ inputs.vercel-org-id }}" \
+          "${{ inputs.vercel-project-id }}" \
+          > "${DEPLOY_DIR}/.vercel/project.json"
+
+    - name: Deploy to Vercel
+      id: deploy
+      shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+      run: |
+        DEPLOY_DIR="deploy/${{ inputs.app }}"
+        DEPLOY_FLAGS="--prebuilt --token=${VERCEL_TOKEN} --cwd ${DEPLOY_DIR}"
+
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          DEPLOY_FLAGS="${DEPLOY_FLAGS} --prod"
+        fi
+
+        DEPLOYMENT_URL=$(vercel deploy ${DEPLOY_FLAGS} 2>&1 | tail -1)
+        echo "url=${DEPLOYMENT_URL}" >> "$GITHUB_OUTPUT"
+
+        echo "### Deployed: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
+        echo "URL: ${DEPLOYMENT_URL}" >> "$GITHUB_STEP_SUMMARY"
