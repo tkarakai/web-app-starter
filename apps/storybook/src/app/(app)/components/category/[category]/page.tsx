@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Separator } from "@repo/ui";
+import { Separator } from "@repo/design-system";
 import {
   componentRegistry,
   slugToCategory,
-  categoryToSlug,
 } from "@/lib/registry";
 
 export default async function CategoryPage({

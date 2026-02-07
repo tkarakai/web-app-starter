@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@repo/ui";
+import { Badge } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function BadgeShowcase() {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Label, Textarea } from "@repo/ui";
+import { Label, Textarea } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function TextareaShowcase() {

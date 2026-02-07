@@ -14,7 +14,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@repo/ui";
+} from "@repo/design-system";
 import {
   categoryToSlug,
   componentRegistry,

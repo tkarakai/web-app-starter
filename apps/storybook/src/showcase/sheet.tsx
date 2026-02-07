@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@repo/ui";
+} from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function SheetShowcase() {

@@ -8,7 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@repo/ui";
+} from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const invoices = [

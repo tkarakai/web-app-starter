@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowRight, Loader2, Mail, Plus, Trash2 } from "lucide-react";
-import { Button } from "@repo/ui";
+import { Button } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function ButtonShowcase() {

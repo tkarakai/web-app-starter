@@ -6,7 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@repo/ui";
+} from "@repo/design-system";
 
 export function SidebarTitle() {
   return (

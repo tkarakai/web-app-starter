@@ -1,4 +1,4 @@
-import { Separator } from "@repo/ui";
+import { Separator } from "@repo/design-system";
 
 interface ComponentPageProps {
   title: string;

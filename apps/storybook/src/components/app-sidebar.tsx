@@ -22,7 +22,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@repo/ui";
+} from "@repo/design-system";
 
 import { NavMain } from "@/components/nav-main";
 import { SidebarTitle } from "@/components/team-switcher";

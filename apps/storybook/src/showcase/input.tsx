@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label } from "@repo/ui";
+import { Input, Label } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function InputShowcase() {

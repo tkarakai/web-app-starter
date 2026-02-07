@@ -1,6 +1,6 @@
 "use client";
 
-import { Label, Switch } from "@repo/ui";
+import { Label, Switch } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function SwitchShowcase() {

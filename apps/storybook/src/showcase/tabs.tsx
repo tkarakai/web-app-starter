@@ -13,7 +13,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/ui";
+} from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function TabsShowcase() {

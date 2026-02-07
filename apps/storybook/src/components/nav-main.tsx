@@ -17,7 +17,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "@repo/ui";
+} from "@repo/design-system";
 
 interface NavItem {
   title: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Bold, Italic, Underline } from "lucide-react";
-import { Toggle } from "@repo/ui";
+import { Toggle } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function ToggleShowcase() {
