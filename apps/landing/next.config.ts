@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// CSP is handled by middleware.ts (nonce-based)
+// CSP is handled by proxy.ts (nonce-based)
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",

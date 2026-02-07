@@ -684,7 +684,7 @@ The web app uses a **three-layer** auth system. New protected pages get all thre
 
 | Layer | Where | What it does | Speed |
 |-------|-------|-------------|-------|
-| **Middleware** | `src/middleware.ts` | Cookie-presence check (Edge) | ~1ms |
+| **Proxy** | `src/proxy.ts` | Cookie-presence check + CSP headers (Edge) | ~1ms |
 | **Layout** | `src/app/(dashboard)/layout.tsx` | Full session validation + user preload (RSC) | ~50ms |
 | **AuthGuard** | `src/components/auth/auth-guard.tsx` | Client-side session watcher + redirect | Ongoing |
 
@@ -710,13 +710,13 @@ export function MyComponent() {
 
 **How the layers work together:**
 
-1. **Middleware** (Edge, instant): Checks for the `better-auth.session_token` cookie. No cookie → redirect to `/sign-in`. Also redirects authenticated users away from `/sign-in` and `/sign-up` to `/dashboard`.
+1. **Proxy** (Edge, instant): Checks for the `better-auth.session_token` cookie. No cookie → redirect to `/sign-in`. Also redirects authenticated users away from `/sign-in` and `/sign-up` to `/dashboard`. Sets CSP headers with nonce.
 2. **Layout** (Server Component): Calls `isAuthenticated()` for full session validation, then `preloadAuthQuery(api.auth.getCurrentUser)` to SSR the user data. Catches stale-session errors (e.g. signed out in another tab) and redirects.
 3. **AuthGuard** (Client Component): Subscribes to the Convex user query for real-time updates and watches the Better Auth session. If the session is invalidated while the page is open, redirects immediately.
 
 **Backend safety:** The `getCurrentUser` Convex query returns `null` (not throws) when unauthenticated, so client-side subscriptions degrade gracefully instead of crashing.
 
-**To add a route to middleware protection:** edit the `PROTECTED_PREFIXES` array in `src/middleware.ts`. Auth-page redirects use the `AUTH_ROUTES` array.
+**To add a route to proxy protection:** edit the `PROTECTED_PREFIXES` array in `src/proxy.ts`. Auth-page redirects use the `AUTH_ROUTES` array.
 
 ### Guest Pages (Auth Pages)
 

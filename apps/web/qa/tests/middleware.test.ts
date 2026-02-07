@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { NextRequest } from "next/server";
 
-import { middleware } from "../../src/middleware";
+import { proxy } from "../../src/proxy";
 
 function createRequest(path: string, cookies: Record<string, string> = {}): NextRequest {
   const url = `http://localhost:3001${path}`;
@@ -12,17 +12,17 @@ function createRequest(path: string, cookies: Record<string, string> = {}): Next
   return req;
 }
 
-describe("middleware", () => {
+describe("proxy", () => {
   describe("protected routes (unauthenticated)", () => {
     it("redirects /dashboard to /sign-in when no session cookie", () => {
-      const response = middleware(createRequest("/dashboard"));
+      const response = proxy(createRequest("/dashboard"));
 
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
     });
 
     it("redirects /dashboard/settings to /sign-in when no session cookie", () => {
-      const response = middleware(createRequest("/dashboard/settings"));
+      const response = proxy(createRequest("/dashboard/settings"));
 
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
@@ -31,7 +31,7 @@ describe("middleware", () => {
 
   describe("protected routes (authenticated)", () => {
     it("allows /dashboard with dev session cookie", () => {
-      const response = middleware(
+      const response = proxy(
         createRequest("/dashboard", { "better-auth.session_token": "token-123" })
       );
 
@@ -39,7 +39,7 @@ describe("middleware", () => {
     });
 
     it("allows /dashboard with production session cookie (__Secure- prefix)", () => {
-      const response = middleware(
+      const response = proxy(
         createRequest("/dashboard", {
           "__Secure-better-auth.session_token": "token-123",
         })
@@ -51,13 +51,13 @@ describe("middleware", () => {
 
   describe("auth routes (unauthenticated)", () => {
     it("allows /sign-in when no session cookie", () => {
-      const response = middleware(createRequest("/sign-in"));
+      const response = proxy(createRequest("/sign-in"));
 
       expect(response.status).toBe(200);
     });
 
     it("allows /sign-up when no session cookie", () => {
-      const response = middleware(createRequest("/sign-up"));
+      const response = proxy(createRequest("/sign-up"));
 
       expect(response.status).toBe(200);
     });
@@ -65,7 +65,7 @@ describe("middleware", () => {
 
   describe("auth routes (authenticated)", () => {
     it("redirects /sign-in to /dashboard when session cookie exists", () => {
-      const response = middleware(
+      const response = proxy(
         createRequest("/sign-in", { "better-auth.session_token": "token-123" })
       );
 
@@ -74,7 +74,7 @@ describe("middleware", () => {
     });
 
     it("redirects /sign-up to /dashboard when session cookie exists", () => {
-      const response = middleware(
+      const response = proxy(
         createRequest("/sign-up", { "better-auth.session_token": "token-123" })
       );
 

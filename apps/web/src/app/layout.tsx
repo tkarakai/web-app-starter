@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
@@ -22,12 +23,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const token = await getToken();
+  const [token, nonce] = await Promise.all([
+    getToken(),
+    headers().then((h) => h.get("x-nonce") ?? undefined),
+  ]);
 
   return (
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
         </ThemeProvider>
       </body>

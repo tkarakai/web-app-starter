@@ -213,10 +213,25 @@ check_esbuild() {
         return
     fi
 
-    # Run with a 3-second timeout — a working esbuild responds instantly
+    # Run with a 3-second timeout — a working esbuild responds instantly.
+    # Use a background process + watchdog kill instead of perl alarm, which
+    # doesn't reliably terminate a hung binary after exec replaces perl.
+    local tmpfile
+    tmpfile=$(mktemp)
+    "$esbuild_bin" --version > "$tmpfile" 2>/dev/null &
+    local pid=$!
+    (sleep 3 && kill "$pid" 2>/dev/null) &
+    local watchdog=$!
+    wait "$pid" 2>/dev/null
+    local exit_code=$?
+    kill "$watchdog" 2>/dev/null
+    wait "$watchdog" 2>/dev/null
+
     local version
-    version=$(perl -e 'alarm 3; exec @ARGV' "$esbuild_bin" --version 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$version" ]; then
+    version=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $exit_code -eq 0 ] && [ -n "$version" ]; then
         echo "$version"
     else
         echo "broken"
