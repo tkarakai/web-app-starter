@@ -110,7 +110,7 @@ fi
 
 # Fallback to checking common ports
 if [ -z "$NEXT_PORT" ]; then
-    for port in 3000 3001 3002 3003 3005; do
+    for port in 3000 3001 3002 3003; do
         if lsof -i :$port 2>/dev/null | grep -q node; then
             NEXT_PORT=$port
             break
@@ -122,7 +122,7 @@ if [ -n "$NEXT_PORT" ] && lsof -i :$NEXT_PORT > /dev/null 2>&1; then
     PROC=$(lsof -i :$NEXT_PORT | tail -1 | awk '{print $1, $2}')
     echo -e "  ${GREEN}✔${NC} Port $NEXT_PORT (Next.js) in use by: $PROC"
 else
-    echo -e "  ${RED}✖${NC} Next.js not detected on common ports (3000-3003, 3005)"
+    echo -e "  ${RED}✖${NC} Next.js not detected on common ports (3000-3003)"
 fi
 
 # Check for URL mismatch

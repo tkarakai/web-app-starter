@@ -6,12 +6,11 @@ This document provides project-specific guidance for AI agents working on this c
 
 ```bash
 # Start development (Convex + all apps via dev-start.sh)
-bun run dev                  # All apps (landing:3000, web:3001, admin:3002, design:3003, storybook:3005)
+bun run dev                  # All apps (landing:3000, web:3001, admin:3002, storybook:3003)
 bun run dev:web              # Convex + web app only (port 3001)
 bun run dev:admin            # Convex + admin app only (port 3002)
 bun run dev:landing          # Landing page only (port 3000, no Convex)
-bun run dev:design           # Design showcase only (port 3003, no Convex)
-bun run dev:storybook        # Component storybook only (port 3005, no Convex)
+bun run dev:storybook        # Component storybook only (port 3003, no Convex)
 bun run dev:stop             # Stop all services
 bun run dev:status           # Show running processes
 
@@ -41,7 +40,7 @@ bun run build                # Build all apps via Turborepo
 ## Project Overview
 
 This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
-- **Five Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002), design (port 3003), storybook (port 3005)
+- **Four Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002), storybook (port 3003)
 - **Three shared packages**: `@repo/ui`, `@repo/auth`, `@repo/backend`
 - **Convex** as the backend (database, file storage, API functions)
 - **Better Auth** wired to Convex for authentication
@@ -82,9 +81,7 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │   └── qa/                  # Testing artifacts (same structure as web)
 │   │       ├── tests/           # Unit + component tests
 │   │       └── e2e/             # Playwright E2E specs
-│   ├── design/                  # Design system showcase (@repo/design, port 3003)
-│   │   └── src/
-│   └── storybook/               # Component storybook (@repo/storybook, port 3005)
+│   └── storybook/               # Component storybook (@repo/storybook, port 3003)
 │       ├── src/
 │       │   ├── app/             # Next.js App Router pages
 │       │   ├── components/      # Sidebar, page layout components
@@ -146,8 +143,7 @@ bun run dev                  # Uses scripts/dev-start.sh
 bun run dev:web              # Convex + web app (port 3001)
 bun run dev:admin            # Convex + admin app (port 3002)
 bun run dev:landing          # Landing only (port 3000, no Convex needed)
-bun run dev:design           # Design showcase only (port 3003, no Convex)
-bun run dev:storybook        # Component storybook only (port 3005, no Convex)
+bun run dev:storybook        # Component storybook only (port 3003, no Convex)
 
 # Check service status
 bun run dev:status           # Shows running processes

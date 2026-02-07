@@ -105,7 +105,6 @@ rm -f "$PROJECT_DIR/.convex-dev.log" 2>/dev/null
 rm -f "$PROJECT_DIR/.next-web.log" 2>/dev/null
 rm -f "$PROJECT_DIR/.next-admin.log" 2>/dev/null
 rm -f "$PROJECT_DIR/.next-landing.log" 2>/dev/null
-rm -f "$PROJECT_DIR/.next-design.log" 2>/dev/null
 rm -f "$PROJECT_DIR/.next-storybook.log" 2>/dev/null
 # Legacy single-app log
 rm -f "$PROJECT_DIR/.next-dev.log" 2>/dev/null

@@ -60,7 +60,7 @@ unless the name, slug, category, or description should change.
 
 ```bash
 # From the project root
-bun run dev:storybook    # starts on port 3005
+bun run dev:storybook    # starts on port 3003
 
 # Or directly
 cd apps/storybook && bun run dev
