@@ -11,8 +11,9 @@
 import type * as auth from "../auth.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
-import type * as launchItems from "../launchItems.js";
 import type * as meta from "../meta.js";
+import type * as projects from "../projects.js";
+import type * as tasks from "../tasks.js";
 
 import type {
   ApiFromModules,
@@ -24,8 +25,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   files: typeof files;
   http: typeof http;
-  launchItems: typeof launchItems;
   meta: typeof meta;
+  projects: typeof projects;
+  tasks: typeof tasks;
 }>;
 
 /**

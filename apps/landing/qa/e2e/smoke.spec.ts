@@ -3,7 +3,7 @@ import { test, expect, type ConsoleMessage } from "@playwright/test";
 test.describe("Landing Homepage", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Launchpad Starter");
+    await expect(page).toHaveTitle("Web App Starter");
   });
 
   test("displays main heading", async ({ page }) => {

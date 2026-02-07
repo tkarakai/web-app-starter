@@ -1,6 +1,5 @@
 ## Higher Priority
 
-- dark theme with selector
 - i18n
 - a11y
 - next.js bundle analyzer and production optimization

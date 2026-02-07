@@ -12,8 +12,8 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: "Launchpad Starter",
-  description: "A Bun-first Next.js starter wired to Convex and Better Auth.",
+  title: "Web App Starter",
+  description: "A Next.js starter with Convex, Better Auth, and Bun.",
 };
 
 export default async function RootLayout({

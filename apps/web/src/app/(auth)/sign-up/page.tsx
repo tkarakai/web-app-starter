@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { Button } from "@repo/ui";
+import { Button } from "@repo/design-system";
 
 export default function SignUpPage() {
   return (
@@ -9,14 +9,14 @@ export default function SignUpPage() {
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="space-y-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Launchpad starter
+            Web App Starter
           </p>
           <h1 className="text-4xl font-semibold leading-tight">
-            Create a fresh workspace for your next launch cycle.
+            Create your account and start building.
           </h1>
           <p className="max-w-lg text-sm text-muted-foreground">
-            This starter already wires the Convex + Better Auth pipeline, so a new
-            workspace is immediately production-shaped.
+            Convex + Better Auth are already wired, so your account is immediately
+            production-ready.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild>

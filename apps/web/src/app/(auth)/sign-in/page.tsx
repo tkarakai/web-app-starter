@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { Button } from "@repo/ui";
+import { Button } from "@repo/design-system";
 
 export default function SignInPage() {
   return (
@@ -9,14 +9,14 @@ export default function SignInPage() {
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="space-y-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Launchpad starter
+            Web App Starter
           </p>
           <h1 className="text-4xl font-semibold leading-tight">
-            Align your release rituals with one sign in.
+            Welcome back. Pick up where you left off.
           </h1>
           <p className="max-w-lg text-sm text-muted-foreground">
-            Better Auth powers session flows, while Convex keeps data live. This starter
-            already connects both, so you can focus on shipping real features.
+            Better Auth powers session flows, while Convex keeps data live. Sign in
+            to access your projects and tasks.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild>

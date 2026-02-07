@@ -12,8 +12,8 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: "Admin - Launchpad Starter",
-  description: "Administration panel for Launchpad Starter.",
+  title: "Admin - Web App Starter",
+  description: "Administration panel for Web App Starter.",
 };
 
 export default async function RootLayout({

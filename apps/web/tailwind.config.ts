@@ -1,11 +1,11 @@
 import type { Config } from "tailwindcss";
-import uiConfig from "@repo/ui/tailwind.config";
+import designSystemConfig from "@repo/design-system/tailwind.config";
 
 const config: Config = {
-  presets: [uiConfig],
+  presets: [designSystemConfig],
   content: [
     "./src/**/*.{ts,tsx}",
-    "../../packages/ui/src/**/*.{ts,tsx}",
+    "../../packages/design-system/src/**/*.{ts,tsx}",
   ],
 };
 

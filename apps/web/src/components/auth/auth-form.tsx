@@ -15,12 +15,12 @@ import {
   Input,
   Label,
   Separator,
-} from "@repo/ui";
+} from "@repo/design-system";
 
 const copy = {
   "sign-in": {
     title: "Welcome back",
-    description: "Continue shaping your next release with a quick sign in.",
+    description: "Sign in to continue to your dashboard.",
     cta: "Sign in",
     footer: "New here?",
     link: "/sign-up",
@@ -28,7 +28,7 @@ const copy = {
   },
   "sign-up": {
     title: "Create your workspace",
-    description: "Spin up a new launchpad in under a minute.",
+    description: "Get started in under a minute.",
     cta: "Create account",
     footer: "Already have access?",
     link: "/sign-in",
@@ -90,7 +90,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       <CardHeader className="space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           <Sparkles className="h-4 w-4" />
-          Launchpad Auth
+          Account
         </div>
         <CardTitle className="text-2xl font-semibold">
           {copy[mode].title}
@@ -118,7 +118,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               id="email"
               name="email"
               type="email"
-              placeholder="hello@launchpad.dev"
+              placeholder="you@example.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
