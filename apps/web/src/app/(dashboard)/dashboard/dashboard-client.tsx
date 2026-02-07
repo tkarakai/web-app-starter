@@ -120,7 +120,7 @@ function ProjectsOverview({
 }) {
   const projects = useQuery(api.projects.list);
 
-  if (projects === undefined) {
+  if (projects === undefined || projects === null) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-sm text-muted-foreground">Loading...</div>
