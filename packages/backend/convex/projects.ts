@@ -1,49 +1,24 @@
 import { v } from "convex/values";
 
-import { authComponent } from "./auth";
-import { mutation, query } from "./_generated/server";
+import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
 
-export const list = query({
+export const list = authedQuery({
   args: {},
   handler: async (ctx) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return [];
-    }
-    if (!user) {
-      return [];
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-
     return ctx.db
       .query("projects")
-      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .withIndex("by_owner", (q) => q.eq("ownerId", ctx.ownerId))
       .order("desc")
       .collect();
   },
 });
 
-export const listWithStats = query({
+export const listWithStats = authedQuery({
   args: {},
   handler: async (ctx) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return [];
-    }
-    if (!user) {
-      return [];
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-
     const projects = await ctx.db
       .query("projects")
-      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .withIndex("by_owner", (q) => q.eq("ownerId", ctx.ownerId))
       .order("desc")
       .collect();
 
@@ -70,74 +45,36 @@ export const listWithStats = query({
   },
 });
 
-export const get = query({
+export const get = authedQuery({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return null;
-    }
-    if (!user) {
-      return null;
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-    const project = await ctx.db.get(args.id);
-
-    if (!project || project.ownerId !== ownerId) {
-      return null;
-    }
-
-    return project;
+    return requireProjectAccess(ctx, args.id);
   },
 });
 
-export const create = mutation({
+export const create = authedMutation({
   args: {
     name: v.string(),
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-
     return ctx.db.insert("projects", {
       name: args.name,
       description: args.description,
-      ownerId,
+      ownerId: ctx.ownerId,
       createdAt: Date.now(),
     });
   },
 });
 
-export const update = mutation({
+export const update = authedMutation({
   args: {
     id: v.id("projects"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-    const project = await ctx.db.get(args.id);
-
-    if (!project) {
-      throw new Error("Project not found");
-    }
-
-    if (project.ownerId !== ownerId) {
-      throw new Error("Not authorized to update this project");
-    }
+    await requireProjectAccess(ctx, args.id);
 
     const updates: Partial<{ name: string; description: string }> = {};
     if (args.name !== undefined) updates.name = args.name;
@@ -147,24 +84,10 @@ export const update = mutation({
   },
 });
 
-export const remove = mutation({
+export const remove = authedMutation({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-    const project = await ctx.db.get(args.id);
-
-    if (!project) {
-      throw new Error("Project not found");
-    }
-
-    if (project.ownerId !== ownerId) {
-      throw new Error("Not authorized to delete this project");
-    }
+    await requireProjectAccess(ctx, args.id);
 
     // Cascade delete all tasks belonging to this project
     const tasks = await ctx.db

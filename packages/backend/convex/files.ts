@@ -1,23 +1,17 @@
 import { v } from "convex/values";
 
-import { authComponent } from "./auth";
-import { mutation, query } from "./_generated/server";
+import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 
-export const generateUploadUrl = mutation({
+export const generateUploadUrl = authedMutation({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
     return ctx.storage.generateUploadUrl();
   },
 });
 
-export const saveUpload = mutation({
+export const saveUpload = authedMutation({
   args: {
     storageId: v.id("_storage"),
     name: v.string(),
@@ -26,16 +20,11 @@ export const saveUpload = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
     if (args.size > MAX_FILE_SIZE) {
       throw new Error("File too large (max 1MB)");
     }
 
-    const ownerId = (user.userId ?? user._id).toString();
+    await requireProjectAccess(ctx, args.projectId);
 
     return ctx.db.insert("uploads", {
       storageId: args.storageId,
@@ -43,24 +32,16 @@ export const saveUpload = mutation({
       contentType: args.contentType,
       size: args.size,
       projectId: args.projectId,
-      ownerId,
+      ownerId: ctx.ownerId,
       createdAt: Date.now(),
     });
   },
 });
 
-export const listUploads = query({
+export const listUploads = authedQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return [];
-    }
-    if (!user) {
-      return [];
-    }
+    await requireProjectAccess(ctx, args.projectId);
 
     const uploads = await ctx.db
       .query("uploads")
@@ -77,24 +58,16 @@ export const listUploads = query({
   },
 });
 
-export const deleteUpload = mutation({
+export const deleteUpload = authedMutation({
   args: { id: v.id("uploads") },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
     const upload = await ctx.db.get(args.id);
-
     if (!upload) {
       throw new Error("Upload not found");
     }
 
-    if (upload.ownerId !== ownerId) {
-      throw new Error("Not authorized to delete this upload");
-    }
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, upload.projectId);
 
     await ctx.storage.delete(upload.storageId);
     await ctx.db.delete(args.id);

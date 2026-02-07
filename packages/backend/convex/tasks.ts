@@ -1,20 +1,11 @@
 import { v } from "convex/values";
 
-import { authComponent } from "./auth";
-import { mutation, query } from "./_generated/server";
+import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
 
-export const listByProject = query({
+export const listByProject = authedQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return [];
-    }
-    if (!user) {
-      return [];
-    }
+    await requireProjectAccess(ctx, args.projectId);
 
     return ctx.db
       .query("tasks")
@@ -24,7 +15,7 @@ export const listByProject = query({
   },
 });
 
-export const create = mutation({
+export const create = authedMutation({
   args: {
     title: v.string(),
     description: v.string(),
@@ -36,34 +27,20 @@ export const create = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
-
-    // Verify the project exists and belongs to the user
-    const project = await ctx.db.get(args.projectId);
-    if (!project) {
-      throw new Error("Project not found");
-    }
-    if (project.ownerId !== ownerId) {
-      throw new Error("Not authorized to add tasks to this project");
-    }
+    await requireProjectAccess(ctx, args.projectId);
 
     return ctx.db.insert("tasks", {
       title: args.title,
       description: args.description,
       status: args.status,
       projectId: args.projectId,
-      ownerId,
+      ownerId: ctx.ownerId,
       createdAt: Date.now(),
     });
   },
 });
 
-export const update = mutation({
+export const update = authedMutation({
   args: {
     id: v.id("tasks"),
     title: v.optional(v.string()),
@@ -77,21 +54,13 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
     const task = await ctx.db.get(args.id);
-
     if (!task) {
       throw new Error("Task not found");
     }
 
-    if (task.ownerId !== ownerId) {
-      throw new Error("Not authorized to update this task");
-    }
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, task.projectId);
 
     const updates: Partial<{
       title: string;
@@ -107,24 +76,16 @@ export const update = mutation({
   },
 });
 
-export const remove = mutation({
+export const remove = authedMutation({
   args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const ownerId = (user.userId ?? user._id).toString();
     const task = await ctx.db.get(args.id);
-
     if (!task) {
       throw new Error("Task not found");
     }
 
-    if (task.ownerId !== ownerId) {
-      throw new Error("Not authorized to delete this task");
-    }
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, task.projectId);
 
     await ctx.db.delete(args.id);
   },
