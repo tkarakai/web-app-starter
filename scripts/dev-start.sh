@@ -43,7 +43,7 @@ fi
 START_WEB=false
 START_ADMIN=false
 START_LANDING=false
-START_DESIGN=false
+START_STORYBOOK=false
 NEED_CONVEX=false
 
 if [ -z "$SELECTED_APPS" ]; then
@@ -51,7 +51,7 @@ if [ -z "$SELECTED_APPS" ]; then
     START_WEB=true
     START_ADMIN=true
     START_LANDING=true
-    START_DESIGN=true
+    START_STORYBOOK=true
     NEED_CONVEX=true
 else
     # Parse comma-separated app names
@@ -70,13 +70,13 @@ else
                 START_LANDING=true
                 # Landing doesn't need Convex
                 ;;
-            design)
-                START_DESIGN=true
-                # Design showcase doesn't need Convex
+            storybook)
+                START_STORYBOOK=true
+                # Storybook showcase doesn't need Convex
                 ;;
             *)
                 echo -e "${RED}Unknown app: $app${NC}"
-                echo "Available apps: web, admin, landing, design"
+                echo "Available apps: web, admin, landing, storybook"
                 exit 1
                 ;;
         esac
@@ -88,7 +88,7 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Current directory: $(pwd)"
     echo "[CI MODE] Script directory: $SCRIPT_DIR"
     echo "[CI MODE] Project directory: $PROJECT_DIR"
-    echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING design=$START_DESIGN convex=$NEED_CONVEX"
+    echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING storybook=$START_STORYBOOK convex=$NEED_CONVEX"
 fi
 
 echo -e "${BLUE}  Starting Development Environment...${NC}"
@@ -200,6 +200,54 @@ update_app_env_urls() {
     update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
 }
 
+# Check if esbuild binary is functional (Convex uses it to bundle functions)
+check_esbuild() {
+    local esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild"
+    if [ ! -x "$esbuild_bin" ]; then
+        # Fall back to the wrapper script
+        esbuild_bin="$PROJECT_DIR/node_modules/.bin/esbuild"
+    fi
+
+    if [ ! -e "$esbuild_bin" ]; then
+        echo "missing"
+        return
+    fi
+
+    # Run with a 3-second timeout — a working esbuild responds instantly.
+    # Use a background process + watchdog kill instead of perl alarm, which
+    # doesn't reliably terminate a hung binary after exec replaces perl.
+    local tmpfile
+    tmpfile=$(mktemp)
+    "$esbuild_bin" --version > "$tmpfile" 2>/dev/null &
+    local pid=$!
+    (sleep 3 && kill "$pid" 2>/dev/null) &
+    local watchdog=$!
+    wait "$pid" 2>/dev/null
+    local exit_code=$?
+    kill "$watchdog" 2>/dev/null
+    wait "$watchdog" 2>/dev/null
+
+    local version
+    version=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $exit_code -eq 0 ] && [ -n "$version" ]; then
+        echo "$version"
+    else
+        echo "broken"
+    fi
+}
+
+# Print esbuild fix instructions
+print_esbuild_fix() {
+    echo -e "${RED}  esbuild binary is missing or corrupted.${NC}"
+    echo -e "${RED}  Convex uses esbuild to bundle functions — it will hang without a working binary.${NC}"
+    echo ""
+    echo -e "${YELLOW}  Fix: reinstall esbuild${NC}"
+    echo -e "    rm -rf node_modules/@esbuild node_modules/esbuild && bun install"
+    echo ""
+}
+
 # ============================================================
 # PRE-FLIGHT CHECKS
 # ============================================================
@@ -255,6 +303,14 @@ CLOUD_PORT=""
 SITE_PORT=""
 
 if [ "$NEED_CONVEX" = true ]; then
+    # Pre-flight: verify esbuild works (Convex hangs if it's corrupted)
+    ESBUILD_STATUS=$(check_esbuild)
+    if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
+        echo -e "${RED}✖ Pre-flight check failed${NC}"
+        print_esbuild_fix
+        exit 1
+    fi
+
     echo -e "${GREEN}▶ Starting Convex (anonymous mode)...${NC}"
 
     # Convex runs from packages/backend/
@@ -309,6 +365,18 @@ if [ "$NEED_CONVEX" = true ]; then
 
     if [ "$CONVEX_READY" = false ]; then
         echo -e "${RED}✖ Timeout waiting for Convex to start${NC}"
+
+        # Check if it got stuck on bundling (esbuild issue)
+        if grep -q "Preparing Convex functions" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
+            ESBUILD_STATUS=$(check_esbuild)
+            if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
+                echo ""
+                print_esbuild_fix
+            else
+                echo -e "${RED}  Stuck bundling functions. Try: CONVEX_VERBOSE=1 npx convex dev${NC}"
+            fi
+        fi
+
         echo -e "${RED}  Log output:${NC}"
         cat "$PROJECT_DIR/.convex-dev.log"
         echo ""
@@ -514,16 +582,22 @@ if [ "$START_LANDING" = true ]; then
         echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
     fi
     start_next_app "landing" 3000
+
+    # Set the landing URL in the web app so auth pages can link back
+    if [ "$START_WEB" = true ] && [ -n "$LAST_APP_URL" ]; then
+        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LAST_APP_URL"
+        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LAST_APP_URL for web"
+    fi
 fi
 
-if [ "$START_DESIGN" = true ]; then
-    start_next_app "design" 3003
+if [ "$START_STORYBOOK" = true ]; then
+    start_next_app "storybook" 3003
 fi
 
 # In CI mode, show final env contents
 if [ "$NON_INTERACTIVE" = true ]; then
     echo ""
-    for app_name in web admin landing design; do
+    for app_name in web admin landing storybook; do
         local_env="$PROJECT_DIR/apps/$app_name/.env.local"
         if [ -f "$local_env" ]; then
             echo "[CI MODE] apps/$app_name/.env.local:"
@@ -549,8 +623,8 @@ fi
 if [ "$START_ADMIN" = true ]; then
     echo -e "    Admin:     tail -f .next-admin.log"
 fi
-if [ "$START_DESIGN" = true ]; then
-    echo -e "    Design:    tail -f .next-design.log"
+if [ "$START_STORYBOOK" = true ]; then
+    echo -e "    Storybook: tail -f .next-storybook.log"
 fi
 echo ""
 echo -e "  ${YELLOW}Stop with:${NC} bun dev:stop"
@@ -578,7 +652,7 @@ if [ "$NON_INTERACTIVE" = true ]; then
     [ "$START_LANDING" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-landing.log"
     [ "$START_WEB" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-web.log"
     [ "$START_ADMIN" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-admin.log"
-    [ "$START_DESIGN" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-design.log"
+    [ "$START_STORYBOOK" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-storybook.log"
 
     tail -f $LOG_FILES &
     TAIL_PID=$!

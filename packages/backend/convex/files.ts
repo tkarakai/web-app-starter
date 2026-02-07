@@ -1,63 +1,56 @@
 import { v } from "convex/values";
 
-import { authComponent } from "./auth";
-import { mutation, query } from "./_generated/server";
+import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
 
-export const generateUploadUrl = mutation({
+const MAX_FILE_SIZE = 1_048_576; // 1MB
+
+export const generateUploadUrl = authedMutation({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
     return ctx.storage.generateUploadUrl();
   },
 });
 
-export const saveUpload = mutation({
+export const saveUpload = authedMutation({
   args: {
     storageId: v.id("_storage"),
     name: v.string(),
-    contentType: v.string(),
-    size: v.number(),
+    projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
+    await requireProjectAccess(ctx, args.projectId);
+
+    // Read actual file metadata from storage — never trust client-provided values
+    const fileMeta = await ctx.db.system.get(args.storageId);
+    if (!fileMeta) {
+      throw new Error("File not found in storage");
     }
 
-    const ownerId = (user.userId ?? user._id).toString();
+    if (fileMeta.size > MAX_FILE_SIZE) {
+      await ctx.storage.delete(args.storageId);
+      throw new Error("File too large (max 1MB)");
+    }
 
     return ctx.db.insert("uploads", {
       storageId: args.storageId,
       name: args.name,
-      contentType: args.contentType,
-      size: args.size,
-      ownerId,
+      contentType: fileMeta.contentType ?? "application/octet-stream",
+      size: fileMeta.size,
+      projectId: args.projectId,
+      ownerId: ctx.ownerId,
       createdAt: Date.now(),
     });
   },
 });
 
-export const listUploads = query({
-  args: {},
-  handler: async (ctx) => {
-    let user;
-    try {
-      user = await authComponent.getAuthUser(ctx);
-    } catch {
-      return [];
-    }
-    if (!user) {
-      return [];
-    }
+export const listUploads = authedQuery({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await requireProjectAccess(ctx, args.projectId);
 
-    const ownerId = (user.userId ?? user._id).toString();
     const uploads = await ctx.db
       .query("uploads")
-      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .order("desc")
       .collect();
 
@@ -67,5 +60,21 @@ export const listUploads = query({
         url: await ctx.storage.getUrl(upload.storageId),
       }))
     );
+  },
+});
+
+export const deleteUpload = authedMutation({
+  args: { id: v.id("uploads") },
+  handler: async (ctx, args) => {
+    const upload = await ctx.db.get(args.id);
+    if (!upload) {
+      throw new Error("Upload not found");
+    }
+
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, upload.projectId);
+
+    await ctx.storage.delete(upload.storageId);
+    await ctx.db.delete(args.id);
   },
 });

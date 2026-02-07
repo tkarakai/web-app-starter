@@ -4,6 +4,21 @@ export function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
 
+  // In dev, Convex runs locally on a dynamic port (e.g. http://127.0.0.1:3210).
+  // Derive both http and ws origins so the CSP allows API calls and WebSocket sync.
+  const devConvexOrigins = isDev
+    ? (() => {
+        try {
+          const url = new URL(process.env.NEXT_PUBLIC_CONVEX_URL ?? "");
+          const httpOrigin = url.origin;
+          const wsOrigin = `ws://${url.host}`;
+          return ` ${httpOrigin} ${wsOrigin}`;
+        } catch {
+          return "";
+        }
+      })()
+    : "";
+
   // When adding third-party services, add their origins to the relevant directives:
   //   Analytics (PostHog/Plausible): script-src, connect-src
   //   Error monitoring (Sentry):     script-src, connect-src
@@ -16,7 +31,7 @@ export function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud",
+    `connect-src 'self' https://*.convex.cloud wss://*.convex.cloud${devConvexOrigins}`,
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

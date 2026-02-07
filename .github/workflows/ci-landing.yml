@@ -42,8 +42,8 @@ jobs:
           filters: |
             landing:
               - 'apps/landing/**'
-            ui:
-              - 'packages/ui/**'
+            design-system:
+              - 'packages/design-system/**'
             root:
               - 'package.json'
               - 'bun.lockb'
@@ -57,7 +57,7 @@ jobs:
         id: evaluate
         run: |
           if [[ "${{ steps.filter.outputs.landing }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.ui }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.design-system }}" == "true" ]] || \
              [[ "${{ steps.filter.outputs.root }}" == "true" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
           else

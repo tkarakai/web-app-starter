@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { Button } from "@repo/ui";
+import { Button } from "@repo/design-system";
 
 describe("Button", () => {
   it("renders with default props", () => {
@@ -12,7 +12,7 @@ describe("Button", () => {
   it("applies variant classes", () => {
     render(<Button variant="secondary">Secondary</Button>);
     const button = screen.getByRole("button", { name: "Secondary" });
-    expect(button).toHaveClass("bg-muted");
+    expect(button).toHaveClass("bg-secondary");
   });
 
   it("applies size classes", () => {
