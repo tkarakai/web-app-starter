@@ -17,6 +17,7 @@ export default function BadgePage() {
           <Badge variant="secondary">Secondary</Badge>
           <Badge variant="outline">Outline</Badge>
           <Badge variant="accent">Accent</Badge>
+          <Badge variant="destructive">Destructive</Badge>
         </div>
       </DemoSection>
 
@@ -26,6 +27,7 @@ export default function BadgePage() {
           <Badge variant="secondary">Draft</Badge>
           <Badge variant="outline">v2.1.0</Badge>
           <Badge variant="accent">In Progress</Badge>
+          <Badge variant="destructive">Overdue</Badge>
           <Badge variant="default">3 items</Badge>
         </div>
       </DemoSection>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Mail, Plus } from "lucide-react";
+import { ArrowRight, Loader2, Mail, Plus, Trash2 } from "lucide-react";
 import { Button } from "@repo/ui";
 
 import { ComponentPage } from "@/components/component-page";
@@ -26,6 +26,8 @@ export default function ButtonPage() {
           <Button variant="secondary">Secondary</Button>
           <Button variant="outline">Outline</Button>
           <Button variant="ghost">Ghost</Button>
+          <Button variant="destructive">Destructive</Button>
+          <Button variant="link">Link</Button>
         </div>
       </DemoSection>
 
@@ -34,6 +36,9 @@ export default function ButtonPage() {
           <Button size="sm">Small</Button>
           <Button size="md">Medium</Button>
           <Button size="lg">Large</Button>
+          <Button size="icon">
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
       </DemoSection>
 
@@ -47,9 +52,37 @@ export default function ButtonPage() {
             <Plus className="h-4 w-4" />
             Add Item
           </Button>
+          <Button variant="secondary">
+            Continue
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button variant="destructive">
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
           <Button variant="secondary" size="sm">
             <Mail className="h-4 w-4" />
             Compact
+          </Button>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Icon Only">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button size="icon" variant="default">
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="secondary">
+            <Mail className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="outline">
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="destructive">
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </DemoSection>
@@ -72,6 +105,32 @@ export default function ButtonPage() {
         </div>
       </DemoSection>
 
+      <DemoSection title="Destructive Variant">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="destructive">Delete Account</Button>
+          <Button variant="destructive" size="sm">
+            <Trash2 className="h-4 w-4" />
+            Remove
+          </Button>
+          <Button variant="destructive" size="icon">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Link Variant">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="link">Learn more</Button>
+          <Button variant="link">
+            View documentation
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button variant="link" size="sm">
+            Small link
+          </Button>
+        </div>
+      </DemoSection>
+
       <DemoSection title="Disabled">
         <div className="flex flex-wrap items-center gap-3">
           <Button disabled>Default</Button>
@@ -84,29 +143,45 @@ export default function ButtonPage() {
           <Button variant="ghost" disabled>
             Ghost
           </Button>
+          <Button variant="destructive" disabled>
+            Destructive
+          </Button>
+          <Button variant="link" disabled>
+            Link
+          </Button>
         </div>
       </DemoSection>
 
-      <DemoSection title="All Variants × All Sizes">
+      <DemoSection title="All Variants x All Sizes">
         <div className="space-y-3">
-          {(["default", "secondary", "outline", "ghost"] as const).map(
-            (variant) => (
-              <div key={variant} className="flex items-center gap-3">
-                <span className="w-20 text-xs font-mono text-muted-foreground">
-                  {variant}
-                </span>
-                <Button variant={variant} size="sm">
-                  Small
-                </Button>
-                <Button variant={variant} size="md">
-                  Medium
-                </Button>
-                <Button variant={variant} size="lg">
-                  Large
-                </Button>
-              </div>
-            )
-          )}
+          {(
+            [
+              "default",
+              "secondary",
+              "outline",
+              "ghost",
+              "destructive",
+              "link",
+            ] as const
+          ).map((variant) => (
+            <div key={variant} className="flex items-center gap-3">
+              <span className="w-24 text-xs font-mono text-muted-foreground">
+                {variant}
+              </span>
+              <Button variant={variant} size="sm">
+                Small
+              </Button>
+              <Button variant={variant} size="md">
+                Medium
+              </Button>
+              <Button variant={variant} size="lg">
+                Large
+              </Button>
+              <Button variant={variant} size="icon">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
         </div>
       </DemoSection>
     </ComponentPage>

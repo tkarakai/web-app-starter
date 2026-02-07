@@ -21,6 +21,50 @@ export default function TextareaPage() {
         </div>
       </DemoSection>
 
+      <DemoSection title="Sizes">
+        <div className="max-w-sm space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="textarea-sm">Small</Label>
+            <Textarea
+              id="textarea-sm"
+              textareaSize="sm"
+              placeholder="Small textarea"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="textarea-md">Medium (default)</Label>
+            <Textarea
+              id="textarea-md"
+              textareaSize="md"
+              placeholder="Medium textarea"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="textarea-lg">Large</Label>
+            <Textarea
+              id="textarea-lg"
+              textareaSize="lg"
+              placeholder="Large textarea"
+            />
+          </div>
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Error Variant">
+        <div className="max-w-sm space-y-2">
+          <Label htmlFor="textarea-error">Description</Label>
+          <Textarea
+            id="textarea-error"
+            variant="error"
+            placeholder="Write a description..."
+            defaultValue="Too short"
+          />
+          <p className="text-xs text-destructive">
+            Description must be at least 20 characters.
+          </p>
+        </div>
+      </DemoSection>
+
       <DemoSection title="With Label">
         <div className="max-w-sm space-y-2">
           <Label htmlFor="textarea-bio">Bio</Label>

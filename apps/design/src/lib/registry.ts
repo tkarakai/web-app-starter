@@ -1,6 +1,7 @@
 export type ComponentCategory =
   | "Actions"
-  | "Display"
+  | "Data Display"
+  | "Feedback"
   | "Form"
   | "Layout"
   | "Overlay";
@@ -22,36 +23,74 @@ export const componentRegistry: ComponentEntry[] = [
     name: "Button",
     slug: "button",
     category: "Actions",
-    description: "Trigger actions and events.",
+    description: "Trigger actions and events with multiple variants.",
+  },
+  {
+    name: "Toggle",
+    slug: "toggle",
+    category: "Actions",
+    description: "Two-state toggle button.",
   },
 
-  // Display
+  // Data Display
   {
     name: "Avatar",
     slug: "avatar",
-    category: "Display",
+    category: "Data Display",
     description: "User profile images with fallbacks.",
   },
   {
     name: "Badge",
     slug: "badge",
-    category: "Display",
+    category: "Data Display",
     description: "Status indicators and labels.",
   },
   {
     name: "Progress",
     slug: "progress",
-    category: "Display",
+    category: "Data Display",
     description: "Show completion progress.",
   },
   {
     name: "Separator",
     slug: "separator",
-    category: "Display",
+    category: "Data Display",
     description: "Visual divider between content.",
+  },
+  {
+    name: "Skeleton",
+    slug: "skeleton",
+    category: "Data Display",
+    description: "Placeholder for loading content.",
+  },
+  {
+    name: "Table",
+    slug: "table",
+    category: "Data Display",
+    description: "Structured data in rows and columns.",
+  },
+
+  // Feedback
+  {
+    name: "Alert",
+    slug: "alert",
+    category: "Feedback",
+    description: "Important messages and callouts.",
+  },
+  {
+    name: "Alert Dialog",
+    slug: "alert-dialog",
+    category: "Feedback",
+    description: "Confirmation before destructive actions.",
   },
 
   // Form
+  {
+    name: "Checkbox",
+    slug: "checkbox",
+    category: "Form",
+    description: "Toggle a single option on or off.",
+  },
   {
     name: "Input",
     slug: "input",
@@ -63,6 +102,24 @@ export const componentRegistry: ComponentEntry[] = [
     slug: "label",
     category: "Form",
     description: "Accessible label for form controls.",
+  },
+  {
+    name: "Radio Group",
+    slug: "radio-group",
+    category: "Form",
+    description: "Select one option from a set.",
+  },
+  {
+    name: "Select",
+    slug: "select",
+    category: "Form",
+    description: "Pick an option from a dropdown list.",
+  },
+  {
+    name: "Switch",
+    slug: "switch",
+    category: "Form",
+    description: "Toggle between on and off states.",
   },
   {
     name: "Textarea",
@@ -99,6 +156,18 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Contextual menu with actions.",
   },
   {
+    name: "Popover",
+    slug: "popover",
+    category: "Overlay",
+    description: "Floating content anchored to a trigger.",
+  },
+  {
+    name: "Sheet",
+    slug: "sheet",
+    category: "Overlay",
+    description: "Slide-out panel from screen edge.",
+  },
+  {
     name: "Tooltip",
     slug: "tooltip",
     category: "Overlay",
@@ -109,7 +178,8 @@ export const componentRegistry: ComponentEntry[] = [
 /** Categories in display order */
 export const categoryOrder: ComponentCategory[] = [
   "Actions",
-  "Display",
+  "Data Display",
+  "Feedback",
   "Form",
   "Layout",
   "Overlay",

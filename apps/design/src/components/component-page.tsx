@@ -1,3 +1,5 @@
+import { Separator } from "@repo/ui";
+
 interface ComponentPageProps {
   title: string;
   description: string;
@@ -10,10 +12,11 @@ export function ComponentPage({
   children,
 }: ComponentPageProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-2 text-muted-foreground">{description}</p>
+        <h1 className="font-serif text-4xl tracking-tight text-foreground">{title}</h1>
+        <p className="mt-2 text-base text-muted-foreground leading-relaxed">{description}</p>
+        <Separator className="mt-6" />
       </div>
       {children}
     </div>

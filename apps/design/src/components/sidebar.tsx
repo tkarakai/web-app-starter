@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Moon, Palette, Sun, X } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
 import { cn } from "@repo/ui";
 
 import { useTheme } from "./theme-provider";
@@ -22,14 +22,19 @@ export function Sidebar() {
   const navContent = (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-5">
+      <div className="flex items-center justify-between px-5 py-6">
         <Link
           href="/"
-          className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+          className="group flex items-center gap-2.5 text-foreground hover:text-primary transition-colors"
           onClick={() => setOpen(false)}
         >
-          <Palette className="h-5 w-5 text-primary" />
-          <span className="font-bold text-lg tracking-tight">UI Components</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <span className="text-sm font-bold">UI</span>
+          </div>
+          <div>
+            <span className="block text-sm font-bold tracking-tight">Design System</span>
+            <span className="block text-[10px] font-medium text-muted-foreground">@repo/ui</span>
+          </div>
         </Link>
         <button
           onClick={toggleTheme}
@@ -47,8 +52,8 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
         {categoryOrder.map((category) => (
-          <div key={category} className="mb-4">
-            <h4 className="px-2 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div key={category} className="mb-5">
+            <h4 className="px-2 mb-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
               {category}
             </h4>
             <ul className="space-y-0.5">
@@ -61,7 +66,7 @@ export function Sidebar() {
                       href={href}
                       onClick={() => setOpen(false)}
                       className={cn(
-                        "block rounded-md px-2 py-1.5 text-sm transition-colors",
+                        "block rounded-md px-2 py-1.5 text-[13px] transition-colors",
                         isActive
                           ? "bg-primary/10 text-primary font-medium"
                           : "text-foreground/70 hover:text-foreground hover:bg-muted"
@@ -76,6 +81,13 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* Footer */}
+      <div className="border-t border-border px-5 py-4">
+        <p className="text-[10px] font-medium text-muted-foreground">
+          {grouped ? Object.values(grouped).flat().length : 0} components
+        </p>
+      </div>
     </>
   );
 
@@ -101,13 +113,13 @@ export function Sidebar() {
       {/* Mobile drawer */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-border bg-background transition-transform duration-200 md:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-border bg-background transition-transform duration-200 md:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <button
           onClick={() => setOpen(false)}
-          className="absolute right-3 top-5 rounded-md p-1 hover:bg-muted"
+          className="absolute right-3 top-6 rounded-md p-1 hover:bg-muted"
           aria-label="Close navigation"
         >
           <X className="h-4 w-4" />
@@ -116,7 +128,7 @@ export function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-[260px] md:flex-col md:fixed md:inset-y-0 md:left-0 md:border-r md:border-border md:bg-background">
+      <aside className="hidden md:flex md:w-[280px] md:flex-col md:fixed md:inset-y-0 md:left-0 md:border-r md:border-border md:bg-background">
         {navContent}
       </aside>
     </>

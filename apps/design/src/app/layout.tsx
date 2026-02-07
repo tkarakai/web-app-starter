@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
-import { Fraunces, Space_Grotesk } from "next/font/google";
+import { Raleway } from "next/font/google";
 import { TooltipProvider } from "@repo/ui";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const raleway = Raleway({
   subsets: ["latin"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-serif",
   display: "swap",
 });
 
@@ -32,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${fraunces.variable}`}
+      className={raleway.variable}
       suppressHydrationWarning
     >
       <body>
@@ -40,8 +34,8 @@ export default function RootLayout({
           <TooltipProvider>
             <div className="min-h-screen">
               <Sidebar />
-              <main className="md:pl-[260px]">
-                <div className="mx-auto max-w-4xl px-6 py-10 pt-16 md:pt-10">
+              <main className="md:pl-[280px]">
+                <div className="mx-auto max-w-4xl px-6 py-10 pt-16 md:px-10 md:pt-10">
                   {children}
                 </div>
               </main>

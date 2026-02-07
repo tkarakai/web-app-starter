@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { Fraunces, Space_Grotesk } from "next/font/google";
+import { Raleway } from "next/font/google";
 
 import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 
-const spaceGrotesk = Space_Grotesk({
+const raleway = Raleway({
   subsets: ["latin"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-serif",
   display: "swap",
 });
 
@@ -30,7 +24,7 @@ export default async function RootLayout({
   const token = await getToken();
 
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${fraunces.variable}`}>
+    <html lang="en" className={raleway.variable}>
       <body>
         <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
       </body>

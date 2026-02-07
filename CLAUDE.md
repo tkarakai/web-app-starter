@@ -6,10 +6,12 @@ This document provides project-specific guidance for AI agents working on this c
 
 ```bash
 # Start development (Convex + all apps via dev-start.sh)
-bun run dev                  # All apps (landing:3000, web:3001, admin:3002)
+bun run dev                  # All apps (landing:3000, web:3001, admin:3002, design:3003, storybook:3005)
 bun run dev:web              # Convex + web app only (port 3001)
 bun run dev:admin            # Convex + admin app only (port 3002)
 bun run dev:landing          # Landing page only (port 3000, no Convex)
+bun run dev:design           # Design showcase only (port 3003, no Convex)
+bun run dev:storybook        # Component storybook only (port 3005, no Convex)
 bun run dev:stop             # Stop all services
 bun run dev:status           # Show running processes
 
@@ -39,7 +41,7 @@ bun run build                # Build all apps via Turborepo
 ## Project Overview
 
 This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
-- **Three Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002)
+- **Five Next.js 16 apps**: landing (port 3000), web (port 3001), admin (port 3002), design (port 3003), storybook (port 3005)
 - **Three shared packages**: `@repo/ui`, `@repo/auth`, `@repo/backend`
 - **Convex** as the backend (database, file storage, API functions)
 - **Better Auth** wired to Convex for authentication
@@ -75,10 +77,20 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │   │   └── qa/                  # Testing artifacts (same structure as web)
 │   │       ├── tests/           # Unit + component tests
 │   │       └── e2e/             # Playwright E2E specs
-│   └── landing/                 # Landing/marketing page (@repo/landing, port 3000)
+│   ├── landing/                 # Landing/marketing page (@repo/landing, port 3000)
+│   │   ├── src/
+│   │   └── qa/                  # Testing artifacts (same structure as web)
+│   │       ├── tests/           # Unit + component tests
+│   │       └── e2e/             # Playwright E2E specs
+│   ├── design/                  # Design system showcase (@repo/design, port 3003)
+│   │   └── src/
+│   └── storybook/               # Component storybook (@repo/storybook, port 3005)
 │       ├── src/
-│       └── qa/                  # Testing artifacts (same structure as web)
-│           ├── tests/           # Unit + component tests
+│       │   ├── app/             # Next.js App Router pages
+│       │   ├── components/      # Sidebar, page layout components
+│       │   ├── lib/             # Component registry
+│       │   └── showcase/        # Per-component demo files
+│       └── qa/
 │           └── e2e/             # Playwright E2E specs
 ├── packages/
 │   ├── backend/                 # Convex backend (@repo/backend)
@@ -116,6 +128,7 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 │       ├── ci-web.yml           # Web app CI: test, build, E2E
 │       ├── ci-admin.yml         # Admin app CI: test, build, E2E
 │       ├── ci-landing.yml       # Landing app CI: test, build, E2E
+│       ├── ci-storybook.yml    # Storybook app CI: build, E2E (non-blocking)
 │       └── security.yml         # CodeQL, dependency audit, secrets scan
 ├── turbo.json                   # Turborepo task configuration
 └── package.json                 # Root workspace definition (Bun workspaces)
@@ -133,6 +146,8 @@ bun run dev                  # Uses scripts/dev-start.sh
 bun run dev:web              # Convex + web app (port 3001)
 bun run dev:admin            # Convex + admin app (port 3002)
 bun run dev:landing          # Landing only (port 3000, no Convex needed)
+bun run dev:design           # Design showcase only (port 3003, no Convex)
+bun run dev:storybook        # Component storybook only (port 3005, no Convex)
 
 # Check service status
 bun run dev:status           # Shows running processes
@@ -231,6 +246,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ./scripts/ci-local-act.sh -w web       # Just web app CI
 ./scripts/ci-local-act.sh -w admin     # Just admin app CI
 ./scripts/ci-local-act.sh -w landing   # Just landing app CI
+./scripts/ci-local-act.sh -w storybook # Just storybook app CI
 
 # Run a specific job
 ./scripts/ci-local-act.sh -j lint      # Just linting
@@ -238,11 +254,12 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ./scripts/ci-local-act.sh -o           # Offline mode
 ```
 
-**CI is split into 4 independent workflows** that `ci-local-act.sh` runs sequentially:
+**CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:
 1. `ci-shared.yml` — Lint, typecheck, backend tests (shared across all packages)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)
+5. `ci-storybook.yml` — Storybook app: build, E2E (non-blocking, not required for merge)
 
 Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling both GitHub Actions and act-specific cache-aware setup automatically.
 
