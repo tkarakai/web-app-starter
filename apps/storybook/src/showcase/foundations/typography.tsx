@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DemoSection } from "@/components/demo-section";
 
 const sampleText = "The quick brown fox jumps over the lazy dog";
@@ -46,7 +47,49 @@ const leadingValues = [
 const multiLineText =
   "Design is not just what it looks like and feels like. Design is how it works. Good design is as little design as possible.";
 
+function OverflowToggle({
+  mode,
+  onChange,
+}: {
+  mode: "truncate" | "wrap";
+  onChange: (mode: "truncate" | "wrap") => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 p-0.5 text-xs">
+      <button
+        type="button"
+        onClick={() => onChange("truncate")}
+        className={`rounded px-2 py-0.5 transition-colors ${
+          mode === "truncate"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Truncate
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("wrap")}
+        className={`rounded px-2 py-0.5 transition-colors ${
+          mode === "wrap"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Wrap
+      </button>
+    </div>
+  );
+}
+
 export default function TypographyShowcase() {
+  const [overflowMode, setOverflowMode] = useState<"truncate" | "wrap">(
+    "wrap"
+  );
+
+  const textOverflowClass =
+    overflowMode === "truncate" ? "truncate" : "break-words";
+
   return (
     <>
       <DemoSection
@@ -54,9 +97,11 @@ export default function TypographyShowcase() {
         description="The primary typeface loaded via Google Fonts and applied through the --font-sans CSS variable."
       >
         <div className="space-y-4">
-          <p className="text-2xl font-light text-foreground">{sampleText}</p>
+          <p className="text-2xl font-light text-foreground break-words">
+            {sampleText}
+          </p>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-mono">
+            <p className="text-xs text-muted-foreground font-mono break-all">
               --font-sans: Raleway, ui-sans-serif, system-ui, sans-serif
             </p>
             <p className="text-xs text-muted-foreground font-mono">
@@ -69,19 +114,24 @@ export default function TypographyShowcase() {
       <DemoSection
         title="Text Sizes"
         description="Tailwind's typographic scale from xs to 6xl."
+        toolbar={
+          <OverflowToggle mode={overflowMode} onChange={setOverflowMode} />
+        }
       >
-        <div className="space-y-4">
+        <div className={"space-y-4"}>
           {textSizes.map(({ cls, label, size }) => (
-            <div key={cls} className="flex items-baseline gap-4">
-              <div className="w-24 shrink-0 text-right">
+            <div key={cls} className="space-y-1">
+              <div className="flex items-baseline gap-2">
                 <span className="text-xs font-mono text-muted-foreground">
                   {label}
                 </span>
-                <span className="text-xs text-muted-foreground/60 ml-1.5 hidden sm:inline">
+                <span className="text-xs text-muted-foreground/60">
                   {size}
                 </span>
               </div>
-              <p className={`${cls} text-foreground truncate`}>
+              <p
+                className={`${cls} text-foreground ${textOverflowClass} min-w-0`}
+              >
                 {sampleText}
               </p>
             </div>
@@ -92,16 +142,19 @@ export default function TypographyShowcase() {
       <DemoSection
         title="Font Weights"
         description="Available weight variations for the Raleway font family."
+        toolbar={
+          <OverflowToggle mode={overflowMode} onChange={setOverflowMode} />
+        }
       >
-        <div className="space-y-3">
+        <div className={"space-y-3"}>
           {fontWeights.map(({ cls, label, weight }) => (
-            <div key={cls} className="flex items-baseline gap-4">
-              <div className="w-24 shrink-0 text-right">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {weight}
-                </span>
-              </div>
-              <p className={`${cls} text-lg text-foreground`}>
+            <div key={cls} className="space-y-1">
+              <span className="text-xs font-mono text-muted-foreground">
+                {weight}
+              </span>
+              <p
+                className={`${cls} text-lg text-foreground ${textOverflowClass} min-w-0`}
+              >
                 {label} — {sampleText}
               </p>
             </div>
@@ -112,16 +165,19 @@ export default function TypographyShowcase() {
       <DemoSection
         title="Letter Spacing (Tracking)"
         description="Adjustments to the space between characters."
+        toolbar={
+          <OverflowToggle mode={overflowMode} onChange={setOverflowMode} />
+        }
       >
-        <div className="space-y-3">
+        <div className={"space-y-3"}>
           {trackingValues.map(({ cls, label, value }) => (
-            <div key={cls} className="flex items-baseline gap-4">
-              <div className="w-24 shrink-0 text-right">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {value}
-                </span>
-              </div>
-              <p className={`${cls} text-base text-foreground`}>
+            <div key={cls} className="space-y-1">
+              <span className="text-xs font-mono text-muted-foreground">
+                {value}
+              </span>
+              <p
+                className={`${cls} text-base text-foreground ${textOverflowClass} min-w-0`}
+              >
                 {label} — {sampleText}
               </p>
             </div>

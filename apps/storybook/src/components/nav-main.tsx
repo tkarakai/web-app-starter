@@ -67,6 +67,9 @@ export function NavMain({ items, query = "", label = "Components" }: { items: Na
   );
 
   const [openSet, setOpenSet] = useState<Set<string>>(() => new Set());
+  // Track categories the user explicitly collapsed so auto-expand doesn't
+  // immediately reopen them on the same pathname change.
+  const [userClosed, setUserClosed] = useState<Set<string>>(() => new Set());
 
   // After mount, sync open state with the current pathname
   useEffect(() => {
@@ -78,12 +81,16 @@ export function NavMain({ items, query = "", label = "Components" }: { items: Na
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-expand the active category when pathname changes (after mount)
+  // Auto-expand the active category when pathname changes (after mount),
+  // but only if the user hasn't explicitly collapsed it.
   useEffect(() => {
     if (!mounted) return;
-    if (activeCategory && !openSet.has(activeCategory.title)) {
+    if (activeCategory && !openSet.has(activeCategory.title) && !userClosed.has(activeCategory.title)) {
       setOpenSet((prev) => new Set(prev).add(activeCategory.title));
     }
+    // Clear the user-closed set on pathname change so that navigating
+    // to a new route resets the override.
+    setUserClosed(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -92,8 +99,16 @@ export function NavMain({ items, query = "", label = "Components" }: { items: Na
       const next = new Set(prev);
       if (next.has(title)) {
         next.delete(title);
+        // Mark as user-closed so the pathname effect doesn't reopen it
+        setUserClosed((prevClosed) => new Set(prevClosed).add(title));
       } else {
         next.add(title);
+        // User opened it, remove from closed set
+        setUserClosed((prevClosed) => {
+          const nextClosed = new Set(prevClosed);
+          nextClosed.delete(title);
+          return nextClosed;
+        });
       }
       return next;
     });

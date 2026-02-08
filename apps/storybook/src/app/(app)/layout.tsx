@@ -226,7 +226,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col h-dvh">
+      <SidebarInset className="flex flex-col h-dvh min-w-0">
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border/40 bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
@@ -241,8 +241,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-6">
-          {children}
+        <div className="flex-1 min-w-0 overflow-y-auto p-6">
+          <div className="mx-auto w-full max-w-[58rem]">
+            {children}
+          </div>
         </div>
         <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />
       </SidebarInset>
