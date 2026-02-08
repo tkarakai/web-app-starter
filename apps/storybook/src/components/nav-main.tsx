@@ -142,16 +142,36 @@ export function NavMain({ items, query = "", label = "Components" }: { items: Na
           // When searching, force all matching categories open
           const isOpen = isSearching || openSet.has(item.title);
 
+          // Before mount, render a static (non-Collapsible) version to avoid
+          // Radix ID hydration mismatches. After mount, swap to the interactive
+          // Collapsible which generates stable client-side IDs.
+          if (!mounted) {
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  isActive={isCategoryActive}
+                  className={
+                    isCategoryActive
+                      ? "bg-sidebar-primary/10 font-semibold text-sidebar-primary"
+                      : undefined
+                  }
+                >
+                  {item.icon && <item.icon />}
+                  <span>{item.title}</span>
+                  <ChevronRight className="ml-auto" />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
+
           return (
             <Collapsible
               key={item.title}
               asChild
-              // Use defaultOpen={false} on server, controlled `open` after mount
-              {...(mounted
-                ? isSearching
-                  ? { open: true }
-                  : { open: isOpen, onOpenChange: () => toggleCategory(item.title) }
-                : { defaultOpen: false }
+              {...(isSearching
+                ? { open: true }
+                : { open: isOpen, onOpenChange: () => toggleCategory(item.title) }
               )}
               className="group/collapsible"
             >
