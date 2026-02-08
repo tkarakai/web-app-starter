@@ -14,6 +14,7 @@ import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as meta from "../meta.js";
 import type * as projects from "../projects.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as tasks from "../tasks.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   meta: typeof meta;
   projects: typeof projects;
+  rateLimits: typeof rateLimits;
   tasks: typeof tasks;
 }>;
 

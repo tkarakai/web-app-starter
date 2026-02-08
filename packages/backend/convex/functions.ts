@@ -5,6 +5,7 @@ import {
 import type { ObjectType, PropertyValidators } from "convex/values";
 
 import { authComponent } from "./auth";
+import { rateLimit } from "./rateLimits";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -53,12 +54,20 @@ export function authedQuery<
  * Authenticated mutation builder.
  * Handlers receive `ctx.user` and `ctx.ownerId` automatically.
  * Throws if the caller is not authenticated.
+ * Enforces a global per-user rate limit on all mutations.
  */
 export const authedMutation = customMutation(
   mutation,
   customCtx(async (ctx) => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("Not authenticated");
+
+    await rateLimit(ctx, {
+      name: "mutationGlobal",
+      key: auth.ownerId,
+      throws: true,
+    });
+
     return auth;
   }),
 );

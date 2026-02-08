@@ -3,11 +3,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": ["EDGE_RATE_LIMIT_WINDOW", "EDGE_RATE_LIMIT_MAX", "EDGE_RATE_LIMIT_MAP_MAX_SIZE"]
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["EDGE_RATE_LIMIT_WINDOW", "EDGE_RATE_LIMIT_MAX", "EDGE_RATE_LIMIT_MAP_MAX_SIZE"]
     },
     "lint": {
       "dependsOn": ["^build"]
