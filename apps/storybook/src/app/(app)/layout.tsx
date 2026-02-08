@@ -1,40 +1,93 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
+import { BreadcrumbDropdownItem } from "@/components/breadcrumb-dropdown-item";
 import {
   Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
   Separator,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@repo/design-system";
 import {
+  categoryOrder,
   categoryToSlug,
   componentRegistry,
   slugToCategory,
 } from "@/lib/registry";
 import {
+  patternCategoryOrder,
   patternCategoryToSlug,
   patternRegistry,
   slugToPatternCategory,
 } from "@/lib/pattern-registry";
 import {
+  foundationCategoryOrder,
   foundationCategoryToSlug,
   foundationRegistry,
   slugToFoundationCategory,
 } from "@/lib/foundation-registry";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+// ── Shared sibling data ────────────────────────────────────────────
+
+const sectionSiblings = [
+  { label: "Foundations", href: "/foundations" },
+  { label: "Components", href: "/components" },
+  { label: "Patterns", href: "/patterns" },
+];
+
+const componentCategorySiblings = categoryOrder.map((cat) => ({
+  label: cat,
+  href: `/components/category/${categoryToSlug(cat)}`,
+}));
+
+const patternCategorySiblings = patternCategoryOrder.map((cat) => ({
+  label: cat,
+  href: `/patterns/category/${patternCategoryToSlug(cat)}`,
+}));
+
+const foundationCategorySiblings = foundationCategoryOrder.map((cat) => ({
+  label: cat,
+  href: `/foundations/category/${foundationCategoryToSlug(cat)}`,
+}));
+
+function getComponentItemSiblings(category: string) {
+  return componentRegistry
+    .filter((c) => c.category === category)
+    .map((c) => ({ label: c.name, href: `/components/${c.slug}` }));
+}
+
+function getPatternItemSiblings(category: string) {
+  return patternRegistry
+    .filter((p) => p.category === category)
+    .map((p) => ({ label: p.name, href: `/patterns/${p.slug}` }));
+}
+
+function getFoundationItemSiblings(category: string) {
+  return foundationRegistry
+    .filter((f) => f.category === category)
+    .map((f) => ({ label: f.name, href: `/foundations/${f.slug}` }));
+}
+
+// ── Layout ─────────────────────────────────────────────────────────
+
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
 
-  // Resolve component page: /components/<slug>
+  // ── Route resolution ───────────────────────────────────────────
+
+  // Index pages
+  const isComponentsIndex = pathname === "/components";
+  const isPatternsIndex = pathname === "/patterns";
+  const isFoundationsIndex = pathname === "/foundations";
+
+  // Component page: /components/<slug>
   const componentSlug =
     pathname.startsWith("/components/") &&
     !pathname.startsWith("/components/category/")
@@ -44,7 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? componentRegistry.find((c) => c.slug === componentSlug)
     : null;
 
-  // Resolve category page: /components/category/<slug>
+  // Component category: /components/category/<slug>
   const categorySlugMatch = pathname.startsWith("/components/category/")
     ? pathname.replace("/components/category/", "")
     : null;
@@ -52,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? slugToCategory(categorySlugMatch)
     : null;
 
-  // Resolve pattern page: /patterns/<slug>
+  // Pattern page: /patterns/<slug>
   const patternSlug =
     pathname.startsWith("/patterns/") &&
     !pathname.startsWith("/patterns/category/")
@@ -62,7 +115,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? patternRegistry.find((p) => p.slug === patternSlug)
     : null;
 
-  // Resolve pattern category page: /patterns/category/<slug>
+  // Pattern category: /patterns/category/<slug>
   const patternCategorySlugMatch = pathname.startsWith("/patterns/category/")
     ? pathname.replace("/patterns/category/", "")
     : null;
@@ -70,7 +123,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? slugToPatternCategory(patternCategorySlugMatch)
     : null;
 
-  // Resolve foundation page: /foundations/<slug>
+  // Foundation page: /foundations/<slug>
   const foundationSlug =
     pathname.startsWith("/foundations/") &&
     !pathname.startsWith("/foundations/category/")
@@ -80,146 +133,233 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? foundationRegistry.find((f) => f.slug === foundationSlug)
     : null;
 
-  // Resolve foundation category page: /foundations/category/<slug>
-  const foundationCategorySlugMatch = pathname.startsWith("/foundations/category/")
+  // Foundation category: /foundations/category/<slug>
+  const foundationCategorySlugMatch = pathname.startsWith(
+    "/foundations/category/",
+  )
     ? pathname.replace("/foundations/category/", "")
     : null;
   const foundationCategoryName = foundationCategorySlugMatch
     ? slugToFoundationCategory(foundationCategorySlugMatch)
     : null;
 
-  // Determine breadcrumb content
+  // ── Breadcrumb rendering ───────────────────────────────────────
+
   const renderBreadcrumbs = () => {
+    // Component detail page: Components > Category > Item
     if (componentEntry) {
+      const catHref = `/components/category/${categoryToSlug(componentEntry.category)}`;
       return (
         <>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link href="/">Components</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link
-                href={`/components/category/${categoryToSlug(componentEntry.category)}`}
-              >
-                {componentEntry.category}
-              </Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{componentEntry.name}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbDropdownItem
+            label="Components"
+            href="/components"
+            siblings={sectionSiblings}
+            activeHref="/components"
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={componentEntry.category}
+            href={catHref}
+            siblings={componentCategorySiblings}
+            activeHref={catHref}
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={componentEntry.name}
+            href={`/components/${componentEntry.slug}`}
+            isCurrentPage
+            siblings={getComponentItemSiblings(componentEntry.category)}
+            activeHref={`/components/${componentEntry.slug}`}
+          />
         </>
       );
     }
 
+    // Component category page: Components > Category
     if (categoryName) {
+      const catHref = `/components/category/${categoryToSlug(categoryName)}`;
       return (
         <>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link href="/">Components</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{categoryName}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbDropdownItem
+            label="Components"
+            href="/components"
+            siblings={sectionSiblings}
+            activeHref="/components"
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={categoryName}
+            href={catHref}
+            isCurrentPage
+            siblings={componentCategorySiblings}
+            activeHref={catHref}
+          />
         </>
       );
     }
 
+    // Pattern detail page: Patterns > Category > Item
     if (patternEntry) {
+      const catHref = `/patterns/category/${patternCategoryToSlug(patternEntry.category)}`;
       return (
         <>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link href="/">Patterns</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link
-                href={`/patterns/category/${patternCategoryToSlug(patternEntry.category)}`}
-              >
-                {patternEntry.category}
-              </Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{patternEntry.name}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbDropdownItem
+            label="Patterns"
+            href="/patterns"
+            siblings={sectionSiblings}
+            activeHref="/patterns"
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={patternEntry.category}
+            href={catHref}
+            siblings={patternCategorySiblings}
+            activeHref={catHref}
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={patternEntry.name}
+            href={`/patterns/${patternEntry.slug}`}
+            isCurrentPage
+            siblings={getPatternItemSiblings(patternEntry.category)}
+            activeHref={`/patterns/${patternEntry.slug}`}
+          />
         </>
       );
     }
 
+    // Pattern category page: Patterns > Category
     if (patternCategoryName) {
+      const catHref = `/patterns/category/${patternCategoryToSlug(patternCategoryName)}`;
       return (
         <>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link href="/">Patterns</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{patternCategoryName}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbDropdownItem
+            label="Patterns"
+            href="/patterns"
+            siblings={sectionSiblings}
+            activeHref="/patterns"
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={patternCategoryName}
+            href={catHref}
+            isCurrentPage
+            siblings={patternCategorySiblings}
+            activeHref={catHref}
+          />
         </>
       );
     }
 
+    // Foundation detail page: Foundations > Category > Item
     if (foundationEntry) {
+      const catHref = `/foundations/category/${foundationCategoryToSlug(foundationEntry.category)}`;
       return (
         <>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link href="/">Foundations</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link
-                href={`/foundations/category/${foundationCategoryToSlug(foundationEntry.category)}`}
-              >
-                {foundationEntry.category}
-              </Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{foundationEntry.name}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbDropdownItem
+            label="Foundations"
+            href="/foundations"
+            siblings={sectionSiblings}
+            activeHref="/foundations"
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={foundationEntry.category}
+            href={catHref}
+            siblings={foundationCategorySiblings}
+            activeHref={catHref}
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={foundationEntry.name}
+            href={`/foundations/${foundationEntry.slug}`}
+            isCurrentPage
+            siblings={getFoundationItemSiblings(foundationEntry.category)}
+            activeHref={`/foundations/${foundationEntry.slug}`}
+          />
         </>
       );
     }
 
+    // Foundation category page: Foundations > Category
     if (foundationCategoryName) {
+      const catHref = `/foundations/category/${foundationCategoryToSlug(foundationCategoryName)}`;
       return (
         <>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link href="/">Foundations</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{foundationCategoryName}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbDropdownItem
+            label="Foundations"
+            href="/foundations"
+            siblings={sectionSiblings}
+            activeHref="/foundations"
+            hiddenOnMobile
+            showSeparator
+          />
+          <BreadcrumbDropdownItem
+            label={foundationCategoryName}
+            href={catHref}
+            isCurrentPage
+            siblings={foundationCategorySiblings}
+            activeHref={catHref}
+          />
         </>
       );
     }
 
+    // Index pages: single breadcrumb with section switcher
+    if (isFoundationsIndex) {
+      return (
+        <BreadcrumbDropdownItem
+          label="Foundations"
+          href="/foundations"
+          isCurrentPage
+          siblings={sectionSiblings}
+          activeHref="/foundations"
+        />
+      );
+    }
+
+    if (isPatternsIndex) {
+      return (
+        <BreadcrumbDropdownItem
+          label="Patterns"
+          href="/patterns"
+          isCurrentPage
+          siblings={sectionSiblings}
+          activeHref="/patterns"
+        />
+      );
+    }
+
+    if (isComponentsIndex) {
+      return (
+        <BreadcrumbDropdownItem
+          label="Components"
+          href="/components"
+          isCurrentPage
+          siblings={sectionSiblings}
+          activeHref="/components"
+        />
+      );
+    }
+
+    // Default fallback
     return (
-      <BreadcrumbItem>
-        <BreadcrumbPage>Components</BreadcrumbPage>
-      </BreadcrumbItem>
+      <BreadcrumbDropdownItem
+        label="Components"
+        href="/components"
+        isCurrentPage
+        siblings={sectionSiblings}
+        activeHref="/components"
+      />
     );
   };
 
@@ -235,16 +375,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             <Breadcrumb>
-              <BreadcrumbList>
-                {renderBreadcrumbs()}
-              </BreadcrumbList>
+              <BreadcrumbList>{renderBreadcrumbs()}</BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
         <div className="flex-1 min-w-0 overflow-y-auto p-6">
-          <div className="mx-auto w-full max-w-[58rem]">
-            {children}
-          </div>
+          <div className="mx-auto w-full max-w-[58rem]">{children}</div>
         </div>
         <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />
       </SidebarInset>
