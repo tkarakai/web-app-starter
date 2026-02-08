@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Monitor, Moon, Plus, Sun } from "lucide-react";
+import { ChevronRight, LogOut, Plus } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
-import { useTheme } from "next-themes";
+
+import { ThemeToggle } from "@repo/design-patterns";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -40,7 +41,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
   Textarea,
-  cn,
   useSidebar,
 } from "@repo/design-system";
 import { normalizeText } from "@/lib/projects";
@@ -71,7 +71,6 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const router = useRouter();
   const { state } = useSidebar();
-  const { setTheme, theme } = useTheme();
   const isCollapsed = state === "collapsed";
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
@@ -204,31 +203,7 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-48">
-                  <div
-                    className="flex items-center gap-1 rounded-md bg-muted p-1 mx-1 my-1"
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    {([
-                      { value: "light", icon: Sun, label: "Light theme" },
-                      { value: "system", icon: Monitor, label: "System theme" },
-                      { value: "dark", icon: Moon, label: "Dark theme" },
-                    ] as const).map(({ value, icon: Icon, label }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-label={label}
-                        onClick={() => setTheme(value)}
-                        className={cn(
-                          "flex-1 flex items-center justify-center rounded-sm p-1.5 transition-all duration-150",
-                          theme === value
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </button>
-                    ))}
-                  </div>
+                  <ThemeToggle className="mx-1 my-1" />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />

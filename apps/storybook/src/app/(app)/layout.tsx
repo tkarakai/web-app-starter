@@ -20,6 +20,11 @@ import {
   componentRegistry,
   slugToCategory,
 } from "@/lib/registry";
+import {
+  patternCategoryToSlug,
+  patternRegistry,
+  slugToPatternCategory,
+} from "@/lib/pattern-registry";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,7 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     !pathname.startsWith("/components/category/")
       ? pathname.replace("/components/", "")
       : null;
-  const entry = componentSlug
+  const componentEntry = componentSlug
     ? componentRegistry.find((c) => c.slug === componentSlug)
     : null;
 
@@ -42,11 +47,122 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ? slugToCategory(categorySlugMatch)
     : null;
 
+  // Resolve pattern page: /patterns/<slug>
+  const patternSlug =
+    pathname.startsWith("/patterns/") &&
+    !pathname.startsWith("/patterns/category/")
+      ? pathname.replace("/patterns/", "")
+      : null;
+  const patternEntry = patternSlug
+    ? patternRegistry.find((p) => p.slug === patternSlug)
+    : null;
+
+  // Resolve pattern category page: /patterns/category/<slug>
+  const patternCategorySlugMatch = pathname.startsWith("/patterns/category/")
+    ? pathname.replace("/patterns/category/", "")
+    : null;
+  const patternCategoryName = patternCategorySlugMatch
+    ? slugToPatternCategory(patternCategorySlugMatch)
+    : null;
+
+  // Determine breadcrumb content
+  const renderBreadcrumbs = () => {
+    if (componentEntry) {
+      return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href="/">Components</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link
+                href={`/components/category/${categoryToSlug(componentEntry.category)}`}
+              >
+                {componentEntry.category}
+              </Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{componentEntry.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </>
+      );
+    }
+
+    if (categoryName) {
+      return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href="/">Components</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{categoryName}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </>
+      );
+    }
+
+    if (patternEntry) {
+      return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href="/">Patterns</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link
+                href={`/patterns/category/${patternCategoryToSlug(patternEntry.category)}`}
+              >
+                {patternEntry.category}
+              </Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{patternEntry.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </>
+      );
+    }
+
+    if (patternCategoryName) {
+      return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href="/">Patterns</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{patternCategoryName}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </>
+      );
+    }
+
+    return (
+      <BreadcrumbItem>
+        <BreadcrumbPage>Components</BreadcrumbPage>
+      </BreadcrumbItem>
+    );
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      <SidebarInset className="flex flex-col h-dvh">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border/40 bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -55,52 +171,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             />
             <Breadcrumb>
               <BreadcrumbList>
-                {entry ? (
-                  <>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink asChild>
-                        <Link href="/">Components</Link>
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink asChild>
-                        <Link
-                          href={`/components/category/${categoryToSlug(entry.category)}`}
-                        >
-                          {entry.category}
-                        </Link>
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>{entry.name}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </>
-                ) : categoryName ? (
-                  <>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink asChild>
-                        <Link href="/">Components</Link>
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>{categoryName}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </>
-                ) : (
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>Components</BreadcrumbPage>
-                  </BreadcrumbItem>
-                )}
+                {renderBreadcrumbs()}
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col p-6 pt-0">
+        <div className="flex-1 overflow-y-auto p-6">
           {children}
         </div>
+        <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />
       </SidebarInset>
     </SidebarProvider>
   );

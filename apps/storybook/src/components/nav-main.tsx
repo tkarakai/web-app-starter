@@ -17,6 +17,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@repo/design-system";
 
 interface NavItem {
@@ -46,9 +47,10 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function NavMain({ items, query = "" }: { items: NavItem[]; query?: string }) {
+export function NavMain({ items, query = "", label = "Components" }: { items: NavItem[]; query?: string; label?: string }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { state: sidebarState } = useSidebar();
 
   const isSearching = query.length > 0;
 
@@ -117,7 +119,7 @@ export function NavMain({ items, query = "" }: { items: NavItem[]; query?: strin
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Components</SidebarGroupLabel>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {/* Navigation items */}
         {filteredItems.map((item) => {
@@ -181,10 +183,10 @@ export function NavMain({ items, query = "" }: { items: NavItem[]; query?: strin
           );
         })}
 
-        {/* No results message */}
-        {isSearching && filteredItems.length === 0 && (
+        {/* No results message (hidden when sidebar is collapsed — no room) */}
+        {isSearching && filteredItems.length === 0 && sidebarState !== "collapsed" && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-            No components found
+            No {label.toLowerCase()} found
           </li>
         )}
       </SidebarMenu>

@@ -5,28 +5,28 @@ import type { LucideIcon } from "lucide-react";
 import {
   Layers,
   MousePointerClick,
-  Moon,
   PanelsTopLeft,
   ScanEye,
   Search,
   SquareMousePointer,
-  Sun,
+  SwatchBook,
   TextCursorInput,
   X,
 } from "lucide-react";
 
 import {
+  Input,
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarInput,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@repo/design-system";
+import { ThemeToggle } from "@repo/design-patterns";
 
 import { NavMain } from "@/components/nav-main";
 import { SidebarTitle } from "@/components/team-switcher";
@@ -36,6 +36,12 @@ import {
   categoryToSlug,
   getComponentsByCategory,
 } from "@/lib/registry";
+import {
+  type PatternCategory,
+  patternCategoryOrder,
+  patternCategoryToSlug,
+  getPatternsByCategory,
+} from "@/lib/pattern-registry";
 
 const categoryIcons: Record<ComponentCategory, LucideIcon> = {
   Actions: MousePointerClick,
@@ -44,6 +50,10 @@ const categoryIcons: Record<ComponentCategory, LucideIcon> = {
   Form: TextCursorInput,
   Layout: PanelsTopLeft,
   Overlay: Layers,
+};
+
+const patternCategoryIcons: Record<PatternCategory, LucideIcon> = {
+  Theme: SwatchBook,
 };
 
 const componentsByCategory = getComponentsByCategory();
@@ -55,6 +65,18 @@ const navItems = categoryOrder.map((category) => ({
   items: componentsByCategory[category].map((entry) => ({
     title: entry.name,
     url: `/components/${entry.slug}`,
+  })),
+}));
+
+const patternsByCategory = getPatternsByCategory();
+
+const patternNavItems = patternCategoryOrder.map((category) => ({
+  title: category,
+  url: `/patterns/category/${patternCategoryToSlug(category)}`,
+  icon: patternCategoryIcons[category],
+  items: patternsByCategory[category].map((entry) => ({
+    title: entry.name,
+    url: `/patterns/${entry.slug}`,
   })),
 }));
 
@@ -84,7 +106,7 @@ function SidebarSearch({
         <SidebarMenuButton
           asChild={sidebarState !== "collapsed"}
           tooltip="Search components"
-          className={sidebarState === "collapsed" ? "cursor-pointer" : "hover:bg-transparent active:bg-transparent p-0"}
+          className={sidebarState === "collapsed" ? "cursor-pointer" : "overflow-visible hover:bg-transparent active:bg-transparent p-0"}
           onClick={sidebarState === "collapsed" ? handleSearchIconClick : undefined}
         >
           {sidebarState === "collapsed" ? (
@@ -92,12 +114,13 @@ function SidebarSearch({
           ) : (
             <div className="relative flex w-full items-center">
               <Search className="pointer-events-none absolute left-2 h-4 w-4 text-muted-foreground" />
-              <SidebarInput
+              <Input
                 ref={inputRef}
                 placeholder="Search..."
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
-                className="pl-8 pr-7"
+                inputSize="sm"
+                className={`pl-8 pr-7 ${isSearching ? "ring-2 ring-ring" : ""}`}
               />
               {isSearching && (
                 <button
@@ -118,37 +141,28 @@ function SidebarSearch({
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [isDark, setIsDark] = React.useState(false);
+  const { state: sidebarState } = useSidebar();
   const [query, setQuery] = React.useState("");
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
-  React.useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  const toggleTheme = () => {
-    const next = !isDark;
-    document.documentElement.classList.toggle("dark", next);
-    setIsDark(next);
-  };
+  // Only use collapsed after mount to avoid hydration mismatch
+  // (collapsed renders a different element tree, shifting Radix IDs)
+  const isCollapsed = mounted && sidebarState === "collapsed";
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="gap-3">
         <SidebarTitle />
+        <ThemeToggle className={isCollapsed ? undefined : "w-full"} collapsed={isCollapsed} />
         <SidebarSearch query={query} onQueryChange={setQuery} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} query={query} />
+        <NavMain items={navItems} query={query} label="Components" />
+        <NavMain items={patternNavItems} query={query} label="Patterns" />
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={toggleTheme} tooltip={isDark ? "Light mode" : "Dark mode"}>
-              {isDark ? <Sun /> : <Moon />}
-              <span>{isDark ? "Light mode" : "Dark mode"}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <p className="text-xs text-muted-foreground text-center py-1">v0.0.1</p>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -45,8 +45,8 @@ export function DashboardClient() {
         selectedProjectId={selectedProjectId}
         onSelectProject={setSelectedProjectId}
       />
-      <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/40 px-4">
+      <SidebarInset className="flex flex-col h-dvh">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator
             orientation="vertical"
@@ -58,7 +58,7 @@ export function DashboardClient() {
           />
         </header>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col overflow-y-auto">
           {selectedProjectId ? (
             <ProjectContent
               projectId={selectedProjectId}
@@ -68,6 +68,7 @@ export function DashboardClient() {
             <ProjectsOverview onSelectProject={setSelectedProjectId} />
           )}
         </div>
+        <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />
       </SidebarInset>
     </SidebarProvider>
   );
