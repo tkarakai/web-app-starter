@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui"
-import { Dot } from "lucide-react"
+import { Circle } from "lucide-react"
 
 import { cn } from "../../lib/utils"
 
@@ -31,13 +31,13 @@ function RadioGroupItem({
       ref={ref}
       data-slot="radio-group-item"
       className={cn(
-        "aspect-square h-4 w-4 rounded-full border border-primary shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "aspect-square h-4 w-4 rounded-full border border-primary shadow-sm transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 active:scale-90 active:transition-none",
         className
       )}
       {...props}
     >
-      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
-        <Dot className="h-6 w-6 fill-current text-current" />
+      <RadioGroupPrimitive.Indicator className="flex items-center justify-center animate-in zoom-in-75 fade-in-0 duration-150">
+        <Circle className="h-2.5 w-2.5 fill-primary text-primary" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   )

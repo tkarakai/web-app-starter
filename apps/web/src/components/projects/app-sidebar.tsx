@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Monitor, Moon, Plus, Sun } from "lucide-react";
+import { ChevronRight, LogOut, Plus } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
-import { useTheme } from "next-themes";
+
+import { ThemeToggle } from "@repo/design-patterns";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -70,7 +71,6 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const router = useRouter();
   const { state } = useSidebar();
-  const { setTheme, theme } = useTheme();
   const isCollapsed = state === "collapsed";
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
@@ -203,21 +203,7 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-48">
-                  <DropdownMenuItem onSelect={() => setTheme("light")}>
-                    <Sun className="mr-2 h-4 w-4" />
-                    Light
-                    {theme === "light" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setTheme("dark")}>
-                    <Moon className="mr-2 h-4 w-4" />
-                    Dark
-                    {theme === "dark" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setTheme("system")}>
-                    <Monitor className="mr-2 h-4 w-4" />
-                    System
-                    {theme === "system" && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-                  </DropdownMenuItem>
+                  <ThemeToggle className="mx-1 my-1" />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />

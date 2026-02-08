@@ -7,7 +7,10 @@ const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:300
 
 export default function SignInPage() {
   return (
-    <main className="relative min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,210,179,0.65),_rgba(255,255,255,0.1)_50%,_transparent_80%)]">
+    <main
+      className="relative min-h-screen"
+      style={{ background: "var(--glow-warm-intense)" }}
+    >
       <Link
         href={LANDING_URL}
         className="absolute left-6 top-6 flex items-center gap-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-80"

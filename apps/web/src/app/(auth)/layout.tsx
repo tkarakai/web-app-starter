@@ -1,3 +1,4 @@
+import { ForceSystemTheme } from "@/components/auth/force-system-theme";
 import { GuestGuard } from "@/components/auth/guest-guard";
 
 export default function AuthLayout({
@@ -5,5 +6,10 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <GuestGuard>{children}</GuestGuard>;
+  return (
+    <GuestGuard>
+      <ForceSystemTheme />
+      {children}
+    </GuestGuard>
+  );
 }

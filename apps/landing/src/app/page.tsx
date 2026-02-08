@@ -4,7 +4,10 @@ const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:300
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,225,184,0.55),_rgba(255,255,255,0.2)_45%,_transparent_80%)]">
+    <main
+      className="flex min-h-screen items-center justify-center"
+      style={{ background: "var(--glow-warm)" }}
+    >
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-8 px-6 text-center">
         <Badge variant="secondary" className="text-xs uppercase tracking-widest">
           Next.js + Convex + Better Auth

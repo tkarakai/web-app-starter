@@ -21,6 +21,7 @@
     "@convex-dev/better-auth": "0.10.10",
     "@repo/auth": "workspace:*",
     "@repo/backend": "workspace:*",
+    "@repo/design-patterns": "workspace:*",
     "@repo/design-system": "workspace:*",
     "convex": "1.31.7",
     "lucide-react": "0.562.0",
