@@ -40,6 +40,13 @@ export const foundationRegistry: FoundationEntry[] = [
     description: "Elevation levels from subtle to pronounced.",
   },
   {
+    name: "Glows",
+    slug: "glows",
+    category: "Visual",
+    description:
+      "Radial glow tokens for page and card backgrounds.",
+  },
+  {
     name: "Border Radius",
     slug: "border-radius",
     category: "Visual",

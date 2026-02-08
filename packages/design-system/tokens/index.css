@@ -77,6 +77,16 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+
+  /* ── Glows ── */
+  --glow-warm: radial-gradient(circle at top,
+    rgba(255, 225, 184, 0.55), rgba(255, 255, 255, 0.2) 45%, transparent 80%);
+  --glow-warm-intense: radial-gradient(circle at top,
+    rgba(255, 210, 179, 0.65), rgba(255, 255, 255, 0.1) 50%, transparent 80%);
+  --glow-cool: radial-gradient(circle at top,
+    rgba(210, 230, 255, 0.65), rgba(255, 255, 255, 0.1) 50%, transparent 80%);
+  --glow-brand: radial-gradient(circle at top,
+    rgba(180, 230, 220, 0.5), rgba(255, 255, 255, 0.15) 45%, transparent 80%);
 }
 
 /* ─── Dark Theme: Stone + Teal (Mira) ─── */
@@ -114,6 +124,16 @@
   --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.553 0.013 58.071);
+
+  /* ── Glows ── */
+  --glow-warm: radial-gradient(circle at top,
+    rgba(255, 225, 184, 0.15), rgba(0, 0, 0, 0.1) 45%, transparent 80%);
+  --glow-warm-intense: radial-gradient(circle at top,
+    rgba(255, 210, 179, 0.2), rgba(0, 0, 0, 0.1) 50%, transparent 80%);
+  --glow-cool: radial-gradient(circle at top,
+    rgba(210, 230, 255, 0.2), rgba(0, 0, 0, 0.1) 50%, transparent 80%);
+  --glow-brand: radial-gradient(circle at top,
+    rgba(180, 230, 220, 0.15), rgba(0, 0, 0, 0.1) 45%, transparent 80%);
 }
 
 @layer base {
