@@ -27,6 +27,13 @@ export const foundationRegistry: FoundationEntry[] = [
     description: "Font family, sizes, weights, tracking, and line heights.",
   },
   {
+    name: "Icons",
+    slug: "icons",
+    category: "Visual",
+    description:
+      "Dynamically discovered Lucide icon library with search.",
+  },
+  {
     name: "Shadows",
     slug: "shadows",
     category: "Visual",

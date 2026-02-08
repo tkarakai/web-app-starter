@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const radiusSizes = [
@@ -34,6 +35,21 @@ const radiusSizes = [
     variable: null,
     definition: "9999px",
   },
+];
+
+const buttonSizes = [
+  { size: "sm" as const, label: "Small" },
+  { size: "md" as const, label: "Medium" },
+  { size: "lg" as const, label: "Large" },
+];
+
+const radiusClasses = [
+  { cls: "rounded-none", label: "none" },
+  { cls: "rounded-sm", label: "sm" },
+  { cls: "rounded-md", label: "md (default)" },
+  { cls: "rounded-lg", label: "lg" },
+  { cls: "rounded-xl", label: "xl" },
+  { cls: "rounded-full", label: "full" },
 ];
 
 function useComputedRadii(): Record<string, string> {
@@ -85,6 +101,36 @@ export default function BorderRadiusShowcase() {
                     = {computed[variable]}
                   </p>
                 )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </DemoSection>
+
+      <DemoSection
+        title="Buttons × Sizes × Radii"
+        description="Every combination of button size and border radius."
+      >
+        <div className="space-y-6">
+          {buttonSizes.map(({ size, label }) => (
+            <div key={size} className="space-y-2">
+              <p className="text-xs font-medium text-foreground">
+                {label}{" "}
+                <span className="font-mono text-muted-foreground">
+                  size=&quot;{size}&quot;
+                </span>
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                {radiusClasses.map(({ cls, label: rLabel }) => (
+                  <div key={cls} className="flex flex-col items-center gap-1.5">
+                    <Button size={size} className={cls}>
+                      Button
+                    </Button>
+                    <span className="text-[10px] font-mono text-muted-foreground/60">
+                      {rLabel}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}

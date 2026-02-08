@@ -40,7 +40,7 @@ export default function SpacingShowcase() {
                 </span>
               </div>
               <div
-                className="h-3 rounded-sm bg-primary"
+                className="h-3 bg-primary"
                 style={{ width: `${px}px` }}
               />
             </div>
