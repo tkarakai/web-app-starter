@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
+import { Footer } from "@/components/footer";
 import "./globals.css";
 
 const raleway = Raleway({
@@ -22,9 +23,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
-      <body>
+      <body className="flex min-h-screen flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <div className="flex-1">{children}</div>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>

@@ -18,6 +18,9 @@ import {
   Separator,
 } from "@repo/design-system";
 
+const LANDING_URL =
+  process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
+
 const copy = {
   "sign-in": {
     title: "Welcome back",
@@ -185,6 +188,27 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             {copy[mode].footer}{" "}
             <span className="underline">{copy[mode].linkLabel}</span>
           </Button>
+          <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+            By continuing, you agree to our{" "}
+            <a
+              href={`${LANDING_URL}/terms`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href={`${LANDING_URL}/privacy`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
         </form>
       </CardContent>
     </Card>

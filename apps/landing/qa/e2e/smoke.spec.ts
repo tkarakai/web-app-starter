@@ -34,3 +34,50 @@ test.describe("Landing Homepage", () => {
     await expect(mainElement).toBeVisible();
   });
 });
+
+test.describe("Footer", () => {
+  test("displays footer with legal links", async ({ page }) => {
+    await page.goto("/");
+    const footer = page.locator("footer");
+    await expect(footer).toBeVisible();
+    await expect(footer.getByRole("link", { name: "About" })).toBeVisible();
+    await expect(
+      footer.getByRole("link", { name: "Privacy Policy" }),
+    ).toBeVisible();
+    await expect(
+      footer.getByRole("link", { name: "Terms of Service" }),
+    ).toBeVisible();
+  });
+});
+
+test.describe("Legal Pages", () => {
+  test("about page loads with correct heading", async ({ page }) => {
+    await page.goto("/about");
+    await expect(page).toHaveTitle("About - Web App Starter");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("About");
+  });
+
+  test("privacy page loads with correct heading", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(page).toHaveTitle("Privacy Policy - Web App Starter");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Privacy Policy",
+    );
+  });
+
+  test("terms page loads with correct heading", async ({ page }) => {
+    await page.goto("/terms");
+    await expect(page).toHaveTitle("Terms of Service - Web App Starter");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Terms of Service",
+    );
+  });
+
+  test("legal pages have back-to-home navigation", async ({ page }) => {
+    await page.goto("/about");
+    const backLink = page.getByRole("link", { name: /back to home/i });
+    await expect(backLink).toBeVisible();
+    await backLink.click();
+    await expect(page).toHaveURL("/");
+  });
+});
