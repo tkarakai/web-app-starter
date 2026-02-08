@@ -25,6 +25,11 @@ import {
   patternRegistry,
   slugToPatternCategory,
 } from "@/lib/pattern-registry";
+import {
+  foundationCategoryToSlug,
+  foundationRegistry,
+  slugToFoundationCategory,
+} from "@/lib/foundation-registry";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -63,6 +68,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     : null;
   const patternCategoryName = patternCategorySlugMatch
     ? slugToPatternCategory(patternCategorySlugMatch)
+    : null;
+
+  // Resolve foundation page: /foundations/<slug>
+  const foundationSlug =
+    pathname.startsWith("/foundations/") &&
+    !pathname.startsWith("/foundations/category/")
+      ? pathname.replace("/foundations/", "")
+      : null;
+  const foundationEntry = foundationSlug
+    ? foundationRegistry.find((f) => f.slug === foundationSlug)
+    : null;
+
+  // Resolve foundation category page: /foundations/category/<slug>
+  const foundationCategorySlugMatch = pathname.startsWith("/foundations/category/")
+    ? pathname.replace("/foundations/category/", "")
+    : null;
+  const foundationCategoryName = foundationCategorySlugMatch
+    ? slugToFoundationCategory(foundationCategorySlugMatch)
     : null;
 
   // Determine breadcrumb content
@@ -146,6 +169,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BreadcrumbSeparator className="hidden md:block" />
           <BreadcrumbItem>
             <BreadcrumbPage>{patternCategoryName}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </>
+      );
+    }
+
+    if (foundationEntry) {
+      return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href="/">Foundations</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link
+                href={`/foundations/category/${foundationCategoryToSlug(foundationEntry.category)}`}
+              >
+                {foundationEntry.category}
+              </Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{foundationEntry.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </>
+      );
+    }
+
+    if (foundationCategoryName) {
+      return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink asChild>
+              <Link href="/">Foundations</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{foundationCategoryName}</BreadcrumbPage>
           </BreadcrumbItem>
         </>
       );

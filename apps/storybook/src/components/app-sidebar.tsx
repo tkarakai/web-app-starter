@@ -5,7 +5,9 @@ import type { LucideIcon } from "lucide-react";
 import {
   Layers,
   MousePointerClick,
+  Palette,
   PanelsTopLeft,
+  Ruler,
   ScanEye,
   Search,
   SquareMousePointer,
@@ -42,6 +44,12 @@ import {
   patternCategoryToSlug,
   getPatternsByCategory,
 } from "@/lib/pattern-registry";
+import {
+  type FoundationCategory,
+  foundationCategoryOrder,
+  foundationCategoryToSlug,
+  getFoundationsByCategory,
+} from "@/lib/foundation-registry";
 
 const categoryIcons: Record<ComponentCategory, LucideIcon> = {
   Actions: MousePointerClick,
@@ -54,6 +62,11 @@ const categoryIcons: Record<ComponentCategory, LucideIcon> = {
 
 const patternCategoryIcons: Record<PatternCategory, LucideIcon> = {
   Theme: SwatchBook,
+};
+
+const foundationCategoryIcons: Record<FoundationCategory, LucideIcon> = {
+  Visual: Palette,
+  Layout: Ruler,
 };
 
 const componentsByCategory = getComponentsByCategory();
@@ -77,6 +90,18 @@ const patternNavItems = patternCategoryOrder.map((category) => ({
   items: patternsByCategory[category].map((entry) => ({
     title: entry.name,
     url: `/patterns/${entry.slug}`,
+  })),
+}));
+
+const foundationsByCategory = getFoundationsByCategory();
+
+const foundationNavItems = foundationCategoryOrder.map((category) => ({
+  title: category,
+  url: `/foundations/category/${foundationCategoryToSlug(category)}`,
+  icon: foundationCategoryIcons[category],
+  items: foundationsByCategory[category].map((entry) => ({
+    title: entry.name,
+    url: `/foundations/${entry.slug}`,
   })),
 }));
 
@@ -158,6 +183,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarSearch query={query} onQueryChange={setQuery} />
       </SidebarHeader>
       <SidebarContent>
+        <NavMain items={foundationNavItems} query={query} label="Foundations" />
         <NavMain items={navItems} query={query} label="Components" />
         <NavMain items={patternNavItems} query={query} label="Patterns" />
       </SidebarContent>
