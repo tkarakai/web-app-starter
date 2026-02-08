@@ -59,6 +59,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <>
                     <BreadcrumbItem className="hidden md:block">
                       <BreadcrumbLink asChild>
+                        <Link href="/">Components</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="hidden md:block" />
+                    <BreadcrumbItem className="hidden md:block">
+                      <BreadcrumbLink asChild>
                         <Link
                           href={`/components/category/${categoryToSlug(entry.category)}`}
                         >
@@ -72,12 +78,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </BreadcrumbItem>
                   </>
                 ) : categoryName ? (
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{categoryName}</BreadcrumbPage>
-                  </BreadcrumbItem>
+                  <>
+                    <BreadcrumbItem className="hidden md:block">
+                      <BreadcrumbLink asChild>
+                        <Link href="/">Components</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="hidden md:block" />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{categoryName}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
                 ) : (
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Design System</BreadcrumbPage>
+                    <BreadcrumbPage>Components</BreadcrumbPage>
                   </BreadcrumbItem>
                 )}
               </BreadcrumbList>

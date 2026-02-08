@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Circle, CircleCheck, CircleDot, Pencil, Trash2 } from "lucide-react";
+import { Circle, CircleCheck, CircleDashed, Pencil, Trash2 } from "lucide-react";
 import { useMutation } from "convex/react";
 
 import { api } from "@repo/backend";
@@ -51,9 +51,9 @@ function StatusIcon({ status, className }: { status: TaskStatus; className?: str
     case "todo":
       return <Circle className={className} />;
     case "in_progress":
-      return <CircleDot className={className} />;
+      return <CircleDashed className={`${className} text-primary`} />;
     case "done":
-      return <CircleCheck className={className} />;
+      return <CircleCheck className={`${className} text-primary`} />;
   }
 }
 
@@ -162,7 +162,7 @@ export function TaskRow({ task }: TaskRowProps) {
               onClick={handleDeleteClick}
             >
               {confirming ? (
-                <CircleCheck className="h-3.5 w-3.5" />
+                <CircleCheck className="h-4.5 w-4.5 fill-destructive text-destructive-foreground" />
               ) : (
                 <Trash2 className="h-3.5 w-3.5" />
               )}
