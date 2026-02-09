@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { expect, test } from "@playwright/test";
 
 test.describe("Locale Persistence", () => {

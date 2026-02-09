@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { expect, test } from "@playwright/test";
 
 test.describe("RTL Layout Tests", () => {
@@ -54,14 +55,6 @@ test.describe("RTL Layout Tests", () => {
     // In RTL, start-6 means right side (6 units from start/right edge)
     // The logo should be positioned on the right
     expect(logoBox).not.toBeNull();
-
-    // Get page width and verify logo is on the right side
-    const pageSize = page.viewportSize();
-    if (pageSize && logoBox) {
-      // Logo should be in the right half of the page (RTL layout)
-      const isOnRight = logoBox.x > pageSize.width / 2;
-      // Note: This depends on actual CSS behavior - adjust if needed
-    }
   });
 
   test("Arabic locale switcher positioning (RTL mirror)", async ({ page }) => {
@@ -77,7 +70,7 @@ test.describe("RTL Layout Tests", () => {
     await expect(switcherButton).toBeVisible();
   });
 
-  test("Arabic breadcrumb text alignment", async ({ page, browser }) => {
+  test("Arabic breadcrumb text alignment", async ({ page }) => {
     // Sign in first (or navigate to protected area)
     await page.goto("/ar/");
 
@@ -129,9 +122,6 @@ test.describe("RTL Layout Tests", () => {
   test("Font loading verification for Arabic", async ({ page }) => {
     await page.goto("/ar/sign-in");
 
-    // Verify Cairo font variable is in the class attribute
-    const htmlClass = await page.locator("html").getAttribute("class");
-
     // Get computed style to verify font is applied
     const computedFont = await page.evaluate(() => {
       const html = document.documentElement;
@@ -146,8 +136,6 @@ test.describe("RTL Layout Tests", () => {
     await page.goto("/he/sign-in");
 
     // Verify Heebo font is applied
-    const htmlClass = await page.locator("html").getAttribute("class");
-
     const computedFont = await page.evaluate(() => {
       const html = document.documentElement;
       return getComputedStyle(html).getPropertyValue("--font-sans");
@@ -160,8 +148,6 @@ test.describe("RTL Layout Tests", () => {
     await page.goto("/en/sign-in");
 
     // Verify Raleway font is applied
-    const htmlClass = await page.locator("html").getAttribute("class");
-
     const computedFont = await page.evaluate(() => {
       const html = document.documentElement;
       return getComputedStyle(html).getPropertyValue("--font-sans");
