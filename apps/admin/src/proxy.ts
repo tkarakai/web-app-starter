@@ -1,5 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import {
+  checkEdgeRateLimit,
+  type EdgeRateLimitConfig,
+} from "@/lib/edge-rate-limit";
+
+/** Parse an env var as a positive integer, falling back to a safe default. */
+function positiveInt(envVar: string | undefined, defaultValue: number): number {
+  const parsed = parseInt(envVar ?? "", 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return defaultValue;
+  return parsed;
+}
+
+const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
+  windowSeconds: positiveInt(process.env.EDGE_RATE_LIMIT_WINDOW, 60),
+  maxRequests: positiveInt(process.env.EDGE_RATE_LIMIT_MAX, 100),
+  maxMapSize: positiveInt(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE, 10000),
+};
+
 /** Routes that require authentication. */
 const PROTECTED_PREFIXES = ["/dashboard"];
 
@@ -17,7 +35,34 @@ function hasSessionCookie(request: NextRequest): boolean {
     .some((c) => c.name.endsWith("better-auth.session_token"));
 }
 
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
 export function proxy(request: NextRequest) {
+  // --- Rate limiting (first check) ---
+  const clientIp = getClientIp(request);
+  const rl = checkEdgeRateLimit(clientIp, RATE_LIMIT_CONFIG);
+
+  if (!rl.allowed) {
+    const retryAfterSeconds = Math.ceil(
+      (rl.resetAt - Date.now()) / 1000,
+    );
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.max(retryAfterSeconds, 1)),
+        "X-RateLimit-Limit": String(RATE_LIMIT_CONFIG.maxRequests),
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": String(rl.resetAt),
+      },
+    });
+  }
+
   const { pathname } = request.nextUrl;
   const hasSession = hasSessionCookie(request);
 
@@ -79,6 +124,11 @@ export function proxy(request: NextRequest) {
     request: { headers: requestHeaders },
   });
   response.headers.set("Content-Security-Policy", csp);
+
+  // Rate limit headers on successful responses
+  response.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
+  response.headers.set("X-RateLimit-Remaining", String(rl.remaining));
+  response.headers.set("X-RateLimit-Reset", String(rl.resetAt));
 
   return response;
 }

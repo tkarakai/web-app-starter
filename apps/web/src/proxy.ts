@@ -13,10 +13,17 @@ const intlMiddleware = createIntlMiddleware({
   localePrefix: "always",
 });
 
+/** Parse an env var as a positive integer, falling back to a safe default. */
+function positiveInt(envVar: string | undefined, defaultValue: number): number {
+  const parsed = parseInt(envVar ?? "", 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return defaultValue;
+  return parsed;
+}
+
 const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
-  windowSeconds: Number(process.env.EDGE_RATE_LIMIT_WINDOW ?? "60"),
-  maxRequests: Number(process.env.EDGE_RATE_LIMIT_MAX ?? "200"),
-  maxMapSize: Number(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE ?? "10000"),
+  windowSeconds: positiveInt(process.env.EDGE_RATE_LIMIT_WINDOW, 60),
+  maxRequests: positiveInt(process.env.EDGE_RATE_LIMIT_MAX, 200),
+  maxMapSize: positiveInt(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE, 10000),
 };
 
 /** Routes that require authentication (matched against the locale-stripped path). */

@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { locales } from "@repo/i18n";
-import { authedMutation, authedQuery } from "./functions";
+import { authedMutation, authedQuery, assertMaxLength } from "./functions";
+
+const VALID_THEMES = ["light", "dark", "system"] as const;
+const MAX_TIMEZONE_LENGTH = 64;
 
 /**
  * Get the current user's full profile.
@@ -48,6 +51,12 @@ export const upsert = authedMutation({
     if (args.locale && !locales.includes(args.locale as any)) {
       throw new Error("INVALID_LOCALE");
     }
+    // Validate theme against allowlist
+    if (args.theme && !(VALID_THEMES as readonly string[]).includes(args.theme)) {
+      throw new Error("INVALID_THEME");
+    }
+    // Validate timezone length to prevent abuse
+    assertMaxLength(args.timezone, MAX_TIMEZONE_LENGTH, "TIMEZONE");
 
     const existing = await ctx.db
       .query("userProfiles")

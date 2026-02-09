@@ -11,6 +11,13 @@ import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
 
+/** Parse an env var as a positive integer, falling back to a safe default. */
+function positiveInt(envVar: string | undefined, defaultValue: number): number {
+  const parsed = parseInt(envVar ?? "", 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return defaultValue;
+  return parsed;
+}
+
 // Better Auth runs inside Convex, so env vars are set via `convex env set`.
 // SITE_URL can be a single URL or comma-separated list of URLs for multi-app development.
 // Falls back to http://localhost:3001 if not yet set during Convex startup.
@@ -97,14 +104,18 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: false,
+      requireEmailVerification: true,
     },
     databaseHooks: {
       user: {
         create: {
           before: async (user) => {
-            // Auto-assign "admin" role to users whose email is in the adminEmails table.
-            // ctx is the Convex action context captured via closure from createAuthOptions().
+            // Auto-assign "admin" role to users whose email is in the adminEmails table,
+            // but ONLY when their email has been verified. Without verification an attacker
+            // could register with an admin's email and immediately gain admin privileges.
+            if (!user.emailVerified) {
+              return { data: user };
+            }
             const actionCtx = requireActionCtx(ctx);
             const adminEmails = await actionCtx.runQuery(
               internal.adminEmails.list,
@@ -125,17 +136,17 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     ],
     rateLimit: {
       enabled: true,
-      window: Number(process.env.AUTH_RATE_LIMIT_WINDOW ?? "60"),
-      max: Number(process.env.AUTH_RATE_LIMIT_MAX ?? "100"),
+      window: positiveInt(process.env.AUTH_RATE_LIMIT_WINDOW, 60),
+      max: positiveInt(process.env.AUTH_RATE_LIMIT_MAX, 100),
       storage: "database",
       customRules: {
         "/sign-in/email": {
-          window: Number(process.env.AUTH_RATE_LIMIT_SIGNIN_WINDOW ?? "10"),
-          max: Number(process.env.AUTH_RATE_LIMIT_SIGNIN_MAX ?? "3"),
+          window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_WINDOW, 10),
+          max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_MAX, 3),
         },
         "/sign-up/email": {
-          window: Number(process.env.AUTH_RATE_LIMIT_SIGNUP_WINDOW ?? "60"),
-          max: Number(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX ?? "5"),
+          window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_WINDOW, 60),
+          max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX, 5),
         },
         // Session checks must not be rate limited — real-time polling depends on them.
         "/get-session": false,
@@ -143,7 +154,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     },
     advanced: {
       ipAddress: {
-        ipAddressHeaders: ["x-forwarded-for"],
+        ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
       },
     },
   } satisfies BetterAuthOptions;
