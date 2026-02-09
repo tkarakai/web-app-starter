@@ -1,6 +1,23 @@
 import { defineConfig, devices } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
-const TEST_PORT = 3014;
+/**
+ * Read a value from .env.local (updated by dev-start.sh with actual ports)
+ */
+function getEnvValue(name: string, fallback: string): string {
+  for (const envPath of [
+    path.join(__dirname, ".env.local"),
+    path.join(__dirname, "../../.env.local"),
+  ]) {
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf-8");
+      const match = content.match(new RegExp(`^${name}=(.*)`, "m"));
+      if (match) return match[1].trim();
+    }
+  }
+  return fallback;
+}
 
 export default defineConfig({
   testDir: "./qa/e2e",
@@ -13,7 +30,7 @@ export default defineConfig({
     ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
     : [["html", { outputFolder: "qa/playwright-report" }]],
   use: {
-    baseURL: `http://localhost:${TEST_PORT}`,
+    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3003"),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -24,8 +41,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `next dev --port ${TEST_PORT}`,
-    url: `http://localhost:${TEST_PORT}`,
+    command: "../../scripts/dev-start.sh --ci --app=storybook",
+    url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3003"),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },

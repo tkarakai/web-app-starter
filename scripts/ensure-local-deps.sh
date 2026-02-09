@@ -43,6 +43,35 @@ log_always() {
 
 cd "$PROJECT_DIR"
 
+# ============================================================
+# CHECK BUN VERSION MATCHES packageManager FIELD
+# ============================================================
+EXPECTED_BUN_VERSION=$(grep -o '"packageManager": "bun@[^"]*"' package.json 2>/dev/null | grep -o '[0-9][0-9.]*')
+ACTUAL_BUN_VERSION=$(bun --version 2>/dev/null)
+
+if [ -n "$EXPECTED_BUN_VERSION" ] && [ -n "$ACTUAL_BUN_VERSION" ] && [ "$CI_BUN_VERSION_CHECKED" != "1" ]; then
+    EXPECTED_MAJOR_MINOR=$(echo "$EXPECTED_BUN_VERSION" | cut -d. -f1,2)
+    ACTUAL_MAJOR_MINOR=$(echo "$ACTUAL_BUN_VERSION" | cut -d. -f1,2)
+
+    if [ "$EXPECTED_MAJOR_MINOR" != "$ACTUAL_MAJOR_MINOR" ]; then
+        log_always ""
+        log_always "${YELLOW}⚠ Bun version mismatch:${NC}"
+        log_always "  Expected: ${GREEN}bun@${EXPECTED_BUN_VERSION}${NC} (from package.json packageManager)"
+        log_always "  Actual:   ${RED}bun@${ACTUAL_BUN_VERSION}${NC}"
+        log_always "  Run ${BLUE}bun upgrade${NC} to update, or update packageManager in package.json"
+        log_always ""
+        if [ -t 0 ]; then
+            read -r -p "Continue anyway? [y/N] " answer
+            if [[ ! "$answer" =~ ^[Yy] ]]; then
+                log_always "Aborted."
+                exit 1
+            fi
+        fi
+    else
+        log "  ${GREEN}✔${NC} Bun version matches (${ACTUAL_BUN_VERSION})"
+    fi
+fi
+
 # Directories that must be local (not symlinked)
 # These are either installed dependencies or generated caches
 MUST_BE_LOCAL=(
