@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 
-import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
+import {
+  authedMutation,
+  authedQuery,
+  requireProjectAccess,
+  assertMaxLength,
+  MAX_NAME_LENGTH,
+} from "./functions";
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 
@@ -19,6 +25,7 @@ export const saveUpload = authedMutation({
   },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.projectId);
+    assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
 
     // Read actual file metadata from storage — never trust client-provided values
     const fileMeta = await ctx.db.system.get(args.storageId);

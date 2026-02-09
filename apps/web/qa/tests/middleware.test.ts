@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
-import { _resetStore } from "../../src/lib/edge-rate-limit";
+import { _resetStore } from "@repo/edge-rate-limit";
 
 // Each test gets a fresh rate limit store to avoid cross-test contamination.
 beforeEach(() => {

@@ -10,14 +10,21 @@ export const list = internalQuery({
 
 /**
  * Returns the list of protected admin emails.
- * Requires authentication to prevent exposing admin email addresses to unauthorized users.
+ * Restricted to admin users only to prevent information disclosure.
  */
 export const listProtected = query({
   args: {},
   handler: async (ctx) => {
-    // Verify user is authenticated
     const user = await authComponent.getAuthUser(ctx);
     if (!user) {
+      return [];
+    }
+
+    // Only admin users may see the admin email list.
+    // Without this check any authenticated user could enumerate admin emails,
+    // which could be combined with other attacks (e.g. phishing, account takeover).
+    const role = (user as Record<string, unknown>).role;
+    if (role !== "admin") {
       return [];
     }
 
