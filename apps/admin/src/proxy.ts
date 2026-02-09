@@ -1,4 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  checkEdgeRateLimit,
+  positiveInt,
+  getClientIp,
+  hasSessionCookie,
+  rateLimitResponse,
+  setRateLimitHeaders,
+  type EdgeRateLimitConfig,
+} from "@repo/edge-rate-limit";
+
+const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
+  windowSeconds: positiveInt(process.env.EDGE_RATE_LIMIT_WINDOW, 60),
+  maxRequests: positiveInt(process.env.EDGE_RATE_LIMIT_MAX, 100),
+  maxMapSize: positiveInt(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE, 10000),
+};
 
 /** Routes that require authentication. */
 const PROTECTED_PREFIXES = ["/dashboard"];
@@ -6,18 +21,15 @@ const PROTECTED_PREFIXES = ["/dashboard"];
 /** Auth routes that authenticated users should skip. */
 const AUTH_ROUTES = ["/sign-in"];
 
-/**
- * Quick cookie-presence check (Edge-compatible, no backend call).
- * Better Auth names the cookie `better-auth.session_token` in dev (HTTP)
- * and `__Secure-better-auth.session_token` in production (HTTPS).
- */
-function hasSessionCookie(request: NextRequest): boolean {
-  return request.cookies
-    .getAll()
-    .some((c) => c.name.endsWith("better-auth.session_token"));
-}
-
 export function proxy(request: NextRequest) {
+  // --- Rate limiting (first check) ---
+  const clientIp = getClientIp(request);
+  const rl = checkEdgeRateLimit(clientIp, RATE_LIMIT_CONFIG);
+
+  if (!rl.allowed) {
+    return rateLimitResponse(RATE_LIMIT_CONFIG, rl);
+  }
+
   const { pathname } = request.nextUrl;
   const hasSession = hasSessionCookie(request);
 
@@ -79,6 +91,9 @@ export function proxy(request: NextRequest) {
     request: { headers: requestHeaders },
   });
   response.headers.set("Content-Security-Policy", csp);
+
+  // Rate limit headers on successful responses
+  setRateLimitHeaders(response, RATE_LIMIT_CONFIG, rl);
 
   return response;
 }

@@ -1,8 +1,27 @@
 import { v } from "convex/values";
 
-import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
+import {
+  authedMutation,
+  authedQuery,
+  requireProjectAccess,
+  assertMaxLength,
+  MAX_NAME_LENGTH,
+} from "./functions";
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
+
+/** Allowed content types for uploads. Reject executables, HTML, SVG, etc. */
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "application/json",
+  "application/zip",
+]);
 
 export const generateUploadUrl = authedMutation({
   args: {},
@@ -19,6 +38,7 @@ export const saveUpload = authedMutation({
   },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.projectId);
+    assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
 
     // Read actual file metadata from storage — never trust client-provided values
     const fileMeta = await ctx.db.system.get(args.storageId);
@@ -31,10 +51,16 @@ export const saveUpload = authedMutation({
       throw new Error("FILE_TOO_LARGE");
     }
 
+    const contentType = fileMeta.contentType ?? "application/octet-stream";
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+      await ctx.storage.delete(args.storageId);
+      throw new Error("FILE_TYPE_NOT_ALLOWED");
+    }
+
     return ctx.db.insert("uploads", {
       storageId: args.storageId,
       name: args.name,
-      contentType: fileMeta.contentType ?? "application/octet-stream",
+      contentType,
       size: fileMeta.size,
       projectId: args.projectId,
       ownerId: ctx.ownerId,
