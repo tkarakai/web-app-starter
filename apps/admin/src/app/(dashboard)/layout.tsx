@@ -23,7 +23,7 @@ export default async function DashboardLayout({
 
   // Verify user has admin role
   if (!preloadedUser || (preloadedUser as any).role !== "admin") {
-    redirect("/");
+    redirect("/api/auth/clear-session");
   }
 
   return <AuthGuard preloadedUser={preloadedUser}>{children}</AuthGuard>;
