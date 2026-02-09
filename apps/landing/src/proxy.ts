@@ -1,11 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { defaultLocale, locales } from "@repo/i18n";
-
 import {
   checkEdgeRateLimit,
+  positiveInt,
+  getClientIp,
+  rateLimitResponse,
+  setRateLimitHeaders,
   type EdgeRateLimitConfig,
-} from "@/lib/edge-rate-limit";
+} from "@repo/edge-rate-limit";
 
 const intlMiddleware = createIntlMiddleware({
   locales,
@@ -13,26 +16,11 @@ const intlMiddleware = createIntlMiddleware({
   localePrefix: "always",
 });
 
-/** Parse an env var as a positive integer, falling back to a safe default. */
-function positiveInt(envVar: string | undefined, defaultValue: number): number {
-  const parsed = parseInt(envVar ?? "", 10);
-  if (Number.isNaN(parsed) || parsed <= 0) return defaultValue;
-  return parsed;
-}
-
 const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   windowSeconds: positiveInt(process.env.EDGE_RATE_LIMIT_WINDOW, 60),
   maxRequests: positiveInt(process.env.EDGE_RATE_LIMIT_MAX, 300),
   maxMapSize: positiveInt(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE, 10000),
 };
-
-function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
 
 /**
  * Extract the pathname without the locale prefix.
@@ -52,18 +40,7 @@ export function proxy(request: NextRequest) {
   const rl = checkEdgeRateLimit(clientIp, RATE_LIMIT_CONFIG);
 
   if (!rl.allowed) {
-    const retryAfterSeconds = Math.ceil(
-      (rl.resetAt - Date.now()) / 1000,
-    );
-    return new NextResponse("Too Many Requests", {
-      status: 429,
-      headers: {
-        "Retry-After": String(Math.max(retryAfterSeconds, 1)),
-        "X-RateLimit-Limit": String(RATE_LIMIT_CONFIG.maxRequests),
-        "X-RateLimit-Remaining": "0",
-        "X-RateLimit-Reset": String(rl.resetAt),
-      },
-    });
+    return rateLimitResponse(RATE_LIMIT_CONFIG, rl);
   }
 
   // --- CSP headers ---
@@ -101,9 +78,7 @@ export function proxy(request: NextRequest) {
   intlResponse.headers.set("Content-Security-Policy", csp);
 
   // Rate limit headers on successful responses
-  intlResponse.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
-  intlResponse.headers.set("X-RateLimit-Remaining", String(rl.remaining));
-  intlResponse.headers.set("X-RateLimit-Reset", String(rl.resetAt));
+  setRateLimitHeaders(intlResponse, RATE_LIMIT_CONFIG, rl);
 
   return intlResponse;
 }

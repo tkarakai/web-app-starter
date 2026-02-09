@@ -1,16 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
-
 import {
   checkEdgeRateLimit,
+  positiveInt,
+  getClientIp,
+  hasSessionCookie,
+  rateLimitResponse,
+  setRateLimitHeaders,
   type EdgeRateLimitConfig,
-} from "@/lib/edge-rate-limit";
-
-/** Parse an env var as a positive integer, falling back to a safe default. */
-function positiveInt(envVar: string | undefined, defaultValue: number): number {
-  const parsed = parseInt(envVar ?? "", 10);
-  if (Number.isNaN(parsed) || parsed <= 0) return defaultValue;
-  return parsed;
-}
+} from "@repo/edge-rate-limit";
 
 const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   windowSeconds: positiveInt(process.env.EDGE_RATE_LIMIT_WINDOW, 60),
@@ -24,43 +21,13 @@ const PROTECTED_PREFIXES = ["/dashboard"];
 /** Auth routes that authenticated users should skip. */
 const AUTH_ROUTES = ["/sign-in"];
 
-/**
- * Quick cookie-presence check (Edge-compatible, no backend call).
- * Better Auth names the cookie `better-auth.session_token` in dev (HTTP)
- * and `__Secure-better-auth.session_token` in production (HTTPS).
- */
-function hasSessionCookie(request: NextRequest): boolean {
-  return request.cookies
-    .getAll()
-    .some((c) => c.name.endsWith("better-auth.session_token"));
-}
-
-function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
-
 export function proxy(request: NextRequest) {
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
   const rl = checkEdgeRateLimit(clientIp, RATE_LIMIT_CONFIG);
 
   if (!rl.allowed) {
-    const retryAfterSeconds = Math.ceil(
-      (rl.resetAt - Date.now()) / 1000,
-    );
-    return new NextResponse("Too Many Requests", {
-      status: 429,
-      headers: {
-        "Retry-After": String(Math.max(retryAfterSeconds, 1)),
-        "X-RateLimit-Limit": String(RATE_LIMIT_CONFIG.maxRequests),
-        "X-RateLimit-Remaining": "0",
-        "X-RateLimit-Reset": String(rl.resetAt),
-      },
-    });
+    return rateLimitResponse(RATE_LIMIT_CONFIG, rl);
   }
 
   const { pathname } = request.nextUrl;
@@ -126,9 +93,7 @@ export function proxy(request: NextRequest) {
   response.headers.set("Content-Security-Policy", csp);
 
   // Rate limit headers on successful responses
-  response.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
-  response.headers.set("X-RateLimit-Remaining", String(rl.remaining));
-  response.headers.set("X-RateLimit-Reset", String(rl.resetAt));
+  setRateLimitHeaders(response, RATE_LIMIT_CONFIG, rl);
 
   return response;
 }

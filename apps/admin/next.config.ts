@@ -14,7 +14,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@repo/design-system", "@repo/auth", "@repo/backend"],
+  transpilePackages: ["@repo/design-system", "@repo/auth", "@repo/backend", "@repo/edge-rate-limit"],
   headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
 };
 

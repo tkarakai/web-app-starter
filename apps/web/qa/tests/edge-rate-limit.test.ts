@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { checkEdgeRateLimit, _resetStore } from "../../src/lib/edge-rate-limit";
+import { checkEdgeRateLimit, _resetStore } from "@repo/edge-rate-limit";
 
 beforeEach(() => {
   _resetStore();
