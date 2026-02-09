@@ -22,6 +22,7 @@
     "@repo/backend": "workspace:*",
     "@repo/design-patterns": "workspace:*",
     "@repo/design-system": "workspace:*",
+    "@repo/edge-rate-limit": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "convex": "^1.21.0",
     "lucide-react": "^0.510.0",
