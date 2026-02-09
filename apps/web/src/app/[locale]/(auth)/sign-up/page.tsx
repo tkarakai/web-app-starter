@@ -18,12 +18,12 @@ export default async function SignUpPage() {
     >
       <Link
         href={LANDING_URL}
-        className="absolute left-6 top-6 flex items-center gap-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-80"
+        className="absolute start-6 top-6 flex items-center gap-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-80"
       >
         <AppLogo size={24} />
         <span>{tc("appName")}</span>
       </Link>
-      <LocaleSwitcher className="absolute right-6 top-6" />
+      <LocaleSwitcher className="absolute end-6 top-6" />
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="space-y-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
