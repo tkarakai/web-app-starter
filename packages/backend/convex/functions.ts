@@ -60,7 +60,7 @@ export const authedMutation = customMutation(
   mutation,
   customCtx(async (ctx) => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("Not authenticated");
+    if (!auth) throw new Error("NOT_AUTHENTICATED");
 
     await rateLimit(ctx, {
       name: "mutationGlobal",
@@ -83,7 +83,7 @@ export async function requireProjectAccess(
 ): Promise<Doc<"projects">> {
   const project = await ctx.db.get(projectId);
   if (!project || project.ownerId !== ctx.ownerId) {
-    throw new Error("Project not found");
+    throw new Error("PROJECT_NOT_FOUND");
   }
   return project;
 }

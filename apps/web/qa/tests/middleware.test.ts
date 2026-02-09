@@ -30,33 +30,33 @@ function createRequest(
 
 describe("proxy", () => {
   describe("protected routes (unauthenticated)", () => {
-    it("redirects /dashboard to /sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/dashboard"));
+    it("redirects /en/dashboard to /en/sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/en/dashboard"));
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/sign-in");
     });
 
-    it("redirects /dashboard/settings to /sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/dashboard/settings"));
+    it("redirects /en/dashboard/settings to /en/sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/en/dashboard/settings"));
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/sign-in");
     });
   });
 
   describe("protected routes (authenticated)", () => {
-    it("allows /dashboard with dev session cookie", () => {
+    it("allows /en/dashboard with dev session cookie", () => {
       const response = proxy(
-        createRequest("/dashboard", { "better-auth.session_token": "token-123" })
+        createRequest("/en/dashboard", { "better-auth.session_token": "token-123" })
       );
 
       expect(response.status).toBe(200);
     });
 
-    it("allows /dashboard with production session cookie (__Secure- prefix)", () => {
+    it("allows /en/dashboard with production session cookie (__Secure- prefix)", () => {
       const response = proxy(
-        createRequest("/dashboard", {
+        createRequest("/en/dashboard", {
           "__Secure-better-auth.session_token": "token-123",
         })
       );
@@ -66,36 +66,36 @@ describe("proxy", () => {
   });
 
   describe("auth routes (unauthenticated)", () => {
-    it("allows /sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/sign-in"));
+    it("allows /en/sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/en/sign-in"));
 
       expect(response.status).toBe(200);
     });
 
-    it("allows /sign-up when no session cookie", () => {
-      const response = proxy(createRequest("/sign-up"));
+    it("allows /en/sign-up when no session cookie", () => {
+      const response = proxy(createRequest("/en/sign-up"));
 
       expect(response.status).toBe(200);
     });
   });
 
   describe("auth routes (authenticated)", () => {
-    it("redirects /sign-in to /dashboard when session cookie exists", () => {
+    it("redirects /en/sign-in to /en/dashboard when session cookie exists", () => {
       const response = proxy(
-        createRequest("/sign-in", { "better-auth.session_token": "token-123" })
+        createRequest("/en/sign-in", { "better-auth.session_token": "token-123" })
       );
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/dashboard");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
     });
 
-    it("redirects /sign-up to /dashboard when session cookie exists", () => {
+    it("redirects /en/sign-up to /en/dashboard when session cookie exists", () => {
       const response = proxy(
-        createRequest("/sign-up", { "better-auth.session_token": "token-123" })
+        createRequest("/en/sign-up", { "better-auth.session_token": "token-123" })
       );
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/dashboard");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
     });
   });
 

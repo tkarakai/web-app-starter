@@ -1,0 +1,196 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Načítání...",
+    "cancel": "Zrušit",
+    "save": "Uložit změny",
+    "saving": "Ukládání...",
+    "create": "Vytvořit",
+    "creating": "Vytváření...",
+    "delete": "Smazat",
+    "signOut": "Odhlásit se",
+    "error": "Došlo k chybě",
+    "backToHome": "Zpět na domů",
+    "note": "Poznámka"
+  },
+  "theme": {
+    "light": "Světlý motiv",
+    "system": "Systémový motiv",
+    "dark": "Tmavý motiv",
+    "ariaLabel": "Motiv: {label}. Klikněte pro přepnutí."
+  },
+  "language": {
+    "label": "Jazyk",
+    "ariaLabel": "Vyberte jazyk"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Vítejte zpět",
+      "description": "Přihlaste se a pokračujte do panelu.",
+      "cta": "Přihlásit se",
+      "switchPrompt": "Jste tu poprvé?",
+      "switchLink": "Vytvořit účet",
+      "pageHeading": "Vítejte zpět. Pokračujte tam, kde jste skončili.",
+      "pageDescription": "Better Auth řídí relace, Convex udržuje data v reálném čase. Přihlaste se pro přístup k projektům a úkolům."
+    },
+    "signUp": {
+      "title": "Vytvořte si pracovní prostor",
+      "description": "Začněte za méně než minutu.",
+      "cta": "Vytvořit účet",
+      "switchPrompt": "Již máte přístup?",
+      "switchLink": "Přihlásit se",
+      "pageHeading": "Vytvořte si účet a začněte tvořit.",
+      "pageDescription": "Convex + Better Auth jsou již propojeny, takže váš účet je okamžitě připraven k produkci."
+    },
+    "badge": "Účet",
+    "fields": {
+      "name": "Jméno",
+      "namePlaceholder": "Jan Novák",
+      "email": "E-mail",
+      "emailPlaceholder": "vy@example.com",
+      "password": "Heslo",
+      "passwordPlaceholder": "Vaše heslo",
+      "passwordSignUpPlaceholder": "Alespoň 8 znaků",
+      "confirmPassword": "Potvrzení hesla",
+      "confirmPasswordPlaceholder": "Potvrďte své heslo"
+    },
+    "errors": {
+      "passwordMismatch": "Hesla se neshodují",
+      "generic": "Došlo k chybě"
+    },
+    "footer": "Bezpečný e-mail + heslo",
+    "working": "Zpracování...",
+    "legal": {
+      "prefix": "Pokračováním souhlasíte s našimi",
+      "termsOfService": "Podmínkami služby",
+      "and": "a",
+      "privacyPolicy": "Zásadami ochrany osobních údajů"
+    }
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Vaše startovní čára.",
+    "headingLine2": "Stavějte odsud.",
+    "description": "Autentizace, databáze, synchronizace v reálném čase a nahrávání souborů — propojeno a připraveno.",
+    "getStarted": "Začít",
+    "signIn": "Přihlásit se",
+    "footer": {
+      "about": "O nás",
+      "privacyPolicy": "Zásady ochrany osobních údajů",
+      "termsOfService": "Podmínky služby"
+    }
+  },
+  "dashboard": {
+    "projects": "Projekty",
+    "noProjects": "Zatím žádné projekty",
+    "noProjectsDescription": "Vytvořte projekt a začněte.",
+    "projectNotFound": "Projekt nenalezen",
+    "projectNotFoundDescription": "Tento projekt mohl být smazán.",
+    "tabs": {
+      "tasks": "Úkoly",
+      "attachments": "Přílohy"
+    }
+  },
+  "projects": {
+    "newProject": "Nový projekt",
+    "createProject": "Vytvořit projekt",
+    "createFirst": "Vytvořte svůj první projekt",
+    "noProjects": "Žádné projekty",
+    "editProject": "Upravit projekt",
+    "deleteProject": "Smazat projekt",
+    "deleteConfirmTitle": "Smazat projekt?",
+    "deleteConfirmDescription": "Toto trvale smaže “{name}” a všechny související úkoly. Tuto akci nelze vrátit zpět.",
+    "fields": {
+      "name": "Název",
+      "namePlaceholder": "Název projektu",
+      "description": "Popis",
+      "descriptionPlaceholder": "O čem je tento projekt?"
+    }
+  },
+  "tasks": {
+    "title": "Úkoly",
+    "addTask": "Přidat úkol",
+    "newTask": "Nový úkol",
+    "editTask": "Upravit úkol",
+    "deleteTask": "Smazat úkol",
+    "confirmDelete": "Potvrdit smazání",
+    "createTask": "Vytvořit úkol",
+    "noTasks": "Zatím žádné úkoly. Přidejte první.",
+    "noTasksSummary": "Zatím žádné úkoly",
+    "progress": "{doneCount} z {totalCount} úkolů hotovo",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Stav",
+      "todo": "K vyřízení",
+      "inProgress": "Probíhá",
+      "done": "Hotovo",
+      "all": "Vše"
+    },
+    "fields": {
+      "title": "Název",
+      "titlePlaceholder": "Co je potřeba udělat?",
+      "description": "Popis",
+      "descriptionPlaceholder": "Přidat podrobnosti..."
+    },
+    "aria": {
+      "changeStatus": "Změnit stav z {status}"
+    },
+    "count": "{count, plural, =0 {Žádné úkoly} one {# úkol} few {# úkoly} other {# úkolů}}"
+  },
+  "uploads": {
+    "title": "Přílohy",
+    "addFile": "Přidat soubor",
+    "uploading": "Nahrávání...",
+    "processing": "Zpracování",
+    "view": "Zobrazit",
+    "deleteFile": "Smazat soubor",
+    "emptyState": "Nahrajte soubory a uvidíte ukládání souborů Convex v akci.",
+    "errors": {
+      "tooLarge": "Soubor je příliš velký (max. 1 MB)",
+      "uploadFailed": "Nahrávání selhalo. Zkuste to znovu.",
+      "generic": "Nahrávání selhalo."
+    },
+    "count": "{count, plural, =0 {Žádné přílohy} one {# příloha} few {# přílohy} other {# příloh}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Nepřihlášen",
+    "PROJECT_NOT_FOUND": "Projekt nenalezen",
+    "TASK_NOT_FOUND": "Úkol nenalezen",
+    "FILE_NOT_FOUND": "Soubor nenalezen v úložišti",
+    "FILE_TOO_LARGE": "Soubor je příliš velký (max. 1 MB)",
+    "UPLOAD_NOT_FOUND": "Nahrávání nenalezeno"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Starter Next.js s Convex, Better Auth a Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "O nás",
+      "description": "Dozvěďte se více o Web App Starter a naší misi.",
+      "notice": "Toto je obsah zástupného symbolu. Před spuštěním ho nahraďte svým vlastním.",
+      "heading": "O nás",
+      "mission": "Naše mise",
+      "missionText": "Věříme, že by vývojáři měli trávit čas stavbou funkcí, ne konfigurací infrastruktury. Web App Starter poskytuje produkční zahájení s synchronizací dat v reálném čase, nahráváním souborů a ověřováním na základě relací, vše již připojeno a připraveno.",
+      "whatIncluded": "Co je součástí",
+      "whatIncludedText": "Balíček zahájení obsahuje úvodní stránku, plně ověřenou webovou aplikaci, ovládací panel správce a sbírku komponent. Každá aplikace sdílí jednotný design systém vytvořený na primitivech Radix UI s Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Tento projekt je otevřený zdroj a je navržen k rozštěpení a přizpůsobení.",
+      "intro": "Web App Starter je plnostranná základna pro budování moderních webových aplikací. Kombinuje Next.js pro frontend, Convex pro backend a Better Auth pro bezpečné ověření — vše propojeno a připraveno k odeslání."
+    },
+    "privacy": {
+      "title": "Zásady ochrany osobních údajů",
+      "description": "Jak shromažďujeme, používáme a chráníme vaše údaje.",
+      "notice": "Toto je šablona zásad ochrany osobních údajů. Přizpůsobte ji svému konkrétnímu použití a právnímu prostředí před spuštěním.",
+      "heading": "Zásady ochrany osobních údajů",
+      "lastUpdated": "Poslední aktualizace: {date}"
+    },
+    "terms": {
+      "title": "Podmínky služby",
+      "description": "Pravidla a pokyny pro používání naší služby.",
+      "notice": "Toto je šablona podmínek služby. Přizpůsobte ji svému konkrétnímu použití a právnímu prostředí před spuštěním.",
+      "heading": "Podmínky služby",
+      "lastUpdated": "Poslední aktualizace: {date}"
+    }
+  }
+}

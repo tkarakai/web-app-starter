@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { useQuery } from "convex/react";
+import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -52,6 +53,8 @@ type TaskListProps = {
 export function TaskList({ projectId }: TaskListProps) {
   const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
   const createTask = useMutationWithToast(api.tasks.create);
+  const t = useTranslations("tasks");
+  const tc = useTranslations("common");
 
   const [tab, setTab] = React.useState<"all" | TaskStatus>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -60,8 +63,8 @@ export function TaskList({ projectId }: TaskListProps) {
   const [status, setStatus] = React.useState<TaskStatus>("todo");
   const [submitting, setSubmitting] = React.useState(false);
 
-  const filteredTasks = tasks.filter((t) => tab === "all" || t.status === tab);
-  const doneCount = tasks.filter((t) => t.status === "done").length;
+  const filteredTasks = tasks.filter((task) => tab === "all" || task.status === tab);
+  const doneCount = tasks.filter((task) => task.status === "done").length;
   const progress = tasks.length === 0 ? 0 : Math.round((doneCount / tasks.length) * 100);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -91,54 +94,54 @@ export function TaskList({ projectId }: TaskListProps) {
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            Tasks{tasks.length > 0 && ` (${tasks.length})`}
+            {t("title")}{tasks.length > 0 && ` (${tasks.length})`}
           </CardTitle>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4" />
-                Add task
+                {t("addTask")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>New task</DialogTitle>
+                <DialogTitle>{t("newTask")}</DialogTitle>
               </DialogHeader>
               <form className="space-y-4" onSubmit={handleCreate}>
                 <div className="space-y-2">
-                  <Label htmlFor="new-task-title">Title</Label>
+                  <Label htmlFor="new-task-title">{t("fields.title")}</Label>
                   <Input
                     id="new-task-title"
-                    placeholder="What needs to be done?"
+                    placeholder={t("fields.titlePlaceholder")}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-task-description">Description</Label>
+                  <Label htmlFor="new-task-description">{t("fields.description")}</Label>
                   <Textarea
                     id="new-task-description"
-                    placeholder="Add details..."
+                    placeholder={t("fields.descriptionPlaceholder")}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-task-status">Status</Label>
+                  <Label htmlFor="new-task-status">{t("status.label")}</Label>
                   <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
                     <SelectTrigger id="new-task-status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todo">To do</SelectItem>
-                      <SelectItem value="in_progress">In progress</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
+                      <SelectItem value="todo">{t("status.todo")}</SelectItem>
+                      <SelectItem value="in_progress">{t("status.inProgress")}</SelectItem>
+                      <SelectItem value="done">{t("status.done")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? "Creating..." : "Create task"}
+                  {submitting ? tc("creating") : t("createTask")}
                 </Button>
               </form>
             </DialogContent>
@@ -147,10 +150,10 @@ export function TaskList({ projectId }: TaskListProps) {
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="todo">To do</TabsTrigger>
-            <TabsTrigger value="in_progress">In progress</TabsTrigger>
-            <TabsTrigger value="done">Done</TabsTrigger>
+            <TabsTrigger value="all">{t("status.all")}</TabsTrigger>
+            <TabsTrigger value="todo">{t("status.todo")}</TabsTrigger>
+            <TabsTrigger value="in_progress">{t("status.inProgress")}</TabsTrigger>
+            <TabsTrigger value="done">{t("status.done")}</TabsTrigger>
           </TabsList>
         </Tabs>
       </CardHeader>
@@ -160,9 +163,9 @@ export function TaskList({ projectId }: TaskListProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                {doneCount} of {tasks.length} tasks done
+                {t("progress", { doneCount, totalCount: tasks.length })}
               </span>
-              <span>{progress}%</span>
+              <span>{t("progressPercent", { percent: progress })}</span>
             </div>
             <Progress value={progress} />
           </div>
@@ -170,7 +173,7 @@ export function TaskList({ projectId }: TaskListProps) {
 
         {filteredTasks.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-            No tasks yet. Add one to get started.
+            {t("noTasks")}
           </div>
         ) : (
           <div className="space-y-2">

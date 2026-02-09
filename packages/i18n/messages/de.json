@@ -1,0 +1,196 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Laden...",
+    "cancel": "Abbrechen",
+    "save": "Änderungen speichern",
+    "saving": "Speichern...",
+    "create": "Erstellen",
+    "creating": "Wird erstellt...",
+    "delete": "Löschen",
+    "signOut": "Abmelden",
+    "error": "Ein Fehler ist aufgetreten",
+    "backToHome": "Zurück zur Startseite",
+    "note": "Hinweis"
+  },
+  "theme": {
+    "light": "Helles Design",
+    "system": "Systemdesign",
+    "dark": "Dunkles Design",
+    "ariaLabel": "Design: {label}. Klicken zum Wechseln."
+  },
+  "language": {
+    "label": "Sprache",
+    "ariaLabel": "Sprache auswählen"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Willkommen zurück",
+      "description": "Melden Sie sich an, um zu Ihrem Dashboard zu gelangen.",
+      "cta": "Anmelden",
+      "switchPrompt": "Neu hier?",
+      "switchLink": "Konto erstellen",
+      "pageHeading": "Willkommen zurück. Machen Sie dort weiter, wo Sie aufgehört haben.",
+      "pageDescription": "Better Auth steuert die Sitzungsabläufe, während Convex die Daten in Echtzeit hält. Melden Sie sich an, um auf Ihre Projekte und Aufgaben zuzugreifen."
+    },
+    "signUp": {
+      "title": "Erstellen Sie Ihren Arbeitsbereich",
+      "description": "Starten Sie in weniger als einer Minute.",
+      "cta": "Konto erstellen",
+      "switchPrompt": "Haben Sie bereits Zugang?",
+      "switchLink": "Anmelden",
+      "pageHeading": "Erstellen Sie Ihr Konto und legen Sie los.",
+      "pageDescription": "Convex + Better Auth sind bereits eingerichtet, sodass Ihr Konto sofort produktionsbereit ist."
+    },
+    "badge": "Konto",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Avery Quinn",
+      "email": "E-Mail",
+      "emailPlaceholder": "sie@beispiel.de",
+      "password": "Passwort",
+      "passwordPlaceholder": "Ihr Passwort",
+      "passwordSignUpPlaceholder": "Mindestens 8 Zeichen",
+      "confirmPassword": "Passwort bestätigen",
+      "confirmPasswordPlaceholder": "Bestätigen Sie Ihr Passwort"
+    },
+    "errors": {
+      "passwordMismatch": "Die Passwörter stimmen nicht überein",
+      "generic": "Ein Fehler ist aufgetreten"
+    },
+    "footer": "Sichere E-Mail + Passwort",
+    "working": "Wird verarbeitet...",
+    "legal": {
+      "prefix": "Indem Sie fortfahren, stimmen Sie unseren",
+      "termsOfService": "Nutzungsbedingungen",
+      "and": "und",
+      "privacyPolicy": "Datenschutzrichtlinie"
+    }
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Ihre Startlinie.",
+    "headingLine2": "Bauen Sie von hier aus.",
+    "description": "Authentifizierung, Datenbank, Echtzeit-Synchronisation und Datei-Uploads — alles verbunden und einsatzbereit.",
+    "getStarted": "Loslegen",
+    "signIn": "Anmelden",
+    "footer": {
+      "about": "Über uns",
+      "privacyPolicy": "Datenschutzrichtlinie",
+      "termsOfService": "Nutzungsbedingungen"
+    }
+  },
+  "dashboard": {
+    "projects": "Projekte",
+    "noProjects": "Noch keine Projekte",
+    "noProjectsDescription": "Erstellen Sie ein Projekt, um zu beginnen.",
+    "projectNotFound": "Projekt nicht gefunden",
+    "projectNotFoundDescription": "Dieses Projekt wurde möglicherweise gelöscht.",
+    "tabs": {
+      "tasks": "Aufgaben",
+      "attachments": "Anhänge"
+    }
+  },
+  "projects": {
+    "newProject": "Neues Projekt",
+    "createProject": "Projekt erstellen",
+    "createFirst": "Erstellen Sie Ihr erstes Projekt",
+    "noProjects": "Keine Projekte",
+    "editProject": "Projekt bearbeiten",
+    "deleteProject": "Projekt löschen",
+    "deleteConfirmTitle": "Projekt löschen?",
+    "deleteConfirmDescription": "Dies löscht “{name}” und alle zugehörigen Aufgaben dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Projektname",
+      "description": "Beschreibung",
+      "descriptionPlaceholder": "Worum geht es in diesem Projekt?"
+    }
+  },
+  "tasks": {
+    "title": "Aufgaben",
+    "addTask": "Aufgabe hinzufügen",
+    "newTask": "Neue Aufgabe",
+    "editTask": "Aufgabe bearbeiten",
+    "deleteTask": "Aufgabe löschen",
+    "confirmDelete": "Löschen bestätigen",
+    "createTask": "Aufgabe erstellen",
+    "noTasks": "Noch keine Aufgaben. Fügen Sie eine hinzu, um zu beginnen.",
+    "noTasksSummary": "Noch keine Aufgaben",
+    "progress": "{doneCount} von {totalCount} Aufgaben erledigt",
+    "progressPercent": "{percent} %",
+    "status": {
+      "label": "Status",
+      "todo": "Zu erledigen",
+      "inProgress": "In Bearbeitung",
+      "done": "Erledigt",
+      "all": "Alle"
+    },
+    "fields": {
+      "title": "Titel",
+      "titlePlaceholder": "Was muss erledigt werden?",
+      "description": "Beschreibung",
+      "descriptionPlaceholder": "Details hinzufügen..."
+    },
+    "aria": {
+      "changeStatus": "Status ändern von {status}"
+    },
+    "count": "{count, plural, =0 {Noch keine Aufgaben} one {# Aufgabe} other {# Aufgaben}}"
+  },
+  "uploads": {
+    "title": "Anhänge",
+    "addFile": "Datei hinzufügen",
+    "uploading": "Wird hochgeladen...",
+    "processing": "Verarbeitung",
+    "view": "Anzeigen",
+    "deleteFile": "Datei löschen",
+    "emptyState": "Laden Sie Dateien hoch, um den Convex-Speicherablauf zu sehen.",
+    "errors": {
+      "tooLarge": "Datei zu groß (max. 1 MB)",
+      "uploadFailed": "Upload fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "generic": "Upload fehlgeschlagen."
+    },
+    "count": "{count, plural, =0 {Keine Anhänge} one {# Anhang} other {# Anhänge}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Nicht authentifiziert",
+    "PROJECT_NOT_FOUND": "Projekt nicht gefunden",
+    "TASK_NOT_FOUND": "Aufgabe nicht gefunden",
+    "FILE_NOT_FOUND": "Datei nicht im Speicher gefunden",
+    "FILE_TOO_LARGE": "Datei zu groß (max. 1 MB)",
+    "UPLOAD_NOT_FOUND": "Upload nicht gefunden"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Ein Next.js-Starter mit Convex, Better Auth und Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Über uns",
+      "description": "Erfahren Sie mehr über Web App Starter und unsere Mission.",
+      "notice": "Dies ist Platzhalterinhalt. Ersetzen Sie ihn vor dem Start durch Ihren eigenen.",
+      "heading": "Über uns",
+      "mission": "Unsere Mission",
+      "missionText": "Wir glauben, dass Entwickler ihre Zeit für die Erstellung von Funktionen aufwenden sollten, nicht für die Konfiguration von Infrastruktur. Web App Starter bietet einen produktionsreifen Ausgangspunkt mit Echtzeitdatensynchronisierung, Dateiuploads und sitzungsbasierter Authentifizierung, alles bereits verdrahtet und einsatzbereit.",
+      "whatIncluded": "Was ist enthalten",
+      "whatIncludedText": "Das Starter-Kit wird mit einer Landingpage, einer vollständig authentifizierten Webanwendung, einem Admin-Dashboard und einem Component-Storybook geliefert. Jede App teilt ein einheitliches Design-System, das auf Radix UI-Primitiven mit Tailwind CSS aufgebaut ist.",
+      "openSource": "Open Source",
+      "openSourceText": "Dieses Projekt ist Open Source und soll geforkt und angepasst werden.",
+      "intro": "Web App Starter ist eine vollständige Grundlage für die Erstellung moderner Webanwendungen. Sie kombiniert Next.js für das Frontend, Convex für das Backend und Better Auth für sichere Authentifizierung – alles verdrahtet und versandbereit."
+    },
+    "privacy": {
+      "title": "Datenschutzrichtlinie",
+      "description": "Wie wir Ihre Daten erfassen, verwenden und schützen.",
+      "notice": "Dies ist eine Vorlage für eine Datenschutzrichtlinie. Passen Sie sie vor dem Start an Ihre spezifische Anwendung und Gerichtsbarkeit an.",
+      "heading": "Datenschutzrichtlinie",
+      "lastUpdated": "Zuletzt aktualisiert: {date}"
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "description": "Die Regeln und Richtlinien für die Nutzung unseres Dienstes.",
+      "notice": "Dies ist eine Vorlage für Nutzungsbedingungen. Passen Sie sie vor dem Start an Ihre spezifische Anwendung und Gerichtsbarkeit an.",
+      "heading": "Nutzungsbedingungen",
+      "lastUpdated": "Zuletzt aktualisiert: {date}"
+    }
+  }
+}

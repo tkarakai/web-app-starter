@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 // CSP is handled by proxy.ts (nonce-based)
 const securityHeaders = [
@@ -14,8 +17,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@repo/design-system"],
+  transpilePackages: ["@repo/design-system", "@repo/design-patterns", "@repo/i18n"],
   headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

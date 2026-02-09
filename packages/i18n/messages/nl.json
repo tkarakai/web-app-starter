@@ -1,0 +1,196 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Laden...",
+    "cancel": "Annuleren",
+    "save": "Wijzigingen opslaan",
+    "saving": "Opslaan...",
+    "create": "Aanmaken",
+    "creating": "Aanmaken...",
+    "delete": "Verwijderen",
+    "signOut": "Uitloggen",
+    "error": "Er is een fout opgetreden",
+    "backToHome": "Terug naar startpagina",
+    "note": "Opmerking"
+  },
+  "theme": {
+    "light": "Licht thema",
+    "system": "Systeemthema",
+    "dark": "Donker thema",
+    "ariaLabel": "Thema: {label}. Klik om te wisselen."
+  },
+  "language": {
+    "label": "Taal",
+    "ariaLabel": "Selecteer taal"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welkom terug",
+      "description": "Log in om naar je dashboard te gaan.",
+      "cta": "Inloggen",
+      "switchPrompt": "Nieuw hier?",
+      "switchLink": "Account aanmaken",
+      "pageHeading": "Welkom terug. Ga verder waar je gebleven was.",
+      "pageDescription": "Better Auth beheert sessies, terwijl Convex data realtime bijhoudt. Log in om toegang te krijgen tot je projecten en taken."
+    },
+    "signUp": {
+      "title": "Maak je werkruimte aan",
+      "description": "Begin in minder dan een minuut.",
+      "cta": "Account aanmaken",
+      "switchPrompt": "Heb je al toegang?",
+      "switchLink": "Inloggen",
+      "pageHeading": "Maak je account aan en begin met bouwen.",
+      "pageDescription": "Convex + Better Auth zijn al ingesteld, dus je account is meteen productieklaar."
+    },
+    "badge": "Account",
+    "fields": {
+      "name": "Naam",
+      "namePlaceholder": "Jan de Vries",
+      "email": "E-mail",
+      "emailPlaceholder": "jij@voorbeeld.nl",
+      "password": "Wachtwoord",
+      "passwordPlaceholder": "Je wachtwoord",
+      "passwordSignUpPlaceholder": "Minimaal 8 tekens",
+      "confirmPassword": "Wachtwoord bevestigen",
+      "confirmPasswordPlaceholder": "Bevestig je wachtwoord"
+    },
+    "errors": {
+      "passwordMismatch": "Wachtwoorden komen niet overeen",
+      "generic": "Er is een fout opgetreden"
+    },
+    "footer": "Beveiligde e-mail + wachtwoord",
+    "working": "Bezig...",
+    "legal": {
+      "prefix": "Door door te gaan, ga je akkoord met onze",
+      "termsOfService": "Servicevoorwaarden",
+      "and": "en",
+      "privacyPolicy": "Privacybeleid"
+    }
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Je startlijn.",
+    "headingLine2": "Bouw vanaf hier.",
+    "description": "Authenticatie, database, realtime synchronisatie en bestandsuploads — aangesloten en klaar.",
+    "getStarted": "Aan de slag",
+    "signIn": "Inloggen",
+    "footer": {
+      "about": "Over ons",
+      "privacyPolicy": "Privacybeleid",
+      "termsOfService": "Servicevoorwaarden"
+    }
+  },
+  "dashboard": {
+    "projects": "Projecten",
+    "noProjects": "Nog geen projecten",
+    "noProjectsDescription": "Maak een project aan om te beginnen.",
+    "projectNotFound": "Project niet gevonden",
+    "projectNotFoundDescription": "Dit project is mogelijk verwijderd.",
+    "tabs": {
+      "tasks": "Taken",
+      "attachments": "Bijlagen"
+    }
+  },
+  "projects": {
+    "newProject": "Nieuw project",
+    "createProject": "Project aanmaken",
+    "createFirst": "Maak je eerste project aan",
+    "noProjects": "Geen projecten",
+    "editProject": "Project bewerken",
+    "deleteProject": "Project verwijderen",
+    "deleteConfirmTitle": "Project verwijderen?",
+    "deleteConfirmDescription": "Dit verwijdert “{name}” en alle bijbehorende taken permanent. Deze actie kan niet ongedaan worden gemaakt.",
+    "fields": {
+      "name": "Naam",
+      "namePlaceholder": "Projectnaam",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Waar gaat dit project over?"
+    }
+  },
+  "tasks": {
+    "title": "Taken",
+    "addTask": "Taak toevoegen",
+    "newTask": "Nieuwe taak",
+    "editTask": "Taak bewerken",
+    "deleteTask": "Taak verwijderen",
+    "confirmDelete": "Verwijdering bevestigen",
+    "createTask": "Taak aanmaken",
+    "noTasks": "Nog geen taken. Voeg er een toe om te beginnen.",
+    "noTasksSummary": "Nog geen taken",
+    "progress": "{doneCount} van {totalCount} taken klaar",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Status",
+      "todo": "Te doen",
+      "inProgress": "Bezig",
+      "done": "Klaar",
+      "all": "Alles"
+    },
+    "fields": {
+      "title": "Titel",
+      "titlePlaceholder": "Wat moet er gedaan worden?",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Details toevoegen..."
+    },
+    "aria": {
+      "changeStatus": "Status wijzigen van {status}"
+    },
+    "count": "{count, plural, =0 {Geen taken} one {# taak} other {# taken}}"
+  },
+  "uploads": {
+    "title": "Bijlagen",
+    "addFile": "Bestand toevoegen",
+    "uploading": "Uploaden...",
+    "processing": "Verwerken",
+    "view": "Bekijken",
+    "deleteFile": "Bestand verwijderen",
+    "emptyState": "Upload bestanden om de Convex-bestandsopslag in actie te zien.",
+    "errors": {
+      "tooLarge": "Bestand te groot (max. 1 MB)",
+      "uploadFailed": "Upload mislukt. Probeer het opnieuw.",
+      "generic": "Upload mislukt."
+    },
+    "count": "{count, plural, =0 {Geen bijlagen} one {# bijlage} other {# bijlagen}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Niet ingelogd",
+    "PROJECT_NOT_FOUND": "Project niet gevonden",
+    "TASK_NOT_FOUND": "Taak niet gevonden",
+    "FILE_NOT_FOUND": "Bestand niet gevonden in opslag",
+    "FILE_TOO_LARGE": "Bestand te groot (max. 1 MB)",
+    "UPLOAD_NOT_FOUND": "Upload niet gevonden"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Een Next.js-starter met Convex, Better Auth en Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Over ons",
+      "description": "Meer informatie over Web App Starter en onze missie.",
+      "notice": "Dit is placeholder-inhoud. Vervang dit door je eigen inhoud voordat je start.",
+      "heading": "Over ons",
+      "mission": "Onze Missie",
+      "missionText": "Wij geloven dat ontwikkelaars hun tijd moeten besteden aan het bouwen van functies, niet aan het configureren van infrastructuur. Web App Starter biedt een productieklaar startpunt met real-time data synchronisatie, bestandsuploads en sessie-gebaseerde authenticatie, alles al aangesloten en klaar.",
+      "whatIncluded": "Wat is Inbegrepen",
+      "whatIncludedText": "De starterkit wordt geleverd met een landingspagina, een volledig geverifieerde webapplicatie, een admin-dashboard en een component-storybook. Elke app deelt een uniform designsysteem gebouwd op Radix UI-primitieven met Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Dit project is open source en is ontworpen om te worden geforkt en aangepast.",
+      "intro": "Web App Starter is een volledige stack-basis voor het bouwen van moderne webapplicaties. Het combineert Next.js voor de frontend, Convex voor de backend en Better Auth voor veilige authenticatie — alles aangesloten en klaar om te verzenden."
+    },
+    "privacy": {
+      "title": "Privacybeleid",
+      "description": "Hoe we je gegevens verzamelen, gebruiken en beschermen.",
+      "notice": "Dit is een privacybeleidssjabloon. Pas dit aan voor je specifieke toepassing en rechtsgebied voordat je start.",
+      "heading": "Privacybeleid",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    },
+    "terms": {
+      "title": "Servicevoorwaarden",
+      "description": "De regels en richtlijnen voor het gebruik van onze service.",
+      "notice": "Dit is een sjabloon van servicevoorwaarden. Pas dit aan voor je specifieke toepassing en rechtsgebied voordat je start.",
+      "heading": "Servicevoorwaarden",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    }
+  }
+}

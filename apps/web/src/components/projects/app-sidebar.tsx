@@ -4,8 +4,10 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, LogOut, Plus } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
+import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@repo/design-patterns";
+import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -72,6 +74,10 @@ export function AppSidebar({
   const router = useRouter();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const tc = useTranslations("common");
+  const tp = useTranslations("projects");
+  const td = useTranslations("dashboard");
+  const tt = useTranslations("theme");
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
   const createProject = useMutation(api.projects.create);
@@ -88,6 +94,13 @@ export function AppSidebar({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const themeLabels = {
+    light: tt("light"),
+    system: tt("system"),
+    dark: tt("dark"),
+    aria: tt.raw("ariaLabel"),
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,9 +136,9 @@ export function AppSidebar({
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Web App Starter" className="font-semibold">
+              <SidebarMenuButton tooltip={tc("appName")} className="font-semibold">
                 <AppLogo size={20} />
-                <span>Web App Starter</span>
+                <span>{tc("appName")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -137,11 +150,11 @@ export function AppSidebar({
               <div className="flex items-center">
                 <CollapsibleTrigger asChild>
                   <SidebarGroupLabel className="flex-1 cursor-pointer">
-                    <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/projects:rotate-90" />
-                    Projects
+                    <ChevronRight className="me-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/projects:rotate-90 rtl:rotate-180 rtl:group-data-[state=open]/projects:rotate-90" />
+                    {td("projects")}
                   </SidebarGroupLabel>
                 </CollapsibleTrigger>
-                <SidebarGroupAction onClick={() => setDialogOpen(true)} title="New project">
+                <SidebarGroupAction onClick={() => setDialogOpen(true)} title={tp("newProject")}>
                   <Plus className="h-4 w-4" />
                 </SidebarGroupAction>
               </div>
@@ -153,9 +166,9 @@ export function AppSidebar({
                         <SidebarMenuButton
                           className="text-muted-foreground italic"
                           onClick={() => setDialogOpen(true)}
-                          tooltip="Create your first project"
+                          tooltip={tp("createFirst")}
                         >
-                          <span>No projects</span>
+                          <span>{tp("noProjects")}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ) : (
@@ -202,12 +215,13 @@ export function AppSidebar({
                     )}
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="start" className="w-48">
-                  <ThemeToggle className="mx-1 my-1" />
+                <DropdownMenuContent side="top" align="start" className="w-56">
+                  <ThemeToggle className="my-1 w-full" labels={themeLabels} />
+                  <LocaleSwitcher variant="submenu" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
+                  <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
+                    <LogOut className="me-2 h-4 w-4" />
+                    {tc("signOut")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -221,30 +235,30 @@ export function AppSidebar({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
+            <DialogTitle>{tp("newProject")}</DialogTitle>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreate}>
             <div className="space-y-2">
-              <Label htmlFor="new-project-name">Name</Label>
+              <Label htmlFor="new-project-name">{tp("fields.name")}</Label>
               <Input
                 id="new-project-name"
-                placeholder="Project name"
+                placeholder={tp("fields.namePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-project-description">Description</Label>
+              <Label htmlFor="new-project-description">{tp("fields.description")}</Label>
               <Textarea
                 id="new-project-description"
-                placeholder="What is this project about?"
+                placeholder={tp("fields.descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Creating..." : "Create project"}
+              {submitting ? tc("creating") : tp("createProject")}
             </Button>
           </form>
         </DialogContent>

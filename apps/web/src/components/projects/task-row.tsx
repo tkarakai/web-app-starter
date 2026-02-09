@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Circle, CircleCheck, CircleDashed, Pencil, Trash2 } from "lucide-react";
-import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
+import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -22,8 +22,8 @@ import {
   SelectValue,
   Textarea,
 } from "@repo/design-system";
-import { toStatusLabel, type TaskStatus } from "@/lib/projects";
-import { normalizeText } from "@/lib/projects";
+import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
+import { normalizeText, type TaskStatus } from "@/lib/projects";
 
 type Task = {
   _id: Id<"tasks">;
@@ -46,6 +46,12 @@ const statusCycle: Record<TaskStatus, TaskStatus> = {
   done: "todo",
 };
 
+const statusTranslationKey: Record<TaskStatus, string> = {
+  todo: "status.todo",
+  in_progress: "status.inProgress",
+  done: "status.done",
+};
+
 function StatusIcon({ status, className }: { status: TaskStatus; className?: string }) {
   switch (status) {
     case "todo":
@@ -64,6 +70,8 @@ type TaskRowProps = {
 export function TaskRow({ task }: TaskRowProps) {
   const updateTask = useMutationWithToast(api.tasks.update);
   const removeTask = useMutationWithToast(api.tasks.remove);
+  const t = useTranslations("tasks");
+  const tc = useTranslations("common");
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [title, setTitle] = React.useState(task.title);
@@ -117,6 +125,7 @@ export function TaskRow({ task }: TaskRowProps) {
   };
 
   const isDone = task.status === "done";
+  const statusLabel = t(statusTranslationKey[task.status]);
 
   return (
     <>
@@ -125,7 +134,7 @@ export function TaskRow({ task }: TaskRowProps) {
           type="button"
           onClick={handleToggleStatus}
           className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-          aria-label={`Change status from ${toStatusLabel(task.status)}`}
+          aria-label={t("aria.changeStatus", { status: statusLabel })}
         >
           <StatusIcon status={task.status} className="h-5 w-5" />
         </button>
@@ -143,7 +152,7 @@ export function TaskRow({ task }: TaskRowProps) {
 
         <div className="flex shrink-0 items-center gap-2">
           <Badge variant={statusVariant[task.status]} className="text-xs">
-            {toStatusLabel(task.status)}
+            {statusLabel}
           </Badge>
           <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
@@ -153,7 +162,7 @@ export function TaskRow({ task }: TaskRowProps) {
               onClick={() => setEditOpen(true)}
             >
               <Pencil className="h-3.5 w-3.5" />
-              <span className="sr-only">Edit task</span>
+              <span className="sr-only">{t("editTask")}</span>
             </Button>
             <Button
               variant="ghost"
@@ -166,7 +175,7 @@ export function TaskRow({ task }: TaskRowProps) {
               ) : (
                 <Trash2 className="h-3.5 w-3.5" />
               )}
-              <span className="sr-only">{confirming ? "Confirm delete" : "Delete task"}</span>
+              <span className="sr-only">{confirming ? t("confirmDelete") : t("deleteTask")}</span>
             </Button>
           </div>
         </div>
@@ -175,43 +184,43 @@ export function TaskRow({ task }: TaskRowProps) {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit task</DialogTitle>
+            <DialogTitle>{t("editTask")}</DialogTitle>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleUpdate}>
             <div className="space-y-2">
-              <Label htmlFor="edit-task-title">Title</Label>
+              <Label htmlFor="edit-task-title">{t("fields.title")}</Label>
               <Input
                 id="edit-task-title"
-                placeholder="What needs to be done?"
+                placeholder={t("fields.titlePlaceholder")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-task-description">Description</Label>
+              <Label htmlFor="edit-task-description">{t("fields.description")}</Label>
               <Textarea
                 id="edit-task-description"
-                placeholder="Add details..."
+                placeholder={t("fields.descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-task-status">Status</Label>
+              <Label htmlFor="edit-task-status">{t("status.label")}</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
                 <SelectTrigger id="edit-task-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todo">To do</SelectItem>
-                  <SelectItem value="in_progress">In progress</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="todo">{t("status.todo")}</SelectItem>
+                  <SelectItem value="in_progress">{t("status.inProgress")}</SelectItem>
+                  <SelectItem value="done">{t("status.done")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Saving..." : "Save changes"}
+              {submitting ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>

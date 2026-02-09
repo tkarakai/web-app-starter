@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronRight, Trash2, UploadCloud } from "lucide-react";
 import { useQuery } from "convex/react";
+import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -31,6 +32,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(!collapsible);
+  const t = useTranslations("uploads");
 
   const generateUploadUrl = useMutationWithToast(api.files.generateUploadUrl);
   const saveUpload = useMutationWithToast(api.files.saveUpload);
@@ -42,7 +44,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      setError("File too large (max 1MB)");
+      setError(t("errors.tooLarge"));
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -59,7 +61,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       });
 
       if (!result.ok) {
-        throw new Error("Upload failed. Please try again.");
+        throw new Error(t("errors.uploadFailed"));
       }
 
       const { storageId } = await result.json();
@@ -75,7 +77,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       }
     } catch (uploadError) {
       setError(
-        uploadError instanceof Error ? uploadError.message : "Upload failed."
+        uploadError instanceof Error ? uploadError.message : t("errors.generic")
       );
     } finally {
       setUploading(false);
@@ -101,7 +103,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       )}
       {uploads.length === 0 ? (
         <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-          Upload files to show the Convex file storage flow.
+          {t("emptyState")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -124,10 +126,10 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
                     rel="noreferrer"
                     className="text-xs font-semibold text-primary underline"
                   >
-                    View
+                    {t("view")}
                   </a>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Processing</span>
+                  <span className="text-xs text-muted-foreground">{t("processing")}</span>
                 )}
                 <Button
                   variant="ghost"
@@ -136,7 +138,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
                   onClick={() => handleDelete(upload._id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span className="sr-only">Delete file</span>
+                  <span className="sr-only">{t("deleteFile")}</span>
                 </Button>
               </div>
             </div>
@@ -151,7 +153,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       <Card className="border-border/60">
         <CardHeader className="flex flex-row items-center justify-between p-4">
           <CardTitle className="text-sm font-medium">
-            Attachments{uploads.length > 0 && ` (${uploads.length})`}
+            {t("title")}{uploads.length > 0 && ` (${uploads.length})`}
           </CardTitle>
           <Button
             type="button"
@@ -161,7 +163,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
             disabled={uploading}
           >
             <UploadCloud className="h-4 w-4" />
-            {uploading ? "Uploading..." : "Add file"}
+            {uploading ? t("uploading") : t("addFile")}
           </Button>
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
@@ -180,7 +182,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
               className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
             />
             <CardTitle className="text-sm font-medium">
-              Attachments{uploads.length > 0 && ` (${uploads.length})`}
+              {t("title")}{uploads.length > 0 && ` (${uploads.length})`}
             </CardTitle>
           </CollapsibleTrigger>
           <Button
@@ -191,7 +193,7 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
             disabled={uploading}
           >
             <UploadCloud className="h-4 w-4" />
-            {uploading ? "Uploading..." : "Add file"}
+            {uploading ? t("uploading") : t("addFile")}
           </Button>
         </CardHeader>
 

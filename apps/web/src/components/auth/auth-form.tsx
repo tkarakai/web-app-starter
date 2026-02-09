@@ -3,9 +3,11 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { authClient } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
+import { redirectWithUserLocale } from "@/lib/auth-locale";
 import {
   Button,
   Card,
@@ -21,26 +23,7 @@ import {
 const LANDING_URL =
   process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
 
-const copy = {
-  "sign-in": {
-    title: "Welcome back",
-    description: "Sign in to continue to your dashboard.",
-    cta: "Sign in",
-    footer: "New here?",
-    link: "/sign-up",
-    linkLabel: "Create an account",
-  },
-  "sign-up": {
-    title: "Create your workspace",
-    description: "Get started in under a minute.",
-    cta: "Create account",
-    footer: "Already have access?",
-    link: "/sign-in",
-    linkLabel: "Sign in",
-  },
-} as const;
-
-type AuthMode = keyof typeof copy;
+type AuthMode = "sign-in" | "sign-up";
 
 function formatAuthError(error: { status?: number; message?: string }): string {
   if (error.status === 429) {
@@ -51,6 +34,7 @@ function formatAuthError(error: { status?: number; message?: string }): string {
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [name, setName] = React.useState("");
@@ -58,19 +42,22 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
 
+  const isSignUp = mode === "sign-up";
+  const namespace = isSignUp ? "signUp" : "signIn";
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
-    if (mode === "sign-up" && password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (isSignUp && password !== confirmPassword) {
+      setError(t("errors.passwordMismatch"));
       return;
     }
 
     setPending(true);
 
     try {
-      if (mode === "sign-up") {
+      if (isSignUp) {
         const result = await authClient.signUp.email({
           name,
           email,
@@ -82,7 +69,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           setError(formatAuthError(result.error));
         } else {
           broadcastAuth();
-          router.push("/dashboard");
+          await redirectWithUserLocale(router);
         }
         return;
       }
@@ -98,7 +85,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         setError(formatAuthError(result.error));
       } else {
         broadcastAuth();
-        router.push("/dashboard");
+        await redirectWithUserLocale(router);
       }
     } finally {
       setPending(false);
@@ -110,22 +97,22 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       <CardHeader className="space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           <Sparkles className="h-4 w-4" />
-          Account
+          {t("badge")}
         </div>
         <CardTitle className="text-2xl font-semibold">
-          {copy[mode].title}
+          {t(`${namespace}.title`)}
         </CardTitle>
-        <CardDescription>{copy[mode].description}</CardDescription>
+        <CardDescription>{t(`${namespace}.description`)}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {mode === "sign-up" ? (
+          {isSignUp ? (
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t("fields.name")}</Label>
               <Input
                 id="name"
                 name="name"
-                placeholder="Avery Quinn"
+                placeholder={t("fields.namePlaceholder")}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
@@ -133,38 +120,38 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("fields.email")}</Label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("fields.emailPlaceholder")}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("fields.password")}</Label>
             <Input
               id="password"
               name="password"
               type="password"
-              placeholder={mode === "sign-in" ? "Your password" : "At least 8 characters"}
+              placeholder={isSignUp ? t("fields.passwordSignUpPlaceholder") : t("fields.passwordPlaceholder")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              {...(mode === "sign-up" ? { minLength: 8 } : {})}
+              {...(isSignUp ? { minLength: 8 } : {})}
             />
           </div>
-          {mode === "sign-up" ? (
+          {isSignUp ? (
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Label htmlFor="confirm-password">{t("fields.confirmPassword")}</Label>
               <Input
                 id="confirm-password"
                 name="confirm-password"
                 type="password"
-                placeholder="Confirm your password"
+                placeholder={t("fields.confirmPasswordPlaceholder")}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
@@ -178,41 +165,41 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </div>
           ) : null}
           <Button className="w-full" type="submit" disabled={pending}>
-            {pending ? "Working..." : copy[mode].cta}
+            {pending ? t("working") : t(`${namespace}.cta`)}
             <ArrowRight className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <Separator className="flex-1 min-w-0 w-auto" />
-            <span>Secure email + password</span>
+            <span>{t("footer")}</span>
             <Separator className="flex-1 min-w-0 w-auto" />
           </div>
           <Button
             type="button"
             variant="ghost"
             className="w-full"
-            onClick={() => router.push(copy[mode].link)}
+            onClick={() => router.push(isSignUp ? "/sign-in" : "/sign-up")}
           >
-            {copy[mode].footer}{" "}
-            <span className="underline">{copy[mode].linkLabel}</span>
+            {t(`${namespace}.switchPrompt`)}{" "}
+            <span className="underline">{t(`${namespace}.switchLink`)}</span>
           </Button>
           <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-            By continuing, you agree to our{" "}
+            {t("legal.prefix")}{" "}
             <a
               href={`${LANDING_URL}/terms`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              Terms of Service
+              {t("legal.termsOfService")}
             </a>{" "}
-            and{" "}
+            {t("legal.and")}{" "}
             <a
               href={`${LANDING_URL}/privacy`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              Privacy Policy
+              {t("legal.privacyPolicy")}
             </a>
             .
           </p>

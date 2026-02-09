@@ -1,0 +1,196 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Cargando...",
+    "cancel": "Cancelar",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "create": "Crear",
+    "creating": "Creando...",
+    "delete": "Eliminar",
+    "signOut": "Cerrar sesión",
+    "error": "Se produjo un error",
+    "backToHome": "Volver al inicio",
+    "note": "Nota"
+  },
+  "theme": {
+    "light": "Tema claro",
+    "system": "Tema del sistema",
+    "dark": "Tema oscuro",
+    "ariaLabel": "Tema: {label}. Haz clic para cambiar."
+  },
+  "language": {
+    "label": "Idioma",
+    "ariaLabel": "Seleccionar idioma"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Bienvenido de nuevo",
+      "description": "Inicia sesión para continuar a tu panel.",
+      "cta": "Iniciar sesión",
+      "switchPrompt": "¿Eres nuevo?",
+      "switchLink": "Crear una cuenta",
+      "pageHeading": "Bienvenido de nuevo. Retoma donde lo dejaste.",
+      "pageDescription": "Better Auth gestiona los flujos de sesión, mientras que Convex mantiene los datos en tiempo real. Inicia sesión para acceder a tus proyectos y tareas."
+    },
+    "signUp": {
+      "title": "Crea tu espacio de trabajo",
+      "description": "Comienza en menos de un minuto.",
+      "cta": "Crear cuenta",
+      "switchPrompt": "¿Ya tienes acceso?",
+      "switchLink": "Iniciar sesión",
+      "pageHeading": "Crea tu cuenta y empieza a construir.",
+      "pageDescription": "Convex + Better Auth ya están configurados, así que tu cuenta estará lista para producción de inmediato."
+    },
+    "badge": "Cuenta",
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "Avery Quinn",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "tu@ejemplo.com",
+      "password": "Contraseña",
+      "passwordPlaceholder": "Tu contraseña",
+      "passwordSignUpPlaceholder": "Al menos 8 caracteres",
+      "confirmPassword": "Confirmar contraseña",
+      "confirmPasswordPlaceholder": "Confirma tu contraseña"
+    },
+    "errors": {
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "generic": "Se produjo un error"
+    },
+    "footer": "Correo electrónico + contraseña seguros",
+    "working": "Procesando...",
+    "legal": {
+      "prefix": "Al continuar, aceptas nuestros",
+      "termsOfService": "Términos de servicio",
+      "and": "y",
+      "privacyPolicy": "Política de privacidad"
+    }
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Tu punto de partida.",
+    "headingLine2": "Construye desde aquí.",
+    "description": "Autenticación, base de datos, sincronización en tiempo real y carga de archivos — todo conectado y listo.",
+    "getStarted": "Comenzar",
+    "signIn": "Iniciar sesión",
+    "footer": {
+      "about": "Acerca de",
+      "privacyPolicy": "Política de privacidad",
+      "termsOfService": "Términos de servicio"
+    }
+  },
+  "dashboard": {
+    "projects": "Proyectos",
+    "noProjects": "Aún no hay proyectos",
+    "noProjectsDescription": "Crea un proyecto para empezar.",
+    "projectNotFound": "Proyecto no encontrado",
+    "projectNotFoundDescription": "Este proyecto puede haber sido eliminado.",
+    "tabs": {
+      "tasks": "Tareas",
+      "attachments": "Adjuntos"
+    }
+  },
+  "projects": {
+    "newProject": "Nuevo proyecto",
+    "createProject": "Crear proyecto",
+    "createFirst": "Crea tu primer proyecto",
+    "noProjects": "Sin proyectos",
+    "editProject": "Editar proyecto",
+    "deleteProject": "Eliminar proyecto",
+    "deleteConfirmTitle": "¿Eliminar proyecto?",
+    "deleteConfirmDescription": "Esto eliminará permanentemente “{name}” y todas sus tareas. Esta acción no se puede deshacer.",
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "Nombre del proyecto",
+      "description": "Descripción",
+      "descriptionPlaceholder": "¿De qué trata este proyecto?"
+    }
+  },
+  "tasks": {
+    "title": "Tareas",
+    "addTask": "Añadir tarea",
+    "newTask": "Nueva tarea",
+    "editTask": "Editar tarea",
+    "deleteTask": "Eliminar tarea",
+    "confirmDelete": "Confirmar eliminación",
+    "createTask": "Crear tarea",
+    "noTasks": "Aún no hay tareas. Añade una para empezar.",
+    "noTasksSummary": "Aún no hay tareas",
+    "progress": "{doneCount} de {totalCount} tareas completadas",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Estado",
+      "todo": "Pendiente",
+      "inProgress": "En progreso",
+      "done": "Hecho",
+      "all": "Todas"
+    },
+    "fields": {
+      "title": "Título",
+      "titlePlaceholder": "¿Qué hay que hacer?",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Añadir detalles..."
+    },
+    "aria": {
+      "changeStatus": "Cambiar estado desde {status}"
+    },
+    "count": "{count, plural, =0 {Aún no hay tareas} one {# tarea} other {# tareas}}"
+  },
+  "uploads": {
+    "title": "Adjuntos",
+    "addFile": "Añadir archivo",
+    "uploading": "Subiendo...",
+    "processing": "Procesando",
+    "view": "Ver",
+    "deleteFile": "Eliminar archivo",
+    "emptyState": "Sube archivos para ver el flujo de almacenamiento de Convex.",
+    "errors": {
+      "tooLarge": "Archivo demasiado grande (máx. 1MB)",
+      "uploadFailed": "La subida falló. Inténtalo de nuevo.",
+      "generic": "La subida falló."
+    },
+    "count": "{count, plural, =0 {Sin adjuntos} one {# adjunto} other {# adjuntos}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "No autenticado",
+    "PROJECT_NOT_FOUND": "Proyecto no encontrado",
+    "TASK_NOT_FOUND": "Tarea no encontrada",
+    "FILE_NOT_FOUND": "Archivo no encontrado en el almacenamiento",
+    "FILE_TOO_LARGE": "Archivo demasiado grande (máx. 1MB)",
+    "UPLOAD_NOT_FOUND": "Subida no encontrada"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Un starter de Next.js con Convex, Better Auth y Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Acerca de",
+      "description": "Aprende sobre Web App Starter y nuestra misión.",
+      "notice": "Este es contenido de marcador de posición. Reemplázalo con tu propio contenido antes de lanzar.",
+      "heading": "Acerca de",
+      "mission": "Nuestra Misión",
+      "missionText": "Creemos que los desarrolladores deben pasar su tiempo construyendo funciones, no configurando infraestructura. Web App Starter proporciona un punto de partida listo para producción con sincronización de datos en tiempo real, carga de archivos y autenticación basada en sesiones, todo ya conectado y listo.",
+      "whatIncluded": "Qué está Incluido",
+      "whatIncludedText": "El kit de inicio incluye una página de aterrizaje, una aplicación web completamente autenticada, un panel de administración y un storybook de componentes. Cada aplicación comparte un sistema de diseño unificado construido sobre primitivos de Radix UI con Tailwind CSS.",
+      "openSource": "Código Abierto",
+      "openSourceText": "Este proyecto es de código abierto y está diseñado para ser bifurcado y personalizado.",
+      "intro": "Web App Starter es una base de pila completa para construir aplicaciones web modernas. Combina Next.js para el frontend, Convex para el backend y Better Auth para autenticación segura — todo conectado y listo para enviar."
+    },
+    "privacy": {
+      "title": "Política de Privacidad",
+      "description": "Cómo recopilamos, usamos y protegemos tus datos.",
+      "notice": "Esta es una política de privacidad de plantilla. Personalízala para tu aplicación específica y jurisdicción antes de lanzar.",
+      "heading": "Política de Privacidad",
+      "lastUpdated": "Última actualización: {date}"
+    },
+    "terms": {
+      "title": "Términos de Servicio",
+      "description": "Las reglas y directrices para usar nuestro servicio.",
+      "notice": "Estos son términos de servicio de plantilla. Personalízalos para tu aplicación específica y jurisdicción antes de lanzar.",
+      "heading": "Términos de Servicio",
+      "lastUpdated": "Última actualización: {date}"
+    }
+  }
+}
