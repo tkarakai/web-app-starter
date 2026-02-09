@@ -23,14 +23,26 @@
     "test:convex": "turbo test:convex",
     "test:e2e": "turbo test:e2e",
     "test:all": "turbo test test:unit test:convex test:e2e",
+    "clean": "rm -rf apps/*/.next apps/*/.turbo packages/*/.turbo .turbo",
     "ci": "./scripts/ci-local.sh",
     "ci:quick": "./scripts/ci-local.sh --skip-e2e",
+    "ci:reset-coverage": "./scripts/ci-local.sh --reset-coverage",
     "ci:act": "./scripts/ci-local-act.sh",
     "ci:act:quick": "./scripts/ci-local-act.sh -q",
     "ci:act:offline": "./scripts/ci-local-act.sh -o"
   },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "convex": "1.31.7"
+  },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
     "eslint": "9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "turbo": "^2.5.0",
     "typescript": "5.9.3"
   }

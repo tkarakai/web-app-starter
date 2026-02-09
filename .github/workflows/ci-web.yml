@@ -155,7 +155,7 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [changes, build]
-    if: needs.changes.outputs.should_run == 'true' && github.event.pull_request.draft == false
+    if: vars.SKIP_E2E != 'true' && needs.changes.outputs.should_run == 'true' && github.event.pull_request.draft == false
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

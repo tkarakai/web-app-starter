@@ -214,15 +214,21 @@ The `bun run ci` command runs these checks in order (all via `turbo`):
 1. **TypeScript check** (`turbo typecheck`)
 2. **ESLint** (`turbo lint`)
 3. **Bun unit tests** (`turbo test`)
-4. **Vitest component tests** (`turbo test:unit`)
-5. **Convex backend tests** (`turbo test:convex`)
-6. **Production build** (`turbo build`)
-7. **Bundle size check** (all apps with `.size-limit.json`)
-8. **Playwright E2E tests** (`turbo test:e2e`)
+4. **Vitest component tests with coverage** (`turbo test:coverage`)
+5. **Coverage summary display** + artifact saving
+6. **Convex backend tests** (`turbo test:convex`)
+7. **Production build** (`turbo build`)
+8. **Bundle size check** (all apps with `.size-limit.json`)
+9. **Storybook build** (`turbo build --filter=@repo/storybook...`)
+10. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
+
+Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
 
-> **Note**: Lighthouse performance audits are only run in GitHub Actions CI, not locally.
+> **Note**: E2E tests require the dev environment (`bun run dev`) to be running. The CI script checks that servers are reachable before running Playwright tests and prints a clear error if they are not.
+
+> **Note**: Security checks (CodeQL, dependency audit, secrets scan), Lighthouse audits, and CI gate are only run in GitHub Actions CI, not locally.
 
 ### Running GitHub Actions Locally with `act`
 
@@ -944,10 +950,11 @@ Or verify individually:
 - [ ] TypeScript compiles: `bun run typecheck`
 - [ ] Linting passes: `bun run lint`
 - [ ] Unit tests pass: `bun run test`
-- [ ] Component tests pass: `bun run test:unit`
+- [ ] Component tests with coverage pass: `bun run test:coverage`
 - [ ] Backend tests pass: `bun run test:convex`
 - [ ] Build succeeds: `bun run build`
-- [ ] E2E tests pass: `bun run test:e2e`
+- [ ] Storybook build succeeds: `turbo build --filter=@repo/storybook...`
+- [ ] E2E tests pass: `bun run test:e2e` (requires `bun run dev` running)
 
 Code quality:
 - [ ] No console.log debugging statements

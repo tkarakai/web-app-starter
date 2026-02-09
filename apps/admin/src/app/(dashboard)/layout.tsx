@@ -22,7 +22,8 @@ export default async function DashboardLayout({
   }
 
   // Verify user has admin role
-  if (!preloadedUser || (preloadedUser as any).role !== "admin") {
+  const user = preloadedUser as Record<string, unknown> | null;
+  if (!user || user.role !== "admin") {
     redirect("/api/auth/clear-session");
   }
 

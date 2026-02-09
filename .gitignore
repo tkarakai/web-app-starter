@@ -23,8 +23,9 @@ dist
 **/qa/test-results/
 **/qa/e2e/__screenshots__/
 
-# act local CI artifacts
+# Local CI artifacts
 .act-artifacts/
+.ci-local-artifacts/
 
 # Auto Claude data directory
 .auto-claude/

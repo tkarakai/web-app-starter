@@ -3,12 +3,26 @@ import { expect, test, type Page } from "@playwright/test";
 // ── Helpers ──────────────────────────────────────────────────────────
 
 /**
+ * The Components sidebar group. Scoped to avoid matching the Foundations
+ * group which also has a "Layout" category.
+ */
+function componentsGroup(page: Page) {
+  return page
+    .locator('[data-sidebar="group"]')
+    .filter({
+      has: page.locator('[data-sidebar="group-label"]', {
+        hasText: "Components",
+      }),
+    });
+}
+
+/**
  * Return a single category button by its visible label.
- * Scoped to sidebar content area to exclude header/footer buttons.
+ * Scoped to the Components sidebar group.
  */
 function categoryButton(page: Page, label: string) {
-  return page
-    .locator('[data-sidebar="content"] [data-sidebar="menu-button"]')
+  return componentsGroup(page)
+    .locator('[data-sidebar="menu-button"]')
     .filter({ hasText: label });
 }
 
@@ -172,8 +186,10 @@ test.describe("Sidebar navigation", () => {
   }) => {
     await page.goto("/components/input");
 
+    // Category breadcrumb is a dropdown trigger (button), not a plain link
     const breadcrumb = page.getByRole("navigation", { name: /breadcrumb/i });
-    await breadcrumb.getByRole("link", { name: "Form" }).click();
+    await breadcrumb.getByRole("button", { name: /Form/ }).click();
+    await page.getByRole("menuitem", { name: "Form", exact: true }).click();
     await expect(page).toHaveURL(/\/components\/category\/form$/);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Form");
   });
@@ -190,9 +206,10 @@ test.describe("Sidebar navigation", () => {
     await toggleCategory(page, "Overlay");
     expect(await isCategoryExpanded(page, "Overlay")).toBe(true);
 
-    // Click the "Actions" breadcrumb link (client-side navigation)
+    // Click the "Actions" breadcrumb dropdown, then the Actions menuitem
     const breadcrumb = page.getByRole("navigation", { name: /breadcrumb/i });
-    await breadcrumb.getByRole("link", { name: "Actions" }).click();
+    await breadcrumb.getByRole("button", { name: /Actions/ }).click();
+    await page.getByRole("menuitem", { name: "Actions", exact: true }).click();
     await expect(page).toHaveURL(/\/components\/category\/actions$/);
 
     // "Overlay" should still be expanded

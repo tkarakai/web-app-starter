@@ -21,12 +21,16 @@ CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 # No --app flag means start all apps
 
 NON_INTERACTIVE=false
+FORCE_RESTART=false
 SELECTED_APPS=""
 
 for arg in "$@"; do
     case "$arg" in
         --ci)
             NON_INTERACTIVE=true
+            ;;
+        --restart)
+            FORCE_RESTART=true
             ;;
         --app=*)
             SELECTED_APPS="${arg#--app=}"
@@ -202,13 +206,25 @@ update_app_env_urls() {
 
 # Check if esbuild binary is functional (Convex uses it to bundle functions)
 check_esbuild() {
-    local esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild"
-    if [ ! -x "$esbuild_bin" ]; then
-        # Fall back to the wrapper script
+    local esbuild_bin=""
+
+    # 1. Direct platform binary (classic node_modules layout)
+    if [ -x "$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild" ]; then
+        esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild"
+    # 2. Bun's deduped layout: node_modules/.bun/@esbuild+darwin-arm64@*/...
+    else
+        local bun_esbuild
+        bun_esbuild=$(ls "$PROJECT_DIR"/node_modules/.bun/@esbuild+darwin-arm64@*/node_modules/@esbuild/darwin-arm64/bin/esbuild 2>/dev/null | head -1)
+        if [ -x "$bun_esbuild" ]; then
+            esbuild_bin="$bun_esbuild"
+        fi
+    fi
+    # 3. Wrapper script in .bin
+    if [ -z "$esbuild_bin" ] && [ -x "$PROJECT_DIR/node_modules/.bin/esbuild" ]; then
         esbuild_bin="$PROJECT_DIR/node_modules/.bin/esbuild"
     fi
 
-    if [ ! -e "$esbuild_bin" ]; then
+    if [ -z "$esbuild_bin" ]; then
         echo "missing"
         return
     fi
@@ -243,8 +259,8 @@ print_esbuild_fix() {
     echo -e "${RED}  esbuild binary is missing or corrupted.${NC}"
     echo -e "${RED}  Convex uses esbuild to bundle functions — it will hang without a working binary.${NC}"
     echo ""
-    echo -e "${YELLOW}  Fix: reinstall esbuild${NC}"
-    echo -e "    rm -rf node_modules/@esbuild node_modules/esbuild && bun install"
+    echo -e "${YELLOW}  Fix: reinstall dependencies${NC}"
+    echo -e "    rm -rf node_modules && bun install"
     echo ""
 }
 
@@ -267,8 +283,9 @@ if [ -f "$PID_FILE" ]; then
     done < "$PID_FILE"
 
     if [ "$HAS_RUNNING_PROCESSES" = true ]; then
-        if [ ! -t 0 ]; then
-            echo -e "${YELLOW}Non-interactive mode: stopping existing processes...${NC}"
+        if [ "$FORCE_RESTART" = true ] || [ ! -t 0 ]; then
+            # --restart flag or non-interactive: auto-stop without prompting
+            echo -e "${YELLOW}Stopping existing processes...${NC}"
             "$SCRIPT_DIR/dev-stop.sh"
             echo ""
         else
@@ -276,23 +293,79 @@ if [ -f "$PID_FILE" ]; then
             echo -e "$RUNNING_PIDS"
             echo ""
             echo -e "  ${YELLOW}Options:${NC}"
-            echo -e "    [s] Stop them and start fresh"
-            echo -e "    [q] Quit and leave them running"
+            echo -e "    [q] Quit — leave them running, do nothing (default)"
+            echo -e "    [r] Restart — stop them and start fresh"
             echo ""
-            read -p "Choice [s/Q]: " -n 1 -r
+            read -p "Choice [Q/r]: " -n 1 -r
             echo
-            if [[ $REPLY =~ ^[Ss]$ ]]; then
+            if [[ $REPLY =~ ^[Rr]$ ]]; then
                 echo ""
                 echo -e "${YELLOW}Stopping existing processes...${NC}"
                 "$SCRIPT_DIR/dev-stop.sh"
                 echo ""
             else
-                echo -e "${YELLOW}Aborted. Use 'bun dev:stop' to stop running processes.${NC}"
+                "$SCRIPT_DIR/dev-status.sh"
                 exit 0
             fi
         fi
     else
         rm -f "$PID_FILE"
+    fi
+fi
+
+# ============================================================
+# CHECK FOR ORPHANED PROCESSES
+# ============================================================
+# Detect stale convex-local-backend or Next.js dev processes that aren't tracked
+# in .dev-pids (e.g. from a crashed terminal or killed script).
+
+kill_orphans() {
+    local pids="$1"
+    local label="$2"
+    for pid in $pids; do
+        if kill -0 "$pid" 2>/dev/null; then
+            local cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -c 80)
+            kill "$pid" 2>/dev/null || true
+            sleep 0.3
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+            echo -e "  ${GREEN}✔ Killed $label (PID $pid): $cmd${NC}"
+        fi
+    done
+}
+
+ORPHAN_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
+ORPHAN_NEXT=$(pgrep -f "next dev" 2>/dev/null | while read pid; do
+    # Only match Next.js processes rooted in this project
+    ps -p "$pid" -o args= 2>/dev/null | grep -q "$PROJECT_DIR" && echo "$pid"
+done || true)
+
+if [ -n "$ORPHAN_CONVEX" ] || [ -n "$ORPHAN_NEXT" ]; then
+    ORPHAN_COUNT=$(echo "$ORPHAN_CONVEX $ORPHAN_NEXT" | wc -w | tr -d ' ')
+    echo -e "${YELLOW}⚠ Found $ORPHAN_COUNT orphaned dev process(es) (not tracked in .dev-pids):${NC}"
+    for pid in $ORPHAN_CONVEX; do
+        echo -e "  ${RED}convex-local-backend${NC} (PID $pid)"
+    done
+    for pid in $ORPHAN_NEXT; do
+        local cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -c 80)
+        echo -e "  ${RED}next dev${NC} (PID $pid): $cmd"
+    done
+    echo ""
+
+    if [ ! -t 0 ]; then
+        echo -e "${YELLOW}Non-interactive mode: killing orphaned processes...${NC}"
+        kill_orphans "$ORPHAN_CONVEX" "convex-local-backend"
+        kill_orphans "$ORPHAN_NEXT" "next dev"
+        echo ""
+    else
+        read -p "Kill them? [Y/n]: " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            kill_orphans "$ORPHAN_CONVEX" "convex-local-backend"
+            kill_orphans "$ORPHAN_NEXT" "next dev"
+            echo ""
+        fi
     fi
 fi
 
@@ -565,6 +638,7 @@ start_next_app() {
 LAST_APP_URL=""
 WEB_APP_URL=""
 ADMIN_APP_URL=""
+LANDING_APP_URL=""
 APP_URLS=""  # Comma-separated list of all app URLs for Better Auth
 
 if [ "$START_WEB" = true ]; then
@@ -591,11 +665,12 @@ if [ "$START_LANDING" = true ]; then
         echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
     fi
     start_next_app "landing" 3000
+    LANDING_APP_URL="$LAST_APP_URL"
 
     # Set the landing URL in the web app so auth pages can link back
-    if [ "$START_WEB" = true ] && [ -n "$LAST_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LAST_APP_URL"
-        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LAST_APP_URL for web"
+    if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
+        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LANDING_APP_URL"
+        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LANDING_APP_URL for web"
     fi
 fi
 
@@ -628,28 +703,48 @@ if [ "$NON_INTERACTIVE" = true ]; then
 fi
 
 # ============================================================
-# SUMMARY
+# PRE-WARM PAGES (trigger first compilation so pages load instantly)
 # ============================================================
 echo ""
-echo -e "${GREEN}  Development Environment Ready!${NC}"
-echo ""
-echo -e "  ${YELLOW}Logs:${NC}"
-echo -e "    Convex:    tail -f .convex-dev.log"
-if [ "$START_LANDING" = true ]; then
-    echo -e "    Landing:   tail -f .next-landing.log"
+echo -e "${GREEN}▶ Pre-warming pages (first compile)...${NC}"
+
+WARM_PIDS=()
+WARM_LABELS=()
+
+# Warm up each app by hitting the pages users actually visit first.
+# Use -L to follow redirects (proxy redirects / → /sign-in for unauthed users)
+# and --max-time to avoid hanging if something is wrong.
+if [ "$START_WEB" = true ] && [ -n "$WEB_APP_URL" ]; then
+    curl -sL --max-time 30 -o /dev/null "$WEB_APP_URL/sign-in" 2>/dev/null &
+    WARM_PIDS+=($!)
+    WARM_LABELS+=("web /sign-in")
 fi
-if [ "$START_WEB" = true ]; then
-    echo -e "    Web:       tail -f .next-web.log"
+if [ "$START_ADMIN" = true ] && [ -n "$ADMIN_APP_URL" ]; then
+    curl -sL --max-time 30 -o /dev/null "$ADMIN_APP_URL/sign-in" 2>/dev/null &
+    WARM_PIDS+=($!)
+    WARM_LABELS+=("admin /sign-in")
 fi
-if [ "$START_ADMIN" = true ]; then
-    echo -e "    Admin:     tail -f .next-admin.log"
+if [ "$START_LANDING" = true ] && [ -n "$LANDING_APP_URL" ]; then
+    curl -sL --max-time 30 -o /dev/null "$LANDING_APP_URL" 2>/dev/null &
+    WARM_PIDS+=($!)
+    WARM_LABELS+=("landing /")
 fi
-if [ "$START_STORYBOOK" = true ]; then
-    echo -e "    Storybook: tail -f .next-storybook.log"
-fi
-echo ""
-echo -e "  ${YELLOW}Stop with:${NC} bun dev:stop"
-echo ""
+
+# Wait for all warm-up requests to complete
+for i in "${!WARM_PIDS[@]}"; do
+    pid=${WARM_PIDS[$i]}
+    label=${WARM_LABELS[$i]}
+    if wait "$pid" 2>/dev/null; then
+        echo -e "  ${GREEN}✔${NC} $label"
+    else
+        echo -e "  ${YELLOW}⚠${NC} $label (timed out — will compile on first visit)"
+    fi
+done
+
+# ============================================================
+# SUMMARY (delegates to dev-status.sh for a single source of truth)
+# ============================================================
+"$SCRIPT_DIR/dev-status.sh"
 
 # ============================================================
 # FOREGROUND MODE (CI/Playwright)
