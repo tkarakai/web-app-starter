@@ -5,6 +5,15 @@ import { rateLimitTables } from "convex-helpers/server/rateLimit";
 export default defineSchema({
   ...rateLimitTables,
 
+  userProfiles: defineTable({
+    ownerId: v.string(),
+    locale: v.optional(v.string()),
+    theme: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_owner", ["ownerId"]),
+
   projects: defineTable({
     name: v.string(),
     description: v.string(),
