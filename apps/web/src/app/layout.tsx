@@ -4,6 +4,7 @@ import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
+import { Toaster } from "@repo/design-system";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 
@@ -33,6 +34,7 @@ export default async function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+          <Toaster richColors closeButton position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

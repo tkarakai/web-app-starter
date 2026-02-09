@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -30,6 +30,7 @@ import {
   TabsTrigger,
   Textarea,
 } from "@repo/design-system";
+import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
 import { TaskRow } from "./task-row";
 
@@ -50,7 +51,7 @@ type TaskListProps = {
 
 export function TaskList({ projectId }: TaskListProps) {
   const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
-  const createTask = useMutation(api.tasks.create);
+  const createTask = useMutationWithToast(api.tasks.create);
 
   const [tab, setTab] = React.useState<"all" | TaskStatus>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
