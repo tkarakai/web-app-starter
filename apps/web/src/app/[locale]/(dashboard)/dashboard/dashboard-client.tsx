@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from "@repo/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
+import { useProfileSync } from "@/hooks/useProfileSync";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { EmptyState } from "@/components/projects/empty-state";
 import { ProjectHeader } from "@/components/projects/project-header";
@@ -31,6 +32,10 @@ import { TaskList } from "@/components/projects/task-list";
 import { UploadPanel } from "@/components/projects/upload-panel";
 
 export function DashboardClient() {
+  // Sync user profile (locale) between Convex and localStorage
+  // This is safe here because we're in the authenticated dashboard area with proper context
+  useProfileSync();
+
   const authUser = useAuthUser();
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<Id<"projects"> | null>(null);

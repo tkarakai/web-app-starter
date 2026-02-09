@@ -23,6 +23,11 @@ vi.mock("@repo/auth/client", () => ({
   },
 }));
 
+// Mock i18n hook
+vi.mock("next-intl", () => ({
+  useLocale: () => "en",
+}));
+
 // --- Import after mocks ---
 
 import { AuthGuard, useAuthUser } from "@/components/auth/auth-guard";

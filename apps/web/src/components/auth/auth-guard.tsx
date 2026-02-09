@@ -7,7 +7,6 @@ import type { Preloaded } from "convex/react";
 
 import type { api } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
-import { useProfileSync } from "@/hooks/useProfileSync";
 
 type AuthUser = {
   name?: string;
@@ -48,9 +47,6 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
       router.replace("/sign-in");
     }
   }, [wasAuthenticated, user, session.isPending, session.data, router]);
-
-  // Sync user profile (locale) between Convex and localStorage
-  useProfileSync();
 
   const authUser: AuthUser = {
     name: user?.name ?? session.data?.user?.name ?? undefined,
