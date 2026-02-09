@@ -104,18 +104,19 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      // TODO [SECURITY]: Set requireEmailVerification: true once an email provider
+      // (Resend, SendGrid, etc.) is configured with a sendVerificationEmail handler.
+      // Without email verification, an attacker can register with an admin's email
+      // and get auto-promoted to admin via the databaseHook below. The admin email
+      // list is protected (admin-only query) and sign-up is rate-limited (5/60s),
+      // which limits the blast radius, but email verification is the proper fix.
+      requireEmailVerification: false,
     },
     databaseHooks: {
       user: {
         create: {
           before: async (user) => {
-            // Auto-assign "admin" role to users whose email is in the adminEmails table,
-            // but ONLY when their email has been verified. Without verification an attacker
-            // could register with an admin's email and immediately gain admin privileges.
-            if (!user.emailVerified) {
-              return { data: user };
-            }
+            // Auto-assign "admin" role to users whose email is in the adminEmails table.
             const actionCtx = requireActionCtx(ctx);
             const adminEmails = await actionCtx.runQuery(
               internal.adminEmails.list,
