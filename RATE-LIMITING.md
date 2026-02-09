@@ -230,3 +230,75 @@ These headers allow clients and monitoring tools to track rate limit status proa
 | `apps/web/qa/tests/edge-rate-limit.test.ts` | Edge rate limiter unit tests |
 | `apps/web/qa/tests/middleware.test.ts` | Proxy rate limiting integration tests |
 | `packages/backend/convex/rateLimits.test.ts` | Convex rateLimits schema tests |
+
+---
+
+## Local Testing
+
+You can set artificially low rate limits to manually trigger rate limiting in a running dev environment.
+
+### Layer 1: Better Auth (sign-in/sign-up)
+
+Set via the Convex CLI (run from `packages/backend/`):
+
+```bash
+cd packages/backend
+bunx convex env set AUTH_RATE_LIMIT_SIGNIN_WINDOW 10
+bunx convex env set AUTH_RATE_LIMIT_SIGNIN_MAX 1
+bunx convex env set AUTH_RATE_LIMIT_SIGNUP_WINDOW 10
+bunx convex env set AUTH_RATE_LIMIT_SIGNUP_MAX 1
+```
+
+**Test**: Go to `/sign-in`, attempt to sign in twice within 10 seconds. The second attempt returns HTTP 429 and the form shows "Too many attempts. Please wait a moment before trying again."
+
+### Layer 2: Convex Mutations
+
+Set via the Convex CLI (run from `packages/backend/`):
+
+```bash
+cd packages/backend
+bunx convex env set MUTATION_RATE_LIMIT_RATE 1
+bunx convex env set MUTATION_RATE_LIMIT_PERIOD 5000
+bunx convex env set MUTATION_RATE_LIMIT_CAPACITY 1
+```
+
+**Test**: Sign in, open a project, and try creating/updating/deleting tasks rapidly (more than 1 action per 5 seconds). A red toast notification appears: "Too many requests. Please wait N seconds."
+
+### Layer 3: Edge Proxy
+
+Set in the app's `.env.local` file and restart the dev server:
+
+```bash
+# apps/web/.env.local
+EDGE_RATE_LIMIT_WINDOW=5
+EDGE_RATE_LIMIT_MAX=2
+```
+
+```bash
+bun run dev:stop && bun run dev:web
+```
+
+**Test**: Rapidly refresh the page 3+ times within 5 seconds. You'll see a plain "Too Many Requests" response. The response headers include `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining`.
+
+### Restoring Defaults
+
+Remove the Convex environment variables (they fall back to code defaults):
+
+```bash
+cd packages/backend
+bunx convex env unset AUTH_RATE_LIMIT_SIGNIN_WINDOW
+bunx convex env unset AUTH_RATE_LIMIT_SIGNIN_MAX
+bunx convex env unset AUTH_RATE_LIMIT_SIGNUP_WINDOW
+bunx convex env unset AUTH_RATE_LIMIT_SIGNUP_MAX
+bunx convex env unset MUTATION_RATE_LIMIT_RATE
+bunx convex env unset MUTATION_RATE_LIMIT_PERIOD
+bunx convex env unset MUTATION_RATE_LIMIT_CAPACITY
+```
+
+For edge rate limiting, remove or comment out the overrides in `.env.local` and restart:
+
+```bash
+bun run dev:stop && bun run dev:web
+```
+
+> **Note**: Convex env var changes take effect immediately (no restart needed). Edge env var changes require a dev server restart.

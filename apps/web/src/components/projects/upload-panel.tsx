@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ChevronRight, Trash2, UploadCloud } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -16,6 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@repo/design-system";
+import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { formatBytes } from "@/lib/format";
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
@@ -31,9 +32,9 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
   const [error, setError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(!collapsible);
 
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const saveUpload = useMutation(api.files.saveUpload);
-  const deleteUpload = useMutation(api.files.deleteUpload);
+  const generateUploadUrl = useMutationWithToast(api.files.generateUploadUrl);
+  const saveUpload = useMutationWithToast(api.files.saveUpload);
+  const deleteUpload = useMutationWithToast(api.files.deleteUpload);
   const uploads = useQuery(api.files.listUploads, { projectId }) ?? [];
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
