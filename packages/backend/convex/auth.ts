@@ -123,6 +123,29 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       admin(),
       convex({ authConfig }),
     ],
+    rateLimit: {
+      enabled: true,
+      window: Number(process.env.AUTH_RATE_LIMIT_WINDOW ?? "60"),
+      max: Number(process.env.AUTH_RATE_LIMIT_MAX ?? "100"),
+      storage: "database",
+      customRules: {
+        "/sign-in/email": {
+          window: Number(process.env.AUTH_RATE_LIMIT_SIGNIN_WINDOW ?? "10"),
+          max: Number(process.env.AUTH_RATE_LIMIT_SIGNIN_MAX ?? "3"),
+        },
+        "/sign-up/email": {
+          window: Number(process.env.AUTH_RATE_LIMIT_SIGNUP_WINDOW ?? "60"),
+          max: Number(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX ?? "5"),
+        },
+        // Session checks must not be rate limited — real-time polling depends on them.
+        "/get-session": false,
+      },
+    },
+    advanced: {
+      ipAddress: {
+        ipAddressHeaders: ["x-forwarded-for"],
+      },
+    },
   } satisfies BetterAuthOptions;
 };
 

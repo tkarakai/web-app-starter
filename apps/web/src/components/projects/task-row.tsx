@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Circle, CircleCheck, CircleDashed, Pencil, Trash2 } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -62,8 +62,8 @@ type TaskRowProps = {
 };
 
 export function TaskRow({ task }: TaskRowProps) {
-  const updateTask = useMutation(api.tasks.update);
-  const removeTask = useMutation(api.tasks.remove);
+  const updateTask = useMutationWithToast(api.tasks.update);
+  const removeTask = useMutationWithToast(api.tasks.remove);
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [title, setTitle] = React.useState(task.title);

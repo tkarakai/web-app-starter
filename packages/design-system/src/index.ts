@@ -36,6 +36,7 @@ export {
 
 /* ─── Feedback ─── */
 export { Alert, AlertTitle, AlertDescription, alertVariants } from "./components/feedback/alert";
+export { Toaster, toast } from "sonner";
 export {
   AlertDialog,
   AlertDialogPortal,

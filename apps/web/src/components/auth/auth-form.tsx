@@ -42,6 +42,13 @@ const copy = {
 
 type AuthMode = keyof typeof copy;
 
+function formatAuthError(error: { status?: number; message?: string }): string {
+  if (error.status === 429) {
+    return "Too many attempts. Please wait a moment before trying again.";
+  }
+  return error.message ?? "An error occurred";
+}
+
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
@@ -72,7 +79,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         });
 
         if (result.error) {
-          setError(result.error.message ?? "An error occurred");
+          setError(formatAuthError(result.error));
         } else {
           broadcastAuth();
           router.push("/dashboard");
@@ -88,7 +95,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (result.error) {
-        setError(result.error.message ?? "An error occurred");
+        setError(formatAuthError(result.error));
       } else {
         broadcastAuth();
         router.push("/dashboard");

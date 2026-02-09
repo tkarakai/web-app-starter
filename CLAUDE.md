@@ -727,6 +727,29 @@ Auth pages (`/sign-in`, `/sign-up`) are wrapped by `GuestGuard` via `src/app/(au
 
 **To broadcast auth from a new login flow:** call `broadcastAuth()` from `@/lib/auth-broadcast` after successful authentication.
 
+### Rate Limiting
+
+The application uses three layers of rate limiting. See `RATE-LIMITING.md` for the full architecture document.
+
+| Layer | Scope | Storage | Config |
+|-------|-------|---------|--------|
+| **Better Auth** | Auth endpoints (sign-in, sign-up) | Convex DB (betterAuth component `rateLimit` table) | `packages/backend/convex/auth.ts` — env vars via `convex env set` |
+| **Convex Functions** | All `authedMutation` calls | Convex DB (`rateLimits` table) | `packages/backend/convex/rateLimits.ts` — env vars via `convex env set` |
+| **Edge Proxy** | HTTP page requests (web + landing) | In-memory `Map` (per-instance, capped) | `apps/*/src/proxy.ts` — env vars in `.env.local` |
+
+**Key files:**
+- `packages/backend/convex/rateLimits.ts` — Convex rate limit definitions
+- `packages/backend/convex/functions.ts` — Global mutation rate limit in `authedMutation`
+- `apps/web/src/lib/edge-rate-limit.ts` / `apps/landing/src/lib/edge-rate-limit.ts` — Edge rate limiter utility
+- `apps/web/src/components/auth/auth-form.tsx` — Client-side 429 error handling
+
+**What happens when rate limited:**
+- **Auth endpoints**: HTTP 429, auth form shows "Too many attempts. Please wait a moment before trying again."
+- **Convex mutations**: `ConvexError` with `{ kind: "RateLimited" }`, `useQuery` subscriptions unaffected
+- **Edge proxy**: HTTP 429 with `Retry-After` header, plain "Too Many Requests" page
+
+**Queries are NOT rate limited** — they are read-only and used by `useQuery` real-time subscriptions.
+
 ### Client vs Server Components
 
 ```typescript
