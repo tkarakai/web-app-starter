@@ -2,6 +2,10 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  adminEmails: defineTable({
+    email: v.string(),
+  }).index("by_email", ["email"]),
+
   projects: defineTable({
     name: v.string(),
     description: v.string(),
