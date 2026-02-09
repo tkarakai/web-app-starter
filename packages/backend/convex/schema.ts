@@ -5,6 +5,10 @@ import { rateLimitTables } from "convex-helpers/server/rateLimit";
 export default defineSchema({
   ...rateLimitTables,
 
+  adminEmails: defineTable({
+    email: v.string(),
+  }).index("by_email", ["email"]),
+
   projects: defineTable({
     name: v.string(),
     description: v.string(),

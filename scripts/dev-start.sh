@@ -564,14 +564,23 @@ start_next_app() {
 #   3. Landing last (needs WEB_APP_URL configured)
 LAST_APP_URL=""
 WEB_APP_URL=""
+ADMIN_APP_URL=""
+APP_URLS=""  # Comma-separated list of all app URLs for Better Auth
 
 if [ "$START_WEB" = true ]; then
     start_next_app "web" 3001
     WEB_APP_URL="$LAST_APP_URL"
+    APP_URLS="$LAST_APP_URL"
 fi
 
 if [ "$START_ADMIN" = true ]; then
     start_next_app "admin" 3002
+    ADMIN_APP_URL="$LAST_APP_URL"
+    if [ -n "$APP_URLS" ]; then
+        APP_URLS="$APP_URLS,$LAST_APP_URL"
+    else
+        APP_URLS="$LAST_APP_URL"
+    fi
 fi
 
 if [ "$START_LANDING" = true ]; then
@@ -592,6 +601,18 @@ fi
 
 if [ "$START_STORYBOOK" = true ]; then
     start_next_app "storybook" 3003
+fi
+
+# ============================================================
+# UPDATE BETTER AUTH WITH ALL APP URLS
+# ============================================================
+# Better Auth needs to know all the app origins that will authenticate
+# Set SITE_URL to comma-separated list of all app URLs
+if [ "$NEED_CONVEX" = true ] && [ -n "$APP_URLS" ]; then
+    echo ""
+    echo -e "${GREEN}▶ Updating Better Auth with app origins...${NC}"
+    (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$APP_URLS" > /dev/null 2>&1) || true
+    echo -e "  ${GREEN}✔${NC} SITE_URL set to: $APP_URLS"
 fi
 
 # In CI mode, show final env contents
