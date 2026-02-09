@@ -502,35 +502,144 @@ The navigation works by replacing the locale segment (first path segment) in the
 ### Detection Priority (via next-intl middleware)
 
 1. **URL path** — `/fr/dashboard` → French
-2. **Cookie** (`NEXT_LOCALE`) — persists user's explicit language choice
-3. **Accept-Language header** — browser preference
-4. **Default locale** — English
+2. **User profile** (authenticated only, Convex) — cross-device persistence
+3. **Cookie** (`NEXT_LOCALE`) — persists explicit language choice
+4. **Accept-Language header** — browser preference
+5. **Default locale** — English
 
-### Persistence
+### Persistence Strategy
+
+The system uses a **three-tier sync** approach for authenticated users:
+
+#### For Unauthenticated Users
 
 When a user selects a language:
 1. The `LocaleSwitcher` navigates to the new locale URL
 2. next-intl middleware automatically sets the `NEXT_LOCALE` cookie
-3. Subsequent visits remember the choice
+3. Subsequent visits remember the choice via localStorage fallback
+
+#### For Authenticated Users (Cross-Device Sync)
+
+The `useProfileSync` hook orchestrates Convex ↔ localStorage synchronization:
+
+```tsx
+export function useProfileSync() {
+  const currentLocale = useLocale();
+  const profile = useQuery(api.userProfiles.get);
+  const setLocale = useMutation(api.userProfiles.setLocale);
+
+  useEffect(() => {
+    // Convex wins over localStorage
+    if (convexLocale) {
+      localStorage.setItem(LOCALE_KEY, convexLocale);
+      return;
+    }
+
+    // Sync localStorage to Convex if Convex is empty
+    if (localStorageLocale && localStorageLocale !== currentLocale) {
+      setLocale({ locale: localStorageLocale });
+      return;
+    }
+
+    // Neither has locale: set Convex to current URL locale
+    if (!convexLocale && !localStorageLocale) {
+      setLocale({ locale: currentLocale });
+    }
+  }, [profile, currentLocale, setLocale]);
+}
+```
+
+**How it works:**
+
+1. User logs in → profile is created with `locale` field in Convex
+2. User changes language → `LocaleSwitcher` saves to both localStorage and Convex (`setLocale` mutation)
+3. User signs out and back in → profile is loaded, Convex locale overwrites localStorage
+4. User on another device → logs in, Convex locale is loaded and synced to localStorage
+5. User opens app in another tab → BroadcastChannel shares the locale change instantly
+
+**Backend schema** (`packages/backend/convex/userProfiles.ts`):
+
+```ts
+userProfiles: defineTable({
+  ownerId: v.string(),
+  locale: v.optional(v.string()),      // Synced from localStorage
+  theme: v.optional(v.string()),       // Reserved for future theme sync
+  timezone: v.optional(v.string()),    // Reserved for future timezone sync
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_owner", ["ownerId"]),
+```
+
+**Hook placement:** Called from `DashboardClient` (authenticated dashboard area) to ensure both Convex and i18n contexts are available.
 
 ---
 
 ## RTL Support
 
-### Current State
+### Implementation
 
-RTL is structurally ready but not CSS-audited. The system:
+RTL is fully implemented with CSS audit complete. The system:
 
 1. **Detects RTL locales** via `getLocaleDirection()` — pre-configured for Arabic, Hebrew, Farsi, Urdu
 2. **Sets `dir` attribute** on `<html>` dynamically in each app's root layout
-3. **Tailwind CSS v4** supports `rtl:` and `ltr:` variants automatically when `dir` is set
+3. **CSS logical properties** replace physical directional classes throughout:
+   - `left-*` / `right-*` → `start-*` / `end-*`
+   - `ml-*` / `mr-*` → `ms-*` / `me-*`
+   - `pl-*` / `pr-*` → `ps-*` / `pe-*`
+   - `text-left` / `text-right` → `text-start` / `text-end`
+4. **Tailwind CSS v4** handles automatic mirroring based on `dir` attribute
 
-### What's Needed for Full RTL
+### Font Strategy
 
-- Audit existing directional Tailwind classes (`ml-*`, `mr-*`, `pl-*`, `pr-*`, `left-*`, `right-*`, `text-left`, `text-right`)
-- Replace with CSS logical properties (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start-*`, `end-*`, `text-start`, `text-end`)
-- Add `rtl:` overrides where logical properties aren't sufficient
-- Load appropriate fonts for non-Latin scripts
+Conditional font loading for multi-script support:
+
+- **Arabic** (`ar`) — [Cairo](https://fonts.google.com/specimen/Cairo) font with Arabic script
+- **Hebrew** (`he`) — [Heebo](https://fonts.google.com/specimen/Heebo) font with Hebrew script
+- **Other locales** — [Raleway](https://fonts.google.com/specimen/Raleway) (default, optimized for Latin)
+
+Font selection is configured per-locale in the root layout:
+
+```tsx
+const fontsByLocale: Record<string, ReturnType<typeof Cairo>> = {
+  ar: cairo,
+  he: heebo,
+};
+
+export default async function LocaleLayout({ children, params }) {
+  const { locale } = await params;
+  const font = fontsByLocale[locale] || raleway;
+
+  return <html className={font.variable}>{/* ... */}</html>;
+}
+```
+
+All fonts use `display: swap` to prevent FOIT (Flash of Invisible Text).
+
+---
+
+## Supported Locales
+
+The application currently supports **15 languages** across LTR and RTL scripts:
+
+| Code | Language | Native Name | Direction | Font |
+|------|----------|-------------|-----------|------|
+| `en` | English | English | LTR | Raleway |
+| `ar` | Arabic | العربية | RTL | Cairo |
+| `cs` | Czech | Čeština | LTR | Raleway |
+| `de` | German | Deutsch | LTR | Raleway |
+| `es` | Spanish | Español | LTR | Raleway |
+| `fr` | French | Français | LTR | Raleway |
+| `he` | Hebrew | עברית | RTL | Heebo |
+| `hu` | Hungarian | Magyar | LTR | Raleway |
+| `it` | Italian | Italiano | LTR | Raleway |
+| `ja` | Japanese | 日本語 | LTR | Raleway |
+| `nl` | Dutch | Nederlands | LTR | Raleway |
+| `pl` | Polish | Polski | LTR | Raleway |
+| `pt` | Portuguese | Português | LTR | Raleway |
+| `ru` | Russian | Русский | LTR | Raleway |
+| `zh` | Chinese (Simplified) | 简体中文 | LTR | Raleway |
+
+All locales are configured in `packages/i18n/src/config.ts` with metadata and direction detection.
 
 ---
 
@@ -598,82 +707,232 @@ function MyComponent() {
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    @repo/i18n                            │
-│  ┌─────────┐  ┌───────────┐  ┌────────────┐            │
-│  │ config   │  │ request   │  │ navigation │            │
-│  │ locales  │  │ getMessage│  │ Link       │            │
-│  │ metadata │  │ Config()  │  │ redirect   │            │
-│  │ getDir() │  │           │  │ useRouter  │            │
-│  └─────────┘  └───────────┘  └────────────┘            │
-│  ┌─────────────────────────────────────────┐            │
-│  │ messages/en.json                         │            │
-│  │ messages/fr.json  (add new langs here)   │            │
-│  └─────────────────────────────────────────┘            │
-└─────────────────────────────────────────────────────────┘
-           │                        │
-    ┌──────┘                        └──────┐
-    ▼                                      ▼
-┌───────────────────────┐    ┌───────────────────────────┐
-│     apps/landing      │    │        apps/web            │
-│                       │    │                            │
-│  proxy.ts             │    │  proxy.ts                  │
-│  ├─ intl middleware   │    │  ├─ auth checks            │
-│  └─ CSP headers       │    │  ├─ intl middleware        │
-│                       │    │  └─ CSP headers            │
-│  [locale]/layout.tsx  │    │                            │
-│  ├─ lang, dir attrs   │    │  [locale]/layout.tsx       │
-│  ├─ getMessages()     │    │  ├─ lang, dir attrs        │
-│  └─ NextIntlClient   │    │  ├─ getMessages()          │
-│      Provider         │    │  ├─ NextIntlClientProvider │
-│                       │    │  └─ ConvexClientProvider   │
-│  Server Components:   │    │                            │
-│  getTranslations()    │    │  Server Components:        │
-│                       │    │  getTranslations()         │
-│  Client Components:   │    │                            │
-│  useTranslations()    │    │  Client Components:        │
-│                       │    │  useTranslations()         │
-└───────────────────────┘    └───────────────────────────┘
-                                       │
-                                       ▼
-                             ┌────────────────────┐
-                             │  @repo/backend     │
-                             │  (Convex)          │
-                             │                    │
-                             │  Throws error      │
-                             │  codes:            │
-                             │  NOT_AUTHENTICATED │
-                             │  PROJECT_NOT_FOUND │
-                             │  TASK_NOT_FOUND    │
-                             │  FILE_NOT_FOUND    │
-                             │  FILE_TOO_LARGE    │
-                             │  UPLOAD_NOT_FOUND  │
-                             └────────────────────┘
-                                       │
-                              error-messages.ts
-                              maps code → i18n key
-                                       │
-                                       ▼
-                             ┌────────────────────┐
-                             │  @repo/design-     │
-                             │  patterns          │
-                             │                    │
-                             │  ThemeToggle       │
-                             │  (labels prop)     │
-                             │                    │
-                             │  LanguageSelector  │
-                             │  (locale-agnostic) │
-                             └────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                     @repo/i18n                            │
+│  ┌──────────┐  ┌───────────┐  ┌────────────────┐        │
+│  │ config   │  │ request   │  │ navigation     │        │
+│  │ locales  │  │ getMessage│  │ Link, redirect │        │
+│  │ metadata │  │ Config()  │  │ useRouter      │        │
+│  │ getDir() │  │           │  │                │        │
+│  └──────────┘  └───────────┘  └────────────────┘        │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ messages/en.json, messages/fr.json, ... (15 total) │  │
+│  └────────────────────────────────────────────────────┘  │
+│  ┌─────────────────────┐  ┌───────────────────┐         │
+│  │ hreflang.tsx        │  │ Fonts: Cairo,     │         │
+│  │ (generates alt lang │  │ Heebo, Raleway    │         │
+│  │ links for SEO)      │  │ (conditional load)│         │
+│  └─────────────────────┘  └───────────────────┘         │
+└──────────────────────────────────────────────────────────┘
+           │                           │
+    ┌──────┴──────┐                   │
+    ▼             ▼                   ▼
+┌────────────┐ ┌────────────┐   ┌─────────────────────┐
+│   landing  │ │     web    │   │  @repo/backend      │
+│            │ │            │   │  (Convex)           │
+│ proxy.ts   │ │ proxy.ts   │   │                     │
+│ ├─ intl    │ │ ├─ auth    │   │  userProfiles table:│
+│ │ mdw      │ │ │ checks   │   │  ├─ locale (sync)  │
+│ └─ CSP     │ │ ├─ intl    │   │  ├─ theme (ready)  │
+│            │ │ │ mdw      │   │  └─ timezone       │
+│ [locale]/  │ │ └─ CSP     │   │      (ready)        │
+│ layout     │ │            │   │                     │
+│ ├─ fonts   │ │ [locale]/  │   │ mutations:          │
+│ │ (Cairo,  │ │ layout     │   │ ├─ get              │
+│ │ Heebo,   │ │ ├─ fonts   │   │ ├─ setLocale        │
+│ │ Raleway) │ │ │ (cond.)  │   │ └─ upsert           │
+│ ├─ lang,   │ │ ├─ lang    │   │                     │
+│ │ dir      │ │ ├─ dir     │   │ Error codes:        │
+│ ├─ Meta    │ │ ├─ Meta    │   │ NOT_AUTHENTICATED  │
+│ │ data     │ │ │ data     │   │ PROJECT_NOT_FOUND  │
+│ ├─ hreflang│ │ ├─ hreflang│   │ TASK_NOT_FOUND     │
+│ ├─ Meta    │ │ ├─ Meta    │   │ FILE_NOT_FOUND     │
+│ │ Gen      │ │ │ Gen      │   │ FILE_TOO_LARGE     │
+│ └─ NICP    │ │ └─ NICP    │   └─────────────────────┘
+│            │ │ ├─ Conv    │         │
+│ SEO:       │ │ │ Provider │  error-messages.ts
+│ ├─ Meta    │ │ └─ Auth    │  maps code → i18n key
+│ ├─ href    │ │   Guard    │         │
+│ │ lang     │ │            │         ▼
+│ ├─ site    │ │ useProfile │  ┌──────────────────┐
+│ │ map      │ │ Sync (auth │  │ @repo/design-    │
+│ └─ robots  │ │ area)      │  │ patterns         │
+│            │ │            │  │                  │
+│ (15 locale │ │ Client Cmp │  │ ThemeToggle      │
+│  variants) │ │ useTransl()│  │ (labels prop)    │
+│            │ │            │  │                  │
+│            │ │ Server Cmp │  │ LanguageSelector │
+│            │ │ getTrans() │  │ (locale-agnostic)│
+│            │ │            │  │                  │
+│            │ │ useProfileSync calls:          │
+│            │ │ ├─ useQuery(api.userProfiles.get)
+│            │ │ ├─ useMutation(setLocale)     │
+│            │ │ └─ localStorage ↔ Convex sync │
+│            │ │                  │             │
+└────────────┘ └────────────────────────────────┘
+                                    │
+                                    ▼
+                          ┌──────────────────────┐
+                          │  BroadcastChannel    │
+                          │  (instant sync       │
+                          │   across tabs)       │
+                          └──────────────────────┘
 ```
 
 ---
 
-## Deferred Work
+## SEO & Metadata
 
-The following items are ready for a follow-up PR:
+### Localized Metadata
 
-- **RTL CSS audit**: Replace physical directional Tailwind classes with logical equivalents
-- **SEO polish**: `generateMetadata()` with translations, `<link rel="alternate" hreflang>`, locale-aware sitemaps
-- **Font strategy**: Multi-script font loading for non-Latin locales (e.g., Noto Sans Arabic)
-- **i18n-aware tests**: E2E tests with locale parameter, visual regression for RTL layout
-- **Cross-device persistence**: Store language preference in user's Convex profile
+Each page supports `generateMetadata()` for localized titles, descriptions, OpenGraph and Twitter cards:
+
+```tsx
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
+
+  return {
+    title: t("signIn.title"),
+    description: t("signIn.description"),
+    openGraph: {
+      type: "website",
+      locale,
+      title: t("signIn.title"),
+      description: t("signIn.description"),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("signIn.title"),
+      description: t("signIn.description"),
+    },
+  };
+}
+```
+
+### Alternate Language Links (hreflang)
+
+The `HreflangLinks` component in `@repo/i18n` generates SEO-friendly alternate language links for all 15 supported locales plus an `x-default` fallback:
+
+```tsx
+<head>
+  <HreflangLinks
+    locale={locale}
+    pathname={pathname}
+    siteUrl={process.env.NEXT_PUBLIC_SITE_URL}
+  />
+</head>
+```
+
+Rendered output includes:
+```html
+<link rel="alternate" hreflang="en" href="https://example.com/en/sign-in" />
+<link rel="alternate" hreflang="fr" href="https://example.com/fr/sign-in" />
+<link rel="alternate" hreflang="ar" href="https://example.com/ar/sign-in" />
+<!-- ... 12 more locales ... -->
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/sign-in" />
+```
+
+### Sitemaps and Robots.txt
+
+Each app includes locale-aware sitemap generation:
+
+```ts
+// apps/web/src/app/sitemap.ts
+export default function sitemap(): MetadataRoute.Sitemap {
+  const routes = ["/sign-in", "/sign-up", "/dashboard"];
+  const entries = locales.flatMap((locale) =>
+    routes.map((route) => ({
+      url: `${siteUrl}/${locale}${route}`,
+      alternates: {
+        languages: Object.fromEntries(
+          locales.map((l) => [l, `${siteUrl}/${l}${route}`])
+        ),
+      },
+    }))
+  );
+  return entries;
+}
+```
+
+The `robots.txt` references the sitemap:
+```
+Sitemap: https://example.com/sitemap.xml
+```
+
+---
+
+## Testing
+
+### Locale-Aware Tests
+
+All component tests use locale-prefixed URLs following the always-prefix routing strategy:
+
+```tsx
+// ✅ Correct
+await page.goto("/en/dashboard");
+await page.goto("/en/sign-in");
+
+// ❌ Avoid
+await page.goto("/dashboard");  // Missing locale prefix
+```
+
+### RTL Layout Tests
+
+Comprehensive E2E tests verify RTL layout mirroring for Arabic and Hebrew:
+
+```tsx
+test("Arabic page has correct direction and font", async ({ page }) => {
+  await page.goto("/ar/sign-in");
+
+  // Verify RTL direction
+  const htmlDir = await page.locator("html").getAttribute("dir");
+  expect(htmlDir).toBe("rtl");
+
+  // Verify locale
+  const htmlLang = await page.locator("html").getAttribute("lang");
+  expect(htmlLang).toBe("ar");
+
+  // Verify Cairo font is applied
+  const computedFont = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--font-sans")
+  );
+  expect(computedFont).toBeTruthy();
+});
+```
+
+### Locale Persistence Tests
+
+E2E tests verify cross-device sync behavior:
+
+```tsx
+test("authenticated user syncs locale across sign-out/sign-in", async ({ page }) => {
+  // Sign in and change locale
+  await page.goto("/en/sign-in");
+  // ... perform login ...
+  // ... change to French via LocaleSwitcher ...
+
+  // Sign out
+  // ... perform logout ...
+
+  // Sign back in
+  // ... perform login ...
+
+  // Verify French persists
+  await expect(page).toHaveURL(/\/fr\//);
+});
+```
+
+---
+
+## Completed Deferred Work
+
+The following items have been implemented:
+
+- ✅ **RTL CSS audit**: Physical directional classes replaced with logical equivalents (start/end/ms/me/text-start/text-end)
+- ✅ **SEO polish**: `generateMetadata()` with localized metadata, `<link rel="alternate" hreflang>` tags, locale-aware sitemaps and robots.txt
+- ✅ **Font strategy**: Conditional font loading for non-Latin scripts (Cairo for Arabic, Heebo for Hebrew, Raleway default)
+- ✅ **i18n-aware tests**: E2E tests with locale parameter, RTL layout verification, font loading tests
+- ✅ **Cross-device persistence**: User locale preference stored in Convex profile, synced with localStorage, persists across devices and sign-out/sign-in cycles
+- ✅ **Legal pages**: All legal pages (about, privacy, terms) migrated to `[locale]` routing with full translation support
+- ✅ **Component tests**: All component tests updated for locale-prefixed routing, proper i18n context mocking
