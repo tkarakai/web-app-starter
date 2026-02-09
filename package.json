@@ -12,6 +12,7 @@
     "dev:admin": "./scripts/dev-start.sh --app=admin",
     "dev:landing": "./scripts/dev-start.sh --app=landing",
     "dev:storybook": "./scripts/dev-start.sh --app=storybook",
+    "dev:landing-static": "turbo dev --filter=@repo/landing-static",
     "ensure-local": "./scripts/ensure-local-deps.sh",
     "dev:stop": "./scripts/dev-stop.sh",
     "dev:status": "./scripts/dev-status.sh",

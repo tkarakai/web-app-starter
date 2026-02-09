@@ -1,6 +1,13 @@
 import { v } from "convex/values";
 
-import { authedMutation, authedQuery, requireProjectAccess } from "./functions";
+import {
+  authedMutation,
+  authedQuery,
+  requireProjectAccess,
+  assertMaxLength,
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+} from "./functions";
 
 export const list = authedQuery({
   args: {},
@@ -58,6 +65,9 @@ export const create = authedMutation({
     description: v.string(),
   },
   handler: async (ctx, args) => {
+    assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
+    assertMaxLength(args.description, MAX_DESCRIPTION_LENGTH, "DESCRIPTION");
+
     return ctx.db.insert("projects", {
       name: args.name,
       description: args.description,
@@ -75,6 +85,8 @@ export const update = authedMutation({
   },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.id);
+    assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
+    assertMaxLength(args.description, MAX_DESCRIPTION_LENGTH, "DESCRIPTION");
 
     const updates: Partial<{ name: string; description: string }> = {};
     if (args.name !== undefined) updates.name = args.name;

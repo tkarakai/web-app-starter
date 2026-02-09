@@ -29,7 +29,9 @@ function formatAuthError(error: { status?: number; message?: string }): string {
   if (error.status === 429) {
     return "Too many attempts. Please wait a moment before trying again.";
   }
-  return error.message ?? "An error occurred";
+  // Return a generic message to prevent email enumeration via
+  // server error messages like "User not found" or "User already exists".
+  return "Invalid email or password";
 }
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
