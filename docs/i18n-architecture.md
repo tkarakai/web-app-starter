@@ -1,10 +1,10 @@
 # i18n Architecture
 
-This document describes the internationalization (i18n) system implemented in this monorepo. It covers the library choice, routing strategy, translation file structure, component usage patterns, formatting, ICU messages, backend error codes, language selector, locale detection, and RTL readiness.
+This document describes the internationalization (i18n) system architecture. It covers the library choice, routing strategy, translation file structure, component usage patterns, formatting, ICU messages, backend error codes, language selector, locale detection, RTL support, cross-device persistence, and SEO optimization.
 
 ## Overview
 
-The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n library, purpose-built for Next.js App Router and Server Components. All user-facing strings are extracted into a shared `@repo/i18n` package. English is the only language shipped today, but adding a new language requires only two steps — no code changes.
+The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n library, purpose-built for Next.js App Router and Server Components. All user-facing strings are extracted into a shared `@repo/i18n` package. The system currently supports **15 languages** across LTR and RTL scripts, with full support for cross-device locale persistence, SEO optimization, multi-script fonts, and RTL layout mirroring. Adding a new language requires only two steps — no code changes.
 
 ### Key Design Decisions
 
@@ -576,9 +576,7 @@ userProfiles: defineTable({
 
 ## RTL Support
 
-### Implementation
-
-RTL is fully implemented with CSS audit complete. The system:
+RTL layout is fully supported with the following implementation:
 
 1. **Detects RTL locales** via `getLocaleDirection()` — pre-configured for Arabic, Hebrew, Farsi, Urdu
 2. **Sets `dir` attribute** on `<html>` dynamically in each app's root layout
@@ -923,16 +921,3 @@ test("authenticated user syncs locale across sign-out/sign-in", async ({ page })
 });
 ```
 
----
-
-## Completed Deferred Work
-
-The following items have been implemented:
-
-- ✅ **RTL CSS audit**: Physical directional classes replaced with logical equivalents (start/end/ms/me/text-start/text-end)
-- ✅ **SEO polish**: `generateMetadata()` with localized metadata, `<link rel="alternate" hreflang>` tags, locale-aware sitemaps and robots.txt
-- ✅ **Font strategy**: Conditional font loading for non-Latin scripts (Cairo for Arabic, Heebo for Hebrew, Raleway default)
-- ✅ **i18n-aware tests**: E2E tests with locale parameter, RTL layout verification, font loading tests
-- ✅ **Cross-device persistence**: User locale preference stored in Convex profile, synced with localStorage, persists across devices and sign-out/sign-in cycles
-- ✅ **Legal pages**: All legal pages (about, privacy, terms) migrated to `[locale]` routing with full translation support
-- ✅ **Component tests**: All component tests updated for locale-prefixed routing, proper i18n context mocking
