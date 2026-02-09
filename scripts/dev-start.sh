@@ -348,7 +348,7 @@ if [ -n "$ORPHAN_CONVEX" ] || [ -n "$ORPHAN_NEXT" ]; then
         echo -e "  ${RED}convex-local-backend${NC} (PID $pid)"
     done
     for pid in $ORPHAN_NEXT; do
-        local cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -c 80)
+        cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -c 80)
         echo -e "  ${RED}next dev${NC} (PID $pid): $cmd"
     done
     echo ""
