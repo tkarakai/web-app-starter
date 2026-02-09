@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "טוען...",
+    "cancel": "ביטול",
+    "save": "שמור שינויים",
+    "saving": "שומר...",
+    "create": "צור",
+    "creating": "יוצר...",
+    "delete": "מחק",
+    "signOut": "התנתקות",
+    "error": "אירעה שגיאה"
+  },
+  "theme": {
+    "light": "ערכת נושא בהירה",
+    "system": "ערכת נושא מערכת",
+    "dark": "ערכת נושא כהה",
+    "ariaLabel": "ערכת נושא: {label}. לחץ כדי להחליף."
+  },
+  "language": {
+    "label": "שפה",
+    "ariaLabel": "בחר שפה"
+  },
+  "auth": {
+    "signIn": {
+      "title": "ברוך שובך",
+      "description": "התחבר כדי להמשיך ללוח הבקרה.",
+      "cta": "התחברות",
+      "switchPrompt": "חדש כאן?",
+      "switchLink": "צור חשבון",
+      "pageHeading": "ברוך שובך. המשך מאיפה שהפסקת.",
+      "pageDescription": "Better Auth מנהל את זרימות הסשן, בעוד Convex שומר על הנתונים מעודכנים. התחבר כדי לגשת לפרויקטים ולמשימות שלך."
+    },
+    "signUp": {
+      "title": "צור את סביבת העבודה שלך",
+      "description": "התחל תוך פחות מדקה.",
+      "cta": "צור חשבון",
+      "switchPrompt": "כבר יש לך חשבון?",
+      "switchLink": "התחברות",
+      "pageHeading": "צור את החשבון שלך והתחל לבנות.",
+      "pageDescription": "Convex + Better Auth כבר מוגדרים, כך שהחשבון שלך מוכן לייצור מיידית."
+    },
+    "badge": "חשבון",
+    "fields": {
+      "name": "שם",
+      "namePlaceholder": "ישראל ישראלי",
+      "email": "דוא״ל",
+      "emailPlaceholder": "you@example.com",
+      "password": "סיסמה",
+      "passwordPlaceholder": "הסיסמה שלך",
+      "passwordSignUpPlaceholder": "לפחות 8 תווים",
+      "confirmPassword": "אישור סיסמה",
+      "confirmPasswordPlaceholder": "אשר את הסיסמה שלך"
+    },
+    "errors": {
+      "passwordMismatch": "הסיסמאות אינן תואמות",
+      "generic": "אירעה שגיאה"
+    },
+    "footer": "דוא״ל + סיסמה מאובטחים",
+    "working": "מעבד..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "קו ההתחלה שלך.",
+    "headingLine2": "בנה מכאן.",
+    "description": "אימות, מסד נתונים, סנכרון בזמן אמת והעלאת קבצים — הכל מחובר ומוכן.",
+    "getStarted": "התחל",
+    "signIn": "התחברות"
+  },
+  "dashboard": {
+    "projects": "פרויקטים",
+    "noProjects": "אין עדיין פרויקטים",
+    "noProjectsDescription": "צור פרויקט כדי להתחיל.",
+    "projectNotFound": "הפרויקט לא נמצא",
+    "projectNotFoundDescription": "ייתכן שפרויקט זה נמחק.",
+    "tabs": {
+      "tasks": "משימות",
+      "attachments": "קבצים מצורפים"
+    }
+  },
+  "projects": {
+    "newProject": "פרויקט חדש",
+    "createProject": "צור פרויקט",
+    "createFirst": "צור את הפרויקט הראשון שלך",
+    "noProjects": "אין פרויקטים",
+    "editProject": "ערוך פרויקט",
+    "deleteProject": "מחק פרויקט",
+    "deleteConfirmTitle": "למחוק את הפרויקט?",
+    "deleteConfirmDescription": "פעולה זו תמחק לצמיתות את \u201c{name}\u201d ואת כל המשימות שלו. לא ניתן לבטל פעולה זו.",
+    "fields": {
+      "name": "שם",
+      "namePlaceholder": "שם הפרויקט",
+      "description": "תיאור",
+      "descriptionPlaceholder": "על מה הפרויקט הזה?"
+    }
+  },
+  "tasks": {
+    "title": "משימות",
+    "addTask": "הוסף משימה",
+    "newTask": "משימה חדשה",
+    "editTask": "ערוך משימה",
+    "deleteTask": "מחק משימה",
+    "confirmDelete": "אשר מחיקה",
+    "createTask": "צור משימה",
+    "noTasks": "אין עדיין משימות. הוסף אחת כדי להתחיל.",
+    "noTasksSummary": "אין עדיין משימות",
+    "progress": "{doneCount} מתוך {totalCount} משימות הושלמו",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "סטטוס",
+      "todo": "לביצוע",
+      "inProgress": "בתהליך",
+      "done": "הושלם",
+      "all": "הכל"
+    },
+    "fields": {
+      "title": "כותרת",
+      "titlePlaceholder": "מה צריך לעשות?",
+      "description": "תיאור",
+      "descriptionPlaceholder": "הוסף פרטים..."
+    },
+    "aria": {
+      "changeStatus": "שנה סטטוס מ-{status}"
+    },
+    "count": "{count, plural, =0 {אין עדיין משימות} one {משימה אחת} two {# משימות} other {# משימות}}"
+  },
+  "uploads": {
+    "title": "קבצים מצורפים",
+    "addFile": "הוסף קובץ",
+    "uploading": "מעלה...",
+    "processing": "מעבד",
+    "view": "צפה",
+    "deleteFile": "מחק קובץ",
+    "emptyState": "העלה קבצים כדי לראות את זרימת האחסון של Convex.",
+    "errors": {
+      "tooLarge": "הקובץ גדול מדי (מקסימום 1MB)",
+      "uploadFailed": "ההעלאה נכשלה. נסה שוב.",
+      "generic": "ההעלאה נכשלה."
+    },
+    "count": "{count, plural, =0 {אין קבצים מצורפים} one {קובץ מצורף אחד} two {# קבצים מצורפים} other {# קבצים מצורפים}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "לא מאומת",
+    "PROJECT_NOT_FOUND": "הפרויקט לא נמצא",
+    "TASK_NOT_FOUND": "המשימה לא נמצאה",
+    "FILE_NOT_FOUND": "הקובץ לא נמצא באחסון",
+    "FILE_TOO_LARGE": "הקובץ גדול מדי (מקסימום 1MB)",
+    "UPLOAD_NOT_FOUND": "ההעלאה לא נמצאה"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "תבנית Next.js עם Convex, Better Auth ו-Bun."
+  }
+}

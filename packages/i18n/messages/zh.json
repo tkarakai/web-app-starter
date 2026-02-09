@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "加载中...",
+    "cancel": "取消",
+    "save": "保存更改",
+    "saving": "保存中...",
+    "create": "创建",
+    "creating": "创建中...",
+    "delete": "删除",
+    "signOut": "退出登录",
+    "error": "发生了错误"
+  },
+  "theme": {
+    "light": "浅色主题",
+    "system": "跟随系统",
+    "dark": "深色主题",
+    "ariaLabel": "主题：{label}。点击切换。"
+  },
+  "language": {
+    "label": "语言",
+    "ariaLabel": "选择语言"
+  },
+  "auth": {
+    "signIn": {
+      "title": "欢迎回来",
+      "description": "登录以继续使用控制面板。",
+      "cta": "登录",
+      "switchPrompt": "第一次来？",
+      "switchLink": "创建账户",
+      "pageHeading": "欢迎回来。从上次离开的地方继续。",
+      "pageDescription": "Better Auth 管理会话流程，Convex 保持数据实时同步。登录以访问您的项目和任务。"
+    },
+    "signUp": {
+      "title": "创建您的工作区",
+      "description": "不到一分钟即可开始。",
+      "cta": "创建账户",
+      "switchPrompt": "已有账户？",
+      "switchLink": "登录",
+      "pageHeading": "创建账户，开始构建。",
+      "pageDescription": "Convex + Better Auth 已配置就绪，您的账户立即可用于生产环境。"
+    },
+    "badge": "账户",
+    "fields": {
+      "name": "姓名",
+      "namePlaceholder": "张三",
+      "email": "邮箱",
+      "emailPlaceholder": "you@example.com",
+      "password": "密码",
+      "passwordPlaceholder": "您的密码",
+      "passwordSignUpPlaceholder": "至少8个字符",
+      "confirmPassword": "确认密码",
+      "confirmPasswordPlaceholder": "确认您的密码"
+    },
+    "errors": {
+      "passwordMismatch": "两次输入的密码不一致",
+      "generic": "发生了错误"
+    },
+    "footer": "安全的邮箱 + 密码认证",
+    "working": "处理中..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "您的起跑线。",
+    "headingLine2": "从这里开始构建。",
+    "description": "认证、数据库、实时同步和文件上传——已连接，随时可用。",
+    "getStarted": "开始使用",
+    "signIn": "登录"
+  },
+  "dashboard": {
+    "projects": "项目",
+    "noProjects": "暂无项目",
+    "noProjectsDescription": "创建一个项目以开始。",
+    "projectNotFound": "项目未找到",
+    "projectNotFoundDescription": "该项目可能已被删除。",
+    "tabs": {
+      "tasks": "任务",
+      "attachments": "附件"
+    }
+  },
+  "projects": {
+    "newProject": "新建项目",
+    "createProject": "创建项目",
+    "createFirst": "创建您的第一个项目",
+    "noProjects": "暂无项目",
+    "editProject": "编辑项目",
+    "deleteProject": "删除项目",
+    "deleteConfirmTitle": "删除项目？",
+    "deleteConfirmDescription": "这将永久删除\u201c{name}\u201d及其所有任务。此操作无法撤销。",
+    "fields": {
+      "name": "名称",
+      "namePlaceholder": "项目名称",
+      "description": "描述",
+      "descriptionPlaceholder": "这个项目是关于什么的？"
+    }
+  },
+  "tasks": {
+    "title": "任务",
+    "addTask": "添加任务",
+    "newTask": "新建任务",
+    "editTask": "编辑任务",
+    "deleteTask": "删除任务",
+    "confirmDelete": "确认删除",
+    "createTask": "创建任务",
+    "noTasks": "暂无任务。添加一个以开始。",
+    "noTasksSummary": "暂无任务",
+    "progress": "{totalCount} 个任务中已完成 {doneCount} 个",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "状态",
+      "todo": "待办",
+      "inProgress": "进行中",
+      "done": "已完成",
+      "all": "全部"
+    },
+    "fields": {
+      "title": "标题",
+      "titlePlaceholder": "需要做什么？",
+      "description": "描述",
+      "descriptionPlaceholder": "添加详情..."
+    },
+    "aria": {
+      "changeStatus": "将状态从 {status} 更改"
+    },
+    "count": "{count, plural, =0 {暂无任务} other {# 个任务}}"
+  },
+  "uploads": {
+    "title": "附件",
+    "addFile": "添加文件",
+    "uploading": "上传中...",
+    "processing": "处理中",
+    "view": "查看",
+    "deleteFile": "删除文件",
+    "emptyState": "上传文件以体验 Convex 文件存储功能。",
+    "errors": {
+      "tooLarge": "文件过大（最大 1MB）",
+      "uploadFailed": "上传失败，请重试。",
+      "generic": "上传失败。"
+    },
+    "count": "{count, plural, =0 {暂无附件} other {# 个附件}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "未登录",
+    "PROJECT_NOT_FOUND": "项目未找到",
+    "TASK_NOT_FOUND": "任务未找到",
+    "FILE_NOT_FOUND": "文件未在存储中找到",
+    "FILE_TOO_LARGE": "文件过大（最大 1MB）",
+    "UPLOAD_NOT_FOUND": "上传未找到"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "基于 Next.js 的启动模板，集成 Convex、Better Auth 和 Bun。"
+  }
+}

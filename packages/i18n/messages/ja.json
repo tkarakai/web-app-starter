@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "読み込み中...",
+    "cancel": "キャンセル",
+    "save": "変更を保存",
+    "saving": "保存中...",
+    "create": "作成",
+    "creating": "作成中...",
+    "delete": "削除",
+    "signOut": "ログアウト",
+    "error": "エラーが発生しました"
+  },
+  "theme": {
+    "light": "ライトテーマ",
+    "system": "システムテーマ",
+    "dark": "ダークテーマ",
+    "ariaLabel": "テーマ: {label}。クリックして切り替え。"
+  },
+  "language": {
+    "label": "言語",
+    "ariaLabel": "言語を選択"
+  },
+  "auth": {
+    "signIn": {
+      "title": "おかえりなさい",
+      "description": "ダッシュボードにアクセスするにはログインしてください。",
+      "cta": "ログイン",
+      "switchPrompt": "初めてですか？",
+      "switchLink": "アカウントを作成",
+      "pageHeading": "おかえりなさい。続きからどうぞ。",
+      "pageDescription": "Better Authがセッション管理を、Convexがリアルタイムデータを担当します。ログインしてプロジェクトとタスクにアクセスしましょう。"
+    },
+    "signUp": {
+      "title": "ワークスペースを作成",
+      "description": "1分以内で始められます。",
+      "cta": "アカウント作成",
+      "switchPrompt": "すでにアカウントをお持ちですか？",
+      "switchLink": "ログイン",
+      "pageHeading": "アカウントを作成して構築を始めましょう。",
+      "pageDescription": "Convex + Better Authは設定済みなので、アカウントはすぐに本番環境で使えます。"
+    },
+    "badge": "アカウント",
+    "fields": {
+      "name": "名前",
+      "namePlaceholder": "山田 太郎",
+      "email": "メールアドレス",
+      "emailPlaceholder": "you@example.com",
+      "password": "パスワード",
+      "passwordPlaceholder": "パスワードを入力",
+      "passwordSignUpPlaceholder": "8文字以上",
+      "confirmPassword": "パスワード確認",
+      "confirmPasswordPlaceholder": "パスワードを再入力"
+    },
+    "errors": {
+      "passwordMismatch": "パスワードが一致しません",
+      "generic": "エラーが発生しました"
+    },
+    "footer": "安全なメール + パスワード認証",
+    "working": "処理中..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "あなたのスタートライン。",
+    "headingLine2": "ここから始めよう。",
+    "description": "認証、データベース、リアルタイム同期、ファイルアップロード — すべて接続済みですぐに使えます。",
+    "getStarted": "始める",
+    "signIn": "ログイン"
+  },
+  "dashboard": {
+    "projects": "プロジェクト",
+    "noProjects": "プロジェクトはまだありません",
+    "noProjectsDescription": "プロジェクトを作成して始めましょう。",
+    "projectNotFound": "プロジェクトが見つかりません",
+    "projectNotFoundDescription": "このプロジェクトは削除された可能性があります。",
+    "tabs": {
+      "tasks": "タスク",
+      "attachments": "添付ファイル"
+    }
+  },
+  "projects": {
+    "newProject": "新規プロジェクト",
+    "createProject": "プロジェクト作成",
+    "createFirst": "最初のプロジェクトを作成",
+    "noProjects": "プロジェクトなし",
+    "editProject": "プロジェクトを編集",
+    "deleteProject": "プロジェクトを削除",
+    "deleteConfirmTitle": "プロジェクトを削除しますか？",
+    "deleteConfirmDescription": "\u201c{name}\u201dとすべてのタスクが完全に削除されます。この操作は元に戻せません。",
+    "fields": {
+      "name": "名前",
+      "namePlaceholder": "プロジェクト名",
+      "description": "説明",
+      "descriptionPlaceholder": "このプロジェクトについて"
+    }
+  },
+  "tasks": {
+    "title": "タスク",
+    "addTask": "タスクを追加",
+    "newTask": "新規タスク",
+    "editTask": "タスクを編集",
+    "deleteTask": "タスクを削除",
+    "confirmDelete": "削除を確認",
+    "createTask": "タスク作成",
+    "noTasks": "タスクはまだありません。追加して始めましょう。",
+    "noTasksSummary": "タスクはまだありません",
+    "progress": "{totalCount}件中{doneCount}件完了",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "ステータス",
+      "todo": "未着手",
+      "inProgress": "進行中",
+      "done": "完了",
+      "all": "すべて"
+    },
+    "fields": {
+      "title": "タイトル",
+      "titlePlaceholder": "何をする必要がありますか？",
+      "description": "説明",
+      "descriptionPlaceholder": "詳細を追加..."
+    },
+    "aria": {
+      "changeStatus": "{status}からステータスを変更"
+    },
+    "count": "{count, plural, =0 {タスクはまだありません} other {#件のタスク}}"
+  },
+  "uploads": {
+    "title": "添付ファイル",
+    "addFile": "ファイルを追加",
+    "uploading": "アップロード中...",
+    "processing": "処理中",
+    "view": "表示",
+    "deleteFile": "ファイルを削除",
+    "emptyState": "ファイルをアップロードしてConvexのストレージフローを確認しましょう。",
+    "errors": {
+      "tooLarge": "ファイルが大きすぎます（最大1MB）",
+      "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
+      "generic": "アップロードに失敗しました。"
+    },
+    "count": "{count, plural, =0 {添付ファイルなし} other {#件の添付ファイル}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "認証されていません",
+    "PROJECT_NOT_FOUND": "プロジェクトが見つかりません",
+    "TASK_NOT_FOUND": "タスクが見つかりません",
+    "FILE_NOT_FOUND": "ストレージにファイルが見つかりません",
+    "FILE_TOO_LARGE": "ファイルが大きすぎます（最大1MB）",
+    "UPLOAD_NOT_FOUND": "アップロードが見つかりません"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Convex、Better Auth、Bunを使ったNext.jsスターター。"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Загрузка...",
+    "cancel": "Отмена",
+    "save": "Сохранить изменения",
+    "saving": "Сохранение...",
+    "create": "Создать",
+    "creating": "Создание...",
+    "delete": "Удалить",
+    "signOut": "Выйти",
+    "error": "Произошла ошибка"
+  },
+  "theme": {
+    "light": "Светлая тема",
+    "system": "Системная тема",
+    "dark": "Тёмная тема",
+    "ariaLabel": "Тема: {label}. Нажмите для переключения."
+  },
+  "language": {
+    "label": "Язык",
+    "ariaLabel": "Выберите язык"
+  },
+  "auth": {
+    "signIn": {
+      "title": "С возвращением",
+      "description": "Войдите, чтобы перейти к панели управления.",
+      "cta": "Войти",
+      "switchPrompt": "Впервые здесь?",
+      "switchLink": "Создать аккаунт",
+      "pageHeading": "С возвращением. Продолжите с того места, где остановились.",
+      "pageDescription": "Better Auth управляет сессиями, а Convex поддерживает данные в реальном времени. Войдите, чтобы получить доступ к проектам и задачам."
+    },
+    "signUp": {
+      "title": "Создайте рабочее пространство",
+      "description": "Начните менее чем за минуту.",
+      "cta": "Создать аккаунт",
+      "switchPrompt": "Уже есть доступ?",
+      "switchLink": "Войти",
+      "pageHeading": "Создайте аккаунт и начните работу.",
+      "pageDescription": "Convex + Better Auth уже настроены, поэтому ваш аккаунт сразу готов к работе."
+    },
+    "badge": "Аккаунт",
+    "fields": {
+      "name": "Имя",
+      "namePlaceholder": "Иван Иванов",
+      "email": "Электронная почта",
+      "emailPlaceholder": "вы@example.com",
+      "password": "Пароль",
+      "passwordPlaceholder": "Ваш пароль",
+      "passwordSignUpPlaceholder": "Не менее 8 символов",
+      "confirmPassword": "Подтвердите пароль",
+      "confirmPasswordPlaceholder": "Подтвердите ваш пароль"
+    },
+    "errors": {
+      "passwordMismatch": "Пароли не совпадают",
+      "generic": "Произошла ошибка"
+    },
+    "footer": "Безопасный вход по email и паролю",
+    "working": "Обработка..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Ваша стартовая линия.",
+    "headingLine2": "Создавайте отсюда.",
+    "description": "Аутентификация, база данных, синхронизация в реальном времени и загрузка файлов — всё подключено и готово.",
+    "getStarted": "Начать",
+    "signIn": "Войти"
+  },
+  "dashboard": {
+    "projects": "Проекты",
+    "noProjects": "Пока нет проектов",
+    "noProjectsDescription": "Создайте проект, чтобы начать.",
+    "projectNotFound": "Проект не найден",
+    "projectNotFoundDescription": "Этот проект мог быть удалён.",
+    "tabs": {
+      "tasks": "Задачи",
+      "attachments": "Вложения"
+    }
+  },
+  "projects": {
+    "newProject": "Новый проект",
+    "createProject": "Создать проект",
+    "createFirst": "Создайте свой первый проект",
+    "noProjects": "Нет проектов",
+    "editProject": "Редактировать проект",
+    "deleteProject": "Удалить проект",
+    "deleteConfirmTitle": "Удалить проект?",
+    "deleteConfirmDescription": "Это навсегда удалит \u201c{name}\u201d и все связанные задачи. Это действие нельзя отменить.",
+    "fields": {
+      "name": "Название",
+      "namePlaceholder": "Название проекта",
+      "description": "Описание",
+      "descriptionPlaceholder": "О чём этот проект?"
+    }
+  },
+  "tasks": {
+    "title": "Задачи",
+    "addTask": "Добавить задачу",
+    "newTask": "Новая задача",
+    "editTask": "Редактировать задачу",
+    "deleteTask": "Удалить задачу",
+    "confirmDelete": "Подтвердить удаление",
+    "createTask": "Создать задачу",
+    "noTasks": "Задач пока нет. Добавьте первую.",
+    "noTasksSummary": "Задач пока нет",
+    "progress": "{doneCount} из {totalCount} задач выполнено",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Статус",
+      "todo": "К выполнению",
+      "inProgress": "В работе",
+      "done": "Готово",
+      "all": "Все"
+    },
+    "fields": {
+      "title": "Название",
+      "titlePlaceholder": "Что нужно сделать?",
+      "description": "Описание",
+      "descriptionPlaceholder": "Добавить подробности..."
+    },
+    "aria": {
+      "changeStatus": "Изменить статус с {status}"
+    },
+    "count": "{count, plural, =0 {Задач пока нет} one {# задача} few {# задачи} other {# задач}}"
+  },
+  "uploads": {
+    "title": "Вложения",
+    "addFile": "Добавить файл",
+    "uploading": "Загрузка...",
+    "processing": "Обработка",
+    "view": "Просмотр",
+    "deleteFile": "Удалить файл",
+    "emptyState": "Загрузите файлы, чтобы увидеть работу хранилища Convex.",
+    "errors": {
+      "tooLarge": "Файл слишком большой (макс. 1 МБ)",
+      "uploadFailed": "Загрузка не удалась. Попробуйте ещё раз.",
+      "generic": "Загрузка не удалась."
+    },
+    "count": "{count, plural, =0 {Нет вложений} one {# вложение} few {# вложения} other {# вложений}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Не аутентифицирован",
+    "PROJECT_NOT_FOUND": "Проект не найден",
+    "TASK_NOT_FOUND": "Задача не найдена",
+    "FILE_NOT_FOUND": "Файл не найден в хранилище",
+    "FILE_TOO_LARGE": "Файл слишком большой (макс. 1 МБ)",
+    "UPLOAD_NOT_FOUND": "Загрузка не найдена"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Стартер на Next.js с Convex, Better Auth и Bun."
+  }
+}

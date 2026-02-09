@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "convex/react";
+import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -81,6 +82,7 @@ function DashboardBreadcrumbs({
   selectedProjectId: Id<"projects"> | null;
   onNavigateToProjects: () => void;
 }) {
+  const td = useTranslations("dashboard");
   const project = useQuery(
     api.projects.get,
     selectedProjectId ? { id: selectedProjectId } : "skip"
@@ -96,7 +98,7 @@ function DashboardBreadcrumbs({
                 className="cursor-pointer"
                 onClick={onNavigateToProjects}
               >
-                Projects
+                {td("projects")}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -106,7 +108,7 @@ function DashboardBreadcrumbs({
           </>
         ) : (
           <BreadcrumbItem>
-            <BreadcrumbPage>Projects</BreadcrumbPage>
+            <BreadcrumbPage>{td("projects")}</BreadcrumbPage>
           </BreadcrumbItem>
         )}
       </BreadcrumbList>
@@ -119,12 +121,14 @@ function ProjectsOverview({
 }: {
   onSelectProject: (id: Id<"projects">) => void;
 }) {
+  const tc = useTranslations("common");
+  const td = useTranslations("dashboard");
   const projects = useQuery(api.projects.list);
 
   if (projects === undefined || projects === null) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="text-sm text-muted-foreground">{tc("loading")}</div>
       </div>
     );
   }
@@ -132,8 +136,8 @@ function ProjectsOverview({
   if (projects.length === 0) {
     return (
       <EmptyState
-        title="No projects yet"
-        description="Create a project to get started."
+        title={td("noProjects")}
+        description={td("noProjectsDescription")}
       />
     );
   }
@@ -152,12 +156,14 @@ function ProjectContent({
   projectId: Id<"projects">;
   onDeleted: () => void;
 }) {
+  const tc = useTranslations("common");
+  const td = useTranslations("dashboard");
   const project = useQuery(api.projects.get, { id: projectId });
 
   if (project === undefined) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="text-sm text-muted-foreground">{tc("loading")}</div>
       </div>
     );
   }
@@ -165,8 +171,8 @@ function ProjectContent({
   if (project === null) {
     return (
       <EmptyState
-        title="Project not found"
-        description="This project may have been deleted."
+        title={td("projectNotFound")}
+        description={td("projectNotFoundDescription")}
       />
     );
   }
@@ -176,8 +182,8 @@ function ProjectContent({
       <ProjectHeader project={project} onDeleted={onDeleted} />
       <Tabs defaultValue="tasks">
         <TabsList>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="attachments">Attachments</TabsTrigger>
+          <TabsTrigger value="tasks">{td("tabs.tasks")}</TabsTrigger>
+          <TabsTrigger value="attachments">{td("tabs.attachments")}</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-4">
           <TaskList projectId={projectId} />

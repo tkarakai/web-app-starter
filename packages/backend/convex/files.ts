@@ -23,12 +23,12 @@ export const saveUpload = authedMutation({
     // Read actual file metadata from storage — never trust client-provided values
     const fileMeta = await ctx.db.system.get(args.storageId);
     if (!fileMeta) {
-      throw new Error("File not found in storage");
+      throw new Error("FILE_NOT_FOUND");
     }
 
     if (fileMeta.size > MAX_FILE_SIZE) {
       await ctx.storage.delete(args.storageId);
-      throw new Error("File too large (max 1MB)");
+      throw new Error("FILE_TOO_LARGE");
     }
 
     return ctx.db.insert("uploads", {
@@ -68,7 +68,7 @@ export const deleteUpload = authedMutation({
   handler: async (ctx, args) => {
     const upload = await ctx.db.get(args.id);
     if (!upload) {
-      throw new Error("Upload not found");
+      throw new Error("UPLOAD_NOT_FOUND");
     }
 
     // Verify ownership through the project chain

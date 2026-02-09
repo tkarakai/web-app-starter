@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useMutation } from "convex/react";
+import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -40,6 +41,8 @@ type ProjectHeaderProps = {
 export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
   const updateProject = useMutation(api.projects.update);
   const removeProject = useMutation(api.projects.remove);
+  const tp = useTranslations("projects");
+  const tc = useTranslations("common");
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [name, setName] = React.useState(project.name);
@@ -87,35 +90,35 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
           <DialogTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit project</span>
+              <span className="sr-only">{tp("editProject")}</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit project</DialogTitle>
+              <DialogTitle>{tp("editProject")}</DialogTitle>
             </DialogHeader>
             <form className="space-y-4" onSubmit={handleUpdate}>
               <div className="space-y-2">
-                <Label htmlFor="edit-project-name">Name</Label>
+                <Label htmlFor="edit-project-name">{tp("fields.name")}</Label>
                 <Input
                   id="edit-project-name"
-                  placeholder="Project name"
+                  placeholder={tp("fields.namePlaceholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-project-description">Description</Label>
+                <Label htmlFor="edit-project-description">{tp("fields.description")}</Label>
                 <Textarea
                   id="edit-project-description"
-                  placeholder="What is this project about?"
+                  placeholder={tp("fields.descriptionPlaceholder")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? "Saving..." : "Save changes"}
+                {submitting ? tc("saving") : tc("save")}
               </Button>
             </form>
           </DialogContent>
@@ -125,24 +128,23 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
               <Trash2 className="h-4 w-4" />
-              <span className="sr-only">Delete project</span>
+              <span className="sr-only">{tp("deleteProject")}</span>
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete project?</AlertDialogTitle>
+              <AlertDialogTitle>{tp("deleteConfirmTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete &ldquo;{project.name}&rdquo; and all its tasks.
-                This action cannot be undone.
+                {tp("deleteConfirmDescription", { name: project.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Delete
+                {tc("delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

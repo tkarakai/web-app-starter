@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Betöltés...",
+    "cancel": "Mégse",
+    "save": "Változások mentése",
+    "saving": "Mentés...",
+    "create": "Létrehozás",
+    "creating": "Létrehozás...",
+    "delete": "Törlés",
+    "signOut": "Kijelentkezés",
+    "error": "Hiba történt"
+  },
+  "theme": {
+    "light": "Világos téma",
+    "system": "Rendszertéma",
+    "dark": "Sötét téma",
+    "ariaLabel": "Téma: {label}. Kattints a váltáshoz."
+  },
+  "language": {
+    "label": "Nyelv",
+    "ariaLabel": "Nyelv kiválasztása"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Üdv újra",
+      "description": "Jelentkezz be a vezérlőpultod eléréséhez.",
+      "cta": "Bejelentkezés",
+      "switchPrompt": "Új vagy itt?",
+      "switchLink": "Fiók létrehozása",
+      "pageHeading": "Üdv újra! Folytasd ott, ahol abbahagytad.",
+      "pageDescription": "A Better Auth kezeli a munkamenet-folyamatokat, a Convex pedig valós időben tartja az adatokat. Jelentkezz be a projektjeid és feladataid eléréséhez."
+    },
+    "signUp": {
+      "title": "Munkaterület létrehozása",
+      "description": "Kezdj el kevesebb mint egy perc alatt.",
+      "cta": "Fiók létrehozása",
+      "switchPrompt": "Már van fiókod?",
+      "switchLink": "Bejelentkezés",
+      "pageHeading": "Hozd létre a fiókodat és kezdj el építeni.",
+      "pageDescription": "A Convex + Better Auth már be van kötve, így a fiókod azonnal éles használatra kész."
+    },
+    "badge": "Fiók",
+    "fields": {
+      "name": "Név",
+      "namePlaceholder": "Kovács Anna",
+      "email": "E-mail",
+      "emailPlaceholder": "te@pelda.hu",
+      "password": "Jelszó",
+      "passwordPlaceholder": "Jelszavad",
+      "passwordSignUpPlaceholder": "Legalább 8 karakter",
+      "confirmPassword": "Jelszó megerősítése",
+      "confirmPasswordPlaceholder": "Jelszó újra"
+    },
+    "errors": {
+      "passwordMismatch": "A jelszavak nem egyeznek",
+      "generic": "Hiba történt"
+    },
+    "footer": "Biztonságos e-mail + jelszó",
+    "working": "Feldolgozás..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "A kiindulópontod.",
+    "headingLine2": "Építs innen tovább.",
+    "description": "Hitelesítés, adatbázis, valós idejű szinkronizáció és fájlfeltöltés — bekötve és használatra készen.",
+    "getStarted": "Kezdés",
+    "signIn": "Bejelentkezés"
+  },
+  "dashboard": {
+    "projects": "Projektek",
+    "noProjects": "Még nincsenek projektek",
+    "noProjectsDescription": "Hozz létre egy projektet a kezdéshez.",
+    "projectNotFound": "Projekt nem található",
+    "projectNotFoundDescription": "Ez a projekt lehet, hogy törölve lett.",
+    "tabs": {
+      "tasks": "Feladatok",
+      "attachments": "Mellékletek"
+    }
+  },
+  "projects": {
+    "newProject": "Új projekt",
+    "createProject": "Projekt létrehozása",
+    "createFirst": "Hozd létre az első projektedet",
+    "noProjects": "Nincsenek projektek",
+    "editProject": "Projekt szerkesztése",
+    "deleteProject": "Projekt törlése",
+    "deleteConfirmTitle": "Projekt törlése?",
+    "deleteConfirmDescription": "Ez véglegesen törli a(z) \u201c{name}\u201d projektet és az összes feladatát. Ez a művelet nem vonható vissza.",
+    "fields": {
+      "name": "Név",
+      "namePlaceholder": "Projekt neve",
+      "description": "Leírás",
+      "descriptionPlaceholder": "Miről szól ez a projekt?"
+    }
+  },
+  "tasks": {
+    "title": "Feladatok",
+    "addTask": "Feladat hozzáadása",
+    "newTask": "Új feladat",
+    "editTask": "Feladat szerkesztése",
+    "deleteTask": "Feladat törlése",
+    "confirmDelete": "Törlés megerősítése",
+    "createTask": "Feladat létrehozása",
+    "noTasks": "Még nincsenek feladatok. Adj hozzá egyet a kezdéshez.",
+    "noTasksSummary": "Még nincsenek feladatok",
+    "progress": "{doneCount}/{totalCount} feladat kész",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Állapot",
+      "todo": "Teendő",
+      "inProgress": "Folyamatban",
+      "done": "Kész",
+      "all": "Összes"
+    },
+    "fields": {
+      "title": "Cím",
+      "titlePlaceholder": "Mit kell megcsinálni?",
+      "description": "Leírás",
+      "descriptionPlaceholder": "Részletek hozzáadása..."
+    },
+    "aria": {
+      "changeStatus": "Állapot módosítása innen: {status}"
+    },
+    "count": "{count, plural, =0 {Még nincsenek feladatok} one {# feladat} other {# feladat}}"
+  },
+  "uploads": {
+    "title": "Mellékletek",
+    "addFile": "Fájl hozzáadása",
+    "uploading": "Feltöltés...",
+    "processing": "Feldolgozás",
+    "view": "Megtekintés",
+    "deleteFile": "Fájl törlése",
+    "emptyState": "Tölts fel fájlokat a Convex tárhelyfolyamat megtekintéséhez.",
+    "errors": {
+      "tooLarge": "A fájl túl nagy (max. 1 MB)",
+      "uploadFailed": "A feltöltés sikertelen. Próbáld újra.",
+      "generic": "A feltöltés sikertelen."
+    },
+    "count": "{count, plural, =0 {Nincsenek mellékletek} one {# melléklet} other {# melléklet}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Nincs hitelesítve",
+    "PROJECT_NOT_FOUND": "Projekt nem található",
+    "TASK_NOT_FOUND": "Feladat nem található",
+    "FILE_NOT_FOUND": "Fájl nem található a tárhelyen",
+    "FILE_TOO_LARGE": "A fájl túl nagy (max. 1 MB)",
+    "UPLOAD_NOT_FOUND": "Feltöltés nem található"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Next.js starter Convex, Better Auth és Bun támogatással."
+  }
+}

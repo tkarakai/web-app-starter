@@ -1,9 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { defaultLocale, locales } from "@repo/i18n";
 
 import {
   checkEdgeRateLimit,
   type EdgeRateLimitConfig,
 } from "@/lib/edge-rate-limit";
+
+const intlMiddleware = createIntlMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: "always",
+});
 
 const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   windowSeconds: Number(process.env.EDGE_RATE_LIMIT_WINDOW ?? "60"),
@@ -39,6 +47,10 @@ export function proxy(request: NextRequest) {
     });
   }
 
+  // Run next-intl middleware (locale detection, rewrite, cookie)
+  const intlResponse = intlMiddleware(request);
+
+  // Apply CSP headers
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
 
@@ -59,21 +71,15 @@ export function proxy(request: NextRequest) {
     "form-action 'self'",
   ].join("; ");
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", csp);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-  response.headers.set("Content-Security-Policy", csp);
+  intlResponse.headers.set("Content-Security-Policy", csp);
+  intlResponse.headers.set("x-nonce", nonce);
 
   // Rate limit headers on successful responses
-  response.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
-  response.headers.set("X-RateLimit-Remaining", String(rl.remaining));
-  response.headers.set("X-RateLimit-Reset", String(rl.resetAt));
+  intlResponse.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
+  intlResponse.headers.set("X-RateLimit-Remaining", String(rl.remaining));
+  intlResponse.headers.set("X-RateLimit-Reset", String(rl.resetAt));
 
-  return response;
+  return intlResponse;
 }
 
 export const config = {

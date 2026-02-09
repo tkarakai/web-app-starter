@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "جارٍ التحميل...",
+    "cancel": "إلغاء",
+    "save": "حفظ التغييرات",
+    "saving": "جارٍ الحفظ...",
+    "create": "إنشاء",
+    "creating": "جارٍ الإنشاء...",
+    "delete": "حذف",
+    "signOut": "تسجيل الخروج",
+    "error": "حدث خطأ"
+  },
+  "theme": {
+    "light": "مظهر فاتح",
+    "system": "مظهر النظام",
+    "dark": "مظهر داكن",
+    "ariaLabel": "المظهر: {label}. انقر للتبديل."
+  },
+  "language": {
+    "label": "اللغة",
+    "ariaLabel": "اختر اللغة"
+  },
+  "auth": {
+    "signIn": {
+      "title": "مرحباً بعودتك",
+      "description": "سجّل الدخول للمتابعة إلى لوحة التحكم.",
+      "cta": "تسجيل الدخول",
+      "switchPrompt": "جديد هنا؟",
+      "switchLink": "إنشاء حساب",
+      "pageHeading": "مرحباً بعودتك. تابع من حيث توقفت.",
+      "pageDescription": "يدير Better Auth تدفقات الجلسات، بينما يحافظ Convex على البيانات محدّثة. سجّل الدخول للوصول إلى مشاريعك ومهامك."
+    },
+    "signUp": {
+      "title": "أنشئ مساحة العمل الخاصة بك",
+      "description": "ابدأ في أقل من دقيقة.",
+      "cta": "إنشاء حساب",
+      "switchPrompt": "لديك حساب بالفعل؟",
+      "switchLink": "تسجيل الدخول",
+      "pageHeading": "أنشئ حسابك وابدأ البناء.",
+      "pageDescription": "Convex + Better Auth مُعدّان مسبقاً، لذا حسابك جاهز للإنتاج فوراً."
+    },
+    "badge": "الحساب",
+    "fields": {
+      "name": "الاسم",
+      "namePlaceholder": "أحمد محمد",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "you@example.com",
+      "password": "كلمة المرور",
+      "passwordPlaceholder": "كلمة المرور الخاصة بك",
+      "passwordSignUpPlaceholder": "8 أحرف على الأقل",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "confirmPasswordPlaceholder": "أكّد كلمة المرور"
+    },
+    "errors": {
+      "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "generic": "حدث خطأ"
+    },
+    "footer": "بريد إلكتروني + كلمة مرور آمنة",
+    "working": "جارٍ المعالجة..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "نقطة انطلاقك.",
+    "headingLine2": "ابنِ من هنا.",
+    "description": "المصادقة، قاعدة البيانات، المزامنة الفورية، ورفع الملفات — كل شيء مُعدّ وجاهز.",
+    "getStarted": "ابدأ الآن",
+    "signIn": "تسجيل الدخول"
+  },
+  "dashboard": {
+    "projects": "المشاريع",
+    "noProjects": "لا توجد مشاريع بعد",
+    "noProjectsDescription": "أنشئ مشروعاً للبدء.",
+    "projectNotFound": "المشروع غير موجود",
+    "projectNotFoundDescription": "ربما تم حذف هذا المشروع.",
+    "tabs": {
+      "tasks": "المهام",
+      "attachments": "المرفقات"
+    }
+  },
+  "projects": {
+    "newProject": "مشروع جديد",
+    "createProject": "إنشاء مشروع",
+    "createFirst": "أنشئ مشروعك الأول",
+    "noProjects": "لا توجد مشاريع",
+    "editProject": "تعديل المشروع",
+    "deleteProject": "حذف المشروع",
+    "deleteConfirmTitle": "حذف المشروع؟",
+    "deleteConfirmDescription": "سيتم حذف \u201c{name}\u201d وجميع مهامه نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+    "fields": {
+      "name": "الاسم",
+      "namePlaceholder": "اسم المشروع",
+      "description": "الوصف",
+      "descriptionPlaceholder": "عن ماذا يتحدث هذا المشروع؟"
+    }
+  },
+  "tasks": {
+    "title": "المهام",
+    "addTask": "إضافة مهمة",
+    "newTask": "مهمة جديدة",
+    "editTask": "تعديل المهمة",
+    "deleteTask": "حذف المهمة",
+    "confirmDelete": "تأكيد الحذف",
+    "createTask": "إنشاء مهمة",
+    "noTasks": "لا توجد مهام بعد. أضف واحدة للبدء.",
+    "noTasksSummary": "لا توجد مهام بعد",
+    "progress": "{doneCount} من {totalCount} مهام مكتملة",
+    "progressPercent": "{percent}٪",
+    "status": {
+      "label": "الحالة",
+      "todo": "قيد الانتظار",
+      "inProgress": "قيد التنفيذ",
+      "done": "مكتمل",
+      "all": "الكل"
+    },
+    "fields": {
+      "title": "العنوان",
+      "titlePlaceholder": "ما الذي يجب إنجازه؟",
+      "description": "الوصف",
+      "descriptionPlaceholder": "أضف تفاصيل..."
+    },
+    "aria": {
+      "changeStatus": "تغيير الحالة من {status}"
+    },
+    "count": "{count, plural, =0 {لا توجد مهام بعد} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}"
+  },
+  "uploads": {
+    "title": "المرفقات",
+    "addFile": "إضافة ملف",
+    "uploading": "جارٍ الرفع...",
+    "processing": "جارٍ المعالجة",
+    "view": "عرض",
+    "deleteFile": "حذف الملف",
+    "emptyState": "ارفع ملفات لعرض تدفق تخزين Convex.",
+    "errors": {
+      "tooLarge": "الملف كبير جداً (الحد الأقصى 1 ميغابايت)",
+      "uploadFailed": "فشل الرفع. يرجى المحاولة مرة أخرى.",
+      "generic": "فشل الرفع."
+    },
+    "count": "{count, plural, =0 {لا توجد مرفقات} one {مرفق واحد} two {مرفقان} few {# مرفقات} many {# مرفقاً} other {# مرفق}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "غير مُصادق عليه",
+    "PROJECT_NOT_FOUND": "المشروع غير موجود",
+    "TASK_NOT_FOUND": "المهمة غير موجودة",
+    "FILE_NOT_FOUND": "الملف غير موجود في التخزين",
+    "FILE_TOO_LARGE": "الملف كبير جداً (الحد الأقصى 1 ميغابايت)",
+    "UPLOAD_NOT_FOUND": "الرفع غير موجود"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "قالب Next.js مع Convex و Better Auth و Bun."
+  }
+}

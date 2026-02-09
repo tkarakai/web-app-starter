@@ -56,7 +56,7 @@ export const update = authedMutation({
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.id);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error("TASK_NOT_FOUND");
     }
 
     // Verify ownership through the project chain
@@ -81,7 +81,7 @@ export const remove = authedMutation({
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.id);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error("TASK_NOT_FOUND");
     }
 
     // Verify ownership through the project chain

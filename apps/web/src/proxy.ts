@@ -1,9 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { defaultLocale, locales } from "@repo/i18n";
 
 import {
   checkEdgeRateLimit,
   type EdgeRateLimitConfig,
 } from "@/lib/edge-rate-limit";
+
+const intlMiddleware = createIntlMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: "always",
+});
 
 const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   windowSeconds: Number(process.env.EDGE_RATE_LIMIT_WINDOW ?? "60"),
@@ -11,7 +19,7 @@ const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   maxMapSize: Number(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE ?? "10000"),
 };
 
-/** Routes that require authentication. */
+/** Routes that require authentication (matched against the locale-stripped path). */
 const PROTECTED_PREFIXES = ["/dashboard"];
 
 /** Auth routes that authenticated users should skip. */
@@ -36,6 +44,31 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
+/**
+ * Extract the pathname without the locale prefix so auth rules
+ * work the same regardless of which locale is active.
+ */
+function stripLocalePrefix(pathname: string): string {
+  for (const locale of locales) {
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+      return pathname.slice(`/${locale}`.length) || "/";
+    }
+  }
+  return pathname;
+}
+
+/**
+ * Detect the locale from the URL path (first segment).
+ * Falls back to `defaultLocale` when the segment isn't a known locale.
+ */
+function getLocaleFromPath(pathname: string): string {
+  const match = pathname.match(/^\/([^/]+)/);
+  if (match && (locales as readonly string[]).includes(match[1])) {
+    return match[1];
+  }
+  return defaultLocale;
+}
+
 export function proxy(request: NextRequest) {
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
@@ -58,21 +91,34 @@ export function proxy(request: NextRequest) {
 
   // --- Auth redirects ---
   const { pathname } = request.nextUrl;
+
+  // Skip locale handling for API routes
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
+
+  // --- Auth redirects (checked before intl to avoid unnecessary rewrites) ---
+  const strippedPath = stripLocalePrefix(pathname);
   const hasSession = hasSessionCookie(request);
+  const locale = getLocaleFromPath(pathname);
 
   // Unauthenticated users hitting a protected route → sign-in
   if (
-    PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
+    PROTECTED_PREFIXES.some((prefix) => strippedPath.startsWith(prefix)) &&
     !hasSession
   ) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+    return NextResponse.redirect(new URL(`/${locale}/sign-in`, request.url));
   }
 
   // Authenticated users hitting auth pages → dashboard
-  if (AUTH_ROUTES.includes(pathname) && hasSession) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (AUTH_ROUTES.includes(strippedPath) && hasSession) {
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
+  // --- Locale handling (detection, rewrite, cookie) ---
+  const intlResponse = intlMiddleware(request);
+
+  // --- CSP headers ---
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
 
@@ -110,21 +156,16 @@ export function proxy(request: NextRequest) {
     "form-action 'self'",
   ].join("; ");
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", csp);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-  response.headers.set("Content-Security-Policy", csp);
+  // Merge CSP + nonce into the intl response
+  intlResponse.headers.set("Content-Security-Policy", csp);
+  intlResponse.headers.set("x-nonce", nonce);
 
   // Rate limit headers on successful responses
-  response.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
-  response.headers.set("X-RateLimit-Remaining", String(rl.remaining));
-  response.headers.set("X-RateLimit-Reset", String(rl.resetAt));
+  intlResponse.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
+  intlResponse.headers.set("X-RateLimit-Remaining", String(rl.remaining));
+  intlResponse.headers.set("X-RateLimit-Reset", String(rl.resetAt));
 
-  return response;
+  return intlResponse;
 }
 
 export const config = {

@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "create": "Create",
+    "creating": "Creating...",
+    "delete": "Delete",
+    "signOut": "Sign out",
+    "error": "An error occurred"
+  },
+  "theme": {
+    "light": "Light theme",
+    "system": "System theme",
+    "dark": "Dark theme",
+    "ariaLabel": "Theme: {label}. Click to switch."
+  },
+  "language": {
+    "label": "Language",
+    "ariaLabel": "Select language"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welcome back",
+      "description": "Sign in to continue to your dashboard.",
+      "cta": "Sign in",
+      "switchPrompt": "New here?",
+      "switchLink": "Create an account",
+      "pageHeading": "Welcome back. Pick up where you left off.",
+      "pageDescription": "Better Auth powers session flows, while Convex keeps data live. Sign in to access your projects and tasks."
+    },
+    "signUp": {
+      "title": "Create your workspace",
+      "description": "Get started in under a minute.",
+      "cta": "Create account",
+      "switchPrompt": "Already have access?",
+      "switchLink": "Sign in",
+      "pageHeading": "Create your account and start building.",
+      "pageDescription": "Convex + Better Auth are already wired, so your account is immediately production-ready."
+    },
+    "badge": "Account",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Avery Quinn",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "passwordSignUpPlaceholder": "At least 8 characters",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Confirm your password"
+    },
+    "errors": {
+      "passwordMismatch": "Passwords do not match",
+      "generic": "An error occurred"
+    },
+    "footer": "Secure email + password",
+    "working": "Working..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Your starting line.",
+    "headingLine2": "Build from here.",
+    "description": "Auth, database, real-time sync, and file uploads — wired and ready.",
+    "getStarted": "Get started",
+    "signIn": "Sign in"
+  },
+  "dashboard": {
+    "projects": "Projects",
+    "noProjects": "No projects yet",
+    "noProjectsDescription": "Create a project to get started.",
+    "projectNotFound": "Project not found",
+    "projectNotFoundDescription": "This project may have been deleted.",
+    "tabs": {
+      "tasks": "Tasks",
+      "attachments": "Attachments"
+    }
+  },
+  "projects": {
+    "newProject": "New project",
+    "createProject": "Create project",
+    "createFirst": "Create your first project",
+    "noProjects": "No projects",
+    "editProject": "Edit project",
+    "deleteProject": "Delete project",
+    "deleteConfirmTitle": "Delete project?",
+    "deleteConfirmDescription": "This will permanently delete \u201c{name}\u201d and all its tasks. This action cannot be undone.",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Project name",
+      "description": "Description",
+      "descriptionPlaceholder": "What is this project about?"
+    }
+  },
+  "tasks": {
+    "title": "Tasks",
+    "addTask": "Add task",
+    "newTask": "New task",
+    "editTask": "Edit task",
+    "deleteTask": "Delete task",
+    "confirmDelete": "Confirm delete",
+    "createTask": "Create task",
+    "noTasks": "No tasks yet. Add one to get started.",
+    "noTasksSummary": "No tasks yet",
+    "progress": "{doneCount} of {totalCount} tasks done",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Status",
+      "todo": "To do",
+      "inProgress": "In progress",
+      "done": "Done",
+      "all": "All"
+    },
+    "fields": {
+      "title": "Title",
+      "titlePlaceholder": "What needs to be done?",
+      "description": "Description",
+      "descriptionPlaceholder": "Add details..."
+    },
+    "aria": {
+      "changeStatus": "Change status from {status}"
+    },
+    "count": "{count, plural, =0 {No tasks yet} one {# task} other {# tasks}}"
+  },
+  "uploads": {
+    "title": "Attachments",
+    "addFile": "Add file",
+    "uploading": "Uploading...",
+    "processing": "Processing",
+    "view": "View",
+    "deleteFile": "Delete file",
+    "emptyState": "Upload files to show the Convex file storage flow.",
+    "errors": {
+      "tooLarge": "File too large (max 1MB)",
+      "uploadFailed": "Upload failed. Please try again.",
+      "generic": "Upload failed."
+    },
+    "count": "{count, plural, =0 {No attachments} one {# attachment} other {# attachments}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Not authenticated",
+    "PROJECT_NOT_FOUND": "Project not found",
+    "TASK_NOT_FOUND": "Task not found",
+    "FILE_NOT_FOUND": "File not found in storage",
+    "FILE_TOO_LARGE": "File too large (max 1MB)",
+    "UPLOAD_NOT_FOUND": "Upload not found"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "A Next.js starter with Convex, Better Auth, and Bun."
+  }
+}

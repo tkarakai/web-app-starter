@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Laden...",
+    "cancel": "Annuleren",
+    "save": "Wijzigingen opslaan",
+    "saving": "Opslaan...",
+    "create": "Aanmaken",
+    "creating": "Aanmaken...",
+    "delete": "Verwijderen",
+    "signOut": "Uitloggen",
+    "error": "Er is een fout opgetreden"
+  },
+  "theme": {
+    "light": "Licht thema",
+    "system": "Systeemthema",
+    "dark": "Donker thema",
+    "ariaLabel": "Thema: {label}. Klik om te wisselen."
+  },
+  "language": {
+    "label": "Taal",
+    "ariaLabel": "Selecteer taal"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welkom terug",
+      "description": "Log in om naar je dashboard te gaan.",
+      "cta": "Inloggen",
+      "switchPrompt": "Nieuw hier?",
+      "switchLink": "Account aanmaken",
+      "pageHeading": "Welkom terug. Ga verder waar je gebleven was.",
+      "pageDescription": "Better Auth beheert sessies, terwijl Convex data realtime bijhoudt. Log in om toegang te krijgen tot je projecten en taken."
+    },
+    "signUp": {
+      "title": "Maak je werkruimte aan",
+      "description": "Begin in minder dan een minuut.",
+      "cta": "Account aanmaken",
+      "switchPrompt": "Heb je al toegang?",
+      "switchLink": "Inloggen",
+      "pageHeading": "Maak je account aan en begin met bouwen.",
+      "pageDescription": "Convex + Better Auth zijn al ingesteld, dus je account is meteen productieklaar."
+    },
+    "badge": "Account",
+    "fields": {
+      "name": "Naam",
+      "namePlaceholder": "Jan de Vries",
+      "email": "E-mail",
+      "emailPlaceholder": "jij@voorbeeld.nl",
+      "password": "Wachtwoord",
+      "passwordPlaceholder": "Je wachtwoord",
+      "passwordSignUpPlaceholder": "Minimaal 8 tekens",
+      "confirmPassword": "Wachtwoord bevestigen",
+      "confirmPasswordPlaceholder": "Bevestig je wachtwoord"
+    },
+    "errors": {
+      "passwordMismatch": "Wachtwoorden komen niet overeen",
+      "generic": "Er is een fout opgetreden"
+    },
+    "footer": "Beveiligde e-mail + wachtwoord",
+    "working": "Bezig..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Je startlijn.",
+    "headingLine2": "Bouw vanaf hier.",
+    "description": "Authenticatie, database, realtime synchronisatie en bestandsuploads — aangesloten en klaar.",
+    "getStarted": "Aan de slag",
+    "signIn": "Inloggen"
+  },
+  "dashboard": {
+    "projects": "Projecten",
+    "noProjects": "Nog geen projecten",
+    "noProjectsDescription": "Maak een project aan om te beginnen.",
+    "projectNotFound": "Project niet gevonden",
+    "projectNotFoundDescription": "Dit project is mogelijk verwijderd.",
+    "tabs": {
+      "tasks": "Taken",
+      "attachments": "Bijlagen"
+    }
+  },
+  "projects": {
+    "newProject": "Nieuw project",
+    "createProject": "Project aanmaken",
+    "createFirst": "Maak je eerste project aan",
+    "noProjects": "Geen projecten",
+    "editProject": "Project bewerken",
+    "deleteProject": "Project verwijderen",
+    "deleteConfirmTitle": "Project verwijderen?",
+    "deleteConfirmDescription": "Dit verwijdert \u201c{name}\u201d en alle bijbehorende taken permanent. Deze actie kan niet ongedaan worden gemaakt.",
+    "fields": {
+      "name": "Naam",
+      "namePlaceholder": "Projectnaam",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Waar gaat dit project over?"
+    }
+  },
+  "tasks": {
+    "title": "Taken",
+    "addTask": "Taak toevoegen",
+    "newTask": "Nieuwe taak",
+    "editTask": "Taak bewerken",
+    "deleteTask": "Taak verwijderen",
+    "confirmDelete": "Verwijdering bevestigen",
+    "createTask": "Taak aanmaken",
+    "noTasks": "Nog geen taken. Voeg er een toe om te beginnen.",
+    "noTasksSummary": "Nog geen taken",
+    "progress": "{doneCount} van {totalCount} taken klaar",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Status",
+      "todo": "Te doen",
+      "inProgress": "Bezig",
+      "done": "Klaar",
+      "all": "Alles"
+    },
+    "fields": {
+      "title": "Titel",
+      "titlePlaceholder": "Wat moet er gedaan worden?",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Details toevoegen..."
+    },
+    "aria": {
+      "changeStatus": "Status wijzigen van {status}"
+    },
+    "count": "{count, plural, =0 {Geen taken} one {# taak} other {# taken}}"
+  },
+  "uploads": {
+    "title": "Bijlagen",
+    "addFile": "Bestand toevoegen",
+    "uploading": "Uploaden...",
+    "processing": "Verwerken",
+    "view": "Bekijken",
+    "deleteFile": "Bestand verwijderen",
+    "emptyState": "Upload bestanden om de Convex-bestandsopslag in actie te zien.",
+    "errors": {
+      "tooLarge": "Bestand te groot (max. 1 MB)",
+      "uploadFailed": "Upload mislukt. Probeer het opnieuw.",
+      "generic": "Upload mislukt."
+    },
+    "count": "{count, plural, =0 {Geen bijlagen} one {# bijlage} other {# bijlagen}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Niet ingelogd",
+    "PROJECT_NOT_FOUND": "Project niet gevonden",
+    "TASK_NOT_FOUND": "Taak niet gevonden",
+    "FILE_NOT_FOUND": "Bestand niet gevonden in opslag",
+    "FILE_TOO_LARGE": "Bestand te groot (max. 1 MB)",
+    "UPLOAD_NOT_FOUND": "Upload niet gevonden"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Een Next.js-starter met Convex, Better Auth en Bun."
+  }
+}

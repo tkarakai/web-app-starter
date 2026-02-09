@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { Paperclip } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -21,6 +22,8 @@ type ProjectSummaryProps = {
 
 export function ProjectSummary({ onSelectProject }: ProjectSummaryProps) {
   const projects = useQuery(api.projects.listWithStats) ?? [];
+  const t = useTranslations("tasks");
+  const tu = useTranslations("uploads");
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -49,20 +52,20 @@ export function ProjectSummary({ onSelectProject }: ProjectSummaryProps) {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      {project.doneCount} of {project.taskCount} tasks done
+                      {t("progress", { doneCount: project.doneCount, totalCount: project.taskCount })}
                     </span>
-                    <span>{progress}%</span>
+                    <span>{t("progressPercent", { percent: progress })}</span>
                   </div>
                   <Progress value={progress} className="h-1.5" />
                 </div>
               )}
               {project.taskCount === 0 && (
-                <p className="text-xs text-muted-foreground">No tasks yet</p>
+                <p className="text-xs text-muted-foreground">{t("noTasksSummary")}</p>
               )}
               {project.uploadCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  <Paperclip className="mr-1 h-3 w-3" />
-                  {project.uploadCount} attachment{project.uploadCount !== 1 ? "s" : ""}
+                  <Paperclip className="me-1 h-3 w-3" />
+                  {tu("count", { count: project.uploadCount })}
                 </Badge>
               )}
             </CardContent>

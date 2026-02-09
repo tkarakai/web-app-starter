@@ -1,0 +1,154 @@
+{
+  "common": {
+    "appName": "Web App Starter",
+    "loading": "Ładowanie...",
+    "cancel": "Anuluj",
+    "save": "Zapisz zmiany",
+    "saving": "Zapisywanie...",
+    "create": "Utwórz",
+    "creating": "Tworzenie...",
+    "delete": "Usuń",
+    "signOut": "Wyloguj się",
+    "error": "Wystąpił błąd"
+  },
+  "theme": {
+    "light": "Jasny motyw",
+    "system": "Motyw systemowy",
+    "dark": "Ciemny motyw",
+    "ariaLabel": "Motyw: {label}. Kliknij, aby przełączyć."
+  },
+  "language": {
+    "label": "Język",
+    "ariaLabel": "Wybierz język"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Witaj ponownie",
+      "description": "Zaloguj się, aby przejść do panelu.",
+      "cta": "Zaloguj się",
+      "switchPrompt": "Pierwszy raz?",
+      "switchLink": "Utwórz konto",
+      "pageHeading": "Witaj ponownie. Kontynuuj od miejsca, w którym skończyłeś.",
+      "pageDescription": "Better Auth obsługuje sesje, a Convex utrzymuje dane na żywo. Zaloguj się, aby uzyskać dostęp do projektów i zadań."
+    },
+    "signUp": {
+      "title": "Utwórz przestrzeń roboczą",
+      "description": "Zacznij w mniej niż minutę.",
+      "cta": "Utwórz konto",
+      "switchPrompt": "Masz już dostęp?",
+      "switchLink": "Zaloguj się",
+      "pageHeading": "Utwórz konto i zacznij tworzyć.",
+      "pageDescription": "Convex + Better Auth są już skonfigurowane, więc Twoje konto jest natychmiast gotowe do pracy."
+    },
+    "badge": "Konto",
+    "fields": {
+      "name": "Imię",
+      "namePlaceholder": "Jan Kowalski",
+      "email": "E-mail",
+      "emailPlaceholder": "ty@example.com",
+      "password": "Hasło",
+      "passwordPlaceholder": "Twoje hasło",
+      "passwordSignUpPlaceholder": "Co najmniej 8 znaków",
+      "confirmPassword": "Potwierdź hasło",
+      "confirmPasswordPlaceholder": "Potwierdź swoje hasło"
+    },
+    "errors": {
+      "passwordMismatch": "Hasła nie są zgodne",
+      "generic": "Wystąpił błąd"
+    },
+    "footer": "Bezpieczny e-mail + hasło",
+    "working": "Przetwarzanie..."
+  },
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Twoja linia startu.",
+    "headingLine2": "Buduj stąd.",
+    "description": "Uwierzytelnianie, baza danych, synchronizacja w czasie rzeczywistym i przesyłanie plików — podłączone i gotowe.",
+    "getStarted": "Rozpocznij",
+    "signIn": "Zaloguj się"
+  },
+  "dashboard": {
+    "projects": "Projekty",
+    "noProjects": "Brak projektów",
+    "noProjectsDescription": "Utwórz projekt, aby rozpocząć.",
+    "projectNotFound": "Projekt nie znaleziony",
+    "projectNotFoundDescription": "Ten projekt mógł zostać usunięty.",
+    "tabs": {
+      "tasks": "Zadania",
+      "attachments": "Załączniki"
+    }
+  },
+  "projects": {
+    "newProject": "Nowy projekt",
+    "createProject": "Utwórz projekt",
+    "createFirst": "Utwórz swój pierwszy projekt",
+    "noProjects": "Brak projektów",
+    "editProject": "Edytuj projekt",
+    "deleteProject": "Usuń projekt",
+    "deleteConfirmTitle": "Usunąć projekt?",
+    "deleteConfirmDescription": "To trwale usunie \u201c{name}\u201d i wszystkie powiązane zadania. Tej operacji nie można cofnąć.",
+    "fields": {
+      "name": "Nazwa",
+      "namePlaceholder": "Nazwa projektu",
+      "description": "Opis",
+      "descriptionPlaceholder": "O czym jest ten projekt?"
+    }
+  },
+  "tasks": {
+    "title": "Zadania",
+    "addTask": "Dodaj zadanie",
+    "newTask": "Nowe zadanie",
+    "editTask": "Edytuj zadanie",
+    "deleteTask": "Usuń zadanie",
+    "confirmDelete": "Potwierdź usunięcie",
+    "createTask": "Utwórz zadanie",
+    "noTasks": "Brak zadań. Dodaj pierwsze, aby rozpocząć.",
+    "noTasksSummary": "Brak zadań",
+    "progress": "{doneCount} z {totalCount} zadań ukończonych",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Status",
+      "todo": "Do zrobienia",
+      "inProgress": "W toku",
+      "done": "Gotowe",
+      "all": "Wszystkie"
+    },
+    "fields": {
+      "title": "Tytuł",
+      "titlePlaceholder": "Co trzeba zrobić?",
+      "description": "Opis",
+      "descriptionPlaceholder": "Dodaj szczegóły..."
+    },
+    "aria": {
+      "changeStatus": "Zmień status z {status}"
+    },
+    "count": "{count, plural, =0 {Brak zadań} one {# zadanie} few {# zadania} other {# zadań}}"
+  },
+  "uploads": {
+    "title": "Załączniki",
+    "addFile": "Dodaj plik",
+    "uploading": "Przesyłanie...",
+    "processing": "Przetwarzanie",
+    "view": "Podgląd",
+    "deleteFile": "Usuń plik",
+    "emptyState": "Prześlij pliki, aby zobaczyć działanie magazynu Convex.",
+    "errors": {
+      "tooLarge": "Plik za duży (maks. 1 MB)",
+      "uploadFailed": "Przesyłanie nie powiodło się. Spróbuj ponownie.",
+      "generic": "Przesyłanie nie powiodło się."
+    },
+    "count": "{count, plural, =0 {Brak załączników} one {# załącznik} few {# załączniki} other {# załączników}}"
+  },
+  "errors": {
+    "NOT_AUTHENTICATED": "Nie uwierzytelniony",
+    "PROJECT_NOT_FOUND": "Projekt nie znaleziony",
+    "TASK_NOT_FOUND": "Zadanie nie znalezione",
+    "FILE_NOT_FOUND": "Plik nie znaleziony w magazynie",
+    "FILE_TOO_LARGE": "Plik za duży (maks. 1 MB)",
+    "UPLOAD_NOT_FOUND": "Przesyłanie nie znalezione"
+  },
+  "metadata": {
+    "title": "Web App Starter",
+    "description": "Starter Next.js z Convex, Better Auth i Bun."
+  }
+}
