@@ -14,6 +14,10 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_owner", ["ownerId"]),
 
+  adminEmails: defineTable({
+    email: v.string(),
+  }).index("by_email", ["email"]),
+
   projects: defineTable({
     name: v.string(),
     description: v.string(),
