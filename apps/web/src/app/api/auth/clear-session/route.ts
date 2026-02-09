@@ -17,5 +17,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const url = new URL("/sign-in", request.url);
-  return NextResponse.redirect(url);
+  const response = NextResponse.redirect(url);
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  return response;
 }
