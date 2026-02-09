@@ -69,6 +69,18 @@ function getLocaleFromPath(pathname: string): string {
   return defaultLocale;
 }
 
+/**
+ * Get the user's preferred locale from the NEXT_LOCALE cookie.
+ * Falls back to null if not set.
+ */
+function getLocaleFromCookie(request: NextRequest): string | null {
+  const locale = request.cookies.get("NEXT_LOCALE")?.value;
+  if (locale && (locales as readonly string[]).includes(locale)) {
+    return locale;
+  }
+  return null;
+}
+
 export function proxy(request: NextRequest) {
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
@@ -103,11 +115,13 @@ export function proxy(request: NextRequest) {
   const locale = getLocaleFromPath(pathname);
 
   // Unauthenticated users hitting a protected route → sign-in
+  // Respect the NEXT_LOCALE cookie (user's preferred locale from before logout)
   if (
     PROTECTED_PREFIXES.some((prefix) => strippedPath.startsWith(prefix)) &&
     !hasSession
   ) {
-    return NextResponse.redirect(new URL(`/${locale}/sign-in`, request.url));
+    const preferredLocale = getLocaleFromCookie(request) || locale;
+    return NextResponse.redirect(new URL(`/${preferredLocale}/sign-in`, request.url));
   }
 
   // Authenticated users hitting auth pages → dashboard

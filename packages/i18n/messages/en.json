@@ -9,7 +9,9 @@
     "creating": "Creating...",
     "delete": "Delete",
     "signOut": "Sign out",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "backToHome": "Back to home",
+    "note": "Note"
   },
   "theme": {
     "light": "Light theme",
@@ -57,7 +59,13 @@
       "generic": "An error occurred"
     },
     "footer": "Secure email + password",
-    "working": "Working..."
+    "working": "Working...",
+    "legal": {
+      "prefix": "By continuing, you agree to our",
+      "termsOfService": "Terms of Service",
+      "and": "and",
+      "privacyPolicy": "Privacy Policy"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Build from here.",
     "description": "Auth, database, real-time sync, and file uploads — wired and ready.",
     "getStarted": "Get started",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "footer": {
+      "about": "About",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
+    }
   },
   "dashboard": {
     "projects": "Projects",
@@ -86,7 +99,7 @@
     "editProject": "Edit project",
     "deleteProject": "Delete project",
     "deleteConfirmTitle": "Delete project?",
-    "deleteConfirmDescription": "This will permanently delete \u201c{name}\u201d and all its tasks. This action cannot be undone.",
+    "deleteConfirmDescription": "This will permanently delete “{name}” and all its tasks. This action cannot be undone.",
     "fields": {
       "name": "Name",
       "namePlaceholder": "Project name",

@@ -109,15 +109,17 @@ export function LanguageSelector({
       <DropdownMenuTrigger
         aria-label={ariaLabel}
         className={cn(
-          "inline-flex h-9 items-center gap-2 rounded-md border border-border/60 bg-background px-3 text-sm font-medium text-foreground transition-colors",
+          "inline-flex h-9 items-center rounded-md border border-border/60 bg-background px-3 text-sm font-medium text-foreground transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           "cursor-pointer",
           className,
         )}
       >
-        <span>{current?.flag}</span>
-        <span>{current?.nativeName}</span>
+        <span className="flex items-center">
+          <span className="me-2">{current?.flag}</span>
+          {current?.nativeName}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"

@@ -9,7 +9,9 @@
     "creating": "作成中...",
     "delete": "削除",
     "signOut": "ログアウト",
-    "error": "エラーが発生しました"
+    "error": "エラーが発生しました",
+    "backToHome": "ホームに戻る",
+    "note": "注記"
   },
   "theme": {
     "light": "ライトテーマ",
@@ -57,7 +59,13 @@
       "generic": "エラーが発生しました"
     },
     "footer": "安全なメール + パスワード認証",
-    "working": "処理中..."
+    "working": "処理中...",
+    "legal": {
+      "prefix": "続行することで、当社の",
+      "termsOfService": "利用規約",
+      "and": "および",
+      "privacyPolicy": "プライバシーポリシー"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "ここから始めよう。",
     "description": "認証、データベース、リアルタイム同期、ファイルアップロード — すべて接続済みですぐに使えます。",
     "getStarted": "始める",
-    "signIn": "ログイン"
+    "signIn": "ログイン",
+    "footer": {
+      "about": "について",
+      "privacyPolicy": "プライバシーポリシー",
+      "termsOfService": "利用規約"
+    }
   },
   "dashboard": {
     "projects": "プロジェクト",
@@ -86,7 +99,7 @@
     "editProject": "プロジェクトを編集",
     "deleteProject": "プロジェクトを削除",
     "deleteConfirmTitle": "プロジェクトを削除しますか？",
-    "deleteConfirmDescription": "\u201c{name}\u201dとすべてのタスクが完全に削除されます。この操作は元に戻せません。",
+    "deleteConfirmDescription": "“{name}”とすべてのタスクが完全に削除されます。この操作は元に戻せません。",
     "fields": {
       "name": "名前",
       "namePlaceholder": "プロジェクト名",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Convex、Better Auth、Bunを使ったNext.jsスターター。"
+  },
+  "legal": {
+    "about": {
+      "title": "について",
+      "description": "Web App Starterと私たちのミッションについて知りましょう。",
+      "notice": "これはプレースホルダーコンテンツです。起動前に自分のコンテンツで置き換えてください。",
+      "heading": "について",
+      "mission": "私たちのミッション",
+      "missionText": "開発者は基盤構築ではなく機能開発に時間を費やすべきだと私たちは考えています。Web App Starterは、リアルタイムデータ同期、ファイルアップロード、セッションベースの認証がすべて組み込まれた本番環境対応のスタートポイントを提供します。",
+      "whatIncluded": "含まれる内容",
+      "whatIncludedText": "スターターキットには、ランディングページ、完全に認証されたウェブアプリケーション、管理ダッシュボード、およびコンポーネントストーリーブックが含まれています。各アプリはRadix UIプリミティブとTailwind CSSで構築された統一されたデザインシステムを共有しています。",
+      "openSource": "オープンソース",
+      "openSourceText": "このプロジェクトはオープンソースであり、フォークとカスタマイズが想定されています。",
+      "intro": "Web App Starterは、モダンなウェブアプリケーション構築のための完全なスタック基盤です。フロントエンドのNext.js、バックエンドのConvex、セキュアな認証のBetter Authを統合 — すべて接続済みで発送準備完了です。"
+    },
+    "privacy": {
+      "title": "プライバシーポリシー",
+      "description": "データの収集、使用、保護方法について。",
+      "notice": "これはプライバシーポリシーのテンプレートです。起動前に特定のアプリケーションと法域に合わせてカスタマイズしてください。",
+      "heading": "プライバシーポリシー",
+      "lastUpdated": "最終更新日: {date}"
+    },
+    "terms": {
+      "title": "利用規約",
+      "description": "当サービス利用のルールとガイドライン。",
+      "notice": "これは利用規約のテンプレートです。起動前に特定のアプリケーションと法域に合わせてカスタマイズしてください。",
+      "heading": "利用規約",
+      "lastUpdated": "最終更新日: {date}"
+    }
   }
 }

@@ -9,7 +9,9 @@
     "creating": "Létrehozás...",
     "delete": "Törlés",
     "signOut": "Kijelentkezés",
-    "error": "Hiba történt"
+    "error": "Hiba történt",
+    "backToHome": "Vissza a kezdőlapra",
+    "note": "Megjegyzés"
   },
   "theme": {
     "light": "Világos téma",
@@ -57,7 +59,13 @@
       "generic": "Hiba történt"
     },
     "footer": "Biztonságos e-mail + jelszó",
-    "working": "Feldolgozás..."
+    "working": "Feldolgozás...",
+    "legal": {
+      "prefix": "Folytatással elfogadod",
+      "termsOfService": "Felhasználási feltételeinket",
+      "and": "és",
+      "privacyPolicy": "Adatvédelmi irányelveinket"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Építs innen tovább.",
     "description": "Hitelesítés, adatbázis, valós idejű szinkronizáció és fájlfeltöltés — bekötve és használatra készen.",
     "getStarted": "Kezdés",
-    "signIn": "Bejelentkezés"
+    "signIn": "Bejelentkezés",
+    "footer": {
+      "about": "Rólunk",
+      "privacyPolicy": "Adatvédelmi irányelvek",
+      "termsOfService": "Felhasználási feltételek"
+    }
   },
   "dashboard": {
     "projects": "Projektek",
@@ -86,7 +99,7 @@
     "editProject": "Projekt szerkesztése",
     "deleteProject": "Projekt törlése",
     "deleteConfirmTitle": "Projekt törlése?",
-    "deleteConfirmDescription": "Ez véglegesen törli a(z) \u201c{name}\u201d projektet és az összes feladatát. Ez a művelet nem vonható vissza.",
+    "deleteConfirmDescription": "Ez véglegesen törli a(z) “{name}” projektet és az összes feladatát. Ez a művelet nem vonható vissza.",
     "fields": {
       "name": "Név",
       "namePlaceholder": "Projekt neve",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Next.js starter Convex, Better Auth és Bun támogatással."
+  },
+  "legal": {
+    "about": {
+      "title": "Rólunk",
+      "description": "Tudj meg többet a Web App Starterről és a mi küldetésünkről.",
+      "notice": "Ez a tartalom helyőrző. Indítás előtt cseréld le a saját tartalomra.",
+      "heading": "Rólunk",
+      "mission": "A mi küldetésünk",
+      "missionText": "Úgy gondoljuk, hogy a fejlesztőknek az alkalmazások fejlesztésére kell fordítaniuk az idejüket, nem az infrastruktúra konfigurálására. A Web App Starter egy éles használatra kész kiindulópontot biztosít valós idejű adatszinkronizálással, fájlfeltöltésekkel és munkamenet-alapú hitelesítéssel, melyből már minden be van kötve.",
+      "whatIncluded": "Mi van benne",
+      "whatIncludedText": "A kezdőcsomag tartalmaz egy leszálló oldalt, egy teljes mértékben hitelesített webalkalmazást, egy admin irányítópultot és egy komponens-vitrin könyvet. Mindegyik alkalmazás egy egységes tervezési rendszert használ, amely a Radix UI primitívekből és Tailwind CSS-ből épül fel.",
+      "openSource": "Nyílt forráskód",
+      "openSourceText": "Ez a projekt nyílt forráskódú és úgy lett megtervezve, hogy fel lehessen osztani és testre lehessen szabni.",
+      "intro": "A Web App Starter egy teljes veremű alapja a modern webalkalmazások építésének. A Next.js-t használja az előoldalhoz, a Convexet a háttéroldalhoz, és a Better Auth-ot a biztonságos hitelesítéshez — mindegyik be van kötve és készen áll az indulásra."
+    },
+    "privacy": {
+      "title": "Adatvédelmi irányelvek",
+      "description": "Hogyan gyűjtjük, használjuk és védjük az adataidat.",
+      "notice": "Ez egy sablon adatvédelmi irányelv. A bevezetés előtt szabd testre az alkalmazásodnak és a te joghatóságodnak megfelelően.",
+      "heading": "Adatvédelmi irányelvek",
+      "lastUpdated": "Utolsó frissítés: {date}"
+    },
+    "terms": {
+      "title": "Felhasználási feltételek",
+      "description": "A szolgáltatás használatára vonatkozó szabályok és irányelvek.",
+      "notice": "Ez egy sablon felhasználási feltételek. A bevezetés előtt szabd testre az alkalmazásodnak és a te joghatóságodnak megfelelően.",
+      "heading": "Felhasználási feltételek",
+      "lastUpdated": "Utolsó frissítés: {date}"
+    }
   }
 }

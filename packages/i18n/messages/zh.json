@@ -9,7 +9,9 @@
     "creating": "创建中...",
     "delete": "删除",
     "signOut": "退出登录",
-    "error": "发生了错误"
+    "error": "发生了错误",
+    "backToHome": "返回主页",
+    "note": "注意"
   },
   "theme": {
     "light": "浅色主题",
@@ -57,7 +59,13 @@
       "generic": "发生了错误"
     },
     "footer": "安全的邮箱 + 密码认证",
-    "working": "处理中..."
+    "working": "处理中...",
+    "legal": {
+      "prefix": "继续即表示您同意我们的",
+      "termsOfService": "服务条款",
+      "and": "和",
+      "privacyPolicy": "隐私政策"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "从这里开始构建。",
     "description": "认证、数据库、实时同步和文件上传——已连接，随时可用。",
     "getStarted": "开始使用",
-    "signIn": "登录"
+    "signIn": "登录",
+    "footer": {
+      "about": "关于",
+      "privacyPolicy": "隐私政策",
+      "termsOfService": "服务条款"
+    }
   },
   "dashboard": {
     "projects": "项目",
@@ -86,7 +99,7 @@
     "editProject": "编辑项目",
     "deleteProject": "删除项目",
     "deleteConfirmTitle": "删除项目？",
-    "deleteConfirmDescription": "这将永久删除\u201c{name}\u201d及其所有任务。此操作无法撤销。",
+    "deleteConfirmDescription": "这将永久删除“{name}”及其所有任务。此操作无法撤销。",
     "fields": {
       "name": "名称",
       "namePlaceholder": "项目名称",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "基于 Next.js 的启动模板，集成 Convex、Better Auth 和 Bun。"
+  },
+  "legal": {
+    "about": {
+      "title": "关于",
+      "description": "了解 Web App Starter 和我们的使命。",
+      "notice": "这是占位符内容。在启动前用您自己的内容替换。",
+      "heading": "关于",
+      "mission": "我们的使命",
+      "missionText": "我们相信开发者应该将时间花在构建功能上，而不是配置基础设施。Web App Starter 提供了一个生产就绪的起点，具有实时数据同步、文件上传和基于会话的身份验证，一切都已连接并可随时使用。",
+      "whatIncluded": "包含内容",
+      "whatIncludedText": "起始工具包包含登陆页面、功能完整的已验证的网络应用、管理仪表板和组件故事书。每个应用都共享一个统一的设计系统，该系统建立在 Radix UI 原语和 Tailwind CSS 之上。",
+      "openSource": "开源",
+      "openSourceText": "此项目是开源的，设计用于 fork 和自定义。",
+      "intro": "Web App Starter 是构建现代网络应用的完整堆栈基础。它结合了 Next.js（前端）、Convex（后端）和 Better Auth（安全认证）——一切都已连接并可随时部署。"
+    },
+    "privacy": {
+      "title": "隐私政策",
+      "description": "我们如何收集、使用和保护您的数据。",
+      "notice": "这是一个隐私政策模板。在启动前根据您的具体应用和司法管辖区进行自定义。",
+      "heading": "隐私政策",
+      "lastUpdated": "最后更新：{date}"
+    },
+    "terms": {
+      "title": "服务条款",
+      "description": "使用我们服务的规则和指南。",
+      "notice": "这是服务条款的模板。在启动前根据您的具体应用和司法管辖区进行自定义。",
+      "heading": "服务条款",
+      "lastUpdated": "最后更新：{date}"
+    }
   }
 }

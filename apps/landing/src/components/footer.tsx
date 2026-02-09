@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { Separator } from "@repo/design-system";
 
 export function Footer() {
+  const t = useTranslations("landing.footer");
+
   return (
     <footer className="w-full">
       <Separator />
@@ -13,19 +18,19 @@ export function Footer() {
             href="/about"
             className="transition-colors hover:text-foreground"
           >
-            About
+            {t("about")}
           </Link>
           <Link
             href="/privacy"
             className="transition-colors hover:text-foreground"
           >
-            Privacy Policy
+            {t("privacyPolicy")}
           </Link>
           <Link
             href="/terms"
             className="transition-colors hover:text-foreground"
           >
-            Terms of Service
+            {t("termsOfService")}
           </Link>
         </nav>
       </div>

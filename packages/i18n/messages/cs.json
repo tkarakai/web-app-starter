@@ -9,7 +9,9 @@
     "creating": "Vytváření...",
     "delete": "Smazat",
     "signOut": "Odhlásit se",
-    "error": "Došlo k chybě"
+    "error": "Došlo k chybě",
+    "backToHome": "Zpět na domů",
+    "note": "Poznámka"
   },
   "theme": {
     "light": "Světlý motiv",
@@ -57,7 +59,13 @@
       "generic": "Došlo k chybě"
     },
     "footer": "Bezpečný e-mail + heslo",
-    "working": "Zpracování..."
+    "working": "Zpracování...",
+    "legal": {
+      "prefix": "Pokračováním souhlasíte s našimi",
+      "termsOfService": "Podmínkami služby",
+      "and": "a",
+      "privacyPolicy": "Zásadami ochrany osobních údajů"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Stavějte odsud.",
     "description": "Autentizace, databáze, synchronizace v reálném čase a nahrávání souborů — propojeno a připraveno.",
     "getStarted": "Začít",
-    "signIn": "Přihlásit se"
+    "signIn": "Přihlásit se",
+    "footer": {
+      "about": "O nás",
+      "privacyPolicy": "Zásady ochrany osobních údajů",
+      "termsOfService": "Podmínky služby"
+    }
   },
   "dashboard": {
     "projects": "Projekty",
@@ -86,7 +99,7 @@
     "editProject": "Upravit projekt",
     "deleteProject": "Smazat projekt",
     "deleteConfirmTitle": "Smazat projekt?",
-    "deleteConfirmDescription": "Toto trvale smaže \u201c{name}\u201d a všechny související úkoly. Tuto akci nelze vrátit zpět.",
+    "deleteConfirmDescription": "Toto trvale smaže “{name}” a všechny související úkoly. Tuto akci nelze vrátit zpět.",
     "fields": {
       "name": "Název",
       "namePlaceholder": "Název projektu",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Starter Next.js s Convex, Better Auth a Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "O nás",
+      "description": "Dozvěďte se více o Web App Starter a naší misi.",
+      "notice": "Toto je obsah zástupného symbolu. Před spuštěním ho nahraďte svým vlastním.",
+      "heading": "O nás",
+      "mission": "Naše mise",
+      "missionText": "Věříme, že by vývojáři měli trávit čas stavbou funkcí, ne konfigurací infrastruktury. Web App Starter poskytuje produkční zahájení s synchronizací dat v reálném čase, nahráváním souborů a ověřováním na základě relací, vše již připojeno a připraveno.",
+      "whatIncluded": "Co je součástí",
+      "whatIncludedText": "Balíček zahájení obsahuje úvodní stránku, plně ověřenou webovou aplikaci, ovládací panel správce a sbírku komponent. Každá aplikace sdílí jednotný design systém vytvořený na primitivech Radix UI s Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Tento projekt je otevřený zdroj a je navržen k rozštěpení a přizpůsobení.",
+      "intro": "Web App Starter je plnostranná základna pro budování moderních webových aplikací. Kombinuje Next.js pro frontend, Convex pro backend a Better Auth pro bezpečné ověření — vše propojeno a připraveno k odeslání."
+    },
+    "privacy": {
+      "title": "Zásady ochrany osobních údajů",
+      "description": "Jak shromažďujeme, používáme a chráníme vaše údaje.",
+      "notice": "Toto je šablona zásad ochrany osobních údajů. Přizpůsobte ji svému konkrétnímu použití a právnímu prostředí před spuštěním.",
+      "heading": "Zásady ochrany osobních údajů",
+      "lastUpdated": "Poslední aktualizace: {date}"
+    },
+    "terms": {
+      "title": "Podmínky služby",
+      "description": "Pravidla a pokyny pro používání naší služby.",
+      "notice": "Toto je šablona podmínek služby. Přizpůsobte ji svému konkrétnímu použití a právnímu prostředí před spuštěním.",
+      "heading": "Podmínky služby",
+      "lastUpdated": "Poslední aktualizace: {date}"
+    }
   }
 }

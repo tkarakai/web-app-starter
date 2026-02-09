@@ -9,7 +9,9 @@
     "creating": "Creazione...",
     "delete": "Elimina",
     "signOut": "Esci",
-    "error": "Si è verificato un errore"
+    "error": "Si è verificato un errore",
+    "backToHome": "Torna alla home",
+    "note": "Nota"
   },
   "theme": {
     "light": "Tema chiaro",
@@ -57,7 +59,13 @@
       "generic": "Si è verificato un errore"
     },
     "footer": "E-mail + password sicuri",
-    "working": "Elaborazione..."
+    "working": "Elaborazione...",
+    "legal": {
+      "prefix": "Continuando, accetti i nostri",
+      "termsOfService": "Termini di servizio",
+      "and": "e",
+      "privacyPolicy": "Informativa sulla privacy"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Costruisci da qui.",
     "description": "Autenticazione, database, sincronizzazione in tempo reale e caricamento file — tutto collegato e pronto.",
     "getStarted": "Inizia",
-    "signIn": "Accedi"
+    "signIn": "Accedi",
+    "footer": {
+      "about": "Chi Siamo",
+      "privacyPolicy": "Informativa sulla privacy",
+      "termsOfService": "Termini di servizio"
+    }
   },
   "dashboard": {
     "projects": "Progetti",
@@ -86,7 +99,7 @@
     "editProject": "Modifica progetto",
     "deleteProject": "Elimina progetto",
     "deleteConfirmTitle": "Eliminare il progetto?",
-    "deleteConfirmDescription": "Questo eliminerà definitivamente \u201c{name}\u201d e tutte le sue attività. Questa azione non può essere annullata.",
+    "deleteConfirmDescription": "Questo eliminerà definitivamente “{name}” e tutte le sue attività. Questa azione non può essere annullata.",
     "fields": {
       "name": "Nome",
       "namePlaceholder": "Nome del progetto",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Uno starter Next.js con Convex, Better Auth e Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Chi Siamo",
+      "description": "Scopri Web App Starter e la nostra missione.",
+      "notice": "Questo è contenuto segnaposto. Sostituiscilo con il tuo contenuto prima del lancio.",
+      "heading": "Chi Siamo",
+      "mission": "La Nostra Missione",
+      "missionText": "Crediamo che i sviluppatori dovrebbero dedicare il loro tempo alla costruzione di funzionalità, non alla configurazione dell'infrastruttura. Web App Starter fornisce un punto di partenza pronto per la produzione con sincronizzazione dati in tempo reale, caricamenti di file e autenticazione basata su sessioni, tutto già collegato e pronto.",
+      "whatIncluded": "Cosa è Incluso",
+      "whatIncludedText": "Il kit di avvio include una pagina di atterraggio, un'applicazione web completamente autenticata, un dashboard di amministrazione e uno storybook di componenti. Ogni app condivide un sistema di design unificato costruito su primitive Radix UI con Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Questo progetto è open source ed è progettato per essere biforcato e personalizzato.",
+      "intro": "Web App Starter è una base full-stack per costruire applicazioni web moderne. Combina Next.js per il frontend, Convex per il backend e Better Auth per l'autenticazione sicura — tutto collegato e pronto per il lancio."
+    },
+    "privacy": {
+      "title": "Informativa sulla Privacy",
+      "description": "Come raccogliamo, utilizziamo e proteggiamo i tuoi dati.",
+      "notice": "Questa è una politica sulla privacy template. Personalizzala per la tua applicazione specifica e la tua giurisdizione prima del lancio.",
+      "heading": "Informativa sulla Privacy",
+      "lastUpdated": "Ultimo aggiornamento: {date}"
+    },
+    "terms": {
+      "title": "Termini di Servizio",
+      "description": "Le regole e le linee guida per l'utilizzo del nostro servizio.",
+      "notice": "Questi sono termini di servizio template. Personalizzali per la tua applicazione specifica e la tua giurisdizione prima del lancio.",
+      "heading": "Termini di Servizio",
+      "lastUpdated": "Ultimo aggiornamento: {date}"
+    }
   }
 }

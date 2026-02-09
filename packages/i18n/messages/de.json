@@ -9,7 +9,9 @@
     "creating": "Wird erstellt...",
     "delete": "Löschen",
     "signOut": "Abmelden",
-    "error": "Ein Fehler ist aufgetreten"
+    "error": "Ein Fehler ist aufgetreten",
+    "backToHome": "Zurück zur Startseite",
+    "note": "Hinweis"
   },
   "theme": {
     "light": "Helles Design",
@@ -57,7 +59,13 @@
       "generic": "Ein Fehler ist aufgetreten"
     },
     "footer": "Sichere E-Mail + Passwort",
-    "working": "Wird verarbeitet..."
+    "working": "Wird verarbeitet...",
+    "legal": {
+      "prefix": "Indem Sie fortfahren, stimmen Sie unseren",
+      "termsOfService": "Nutzungsbedingungen",
+      "and": "und",
+      "privacyPolicy": "Datenschutzrichtlinie"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Bauen Sie von hier aus.",
     "description": "Authentifizierung, Datenbank, Echtzeit-Synchronisation und Datei-Uploads — alles verbunden und einsatzbereit.",
     "getStarted": "Loslegen",
-    "signIn": "Anmelden"
+    "signIn": "Anmelden",
+    "footer": {
+      "about": "Über uns",
+      "privacyPolicy": "Datenschutzrichtlinie",
+      "termsOfService": "Nutzungsbedingungen"
+    }
   },
   "dashboard": {
     "projects": "Projekte",
@@ -86,7 +99,7 @@
     "editProject": "Projekt bearbeiten",
     "deleteProject": "Projekt löschen",
     "deleteConfirmTitle": "Projekt löschen?",
-    "deleteConfirmDescription": "Dies löscht \u201c{name}\u201d und alle zugehörigen Aufgaben dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleteConfirmDescription": "Dies löscht “{name}” und alle zugehörigen Aufgaben dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.",
     "fields": {
       "name": "Name",
       "namePlaceholder": "Projektname",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Ein Next.js-Starter mit Convex, Better Auth und Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Über uns",
+      "description": "Erfahren Sie mehr über Web App Starter und unsere Mission.",
+      "notice": "Dies ist Platzhalterinhalt. Ersetzen Sie ihn vor dem Start durch Ihren eigenen.",
+      "heading": "Über uns",
+      "mission": "Unsere Mission",
+      "missionText": "Wir glauben, dass Entwickler ihre Zeit für die Erstellung von Funktionen aufwenden sollten, nicht für die Konfiguration von Infrastruktur. Web App Starter bietet einen produktionsreifen Ausgangspunkt mit Echtzeitdatensynchronisierung, Dateiuploads und sitzungsbasierter Authentifizierung, alles bereits verdrahtet und einsatzbereit.",
+      "whatIncluded": "Was ist enthalten",
+      "whatIncludedText": "Das Starter-Kit wird mit einer Landingpage, einer vollständig authentifizierten Webanwendung, einem Admin-Dashboard und einem Component-Storybook geliefert. Jede App teilt ein einheitliches Design-System, das auf Radix UI-Primitiven mit Tailwind CSS aufgebaut ist.",
+      "openSource": "Open Source",
+      "openSourceText": "Dieses Projekt ist Open Source und soll geforkt und angepasst werden.",
+      "intro": "Web App Starter ist eine vollständige Grundlage für die Erstellung moderner Webanwendungen. Sie kombiniert Next.js für das Frontend, Convex für das Backend und Better Auth für sichere Authentifizierung – alles verdrahtet und versandbereit."
+    },
+    "privacy": {
+      "title": "Datenschutzrichtlinie",
+      "description": "Wie wir Ihre Daten erfassen, verwenden und schützen.",
+      "notice": "Dies ist eine Vorlage für eine Datenschutzrichtlinie. Passen Sie sie vor dem Start an Ihre spezifische Anwendung und Gerichtsbarkeit an.",
+      "heading": "Datenschutzrichtlinie",
+      "lastUpdated": "Zuletzt aktualisiert: {date}"
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "description": "Die Regeln und Richtlinien für die Nutzung unseres Dienstes.",
+      "notice": "Dies ist eine Vorlage für Nutzungsbedingungen. Passen Sie sie vor dem Start an Ihre spezifische Anwendung und Gerichtsbarkeit an.",
+      "heading": "Nutzungsbedingungen",
+      "lastUpdated": "Zuletzt aktualisiert: {date}"
+    }
   }
 }

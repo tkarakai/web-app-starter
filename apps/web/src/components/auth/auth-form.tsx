@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { authClient } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
+import { redirectWithUserLocale } from "@/lib/auth-locale";
 import {
   Button,
   Card,
@@ -68,7 +69,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           setError(formatAuthError(result.error));
         } else {
           broadcastAuth();
-          router.push("/dashboard");
+          await redirectWithUserLocale(router);
         }
         return;
       }
@@ -84,7 +85,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         setError(formatAuthError(result.error));
       } else {
         broadcastAuth();
-        router.push("/dashboard");
+        await redirectWithUserLocale(router);
       }
     } finally {
       setPending(false);
@@ -182,23 +183,23 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             <span className="underline">{t(`${namespace}.switchLink`)}</span>
           </Button>
           <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-            By continuing, you agree to our{" "}
+            {t("legal.prefix")}{" "}
             <a
               href={`${LANDING_URL}/terms`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              Terms of Service
+              {t("legal.termsOfService")}
             </a>{" "}
-            and{" "}
+            {t("legal.and")}{" "}
             <a
               href={`${LANDING_URL}/privacy`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              Privacy Policy
+              {t("legal.privacyPolicy")}
             </a>
             .
           </p>

@@ -9,7 +9,9 @@
     "creating": "Aanmaken...",
     "delete": "Verwijderen",
     "signOut": "Uitloggen",
-    "error": "Er is een fout opgetreden"
+    "error": "Er is een fout opgetreden",
+    "backToHome": "Terug naar startpagina",
+    "note": "Opmerking"
   },
   "theme": {
     "light": "Licht thema",
@@ -57,7 +59,13 @@
       "generic": "Er is een fout opgetreden"
     },
     "footer": "Beveiligde e-mail + wachtwoord",
-    "working": "Bezig..."
+    "working": "Bezig...",
+    "legal": {
+      "prefix": "Door door te gaan, ga je akkoord met onze",
+      "termsOfService": "Servicevoorwaarden",
+      "and": "en",
+      "privacyPolicy": "Privacybeleid"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Bouw vanaf hier.",
     "description": "Authenticatie, database, realtime synchronisatie en bestandsuploads — aangesloten en klaar.",
     "getStarted": "Aan de slag",
-    "signIn": "Inloggen"
+    "signIn": "Inloggen",
+    "footer": {
+      "about": "Over ons",
+      "privacyPolicy": "Privacybeleid",
+      "termsOfService": "Servicevoorwaarden"
+    }
   },
   "dashboard": {
     "projects": "Projecten",
@@ -86,7 +99,7 @@
     "editProject": "Project bewerken",
     "deleteProject": "Project verwijderen",
     "deleteConfirmTitle": "Project verwijderen?",
-    "deleteConfirmDescription": "Dit verwijdert \u201c{name}\u201d en alle bijbehorende taken permanent. Deze actie kan niet ongedaan worden gemaakt.",
+    "deleteConfirmDescription": "Dit verwijdert “{name}” en alle bijbehorende taken permanent. Deze actie kan niet ongedaan worden gemaakt.",
     "fields": {
       "name": "Naam",
       "namePlaceholder": "Projectnaam",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Een Next.js-starter met Convex, Better Auth en Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Over ons",
+      "description": "Meer informatie over Web App Starter en onze missie.",
+      "notice": "Dit is placeholder-inhoud. Vervang dit door je eigen inhoud voordat je start.",
+      "heading": "Over ons",
+      "mission": "Onze Missie",
+      "missionText": "Wij geloven dat ontwikkelaars hun tijd moeten besteden aan het bouwen van functies, niet aan het configureren van infrastructuur. Web App Starter biedt een productieklaar startpunt met real-time data synchronisatie, bestandsuploads en sessie-gebaseerde authenticatie, alles al aangesloten en klaar.",
+      "whatIncluded": "Wat is Inbegrepen",
+      "whatIncludedText": "De starterkit wordt geleverd met een landingspagina, een volledig geverifieerde webapplicatie, een admin-dashboard en een component-storybook. Elke app deelt een uniform designsysteem gebouwd op Radix UI-primitieven met Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Dit project is open source en is ontworpen om te worden geforkt en aangepast.",
+      "intro": "Web App Starter is een volledige stack-basis voor het bouwen van moderne webapplicaties. Het combineert Next.js voor de frontend, Convex voor de backend en Better Auth voor veilige authenticatie — alles aangesloten en klaar om te verzenden."
+    },
+    "privacy": {
+      "title": "Privacybeleid",
+      "description": "Hoe we je gegevens verzamelen, gebruiken en beschermen.",
+      "notice": "Dit is een privacybeleidssjabloon. Pas dit aan voor je specifieke toepassing en rechtsgebied voordat je start.",
+      "heading": "Privacybeleid",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    },
+    "terms": {
+      "title": "Servicevoorwaarden",
+      "description": "De regels en richtlijnen voor het gebruik van onze service.",
+      "notice": "Dit is een sjabloon van servicevoorwaarden. Pas dit aan voor je specifieke toepassing en rechtsgebied voordat je start.",
+      "heading": "Servicevoorwaarden",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    }
   }
 }

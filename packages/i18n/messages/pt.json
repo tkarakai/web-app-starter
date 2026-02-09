@@ -9,7 +9,9 @@
     "creating": "Criando...",
     "delete": "Excluir",
     "signOut": "Sair",
-    "error": "Ocorreu um erro"
+    "error": "Ocorreu um erro",
+    "backToHome": "Voltar para casa",
+    "note": "Nota"
   },
   "theme": {
     "light": "Tema claro",
@@ -57,7 +59,13 @@
       "generic": "Ocorreu um erro"
     },
     "footer": "E-mail + senha seguros",
-    "working": "Processando..."
+    "working": "Processando...",
+    "legal": {
+      "prefix": "Ao continuar, você concorda com nossos",
+      "termsOfService": "Termos de serviço",
+      "and": "e",
+      "privacyPolicy": "Política de privacidade"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -65,7 +73,12 @@
     "headingLine2": "Construa a partir daqui.",
     "description": "Autenticação, banco de dados, sincronização em tempo real e upload de arquivos — tudo conectado e pronto.",
     "getStarted": "Começar",
-    "signIn": "Entrar"
+    "signIn": "Entrar",
+    "footer": {
+      "about": "Sobre",
+      "privacyPolicy": "Política de privacidade",
+      "termsOfService": "Termos de serviço"
+    }
   },
   "dashboard": {
     "projects": "Projetos",
@@ -86,7 +99,7 @@
     "editProject": "Editar projeto",
     "deleteProject": "Excluir projeto",
     "deleteConfirmTitle": "Excluir projeto?",
-    "deleteConfirmDescription": "Isso excluirá permanentemente \u201c{name}\u201d e todas as suas tarefas. Esta ação não pode ser desfeita.",
+    "deleteConfirmDescription": "Isso excluirá permanentemente “{name}” e todas as suas tarefas. Esta ação não pode ser desfeita.",
     "fields": {
       "name": "Nome",
       "namePlaceholder": "Nome do projeto",
@@ -150,5 +163,34 @@
   "metadata": {
     "title": "Web App Starter",
     "description": "Um starter de Next.js com Convex, Better Auth e Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Sobre",
+      "description": "Saiba mais sobre Web App Starter e nossa missão.",
+      "notice": "Este é um conteúdo de espaço reservado. Substitua-o pelo seu próprio conteúdo antes de lançar.",
+      "heading": "Sobre",
+      "mission": "Nossa Missão",
+      "missionText": "Acreditamos que os desenvolvedores devem dedicar seu tempo à construção de recursos, não à configuração de infraestrutura. Web App Starter fornece um ponto de partida pronto para produção com sincronização de dados em tempo real, uploads de arquivo e autenticação baseada em sessão, tudo já conectado e pronto.",
+      "whatIncluded": "O Que Está Incluído",
+      "whatIncludedText": "O kit de inicialização vem com uma página de destino, um aplicativo web totalmente autenticado, um painel de administração e um livro de componentes. Cada aplicativo compartilha um sistema de design unificado construído em primitivos do Radix UI com Tailwind CSS.",
+      "openSource": "Código Aberto",
+      "openSourceText": "Este projeto é código aberto e foi projetado para ser bifurcado e personalizado.",
+      "intro": "Web App Starter é uma base de pilha completa para construir aplicativos web modernos. Combina Next.js para o frontend, Convex para o backend e Better Auth para autenticação segura — tudo conectado e pronto para enviar."
+    },
+    "privacy": {
+      "title": "Política de Privacidade",
+      "description": "Como coletamos, usamos e protegemos seus dados.",
+      "notice": "Esta é uma política de privacidade de modelo. Personalize-a para seu aplicativo específico e jurisdição antes de lançar.",
+      "heading": "Política de Privacidade",
+      "lastUpdated": "Última atualização: {date}"
+    },
+    "terms": {
+      "title": "Termos de Serviço",
+      "description": "As regras e diretrizes para usar nosso serviço.",
+      "notice": "Estes são termos de serviço de modelo. Personalize-os para seu aplicativo específico e jurisdição antes de lançar.",
+      "heading": "Termos de Serviço",
+      "lastUpdated": "Última atualização: {date}"
+    }
   }
 }
