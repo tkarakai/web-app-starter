@@ -10,6 +10,19 @@ import {
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 
+/** Allowed content types for uploads. Reject executables, HTML, SVG, etc. */
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "application/json",
+  "application/zip",
+]);
+
 export const generateUploadUrl = authedMutation({
   args: {},
   handler: async (ctx) => {
@@ -38,10 +51,16 @@ export const saveUpload = authedMutation({
       throw new Error("FILE_TOO_LARGE");
     }
 
+    const contentType = fileMeta.contentType ?? "application/octet-stream";
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+      await ctx.storage.delete(args.storageId);
+      throw new Error("FILE_TYPE_NOT_ALLOWED");
+    }
+
     return ctx.db.insert("uploads", {
       storageId: args.storageId,
       name: args.name,
-      contentType: fileMeta.contentType ?? "application/octet-stream",
+      contentType,
       size: fileMeta.size,
       projectId: args.projectId,
       ownerId: ctx.ownerId,
