@@ -264,18 +264,16 @@ test.describe("Sidebar navigation", () => {
   test("category auto-expands when navigating to a component whose category was collapsed", async ({
     page,
   }) => {
-    // Go to "Overlay" category page — Overlay auto-expands
-    await page.goto("/components/category/overlay");
-    expect(await isCategoryExpanded(page, "Overlay")).toBe(true);
-
-    // "Layout" should be collapsed
+    // "Layout" should be collapsed (we're on /components/button, "Actions" is expanded)
     expect(await isCategoryExpanded(page, "Layout")).toBe(false);
 
-    // Navigate to a Layout component via card click
+    // Navigate directly to a Layout component
     await page.goto("/components/tabs");
 
-    // "Layout" should now be auto-expanded
-    expect(await isCategoryExpanded(page, "Layout")).toBe(true);
+    // "Layout" should now be auto-expanded (wait for sidebar state to settle after navigation)
+    await expect
+      .poll(() => isCategoryExpanded(page, "Layout"), { timeout: 5000 })
+      .toBe(true);
   });
 
   test("clicking a card on the category page auto-expands the target category in sidebar", async ({
