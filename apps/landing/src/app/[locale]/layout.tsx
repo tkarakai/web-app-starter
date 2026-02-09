@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Raleway } from "next/font/google";
+import { Raleway, Cairo, Heebo } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
@@ -14,6 +14,23 @@ const raleway = Raleway({
   variable: "--font-sans",
   display: "swap",
 });
+
+const cairo = Cairo({
+  subsets: ["arabic"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const heebo = Heebo({
+  subsets: ["hebrew"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const fontsByLocale: Record<string, { variable: string }> = {
+  ar: cairo,
+  he: heebo,
+};
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -78,9 +95,10 @@ export default async function LocaleLayout({
   const pathname = headersList.get("x-pathname") ?? "/";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const dir = getLocaleDirection(locale);
+  const font = fontsByLocale[locale] || raleway;
 
   return (
-    <html lang={locale} dir={dir} className={raleway.variable} suppressHydrationWarning>
+    <html lang={locale} dir={dir} className={font.variable} suppressHydrationWarning>
       <head>
         <HreflangLinks locale={locale} pathname={pathname} siteUrl={siteUrl} />
       </head>
