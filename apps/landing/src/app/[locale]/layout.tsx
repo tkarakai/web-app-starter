@@ -6,7 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 
-import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
+import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
 import { Footer } from "@/components/footer";
 
 const raleway = Raleway({
@@ -70,14 +70,20 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const [nonce, messages] = await Promise.all([
+  const [nonce, messages, headersList] = await Promise.all([
     headers().then((h) => h.get("x-nonce") ?? undefined),
     getMessages(),
+    headers(),
   ]);
+  const pathname = headersList.get("x-pathname") ?? "/";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const dir = getLocaleDirection(locale);
 
   return (
     <html lang={locale} dir={dir} className={raleway.variable} suppressHydrationWarning>
+      <head>
+        <HreflangLinks locale={locale} pathname={pathname} siteUrl={siteUrl} />
+      </head>
       <body className="flex min-h-screen flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
           <NextIntlClientProvider messages={messages}>

@@ -27,6 +27,18 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
+/**
+ * Extract the pathname without the locale prefix.
+ */
+function stripLocalePrefix(pathname: string): string {
+  for (const locale of locales) {
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+      return pathname.slice(`/${locale}`.length) || "/";
+    }
+  }
+  return pathname;
+}
+
 export function proxy(request: NextRequest) {
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
@@ -49,6 +61,10 @@ export function proxy(request: NextRequest) {
 
   // Run next-intl middleware (locale detection, rewrite, cookie)
   const intlResponse = intlMiddleware(request);
+
+  // Add pathname header for hreflang generation (without locale prefix)
+  const strippedPath = stripLocalePrefix(request.nextUrl.pathname);
+  intlResponse.headers.set("x-pathname", strippedPath);
 
   // Apply CSP headers
   const nonce = btoa(crypto.randomUUID());

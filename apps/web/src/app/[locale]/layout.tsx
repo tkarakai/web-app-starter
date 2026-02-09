@@ -9,7 +9,7 @@ import { getMessages, getTranslations } from "next-intl/server";
 import { Toaster } from "@repo/design-system";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
-import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
+import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -72,16 +72,22 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const [token, nonce, messages] = await Promise.all([
+  const [token, nonce, messages, headersList] = await Promise.all([
     getToken(),
     headers().then((h) => h.get("x-nonce") ?? undefined),
     getMessages(),
+    headers(),
   ]);
 
+  const pathname = headersList.get("x-pathname") ?? "/";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
   const dir = getLocaleDirection(locale);
 
   return (
     <html lang={locale} dir={dir} className={raleway.variable} suppressHydrationWarning>
+      <head>
+        <HreflangLinks locale={locale} pathname={pathname} siteUrl={siteUrl} />
+      </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <NextIntlClientProvider messages={messages}>

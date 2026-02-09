@@ -118,6 +118,9 @@ export function proxy(request: NextRequest) {
   // --- Locale handling (detection, rewrite, cookie) ---
   const intlResponse = intlMiddleware(request);
 
+  // Add pathname header for hreflang generation (without locale prefix)
+  intlResponse.headers.set("x-pathname", strippedPath);
+
   // --- CSP headers ---
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
