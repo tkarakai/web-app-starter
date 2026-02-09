@@ -59,14 +59,7 @@ export function proxy(request: NextRequest) {
     });
   }
 
-  // Run next-intl middleware (locale detection, rewrite, cookie)
-  const intlResponse = intlMiddleware(request);
-
-  // Add pathname header for hreflang generation (without locale prefix)
-  const strippedPath = stripLocalePrefix(request.nextUrl.pathname);
-  intlResponse.headers.set("x-pathname", strippedPath);
-
-  // Apply CSP headers
+  // --- CSP headers ---
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
 
@@ -87,8 +80,18 @@ export function proxy(request: NextRequest) {
     "form-action 'self'",
   ].join("; ");
 
+  // Forward custom headers via request so Server Components can read them
+  // via headers(). next-intl's middleware copies request.headers and passes
+  // them through NextResponse.next/rewrite({ request: { headers } }).
+  const strippedPath = stripLocalePrefix(request.nextUrl.pathname);
+  request.headers.set("x-nonce", nonce);
+  request.headers.set("x-pathname", strippedPath);
+
+  // Run next-intl middleware (locale detection, rewrite, cookie)
+  const intlResponse = intlMiddleware(request);
+
+  // Set CSP on the response (sent to the browser)
   intlResponse.headers.set("Content-Security-Policy", csp);
-  intlResponse.headers.set("x-nonce", nonce);
 
   // Rate limit headers on successful responses
   intlResponse.headers.set("X-RateLimit-Limit", String(RATE_LIMIT_CONFIG.maxRequests));
