@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
+import { ALLOWED_CONTENT_TYPES } from "./files";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -302,17 +303,7 @@ describe("files", () => {
   });
 
   describe("upload validation — content type whitelist", () => {
-    const ALLOWED_CONTENT_TYPES = new Set([
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "application/pdf",
-      "text/plain",
-      "text/csv",
-      "application/json",
-      "application/zip",
-    ]);
+    // ALLOWED_CONTENT_TYPES is imported from files.ts — the source of truth
 
     test("allowed content types are accepted at data layer", async () => {
       const t = createTestEnv();
