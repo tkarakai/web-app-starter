@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@repo/i18n/navigation";
 
 import { LocaleSwitcher } from "./locale-switcher";
 
