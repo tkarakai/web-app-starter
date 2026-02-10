@@ -17,17 +17,17 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 - Internationalization (15 languages including RTL) via `@repo/i18n` and `next-intl`.
 - Local CI checks that mirror GitHub Actions, with offline Docker mode via `act`.
 
-## Stack (latest stable)
+## Stack
 
-- Next.js 16.1.5
-- React 19.2.3
+- [Next.js](https://nextjs.org/docs) 16.1.5
+- [React](https://react.dev) 19.2.3
 - TypeScript 5.9.3
 - Bun 1.3.6
-- Turborepo 2.5+
-- Tailwind CSS 4.1.18
-- shadcn/ui components (in `@repo/design-system`)
-- Convex 1.31.7
-- Better Auth 1.4.12
+- [Turborepo](https://turbo.build/repo/docs) 2.5+
+- [Tailwind CSS](https://tailwindcss.com/docs/installation/framework-guides/nextjs) 4.1.18
+- [shadcn/ui](https://ui.shadcn.com/docs/installation/next) components (in `@repo/design-system`)
+- [Convex](https://docs.convex.dev/home) 1.31.7
+- [Better Auth](https://better-auth.com/docs/integrations/next) 1.4.12 ([Convex integration](https://better-auth.com/docs/integrations/convex))
 
 ## Quick start
 
@@ -264,6 +264,8 @@ Run the full CI check before pushing:
 ```bash
 bun run ci              # Full CI: lint, types, tests, build, e2e
 bun run ci:quick        # Skip E2E for faster feedback
+bun run ci:act          # Run in Docker via act (mirrors GitHub Actions)
+bun run ci:act:offline  # Offline mode (fast, no network required)
 ```
 
 ## Conventions
@@ -290,31 +292,6 @@ bun run ci:quick        # Skip E2E for faster feedback
 - Use Convex deployments for environment-specific configuration.
 - Keep secrets in Convex env vars, never in committed files.
 - CI runs via Turborepo: `turbo lint`, `turbo typecheck`, `turbo build`, etc.
-
-## Development process (log)
-
-1. Chose latest stable package versions for Next.js, React, Convex, Better Auth, and Tailwind.
-2. Hand-scaffolded the Next.js app router structure with Bun scripts.
-3. Implemented Tailwind v4 + shadcn/ui primitives and a bespoke UI theme.
-4. Wired Convex schema, queries, mutations, and file storage.
-5. Integrated Better Auth with Convex and set up the auth route handler.
-6. Built the launch dashboard demo with realtime queries and uploads.
-7. Added multi-tier testing: Bun, Vitest, convex-test, Playwright.
-8. Documented setup steps, conventions, and references.
-9. Converted to monorepo with Bun workspaces + Turborepo: extracted `@repo/design-system`, `@repo/auth`, `@repo/backend` as shared packages and set up three core Next.js apps (landing, web, admin).
-10. Added internationalization (`@repo/i18n`) with 15-language support including RTL.
-11. Added edge rate limiting (`@repo/edge-rate-limit`) across web, admin, and landing proxies.
-12. Added landing-static app (fully static export variant), storybook (component showcase), and demo (UI style preview).
-13. Split CI into per-app workflows with CI gate, added CD pipelines (staging, production, rollback).
-
-## References consulted
-
-- Better Auth Next.js integration: https://better-auth.com/docs/integrations/next
-- Better Auth + Convex integration: https://better-auth.com/docs/integrations/convex
-- Convex docs: https://docs.convex.dev/home
-- Tailwind CSS Next.js install guide: https://tailwindcss.com/docs/installation/framework-guides/nextjs
-- shadcn/ui installation: https://ui.shadcn.com/docs/installation/next
-- Turborepo docs: https://turbo.build/repo/docs
 
 ## Local vs cloud deployments
 
@@ -407,7 +384,3 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
 NEXT_PUBLIC_SITE_URL=https://app.example.com
 ```
 
-## Notes
-
-- `packages/backend/convex/_generated` contains a stub to keep TypeScript happy before you run Convex dev. Convex will regenerate the file with full types.
-- If you upgrade Tailwind or shadcn/ui, revisit `packages/design-system/tailwind.config.ts` and `packages/design-system/tokens/index.css` to align with new theming defaults.
