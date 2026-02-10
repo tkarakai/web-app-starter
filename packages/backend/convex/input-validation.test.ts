@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
+import { ALLOWED_CONTENT_TYPES } from "./files";
 import {
   assertMaxLength,
   MAX_NAME_LENGTH,
@@ -210,41 +211,23 @@ describe("input validation", () => {
       ).rejects.toThrow();
     });
 
-    test("file upload content-type whitelist rejects HTML", async () => {
-      const t = createTestEnv();
+    test("file upload content-type whitelist rejects dangerous types", () => {
+      // ALLOWED_CONTENT_TYPES is imported from files.ts — the production constant.
+      // The actual gate is in the saveUpload mutation handler (tested in files.test.ts).
+      // Here we verify the allowlist itself rejects dangerous content types.
+      const dangerous = [
+        "text/html",
+        "image/svg+xml",
+        "application/javascript",
+        "application/x-sh",
+      ];
 
-      const projectId = await t.run(async (ctx) => {
-        return ctx.db.insert("projects", {
-          name: "Test",
-          description: "",
-          ownerId: "user-1",
-          createdAt: Date.now(),
-        });
-      });
-
-      // Verify the ALLOWED_CONTENT_TYPES set rejects dangerous types
-      // This tests the data-layer invariant: only safe types in the DB
-      await expect(
-        t.run(async (ctx) => {
-          const storageId = await ctx.storage.store(
-            new Blob(["<html><script>alert(1)</script></html>"], {
-              type: "text/html",
-            })
-          );
-          return ctx.db.insert("uploads", {
-            storageId,
-            name: "malicious.html",
-            contentType: "text/html",
-            size: 50,
-            projectId,
-            ownerId: "user-1",
-            createdAt: Date.now(),
-          });
-        })
-      // Note: Schema allows any string for contentType (validation is in the mutation handler).
-      // This insert will succeed at the schema level — the security gate is in files.ts saveUpload.
-      // We verify the handler-level gate in files.test.ts instead.
-      ).resolves.toBeDefined();
+      for (const type of dangerous) {
+        expect(
+          ALLOWED_CONTENT_TYPES.has(type),
+          `${type} must NOT be in allowlist`
+        ).toBe(false);
+      }
     });
   });
 });
