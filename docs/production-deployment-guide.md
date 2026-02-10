@@ -653,7 +653,7 @@ No automated alerting is configured by default. Options by team size:
 ├─────────────────────────────────────────────────────┤
 │                                                     │
 │  Check staging SHA:                                 │
-│  git tag -l 'deploy/staging/*' --sort=-cd | head -1 │
+│  git tag -l 'deploy/staging/*' --sort=-creatordate | head -1 │
 │                                                     │
 │  Promote to production:                             │
 │  gh workflow run cd-production.yml \                │
