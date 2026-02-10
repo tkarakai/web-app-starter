@@ -15,7 +15,12 @@ export const list = internalQuery({
 export const listProtected = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.getAuthUser(ctx);
+    let user;
+    try {
+      user = await authComponent.getAuthUser(ctx);
+    } catch {
+      return [];
+    }
     if (!user) {
       return [];
     }

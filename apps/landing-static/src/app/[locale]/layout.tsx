@@ -4,7 +4,8 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 
-import { type Locale, locales } from "@repo/i18n";
+import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
+import { DocumentLocale } from "@/components/document-locale";
 import { Footer } from "@/components/footer";
 
 type Props = {
@@ -67,10 +68,12 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const messages = await getMessages();
+  const dir = getLocaleDirection(locale);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <NextIntlClientProvider messages={messages}>
+        <DocumentLocale lang={locale} dir={dir} />
         <div className="flex-1">{children}</div>
         <Footer />
       </NextIntlClientProvider>
