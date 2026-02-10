@@ -5,13 +5,14 @@
 ## Starting Development
 
 ```bash
-# Start all apps + Convex (recommended)
+# Start core apps + Convex (recommended)
 bun run dev                  # Uses scripts/dev-start.sh
 
 # Start a specific app + Convex
 bun run dev:web              # Convex + web app (port 3001)
 bun run dev:admin            # Convex + admin app (port 3002)
 bun run dev:landing          # Landing only (port 3000, no Convex needed)
+bun run dev:landing-static   # Static landing page (port 3004, no Convex)
 bun run dev:storybook        # Component storybook only (port 3003, no Convex)
 
 # Check service status
