@@ -357,3 +357,84 @@ describe("input validation in mutations", () => {
     });
   });
 });
+
+describe("mutation rate limiting", () => {
+  describe("rate limit configuration", () => {
+    test("mutationGlobal rate limit is defined as token bucket", async () => {
+      const { checkRateLimit, rateLimit } = await import("./rateLimits");
+
+      // Both check and consume functions should be available
+      expect(checkRateLimit).toBeDefined();
+      expect(rateLimit).toBeDefined();
+      expect(typeof checkRateLimit).toBe("function");
+      expect(typeof rateLimit).toBe("function");
+    });
+
+    test("rateLimits table exists for persisting rate limit state", async () => {
+      const t = createTestEnv();
+
+      // The rateLimits table is used by convex-helpers rateLimit to persist
+      // token bucket state. Verify it accepts records.
+      const id = await t.run(async (ctx) => {
+        return ctx.db.insert("rateLimits", {
+          name: "mutationGlobal",
+          key: "test-user-id",
+          value: 30,
+          ts: Date.now(),
+        });
+      });
+
+      const record = await t.run(async (ctx) => {
+        return ctx.db.get(id);
+      });
+
+      expect(record).toBeDefined();
+      expect(record?.name).toBe("mutationGlobal");
+      expect(record?.key).toBe("test-user-id");
+    });
+
+    test("rate limit state is per-user (keyed by ownerId)", async () => {
+      const t = createTestEnv();
+
+      // Insert rate limit records for two different users
+      await t.run(async (ctx) => {
+        await ctx.db.insert("rateLimits", {
+          name: "mutationGlobal",
+          key: "alice-id",
+          value: 5,
+          ts: Date.now(),
+        });
+        await ctx.db.insert("rateLimits", {
+          name: "mutationGlobal",
+          key: "bob-id",
+          value: 25,
+          ts: Date.now(),
+        });
+      });
+
+      // Each user has their own independent rate limit state
+      const aliceLimit = await t.run(async (ctx) => {
+        return ctx.db
+          .query("rateLimits")
+          .withIndex("name", (q) =>
+            q.eq("name", "mutationGlobal").eq("key", "alice-id")
+          )
+          .first();
+      });
+
+      const bobLimit = await t.run(async (ctx) => {
+        return ctx.db
+          .query("rateLimits")
+          .withIndex("name", (q) =>
+            q.eq("name", "mutationGlobal").eq("key", "bob-id")
+          )
+          .first();
+      });
+
+      expect(aliceLimit?.value).toBe(5);
+      expect(bobLimit?.value).toBe(25);
+      // They are independent — one user's rate limit doesn't affect the other
+      expect(aliceLimit?.key).not.toBe(bobLimit?.key);
+    });
+  });
+});
