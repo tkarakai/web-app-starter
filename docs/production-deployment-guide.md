@@ -246,11 +246,11 @@ Vercel provisions SSL certificates automatically.
 
 **Update Vercel environment variables** after adding custom domains — the `NEXT_PUBLIC_SITE_URL` production values should use the custom domain.
 
-**Update Convex `SITE_URL`** to match the production domain:
+**Update Convex `SITE_URL`** to match the production custom domains (all auth origins):
 
 ```bash
 # In production deployment
-bunx convex env set SITE_URL "https://app.yourdomain.com"
+bunx convex env set SITE_URL "https://app.yourdomain.com,https://admin.yourdomain.com"
 ```
 
 ---
