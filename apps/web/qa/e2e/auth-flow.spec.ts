@@ -140,15 +140,22 @@ test.describe("Auth Route Guards", () => {
       },
     ]);
 
+    // Intercept network to capture the redirect before Playwright follows it
+    const redirectUrls: string[] = [];
+    page.on("response", (response) => {
+      if (response.status() >= 300 && response.status() < 400) {
+        const location = response.headers()["location"];
+        if (location) redirectUrls.push(location);
+      }
+    });
+
     await page.goto("/en/sign-in", { waitUntil: "commit" });
 
-    // The proxy should redirect to /dashboard.
-    // The dashboard layout may then redirect back to sign-in if the token
-    // is invalid, but the proxy-level redirect itself is what we're testing.
-    const url = page.url();
-    // During the redirect chain, at some point we should hit /dashboard
-    // (even if it bounces back). Check the initial redirect response.
-    expect(url).toMatch(/\/(dashboard|sign-in)/);
+    // The proxy should issue a 307 redirect to /en/dashboard
+    const dashboardRedirect = redirectUrls.some((url) =>
+      url.includes("/dashboard")
+    );
+    expect(dashboardRedirect).toBe(true);
   });
 
   test("authenticated user accessing /sign-up is redirected to /dashboard", async ({
@@ -164,8 +171,19 @@ test.describe("Auth Route Guards", () => {
       },
     ]);
 
+    const redirectUrls: string[] = [];
+    page.on("response", (response) => {
+      if (response.status() >= 300 && response.status() < 400) {
+        const location = response.headers()["location"];
+        if (location) redirectUrls.push(location);
+      }
+    });
+
     await page.goto("/en/sign-up", { waitUntil: "commit" });
-    const url = page.url();
-    expect(url).toMatch(/\/(dashboard|sign-in)/);
+
+    const dashboardRedirect = redirectUrls.some((url) =>
+      url.includes("/dashboard")
+    );
+    expect(dashboardRedirect).toBe(true);
   });
 });
