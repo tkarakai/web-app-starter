@@ -200,17 +200,19 @@ Or find them in each project's Settings > General.
 |--------|-------|
 | `VERCEL_TOKEN` | Vercel personal access token (Settings > Tokens) |
 | `VERCEL_ORG_ID` | Your Vercel org/user ID |
+| `VERCEL_PROJECT_ID_WEB` | web-app project ID |
+| `VERCEL_PROJECT_ID_ADMIN` | admin-app project ID |
+| `VERCEL_PROJECT_ID_LANDING` | landing-app project ID |
+
+> **Note:** `VERCEL_PROJECT_ID_*` must be **repository secrets** (not environment secrets) because the CD workflow build jobs run without an `environment:` context and can only access repository-level secrets.
 
 **Add environment secrets** (Settings > Environments > [env] > Environment secrets):
 
 | Secret | `staging` | `production` |
 |--------|-----------|--------------|
-| `VERCEL_PROJECT_ID_WEB` | web-app project ID | web-app project ID |
-| `VERCEL_PROJECT_ID_ADMIN` | admin-app project ID | admin-app project ID |
-| `VERCEL_PROJECT_ID_LANDING` | landing-app project ID | landing-app project ID |
 | `CONVEX_DEPLOY_KEY` | Staging deploy key | Production deploy key |
 
-> **Note:** `VERCEL_PROJECT_ID_*` values are typically the same across environments (same Vercel project, different deployment targets). `CONVEX_DEPLOY_KEY` must be different per environment.
+> **Note:** `CONVEX_DEPLOY_KEY` must be different per environment — it controls which Convex deployment receives the push.
 
 **Configure branch protection** (Settings > Branches > `main`):
 
@@ -276,8 +278,8 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Vercel environment variables set for both Preview and Production scopes
 - [ ] GitHub `staging` environment created
 - [ ] GitHub `production` environment created with required reviewers
-- [ ] All repository secrets set (`VERCEL_TOKEN`, `VERCEL_ORG_ID`)
-- [ ] All environment secrets set (project IDs, deploy keys)
+- [ ] All repository secrets set (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*`)
+- [ ] All environment secrets set (`CONVEX_DEPLOY_KEY` per environment)
 - [ ] Branch protection enabled on `main` with required status checks
 
 ### Verify Configuration
