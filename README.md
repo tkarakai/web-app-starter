@@ -1,19 +1,20 @@
 # web-app-starter
 
-[![CI](https://github.com/tkarakai/web-app-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci.yml)
+[![CI Gate](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml)
 
-A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend foundation. It includes three Next.js apps (landing, web, admin), shared packages for UI, auth, and backend, and a comprehensive testing and CI setup.
+A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend foundation. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
 
 ## What this starter gives you
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
-- **Three Next.js apps**: landing page (port 3000), web app (port 3001), admin dashboard (port 3002).
-- **Shared packages**: UI component library (`@repo/design-system`), authentication (`@repo/auth`), Convex backend (`@repo/backend`).
+- **Six Next.js apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo.
+- **Shared packages**: UI (`@repo/design-system`), auth (`@repo/auth`), backend (`@repo/backend`), i18n (`@repo/i18n`), edge rate limiting (`@repo/edge-rate-limit`), design patterns (`@repo/design-patterns`).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
 - Tailwind v4 + shadcn/ui styling with a bold, modern interface.
 - Sample launch dashboard with realtime updates and file uploads.
 - Multi-tier testing: Bun unit tests, Vitest component tests, Convex backend tests, Playwright E2E.
+- Internationalization (15 languages including RTL) via `@repo/i18n` and `next-intl`.
 - Local CI checks that mirror GitHub Actions, with offline Docker mode via `act`.
 
 ## Stack (latest stable)
@@ -42,20 +43,24 @@ bun install
 bun run dev
 ```
 
-This starts Convex and all three Next.js apps in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path.
+This starts Convex and all apps in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path.
 
 To start only a specific app:
 
 ```bash
-bun run dev:web       # Convex + web app (port 3001)
-bun run dev:admin     # Convex + admin app (port 3002)
-bun run dev:landing   # Landing page only (port 3000, no Convex)
+bun run dev:web              # Convex + web app (port 3001)
+bun run dev:admin            # Convex + admin app (port 3002)
+bun run dev:landing          # Landing page only (port 3000, no Convex)
+bun run dev:landing-static   # Static landing page (port 3004, no Convex)
+bun run dev:storybook        # Component storybook (port 3003, no Convex)
 ```
 
 3. Open the apps:
-   - Landing page: `http://localhost:3000`
    - Web app: `http://localhost:3001`
    - Admin dashboard: `http://localhost:3002`
+   - Landing page: `http://localhost:3000`
+   - Landing static: `http://localhost:3004`
+   - Storybook: `http://localhost:3003`
 
 4. When you're done, stop everything:
 
@@ -113,7 +118,13 @@ These values persist in the local Convex backend between sessions.
 │   │       └── e2e/           # Playwright E2E specs
 │   ├── admin/                 # Admin dashboard (@repo/admin, port 3002)
 │   │   └── src/
-│   └── landing/               # Landing/marketing page (@repo/landing, port 3000)
+│   ├── landing/               # Dynamic landing page (@repo/landing, port 3000)
+│   │   └── src/
+│   ├── landing-static/        # Fully static landing page (@repo/landing-static, port 3004)
+│   │   └── src/
+│   ├── storybook/             # Component storybook (@repo/storybook, port 3003)
+│   │   └── src/
+│   └── demo/                  # Standalone UI style demo
 │       └── src/
 ├── packages/
 │   ├── backend/               # Convex backend (@repo/backend)
@@ -122,17 +133,32 @@ These values persist in the local Convex backend between sessions.
 │   │   └── index.ts           # Main export
 │   ├── auth/                  # Authentication (@repo/auth)
 │   │   └── src/               # client.ts, server.ts, provider.tsx
-│   └── design-system/         # Shared UI components (@repo/design-system)
-│       ├── src/               # Radix UI + shadcn/ui components
-│       └── tokens/            # Design tokens (globals.css)
+│   ├── design-system/         # Shared UI components (@repo/design-system)
+│   │   ├── src/               # Radix UI + shadcn/ui components
+│   │   └── tokens/            # Design tokens (globals.css)
+│   ├── i18n/                  # Internationalization (@repo/i18n)
+│   │   ├── messages/          # Translation files (15 languages)
+│   │   └── src/               # i18n config and utilities
+│   ├── edge-rate-limit/       # Shared edge rate limiting (@repo/edge-rate-limit)
+│   └── design-patterns/       # Design patterns (@repo/design-patterns)
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
 │   ├── dev-stop.sh            # Stop all services
 │   ├── dev-status.sh          # Show running services
 │   ├── ci-local.sh            # Native CI checks (bun run ci)
-│   └── ci-local-act.sh        # Docker-based CI via act
+│   ├── ci-local-act.sh        # Docker-based CI via act
+│   ├── ensure-local-deps.sh   # Dependency setup
+│   └── ensure-branch-tracking.sh # Git utility
 ├── .github/workflows/
-│   ├── ci.yml                 # GitHub Actions CI/CD
+│   ├── ci-shared.yml          # Shared CI: lint, typecheck, backend tests
+│   ├── ci-web.yml             # Web app CI: test, build, E2E
+│   ├── ci-admin.yml           # Admin app CI: test, build, E2E
+│   ├── ci-landing.yml         # Landing app CI: test, build, E2E
+│   ├── ci-storybook.yml       # Storybook CI: build, E2E (non-blocking)
+│   ├── ci-gate.yml            # CI gate: aggregates all CI results
+│   ├── cd-staging.yml         # Deploy to staging
+│   ├── cd-production.yml      # Deploy to production
+│   ├── cd-rollback.yml        # Rollback deployment
 │   └── security.yml           # CodeQL, dependency audit, secrets scan
 ├── turbo.json                 # Turborepo task configuration
 └── package.json               # Root workspace definition
@@ -165,6 +191,18 @@ Convex schema, queries, mutations, and actions. Import the API:
 ```typescript
 import { api } from "@repo/backend";
 ```
+
+### `@repo/i18n` — Internationalization
+
+15-language support (including RTL) via `next-intl`. Provides locale configuration, translation messages, and i18n utilities. See `docs/i18n-architecture.md` for the full architecture.
+
+### `@repo/edge-rate-limit` — Edge Rate Limiting
+
+Shared edge rate limiter used by web, admin, and landing app proxies. Provides per-IP rate limiting at the edge layer.
+
+### `@repo/design-patterns` — Design Patterns
+
+Shared design patterns and utilities.
 
 ## Run against cloud Convex + Better Auth
 
@@ -263,7 +301,11 @@ bun run ci:quick        # Skip E2E for faster feedback
 6. Built the launch dashboard demo with realtime queries and uploads.
 7. Added multi-tier testing: Bun, Vitest, convex-test, Playwright.
 8. Documented setup steps, conventions, and references.
-9. Converted to monorepo with Bun workspaces + Turborepo: extracted `@repo/design-system`, `@repo/auth`, `@repo/backend` as shared packages and set up three Next.js apps (landing, web, admin).
+9. Converted to monorepo with Bun workspaces + Turborepo: extracted `@repo/design-system`, `@repo/auth`, `@repo/backend` as shared packages and set up three core Next.js apps (landing, web, admin).
+10. Added internationalization (`@repo/i18n`) with 15-language support including RTL.
+11. Added edge rate limiting (`@repo/edge-rate-limit`) across web, admin, and landing proxies.
+12. Added landing-static app (fully static export variant), storybook (component showcase), and demo (UI style preview).
+13. Split CI into per-app workflows with CI gate, added CD pipelines (staging, production, rollback).
 
 ## References consulted
 
