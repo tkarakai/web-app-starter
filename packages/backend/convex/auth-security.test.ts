@@ -1,8 +1,10 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
+import { ALLOWED_CONTENT_TYPES } from "./files";
 import { requireProjectAccess } from "./functions";
 import schema from "./schema";
+import { VALID_THEMES } from "./userProfiles";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -298,21 +300,18 @@ describe("authorization — cross-tenant isolation", () => {
 
 describe("input validation in mutations", () => {
   describe("userProfile validation", () => {
-    test("valid themes are constrained to allowlist", () => {
-      // The upsert handler validates: VALID_THEMES = ["light", "dark", "system"]
-      const validThemes = ["light", "dark", "system"];
+    test("valid themes are constrained to production allowlist", () => {
+      // VALID_THEMES is imported from userProfiles.ts — the source of truth
       const invalidThemes = ["hacker-mode", "", "<script>", "DARK", "Light"];
 
-      for (const theme of validThemes) {
-        expect(
-          validThemes.includes(theme),
-          `${theme} should be valid`
-        ).toBe(true);
-      }
+      // Verify expected themes exist in the production constant
+      expect(VALID_THEMES).toContain("light");
+      expect(VALID_THEMES).toContain("dark");
+      expect(VALID_THEMES).toContain("system");
 
       for (const theme of invalidThemes) {
         expect(
-          validThemes.includes(theme),
+          (VALID_THEMES as readonly string[]).includes(theme),
           `${theme} should be rejected`
         ).toBe(false);
       }
@@ -321,19 +320,7 @@ describe("input validation in mutations", () => {
 
   describe("file upload content-type whitelist", () => {
     test("only safe content types are allowed", () => {
-      const ALLOWED = new Set([
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-        "application/pdf",
-        "text/plain",
-        "text/csv",
-        "application/json",
-        "application/zip",
-      ]);
-
-      // Dangerous types that must be rejected
+      // ALLOWED_CONTENT_TYPES is imported from files.ts — the source of truth
       const DANGEROUS = [
         "text/html",
         "image/svg+xml",
@@ -346,14 +333,14 @@ describe("input validation in mutations", () => {
 
       for (const type of DANGEROUS) {
         expect(
-          ALLOWED.has(type),
+          ALLOWED_CONTENT_TYPES.has(type),
           `${type} must NOT be in allowlist`
         ).toBe(false);
       }
 
       // Safe types must be present
-      expect(ALLOWED.has("image/jpeg")).toBe(true);
-      expect(ALLOWED.has("application/pdf")).toBe(true);
+      expect(ALLOWED_CONTENT_TYPES.has("image/jpeg")).toBe(true);
+      expect(ALLOWED_CONTENT_TYPES.has("application/pdf")).toBe(true);
     });
   });
 });
