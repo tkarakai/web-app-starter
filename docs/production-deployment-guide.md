@@ -96,18 +96,18 @@ Complete these steps once, in order.
 # Switch to the staging deployment first
 # (select it in the dashboard or use CONVEX_DEPLOYMENT env var)
 
-# Staging
-bunx convex env set SITE_URL "https://your-staging-web.vercel.app"
+# Staging (include all app origins that authenticate against this backend)
+bunx convex env set SITE_URL "https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app"
 bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 
 # Production (switch deployment in dashboard first)
-bunx convex env set SITE_URL "https://your-production-web.vercel.app"
+bunx convex env set SITE_URL "https://your-production-web.vercel.app,https://your-production-admin.vercel.app"
 bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 ```
 
 > **IMPORTANT:** `BETTER_AUTH_SECRET` must be different for each environment. Generate a new random value for each.
 
-> **Multi-app origins:** If both web and admin apps authenticate against the same Convex backend, set `SITE_URL` to a comma-separated list: `https://web.example.com,https://admin.example.com`
+> **Multi-app origins:** `SITE_URL` is a comma-separated list of all app origins that authenticate against this Convex backend. The auth config (`packages/backend/convex/auth.ts`) uses it to build `trustedOrigins`. If you add more apps, append their origins here.
 
 **Generate deploy keys:**
 
