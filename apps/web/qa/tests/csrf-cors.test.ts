@@ -90,52 +90,11 @@ describe("CSRF Protection", () => {
 });
 
 describe("CORS Configuration", () => {
-  describe("Better Auth trusted origins", () => {
-    it("trustedOrigins derives from SITE_URL env var", () => {
-      // The multiOriginPlugin in auth.ts reads SITE_URL and sets trustedOrigins.
-      // In dev, SITE_URL defaults to "http://localhost:3001".
-      // This test verifies the pattern: comma-separated URLs → array.
-      const siteUrlRaw = "http://localhost:3001,http://localhost:3002";
-      const siteUrls = siteUrlRaw
-        .split(",")
-        .map((url) => url.trim())
-        .filter(Boolean);
-
-      expect(siteUrls).toEqual([
-        "http://localhost:3001",
-        "http://localhost:3002",
-      ]);
-      expect(siteUrls).not.toContain("*");
-      expect(siteUrls).not.toContain("null");
-    });
-
-    it("empty SITE_URL falls back to localhost:3001", () => {
-      const siteUrlRaw = process.env.SITE_URL || "http://localhost:3001";
-      const siteUrls = siteUrlRaw
-        .split(",")
-        .map((url) => url.trim())
-        .filter(Boolean);
-
-      expect(siteUrls.length).toBeGreaterThan(0);
-      // Must always have at least one valid URL
-      for (const url of siteUrls) {
-        expect(url).toMatch(/^https?:\/\//);
-      }
-    });
-
-    it("trustedOrigins never includes wildcard *", () => {
-      const siteUrlRaw = process.env.SITE_URL || "http://localhost:3001";
-      const siteUrls = siteUrlRaw
-        .split(",")
-        .map((url) => url.trim())
-        .filter(Boolean);
-
-      for (const url of siteUrls) {
-        expect(url).not.toBe("*");
-        expect(url).not.toContain("*");
-      }
-    });
-  });
+  // NOTE: Better Auth's trustedOrigins are configured inside the Convex
+  // backend (packages/backend/convex/auth.ts) via the multiOriginPlugin.
+  // Those cannot be imported in a Bun unit test since they run in the
+  // Convex server environment. The trusted origins invariants are best
+  // verified via integration / E2E tests against the real auth endpoints.
 
   describe("connect-src CSP directive", () => {
     it("CSP connect-src restricts API calls to known origins", () => {
