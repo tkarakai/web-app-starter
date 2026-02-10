@@ -12,34 +12,31 @@ import { test, expect } from "@playwright/test";
  */
 
 test.describe("Sign-In Rate Limiting", () => {
-  test("shows rate limit error after repeated failed attempts", async ({
+  test("shows rate limit error when server returns 429", async ({
     page,
   }) => {
     await page.goto("/en/sign-in");
-    await page.waitForLoadState("networkidle");
+    await expect(page.locator("#email")).toBeVisible();
 
-    // Better Auth sign-in rate limit: 3 attempts per 10 seconds.
-    // Submit 4+ attempts with wrong credentials rapidly.
-    for (let i = 0; i < 5; i++) {
-      await page.fill("#email", "ratelimit-test@example.com");
-      await page.fill("#password", "wrongpassword");
-      await page.click('button[type="submit"]');
+    // Mock the auth endpoint to return a 429 rate limit response
+    await page.route("**/api/auth/sign-in/email", async (route) => {
+      await route.fulfill({
+        status: 429,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Rate limit exceeded" }),
+      });
+    });
 
-      // Wait briefly for the request to complete before next attempt
-      await page.waitForTimeout(500);
-    }
+    await page.fill("#email", "ratelimit-test@example.com");
+    await page.fill("#password", "wrongpassword");
+    await page.click('button[type="submit"]');
 
-    // After exceeding the limit, the error should mention rate limiting
+    // The UI should show the user-friendly rate limit message
     const errorBox = page.locator(".rounded-md.border.bg-muted");
     await expect(errorBox).toBeVisible({ timeout: 10000 });
 
     const errorText = await errorBox.textContent();
-    // Should show either the rate limit message or the generic error
-    // (depending on whether the rate limit was actually hit)
-    expect(
-      errorText === "Too many attempts. Please wait a moment before trying again." ||
-      errorText === "Invalid email or password"
-    ).toBe(true);
+    expect(errorText).toBe("Too many attempts. Please wait a moment before trying again.");
   });
 
   test("rate limit error message does not expose internals", async ({
@@ -94,7 +91,7 @@ test.describe("Sign-In Form Security", () => {
 
   test("error is cleared when form is resubmitted", async ({ page }) => {
     await page.goto("/en/sign-in");
-    await page.waitForLoadState("networkidle");
+    await expect(page.locator("#email")).toBeVisible();
 
     // First attempt: trigger an error
     await page.fill("#email", "error-clear@example.com");
@@ -104,13 +101,18 @@ test.describe("Sign-In Form Security", () => {
     const errorBox = page.locator(".rounded-md.border.bg-muted");
     await expect(errorBox).toBeVisible({ timeout: 10000 });
 
+    // Intercept the next request to hold it pending so we can observe
+    // the error being cleared before a new response arrives
+    await page.route("**/api/auth/**", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await route.continue();
+    });
+
     // Second attempt: error should be cleared during submission
     await page.fill("#password", "anotherpassword");
     await page.click('button[type="submit"]');
 
-    // The old error should be gone (new error may appear after response)
-    // We just verify the previous error was cleared on submit
-    // by checking that during the pending state, no error is shown
-    // (the error element might reappear with a new message after the request)
+    // While the request is pending, the old error should be hidden
+    await expect(errorBox).not.toBeVisible({ timeout: 2000 });
   });
 });
