@@ -1,13 +1,20 @@
 import "./globals.css";
 
 /**
- * Root layout — delegates to [locale]/layout.tsx for the actual html/body shell.
- * This file exists because Next.js requires a root layout.
+ * Root layout — provides the required html/body shell for Next.js 16 static export.
+ * Locale-specific lang and dir attributes are applied by [locale]/layout.tsx
+ * via an inline script that runs synchronously before paint.
  */
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <html suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col">
+        {children}
+      </body>
+    </html>
+  );
 }

@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { api } from "@repo/backend";
-import { preloadAuthQuery, isAuthenticated } from "@repo/auth/server";
+import {
+  preloadAuthQuery,
+  fetchAuthQuery,
+  isAuthenticated,
+} from "@repo/auth/server";
 import { AuthGuard } from "@/components/auth/auth-guard";
 
 export default async function DashboardLayout({
@@ -21,9 +25,9 @@ export default async function DashboardLayout({
     redirect("/api/auth/clear-session");
   }
 
-  // Verify user has admin role
-  const user = preloadedUser as Record<string, unknown> | null;
-  if (!user || user.role !== "admin") {
+  // Verify user has admin role (fetchAuthQuery returns the actual data)
+  const user = await fetchAuthQuery(api.auth.getCurrentUser);
+  if (!user || (user as Record<string, unknown>).role !== "admin") {
     redirect("/api/auth/clear-session");
   }
 
