@@ -21,9 +21,8 @@ const XSS_PAYLOADS = [
 
 test.describe("XSS Protection — CSP Enforcement", () => {
   test("inline script injection is blocked by CSP", async ({ page }) => {
-    const cspViolations: string[] = [];
-
     // Listen for CSP violation reports
+    const cspViolations: string[] = [];
     page.on("console", (msg) => {
       const text = msg.text();
       if (
@@ -36,7 +35,7 @@ test.describe("XSS Protection — CSP Enforcement", () => {
     });
 
     await page.goto("/en/sign-in");
-    await page.waitForLoadState("networkidle");
+    await expect(page.locator("#email")).toBeVisible();
 
     // Try to inject an inline script via the page
     const executed = await page.evaluate(() => {
@@ -51,18 +50,9 @@ test.describe("XSS Protection — CSP Enforcement", () => {
       }
     });
 
-    // With strict CSP (nonce-based), inline scripts without the correct
-    // nonce should be blocked. The script element is added but its code
-    // should not execute.
-    // Note: In dev mode, 'unsafe-eval' is allowed but inline scripts
-    // without nonce are still blocked by 'strict-dynamic'.
-    if (!executed) {
-      // CSP blocked execution as expected
-      expect(executed).toBe(false);
-    }
-    // If it did execute, the CSP might be in report-only mode or
-    // dev mode allows it — log for investigation but don't fail
-    // since dev mode CSP is intentionally more permissive.
+    // With strict CSP (nonce-based + strict-dynamic), inline scripts
+    // without the correct nonce must be blocked — even in dev mode.
+    expect(executed).toBe(false);
   });
 
   test("CSP blocks eval() in production-like settings", async ({ page }) => {
