@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Deploy all apps regardless of change detection'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -74,10 +81,10 @@ jobs:
     needs: ci-gate
     runs-on: ubuntu-latest
     outputs:
-      web: ${{ steps.filter.outputs.web }}
-      admin: ${{ steps.filter.outputs.admin }}
-      landing: ${{ steps.filter.outputs.landing }}
-      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.eval.outputs.web }}
+      admin: ${{ steps.eval.outputs.admin }}
+      landing: ${{ steps.eval.outputs.landing }}
+      backend: ${{ steps.eval.outputs.backend }}
       any_app: ${{ steps.eval.outputs.any_app }}
     steps:
       - uses: actions/checkout@v4
@@ -122,19 +129,30 @@ jobs:
       - name: Evaluate changes
         id: eval
         run: |
-          echo "web=${{ steps.filter.outputs.web }}"
-          echo "admin=${{ steps.filter.outputs.admin }}"
-          echo "landing=${{ steps.filter.outputs.landing }}"
-          echo "backend=${{ steps.filter.outputs.backend }}"
+          FORCE="${{ inputs.force_deploy }}"
 
-          if [[ "${{ steps.filter.outputs.web }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.admin }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.landing }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.backend }}" == "true" ]]; then
+          if [[ "$FORCE" == "true" ]]; then
+            echo "Force deploy requested — deploying all apps"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "admin=true" >> "$GITHUB_OUTPUT"
+            echo "landing=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "any_app=true" >> "$GITHUB_OUTPUT"
           else
-            echo "any_app=false" >> "$GITHUB_OUTPUT"
-            echo "No app or backend changes detected — skipping build and deploy"
+            echo "web=${{ steps.filter.outputs.web }}" >> "$GITHUB_OUTPUT"
+            echo "admin=${{ steps.filter.outputs.admin }}" >> "$GITHUB_OUTPUT"
+            echo "landing=${{ steps.filter.outputs.landing }}" >> "$GITHUB_OUTPUT"
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+
+            if [[ "${{ steps.filter.outputs.web }}" == "true" ]] || \
+               [[ "${{ steps.filter.outputs.admin }}" == "true" ]] || \
+               [[ "${{ steps.filter.outputs.landing }}" == "true" ]] || \
+               [[ "${{ steps.filter.outputs.backend }}" == "true" ]]; then
+              echo "any_app=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "any_app=false" >> "$GITHUB_OUTPUT"
+              echo "No app or backend changes detected — skipping build and deploy"
+            fi
           fi
 
   # ─── Build changed apps in parallel ────────────────────────────
