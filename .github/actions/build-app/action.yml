@@ -47,14 +47,18 @@ runs:
       shell: bash
       run: bun add -g vercel@latest
 
+    # Run all Vercel commands from the monorepo root to avoid the Turbopack
+    # path-doubling bug (https://github.com/vercel/next.js/issues/88579).
+    # The Vercel project must have Root Directory set to "apps/<app>" so the
+    # builder knows which app to build.
     - name: Create Vercel project link
       shell: bash
       run: |
-        mkdir -p "apps/${{ inputs.app }}/.vercel"
+        mkdir -p ".vercel"
         printf '{"orgId":"%s","projectId":"%s"}' \
           "${{ inputs.vercel-org-id }}" \
           "${{ inputs.vercel-project-id }}" \
-          > "apps/${{ inputs.app }}/.vercel/project.json"
+          > ".vercel/project.json"
 
     - name: Pull Vercel environment
       shell: bash
@@ -63,8 +67,7 @@ runs:
       run: |
         vercel pull --yes \
           --environment=${{ inputs.environment }} \
-          --token="$VERCEL_TOKEN" \
-          --cwd "apps/${{ inputs.app }}"
+          --token="$VERCEL_TOKEN"
 
     - name: Build with Vercel
       shell: bash
@@ -76,8 +79,7 @@ runs:
           BUILD_FLAGS="--prod"
         fi
         vercel build ${BUILD_FLAGS} \
-          --token="$VERCEL_TOKEN" \
-          --cwd "apps/${{ inputs.app }}"
+          --token="$VERCEL_TOKEN"
 
     - name: Package artifact
       shell: bash
@@ -85,7 +87,7 @@ runs:
         TARBALL="${{ steps.meta.outputs.tarball }}"
         CHECKSUM="${{ steps.meta.outputs.checksum-file }}"
 
-        tar -czf "${TARBALL}" -C "apps/${{ inputs.app }}" .vercel/output
+        tar -czf "${TARBALL}" .vercel/output
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
         echo "### Build Artifact: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
