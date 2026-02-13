@@ -5,24 +5,22 @@ This document covers the artifact-based CI/CD pipeline for deploying the web, ad
 ## Architecture
 
 ```
-Push to main
+Push to main → cd-staging.yml (one unified workflow)
   │
-  ├─ CI (4 existing workflows run in parallel)
+  ├─ CI phase (4 reusable workflow calls, parallel)
   │   ci-shared ─┐
   │   ci-web ────┤
-  │   ci-admin ──┤  all must pass for same SHA
+  │   ci-admin ──┤  all must pass
   │   ci-landing─┘
   │
-  ▼
-CI Gate ── aggregates all 4 CI results into one status check
+  ├─ CI Gate (sets ci/gate-passed commit status)
   │
-  ▼
-Deploy Staging (automatic)
-  ├─ Build apps with staging env vars (vercel build)
-  ├─ Checksum + SLSA attest each artifact
-  ├─ Upload to GitHub Artifacts
-  ├─ Deploy Convex to staging
-  ├─ Deploy 3 apps to Vercel (vercel deploy --prebuilt)
+  ├─ Change detection (which apps/packages changed?)
+  │
+  ├─ Build only changed apps (vercel build)
+  ├─ Checksum + SLSA attest changed artifacts
+  ├─ Deploy Convex to staging (if backend changed)
+  ├─ Deploy changed apps to Vercel (vercel deploy --prebuilt)
   └─ Smoke tests + git tag
   │
   ▼
@@ -39,8 +37,7 @@ Deploy Production (manual trigger + approval gate)
 
 | Workflow | File | Trigger | Purpose |
 |---|---|---|---|
-| CI Gate | `ci-gate.yml` | `workflow_run` (CI completion) | Aggregates all CI results into `ci/gate-passed` status |
-| Deploy Staging | `cd-staging.yml` | Push to `main` | Auto-deploy to staging after CI passes |
+| Deploy Staging | `cd-staging.yml` | Push to `main` | Unified CI + selective build/deploy to staging |
 | Deploy Production | `cd-production.yml` | Manual (`workflow_dispatch`) | Deploy to production with approval gate |
 | Rollback | `cd-rollback.yml` | Manual (`workflow_dispatch`) | Rollback any environment to a previous SHA |
 
@@ -56,15 +53,17 @@ Deploy Production (manual trigger + approval gate)
 
 ### Staging (Automatic)
 
-Every push to `main` triggers the staging pipeline:
+Every push to `main` triggers the unified `cd-staging.yml` workflow:
 
-1. **CI Gate** waits for all 4 CI workflows to pass (polls `ci/gate-passed` status)
-2. **Build** all 3 apps in parallel using `vercel build` with preview (staging) environment variables
-3. **Attest** each artifact with SLSA build provenance via Sigstore
-4. **Deploy Convex** backend to the staging deployment
-5. **Deploy** all 3 apps to Vercel using `vercel deploy --prebuilt`
-6. **Smoke test** each staging URL
-7. **Tag** the commit with `deploy/staging/<timestamp>/<sha>`
+1. **CI phase** calls 4 CI workflows as reusable workflows (parallel)
+2. **CI Gate** evaluates results and sets `ci/gate-passed` commit status
+3. **Change detection** determines which apps/packages changed
+4. **Build** only changed apps using `vercel build` with preview (staging) environment variables
+5. **Attest** changed artifacts with SLSA build provenance via Sigstore
+6. **Deploy Convex** backend (only if `packages/backend` changed)
+7. **Deploy** changed apps to Vercel using `vercel deploy --prebuilt`
+8. **Smoke test** deployed URLs
+9. **Tag** the commit with `deploy/staging/<timestamp>/<sha>`
 
 ### Production (Manual)
 
@@ -217,7 +216,7 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 ## Troubleshooting
 
 ### Staging deploy not triggering
-Check that the CI gate workflow ran and created the `ci/gate-passed` status. The staging workflow polls for this status with a 30-minute timeout.
+Check the unified `cd-staging.yml` workflow run in GitHub Actions. The CI phase runs all 4 CI workflows as reusable workflows; if any fail, the CI Gate job fails and subsequent build/deploy jobs are skipped.
 
 ### Production deploy rejected
 Verify: (1) confirmation string is exactly `deploy-production`, (2) the SHA has a staging deployment tag, (3) the `production` environment approval was granted.
@@ -248,7 +247,7 @@ The pipeline can leave the system in a partially-deployed state in several scena
 
 ### Build Phase Failure
 
-All three app builds (`build-web`, `build-admin`, `build-landing`) run in parallel. Both `deploy-convex` and `attest` depend on **all three** completing. If any build fails:
+Only changed apps are built (`build-web`, `build-admin`, `build-landing` run conditionally). Both `deploy-convex` and `attest` depend on **all build jobs** completing (unchanged apps are skipped, not failed). If any build fails:
 
 - `deploy-convex` is skipped (no backend change)
 - All frontend deploys are skipped

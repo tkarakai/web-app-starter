@@ -170,7 +170,7 @@ if [ "$LIST" = true ]; then
         wf="${CI_WORKFLOWS[$i]}"
         wf_name="${CI_WORKFLOW_NAMES[$i]}"
         echo -e "  ${BOLD}$wf_name${NC} ($wf)"
-        act -W "$wf" -l 2>/dev/null | tail -n +2 | while read -r line; do
+        act pull_request -W "$wf" -l 2>/dev/null | tail -n +2 | while read -r line; do
             job=$(echo "$line" | awk '{print $2}')
             name=$(echo "$line" | awk '{$1=$2=""; print $0}' | sed 's/^ *//')
             echo -e "    ${CYAN}$job${NC} - $name"
@@ -246,15 +246,15 @@ for wf_idx in $(get_active_workflows); do
 
     echo -e "${BLUE}▶${NC} ${BOLD}$wf_name${NC} ($workflow)"
 
-    ACT_CMD="act -W $workflow ${BASE_ACT_ARGS[*]}"
+    ACT_CMD="act pull_request -W $workflow ${BASE_ACT_ARGS[*]}"
     echo -e "${DIM}  $ACT_CMD${NC}"
     echo ""
 
-    # Run act for this workflow
+    # Run act for this workflow (simulate pull_request event since all workflows trigger on it)
     if [ "$QUIET" = true ]; then
-        act -W "$workflow" "${BASE_ACT_ARGS[@]}" 2>&1 | tee "$WF_LOG" | grep -E '(⭐ Run Main|✅  Success|❌  Failure|🏁  Job)' || true
+        act pull_request -W "$workflow" "${BASE_ACT_ARGS[@]}" 2>&1 | tee "$WF_LOG" | grep -E '(⭐ Run Main|✅  Success|❌  Failure|🏁  Job)' || true
     else
-        act -W "$workflow" "${BASE_ACT_ARGS[@]}" 2>&1 | tee "$WF_LOG" || true
+        act pull_request -W "$workflow" "${BASE_ACT_ARGS[@]}" 2>&1 | tee "$WF_LOG" || true
     fi
 
     # Append to combined log
@@ -289,7 +289,7 @@ for wf_idx in $(get_active_workflows); do
             EXPECTED_JOBS="$EXPECTED_JOBS
 $stage|$job_id|$job_name"
         fi
-    done < <(act -W "$workflow" -l 2>/dev/null | tail -n +2)
+    done < <(act pull_request -W "$workflow" -l 2>/dev/null | tail -n +2)
 
     # Helper to look up job_id from job_name for this workflow
     lookup_job_id() {

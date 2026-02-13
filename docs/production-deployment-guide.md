@@ -12,19 +12,18 @@ Step-by-step guide for deploying this monorepo to production using Vercel and Co
                     Push to main
                           │
               ┌───────────┴───────────┐
-              │     CI (4 workflows)  │
-              │  shared, web, admin,  │
-              │       landing         │
-              └───────────┬───────────┘
-                          │ all pass
-                          ▼
-                      CI Gate
-                          │
-              ┌───────────┴───────────┐
-              │   Deploy Staging      │  ← automatic
+              │  Deploy Staging       │  ← one unified workflow
+              │  (cd-staging.yml)     │
               │                       │
-              │  Convex (staging)     │
-              │  Vercel ×3 (preview)  │
+              │  1. CI (4 reusable    │
+              │     workflows run     │
+              │     in parallel)      │
+              │  2. Change detection  │
+              │  3. Build changed     │
+              │     apps only         │
+              │  4. Deploy Convex +   │
+              │     Vercel (changed)  │
+              │  5. Smoke tests       │
               └───────────┬───────────┘
                           │
                     Manual QA
@@ -38,7 +37,7 @@ Step-by-step guide for deploying this monorepo to production using Vercel and Co
 ```
 
 **Three Vercel projects:** web-app, admin-app, landing-app
-**Two Convex deployments:** staging, production
+**Two Convex projects:** staging, production (each project's production deployment is used)
 **Rule:** Nothing reaches production without passing through staging first.
 
 ---
@@ -52,6 +51,8 @@ Step-by-step guide for deploying this monorepo to production using Vercel and Co
 | GitHub | Free (public) or Team (private) | github.com |
 | Vercel | Hobby (free) or Pro | vercel.com |
 | Convex | Starter (free) or Pro | convex.dev |
+
+> **Why not the Convex Vercel Marketplace integration?** Convex is available as a solution in the [Vercel Marketplace](https://vercel.com/marketplace). If you use it, all Convex account creation, database management, and billing (if applicable) happens inside your Vercel account. We intentionally keep Convex and Vercel as independent accounts so we can manage each service, its billing, and its configuration separately. This guide assumes standalone Convex and Vercel accounts.
 
 ### CLI Tools
 
@@ -74,7 +75,7 @@ gh auth login
 | GitHub Actions | 2,000 min/month (private) | ~200 min/month |
 | GitHub Artifacts | 500 MB (private) | ~100 MB/month |
 | Vercel Hobby | 1 person, 3 projects, unlimited deploys | Fits exactly (3 apps) |
-| Convex Starter | 2 deployments | Staging + production fills it |
+| Convex Starter | 2 projects needed (staging + production) | Check [pricing](https://convex.dev/pricing) for project limits |
 
 ---
 
@@ -82,64 +83,150 @@ gh auth login
 
 Complete these steps once, in order.
 
-### 2a. Convex Cloud
+### 2a. Create Convex Projects
 
-**Create two deployments** in the [Convex dashboard](https://dashboard.convex.dev):
+Each Convex project comes with a production deployment and one dev deployment per team member. Dev deployments are for local development; you can't repurpose them as a shared staging environment. Instead, create **two separate projects** — one for staging, one for production. Note that we are not using "Preview Deployments" in our deployment process.
 
-1. Create a project (e.g., `my-app`)
-2. This gives you a "production" deployment — rename or note it as your **staging** deployment
-3. Create a second deployment for **production**
+**Create two projects** in the [Convex dashboard](https://dashboard.convex.dev):
 
-**Set environment variables** for each deployment:
+1. Click "Create Project" → name it `my-app-staging` (or similar)
+2. Click "Create Project" again → name it `my-app-production`
 
-```bash
-# Switch to the staging deployment first
-# (select it in the dashboard or use CONVEX_DEPLOYMENT env var)
+**Record the deployment URLs** for each project. In the [Convex dashboard](https://dashboard.convex.dev), select a project → Settings → General, and copy the values of "Deployment URL" and "HTTP Actions URL".
 
-# Staging (include all app origins that authenticate against this backend)
-bunx convex env set SITE_URL "https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app"
-bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+Make sure that you have "Production" designation selected for the project (even for the Staging project).
 
-# Production (switch deployment in dashboard first)
-bunx convex env set SITE_URL "https://your-production-web.vercel.app,https://your-production-admin.vercel.app"
-bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
-```
+| Value | Where to find it | Staging | Production |
+|-------|-------------------|---------|------------|
+| Deployment URL → `NEXT_PUBLIC_CONVEX_URL` | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
+| HTTP Actions URL → `NEXT_PUBLIC_CONVEX_SITE_URL` | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
 
-> **IMPORTANT:** `BETTER_AUTH_SECRET` must be different for each environment. Generate a new random value for each.
+**Generate deploy keys** for each project:
 
-> **Multi-app origins:** `SITE_URL` is a comma-separated list of all app origins that authenticate against this Convex backend. The auth config (`packages/backend/convex/auth.ts`) uses it to build `trustedOrigins`. If you add more apps, append their origins here.
-
-**Generate deploy keys:**
-
-1. In each deployment's Settings > Deploy Key, click "Generate"
-2. Save the keys — you'll add them to GitHub in step 2c
-
-**Record these values:**
+1. In each project's Deployment Settings, click **"Generate Production Deploy Key"**
+2. Save both keys — you'll add them to GitHub in step 2e
 
 | Value | Staging | Production |
 |-------|---------|------------|
-| Convex URL (`NEXT_PUBLIC_CONVEX_URL`) | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
-| Convex Site URL (`NEXT_PUBLIC_CONVEX_SITE_URL`) | `https://xxx.convex.site` | `https://yyy.convex.site` |
 | Deploy Key | `prod:xxx...` | `prod:yyy...` |
 
-### 2b. Vercel Projects
+> **Note:** Environment variables (`SITE_URL`, `BETTER_AUTH_SECRET`) will be configured in step 2c, after Vercel projects exist and their URLs are known.
 
-**Create three projects** in the [Vercel dashboard](https://vercel.com/dashboard):
+### 2b. Create Vercel Projects
 
-| Project Name | App Directory | Purpose |
-|--------------|---------------|---------|
-| `web-app` | `apps/web` | Main web application |
-| `admin-app` | `apps/admin` | Admin dashboard |
-| `landing-app` | `apps/landing` | Marketing/landing page |
+Create three Vercel projects — one per app. Choose **either** the dashboard or CLI approach.
 
-For **each project**:
+**Option A — Dashboard (requires GitHub connection):**
 
-1. **Disable Git auto-deploy:** Project Settings > Git > uncheck "Auto-Deploy"
-   - Deployments are managed by the CI/CD pipeline, not Vercel's git integration
-2. **Set the Framework Preset** to "Next.js"
-3. **Set the Root Directory** to the app path (e.g., `apps/web`)
+1. **Install the Vercel GitHub App** (one-time): When you click "Add New Project" in the [Vercel dashboard](https://vercel.com/dashboard), Vercel prompts you to install its GitHub App. Grant access to your repository. This is a GitHub App, not an OAuth token — it lets Vercel read your repo to detect framework settings.
 
-**Configure environment variables** for each project:
+2. **Import the repository three times** (once per app). For each: click "Add New Project" → "Import Git Repository" → select your repo → click **Edit** next to "Root Directory" to set the app path → confirm the **Framework Preset** is Next.js:
+
+   | Project Name | Root Directory | Framework |
+   |--------------|----------------|-----------|
+   | `my-app-landing` | `apps/landing` | Next.js |
+   | `my-app-web` | `apps/web` | Next.js |
+   | `my-app-admin` | `apps/admin` | Next.js |
+
+**Option B — CLI (no GitHub connection needed):**
+
+```bash
+# Authenticate with Vercel (one-time)
+vercel login
+
+# Create each project from its app directory
+cd apps/landing && vercel project add my-app-landing
+cd apps/web && vercel project add my-app-web
+cd apps/admin && vercel project add my-app-admin
+```
+
+**Disable automatic deployments** on each project (required — our CI/CD pipeline manages deployments via `vercel deploy` in GitHub Actions):
+
+- **Dashboard:** Project Settings → **Build & Development Settings** → **Ignored Build Step** → select **"Don't build anything"**
+- **Or via `vercel.json`** in each app directory:
+  ```json
+  { "git": { "deploymentEnabled": false } }
+  ```
+
+Note that you do not have to have git connected from Vercel at all.
+
+**Record the project IDs and app URLs:**
+
+```bash
+# Via CLI
+vercel whoami          # Shows org/user ID
+vercel project ls      # Lists projects with IDs
+```
+
+Or in the dashboard: each project's **Settings → General → scroll to "Project ID"**.
+
+| Value | ID |
+|-------|-----|
+| Vercel Org ID | `team_xxx` or `usr_xxx` |
+| my-app-web Project ID | `prj_xxx` |
+| my-app-admin Project ID | `prj_yyy` |
+| my-app-landing Project ID | `prj_zzz` |
+
+Also note each project's **auto-assigned Vercel URL** (visible in each project's **Deployments** page or **Settings → Domains**). You'll need these in step 2c for Convex's `SITE_URL`:
+
+| Project | Vercel URL (example) |
+|---------|---------------------|
+| my-app-web | `https://my-app-web.vercel.app` |
+| my-app-admin | `https://my-app-admin.vercel.app` |
+| my-app-landing | `https://my-app-landing.vercel.app` |
+
+> **Note:** Environment variables for Vercel projects are configured in step 2d, after Convex URLs are known.
+
+### 2c. Configure Convex Environment Variables
+
+Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
+
+In this repo, only the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex. The landing page and storybook do not connect to Convex, so their URLs are not included in `SITE_URL`.
+
+**Option A — Convex Dashboard (recommended for one-time setup):**
+
+For each Convex project, go to **Deployment Settings → Environment Variables** and add:
+
+| Variable | Staging project value | Production project value |
+|----------|-----------------------|--------------------------|
+| `SITE_URL` | `https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app` | `https://your-production-web.vercel.app,https://your-production-admin.vercel.app` |
+| `BETTER_AUTH_SECRET` | *(generate — see below)* | *(generate — see below)* |
+
+To generate `BETTER_AUTH_SECRET`, run this in your terminal and paste the output:
+
+```bash
+openssl rand -base64 32
+```
+
+> **IMPORTANT:** Generate a **separate** secret for each project (staging ≠ production). Each call to `openssl rand` produces a unique value.
+
+**Option B — CLI with deploy keys:**
+
+Use the deploy keys from step 2a to target each project's production deployment. The `CONVEX_DEPLOY_KEY` env var authenticates the CLI and selects the correct deployment in a single step — no need to modify `.env.local`:
+
+```bash
+# ── Staging project ──────────────────────────────────────
+# Use the staging project's deploy key (from step 2a)
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex env set SITE_URL "https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app"
+
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+
+# ── Production project ───────────────────────────────────
+# Use the production project's deploy key (from step 2a)
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set SITE_URL "https://your-production-web.vercel.app,https://your-production-admin.vercel.app"
+
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+```
+
+> **How `SITE_URL` works:** The auth config in `packages/backend/convex/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
+
+### 2d. Configure Vercel Environment Variables
+
+Set environment variables for each Vercel project. Use the Convex URLs recorded in step 2a.
 
 **web-app:**
 
@@ -157,31 +244,18 @@ For **each project**:
 | `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
 | `NEXT_PUBLIC_SITE_URL` | `https://staging-admin.vercel.app` | `https://admin.yourdomain.com` |
 
-**landing-app:**
+**landing-app** (no Convex — the landing page does not connect to the backend):
 
 | Variable | Preview (Staging) | Production |
 |----------|-------------------|------------|
 | `NEXT_PUBLIC_SITE_URL` | `https://staging-landing.vercel.app` | `https://yourdomain.com` |
 | `NEXT_PUBLIC_WEB_APP_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
 
-**Record these IDs:**
+Set these in each project's Settings → Environment Variables. Use Vercel's "Preview" and "Production" scopes to assign different values per environment.
 
-```bash
-# Find your Vercel Org ID and Project IDs
-vercel whoami          # Shows org
-vercel project ls      # Lists projects with IDs
-```
+### 2e. GitHub Configuration
 
-Or find them in each project's Settings > General.
-
-| Value | ID |
-|-------|-----|
-| Vercel Org ID | `team_xxx` or `usr_xxx` |
-| web-app Project ID | `prj_xxx` |
-| admin-app Project ID | `prj_yyy` |
-| landing-app Project ID | `prj_zzz` |
-
-### 2c. GitHub Configuration
+GitHub Actions is the deployment orchestrator. We disabled Vercel's built-in Git-triggered deploys (step 2b) — instead, CD workflows in GitHub Actions run `vercel deploy` and `convex deploy` to push builds. That's why GitHub needs credentials for both Vercel and Convex.
 
 **Create environments** (Settings > Environments):
 
@@ -196,32 +270,43 @@ Or find them in each project's Settings > General.
 
 **Add repository secrets** (Settings > Secrets and Variables > Actions > Repository secrets):
 
-| Secret | Value |
-|--------|-------|
-| `VERCEL_TOKEN` | Vercel personal access token (Settings > Tokens) |
-| `VERCEL_ORG_ID` | Your Vercel org/user ID |
-| `VERCEL_PROJECT_ID_WEB` | web-app project ID |
-| `VERCEL_PROJECT_ID_ADMIN` | admin-app project ID |
-| `VERCEL_PROJECT_ID_LANDING` | landing-app project ID |
+These are used by the CD workflows to authenticate with Vercel when running `vercel deploy`:
+
+| Secret | Value | Where to get it |
+|--------|-------|-----------------|
+| `VERCEL_TOKEN` | Vercel personal access token | [Vercel dashboard](https://vercel.com/account/tokens) → Create Token |
+| `VERCEL_ORG_ID` | Your Vercel org/user ID | From step 2b |
+| `VERCEL_PROJECT_ID_WEB` | web-app project ID | From step 2b |
+| `VERCEL_PROJECT_ID_ADMIN` | admin-app project ID | From step 2b |
+| `VERCEL_PROJECT_ID_LANDING` | landing-app project ID | From step 2b |
 
 > **Note:** `VERCEL_PROJECT_ID_*` must be **repository secrets** (not environment secrets) because the CD workflow build jobs run without an `environment:` context and can only access repository-level secrets.
 
 **Add environment secrets** (Settings > Environments > [env] > Environment secrets):
 
+The CD workflows run `convex deploy` with this key to push backend functions to the correct Convex project:
+
 | Secret | `staging` | `production` |
 |--------|-----------|--------------|
-| `CONVEX_DEPLOY_KEY` | Staging deploy key | Production deploy key |
+| `CONVEX_DEPLOY_KEY` | Staging deploy key (from step 2a) | Production deploy key (from step 2a) |
 
-> **Note:** `CONVEX_DEPLOY_KEY` must be different per environment — it controls which Convex deployment receives the push.
+> **Note:** `CONVEX_DEPLOY_KEY` is an **environment** secret (not repository secret) because the staging and production workflows must push to different Convex projects. Each GitHub environment gets the deploy key for its corresponding Convex project.
 
 **Configure branch protection** (Settings > Branches > `main`):
 
 - [x] Require a pull request before merging
 - [x] Require status checks to pass before merging
-  - Required checks: `CI Shared Complete`, `CI Web Complete`, `CI Admin Complete`, `CI Landing Complete`
+  - Required: `CI Shared / CI Shared Complete`
+  - Required: `CI Web / CI Web Complete`
+  - Required: `CI Admin / CI Admin Complete`
+  - Required: `CI Landing / CI Landing Complete`
 - [x] Require branches to be up to date before merging
 
-### 2d. Custom Domains (Production)
+> **How it works:** The 4 CI workflows (`ci-shared.yml`, `ci-web.yml`, `ci-admin.yml`, `ci-landing.yml`) run on every pull request. Each workflow has a summary job (e.g., "CI Shared Complete") that passes only when all of that workflow's checks succeed. Branch protection requires all 4 summary jobs to pass before a PR can be merged.
+>
+> On push to main (after a PR is merged), the unified `cd-staging.yml` workflow calls these same CI workflows as reusable workflows, then detects which apps changed, builds only those, and deploys to staging. It also sets a `ci/gate-passed` commit status that `cd-production.yml` checks before allowing production deploys.
+
+### 2f. Custom Domains (Production)
 
 **Vercel domains** (per project, Settings > Domains):
 
@@ -244,13 +329,15 @@ yourdomain.com         A      76.76.21.21
 
 Vercel provisions SSL certificates automatically.
 
-**Update Vercel environment variables** after adding custom domains — the `NEXT_PUBLIC_SITE_URL` production values should use the custom domain.
+**Update Vercel environment variables** after adding custom domains — the `NEXT_PUBLIC_SITE_URL` production values (step 2d) should use the custom domain instead of `.vercel.app` URLs.
 
-**Update Convex `SITE_URL`** to match the production custom domains (all auth origins):
+**Update Convex `SITE_URL`** in the production project to match the custom domains. Only the web and admin apps authenticate against Convex:
 
 ```bash
-# In production deployment
-bunx convex env set SITE_URL "https://app.yourdomain.com,https://admin.yourdomain.com"
+# Via dashboard: Deployment Settings → Environment Variables
+# Or via CLI with the production deploy key:
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set SITE_URL "https://app.yourdomain.com,https://admin.yourdomain.com"
 ```
 
 ---
@@ -270,24 +357,26 @@ Run through this checklist before the first deployment or any major infrastructu
 
 ### Infrastructure Readiness
 
-- [ ] Convex staging deployment exists with environment variables set
-- [ ] Convex production deployment exists with environment variables set
-- [ ] `BETTER_AUTH_SECRET` is unique per environment (staging != production)
-- [ ] Vercel projects created (web-app, admin-app, landing-app)
-- [ ] Vercel git auto-deploy is disabled for all projects
-- [ ] Vercel environment variables set for both Preview and Production scopes
-- [ ] GitHub `staging` environment created
-- [ ] GitHub `production` environment created with required reviewers
-- [ ] All repository secrets set (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*`)
-- [ ] All environment secrets set (`CONVEX_DEPLOY_KEY` per environment)
-- [ ] Branch protection enabled on `main` with required status checks
+- [ ] Two Convex projects created: staging and production (step 2a)
+- [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
+- [ ] Three Vercel projects created: web-app, admin-app, landing-app (step 2b)
+- [ ] Vercel automatic deployments disabled for all projects (step 2b)
+- [ ] Convex environment variables set: `SITE_URL`, `BETTER_AUTH_SECRET` per project (step 2c)
+- [ ] `BETTER_AUTH_SECRET` is unique per project (staging ≠ production)
+- [ ] Vercel environment variables set for both Preview and Production scopes (step 2d)
+- [ ] GitHub `staging` environment created (step 2e)
+- [ ] GitHub `production` environment created with required reviewers (step 2e)
+- [ ] All repository secrets set: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*` (step 2e)
+- [ ] All environment secrets set: `CONVEX_DEPLOY_KEY` per environment (step 2e)
+- [ ] Branch protection enabled on `main` with required status checks (step 2e)
 
 ### Verify Configuration
 
 ```bash
-# Verify Convex env vars (run for each deployment)
-bunx convex env list
-# Should show: SITE_URL, BETTER_AUTH_SECRET
+# Verify Convex env vars (run for each project using its deploy key)
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' bunx convex env list
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' bunx convex env list
+# Each should show: SITE_URL, BETTER_AUTH_SECRET
 
 # Verify GitHub secrets are set (no way to read values, but check they exist)
 gh secret list
@@ -296,7 +385,11 @@ gh secret list --env production
 
 # Verify branch protection
 gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts[]'
-# Should list: CI Shared Complete, CI Web Complete, CI Admin Complete, CI Landing Complete
+# Should list:
+#   CI Shared / CI Shared Complete
+#   CI Web / CI Web Complete
+#   CI Admin / CI Admin Complete
+#   CI Landing / CI Landing Complete
 ```
 
 ---
@@ -319,14 +412,7 @@ git push origin main
 **Monitor the pipeline:**
 
 ```bash
-# Watch CI workflows
-gh run list --branch main --limit 5
-
-# Wait for the CI gate
-gh api repos/{owner}/{repo}/commits/$(git rev-parse HEAD)/status \
-  --jq '.statuses[] | select(.context=="ci/gate-passed") | "\(.state) - \(.description)"'
-
-# Watch the staging deployment
+# Watch the unified staging workflow (CI + build + deploy in one run)
 gh run list --workflow=cd-staging.yml --limit 1
 gh run watch $(gh run list --workflow=cd-staging.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
@@ -413,10 +499,9 @@ gh run watch $(gh run list --workflow=cd-production.yml --limit 1 --json databas
 PR merged to main
        │
        ▼
-CI runs (automatic, ~5 min)
-       │
-       ▼
-Staging deploys (automatic, ~3 min)
+cd-staging.yml runs (automatic):
+  CI → change detection → build changed apps → deploy
+  (~5–8 min, skips unchanged apps)
        │
        ▼
 Validate staging (manual, 2–5 min)
@@ -632,13 +717,13 @@ No automated alerting is configured by default. Options by team size:
 
 | Symptom | Likely Cause | Fix |
 |---------|--------------|-----|
-| Staging not deploying after push | CI gate hasn't passed yet | Wait for all 4 CI workflows; check `gh run list` |
-| CI gate stuck as pending | One CI workflow hasn't completed | Check which workflow is still running |
+| Staging not deploying after push | CI still running in the unified workflow | Check `gh run list --workflow=cd-staging.yml`; CI phase runs first |
+| All CI passed but nothing deployed | No app/backend files changed in the push | Change detection skips build/deploy for unchanged apps; expected behavior |
 | Production deploy rejected | Wrong confirmation string or SHA not staged | Use exact string `deploy-production`; verify SHA has a staging tag |
-| Convex deploy fails | Wrong deploy key for the environment | Check `CONVEX_DEPLOY_KEY` secret matches the target deployment |
+| Convex deploy fails | Wrong deploy key for the environment | Check `CONVEX_DEPLOY_KEY` secret matches the target Convex project |
 | App shows stale content | CDN cache or browser cache | Hard refresh; check Vercel deployment URL directly |
 | Auth not working after deploy | `SITE_URL` mismatch in Convex env vars | Verify `SITE_URL` matches the actual app URL(s) |
-| `BETTER_AUTH_SECRET` error | Secret not set or empty | Run `bunx convex env list` in the target deployment |
+| `BETTER_AUTH_SECRET` error | Secret not set or empty | Run `bunx convex env list` in the target project (set `CONVEX_DEPLOYMENT` first) |
 | Vercel build fails | Missing environment variables | Check Vercel dashboard > Project > Settings > Environment Variables |
 | Rollback fails on schema | New data incompatible with old schema | Roll forward instead; see [Schema Migrations](#8-schema-migrations) |
 | Health checks timeout | Cold start or CDN propagation | Re-run the job; if persistent, check Vercel logs |
@@ -670,8 +755,8 @@ No automated alerting is configured by default. Options by team size:
 │  gh run watch <RUN_ID>                              │
 │                                                     │
 │  Check CI status:                                   │
-│  gh api repos/{o}/{r}/commits/<SHA>/status \        │
-│    --jq '.statuses[]|"\(.context): \(.state)"'     │
+│  gh run list --workflow=cd-staging.yml -L1          │
+│  gh run view <RUN_ID>                               │
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```

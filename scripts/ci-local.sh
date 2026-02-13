@@ -396,6 +396,11 @@ fi
 # Turbo caching means shared packages only build once.
 # ============================================================
 print_step "Step 6/8: Production Build"
+# Provide placeholder Convex env vars for apps that need them at build time.
+# These mirror the placeholder values in ci-web.yml / ci-admin.yml.
+# The actual values are only needed at runtime, not at build time.
+export NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}"
+export NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}"
 BUILD_FAILED=false
 for APP in web admin landing storybook; do
   step_start
@@ -419,6 +424,8 @@ print_step "Step 7/8: Bundle Size"
 BUNDLE_FAILED=false
 for APP_DIR in apps/*/; do
   APP_NAME=$(basename "$APP_DIR")
+  # Skip apps not included in CI builds (no corresponding workflow)
+  case "$APP_NAME" in landing-static) continue ;; esac
   if [ -f "$APP_DIR/.size-limit.json" ]; then
     step_start
     if (cd "$APP_DIR" && bun run size); then
@@ -488,7 +495,7 @@ fi
 # Note: The following are NOT included in local CI (GitHub Actions only):
 #   - Security checks (CodeQL, dependency audit, secrets scan) → security.yml
 #   - Lighthouse performance audits
-#   - CI gate (commit status aggregation) → ci-gate.yml
+#   - CI gate (commit status aggregation) → runs inside cd-staging.yml
 
 # Calculate duration
 END_TIME=$(now_cs)
@@ -496,7 +503,7 @@ DURATION_CS=$((END_TIME - START_TIME))
 
 echo -e "\n${GREEN}"
 echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│                  All CI Checks Passed!                      │"
+echo "│                  All CI Checks Passed!                       │"
 echo "└──────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 echo -e "Total time: $(format_duration $DURATION_CS)"
