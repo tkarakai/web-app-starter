@@ -138,13 +138,13 @@ git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 
 ## Vercel Project Setup
 
-Three Vercel projects, one per app. **Do not connect to git** — deployments are managed by the pipeline.
+Three Vercel projects, one per app. **Do not connect to git** — deployments are managed by the pipeline. **Leave the Root Directory blank** (project root) — the GitHub Actions build step uses `--cwd` to target each app directory; setting a root directory in Vercel would double the path and break builds.
 
-| Vercel Project | App | Staging (Preview) | Production |
-|---|---|---|---|
-| `web-app` | `apps/web` | Preview deployments | Production deployments |
-| `admin-app` | `apps/admin` | Preview deployments | Production deployments |
-| `landing-app` | `apps/landing` | Preview deployments | Production deployments |
+| Vercel Project | App | Root Directory | Staging (Preview) | Production |
+|---|---|---|---|---|
+| `web-app` | `apps/web` | _(blank / project root)_ | Preview deployments | Production deployments |
+| `admin-app` | `apps/admin` | _(blank / project root)_ | Preview deployments | Production deployments |
+| `landing-app` | `apps/landing` | _(blank / project root)_ | Preview deployments | Production deployments |
 
 ## Convex Deployment
 
@@ -165,8 +165,9 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 
 1. Create a Vercel account at [vercel.com](https://vercel.com) (Hobby/free tier)
 2. Create 3 projects: `web-app`, `admin-app`, `landing-app`
-3. **Disable auto-deploy from git** in each project (Settings > Git)
-4. Set environment variables in each project's dashboard for both Preview and Production environments:
+3. **Leave Root Directory blank** in each project (Settings > General > Root Directory). Builds are handled by GitHub Actions using `--cwd` to target each app directory. Setting a root directory in Vercel would double the path and cause build failures.
+4. **Disable auto-deploy from git** in each project (Settings > Git)
+5. Set environment variables in each project's dashboard for both Preview and Production environments:
 
 **web-app & admin-app:**
 | Variable | Preview (Staging) | Production |
@@ -181,7 +182,7 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 | `NEXT_PUBLIC_SITE_URL` | Landing staging URL | Landing production URL |
 | `NEXT_PUBLIC_WEB_APP_URL` | Web app staging URL | Web app production URL |
 
-5. Note down: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and each project's `VERCEL_PROJECT_ID`
+6. Note down: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and each project's `VERCEL_PROJECT_ID`
 
 ### 2. Convex Cloud Deployments
 
@@ -214,6 +215,9 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 - Required status checks: `CI Shared Complete`, `CI Web Complete`, `CI Admin Complete`, `CI Landing Complete`
 
 ## Troubleshooting
+
+### Vercel build fails with doubled path (`apps/landing/apps/landing/package.json`)
+The Vercel project has a Root Directory set (e.g., `apps/landing`). Since the GitHub Actions build uses `vercel build --cwd "apps/landing"`, Vercel applies the root directory on top of `--cwd`, doubling the path. **Fix:** Go to each Vercel project's Settings > General > Root Directory and clear it (leave blank).
 
 ### Staging deploy not triggering
 Check the unified `cd-staging.yml` workflow run in GitHub Actions. The CI phase runs all 4 CI workflows as reusable workflows; if any fail, the CI Gate job fails and subsequent build/deploy jobs are skipped.
