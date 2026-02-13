@@ -107,7 +107,14 @@ runs:
           exit $DEPLOY_EXIT
         fi
 
-        DEPLOYMENT_URL=$(echo "${DEPLOY_OUTPUT}" | tail -1)
+        # Vercel prints info messages after the URL, so tail -1 grabs the
+        # wrong line. Extract the actual https:// deployment URL instead.
+        DEPLOYMENT_URL=$(echo "${DEPLOY_OUTPUT}" | grep -oE 'https://[^ ]+\.vercel\.app[^ ]*' | head -1)
+        if [ -z "${DEPLOYMENT_URL}" ]; then
+          echo "::error::Could not extract deployment URL from Vercel output:"
+          echo "${DEPLOY_OUTPUT}"
+          exit 1
+        fi
         echo "url=${DEPLOYMENT_URL}" >> "$GITHUB_OUTPUT"
 
         echo "### Deployed: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
