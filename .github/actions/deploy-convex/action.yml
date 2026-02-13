@@ -17,6 +17,10 @@ runs:
       env:
         CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
       run: |
+        if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+          echo "::error::CONVEX_DEPLOY_KEY is not set. Add it as a repository secret (Settings → Secrets → Actions)."
+          exit 1
+        fi
         echo "Deploying Convex backend to ${{ inputs.environment }}..."
         cd packages/backend
         bunx convex deploy --cmd 'echo "skip build"'

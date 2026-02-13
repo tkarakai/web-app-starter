@@ -1,28 +1,54 @@
-# Deployment Pipeline
+# Deployment Architecture
 
-This document covers the artifact-based CI/CD pipeline for deploying the web, admin, and landing apps.
+This document explains the design and internals of the CI/CD pipeline — how it works, why it's built this way, and what happens when things fail. For step-by-step operational procedures, see [deployment-runbook.md](./deployment-runbook.md).
+
+## Why This Architecture
+
+There are several ways to wire up CI/CD with GitHub, Vercel, and Convex. We evaluated the common approaches and chose the one that gives us the most control.
+
+### Alternative: Vercel Git Integration
+
+The most popular approach. You connect your GitHub repo to Vercel, and Vercel triggers builds automatically on every push. Vercel handles CI/CD internally — no GitHub Actions needed for deployment.
+
+**Why we don't use it:** It locks the entire build and deploy pipeline into Vercel. If we ever want to switch hosting providers (e.g., to Cloudflare, Netlify, or self-hosted), we'd have to rebuild the CI/CD pipeline from scratch. By not connecting Vercel to git at all, Vercel is just a hosting target — swappable without touching CI.
+
+### Alternative: Vercel Convex Marketplace Integration
+
+Convex is available as a [Vercel Marketplace](https://vercel.com/marketplace) solution. With this integration, Convex account creation, database management, and billing all go through your Vercel account.
+
+**Why we don't use it:** We want independent control over backend billing and configuration. Keeping Convex and Vercel as separate accounts means we can manage each service's pricing, limits, and settings independently. If we scale one service differently than the other, we're not tied to a bundled plan.
+
+### Our Approach: GitHub Actions as CI/CD Orchestrator
+
+We build everything in GitHub Actions and push prebuilt artifacts to Vercel via `vercel deploy --prebuilt`. Convex is deployed separately via `convex deploy`. Vercel is used purely as a static hosting target.
+
+**What this gives us:**
+- **No vendor lock-in** — if we switch away from Vercel, only the deploy action changes. CI, builds, testing, and Convex deployment are completely unaffected.
+- **Full pipeline control** — we own the build caching, change detection, artifact attestation, and deployment ordering. Nothing is a black box.
+- **Independent backend** — Convex has its own deploy keys, its own billing, and deploys on its own schedule (always before frontends).
+- **Auditability** — every deployment is traceable through git tags, SLSA attestations, and GitHub Actions logs.
+
+The trade-off is more initial setup (see [deployment-runbook.md — One-Time Infrastructure Setup](./deployment-runbook.md#2-one-time-infrastructure-setup)) and maintaining the GitHub Actions workflows ourselves.
 
 ## Architecture
 
 ```
-Push to main
+Push to main → cd-staging.yml (one unified workflow)
   │
-  ├─ CI (4 existing workflows run in parallel)
+  ├─ CI phase (4 reusable workflow calls, parallel)
   │   ci-shared ─┐
   │   ci-web ────┤
-  │   ci-admin ──┤  all must pass for same SHA
+  │   ci-admin ──┤  all must pass
   │   ci-landing─┘
   │
-  ▼
-CI Gate ── aggregates all 4 CI results into one status check
+  ├─ CI Gate (sets ci/gate-passed commit status)
   │
-  ▼
-Deploy Staging (automatic)
-  ├─ Build apps with staging env vars (vercel build)
-  ├─ Checksum + SLSA attest each artifact
-  ├─ Upload to GitHub Artifacts
-  ├─ Deploy Convex to staging
-  ├─ Deploy 3 apps to Vercel (vercel deploy --prebuilt)
+  ├─ Change detection (which apps/packages changed?)
+  │
+  ├─ Build only changed apps (vercel build)
+  ├─ Checksum + SLSA attest changed artifacts
+  ├─ Deploy Convex to staging (if backend changed)
+  ├─ Deploy changed apps to Vercel (vercel deploy --prebuilt)
   └─ Smoke tests + git tag
   │
   ▼
@@ -39,8 +65,7 @@ Deploy Production (manual trigger + approval gate)
 
 | Workflow | File | Trigger | Purpose |
 |---|---|---|---|
-| CI Gate | `ci-gate.yml` | `workflow_run` (CI completion) | Aggregates all CI results into `ci/gate-passed` status |
-| Deploy Staging | `cd-staging.yml` | Push to `main` | Auto-deploy to staging after CI passes |
+| Deploy Staging | `cd-staging.yml` | Push to `main` | Unified CI + selective build/deploy to staging |
 | Deploy Production | `cd-production.yml` | Manual (`workflow_dispatch`) | Deploy to production with approval gate |
 | Rollback | `cd-rollback.yml` | Manual (`workflow_dispatch`) | Rollback any environment to a previous SHA |
 
@@ -56,15 +81,17 @@ Deploy Production (manual trigger + approval gate)
 
 ### Staging (Automatic)
 
-Every push to `main` triggers the staging pipeline:
+Every push to `main` triggers the unified `cd-staging.yml` workflow:
 
-1. **CI Gate** waits for all 4 CI workflows to pass (polls `ci/gate-passed` status)
-2. **Build** all 3 apps in parallel using `vercel build` with preview (staging) environment variables
-3. **Attest** each artifact with SLSA build provenance via Sigstore
-4. **Deploy Convex** backend to the staging deployment
-5. **Deploy** all 3 apps to Vercel using `vercel deploy --prebuilt`
-6. **Smoke test** each staging URL
-7. **Tag** the commit with `deploy/staging/<timestamp>/<sha>`
+1. **CI phase** calls 4 CI workflows as reusable workflows (parallel)
+2. **CI Gate** evaluates results and sets `ci/gate-passed` commit status
+3. **Change detection** determines which apps/packages changed
+4. **Build** only changed apps using `vercel build` with preview (staging) environment variables
+5. **Attest** changed artifacts with SLSA build provenance via Sigstore
+6. **Deploy Convex** backend (only if `packages/backend` changed)
+7. **Deploy** changed apps to Vercel using `vercel deploy --prebuilt`
+8. **Smoke test** deployed URLs
+9. **Tag** the commit with `deploy/staging/<timestamp>/<sha>`
 
 ### Production (Manual)
 
@@ -123,9 +150,9 @@ Each build produces a JSON manifest recording: git SHA, environment, timestamp, 
 Every deployment creates a tag for auditability:
 
 ```
-deploy/staging/2026-02-07T15:30:00Z/abc1234...
-deploy/production/2026-02-07T16:00:00Z/abc1234...
-deploy/staging/rollback/2026-02-07T17:00:00Z/abc1234...
+deploy/staging/2026-02-07T15-30-00Z/abc1234...
+deploy/production/2026-02-07T16-00-00Z/abc1234...
+deploy/staging/rollback/2026-02-07T17-00-00Z/abc1234...
 ```
 
 To find the latest production deployment:
@@ -137,15 +164,16 @@ git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 
 `NEXT_PUBLIC_*` variables are baked into the JS bundle at build time by Next.js. A single artifact cannot serve both staging and production. The pipeline builds separate environment-specific artifacts from the **same commit SHA**, verified by the CI gate.
 
-## Vercel Project Setup
+## Vercel Project Architecture
 
-Three Vercel projects, one per app. **Do not connect to git** — deployments are managed by the pipeline.
+Three separate Vercel projects — one per app (`web-app`, `admin-app`, `landing-app`). None are connected to git; all deployments are pushed from GitHub Actions via `vercel deploy --prebuilt`.
 
-| Vercel Project | App | Staging (Preview) | Production |
-|---|---|---|---|
-| `web-app` | `apps/web` | Preview deployments | Production deployments |
-| `admin-app` | `apps/admin` | Preview deployments | Production deployments |
-| `landing-app` | `apps/landing` | Preview deployments | Production deployments |
+Two Vercel-specific settings are architecturally required:
+
+- **Root Directory** must be set to `apps/<app>` on each project. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build.
+- **Framework Preset** must be set to **Next.js**. Without it, Vercel's builder detects `@vercel/static-build` from the monorepo root and fails.
+
+For setup instructions, see [deployment-runbook.md — Create Vercel Projects](./deployment-runbook.md#2b-create-vercel-projects).
 
 ## Convex Deployment
 
@@ -160,85 +188,7 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
   3. Run data migration
   4. Deploy cleanup (remove old field)
 
-## Prerequisites (Manual Setup)
-
-### 1. Vercel Account & Projects
-
-1. Create a Vercel account at [vercel.com](https://vercel.com) (Hobby/free tier)
-2. Create 3 projects: `web-app`, `admin-app`, `landing-app`
-3. **Disable auto-deploy from git** in each project (Settings > Git)
-4. Set environment variables in each project's dashboard for both Preview and Production environments:
-
-**web-app & admin-app:**
-| Variable | Preview (Staging) | Production |
-|---|---|---|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | App's staging URL | App's production URL |
-
-**landing-app:**
-| Variable | Preview (Staging) | Production |
-|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | Landing staging URL | Landing production URL |
-| `NEXT_PUBLIC_WEB_APP_URL` | Web app staging URL | Web app production URL |
-
-5. Note down: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and each project's `VERCEL_PROJECT_ID`
-
-### 2. Convex Cloud Deployments
-
-1. Create 2 Convex deployments: one for staging, one for production
-2. Set environment variables in each deployment's dashboard:
-   - `BETTER_AUTH_SECRET`: generate with `openssl rand -base64 32` (different per env)
-   - `SITE_URL`: the Convex site URL for that deployment
-3. Generate deploy keys in each deployment's settings
-
-### 3. GitHub Repository Configuration
-
-**Environments** (Settings > Environments):
-- `staging`: no protection rules, deployment branches: `main`
-- `production`: required reviewers, 15-minute wait timer, deployment branches: `main`
-
-**Secrets** (Settings > Secrets and Variables > Actions):
-
-| Secret | Scope | Description |
-|---|---|---|
-| `VERCEL_TOKEN` | Repository | Vercel personal access token |
-| `VERCEL_ORG_ID` | Repository | Vercel team/org ID |
-| `VERCEL_PROJECT_ID_WEB` | Environment (staging + production) | Web app Vercel project ID |
-| `VERCEL_PROJECT_ID_ADMIN` | Environment (staging + production) | Admin app Vercel project ID |
-| `VERCEL_PROJECT_ID_LANDING` | Environment (staging + production) | Landing app Vercel project ID |
-| `CONVEX_DEPLOY_KEY` | Environment (staging) | Convex staging deploy key |
-| `CONVEX_DEPLOY_KEY` | Environment (production) | Convex production deploy key |
-
-**Branch protection** on `main`:
-- Require PR reviews
-- Required status checks: `CI Shared Complete`, `CI Web Complete`, `CI Admin Complete`, `CI Landing Complete`
-
-## Troubleshooting
-
-### Staging deploy not triggering
-Check that the CI gate workflow ran and created the `ci/gate-passed` status. The staging workflow polls for this status with a 30-minute timeout.
-
-### Production deploy rejected
-Verify: (1) confirmation string is exactly `deploy-production`, (2) the SHA has a staging deployment tag, (3) the `production` environment approval was granted.
-
-### Artifact checksum mismatch
-The deployment will fail if the artifact was corrupted during upload/download. Re-run the workflow — artifacts are rebuilt deterministically from the same SHA.
-
-### Convex deployment fails
-Check the deploy key is correct for the target environment. Deploy keys are scoped to a specific Convex deployment.
-
-### Rollback to expired artifact
-The rollback workflow rebuilds from source at the target SHA. As long as the git tag exists, rollback works regardless of artifact retention.
-
-## Free Tier Constraints
-
-| Service | Free Tier | Expected Usage |
-|---|---|---|
-| GitHub Actions | 2,000 min/month (private) | ~200 min/month |
-| GitHub Artifacts | 500 MB (private) | ~100 MB/month |
-| Vercel Hobby | 1 person, unlimited deploys, 3 projects | Fits exactly |
-| Convex Starter | 2 deployments | Staging + production fills it |
+For infrastructure setup, prerequisites, troubleshooting, and free tier limits, see [deployment-runbook.md](./deployment-runbook.md).
 
 ---
 
@@ -248,7 +198,7 @@ The pipeline can leave the system in a partially-deployed state in several scena
 
 ### Build Phase Failure
 
-All three app builds (`build-web`, `build-admin`, `build-landing`) run in parallel. Both `deploy-convex` and `attest` depend on **all three** completing. If any build fails:
+Only changed apps are built (`build-web`, `build-admin`, `build-landing` run conditionally). Both `deploy-convex` and `attest` depend on **all build jobs** completing (unchanged apps are skipped, not failed). If any build fails:
 
 - `deploy-convex` is skipped (no backend change)
 - All frontend deploys are skipped
@@ -328,68 +278,7 @@ The rebuild-from-source approach means rollback works **regardless of artifact a
 
 **Concurrency:** The rollback workflow uses the same concurrency group (`deploy-<env>`) as normal deploys, so a rollback cannot collide with an in-progress deployment.
 
-### Step-by-Step Rollback Runbook
-
-**1. Find the target SHA**
-
-```bash
-# List the last 10 successful deployments for the environment
-git fetch --tags
-git tag --list 'deploy/production/*' --sort=-creatordate | head -10
-
-# Example output:
-# deploy/production/2026-02-07T16:00:00Z/abc1234def5678...
-# deploy/production/2026-02-05T12:30:00Z/def5678abc1234...
-```
-
-The SHA is the last segment of the tag name. Use the second most recent tag (the last known-good deployment before the current broken one).
-
-**2. Verify the target SHA**
-
-```bash
-# Check what was in that deployment
-git log --oneline abc1234def5678 -5
-
-# Check the workflow run that created the tag (in the tag annotation)
-git tag -v 'deploy/production/2026-02-05T12:30:00Z/def5678abc1234...'
-```
-
-**3. Trigger the rollback**
-
-```bash
-# Rollback production
-gh workflow run cd-rollback.yml \
-  -f environment=production \
-  -f target_sha=def5678abc1234... \
-  -f confirm=rollback-production
-
-# Rollback staging
-gh workflow run cd-rollback.yml \
-  -f environment=staging \
-  -f target_sha=def5678abc1234... \
-  -f confirm=rollback-staging
-```
-
-**4. Monitor the rollback**
-
-```bash
-# Watch the workflow run
-gh run list --workflow=cd-rollback.yml --limit=1
-gh run watch <run-id>
-```
-
-**5. Verify**
-
-```bash
-# Confirm the rollback tag was created
-git fetch --tags
-git tag --list 'deploy/production/rollback/*' --sort=-creatordate | head -1
-
-# Manually verify the deployment URLs
-curl -sI https://your-web-app.vercel.app | head -1
-curl -sI https://your-admin-app.vercel.app | head -1
-curl -sI https://your-landing-app.vercel.app | head -1
-```
+For step-by-step rollback instructions, see [deployment-runbook.md — Rollback](./deployment-runbook.md#7-rollback).
 
 ### When Rollback Cannot Work
 
@@ -543,80 +432,14 @@ After Phase 2 cleanup:
 
 ---
 
-## Downtime & Maintenance Mode
-
-### When Downtime Is NOT Needed
+## Downtime & Zero-Downtime Deployments
 
 Most deployments require zero downtime:
 
 - **Additive schema changes** — new tables, optional fields, new indexes, new functions
 - **Frontend-only changes** — no Convex changes at all
 - **Bug fixes** that don't change the data model
-- **Two-phase migrations** — handled by the pattern above
-
-### When Downtime May Be Needed
-
-- **Breaking schema changes that cannot use two-phase** — extremely rare; usually means a fundamental data model redesign
-- **Bulk data migrations requiring exclusive access** — e.g., re-keying all documents, merging tables
-- **Infrastructure changes** — migrating to a different Convex deployment
-
-### Option A: Maintenance Mode via Convex Flag (Future Enhancement)
-
-Not currently implemented. Implementation sketch:
-
-**1. Add a `systemSettings` table:**
-
-```typescript
-// schema.ts
-systemSettings: defineTable({
-  key: v.string(),
-  value: v.string(),
-}).index("by_key", ["key"]),
-```
-
-**2. Add a maintenance mode check to mutations:**
-
-```typescript
-// lib/maintenance.ts
-export async function checkMaintenance(ctx: QueryCtx) {
-  const setting = await ctx.db
-    .query("systemSettings")
-    .withIndex("by_key", q => q.eq("key", "maintenanceMode"))
-    .unique();
-  if (setting?.value === "true") {
-    throw new ConvexError("System is undergoing maintenance. Please try again shortly.");
-  }
-}
-```
-
-**3. Frontend checks the flag and shows a maintenance banner:**
-
-```typescript
-const maintenanceMode = useQuery(api.systemSettings.isMaintenanceMode);
-if (maintenanceMode) return <MaintenanceBanner />;
-```
-
-**4. Deployment sequence with maintenance mode:**
-
-```
-1. Set maintenance flag:  npx convex run systemSettings:setMaintenance --args '{"enabled": true}'
-   → Frontend shows maintenance banner
-   → Mutations rejected server-side
-2. Deploy Convex (schema migration)
-3. Run data migration if needed
-4. Deploy all 3 frontends
-5. Verify health checks
-6. Clear maintenance flag:  npx convex run systemSettings:setMaintenance --args '{"enabled": false}'
-```
-
-**Trade-offs:**
-- Requires pre-existing maintenance mode code in the app before the first use
-- Adds a query to every page load (the flag check)
-- Simple to understand and operate
-
-### Option B: Two-Phase Migration (Zero Downtime)
-
-The preferred approach for most breaking changes. See [Two-Phase Migration Pattern](#two-phase-migration-pattern) above. Requires more careful planning but avoids any user-facing interruption.
+- **Breaking changes** — handled by the [Two-Phase Migration Pattern](#two-phase-migration-pattern) above
 
 ### Decision Matrix
 
@@ -628,9 +451,8 @@ The preferred approach for most breaking changes. See [Two-Phase Migration Patte
 | Remove a field with data | No | Two-phase migration |
 | Change field type | No | Two-phase migration |
 | Add required field | No | Two-phase migration (add as optional first) |
-| Complete schema redesign | Possibly | Maintenance mode or extended two-phase |
+| Complete schema redesign | No (usually) | Extended two-phase migration |
 | Merge/split tables | No (usually) | Two-phase migration |
-| Infrastructure migration | Yes | Maintenance mode |
 
 ---
 
@@ -669,7 +491,7 @@ git tag --list 'deploy/staging/*' --sort=-creatordate | head -10
 git tag --list 'deploy/*/rollback/*' --sort=-creatordate
 
 # Get details of a specific deployment (shows workflow run URL)
-git tag -v 'deploy/production/2026-02-07T16:00:00Z/abc1234...'
+git tag -v 'deploy/production/2026-02-07T16-00-00Z/abc1234...'
 
 # Find all deployment tags for a specific SHA
 git tag --list --points-at abc1234def5678 | grep deploy/
@@ -691,13 +513,11 @@ If artifact preservation is important for compliance or audit purposes, consider
 
 ---
 
-## Alerting & Notifications (Future Enhancement)
+## Alerting & Notifications
 
-No alerting mechanisms are currently implemented. Deployment failures are only visible in the GitHub Actions UI. This section documents available approaches.
+### GitHub Built-in Email Notifications (Enabled)
 
-### GitHub Built-in Email Notifications
-
-GitHub sends email notifications for failed workflow runs by default to repository watchers.
+GitHub sends email notifications for failed workflow runs to repository watchers. This is enabled and serves as the baseline alerting mechanism.
 
 **Configuration:** Repository Settings > Notifications > Actions
 
@@ -706,8 +526,6 @@ GitHub sends email notifications for failed workflow runs by default to reposito
 - No granular filtering (all workflow failures, not just deployments)
 - Can be noisy if CI also sends failure emails
 - Delay depends on email delivery
-
-**Recommendation:** Enable as a baseline. No code changes required.
 
 ### Slack Webhook Integration
 
@@ -763,59 +581,3 @@ gh api repos/{owner}/{repo}/deployments --jq '.[0:5] | .[] | "\(.environment) \(
 | Team with Slack | Add Slack webhook to CD workflows |
 | Production-critical | PagerDuty or Opsgenie integration via webhook |
 
----
-
-## Auto-Rollback (Future Enhancement)
-
-Automatic rollback on deployment failure is not currently implemented. This section documents the feasibility and trade-offs.
-
-### Frontend Auto-Rollback (Feasible)
-
-GitHub Actions supports `if: failure()` on jobs, which can trigger a rollback workflow when smoke tests fail. Implementation sketch:
-
-```yaml
-# Add to cd-staging.yml after the smoke-test job
-auto-rollback:
-  name: Auto-Rollback on Failure
-  needs: [smoke-test]
-  if: failure()
-  runs-on: ubuntu-latest
-  steps:
-    - name: Find previous deployment SHA
-      id: prev
-      run: |
-        git fetch --tags
-        # Get the second most recent staging tag (skip the failed one, which wasn't tagged)
-        PREV_TAG=$(git tag --list 'deploy/staging/*' --sort=-creatordate | head -1)
-        PREV_SHA=$(echo "${PREV_TAG}" | rev | cut -d'/' -f1 | rev)
-        echo "sha=${PREV_SHA}" >> "$GITHUB_OUTPUT"
-
-    - name: Trigger rollback
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh workflow run cd-rollback.yml \
-          -f environment=staging \
-          -f target_sha=${{ steps.prev.outputs.sha }} \
-          -f confirm=rollback-staging
-```
-
-This pattern works for **frontend (Vercel) deployments** because Vercel deployments are independent and idempotent — deploying an old version over a new one is safe.
-
-### Why Convex Auto-Rollback Is Risky
-
-Convex auto-rollback should **not** be automated because:
-
-1. **Data written during the Convex-first window.** Between Convex deploy and smoke test, the new backend may have processed mutations and written documents using the new schema. Auto-rolling back Convex could fail if the old schema is incompatible with this new data.
-
-2. **Schema validation is strict.** Convex validates the deployed schema against all existing data. If new data doesn't match the old schema, the rollback deploy is rejected entirely.
-
-3. **Data loss risk.** If the auto-rollback somehow succeeds (e.g., the schema change was additive), documents written during the window might become inaccessible or invalid.
-
-Auto-rollback of Convex should always be a **manual decision** after assessing whether data was written against the new schema.
-
-### Recommendation
-
-- **Staging:** Auto-rollback of Vercel frontends is safe and useful for catching regressions early. Convex rollback stays manual.
-- **Production:** Do not auto-rollback. Alert the team (see [Alerting & Notifications](#alerting--notifications-future-enhancement)) and let a human decide whether to rollback or roll forward.
-- **Prerequisite:** Implement alerting first, so the team knows when auto-rollback fires and can verify the result.
