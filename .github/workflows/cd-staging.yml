@@ -196,6 +196,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       (needs.changes.outputs.web == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.landing == 'true')
     runs-on: ubuntu-latest
     steps:
@@ -245,6 +246,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     environment: staging
@@ -263,6 +265,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     outputs:
@@ -291,6 +294,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     outputs:
@@ -319,6 +323,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       needs.changes.outputs.landing == 'true'
     runs-on: ubuntu-latest
     outputs:
@@ -348,6 +353,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       (needs.changes.outputs.web == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.landing == 'true')
     runs-on: ubuntu-latest
     steps:
@@ -413,6 +419,7 @@ jobs:
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       needs.changes.outputs.any_app == 'true'
     runs-on: ubuntu-latest
     steps:

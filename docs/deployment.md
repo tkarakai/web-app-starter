@@ -203,9 +203,9 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 |---|---|---|
 | `VERCEL_TOKEN` | Repository | Vercel personal access token |
 | `VERCEL_ORG_ID` | Repository | Vercel team/org ID |
-| `VERCEL_PROJECT_ID_WEB` | Environment (staging + production) | Web app Vercel project ID |
-| `VERCEL_PROJECT_ID_ADMIN` | Environment (staging + production) | Admin app Vercel project ID |
-| `VERCEL_PROJECT_ID_LANDING` | Environment (staging + production) | Landing app Vercel project ID |
+| `VERCEL_PROJECT_ID_WEB` | Repository | Web app Vercel project ID |
+| `VERCEL_PROJECT_ID_ADMIN` | Repository | Admin app Vercel project ID |
+| `VERCEL_PROJECT_ID_LANDING` | Repository | Landing app Vercel project ID |
 | `CONVEX_DEPLOY_KEY` | Environment (staging) | Convex staging deploy key |
 | `CONVEX_DEPLOY_KEY` | Environment (production) | Convex production deploy key |
 
