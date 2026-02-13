@@ -120,13 +120,15 @@ Create three Vercel projects — one per app. Choose **either** the dashboard or
 
 1. **Install the Vercel GitHub App** (one-time): When you click "Add New Project" in the [Vercel dashboard](https://vercel.com/dashboard), Vercel prompts you to install its GitHub App. Grant access to your repository. This is a GitHub App, not an OAuth token — it lets Vercel read your repo to detect framework settings.
 
-2. **Import the repository three times** (once per app). For each: click "Add New Project" → "Import Git Repository" → select your repo → click **Edit** next to "Root Directory" to set the app path → confirm the **Framework Preset** is Next.js:
+2. **Import the repository three times** (once per app). For each: click "Add New Project" → "Import Git Repository" → select your repo → set the **Root Directory** and confirm the **Framework Preset** is **Next.js**:
 
-   | Project Name | Root Directory | Framework |
-   |--------------|----------------|-----------|
-   | `my-app-landing` | `apps/landing` | Next.js |
-   | `my-app-web` | `apps/web` | Next.js |
-   | `my-app-admin` | `apps/admin` | Next.js |
+   | Project Name | Root Directory | Framework Preset |
+   |--------------|----------------|------------------|
+   | `my-app-landing` | `apps/landing` | **Next.js** |
+   | `my-app-web` | `apps/web` | **Next.js** |
+   | `my-app-admin` | `apps/admin` | **Next.js** |
+
+   > **Important:** Both settings are required. The CI/CD build runs `vercel build` from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579). **Root Directory** tells the `@vercel/next` builder which app to build. **Framework Preset = Next.js** ensures the correct builder is used (without it, Vercel falls back to `@vercel/static-build` and fails).
 
 **Option B — CLI (no GitHub connection needed):**
 
@@ -134,10 +136,10 @@ Create three Vercel projects — one per app. Choose **either** the dashboard or
 # Authenticate with Vercel (one-time)
 vercel login
 
-# Create each project from its app directory
-cd apps/landing && vercel project add my-app-landing
-cd apps/web && vercel project add my-app-web
-cd apps/admin && vercel project add my-app-admin
+# Create each project from the repo root
+vercel project add my-app-landing
+vercel project add my-app-web
+vercel project add my-app-admin
 ```
 
 **Disable automatic deployments** on each project (required — our CI/CD pipeline manages deployments via `vercel deploy` in GitHub Actions):
@@ -360,6 +362,8 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Two Convex projects created: staging and production (step 2a)
 - [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
 - [ ] Three Vercel projects created: web-app, admin-app, landing-app (step 2b)
+- [ ] Vercel Root Directory set to `apps/<app>` on all projects (step 2b)
+- [ ] Vercel Framework Preset set to **Next.js** on all projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all projects (step 2b)
 - [ ] Convex environment variables set: `SITE_URL`, `BETTER_AUTH_SECRET` per project (step 2c)
 - [ ] `BETTER_AUTH_SECRET` is unique per project (staging ≠ production)
@@ -717,6 +721,8 @@ No automated alerting is configured by default. Options by team size:
 
 | Symptom | Likely Cause | Fix |
 |---------|--------------|-----|
+| Vercel build uses `@vercel/static-build` or says "No Output Directory named public" | Framework Preset is not set to Next.js | Set Framework Preset to **Next.js** in each project (Settings > General) |
+| Vercel build fails with Turbopack "can't find next/package.json" | Root Directory not set or `outputFileTracingRoot`/`turbopack.root` missing in next.config.ts | Set Root Directory to `apps/<app>` in each project; ensure next.config.ts has both settings pointing to monorepo root |
 | Staging not deploying after push | CI still running in the unified workflow | Check `gh run list --workflow=cd-staging.yml`; CI phase runs first |
 | All CI passed but nothing deployed | No app/backend files changed in the push | Change detection skips build/deploy for unchanged apps; expected behavior |
 | Production deploy rejected | Wrong confirmation string or SHA not staged | Use exact string `deploy-production`; verify SHA has a staging tag |

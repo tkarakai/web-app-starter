@@ -122,9 +122,9 @@ Each build produces a JSON manifest recording: git SHA, environment, timestamp, 
 Every deployment creates a tag for auditability:
 
 ```
-deploy/staging/2026-02-07T15:30:00Z/abc1234...
-deploy/production/2026-02-07T16:00:00Z/abc1234...
-deploy/staging/rollback/2026-02-07T17:00:00Z/abc1234...
+deploy/staging/2026-02-07T15-30-00Z/abc1234...
+deploy/production/2026-02-07T16-00-00Z/abc1234...
+deploy/staging/rollback/2026-02-07T17-00-00Z/abc1234...
 ```
 
 To find the latest production deployment:
@@ -140,11 +140,13 @@ git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 
 Three Vercel projects, one per app. **Do not connect to git** — deployments are managed by the pipeline.
 
-| Vercel Project | App | Staging (Preview) | Production |
-|---|---|---|---|
-| `web-app` | `apps/web` | Preview deployments | Production deployments |
-| `admin-app` | `apps/admin` | Preview deployments | Production deployments |
-| `landing-app` | `apps/landing` | Preview deployments | Production deployments |
+| Vercel Project | App | Root Directory | Framework Preset | Staging (Preview) | Production |
+|---|---|---|---|---|---|
+| `web-app` | `apps/web` | `apps/web` | **Next.js** | Preview deployments | Production deployments |
+| `admin-app` | `apps/admin` | `apps/admin` | **Next.js** | Preview deployments | Production deployments |
+| `landing-app` | `apps/landing` | `apps/landing` | **Next.js** | Preview deployments | Production deployments |
+
+> **Important:** Both **Root Directory** and **Framework Preset** must be set correctly. The build runs from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579); Root Directory tells the builder which app to build, and Framework Preset ensures `@vercel/next` is used (not `@vercel/static-build`).
 
 ## Convex Deployment
 
@@ -165,8 +167,10 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 
 1. Create a Vercel account at [vercel.com](https://vercel.com) (Hobby/free tier)
 2. Create 3 projects: `web-app`, `admin-app`, `landing-app`
-3. **Disable auto-deploy from git** in each project (Settings > Git)
-4. Set environment variables in each project's dashboard for both Preview and Production environments:
+3. **Set Root Directory** in each project (Settings > General > Root Directory): `apps/web`, `apps/admin`, `apps/landing` respectively. The build runs from the monorepo root; Root Directory tells the `@vercel/next` builder which app to build.
+4. **Set Framework Preset** to **Next.js** in each project (Settings > General > Framework Preset). Without this, the builder detects `@vercel/static-build` from the monorepo root and fails.
+5. **Disable auto-deploy from git** in each project (Settings > Git)
+6. Set environment variables in each project's dashboard for both Preview and Production environments:
 
 **web-app & admin-app:**
 | Variable | Preview (Staging) | Production |
@@ -181,7 +185,7 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 | `NEXT_PUBLIC_SITE_URL` | Landing staging URL | Landing production URL |
 | `NEXT_PUBLIC_WEB_APP_URL` | Web app staging URL | Web app production URL |
 
-5. Note down: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and each project's `VERCEL_PROJECT_ID`
+7. Note down: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and each project's `VERCEL_PROJECT_ID`
 
 ### 2. Convex Cloud Deployments
 
@@ -214,6 +218,12 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 - Required status checks: `CI Shared Complete`, `CI Web Complete`, `CI Admin Complete`, `CI Landing Complete`
 
 ## Troubleshooting
+
+### Vercel build uses `@vercel/static-build` instead of `@vercel/next`
+The Vercel project's Framework Preset is not set to Next.js. Since the build runs from the monorepo root, the builder doesn't auto-detect Next.js. **Fix:** Set Framework Preset to **Next.js** in each project's Settings > General.
+
+### Vercel build fails with "No Output Directory named public"
+Same root cause as above — `@vercel/static-build` expects a `public` directory. **Fix:** Set Framework Preset to **Next.js**.
 
 ### Staging deploy not triggering
 Check the unified `cd-staging.yml` workflow run in GitHub Actions. The CI phase runs all 4 CI workflows as reusable workflows; if any fail, the CI Gate job fails and subsequent build/deploy jobs are skipped.
@@ -337,8 +347,8 @@ git fetch --tags
 git tag --list 'deploy/production/*' --sort=-creatordate | head -10
 
 # Example output:
-# deploy/production/2026-02-07T16:00:00Z/abc1234def5678...
-# deploy/production/2026-02-05T12:30:00Z/def5678abc1234...
+# deploy/production/2026-02-07T16-00-00Z/abc1234def5678...
+# deploy/production/2026-02-05T12-30-00Z/def5678abc1234...
 ```
 
 The SHA is the last segment of the tag name. Use the second most recent tag (the last known-good deployment before the current broken one).
@@ -350,7 +360,7 @@ The SHA is the last segment of the tag name. Use the second most recent tag (the
 git log --oneline abc1234def5678 -5
 
 # Check the workflow run that created the tag (in the tag annotation)
-git tag -v 'deploy/production/2026-02-05T12:30:00Z/def5678abc1234...'
+git tag -v 'deploy/production/2026-02-05T12-30-00Z/def5678abc1234...'
 ```
 
 **3. Trigger the rollback**
@@ -668,7 +678,7 @@ git tag --list 'deploy/staging/*' --sort=-creatordate | head -10
 git tag --list 'deploy/*/rollback/*' --sort=-creatordate
 
 # Get details of a specific deployment (shows workflow run URL)
-git tag -v 'deploy/production/2026-02-07T16:00:00Z/abc1234...'
+git tag -v 'deploy/production/2026-02-07T16-00-00Z/abc1234...'
 
 # Find all deployment tags for a specific SHA
 git tag --list --points-at abc1234def5678 | grep deploy/

@@ -438,7 +438,7 @@ jobs:
 
       - name: Create deployment tag
         run: |
-          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
           TAG="deploy/staging/${TIMESTAMP}/${{ github.sha }}"
           git tag "${TAG}" "${{ github.sha }}"
           git push origin "${TAG}"
