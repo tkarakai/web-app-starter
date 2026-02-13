@@ -1,5 +1,9 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+
+const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -20,8 +24,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@repo/design-system", "@repo/auth", "@repo/backend", "@repo/edge-rate-limit", "@repo/i18n"],
   headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
+  outputFileTracingRoot: monorepoRoot,
   turbopack: {
-    root: "../..",
+    root: monorepoRoot,
   },
 };
 
