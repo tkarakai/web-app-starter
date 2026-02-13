@@ -56,12 +56,10 @@ runs:
         mkdir -p "${DEPLOY_DIR}"
         tar -xzf "deploy-artifacts/${{ inputs.tarball }}" -C "${DEPLOY_DIR}"
 
-        # The tarball has .vercel/output at the root, but Vercel's Root Directory
-        # setting (apps/<app>) means it looks for .vercel/output inside that path.
-        # Move the output to where Vercel expects it.
-        APP_DIR="${DEPLOY_DIR}/apps/${{ inputs.app }}"
-        mkdir -p "${APP_DIR}/.vercel"
-        mv "${DEPLOY_DIR}/.vercel/output" "${APP_DIR}/.vercel/output"
+        # Vercel checks that the Root Directory path (apps/<app>) exists even for
+        # --prebuilt deploys, but looks for .vercel/output at the --cwd level.
+        # Create the Root Directory path so the check passes.
+        mkdir -p "${DEPLOY_DIR}/apps/${{ inputs.app }}"
 
     - name: Install Vercel CLI
       shell: bash
@@ -93,18 +91,18 @@ runs:
         echo "::group::Debug: deploy directory contents"
         echo "Root: ${DEPLOY_DIR}/"
         ls -la "${DEPLOY_DIR}/"
-        echo "Project link: ${DEPLOY_DIR}/.vercel/"
-        ls -la "${DEPLOY_DIR}/.vercel/"
+        echo "Project link:"
         cat "${DEPLOY_DIR}/.vercel/project.json"
         echo ""
-        APP_DIR="${DEPLOY_DIR}/apps/${{ inputs.app }}"
-        if [ -d "${APP_DIR}/.vercel/output" ]; then
-          echo "Build output at ${APP_DIR}/.vercel/output/:"
-          ls -la "${APP_DIR}/.vercel/output/"
+        if [ -d "${DEPLOY_DIR}/.vercel/output" ]; then
+          echo ".vercel/output exists:"
+          ls -la "${DEPLOY_DIR}/.vercel/output/"
         else
-          echo "WARNING: ${APP_DIR}/.vercel/output does not exist"
+          echo "WARNING: .vercel/output does not exist at ${DEPLOY_DIR}/.vercel/output"
           find "${DEPLOY_DIR}" -maxdepth 4 -type d
         fi
+        echo "Root Directory path: ${DEPLOY_DIR}/apps/${{ inputs.app }}"
+        ls -la "${DEPLOY_DIR}/apps/${{ inputs.app }}/" 2>&1 || true
         echo "::endgroup::"
 
         # Disable -e so we can capture the error output before exiting
