@@ -104,7 +104,11 @@ runs:
         TARBALL="${{ steps.meta.outputs.tarball }}"
         CHECKSUM="${{ steps.meta.outputs.checksum-file }}"
 
-        tar -czf "${TARBALL}" .vercel/output
+        # Include both .vercel/output and the app's .next/ build output.
+        # The serverless functions in .vercel/output reference files in
+        # apps/<app>/.next/ via .nft.json trace files — both are needed
+        # for vercel deploy --prebuilt to succeed.
+        tar -czf "${TARBALL}" .vercel/output "apps/${{ inputs.app }}/.next"
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
         echo "### Build Artifact: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
