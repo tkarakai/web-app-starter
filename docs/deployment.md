@@ -122,9 +122,9 @@ Each build produces a JSON manifest recording: git SHA, environment, timestamp, 
 Every deployment creates a tag for auditability:
 
 ```
-deploy/staging/2026-02-07T15:30:00Z/abc1234...
-deploy/production/2026-02-07T16:00:00Z/abc1234...
-deploy/staging/rollback/2026-02-07T17:00:00Z/abc1234...
+deploy/staging/2026-02-07T15-30-00Z/abc1234...
+deploy/production/2026-02-07T16-00-00Z/abc1234...
+deploy/staging/rollback/2026-02-07T17-00-00Z/abc1234...
 ```
 
 To find the latest production deployment:
@@ -347,8 +347,8 @@ git fetch --tags
 git tag --list 'deploy/production/*' --sort=-creatordate | head -10
 
 # Example output:
-# deploy/production/2026-02-07T16:00:00Z/abc1234def5678...
-# deploy/production/2026-02-05T12:30:00Z/def5678abc1234...
+# deploy/production/2026-02-07T16-00-00Z/abc1234def5678...
+# deploy/production/2026-02-05T12-30-00Z/def5678abc1234...
 ```
 
 The SHA is the last segment of the tag name. Use the second most recent tag (the last known-good deployment before the current broken one).
@@ -360,7 +360,7 @@ The SHA is the last segment of the tag name. Use the second most recent tag (the
 git log --oneline abc1234def5678 -5
 
 # Check the workflow run that created the tag (in the tag annotation)
-git tag -v 'deploy/production/2026-02-05T12:30:00Z/def5678abc1234...'
+git tag -v 'deploy/production/2026-02-05T12-30-00Z/def5678abc1234...'
 ```
 
 **3. Trigger the rollback**
@@ -678,7 +678,7 @@ git tag --list 'deploy/staging/*' --sort=-creatordate | head -10
 git tag --list 'deploy/*/rollback/*' --sort=-creatordate
 
 # Get details of a specific deployment (shows workflow run URL)
-git tag -v 'deploy/production/2026-02-07T16:00:00Z/abc1234...'
+git tag -v 'deploy/production/2026-02-07T16-00-00Z/abc1234...'
 
 # Find all deployment tags for a specific SHA
 git tag --list --points-at abc1234def5678 | grep deploy/

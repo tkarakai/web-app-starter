@@ -317,7 +317,7 @@ jobs:
 
       - name: Create production deployment tag
         run: |
-          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
           TAG="deploy/production/${TIMESTAMP}/${{ inputs.git_sha }}"
           git tag -a "${TAG}" "${{ inputs.git_sha }}" \
             -m "Production deployment at ${TIMESTAMP}" \

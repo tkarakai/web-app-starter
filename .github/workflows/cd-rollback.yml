@@ -280,7 +280,7 @@ jobs:
 
       - name: Create rollback tag
         run: |
-          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
           TAG="deploy/${{ inputs.environment }}/rollback/${TIMESTAMP}/${{ inputs.target_sha }}"
           git tag -a "${TAG}" "${{ inputs.target_sha }}" \
             -m "Rollback ${{ inputs.environment }} to ${{ inputs.target_sha }}" \
