@@ -6,8 +6,9 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
   actions: read
+  statuses: write
   id-token: write
   attestations: write
 
@@ -16,53 +17,131 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ─── Wait for all CI workflows to pass ───────────────────────────
-  wait-for-ci:
-    name: Wait for CI Gate
+  # ─── CI Phase (reusable workflows, parallel) ───────────────────
+  ci-shared:
+    uses: ./.github/workflows/ci-shared.yml
+
+  ci-web:
+    uses: ./.github/workflows/ci-web.yml
+
+  ci-admin:
+    uses: ./.github/workflows/ci-admin.yml
+
+  ci-landing:
+    uses: ./.github/workflows/ci-landing.yml
+
+  # ─── CI Gate ────────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate
+    needs: [ci-shared, ci-web, ci-admin, ci-landing]
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - name: Wait for ci/gate-passed status
+      - name: Evaluate CI and set commit status
         uses: actions/github-script@v7
         with:
           script: |
-            const sha = context.sha;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const maxAttempts = 60;
-            const pollInterval = 30000; // 30 seconds
+            const results = {
+              shared: '${{ needs.ci-shared.result }}',
+              web: '${{ needs.ci-web.result }}',
+              admin: '${{ needs.ci-admin.result }}',
+              landing: '${{ needs.ci-landing.result }}',
+            };
 
-            console.log(`Waiting for ci/gate-passed on ${sha}...`);
+            console.log('CI Results:', JSON.stringify(results, null, 2));
 
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              const { data: { statuses } } = await github.rest.repos.getCombinedStatusForRef({
-                owner,
-                repo,
-                ref: sha,
-              });
+            const allPassed = Object.values(results).every(r => r === 'success');
 
-              const gate = statuses.find(s => s.context === 'ci/gate-passed');
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: allPassed ? 'success' : 'failure',
+              context: 'ci/gate-passed',
+              description: allPassed
+                ? 'All CI workflows passed'
+                : `CI failed: ${Object.entries(results).filter(([,r]) => r !== 'success').map(([k,r]) => `${k}=${r}`).join(', ')}`,
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
 
-              if (gate) {
-                if (gate.state === 'success') {
-                  console.log(`CI gate passed (attempt ${attempt})`);
-                  return;
-                } else if (gate.state === 'failure' || gate.state === 'error') {
-                  core.setFailed(`CI gate failed: ${gate.description}`);
-                  return;
-                }
-              }
-
-              console.log(`Attempt ${attempt}/${maxAttempts}: CI gate not yet set, waiting ${pollInterval/1000}s...`);
-              await new Promise(resolve => setTimeout(resolve, pollInterval));
+            if (!allPassed) {
+              core.setFailed('One or more CI workflows failed');
             }
 
-            core.setFailed('Timed out waiting for CI gate');
+  # ─── Change detection (selective build/deploy) ─────────────────
+  changes:
+    name: Detect Changes
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      admin: ${{ steps.filter.outputs.admin }}
+      landing: ${{ steps.filter.outputs.landing }}
+      backend: ${{ steps.filter.outputs.backend }}
+      any_app: ${{ steps.eval.outputs.any_app }}
+    steps:
+      - uses: actions/checkout@v4
 
-  # ─── Build all three apps in parallel ────────────────────────────
+      - name: Detect file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'packages/backend/**'
+              - 'packages/design-system/**'
+              - 'packages/auth/**'
+              - 'package.json'
+              - 'bun.lockb'
+              - 'turbo.json'
+              - 'tsconfig.base.json'
+            admin:
+              - 'apps/admin/**'
+              - 'packages/backend/**'
+              - 'packages/design-system/**'
+              - 'packages/auth/**'
+              - 'package.json'
+              - 'bun.lockb'
+              - 'turbo.json'
+              - 'tsconfig.base.json'
+            landing:
+              - 'apps/landing/**'
+              - 'packages/design-system/**'
+              - 'package.json'
+              - 'bun.lockb'
+              - 'turbo.json'
+              - 'tsconfig.base.json'
+            backend:
+              - 'packages/backend/**'
+              - 'package.json'
+              - 'bun.lockb'
+              - 'turbo.json'
+              - 'tsconfig.base.json'
+
+      - name: Evaluate changes
+        id: eval
+        run: |
+          echo "web=${{ steps.filter.outputs.web }}"
+          echo "admin=${{ steps.filter.outputs.admin }}"
+          echo "landing=${{ steps.filter.outputs.landing }}"
+          echo "backend=${{ steps.filter.outputs.backend }}"
+
+          if [[ "${{ steps.filter.outputs.web }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.admin }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.landing }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.backend }}" == "true" ]]; then
+            echo "any_app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_app=false" >> "$GITHUB_OUTPUT"
+            echo "No app or backend changes detected — skipping build and deploy"
+          fi
+
+  # ─── Build changed apps in parallel ────────────────────────────
   build-web:
     name: Build Web (Staging)
-    needs: wait-for-ci
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +157,8 @@ jobs:
 
   build-admin:
     name: Build Admin (Staging)
-    needs: wait-for-ci
+    needs: changes
+    if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +174,8 @@ jobs:
 
   build-landing:
     name: Build Landing (Staging)
-    needs: wait-for-ci
+    needs: changes
+    if: needs.changes.outputs.landing == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,36 +189,63 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
 
-  # ─── Attest build provenance ─────────────────────────────────────
+  # ─── Attest build provenance (only for built artifacts) ────────
   attest:
     name: Attest Build Provenance
-    needs: [build-web, build-admin, build-landing]
+    needs: [changes, build-web, build-admin, build-landing]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      (needs.changes.outputs.web == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.landing == 'true')
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
+      - name: Download web artifact
+        if: needs.changes.outputs.web == 'true'
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: web-preview-${{ github.sha }}
+          path: artifacts/web-preview-${{ github.sha }}
+
+      - name: Download admin artifact
+        if: needs.changes.outputs.admin == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: admin-preview-${{ github.sha }}
+          path: artifacts/admin-preview-${{ github.sha }}
+
+      - name: Download landing artifact
+        if: needs.changes.outputs.landing == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: landing-preview-${{ github.sha }}
+          path: artifacts/landing-preview-${{ github.sha }}
 
       - name: Attest web artifact
+        if: needs.changes.outputs.web == 'true'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: artifacts/web-preview-${{ github.sha }}/web-preview.tar.gz
 
       - name: Attest admin artifact
+        if: needs.changes.outputs.admin == 'true'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: artifacts/admin-preview-${{ github.sha }}/admin-preview.tar.gz
 
       - name: Attest landing artifact
+        if: needs.changes.outputs.landing == 'true'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: artifacts/landing-preview-${{ github.sha }}/landing-preview.tar.gz
 
-  # ─── Deploy Convex backend (before frontend) ────────────────────
+  # ─── Deploy Convex backend (if changed) ────────────────────────
   deploy-convex:
     name: Deploy Convex (Staging)
-    needs: [build-web, build-admin, build-landing]
+    needs: [changes, build-web, build-admin, build-landing]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -148,10 +256,14 @@ jobs:
           deploy-key: ${{ secrets.CONVEX_DEPLOY_KEY }}
           environment: staging
 
-  # ─── Deploy all three apps to Vercel ─────────────────────────────
+  # ─── Deploy changed apps to Vercel ─────────────────────────────
   deploy-web:
     name: Deploy Web (Staging)
-    needs: deploy-convex
+    needs: [changes, build-web, build-admin, build-landing, deploy-convex]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -175,7 +287,11 @@ jobs:
 
   deploy-admin:
     name: Deploy Admin (Staging)
-    needs: deploy-convex
+    needs: [changes, build-web, build-admin, build-landing, deploy-convex]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -199,7 +315,11 @@ jobs:
 
   deploy-landing:
     name: Deploy Landing (Staging)
-    needs: deploy-convex
+    needs: [changes, build-web, build-admin, build-landing, deploy-convex]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.changes.outputs.landing == 'true'
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -221,21 +341,36 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
 
-  # ─── Smoke tests ─────────────────────────────────────────────────
+  # ─── Smoke tests (only for deployed apps) ──────────────────────
   smoke-test:
     name: Smoke Tests
-    needs: [deploy-web, deploy-admin, deploy-landing]
+    needs: [changes, deploy-web, deploy-admin, deploy-landing]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      (needs.changes.outputs.web == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.landing == 'true')
     runs-on: ubuntu-latest
     steps:
-      - name: Health check all staging apps
+      - name: Health check deployed apps
         uses: actions/github-script@v7
         with:
           script: |
-            const apps = [
-              { name: 'web', url: '${{ needs.deploy-web.outputs.deployment-url }}' },
-              { name: 'admin', url: '${{ needs.deploy-admin.outputs.deployment-url }}' },
-              { name: 'landing', url: '${{ needs.deploy-landing.outputs.deployment-url }}' },
-            ];
+            const apps = [];
+
+            if ('${{ needs.changes.outputs.web }}' === 'true') {
+              apps.push({ name: 'web', url: '${{ needs.deploy-web.outputs.deployment-url }}' });
+            }
+            if ('${{ needs.changes.outputs.admin }}' === 'true') {
+              apps.push({ name: 'admin', url: '${{ needs.deploy-admin.outputs.deployment-url }}' });
+            }
+            if ('${{ needs.changes.outputs.landing }}' === 'true') {
+              apps.push({ name: 'landing', url: '${{ needs.deploy-landing.outputs.deployment-url }}' });
+            }
+
+            if (apps.length === 0) {
+              console.log('No frontend apps deployed — skipping smoke tests');
+              return;
+            }
 
             const results = [];
             for (const app of apps) {
@@ -271,13 +406,15 @@ jobs:
               core.setFailed(`${failed.length} smoke test(s) failed`);
             }
 
-  # ─── Record deployment ───────────────────────────────────────────
+  # ─── Record deployment ─────────────────────────────────────────
   record:
     name: Record Staging Deployment
-    needs: smoke-test
+    needs: [changes, smoke-test, deploy-convex]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.changes.outputs.any_app == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 

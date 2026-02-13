@@ -1,10 +1,9 @@
 name: CI Shared
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 concurrency:
   group: ci-shared-${{ github.ref }}
