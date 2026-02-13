@@ -69,6 +69,23 @@ runs:
           --environment=${{ inputs.environment }} \
           --token="$VERCEL_TOKEN"
 
+    - name: Debug Vercel project settings
+      shell: bash
+      run: |
+        echo "::group::Vercel project settings"
+        echo "App: ${{ inputs.app }}"
+        echo "Environment: ${{ inputs.environment }}"
+        echo "Working directory: $(pwd)"
+        echo "--- .vercel/project.json ---"
+        cat .vercel/project.json | jq . 2>/dev/null || cat .vercel/project.json
+        echo ""
+        echo "--- GitHub context ---"
+        echo "Runner OS: ${{ runner.os }}"
+        echo "Runner Arch: ${{ runner.arch }}"
+        echo "SHA: ${{ github.sha }}"
+        echo "Ref: ${{ github.ref }}"
+        echo "::endgroup::"
+
     - name: Build with Vercel
       shell: bash
       env:
