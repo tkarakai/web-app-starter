@@ -1,44 +1,10 @@
-# Production Deployment Guide
+# Deployment Runbook
 
-Step-by-step guide for deploying this monorepo to production using Vercel and Convex. Covers one-time infrastructure setup, first deployment, day-to-day operations, and rollback.
+Step-by-step procedures for deploying, operating, and rolling back the monorepo. Covers one-time infrastructure setup, first deployment, day-to-day operations, and rollback.
 
-**This guide is for operators.** For pipeline internals (workflow architecture, artifact security, failure modes), see [deployment.md](./deployment.md).
+For pipeline architecture, failure modes, and migration examples, see [deployment-architecture.md](./deployment-architecture.md).
 
-## Architecture
-
-```
-                    GitHub Repository
-                          │
-                    Push to main
-                          │
-              ┌───────────┴───────────┐
-              │  Deploy Staging       │  ← one unified workflow
-              │  (cd-staging.yml)     │
-              │                       │
-              │  1. CI (4 reusable    │
-              │     workflows run     │
-              │     in parallel)      │
-              │  2. Change detection  │
-              │  3. Build changed     │
-              │     apps only         │
-              │  4. Deploy Convex +   │
-              │     Vercel (changed)  │
-              │  5. Smoke tests       │
-              └───────────┬───────────┘
-                          │
-                    Manual QA
-                          │
-              ┌───────────┴───────────┐
-              │  Deploy Production    │  ← manual trigger
-              │                       │
-              │  Convex (production)  │
-              │  Vercel ×3 (--prod)   │
-              └───────────┴───────────┘
-```
-
-**Three Vercel projects:** web-app, admin-app, landing-app
-**Two Convex projects:** staging, production (each project's production deployment is used)
-**Rule:** Nothing reaches production without passing through staging first.
+**How the pipeline works:** Push to `main` triggers automatic staging deployment (CI, build changed apps, deploy). After manual QA, promote to production via manual trigger. Three Vercel projects (web-app, admin-app, landing-app), two Convex projects (staging, production). Nothing reaches production without passing through staging first.
 
 ---
 
@@ -617,7 +583,7 @@ git tag --list 'deploy/production/rollback/*' --sort=-creatordate | head -1
 curl -sI https://web.yourdomain.com | head -1
 ```
 
-> **Note:** The rollback workflow rebuilds from source — it does not reuse old artifacts. This means rollback works regardless of artifact age (90-day retention). See [deployment.md — Rollback Procedures](./deployment.md#rollback-procedures) for edge cases.
+> **Note:** The rollback workflow rebuilds from source — it does not reuse old artifacts. This means rollback works regardless of artifact age (90-day retention). See [deployment-architecture.md — Rollback](./deployment-architecture.md#rollback-procedures) for edge cases.
 
 ---
 
@@ -653,7 +619,7 @@ These require a migration strategy:
 - [ ] Phase 2 promoted to production
 - [ ] Verified rollback is no longer possible past Phase 1 (accepted risk)
 
-> See [deployment.md — Convex Schema Migration Safety](./deployment.md#convex-schema-migration-safety) for detailed examples.
+> See [deployment-architecture.md — Convex Schema Migration Safety](./deployment-architecture.md#convex-schema-migration-safety) for detailed examples.
 
 ---
 
@@ -713,7 +679,7 @@ No automated alerting is configured by default. Options by team size:
 | Small team | Slack webhook on deploy failure | Add `SLACK_WEBHOOK_URL` secret + workflow job |
 | Production-critical | PagerDuty / Opsgenie integration | Webhook integration |
 
-> See [deployment.md — Alerting & Notifications](./deployment.md#alerting--notifications-future-enhancement) for implementation details.
+> See [deployment-architecture.md — Alerting & Notifications](./deployment-architecture.md#alerting--notifications) for implementation details.
 
 ---
 
