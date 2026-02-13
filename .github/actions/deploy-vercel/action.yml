@@ -76,8 +76,6 @@ runs:
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
       run: |
-        set -o pipefail
-
         DEPLOY_DIR="deploy/${{ inputs.app }}"
         DEPLOY_FLAGS="--prebuilt --token=${VERCEL_TOKEN} --cwd ${DEPLOY_DIR}"
 
@@ -85,8 +83,28 @@ runs:
           DEPLOY_FLAGS="${DEPLOY_FLAGS} --prod"
         fi
 
+        echo "::group::Debug: deploy directory contents"
+        ls -la "${DEPLOY_DIR}/"
+        ls -la "${DEPLOY_DIR}/.vercel/"
+        echo "project.json:"
+        cat "${DEPLOY_DIR}/.vercel/project.json"
+        echo ""
+        if [ -d "${DEPLOY_DIR}/.vercel/output" ]; then
+          echo ".vercel/output exists:"
+          ls -la "${DEPLOY_DIR}/.vercel/output/"
+        else
+          echo "WARNING: .vercel/output directory does not exist"
+          echo "Top-level contents:"
+          find "${DEPLOY_DIR}" -maxdepth 2 -type d
+        fi
+        echo "::endgroup::"
+
+        # Disable -e so we can capture the error output before exiting
+        set +e
         DEPLOY_OUTPUT=$(vercel deploy ${DEPLOY_FLAGS} 2>&1)
         DEPLOY_EXIT=$?
+        set -e
+
         if [ $DEPLOY_EXIT -ne 0 ]; then
           echo "::error::Vercel deploy failed with exit code ${DEPLOY_EXIT}"
           echo "${DEPLOY_OUTPUT}"
