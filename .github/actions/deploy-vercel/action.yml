@@ -56,6 +56,13 @@ runs:
         mkdir -p "${DEPLOY_DIR}"
         tar -xzf "deploy-artifacts/${{ inputs.tarball }}" -C "${DEPLOY_DIR}"
 
+        # The tarball has .vercel/output at the root, but Vercel's Root Directory
+        # setting (apps/<app>) means it looks for .vercel/output inside that path.
+        # Move the output to where Vercel expects it.
+        APP_DIR="${DEPLOY_DIR}/apps/${{ inputs.app }}"
+        mkdir -p "${APP_DIR}/.vercel"
+        mv "${DEPLOY_DIR}/.vercel/output" "${APP_DIR}/.vercel/output"
+
     - name: Install Vercel CLI
       shell: bash
       run: bun add -g vercel@latest
@@ -84,18 +91,19 @@ runs:
         fi
 
         echo "::group::Debug: deploy directory contents"
+        echo "Root: ${DEPLOY_DIR}/"
         ls -la "${DEPLOY_DIR}/"
+        echo "Project link: ${DEPLOY_DIR}/.vercel/"
         ls -la "${DEPLOY_DIR}/.vercel/"
-        echo "project.json:"
         cat "${DEPLOY_DIR}/.vercel/project.json"
         echo ""
-        if [ -d "${DEPLOY_DIR}/.vercel/output" ]; then
-          echo ".vercel/output exists:"
-          ls -la "${DEPLOY_DIR}/.vercel/output/"
+        APP_DIR="${DEPLOY_DIR}/apps/${{ inputs.app }}"
+        if [ -d "${APP_DIR}/.vercel/output" ]; then
+          echo "Build output at ${APP_DIR}/.vercel/output/:"
+          ls -la "${APP_DIR}/.vercel/output/"
         else
-          echo "WARNING: .vercel/output directory does not exist"
-          echo "Top-level contents:"
-          find "${DEPLOY_DIR}" -maxdepth 2 -type d
+          echo "WARNING: ${APP_DIR}/.vercel/output does not exist"
+          find "${DEPLOY_DIR}" -maxdepth 4 -type d
         fi
         echo "::endgroup::"
 
