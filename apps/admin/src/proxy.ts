@@ -42,7 +42,9 @@ export function proxy(request: NextRequest) {
   }
 
   // Authenticated users hitting auth pages → dashboard
-  if (AUTH_ROUTES.includes(pathname) && hasSession) {
+  // UNLESS they're coming from a session clear (prevents redirect loop when session is stale)
+  const isSessionCleared = request.nextUrl.searchParams.has("session_cleared");
+  if (AUTH_ROUTES.includes(pathname) && hasSession && !isSessionCleared) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

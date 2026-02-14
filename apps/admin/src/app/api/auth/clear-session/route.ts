@@ -10,14 +10,31 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request: Request): Promise<NextResponse> {
   const jar = await cookies();
+  const SESSION_COOKIE_NAMES = [
+    "better-auth.session_token",
+    "__Secure-better-auth.session_token",
+  ];
+
   for (const cookie of jar.getAll()) {
-    if (cookie.name.endsWith("better-auth.session_token")) {
+    if (SESSION_COOKIE_NAMES.includes(cookie.name)) {
       jar.delete(cookie.name);
     }
   }
 
   const url = new URL("/sign-in", request.url);
+  url.searchParams.set("session_cleared", "1");
   const response = NextResponse.redirect(url);
+
+  // Ensure cookies are deleted in the response
+  for (const cookie of jar.getAll()) {
+    if (SESSION_COOKIE_NAMES.includes(cookie.name)) {
+      response.cookies.delete({
+        name: cookie.name,
+        path: "/",
+      });
+    }
+  }
+
   response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   return response;
 }
