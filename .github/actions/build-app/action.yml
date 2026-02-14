@@ -1,12 +1,9 @@
 name: "Build App"
-description: "Build a Next.js app via Vercel CLI and package as artifact"
+description: "Build a Next.js app via Vercel CLI and package as environment-agnostic artifact"
 
 inputs:
   app:
     description: "App name (web, admin, or landing)"
-    required: true
-  environment:
-    description: "Target environment (preview or production)"
     required: true
   vercel-token:
     description: "Vercel API token"
@@ -36,9 +33,9 @@ runs:
       id: meta
       shell: bash
       run: |
-        ARTIFACT_NAME="${{ inputs.app }}-${{ inputs.environment }}-${{ github.sha }}"
-        TARBALL="${{ inputs.app }}-${{ inputs.environment }}.tar.gz"
-        CHECKSUM="${{ inputs.app }}-${{ inputs.environment }}.tar.gz.sha256"
+        ARTIFACT_NAME="${{ inputs.app }}-${{ github.sha }}"
+        TARBALL="${{ inputs.app }}.tar.gz"
+        CHECKSUM="${{ inputs.app }}.tar.gz.sha256"
         echo "artifact-name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
         echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
         echo "checksum-file=${CHECKSUM}" >> "$GITHUB_OUTPUT"
@@ -60,13 +57,13 @@ runs:
           "${{ inputs.vercel-project-id }}" \
           > ".vercel/project.json"
 
-    - name: Pull Vercel environment
+    - name: Pull Vercel project settings
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
       run: |
         vercel pull --yes \
-          --environment=${{ inputs.environment }} \
+          --environment=preview \
           --token="$VERCEL_TOKEN"
 
     - name: Debug Vercel project settings
@@ -74,7 +71,6 @@ runs:
       run: |
         echo "::group::Vercel project settings"
         echo "App: ${{ inputs.app }}"
-        echo "Environment: ${{ inputs.environment }}"
         echo "Working directory: $(pwd)"
         echo "--- .vercel/project.json ---"
         cat .vercel/project.json | jq . 2>/dev/null || cat .vercel/project.json
@@ -91,11 +87,7 @@ runs:
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
       run: |
-        BUILD_FLAGS=""
-        if [ "${{ inputs.environment }}" = "production" ]; then
-          BUILD_FLAGS="--prod"
-        fi
-        vercel build ${BUILD_FLAGS} \
+        vercel build --prod \
           --token="$VERCEL_TOKEN"
 
     - name: Package artifact
@@ -111,7 +103,7 @@ runs:
         tar -czf "${TARBALL}" .vercel/output "apps/${{ inputs.app }}/.next"
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
-        echo "### Build Artifact: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Build Artifact: ${{ inputs.app }}" >> "$GITHUB_STEP_SUMMARY"
         echo '```' >> "$GITHUB_STEP_SUMMARY"
         cat "${CHECKSUM}" >> "$GITHUB_STEP_SUMMARY"
         echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -119,13 +111,12 @@ runs:
     - name: Generate build manifest
       shell: bash
       run: |
-        MANIFEST="${{ inputs.app }}-${{ inputs.environment }}-manifest.json"
+        MANIFEST="${{ inputs.app }}-manifest.json"
         CHECKSUM=$(awk '{print $1}' "${{ steps.meta.outputs.checksum-file }}")
         TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
         jq -n \
           --arg app "${{ inputs.app }}" \
-          --arg env "${{ inputs.environment }}" \
           --arg sha "${{ github.sha }}" \
           --arg ref "${{ github.ref }}" \
           --arg ts "$TIMESTAMP" \
@@ -135,7 +126,6 @@ runs:
           --arg arch "${{ runner.arch }}" \
           '{
             app: $app,
-            environment: $env,
             git_sha: $sha,
             git_ref: $ref,
             timestamp: $ts,
@@ -152,6 +142,6 @@ runs:
         path: |
           ${{ steps.meta.outputs.tarball }}
           ${{ steps.meta.outputs.checksum-file }}
-          ${{ inputs.app }}-${{ inputs.environment }}-manifest.json
+          ${{ inputs.app }}-manifest.json
         retention-days: 90
         if-no-files-found: error

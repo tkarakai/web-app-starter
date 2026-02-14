@@ -64,8 +64,8 @@ Make sure that you have "Production" designation selected for the project (even 
 
 | Value | Where to find it | Staging | Production |
 |-------|-------------------|---------|------------|
-| Deployment URL → `NEXT_PUBLIC_CONVEX_URL` | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
-| HTTP Actions URL → `NEXT_PUBLIC_CONVEX_SITE_URL` | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
+| Deployment URL → `CONVEX_URL` | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
+| HTTP Actions URL → `CONVEX_SITE_URL` | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
 
 **Generate deploy keys** for each project:
 
@@ -200,24 +200,24 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 
 | Variable | Preview (Staging) | Production |
 |----------|-------------------|------------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
+| `CONVEX_URL` | Staging Convex URL | Production Convex URL |
+| `CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
+| `SITE_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
 
 **admin-app:**
 
 | Variable | Preview (Staging) | Production |
 |----------|-------------------|------------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://staging-admin.vercel.app` | `https://admin.yourdomain.com` |
+| `CONVEX_URL` | Staging Convex URL | Production Convex URL |
+| `CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
+| `SITE_URL` | `https://staging-admin.vercel.app` | `https://admin.yourdomain.com` |
 
 **landing-app** (no Convex — the landing page does not connect to the backend):
 
 | Variable | Preview (Staging) | Production |
 |----------|-------------------|------------|
-| `NEXT_PUBLIC_SITE_URL` | `https://staging-landing.vercel.app` | `https://yourdomain.com` |
-| `NEXT_PUBLIC_WEB_APP_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
+| `SITE_URL` | `https://staging-landing.vercel.app` | `https://yourdomain.com` |
+| `WEB_APP_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
 
 Set these in each project's Settings → Environment Variables. Use Vercel's "Preview" and "Production" scopes to assign different values per environment.
 
@@ -297,7 +297,7 @@ yourdomain.com         A      76.76.21.21
 
 Vercel provisions SSL certificates automatically.
 
-**Update Vercel environment variables** after adding custom domains — the `NEXT_PUBLIC_SITE_URL` production values (step 2d) should use the custom domain instead of `.vercel.app` URLs.
+**Update Vercel environment variables** after adding custom domains — the `SITE_URL` production values (step 2d) should use the custom domain instead of `.vercel.app` URLs.
 
 **Update Convex `SITE_URL`** in the production project to match the custom domains. Only the web and admin apps authenticate against Convex:
 

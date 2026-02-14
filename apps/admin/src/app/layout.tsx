@@ -28,11 +28,13 @@ export default async function RootLayout({
     headers().then((h) => h.get("x-nonce") ?? undefined),
   ]);
 
+  const convexUrl = process.env.CONVEX_URL ?? "http://localhost:3210";
+
   return (
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
-          <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+          <ConvexClientProvider initialToken={token} convexUrl={convexUrl}>{children}</ConvexClientProvider>
         </ThemeProvider>
       </body>
     </html>

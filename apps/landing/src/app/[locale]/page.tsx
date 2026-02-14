@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge, Button } from "@repo/design-system";
 import { SiteHeader } from "@/components/site-header";
 
-const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
+const WEB_APP_URL = process.env.WEB_APP_URL ?? "http://localhost:3001";
 
 export default async function HomePage() {
   const t = await getTranslations("landing");

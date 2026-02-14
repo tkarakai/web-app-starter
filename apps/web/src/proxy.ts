@@ -112,7 +112,7 @@ export function proxy(request: NextRequest) {
   const devConvexOrigins = isDev
     ? (() => {
         try {
-          const url = new URL(process.env.NEXT_PUBLIC_CONVEX_URL ?? "");
+          const url = new URL(process.env.CONVEX_URL ?? "");
           const httpOrigin = url.origin;
           const wsOrigin = `ws://${url.host}`;
           return ` ${httpOrigin} ${wsOrigin}`;

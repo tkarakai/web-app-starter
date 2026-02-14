@@ -5,7 +5,7 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { AppLogo } from "@/components/app-logo";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
+const LANDING_URL = process.env.LANDING_URL ?? "http://localhost:3000";
 
 export default async function SignUpPage() {
   const t = await getTranslations("auth.signUp");
@@ -36,7 +36,7 @@ export default async function SignUpPage() {
             {t("pageDescription")}
           </p>
         </section>
-        <AuthForm mode="sign-up" />
+        <AuthForm mode="sign-up" landingUrl={LANDING_URL} />
       </div>
     </main>
   );

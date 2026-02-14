@@ -23,10 +23,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ─── Validate inputs and staging deployment ──────────────────────
+  # ─── Validate inputs and find staging artifacts ──────────────────
   validate:
     name: Validate Deployment
     runs-on: ubuntu-latest
+    outputs:
+      staging-run-id: ${{ steps.find-run.outputs.run-id }}
     steps:
       - name: Verify confirmation string
         if: inputs.confirm != 'deploy-production'
@@ -85,91 +87,29 @@ jobs:
             }
             console.log('CI gate verified');
 
-  # ─── Build all three apps for production ─────────────────────────
-  build-web:
-    name: Build Web (Production)
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
-        id: build
-        with:
-          app: web
-          environment: production
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+      - name: Find staging workflow run with artifacts
+        id: find-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Looking for successful staging workflow run for SHA ${{ inputs.git_sha }}..."
 
-  build-admin:
-    name: Build Admin (Production)
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
-        id: build
-        with:
-          app: admin
-          environment: production
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          RUN_ID=$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/cd-staging.yml/runs?head_sha=${{ inputs.git_sha }}&status=success&per_page=5" \
+            --jq '.workflow_runs[0].id')
 
-  build-landing:
-    name: Build Landing (Production)
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
-        id: build
-        with:
-          app: landing
-          environment: production
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::error::No successful staging workflow run found for SHA ${{ inputs.git_sha }}"
+            exit 1
+          fi
 
-  # ─── Attest build provenance ─────────────────────────────────────
-  attest:
-    name: Attest Build Provenance
-    needs: [build-web, build-admin, build-landing]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Attest web artifact
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: artifacts/web-production-${{ inputs.git_sha }}/web-production.tar.gz
-
-      - name: Attest admin artifact
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: artifacts/admin-production-${{ inputs.git_sha }}/admin-production.tar.gz
-
-      - name: Attest landing artifact
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: artifacts/landing-production-${{ inputs.git_sha }}/landing-production.tar.gz
+          echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "Found staging run: $RUN_ID"
 
   # ─── Deploy Convex backend (before frontend) ────────────────────
   deploy-convex:
     name: Deploy Convex (Production)
-    needs: [build-web, build-admin, build-landing]
+    needs: validate
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -182,10 +122,10 @@ jobs:
           deploy-key: ${{ secrets.CONVEX_DEPLOY_KEY }}
           environment: production
 
-  # ─── Deploy all three apps to Vercel ─────────────────────────────
+  # ─── Promote staging artifacts to production (no rebuild) ────────
   deploy-web:
     name: Deploy Web (Production)
-    needs: deploy-convex
+    needs: [validate, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -202,16 +142,17 @@ jobs:
         with:
           app: web
           environment: production
-          artifact-name: web-production-${{ inputs.git_sha }}
-          tarball: web-production.tar.gz
-          checksum-file: web-production.tar.gz.sha256
+          artifact-name: web-${{ inputs.git_sha }}
+          tarball: web.tar.gz
+          checksum-file: web.tar.gz.sha256
+          run-id: ${{ needs.validate.outputs.staging-run-id }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
 
   deploy-admin:
     name: Deploy Admin (Production)
-    needs: deploy-convex
+    needs: [validate, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -228,16 +169,17 @@ jobs:
         with:
           app: admin
           environment: production
-          artifact-name: admin-production-${{ inputs.git_sha }}
-          tarball: admin-production.tar.gz
-          checksum-file: admin-production.tar.gz.sha256
+          artifact-name: admin-${{ inputs.git_sha }}
+          tarball: admin.tar.gz
+          checksum-file: admin.tar.gz.sha256
+          run-id: ${{ needs.validate.outputs.staging-run-id }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
 
   deploy-landing:
     name: Deploy Landing (Production)
-    needs: deploy-convex
+    needs: [validate, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -254,9 +196,10 @@ jobs:
         with:
           app: landing
           environment: production
-          artifact-name: landing-production-${{ inputs.git_sha }}
-          tarball: landing-production.tar.gz
-          checksum-file: landing-production.tar.gz.sha256
+          artifact-name: landing-${{ inputs.git_sha }}
+          tarball: landing.tar.gz
+          checksum-file: landing.tar.gz.sha256
+          run-id: ${{ needs.validate.outputs.staging-run-id }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
@@ -264,7 +207,7 @@ jobs:
   # ─── Post-deploy health checks and tagging ───────────────────────
   post-deploy:
     name: Post-Deploy Verification
-    needs: [deploy-web, deploy-admin, deploy-landing]
+    needs: [validate, deploy-web, deploy-admin, deploy-landing]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -321,10 +264,12 @@ jobs:
           TAG="deploy/production/${TIMESTAMP}/${{ inputs.git_sha }}"
           git tag -a "${TAG}" "${{ inputs.git_sha }}" \
             -m "Production deployment at ${TIMESTAMP}" \
-            -m "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            -m "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -m "Promoted from staging run: ${{ needs.validate.outputs.staging-run-id }}"
           git push origin "${TAG}"
 
           echo "### Production Deployment Complete" >> "$GITHUB_STEP_SUMMARY"
           echo "- **SHA:** ${{ inputs.git_sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Timestamp:** ${TIMESTAMP}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Promoted from staging run:** ${{ needs.validate.outputs.staging-run-id }}" >> "$GITHUB_STEP_SUMMARY"

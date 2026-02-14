@@ -1,19 +1,23 @@
 "use client";
 
-import type { PropsWithChildren } from "react";
+import { useRef, type PropsWithChildren } from "react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "./client";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 export function ConvexClientProvider({
   children,
   initialToken,
-}: PropsWithChildren<{ initialToken?: string | null }>) {
+  convexUrl,
+}: PropsWithChildren<{ initialToken?: string | null; convexUrl: string }>) {
+  const clientRef = useRef<ConvexReactClient | null>(null);
+  if (clientRef.current === null) {
+    clientRef.current = new ConvexReactClient(convexUrl);
+  }
+
   return (
     <ConvexBetterAuthProvider
-      client={convex}
+      client={clientRef.current}
       authClient={authClient}
       initialToken={initialToken}
     >

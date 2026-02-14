@@ -200,8 +200,8 @@ update_app_env_urls() {
     # Ensure file exists
     touch "$env_file"
 
-    update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_URL" "$cloud_url"
-    update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
+    update_env_var "$env_file" "CONVEX_URL" "$cloud_url"
+    update_env_var "$env_file" "CONVEX_SITE_URL" "$site_url"
 }
 
 # Check if esbuild binary is functional (Convex uses it to bundle functions)
@@ -613,9 +613,9 @@ start_next_app() {
 
     local next_port=$(echo "$next_url" | grep -o '[0-9]*$')
 
-    # Update NEXT_PUBLIC_SITE_URL for this app
+    # Update SITE_URL for this app
     if [ -n "$next_port" ]; then
-        update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
+        update_env_var "$app_dir/.env.local" "SITE_URL" "http://localhost:$next_port"
     fi
 
     # Sync SITE_URL to Convex if this is the web app
@@ -661,16 +661,16 @@ if [ "$START_LANDING" = true ]; then
     # Ensure landing's .env.local has the web app URL for cross-app links
     touch "$PROJECT_DIR/apps/landing/.env.local"
     if [ -n "$WEB_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$WEB_APP_URL"
-        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
+        update_env_var "$PROJECT_DIR/apps/landing/.env.local" "WEB_APP_URL" "$WEB_APP_URL"
+        echo -e "  ${GREEN}✔${NC} WEB_APP_URL set to $WEB_APP_URL for landing"
     fi
     start_next_app "landing" 3000
     LANDING_APP_URL="$LAST_APP_URL"
 
     # Set the landing URL in the web app so auth pages can link back
     if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LANDING_APP_URL"
-        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LANDING_APP_URL for web"
+        update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "$LANDING_APP_URL"
+        echo -e "  ${GREEN}✔${NC} LANDING_URL set to $LANDING_APP_URL for web"
     fi
 fi
 
