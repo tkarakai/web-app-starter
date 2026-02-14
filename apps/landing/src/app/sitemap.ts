@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
 import { locales } from "@repo/i18n";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+export const dynamic = "force-dynamic";
+
+const SITE_URL = process.env.SITE_URL ?? "http://localhost:3000";
 
 function generateAlternates(pathname: string) {
   return {

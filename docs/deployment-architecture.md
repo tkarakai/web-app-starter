@@ -160,16 +160,22 @@ To find the latest production deployment:
 git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 ```
 
-## Per-Environment Builds
+## Environment-Agnostic Artifacts (Build Once, Promote)
 
-`NEXT_PUBLIC_*` variables are baked into the JS bundle at build time by Next.js. A single artifact cannot serve both staging and production. The pipeline builds separate environment-specific artifacts from the **same commit SHA**, verified by the CI gate.
+All environment variables are resolved at **runtime** (not build time). The `NEXT_PUBLIC_*` prefix is not used — config is passed from server components to client components via props. This means:
+
+- A single build artifact can be deployed to any environment (staging, production, etc.)
+- The staging workflow builds once; the production workflow promotes the **exact same artifact**
+- `robots.ts` and `sitemap.ts` use `export const dynamic = "force-dynamic"` to read env vars at request time
+- The `ConvexClientProvider` receives `convexUrl` as a prop from the server layout
+
+**Exception**: `landing-static` uses Next.js static export (`output: "export"`) and cannot read runtime env vars. It keeps `NEXT_PUBLIC_*` variables and requires per-environment builds.
 
 ## Vercel Project Architecture
 
 Three separate Vercel projects — one per app (`web-app`, `admin-app`, `landing-app`). None are connected to git; all deployments are pushed from GitHub Actions via `vercel deploy --prebuilt`.
 
 Two Vercel-specific settings are architecturally required:
-
 - **Root Directory** must be set to `apps/<app>` on each project. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build.
 - **Framework Preset** must be set to **Next.js**. Without it, Vercel's builder detects `@vercel/static-build` from the monorepo root and fails.
 

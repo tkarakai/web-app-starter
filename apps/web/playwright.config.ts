@@ -39,7 +39,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3001"),
+    baseURL: getEnvValue("SITE_URL", "http://localhost:3001"),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -51,7 +51,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "../../scripts/dev-start.sh --ci --app=web",
-    url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3001"),
+    url: getEnvValue("SITE_URL", "http://localhost:3001"),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },

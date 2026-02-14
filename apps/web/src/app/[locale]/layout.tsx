@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  const siteUrl = process.env.SITE_URL ?? "http://localhost:3001";
   const canonicalUrl = `${siteUrl}/${locale}`;
 
   return {
@@ -98,7 +98,8 @@ export default async function LocaleLayout({
   ]);
 
   const pathname = headersList.get("x-pathname") ?? "/";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  const siteUrl = process.env.SITE_URL ?? "http://localhost:3001";
+  const convexUrl = process.env.CONVEX_URL ?? "http://localhost:3210";
   const dir = getLocaleDirection(locale);
 
   const font = fontsByLocale[locale] || raleway;
@@ -111,7 +112,7 @@ export default async function LocaleLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <NextIntlClientProvider messages={messages}>
-            <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+            <ConvexClientProvider initialToken={token} convexUrl={convexUrl}>{children}</ConvexClientProvider>
             <Toaster richColors closeButton position="bottom-right" />
           </NextIntlClientProvider>
         </ThemeProvider>

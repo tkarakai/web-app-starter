@@ -817,7 +817,7 @@ The `HreflangLinks` component in `@repo/i18n` generates SEO-friendly alternate l
   <HreflangLinks
     locale={locale}
     pathname={pathname}
-    siteUrl={process.env.NEXT_PUBLIC_SITE_URL}
+    siteUrl={process.env.SITE_URL}
   />
 </head>
 ```

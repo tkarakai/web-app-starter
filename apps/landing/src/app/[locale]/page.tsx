@@ -4,8 +4,8 @@ import { Badge, Button } from "@repo/design-system";
 import { SiteHeader } from "@/components/site-header";
 import { WaitlistSection } from "@/components/waitlist-section";
 
-const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+const WEB_APP_URL = process.env.WEB_APP_URL ?? "http://localhost:3001";
+const CONVEX_SITE_URL = process.env.CONVEX_SITE_URL ?? "http://localhost:3210";
 
 async function getWaitlistStatus(): Promise<boolean> {
   try {

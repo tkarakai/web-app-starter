@@ -30,7 +30,7 @@ export default defineConfig({
     ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
     : [["html", { outputFolder: "qa/playwright-report" }]],
   use: {
-    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3003"),
+    baseURL: getEnvValue("SITE_URL", "http://localhost:3003"),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -42,7 +42,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "../../scripts/dev-start.sh --ci --app=storybook",
-    url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3003"),
+    url: getEnvValue("SITE_URL", "http://localhost:3003"),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },

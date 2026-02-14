@@ -13,9 +13,9 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { AppLogo } from "@/components/app-logo";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
+const LANDING_URL = process.env.LANDING_URL ?? "http://localhost:3000";
 const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+  process.env.CONVEX_SITE_URL ?? "http://localhost:3210";
 
 async function getWaitlistEnabled(): Promise<boolean> {
   try {
@@ -75,7 +75,7 @@ export default async function SignUpPage() {
             </CardContent>
           </Card>
         ) : (
-          <AuthForm mode="sign-up" />
+          <AuthForm mode="sign-up" landingUrl={LANDING_URL} />
         )}
       </div>
     </main>

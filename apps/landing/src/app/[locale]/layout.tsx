@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
   const canonicalUrl = `${siteUrl}/${locale}`;
 
   return {
@@ -93,7 +93,7 @@ export default async function LocaleLayout({
     headers(),
   ]);
   const pathname = headersList.get("x-pathname") ?? "/";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
   const dir = getLocaleDirection(locale);
   const font = fontsByLocale[locale] || raleway;
 

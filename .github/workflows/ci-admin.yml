@@ -141,8 +141,8 @@ jobs:
       - name: Build
         run: bunx turbo build --filter=@repo/admin...
         env:
-          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
-          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+          CONVEX_URL: "https://placeholder.convex.cloud"
+          CONVEX_SITE_URL: "https://placeholder.convex.site"
 
       - name: Check bundle size
         run: cd apps/admin && bun run size

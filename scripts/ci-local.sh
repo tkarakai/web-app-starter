@@ -399,8 +399,8 @@ print_step "Step 6/8: Production Build"
 # Provide placeholder Convex env vars for apps that need them at build time.
 # These mirror the placeholder values in ci-web.yml / ci-admin.yml.
 # The actual values are only needed at runtime, not at build time.
-export NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}"
-export NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}"
+export CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}"
+export CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}"
 BUILD_FAILED=false
 for APP in web admin landing storybook; do
   step_start

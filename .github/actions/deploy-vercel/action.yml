@@ -17,6 +17,10 @@ inputs:
   checksum-file:
     description: "Filename of the checksum file within the artifact"
     required: true
+  run-id:
+    description: "Workflow run ID to download artifact from (for cross-workflow promotion)"
+    required: false
+    default: ""
   vercel-token:
     description: "Vercel API token"
     required: true
@@ -40,6 +44,8 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: deploy-artifacts
+        run-id: ${{ inputs.run-id || github.run_id }}
+        github-token: ${{ github.token }}
 
     - name: Verify checksum
       shell: bash

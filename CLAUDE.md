@@ -135,9 +135,9 @@ Required variables (see `.env.example`):
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `CONVEX_DEPLOYMENT` | Convex deployment identifier | Yes |
-| `NEXT_PUBLIC_CONVEX_URL` | Convex API URL (dynamically assigned port) | Yes |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex site URL (dynamically assigned port) | Yes |
-| `NEXT_PUBLIC_SITE_URL` | App URL (e.g., `http://localhost:3001` for web) | Yes |
+| `CONVEX_URL` | Convex API URL (dynamically assigned port) | Yes |
+| `CONVEX_SITE_URL` | Convex site URL (dynamically assigned port) | Yes |
+| `SITE_URL` | App URL (e.g., `http://localhost:3001` for web) | Yes |
 
 > **Note**: `bun run dev` auto-manages `.env.local` with the correct ports. You rarely need to edit these manually for local development.
 

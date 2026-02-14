@@ -20,9 +20,6 @@ import {
   Separator,
 } from "@repo/design-system";
 
-const LANDING_URL =
-  process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
-
 type AuthMode = "sign-in" | "sign-up";
 
 function formatAuthError(error: { status?: number; message?: string }): string {
@@ -34,7 +31,7 @@ function formatAuthError(error: { status?: number; message?: string }): string {
   return "Invalid email or password";
 }
 
-export function AuthForm({ mode }: { mode: AuthMode }) {
+export function AuthForm({ mode, landingUrl }: { mode: AuthMode; landingUrl: string }) {
   const router = useRouter();
   const t = useTranslations("auth");
   const [pending, setPending] = React.useState(false);
@@ -187,7 +184,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
             {t("legal.prefix")}{" "}
             <a
-              href={`${LANDING_URL}/terms`}
+              href={`${landingUrl}/terms`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
@@ -196,7 +193,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </a>{" "}
             {t("legal.and")}{" "}
             <a
-              href={`${LANDING_URL}/privacy`}
+              href={`${landingUrl}/privacy`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
