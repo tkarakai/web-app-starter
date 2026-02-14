@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { defaultLocale, locales } from "@repo/i18n";
 import {
@@ -35,6 +35,11 @@ function stripLocalePrefix(pathname: string): string {
 }
 
 export function proxy(request: NextRequest) {
+  // Skip middleware for API routes (waitlist proxy, etc.)
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
   const rl = checkEdgeRateLimit(clientIp, RATE_LIMIT_CONFIG);

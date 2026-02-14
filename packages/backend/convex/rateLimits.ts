@@ -23,4 +23,20 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: positiveInt(process.env.MUTATION_RATE_LIMIT_PERIOD, MINUTE),
     capacity: positiveInt(process.env.MUTATION_RATE_LIMIT_CAPACITY, 10),
   },
+
+  /** Public waitlist join endpoint — keyed by IP address. */
+  waitlistJoin: {
+    kind: "token bucket",
+    rate: positiveInt(process.env.WAITLIST_RATE_LIMIT_RATE, 5),
+    period: positiveInt(process.env.WAITLIST_RATE_LIMIT_PERIOD, MINUTE),
+    capacity: positiveInt(process.env.WAITLIST_RATE_LIMIT_CAPACITY, 3),
+  },
+
+  /** Invitation token claim — keyed by token string to prevent brute-force. */
+  tokenClaim: {
+    kind: "token bucket",
+    rate: 3,
+    period: MINUTE,
+    capacity: 3,
+  },
 });

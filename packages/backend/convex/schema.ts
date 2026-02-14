@@ -52,4 +52,50 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_project", ["projectId"]),
+
+  // --- Global application settings (generic key-value store) ---
+
+  appSettings: defineTable({
+    key: v.string(),
+    value: v.string(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.string()),
+  }).index("by_key", ["key"]),
+
+  // --- Waitlist ---
+
+  waitlistEntries: defineTable({
+    email: v.string(),
+    name: v.string(),
+    meta: v.string(), // JSON: { industry: string, ... }
+    status: v.union(
+      v.literal("waiting"),
+      v.literal("invited"),
+      v.literal("claimed")
+    ),
+    invitedAt: v.optional(v.number()),
+    claimedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"])
+    .index("by_created", ["createdAt"]),
+
+  invitationTokens: defineTable({
+    waitlistEntryId: v.id("waitlistEntries"),
+    token: v.string(),
+    email: v.string(),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("claiming"),
+      v.literal("claimed"),
+      v.literal("revoked")
+    ),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    claimedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_email", ["email"])
+    .index("by_waitlist_entry", ["waitlistEntryId"]),
 });
