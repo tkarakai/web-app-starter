@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
+import { EnvironmentBannerWrapper } from "@repo/design-system";
 import { getToken } from "@repo/auth/server";
 
 const raleway = Raleway({
@@ -32,6 +33,7 @@ export default async function RootLayout({
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
+          <EnvironmentBannerWrapper appName="admin" />
           <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
         </ThemeProvider>
       </body>

@@ -36,6 +36,13 @@ export {
 
 /* ─── Feedback ─── */
 export { Alert, AlertTitle, AlertDescription, alertVariants } from "./components/feedback/alert";
+export {
+  EnvironmentBanner,
+  environmentBannerVariants,
+  type EnvironmentBannerProps,
+  type Environment,
+} from "./components/feedback/environment-banner";
+export { EnvironmentBannerWrapper } from "./components/feedback/environment-banner-wrapper";
 export { Toaster, toast } from "sonner";
 export {
   AlertDialog,
