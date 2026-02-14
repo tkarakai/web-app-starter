@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { locales } from "@repo/i18n";
 import { authedMutation, authedQuery, assertMaxLength } from "./functions";
 
-const VALID_THEMES = ["light", "dark", "system"] as const;
+export const VALID_THEMES = ["light", "dark", "system"] as const;
 const MAX_TIMEZONE_LENGTH = 64;
 
 /**

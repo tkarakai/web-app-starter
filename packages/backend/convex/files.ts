@@ -11,7 +11,7 @@ import {
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 
 /** Allowed content types for uploads. Reject executables, HTML, SVG, etc. */
-const ALLOWED_CONTENT_TYPES = new Set([
+export const ALLOWED_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/gif",
