@@ -176,7 +176,6 @@ All environment variables are resolved at **runtime** (not build time). The `NEX
 Three separate Vercel projects — one per app (`web-app`, `admin-app`, `landing-app`). None are connected to git; all deployments are pushed from GitHub Actions via `vercel deploy --prebuilt`.
 
 Two Vercel-specific settings are architecturally required:
-
 - **Root Directory** must be set to `apps/<app>` on each project. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build.
 - **Framework Preset** must be set to **Next.js**. Without it, Vercel's builder detects `@vercel/static-build` from the monorepo root and fails.
 

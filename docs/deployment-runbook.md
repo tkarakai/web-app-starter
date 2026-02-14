@@ -203,6 +203,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 | `CONVEX_URL` | Staging Convex URL | Production Convex URL |
 | `CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
 | `SITE_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
+| `LANDING_URL` | `https://staging-landing.vercel.app` | `https://yourdomain.com` |
 
 **admin-app:**
 
@@ -220,6 +221,8 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 | `WEB_APP_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
 
 Set these in each project's Settings → Environment Variables. Use Vercel's "Preview" and "Production" scopes to assign different values per environment.
+
+> **Cross-app linking:** The apps link to each other at runtime — the landing page has "Get Started" / "Sign In" buttons pointing to the web app (`NEXT_PUBLIC_WEB_APP_URL`), and the web app has Terms/Privacy and back-to-landing links pointing to the landing page (`NEXT_PUBLIC_LANDING_URL`). These are non-secret config values baked into the JS bundle at build time. Set them once per Vercel project and they'll be pulled automatically during CI/CD builds via `vercel pull`. In local dev, `dev-start.sh` sets them automatically.
 
 ### 2e. GitHub Configuration
 
