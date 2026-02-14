@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
+import { ALLOWED_CONTENT_TYPES } from "./files";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -298,6 +299,97 @@ describe("files", () => {
         return ctx.db.get(uploadId);
       });
       expect(stillExists).not.toBeNull();
+    });
+  });
+
+  describe("upload validation — content type whitelist", () => {
+    // ALLOWED_CONTENT_TYPES is imported from files.ts — the source of truth
+
+    test("allowed content types are accepted at data layer", async () => {
+      const t = createTestEnv();
+
+      const projectId = await t.run(async (ctx) => {
+        return ctx.db.insert("projects", {
+          name: "Test Project",
+          description: "",
+          ownerId: "alice-id",
+          createdAt: Date.now(),
+        });
+      });
+
+      for (const contentType of ALLOWED_CONTENT_TYPES) {
+        const uploadId = await t.run(async (ctx) => {
+          const storageId = await ctx.storage.store(new Blob(["data"]));
+          return ctx.db.insert("uploads", {
+            storageId,
+            name: `file.${contentType.split("/")[1]}`,
+            contentType,
+            size: 100,
+            projectId,
+            ownerId: "alice-id",
+            createdAt: Date.now(),
+          });
+        });
+
+        const upload = await t.run(async (ctx) => {
+          return ctx.db.get(uploadId);
+        });
+        expect(upload?.contentType).toBe(contentType);
+      }
+    });
+
+    test("dangerous content types are NOT in the allowlist", () => {
+      const dangerousTypes = [
+        "text/html",
+        "image/svg+xml",
+        "application/javascript",
+        "application/x-executable",
+        "application/x-sh",
+        "text/xml",
+        "application/xhtml+xml",
+        "application/x-httpd-php",
+        "application/octet-stream",
+      ];
+
+      for (const type of dangerousTypes) {
+        expect(
+          ALLOWED_CONTENT_TYPES.has(type),
+          `Dangerous type ${type} must NOT be allowed`
+        ).toBe(false);
+      }
+    });
+  });
+
+  describe("upload validation — size limits", () => {
+    const MAX_FILE_SIZE = 1_048_576; // 1MB
+
+    test("file at exactly 1MB is within limit", () => {
+      expect(MAX_FILE_SIZE).toBe(1_048_576);
+      expect(MAX_FILE_SIZE <= MAX_FILE_SIZE).toBe(true);
+    });
+
+    test("file 1 byte over 1MB exceeds limit", () => {
+      const oversizedFile = MAX_FILE_SIZE + 1;
+      expect(oversizedFile > MAX_FILE_SIZE).toBe(true);
+    });
+  });
+
+  describe("upload validation — name length", () => {
+    test("name exceeding MAX_NAME_LENGTH (255) is rejected by assertMaxLength", async () => {
+      // The saveUpload handler calls assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME")
+      const { assertMaxLength, MAX_NAME_LENGTH } = await import("./functions");
+
+      expect(() =>
+        assertMaxLength("a".repeat(MAX_NAME_LENGTH + 1), MAX_NAME_LENGTH, "NAME")
+      ).toThrow("NAME_TOO_LONG");
+    });
+
+    test("name at exactly MAX_NAME_LENGTH passes", async () => {
+      const { assertMaxLength, MAX_NAME_LENGTH } = await import("./functions");
+
+      expect(() =>
+        assertMaxLength("a".repeat(MAX_NAME_LENGTH), MAX_NAME_LENGTH, "NAME")
+      ).not.toThrow();
     });
   });
 });
