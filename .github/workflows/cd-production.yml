@@ -317,6 +317,9 @@ jobs:
 
       - name: Create production deployment tag
         run: |
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "${{ github.actor }}"
+
           TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
           TAG="deploy/production/${TIMESTAMP}/${{ inputs.git_sha }}"
           git tag -a "${TAG}" "${{ inputs.git_sha }}" \
