@@ -9,6 +9,7 @@ import {
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
 } from "./functions";
+import { rateLimit } from "./rateLimits";
 
 /** Valid industry values for the waitlist meta field. */
 const VALID_INDUSTRIES = [
@@ -56,6 +57,13 @@ export const join = internalMutation({
     clientIp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Rate limit by client IP to prevent spam
+    await rateLimit(ctx, {
+      name: "waitlistJoin",
+      key: args.clientIp ?? "unknown",
+      throws: true,
+    });
+
     // Check waitlist is enabled
     const setting = await ctx.db
       .query("appSettings")

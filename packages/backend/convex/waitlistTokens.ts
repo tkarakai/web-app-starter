@@ -4,6 +4,9 @@ import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { rateLimit } from "./rateLimits";
 
+/** Tokens in "claiming" state older than this are considered stale. */
+const CLAIMING_TTL_MS = 15 * 60_000; // 15 minutes
+
 // ---------------------------------------------------------------------------
 // Internal: create a token record (called from action after crypto generation)
 // ---------------------------------------------------------------------------
@@ -71,10 +74,20 @@ export const beginClaim = mutation({
       .unique();
 
     if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
-    if (tokenDoc.status !== "sent") throw new Error("TOKEN_ALREADY_USED");
     if (Date.now() > tokenDoc.expiresAt) throw new Error("TOKEN_EXPIRED");
 
-    await ctx.db.patch(tokenDoc._id, { status: "claiming" });
+    // Auto-reset stale "claiming" tokens back to "sent"
+    if (tokenDoc.status === "claiming") {
+      const claimAge = Date.now() - (tokenDoc.claimStartedAt ?? 0);
+      if (claimAge < CLAIMING_TTL_MS) {
+        throw new Error("TOKEN_ALREADY_USED");
+      }
+      // Stale claim — fall through and re-claim
+    } else if (tokenDoc.status !== "sent") {
+      throw new Error("TOKEN_ALREADY_USED");
+    }
+
+    await ctx.db.patch(tokenDoc._id, { status: "claiming", claimStartedAt: Date.now() });
 
     return { email: tokenDoc.email };
   },
@@ -87,6 +100,12 @@ export const beginClaim = mutation({
 export const finalizeClaim = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    await rateLimit(ctx, {
+      name: "tokenClaim",
+      key: args.token,
+      throws: true,
+    });
+
     const tokenDoc = await ctx.db
       .query("invitationTokens")
       .withIndex("by_token", (q) => q.eq("token", args.token))
@@ -117,6 +136,12 @@ export const finalizeClaim = mutation({
 export const releaseClaim = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    await rateLimit(ctx, {
+      name: "tokenClaim",
+      key: args.token,
+      throws: true,
+    });
+
     const tokenDoc = await ctx.db
       .query("invitationTokens")
       .withIndex("by_token", (q) => q.eq("token", args.token))
