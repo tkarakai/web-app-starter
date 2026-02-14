@@ -65,6 +65,22 @@
       "termsOfService": "Servicevoorwaarden",
       "and": "en",
       "privacyPolicy": "Privacybeleid"
+    },
+    "invitation": {
+      "badge": "Uitnodiging",
+      "title": "Voltooi uw registratie",
+      "description": "U bent uitgenodigd! Maak hieronder uw account aan.",
+      "cta": "Account aanmaken",
+      "pageHeading": "Welkom. U bent uitgenodigd.",
+      "pageDescription": "Voltooi uw registratie om te beginnen.",
+      "invalidTitle": "Ongeldige uitnodiging",
+      "noToken": "Er is geen uitnodigingstoken opgegeven. Gebruik de link uit uw uitnodigingse-mail.",
+      "tokenExpired": "Deze uitnodiging is verlopen. Neem contact op met het team voor een nieuwe.",
+      "tokenUsed": "Deze uitnodiging is al gebruikt.",
+      "tokenInvalid": "Deze uitnodigingslink is ongeldig.",
+      "signupBlocked": "Registratie is momenteel alleen op uitnodiging.",
+      "signupBlockedDescription": "Meld u aan voor de wachtlijst op onze homepage om toegang aan te vragen.",
+      "goToWaitlist": "Aanmelden voor de wachtlijst"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "Over ons",
       "privacyPolicy": "Privacybeleid",
       "termsOfService": "Servicevoorwaarden"
+    },
+    "waitlist": {
+      "title": "Aanmelden voor de wachtlijst",
+      "description": "Vraag vroegtijdige toegang aan door u aan te melden voor de wachtlijst.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "u@voorbeeld.nl",
+      "superpowersLabel": "Wat is jouw superkracht?",
+      "superpowersPlaceholder": "Kies je superkrachten",
+      "excitementLabel": "Hoe enthousiast ben je?",
+      "excitementPlaceholder": "Vertel ons hoe je je voelt",
+      "selectedCount": "{count} geselecteerd",
+      "submit": "Aanmelden",
+      "submitting": "Bezig met aanmelden...",
+      "successTitle": "U staat op de lijst!",
+      "successDescription": "We sturen u een uitnodiging wanneer u aan de beurt bent.",
+      "alreadySignedUp": "Heeft u al een account?",
+      "signIn": "Inloggen",
+      "superpowers": {
+        "coffee-to-code": "Koffie omzetten in code",
+        "pixel-perfect": "Pixels perfect maken",
+        "bug-whisperer": "Bug-fluisteraar",
+        "spreadsheet-wizard": "Spreadsheet-tovenarij",
+        "inbox-zero": "Elke dag een lege inbox",
+        "parallel-parking": "Inparkeren in één keer",
+        "remembering-names": "Ieders naam onthouden",
+        "never-burning-toast": "Nooit je toast laten aanbranden",
+        "explaining-tech": "Technologie uitleggen aan je ouders",
+        "finding-restaurants": "De beste restaurants vinden",
+        "staying-calm": "Kalm blijven in lange vergaderingen",
+        "other": "Iets heel anders"
+      },
+      "excitement": {
+        "take-my-money": "Neem mijn geld!",
+        "cant-wait": "Kan niet wachten om het te proberen",
+        "cautiously-optimistic": "Voorzichtig optimistisch",
+        "just-browsing": "Ik kijk alleen even rond",
+        "friend-made-me": "Een vriend heeft me aangemeld"
+      }
     }
   },
   "dashboard": {

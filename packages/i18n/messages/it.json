@@ -65,6 +65,22 @@
       "termsOfService": "Termini di servizio",
       "and": "e",
       "privacyPolicy": "Informativa sulla privacy"
+    },
+    "invitation": {
+      "badge": "Invito",
+      "title": "Completa la registrazione",
+      "description": "Sei stato invitato! Crea il tuo account qui sotto.",
+      "cta": "Crea account",
+      "pageHeading": "Benvenuto. Sei stato invitato.",
+      "pageDescription": "Completa la registrazione per iniziare.",
+      "invalidTitle": "Invito non valido",
+      "noToken": "Non è stato fornito un token di invito. Utilizza il link dalla tua e-mail di invito.",
+      "tokenExpired": "Questo invito è scaduto. Contatta il team per ottenerne uno nuovo.",
+      "tokenUsed": "Questo invito è già stato utilizzato.",
+      "tokenInvalid": "Questo link di invito non è valido.",
+      "signupBlocked": "La registrazione è attualmente solo su invito.",
+      "signupBlockedDescription": "Iscriviti alla lista d'attesa sulla nostra homepage per richiedere l'accesso.",
+      "goToWaitlist": "Iscriviti alla lista d'attesa"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "Chi Siamo",
       "privacyPolicy": "Informativa sulla privacy",
       "termsOfService": "Termini di servizio"
+    },
+    "waitlist": {
+      "title": "Iscriviti alla lista d'attesa",
+      "description": "Richiedi l'accesso anticipato iscrivendoti alla lista d'attesa.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "tu@esempio.it",
+      "superpowersLabel": "Qual è il tuo superpotere?",
+      "superpowersPlaceholder": "Scegli i tuoi superpoteri",
+      "excitementLabel": "Quanto sei entusiasta?",
+      "excitementPlaceholder": "Dicci come ti senti",
+      "selectedCount": "{count} selezionato/i",
+      "submit": "Iscriviti alla lista",
+      "submitting": "Iscrizione...",
+      "successTitle": "Sei nella lista!",
+      "successDescription": "Ti invieremo un invito quando sarà il tuo turno.",
+      "alreadySignedUp": "Hai già un account?",
+      "signIn": "Accedi",
+      "superpowers": {
+        "coffee-to-code": "Trasformare il caffè in codice",
+        "pixel-perfect": "Rendere i pixel perfetti",
+        "bug-whisperer": "Sussurratore di bug",
+        "spreadsheet-wizard": "Magia dei fogli di calcolo",
+        "inbox-zero": "Posta in arrivo vuota ogni giorno",
+        "parallel-parking": "Parcheggio parallelo al primo colpo",
+        "remembering-names": "Ricordare il nome di tutti",
+        "never-burning-toast": "Non bruciare mai il toast",
+        "explaining-tech": "Spiegare la tecnologia ai genitori",
+        "finding-restaurants": "Trovare i ristoranti migliori",
+        "staying-calm": "Restare calmi nelle riunioni infinite",
+        "other": "Qualcosa di completamente diverso"
+      },
+      "excitement": {
+        "take-my-money": "Prendi i miei soldi!",
+        "cant-wait": "Non vedo l'ora di provarlo",
+        "cautiously-optimistic": "Cautamente ottimista",
+        "just-browsing": "Sto solo dando un'occhiata",
+        "friend-made-me": "Un amico mi ha costretto a iscrivermi"
+      }
     }
   },
   "dashboard": {

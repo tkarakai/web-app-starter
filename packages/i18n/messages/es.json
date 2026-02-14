@@ -65,6 +65,22 @@
       "termsOfService": "Términos de servicio",
       "and": "y",
       "privacyPolicy": "Política de privacidad"
+    },
+    "invitation": {
+      "badge": "Invitación",
+      "title": "Complete su registro",
+      "description": "¡Ha sido invitado! Cree su cuenta a continuación.",
+      "cta": "Crear cuenta",
+      "pageHeading": "Bienvenido. Ha sido invitado.",
+      "pageDescription": "Complete su registro para comenzar.",
+      "invalidTitle": "Invitación no válida",
+      "noToken": "No se proporcionó un token de invitación. Utilice el enlace de su correo de invitación.",
+      "tokenExpired": "Esta invitación ha expirado. Contacte al equipo para obtener una nueva.",
+      "tokenUsed": "Esta invitación ya ha sido utilizada.",
+      "tokenInvalid": "Este enlace de invitación no es válido.",
+      "signupBlocked": "El registro es actualmente solo por invitación.",
+      "signupBlockedDescription": "Únase a la lista de espera en nuestra página principal para solicitar acceso.",
+      "goToWaitlist": "Unirse a la lista de espera"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "Acerca de",
       "privacyPolicy": "Política de privacidad",
       "termsOfService": "Términos de servicio"
+    },
+    "waitlist": {
+      "title": "Unirse a la lista de espera",
+      "description": "Solicite acceso anticipado uniéndose a la lista de espera.",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "usted@ejemplo.es",
+      "superpowersLabel": "¿Cuál es tu superpoder?",
+      "superpowersPlaceholder": "Elige tus superpoderes",
+      "excitementLabel": "¿Qué tan emocionado estás?",
+      "excitementPlaceholder": "Cuéntanos cómo te sientes",
+      "selectedCount": "{count} seleccionado(s)",
+      "submit": "Unirse a la lista",
+      "submitting": "Registrando...",
+      "successTitle": "¡Está en la lista!",
+      "successDescription": "Le enviaremos una invitación cuando sea su turno.",
+      "alreadySignedUp": "¿Ya tiene una cuenta?",
+      "signIn": "Iniciar sesión",
+      "superpowers": {
+        "coffee-to-code": "Convertir café en código",
+        "pixel-perfect": "Hacer que los píxeles sean perfectos",
+        "bug-whisperer": "Susurrador de bugs",
+        "spreadsheet-wizard": "Magia con hojas de cálculo",
+        "inbox-zero": "Bandeja de entrada vacía todos los días",
+        "parallel-parking": "Aparcar en paralelo al primer intento",
+        "remembering-names": "Recordar el nombre de todos",
+        "never-burning-toast": "Nunca quemar las tostadas",
+        "explaining-tech": "Explicar la tecnología a los padres",
+        "finding-restaurants": "Encontrar los mejores restaurantes",
+        "staying-calm": "Mantener la calma en reuniones largas",
+        "other": "Algo completamente diferente"
+      },
+      "excitement": {
+        "take-my-money": "¡Toma mi dinero!",
+        "cant-wait": "No puedo esperar a probarlo",
+        "cautiously-optimistic": "Cautelosamente optimista",
+        "just-browsing": "Solo estoy mirando",
+        "friend-made-me": "Un amigo me obligó a registrarme"
+      }
     }
   },
   "dashboard": {

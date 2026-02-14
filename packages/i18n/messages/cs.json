@@ -65,6 +65,22 @@
       "termsOfService": "Podmínkami služby",
       "and": "a",
       "privacyPolicy": "Zásadami ochrany osobních údajů"
+    },
+    "invitation": {
+      "badge": "Pozvánka",
+      "title": "Dokončete registraci",
+      "description": "Byli jste pozváni! Vytvořte si účet níže.",
+      "cta": "Vytvořit účet",
+      "pageHeading": "Vítejte. Byli jste pozváni.",
+      "pageDescription": "Dokončete registraci a začněte.",
+      "invalidTitle": "Neplatná pozvánka",
+      "noToken": "Nebyl zadán token pozvánky. Použijte prosím odkaz z e-mailu s pozvánkou.",
+      "tokenExpired": "Platnost této pozvánky vypršela. Kontaktujte tým pro získání nové.",
+      "tokenUsed": "Tato pozvánka již byla použita.",
+      "tokenInvalid": "Tento odkaz pozvánky je neplatný.",
+      "signupBlocked": "Registrace je v současné době pouze na pozvánku.",
+      "signupBlockedDescription": "Připojte se na čekací listinu na naší hlavní stránce a požádejte o přístup.",
+      "goToWaitlist": "Připojit se na čekací listinu"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "O nás",
       "privacyPolicy": "Zásady ochrany osobních údajů",
       "termsOfService": "Podmínky služby"
+    },
+    "waitlist": {
+      "title": "Připojit se na čekací listinu",
+      "description": "Požádejte o předčasný přístup připojením se na čekací listinu.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "vy@priklad.cz",
+      "superpowersLabel": "Jaká je tvoje superschopnost?",
+      "superpowersPlaceholder": "Vyber si své superschopnosti",
+      "excitementLabel": "Jak moc se těšíš?",
+      "excitementPlaceholder": "Řekni nám, jak se cítíš",
+      "selectedCount": "{count} vybráno",
+      "submit": "Připojit se na listinu",
+      "submitting": "Zapisování...",
+      "successTitle": "Jste na seznamu!",
+      "successDescription": "Pošleme vám pozvánku, až na vás přijde řada.",
+      "alreadySignedUp": "Již máte účet?",
+      "signIn": "Přihlásit se",
+      "superpowers": {
+        "coffee-to-code": "Přeměna kávy na kód",
+        "pixel-perfect": "Dokonalé pixely",
+        "bug-whisperer": "Zaříkávač bugů",
+        "spreadsheet-wizard": "Kouzelník tabulek",
+        "inbox-zero": "Prázdná schránka každý den",
+        "parallel-parking": "Podélné parkování na první pokus",
+        "remembering-names": "Pamatuji si jména všech",
+        "never-burning-toast": "Nikdy nespálím toast",
+        "explaining-tech": "Vysvětlování techniky rodičům",
+        "finding-restaurants": "Hledání nejlepších restaurací",
+        "staying-calm": "Klid i na dlouhých poradách",
+        "other": "Něco úplně jiného"
+      },
+      "excitement": {
+        "take-my-money": "Vezměte si moje peníze!",
+        "cant-wait": "Nemůžu se dočkat",
+        "cautiously-optimistic": "Opatrný optimismus",
+        "just-browsing": "Jen se rozhlížím",
+        "friend-made-me": "Kamarád mě donutil se přihlásit"
+      }
     }
   },
   "dashboard": {

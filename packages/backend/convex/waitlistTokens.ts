@@ -1,0 +1,175 @@
+import { v } from "convex/values";
+
+import type { Id } from "./_generated/dataModel";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { rateLimit } from "./rateLimits";
+
+/** Tokens in "claiming" state older than this are considered stale. */
+const CLAIMING_TTL_MS = 15 * 60_000; // 15 minutes
+
+// ---------------------------------------------------------------------------
+// Internal: create a token record (called from action after crypto generation)
+// ---------------------------------------------------------------------------
+
+export const create = internalMutation({
+  args: {
+    waitlistEntryId: v.id("waitlistEntries"),
+    token: v.string(),
+    email: v.string(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("invitationTokens", {
+      waitlistEntryId: args.waitlistEntryId,
+      token: args.token,
+      email: args.email,
+      status: "sent",
+      expiresAt: args.expiresAt,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public query: validate a token (for the signup-with-invitation page)
+// ---------------------------------------------------------------------------
+
+export const validate = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const tokenDoc = await ctx.db
+      .query("invitationTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!tokenDoc) return { valid: false as const, reason: "NOT_FOUND" as const };
+    if (tokenDoc.status === "revoked")
+      return { valid: false as const, reason: "REVOKED" as const };
+    if (tokenDoc.status === "claimed" || tokenDoc.status === "claiming")
+      return { valid: false as const, reason: "ALREADY_USED" as const };
+    if (Date.now() > tokenDoc.expiresAt)
+      return { valid: false as const, reason: "EXPIRED" as const };
+
+    return { valid: true as const, email: tokenDoc.email };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public mutation: begin claiming a token (sent → claiming)
+// ---------------------------------------------------------------------------
+
+export const beginClaim = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    // Rate limit by token to prevent brute-force
+    await rateLimit(ctx, {
+      name: "tokenClaim",
+      key: args.token,
+      throws: true,
+    });
+
+    const tokenDoc = await ctx.db
+      .query("invitationTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
+    if (Date.now() > tokenDoc.expiresAt) throw new Error("TOKEN_EXPIRED");
+
+    // Auto-reset stale "claiming" tokens back to "sent"
+    if (tokenDoc.status === "claiming") {
+      const claimAge = Date.now() - (tokenDoc.claimStartedAt ?? 0);
+      if (claimAge < CLAIMING_TTL_MS) {
+        throw new Error("TOKEN_ALREADY_USED");
+      }
+      // Stale claim — fall through and re-claim
+    } else if (tokenDoc.status !== "sent") {
+      throw new Error("TOKEN_ALREADY_USED");
+    }
+
+    await ctx.db.patch(tokenDoc._id, { status: "claiming", claimStartedAt: Date.now() });
+
+    return { email: tokenDoc.email };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public mutation: finalize claim (claiming → claimed)
+// ---------------------------------------------------------------------------
+
+export const finalizeClaim = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await rateLimit(ctx, {
+      name: "tokenClaim",
+      key: args.token,
+      throws: true,
+    });
+
+    const tokenDoc = await ctx.db
+      .query("invitationTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
+    if (tokenDoc.status !== "claiming") throw new Error("INVALID_TOKEN_STATE");
+
+    const now = Date.now();
+
+    await ctx.db.patch(tokenDoc._id, {
+      status: "claimed",
+      claimedAt: now,
+    });
+
+    // Also update the waitlist entry
+    await ctx.db.patch(tokenDoc.waitlistEntryId, {
+      status: "claimed",
+      claimedAt: now,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public mutation: release claim on signup failure (claiming → sent)
+// ---------------------------------------------------------------------------
+
+export const releaseClaim = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await rateLimit(ctx, {
+      name: "tokenClaim",
+      key: args.token,
+      throws: true,
+    });
+
+    const tokenDoc = await ctx.db
+      .query("invitationTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!tokenDoc) return;
+    if (tokenDoc.status === "claiming") {
+      await ctx.db.patch(tokenDoc._id, { status: "sent" });
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal query: check if email has a valid invitation (for databaseHooks)
+// ---------------------------------------------------------------------------
+
+export const hasValidInvitation = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const tokens = await ctx.db
+      .query("invitationTokens")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .collect();
+
+    return tokens.some(
+      (t) =>
+        (t.status === "claiming" || t.status === "claimed") &&
+        Date.now() <= t.expiresAt
+    );
+  },
+});

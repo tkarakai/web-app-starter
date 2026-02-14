@@ -39,10 +39,12 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
       });
     }
 
-    // Navigate to new locale path
+    // Navigate to new locale path, preserving query parameters (e.g. invitation token)
     const segments = pathname.split("/");
     segments[1] = newLocale;
-    router.push(segments.join("/") || `/${newLocale}`);
+    const newPath = segments.join("/") || `/${newLocale}`;
+    const search = window.location.search;
+    router.push(`${newPath}${search}`);
   };
 
   return (

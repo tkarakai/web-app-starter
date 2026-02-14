@@ -27,7 +27,9 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
     persistLocale(newLocale);
     const segments = pathname.split("/");
     segments[1] = newLocale;
-    router.push(segments.join("/") || `/${newLocale}`);
+    const newPath = segments.join("/") || `/${newLocale}`;
+    const search = window.location.search;
+    router.push(`${newPath}${search}`);
   };
 
   return (

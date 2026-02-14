@@ -9,7 +9,9 @@
  */
 
 import type * as adminEmails from "../adminEmails.js";
+import type * as appSettings from "../appSettings.js";
 import type * as auth from "../auth.js";
+import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
@@ -18,6 +20,9 @@ import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as tasks from "../tasks.js";
 import type * as userProfiles from "../userProfiles.js";
+import type * as waitlist from "../waitlist.js";
+import type * as waitlistActions from "../waitlistActions.js";
+import type * as waitlistTokens from "../waitlistTokens.js";
 
 import type {
   ApiFromModules,
@@ -27,7 +32,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   adminEmails: typeof adminEmails;
+  appSettings: typeof appSettings;
   auth: typeof auth;
+  emailTemplates: typeof emailTemplates;
   files: typeof files;
   functions: typeof functions;
   http: typeof http;
@@ -36,6 +43,9 @@ declare const fullApi: ApiFromModules<{
   rateLimits: typeof rateLimits;
   tasks: typeof tasks;
   userProfiles: typeof userProfiles;
+  waitlist: typeof waitlist;
+  waitlistActions: typeof waitlistActions;
+  waitlistTokens: typeof waitlistTokens;
 }>;
 
 /**

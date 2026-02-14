@@ -65,6 +65,22 @@
       "termsOfService": "利用規約",
       "and": "および",
       "privacyPolicy": "プライバシーポリシー"
+    },
+    "invitation": {
+      "badge": "招待",
+      "title": "登録を完了",
+      "description": "招待されました！以下でアカウントを作成してください。",
+      "cta": "アカウントを作成",
+      "pageHeading": "ようこそ。招待されました。",
+      "pageDescription": "登録を完了して始めましょう。",
+      "invalidTitle": "無効な招待",
+      "noToken": "招待トークンが提供されていません。招待メールのリンクをご使用ください。",
+      "tokenExpired": "この招待は期限切れです。新しい招待についてチームにお問い合わせください。",
+      "tokenUsed": "この招待はすでに使用されています。",
+      "tokenInvalid": "この招待リンクは無効です。",
+      "signupBlocked": "現在、登録は招待制のみです。",
+      "signupBlockedDescription": "ホームページのウェイトリストに参加してアクセスをリクエストしてください。",
+      "goToWaitlist": "ウェイトリストに参加"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "について",
       "privacyPolicy": "プライバシーポリシー",
       "termsOfService": "利用規約"
+    },
+    "waitlist": {
+      "title": "ウェイトリストに参加",
+      "description": "ウェイトリストに参加して、早期アクセスをリクエストしましょう。",
+      "emailLabel": "メールアドレス",
+      "emailPlaceholder": "you@example.jp",
+      "superpowersLabel": "あなたの超能力は？",
+      "superpowersPlaceholder": "超能力を選んでね",
+      "excitementLabel": "どのくらいワクワクしてる？",
+      "excitementPlaceholder": "気持ちを教えてください",
+      "selectedCount": "{count}件選択中",
+      "submit": "ウェイトリストに参加",
+      "submitting": "登録中...",
+      "successTitle": "リストに登録されました！",
+      "successDescription": "順番が来ましたら招待メールをお送りします。",
+      "alreadySignedUp": "すでにアカウントをお持ちですか？",
+      "signIn": "ログイン",
+      "superpowers": {
+        "coffee-to-code": "コーヒーをコードに変える",
+        "pixel-perfect": "ピクセルを完璧に仕上げる",
+        "bug-whisperer": "バグとささやき合う",
+        "spreadsheet-wizard": "スプレッドシートの魔術師",
+        "inbox-zero": "毎日受信トレイをゼロにする",
+        "parallel-parking": "一発で縦列駐車を決める",
+        "remembering-names": "全員の名前を覚えている",
+        "never-burning-toast": "トーストを絶対に焦がさない",
+        "explaining-tech": "親にテクノロジーを説明する",
+        "finding-restaurants": "最高のレストランを見つける",
+        "staying-calm": "長い会議でも冷静でいられる",
+        "other": "まったく別の何か"
+      },
+      "excitement": {
+        "take-my-money": "お金を受け取って！",
+        "cant-wait": "待ちきれない！",
+        "cautiously-optimistic": "慎重に期待している",
+        "just-browsing": "ちょっと見てるだけ",
+        "friend-made-me": "友達に登録させられた"
+      }
     }
   },
   "dashboard": {

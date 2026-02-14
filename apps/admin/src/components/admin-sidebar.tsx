@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, ScrollText, Shield, Users } from "lucide-react";
+import { ListChecks, LogOut, ScrollText, Shield, Users } from "lucide-react";
 
 import { ThemeToggle } from "@repo/design-patterns";
 import { authClient } from "@repo/auth/client";
@@ -36,6 +36,7 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
 
 const navItems = [
   { label: "Users", href: "/dashboard/users", icon: Users },
+  { label: "Waitlist", href: "/dashboard/waitlist", icon: ListChecks },
   { label: "Audit Trail", href: "/dashboard/audit-trail", icon: ScrollText },
 ];
 
