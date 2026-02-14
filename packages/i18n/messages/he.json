@@ -65,6 +65,22 @@
       "termsOfService": "תנאי השירות",
       "and": "ו",
       "privacyPolicy": "מדיניות הפרטיות"
+    },
+    "invitation": {
+      "badge": "הזמנה",
+      "title": "השלימו את ההרשמה",
+      "description": "הוזמנתם! צרו את החשבון שלכם למטה.",
+      "cta": "יצירת חשבון",
+      "pageHeading": "ברוכים הבאים. הוזמנתם.",
+      "pageDescription": "השלימו את ההרשמה כדי להתחיל.",
+      "invalidTitle": "הזמנה לא תקינה",
+      "noToken": "לא סופק טוקן הזמנה. אנא השתמשו בקישור מאימייל ההזמנה.",
+      "tokenExpired": "פג תוקף הזמנה זו. אנא צרו קשר עם הצוות לקבלת הזמנה חדשה.",
+      "tokenUsed": "הזמנה זו כבר נוצלה.",
+      "tokenInvalid": "קישור הזמנה זה אינו תקין.",
+      "signupBlocked": "ההרשמה כרגע בהזמנה בלבד.",
+      "signupBlockedDescription": "הצטרפו לרשימת ההמתנה בדף הבית שלנו כדי לבקש גישה.",
+      "goToWaitlist": "הצטרפות לרשימת ההמתנה"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "אודות",
       "privacyPolicy": "מדיניות הפרטיות",
       "termsOfService": "תנאי השירות"
+    },
+    "waitlist": {
+      "title": "הצטרפות לרשימת ההמתנה",
+      "description": "בקשו גישה מוקדמת על ידי הצטרפות לרשימת ההמתנה.",
+      "emailLabel": "אימייל",
+      "emailPlaceholder": "you@example.co.il",
+      "superpowersLabel": "מה כוח העל שלך?",
+      "superpowersPlaceholder": "בחרו את כוחות העל שלכם",
+      "excitementLabel": "כמה אתם מתרגשים?",
+      "excitementPlaceholder": "ספרו לנו מה אתם מרגישים",
+      "selectedCount": "{count} נבחרו",
+      "submit": "הצטרפות לרשימה",
+      "submitting": "נרשם...",
+      "successTitle": "אתם ברשימה!",
+      "successDescription": "נשלח לכם הזמנה כשיגיע תורכם.",
+      "alreadySignedUp": "כבר יש לכם חשבון?",
+      "signIn": "התחברות",
+      "superpowers": {
+        "coffee-to-code": "הפיכת קפה לקוד",
+        "pixel-perfect": "שליטה מושלמת בפיקסלים",
+        "bug-whisperer": "לוחש לבאגים",
+        "spreadsheet-wizard": "קוסם גיליונות אלקטרוניים",
+        "inbox-zero": "תיבת דואר ריקה כל יום",
+        "parallel-parking": "חנייה מקבילה בניסיון ראשון",
+        "remembering-names": "זוכר את השמות של כולם",
+        "never-burning-toast": "אף פעם לא שורף טוסט",
+        "explaining-tech": "מסביר טכנולוגיה להורים",
+        "finding-restaurants": "מוצא את המסעדות הכי טובות",
+        "staying-calm": "שומר על קור רוח בישיבות ארוכות",
+        "other": "משהו אחר לגמרי"
+      },
+      "excitement": {
+        "take-my-money": "קחו את הכסף שלי!",
+        "cant-wait": "לא יכול לחכות לנסות",
+        "cautiously-optimistic": "אופטימי בזהירות",
+        "just-browsing": "סתם מסתכל",
+        "friend-made-me": "חבר שלי גרם לי להירשם"
+      }
     }
   },
   "dashboard": {

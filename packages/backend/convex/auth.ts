@@ -116,8 +116,24 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       user: {
         create: {
           before: async (user) => {
-            // Auto-assign "admin" role to users whose email is in the adminEmails table.
             const actionCtx = requireActionCtx(ctx);
+
+            // --- Waitlist guard: block signups when waitlist mode is active ---
+            const waitlistEnabled = await actionCtx.runQuery(
+              internal.appSettings.getInternal,
+              { key: "waitlistEnabled" },
+            );
+            if (waitlistEnabled === true) {
+              const hasInvitation = await actionCtx.runQuery(
+                internal.waitlistTokens.hasValidInvitation,
+                { email: user.email },
+              );
+              if (!hasInvitation) {
+                throw new Error("SIGNUP_BLOCKED_WAITLIST_ACTIVE");
+              }
+            }
+
+            // Auto-assign "admin" role to users whose email is in the adminEmails table.
             const adminEmails = await actionCtx.runQuery(
               internal.adminEmails.list,
             );

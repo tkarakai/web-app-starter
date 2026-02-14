@@ -65,6 +65,22 @@
       "termsOfService": "Warunki usługi",
       "and": "i",
       "privacyPolicy": "Polityka prywatności"
+    },
+    "invitation": {
+      "badge": "Zaproszenie",
+      "title": "Dokończ rejestrację",
+      "description": "Zostałeś zaproszony! Utwórz swoje konto poniżej.",
+      "cta": "Utwórz konto",
+      "pageHeading": "Witamy. Zostałeś zaproszony.",
+      "pageDescription": "Dokończ rejestrację, aby rozpocząć.",
+      "invalidTitle": "Nieprawidłowe zaproszenie",
+      "noToken": "Nie podano tokenu zaproszenia. Użyj linku z e-maila z zaproszeniem.",
+      "tokenExpired": "To zaproszenie wygasło. Skontaktuj się z zespołem, aby uzyskać nowe.",
+      "tokenUsed": "To zaproszenie zostało już wykorzystane.",
+      "tokenInvalid": "Ten link zaproszenia jest nieprawidłowy.",
+      "signupBlocked": "Rejestracja jest obecnie możliwa tylko na zaproszenie.",
+      "signupBlockedDescription": "Dołącz do listy oczekujących na naszej stronie głównej, aby poprosić o dostęp.",
+      "goToWaitlist": "Dołącz do listy oczekujących"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "O nas",
       "privacyPolicy": "Polityka prywatności",
       "termsOfService": "Warunki usługi"
+    },
+    "waitlist": {
+      "title": "Dołącz do listy oczekujących",
+      "description": "Poproś o wczesny dostęp, dołączając do listy oczekujących.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "ty@przyklad.pl",
+      "superpowersLabel": "Jaka jest Twoja supermoc?",
+      "superpowersPlaceholder": "Wybierz swoje supermoce",
+      "excitementLabel": "Jak bardzo się cieszysz?",
+      "excitementPlaceholder": "Powiedz nam, co czujesz",
+      "selectedCount": "{count} wybrano",
+      "submit": "Dołącz do listy",
+      "submitting": "Zapisywanie...",
+      "successTitle": "Jesteś na liście!",
+      "successDescription": "Wyślemy Ci zaproszenie, gdy nadejdzie Twoja kolej.",
+      "alreadySignedUp": "Masz już konto?",
+      "signIn": "Zaloguj się",
+      "superpowers": {
+        "coffee-to-code": "Zamienianie kawy w kod",
+        "pixel-perfect": "Doprowadzanie pikseli do perfekcji",
+        "bug-whisperer": "Zaklinacz bugów",
+        "spreadsheet-wizard": "Czary z arkuszami kalkulacyjnymi",
+        "inbox-zero": "Pusta skrzynka odbiorcza każdego dnia",
+        "parallel-parking": "Parkowanie równoległe za pierwszym razem",
+        "remembering-names": "Pamiętanie imion wszystkich",
+        "never-burning-toast": "Nigdy nie przypalanie tostów",
+        "explaining-tech": "Tłumaczenie technologii rodzicom",
+        "finding-restaurants": "Znajdowanie najlepszych restauracji",
+        "staying-calm": "Zachowanie spokoju na długich spotkaniach",
+        "other": "Coś zupełnie innego"
+      },
+      "excitement": {
+        "take-my-money": "Weź moje pieniądze!",
+        "cant-wait": "Nie mogę się doczekać",
+        "cautiously-optimistic": "Ostrożnie optymistyczny/a",
+        "just-browsing": "Tylko przeglądam",
+        "friend-made-me": "Znajomy mnie zmusił do rejestracji"
+      }
     }
   },
   "dashboard": {

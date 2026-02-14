@@ -21,6 +21,7 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 const segmentLabels: Record<string, string> = {
   dashboard: "Dashboard",
   users: "Users",
+  waitlist: "Waitlist",
   "audit-trail": "Audit Trail",
 };
 

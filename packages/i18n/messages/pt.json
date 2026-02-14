@@ -65,6 +65,22 @@
       "termsOfService": "Termos de serviço",
       "and": "e",
       "privacyPolicy": "Política de privacidade"
+    },
+    "invitation": {
+      "badge": "Convite",
+      "title": "Complete seu cadastro",
+      "description": "Você foi convidado! Crie sua conta abaixo.",
+      "cta": "Criar conta",
+      "pageHeading": "Bem-vindo. Você foi convidado.",
+      "pageDescription": "Complete seu cadastro para começar.",
+      "invalidTitle": "Convite inválido",
+      "noToken": "Nenhum token de convite foi fornecido. Use o link do seu e-mail de convite.",
+      "tokenExpired": "Este convite expirou. Entre em contato com a equipe para obter um novo.",
+      "tokenUsed": "Este convite já foi utilizado.",
+      "tokenInvalid": "Este link de convite é inválido.",
+      "signupBlocked": "O cadastro é atualmente apenas por convite.",
+      "signupBlockedDescription": "Entre na lista de espera em nossa página inicial para solicitar acesso.",
+      "goToWaitlist": "Entrar na lista de espera"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "Sobre",
       "privacyPolicy": "Política de privacidade",
       "termsOfService": "Termos de serviço"
+    },
+    "waitlist": {
+      "title": "Entrar na lista de espera",
+      "description": "Solicite acesso antecipado entrando na lista de espera.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "voce@exemplo.com.br",
+      "superpowersLabel": "Qual é o seu superpoder?",
+      "superpowersPlaceholder": "Escolha seus superpoderes",
+      "excitementLabel": "Qual o seu nível de empolgação?",
+      "excitementPlaceholder": "Conte-nos como você se sente",
+      "selectedCount": "{count} selecionado(s)",
+      "submit": "Entrar na lista",
+      "submitting": "Registrando...",
+      "successTitle": "Você está na lista!",
+      "successDescription": "Enviaremos um convite quando for a sua vez.",
+      "alreadySignedUp": "Já tem uma conta?",
+      "signIn": "Entrar",
+      "superpowers": {
+        "coffee-to-code": "Transformar café em código",
+        "pixel-perfect": "Deixar os pixels perfeitos",
+        "bug-whisperer": "Encantador de bugs",
+        "spreadsheet-wizard": "Magia com planilhas",
+        "inbox-zero": "Caixa de entrada zerada todo dia",
+        "parallel-parking": "Baliza de primeira",
+        "remembering-names": "Lembrar o nome de todo mundo",
+        "never-burning-toast": "Nunca queimar a torrada",
+        "explaining-tech": "Explicar tecnologia pros pais",
+        "finding-restaurants": "Encontrar os melhores restaurantes",
+        "staying-calm": "Manter a calma em reuniões longas",
+        "other": "Algo completamente diferente"
+      },
+      "excitement": {
+        "take-my-money": "Pegue meu dinheiro!",
+        "cant-wait": "Mal posso esperar pra testar",
+        "cautiously-optimistic": "Cautelosamente otimista",
+        "just-browsing": "Só dando uma olhada",
+        "friend-made-me": "Um amigo me obrigou a me inscrever"
+      }
     }
   },
   "dashboard": {

@@ -65,6 +65,22 @@
       "termsOfService": "服务条款",
       "and": "和",
       "privacyPolicy": "隐私政策"
+    },
+    "invitation": {
+      "badge": "邀请",
+      "title": "完成注册",
+      "description": "您已被邀请！请在下方创建您的账户。",
+      "cta": "创建账户",
+      "pageHeading": "欢迎。您已被邀请。",
+      "pageDescription": "完成注册即可开始使用。",
+      "invalidTitle": "无效邀请",
+      "noToken": "未提供邀请令牌。请使用邀请邮件中的链接。",
+      "tokenExpired": "此邀请已过期。请联系团队获取新的邀请。",
+      "tokenUsed": "此邀请已被使用。",
+      "tokenInvalid": "此邀请链接无效。",
+      "signupBlocked": "目前仅限邀请注册。",
+      "signupBlockedDescription": "请在首页加入候补名单以申请访问权限。",
+      "goToWaitlist": "加入候补名单"
     }
   },
   "landing": {
@@ -78,6 +94,44 @@
       "about": "关于",
       "privacyPolicy": "隐私政策",
       "termsOfService": "服务条款"
+    },
+    "waitlist": {
+      "title": "加入候补名单",
+      "description": "加入候补名单，申请提前访问。",
+      "emailLabel": "电子邮箱",
+      "emailPlaceholder": "you@example.cn",
+      "superpowersLabel": "你的超能力是什么？",
+      "superpowersPlaceholder": "选择你的超能力",
+      "excitementLabel": "你有多期待？",
+      "excitementPlaceholder": "告诉我们你的感受",
+      "selectedCount": "已选 {count} 项",
+      "submit": "加入候补名单",
+      "submitting": "正在提交...",
+      "successTitle": "您已加入名单！",
+      "successDescription": "轮到您时，我们会向您发送邀请。",
+      "alreadySignedUp": "已有账户？",
+      "signIn": "登录",
+      "superpowers": {
+        "coffee-to-code": "把咖啡变成代码",
+        "pixel-perfect": "让每个像素都完美",
+        "bug-whisperer": "Bug 驯服师",
+        "spreadsheet-wizard": "表格魔法师",
+        "inbox-zero": "每天收件箱清零",
+        "parallel-parking": "一把进库侧方停车",
+        "remembering-names": "记住每个人的名字",
+        "never-burning-toast": "烤面包从不烤糊",
+        "explaining-tech": "给爸妈讲明白科技",
+        "finding-restaurants": "总能找到最好的餐厅",
+        "staying-calm": "在漫长的会议中保持淡定",
+        "other": "完全不一样的技能"
+      },
+      "excitement": {
+        "take-my-money": "快收下我的钱！",
+        "cant-wait": "迫不及待想试试",
+        "cautiously-optimistic": "谨慎乐观中",
+        "just-browsing": "随便看看",
+        "friend-made-me": "朋友拉我来注册的"
+      }
     }
   },
   "dashboard": {
