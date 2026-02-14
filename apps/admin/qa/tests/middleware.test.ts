@@ -18,7 +18,7 @@ function createRequest(
   headers: Record<string, string> = {},
 ): NextRequest {
   ipCounter += 1;
-  const url = `http://localhost:3001${path}`;
+  const url = `http://localhost:3002${path}`;
   const req = new NextRequest(url, {
     headers: { "x-forwarded-for": headers["x-forwarded-for"] ?? `10.0.0.${ipCounter}`, ...headers },
   });
@@ -30,33 +30,33 @@ function createRequest(
 
 describe("proxy", () => {
   describe("protected routes (unauthenticated)", () => {
-    it("redirects /en/dashboard to /en/sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/en/dashboard"));
+    it("redirects /dashboard to /sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/dashboard"));
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/sign-in");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
     });
 
-    it("redirects /en/dashboard/settings to /en/sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/en/dashboard/settings"));
+    it("redirects /dashboard/settings to /sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/dashboard/settings"));
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/sign-in");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
     });
   });
 
   describe("protected routes (authenticated)", () => {
-    it("allows /en/dashboard with dev session cookie", () => {
+    it("allows /dashboard with dev session cookie", () => {
       const response = proxy(
-        createRequest("/en/dashboard", { "better-auth.session_token": "token-123" })
+        createRequest("/dashboard", { "better-auth.session_token": "token-123" })
       );
 
       expect(response.status).toBe(200);
     });
 
-    it("allows /en/dashboard with production session cookie (__Secure- prefix)", () => {
+    it("allows /dashboard with production session cookie (__Secure- prefix)", () => {
       const response = proxy(
-        createRequest("/en/dashboard", {
+        createRequest("/dashboard", {
           "__Secure-better-auth.session_token": "token-123",
         })
       );
@@ -66,41 +66,26 @@ describe("proxy", () => {
   });
 
   describe("auth routes (unauthenticated)", () => {
-    it("allows /en/sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/en/sign-in"));
-
-      expect(response.status).toBe(200);
-    });
-
-    it("allows /en/sign-up when no session cookie", () => {
-      const response = proxy(createRequest("/en/sign-up"));
+    it("allows /sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/sign-in"));
 
       expect(response.status).toBe(200);
     });
   });
 
   describe("auth routes (authenticated)", () => {
-    it("redirects /en/sign-in to /en/dashboard when session cookie exists", () => {
+    it("redirects /sign-in to /dashboard when session cookie exists", () => {
       const response = proxy(
-        createRequest("/en/sign-in", { "better-auth.session_token": "token-123" })
+        createRequest("/sign-in", { "better-auth.session_token": "token-123" })
       );
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/dashboard");
     });
 
-    it("redirects /en/sign-up to /en/dashboard when session cookie exists", () => {
+    it("allows /sign-in with session_cleared param even when session cookie exists", () => {
       const response = proxy(
-        createRequest("/en/sign-up", { "better-auth.session_token": "token-123" })
-      );
-
-      expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
-    });
-
-    it("allows /en/sign-in with session_cleared param even when session cookie exists", () => {
-      const response = proxy(
-        createRequest("/en/sign-in?session_cleared=1", {
+        createRequest("/sign-in?session_cleared=1", {
           "better-auth.session_token": "token-123",
         })
       );
@@ -109,9 +94,9 @@ describe("proxy", () => {
       expect(response.status).toBe(200);
     });
 
-    it("allows /en/sign-up with session_cleared param even when session cookie exists", () => {
+    it("allows /sign-in with session_cleared param and __Secure- cookie", () => {
       const response = proxy(
-        createRequest("/en/sign-up?session_cleared=1", {
+        createRequest("/sign-in?session_cleared=1", {
           "__Secure-better-auth.session_token": "token-123",
         })
       );
@@ -125,7 +110,7 @@ describe("proxy", () => {
     it("includes rate limit headers on successful responses", () => {
       const response = proxy(createRequest("/"));
 
-      expect(response.headers.get("X-RateLimit-Limit")).toBe("200");
+      expect(response.headers.get("X-RateLimit-Limit")).toBe("100");
       expect(response.headers.get("X-RateLimit-Remaining")).toBeDefined();
       expect(response.headers.get("X-RateLimit-Reset")).toBeDefined();
     });
@@ -133,12 +118,12 @@ describe("proxy", () => {
     it("returns 429 when rate limit is exceeded", () => {
       const ip = "rate-limit-test-ip";
 
-      // Send 200 requests (the default limit)
-      for (let i = 0; i < 200; i++) {
+      // Send 100 requests (the admin app's default limit)
+      for (let i = 0; i < 100; i++) {
         proxy(createRequest("/", {}, { "x-forwarded-for": ip }));
       }
 
-      // 201st request should be blocked
+      // 101st request should be blocked
       const response = proxy(createRequest("/", {}, { "x-forwarded-for": ip }));
 
       expect(response.status).toBe(429);
@@ -155,8 +140,8 @@ describe("proxy", () => {
       const remaining1 = parseInt(r1.headers.get("X-RateLimit-Remaining")!, 10);
       const remaining2 = parseInt(r2.headers.get("X-RateLimit-Remaining")!, 10);
 
-      expect(remaining1).toBe(199);
-      expect(remaining2).toBe(198);
+      expect(remaining1).toBe(99);
+      expect(remaining2).toBe(98);
       expect(remaining2).toBe(remaining1 - 1);
     });
 
@@ -171,7 +156,7 @@ describe("proxy", () => {
     it("429 response includes positive Retry-After value", () => {
       const ip = "retry-after-test-ip";
 
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 100; i++) {
         proxy(createRequest("/", {}, { "x-forwarded-for": ip }));
       }
 
@@ -186,7 +171,7 @@ describe("proxy", () => {
 
   describe("CSP nonce", () => {
     it("sets Content-Security-Policy header on page responses", () => {
-      const response = proxy(createRequest("/en/sign-in"));
+      const response = proxy(createRequest("/sign-in"));
       const csp = response.headers.get("Content-Security-Policy");
 
       expect(csp).toBeDefined();
@@ -214,13 +199,6 @@ describe("proxy", () => {
       expect(nonce1).not.toBe(nonce2);
     });
 
-    it("does NOT set CSP on /api routes", () => {
-      const response = proxy(createRequest("/api/auth/get-session"));
-      const csp = response.headers.get("Content-Security-Policy");
-
-      expect(csp).toBeNull();
-    });
-
     it("includes required CSP directives", () => {
       const response = proxy(createRequest("/"));
       const csp = response.headers.get("Content-Security-Policy")!;
@@ -234,35 +212,17 @@ describe("proxy", () => {
   });
 
   describe("proxy edge cases", () => {
-    it("/api routes pass through without auth or rate limit check", () => {
+    it("/api routes pass through without auth check", () => {
       const response = proxy(createRequest("/api/auth/something"));
 
       expect(response.status).toBe(200);
-      // API routes should not have CSP (set on intl response only)
-      expect(response.headers.get("Content-Security-Policy")).toBeNull();
     });
 
     it("deeply nested protected routes redirect when unauthenticated", () => {
-      const response = proxy(createRequest("/en/dashboard/settings/profile"));
+      const response = proxy(createRequest("/dashboard/settings/profile"));
 
       expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/sign-in");
-    });
-
-    it("unknown locale prefix is handled by intl middleware (not auth redirect)", () => {
-      // /xx/dashboard — 'xx' is not a known locale, so stripLocalePrefix
-      // won't strip it. The intl middleware redirects to default locale.
-      const response = proxy(createRequest("/xx/dashboard"));
-
-      // Intl middleware redirects to the correct locale path.
-      // The redirect target should be a locale path, not /sign-in
-      // (because auth check doesn't trigger for paths that don't match after strip).
-      if (response.status === 307) {
-        const location = new URL(response.headers.get("location")!).pathname;
-        // Should redirect to a locale-prefixed path, not directly to sign-in
-        // due to auth. The intl middleware may redirect to /en/xx/dashboard or /en.
-        expect(location).not.toBe("/sign-in");
-      }
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
     });
   });
 });
