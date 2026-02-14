@@ -93,7 +93,7 @@ export function WaitlistForm() {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div className="space-y-2">
             <Label htmlFor="waitlist-name">{t("nameLabel")}</Label>
             <Input

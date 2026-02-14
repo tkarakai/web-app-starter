@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Join the Waitlist",
-      "description": "Be the first to know when we launch.",
+      "description": "Request early access by joining the waitlist.",
       "nameLabel": "Name",
       "namePlaceholder": "Your name",
       "emailLabel": "Email",
@@ -108,7 +108,7 @@
       "submitting": "Joining...",
       "successTitle": "You're on the list!",
       "successDescription": "We'll send you an invitation when it's your turn.",
-      "alreadySignedUp": "Already have an invitation?",
+      "alreadySignedUp": "Already have an account?",
       "signIn": "Sign in",
       "industries": {
         "technology": "Technology",

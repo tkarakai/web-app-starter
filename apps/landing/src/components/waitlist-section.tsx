@@ -10,7 +10,7 @@ export function WaitlistSection() {
   const t = useTranslations("landing.waitlist");
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4 pb-8">
       <WaitlistForm />
       <p className="text-sm text-muted-foreground">
         {t("alreadySignedUp")}{" "}
