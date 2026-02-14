@@ -66,8 +66,7 @@ export default defineSchema({
 
   waitlistEntries: defineTable({
     email: v.string(),
-    name: v.string(),
-    meta: v.string(), // JSON: { industry: string, ... }
+    meta: v.string(), // JSON: { superpowers: string[], excitement: string[] }
     status: v.union(
       v.literal("waiting"),
       v.literal("invited"),

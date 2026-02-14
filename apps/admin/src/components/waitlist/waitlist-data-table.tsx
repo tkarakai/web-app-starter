@@ -76,10 +76,8 @@ export function WaitlistDataTable() {
     // Search filter
     if (debouncedSearch) {
       const lower = debouncedSearch.toLowerCase();
-      entries = entries.filter(
-        (e) =>
-          e.name.toLowerCase().includes(lower) ||
-          e.email.toLowerCase().includes(lower)
+      entries = entries.filter((e) =>
+        e.email.toLowerCase().includes(lower)
       );
     }
 

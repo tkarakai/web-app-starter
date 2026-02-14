@@ -78,17 +78,11 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const body = (await request.json()) as Record<string, unknown>;
-      const { email, name, meta } = body;
+      const { email, meta } = body;
 
       // Basic input validation
       if (!email || typeof email !== "string" || !email.includes("@")) {
         return new Response(JSON.stringify({ error: "INVALID_EMAIL" }), {
-          status: 400,
-          headers: corsHeaders(request),
-        });
-      }
-      if (!name || typeof name !== "string" || name.trim().length === 0) {
-        return new Response(JSON.stringify({ error: "INVALID_NAME" }), {
           status: 400,
           headers: corsHeaders(request),
         });
@@ -102,7 +96,6 @@ http.route({
 
       const result = await ctx.runMutation(internal.waitlist.join, {
         email: email.trim().toLowerCase(),
-        name: name.trim(),
         meta: typeof meta === "string" ? meta : JSON.stringify(meta ?? {}),
         clientIp,
       });

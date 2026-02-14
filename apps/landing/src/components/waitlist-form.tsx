@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   Button,
@@ -9,36 +10,115 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@repo/design-system";
 
-const INDUSTRIES = [
-  "technology",
-  "healthcare",
-  "finance",
-  "education",
-  "retail",
-  "manufacturing",
-  "media",
-  "government",
-  "nonprofit",
+const SUPERPOWERS = [
+  "coffee-to-code",
+  "pixel-perfect",
+  "bug-whisperer",
+  "spreadsheet-wizard",
+  "inbox-zero",
+  "parallel-parking",
+  "remembering-names",
+  "never-burning-toast",
+  "explaining-tech",
+  "finding-restaurants",
+  "staying-calm",
   "other",
 ] as const;
 
+const EXCITEMENT_LEVELS = [
+  "take-my-money",
+  "cant-wait",
+  "cautiously-optimistic",
+  "just-browsing",
+  "friend-made-me",
+] as const;
+
+function MultiSelectDropdown({
+  id,
+  label,
+  placeholder,
+  options,
+  selected,
+  onToggle,
+  translationPrefix,
+  t,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  options: readonly string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  translationPrefix: string;
+  t: (key: string, values?: Record<string, string | number | Date>) => string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            id={id}
+            variant="outline"
+            className="w-full justify-between font-normal"
+            type="button"
+          >
+            <span className="truncate">
+              {selected.length > 0
+                ? t("selectedCount", { count: selected.length })
+                : placeholder}
+            </span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-[var(--radix-dropdown-menu-trigger-width)]"
+          align="start"
+        >
+          {options.map((option) => (
+            <DropdownMenuCheckboxItem
+              key={option}
+              checked={selected.includes(option)}
+              onCheckedChange={() => onToggle(option)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              {t(`${translationPrefix}.${option}`)}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function WaitlistForm() {
   const t = useTranslations("landing.waitlist");
-  const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [industry, setIndustry] = React.useState("");
+  const [superpowers, setSuperpowers] = React.useState<string[]>([]);
+  const [excitement, setExcitement] = React.useState<string[]>([]);
   const [pending, setPending] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const toggleSelection = (
+    list: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    value: string
+  ) => {
+    setter(
+      list.includes(value)
+        ? list.filter((v) => v !== value)
+        : [...list, value]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,9 +130,8 @@ export function WaitlistForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
           email: email.trim().toLowerCase(),
-          meta: JSON.stringify({ industry }),
+          meta: JSON.stringify({ superpowers, excitement }),
         }),
       });
 
@@ -95,16 +174,6 @@ export function WaitlistForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div className="space-y-2">
-            <Label htmlFor="waitlist-name">{t("nameLabel")}</Label>
-            <Input
-              id="waitlist-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("namePlaceholder")}
-              required
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="waitlist-email">{t("emailLabel")}</Label>
             <Input
               id="waitlist-email"
@@ -115,21 +184,26 @@ export function WaitlistForm() {
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="waitlist-industry">{t("industryLabel")}</Label>
-            <Select value={industry} onValueChange={setIndustry} required>
-              <SelectTrigger id="waitlist-industry">
-                <SelectValue placeholder={t("industryPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {INDUSTRIES.map((ind) => (
-                  <SelectItem key={ind} value={ind}>
-                    {t(`industries.${ind}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <MultiSelectDropdown
+            id="waitlist-superpowers"
+            label={t("superpowersLabel")}
+            placeholder={t("superpowersPlaceholder")}
+            options={SUPERPOWERS}
+            selected={superpowers}
+            onToggle={(v) => toggleSelection(superpowers, setSuperpowers, v)}
+            translationPrefix="superpowers"
+            t={t}
+          />
+          <MultiSelectDropdown
+            id="waitlist-excitement"
+            label={t("excitementLabel")}
+            placeholder={t("excitementPlaceholder")}
+            options={EXCITEMENT_LEVELS}
+            selected={excitement}
+            onToggle={(v) => toggleSelection(excitement, setExcitement, v)}
+            translationPrefix="excitement"
+            t={t}
+          />
           {error ? (
             <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
               {error}
@@ -138,7 +212,7 @@ export function WaitlistForm() {
           <Button
             type="submit"
             className="w-full"
-            disabled={pending || !industry}
+            disabled={pending || superpowers.length === 0 || excitement.length === 0}
           >
             {pending ? t("submitting") : t("submit")}
           </Button>

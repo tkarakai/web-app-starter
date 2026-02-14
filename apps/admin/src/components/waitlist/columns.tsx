@@ -1,13 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  Mail,
-  MoreHorizontal,
-  Trash2,
-  Undo2,
-} from "lucide-react";
+import { ArrowUpDown, Mail, MoreHorizontal, Trash2, Undo2 } from "lucide-react";
 
 import {
   Badge,
@@ -97,26 +91,40 @@ const STATUS_BADGE: Record<
   claimed: { label: "Claimed", variant: "secondary" },
 };
 
-function parseIndustry(meta: string): string {
+interface WaitlistMeta {
+  superpowers?: string[];
+  excitement?: string[];
+}
+
+function parseMeta(meta: string): WaitlistMeta {
   try {
-    const parsed = JSON.parse(meta) as { industry?: string };
-    return parsed.industry ?? "—";
+    return JSON.parse(meta) as WaitlistMeta;
   } catch {
-    return "—";
+    return {};
   }
 }
 
-const INDUSTRY_LABELS: Record<string, string> = {
-  technology: "Technology",
-  healthcare: "Healthcare",
-  finance: "Finance & Banking",
-  education: "Education",
-  retail: "Retail & E-commerce",
-  manufacturing: "Manufacturing",
-  media: "Media & Entertainment",
-  government: "Government",
-  nonprofit: "Nonprofit",
+const SUPERPOWER_LABELS: Record<string, string> = {
+  "coffee-to-code": "Coffee to code",
+  "pixel-perfect": "Pixel perfect",
+  "bug-whisperer": "Bug whisperer",
+  "spreadsheet-wizard": "Spreadsheet wizard",
+  "inbox-zero": "Inbox zero",
+  "parallel-parking": "Parallel parking",
+  "remembering-names": "Remembering names",
+  "never-burning-toast": "Never burns toast",
+  "explaining-tech": "Explaining tech",
+  "finding-restaurants": "Finding restaurants",
+  "staying-calm": "Staying calm",
   other: "Other",
+};
+
+const EXCITEMENT_LABELS: Record<string, string> = {
+  "take-my-money": "Take my money",
+  "cant-wait": "Can't wait",
+  "cautiously-optimistic": "Cautiously optimistic",
+  "just-browsing": "Just browsing",
+  "friend-made-me": "Friend made me",
 };
 
 function ActionsCell({ entry }: { entry: WaitlistEntry }) {
@@ -219,27 +227,6 @@ export function createColumns(
       size: 40,
     },
     {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium">
-          <HighlightText
-            text={row.getValue("name") as string}
-            highlight={searchTerm}
-          />
-        </span>
-      ),
-    },
-    {
       accessorKey: "email",
       header: ({ column }) => (
         <Button
@@ -259,15 +246,43 @@ export function createColumns(
       ),
     },
     {
-      id: "industry",
-      header: "Industry",
-      accessorFn: (row) => parseIndustry(row.meta),
+      id: "superpowers",
+      header: "Superpowers",
+      accessorFn: (row) => parseMeta(row.meta).superpowers ?? [],
       cell: ({ row }) => {
-        const industry = parseIndustry(row.original.meta);
+        const items = parseMeta(row.original.meta).superpowers ?? [];
+        if (items.length === 0) {
+          return <span className="text-muted-foreground">&mdash;</span>;
+        }
         return (
-          <span className="text-sm">
-            {INDUSTRY_LABELS[industry] ?? industry}
-          </span>
+          <div className="flex flex-wrap gap-1">
+            {items.map((s) => (
+              <Badge key={s} variant="outline" className="text-xs">
+                {SUPERPOWER_LABELS[s] ?? s}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "excitement",
+      header: "Excitement",
+      accessorFn: (row) => parseMeta(row.meta).excitement ?? [],
+      cell: ({ row }) => {
+        const items = parseMeta(row.original.meta).excitement ?? [];
+        if (items.length === 0) {
+          return <span className="text-muted-foreground">&mdash;</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {items.map((e) => (
+              <Badge key={e} variant="secondary" className="text-xs">
+                {EXCITEMENT_LABELS[e] ?? e}
+              </Badge>
+            ))}
+          </div>
         );
       },
       enableSorting: false,

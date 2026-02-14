@@ -16,7 +16,6 @@ export const generateTokenAndSendEmail = internalAction({
   args: {
     entryId: v.id("waitlistEntries"),
     email: v.string(),
-    name: v.string(),
   },
   handler: async (ctx, args) => {
     // Read configurable expiry from appSettings (admin-configurable, default 7)
@@ -56,7 +55,6 @@ export const generateTokenAndSendEmail = internalAction({
       console.log(
         `[waitlist] Invitation email (no RESEND_API_KEY configured):\n` +
           `  To: ${args.email}\n` +
-          `  Name: ${args.name}\n` +
           `  Signup URL: ${signupUrl}\n` +
           `  Expires in: ${expiryDays} days`
       );
@@ -70,7 +68,7 @@ export const generateTokenAndSendEmail = internalAction({
       from: emailFrom,
       to: args.email,
       subject: "You're invited to join!",
-      html: buildInvitationEmailHtml(args.name, signupUrl, expiryDays),
+      html: buildInvitationEmailHtml("there", signupUrl, expiryDays),
     });
   },
 });

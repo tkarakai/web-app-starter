@@ -11,18 +11,29 @@ import {
 } from "./functions";
 import { rateLimit } from "./rateLimits";
 
-/** Valid industry values for the waitlist meta field. */
-const VALID_INDUSTRIES = [
-  "technology",
-  "healthcare",
-  "finance",
-  "education",
-  "retail",
-  "manufacturing",
-  "media",
-  "government",
-  "nonprofit",
+/** Valid superpower values for the waitlist meta field. */
+const VALID_SUPERPOWERS = [
+  "coffee-to-code",
+  "pixel-perfect",
+  "bug-whisperer",
+  "spreadsheet-wizard",
+  "inbox-zero",
+  "parallel-parking",
+  "remembering-names",
+  "never-burning-toast",
+  "explaining-tech",
+  "finding-restaurants",
+  "staying-calm",
   "other",
+] as const;
+
+/** Valid excitement values for the waitlist meta field. */
+const VALID_EXCITEMENT = [
+  "take-my-money",
+  "cant-wait",
+  "cautiously-optimistic",
+  "just-browsing",
+  "friend-made-me",
 ] as const;
 
 /** Validate and parse the JSON meta string. Throws on invalid input. */
@@ -34,14 +45,22 @@ function validateMeta(meta: string): void {
     throw new Error("INVALID_META: must be valid JSON");
   }
 
-  if (typeof parsed.industry !== "string") {
-    throw new Error("INVALID_META: industry is required");
+  if (!Array.isArray(parsed.superpowers) || parsed.superpowers.length === 0) {
+    throw new Error("INVALID_META: at least one superpower is required");
+  }
+  for (const s of parsed.superpowers) {
+    if (!(VALID_SUPERPOWERS as readonly string[]).includes(s as string)) {
+      throw new Error("INVALID_META: invalid superpower value");
+    }
   }
 
-  if (
-    !(VALID_INDUSTRIES as readonly string[]).includes(parsed.industry)
-  ) {
-    throw new Error("INVALID_META: industry must be a valid option");
+  if (!Array.isArray(parsed.excitement) || parsed.excitement.length === 0) {
+    throw new Error("INVALID_META: at least one excitement level is required");
+  }
+  for (const e of parsed.excitement) {
+    if (!(VALID_EXCITEMENT as readonly string[]).includes(e as string)) {
+      throw new Error("INVALID_META: invalid excitement value");
+    }
   }
 }
 
@@ -52,7 +71,6 @@ function validateMeta(meta: string): void {
 export const join = internalMutation({
   args: {
     email: v.string(),
-    name: v.string(),
     meta: v.string(),
     clientIp: v.optional(v.string()),
   },
@@ -76,7 +94,6 @@ export const join = internalMutation({
     }
 
     // Validate inputs
-    assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
     assertMaxLength(args.email, MAX_NAME_LENGTH, "EMAIL");
     assertMaxLength(args.meta, MAX_DESCRIPTION_LENGTH, "META");
     validateMeta(args.meta);
@@ -93,7 +110,6 @@ export const join = internalMutation({
 
     await ctx.db.insert("waitlistEntries", {
       email: args.email,
-      name: args.name,
       meta: args.meta,
       status: "waiting",
       createdAt: Date.now(),
@@ -148,7 +164,6 @@ export const invite = authedMutation({
       {
         entryId: args.entryId,
         email: entry.email,
-        name: entry.name,
       }
     );
   },
