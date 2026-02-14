@@ -84,6 +84,12 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Placeholder for loading content.",
   },
   {
+    name: "Environment Banner",
+    slug: "environment-banner",
+    category: "Feedback",
+    description: "Deployment environment indicator for dev and staging.",
+  },
+  {
     name: "Tooltip",
     slug: "tooltip",
     category: "Feedback",

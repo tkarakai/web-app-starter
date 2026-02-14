@@ -8,6 +8,7 @@ import { getMessages, getTranslations } from "next-intl/server";
 
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
 import { Footer } from "@/components/footer";
+import { EnvironmentBannerWrapper } from "@/components/environment-banner-wrapper";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -104,6 +105,7 @@ export default async function LocaleLayout({
       </head>
       <body className="flex min-h-screen flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
+          <EnvironmentBannerWrapper />
           <NextIntlClientProvider messages={messages}>
             <div className="flex-1">{children}</div>
             <Footer />
