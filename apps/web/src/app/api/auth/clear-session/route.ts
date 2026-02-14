@@ -10,8 +10,13 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request: Request): Promise<NextResponse> {
   const jar = await cookies();
+  const SESSION_COOKIE_NAMES = [
+    "better-auth.session_token",
+    "__Secure-better-auth.session_token",
+  ];
+
   for (const cookie of jar.getAll()) {
-    if (cookie.name.endsWith("better-auth.session_token")) {
+    if (SESSION_COOKIE_NAMES.includes(cookie.name)) {
       jar.delete(cookie.name);
     }
   }
@@ -22,7 +27,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   // Ensure cookies are deleted in the response
   for (const cookie of jar.getAll()) {
-    if (cookie.name.endsWith("better-auth.session_token")) {
+    if (SESSION_COOKIE_NAMES.includes(cookie.name)) {
       response.cookies.delete({
         name: cookie.name,
         path: "/",
