@@ -106,6 +106,31 @@ jobs:
           echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "Found staging run: $RUN_ID"
 
+      - name: Verify staging artifacts exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Verifying required artifacts exist in staging run ${{ steps.find-run.outputs.run-id }}..."
+
+          MISSING_ARTIFACTS=()
+          for APP in web admin landing; do
+            ARTIFACT_NAME="${APP}-${{ inputs.git_sha }}"
+            if ! gh run view ${{ steps.find-run.outputs.run-id }} --json artifacts \
+                --jq ".artifacts[] | select(.name == \"${ARTIFACT_NAME}\") | .name" | grep -q .; then
+              echo "::error::Missing artifact ${ARTIFACT_NAME} from staging run"
+              MISSING_ARTIFACTS+=("${ARTIFACT_NAME}")
+            else
+              echo "✅ Found artifact: ${ARTIFACT_NAME}"
+            fi
+          done
+
+          if [ ${#MISSING_ARTIFACTS[@]} -gt 0 ]; then
+            echo "::error::${#MISSING_ARTIFACTS[@]} artifact(s) missing. Artifacts may have expired (90-day retention)."
+            exit 1
+          fi
+
+          echo "All required artifacts verified"
+
   # ─── Deploy Convex backend (before frontend) ────────────────────
   deploy-convex:
     name: Deploy Convex (Production)
