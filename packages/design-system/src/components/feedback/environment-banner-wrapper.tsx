@@ -1,4 +1,4 @@
-import { EnvironmentBanner } from "@repo/design-system";
+import { EnvironmentBanner } from "./environment-banner";
 
 function collectPublicEnvVars(): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -10,7 +10,11 @@ function collectPublicEnvVars(): Record<string, string> {
   return vars;
 }
 
-export function EnvironmentBannerWrapper() {
+export function EnvironmentBannerWrapper({
+  appName,
+}: {
+  appName: string;
+}) {
   const environment = process.env.NEXT_PUBLIC_APP_ENVIRONMENT as
     | "development"
     | "staging"
@@ -30,7 +34,7 @@ export function EnvironmentBannerWrapper() {
       gitSha={process.env.NEXT_PUBLIC_GIT_SHA}
       gitBranch={process.env.NEXT_PUBLIC_GIT_BRANCH}
       deployedAt={process.env.NEXT_PUBLIC_DEPLOY_TIMESTAMP}
-      appName={process.env.NEXT_PUBLIC_APP_NAME || "landing"}
+      appName={process.env.NEXT_PUBLIC_APP_NAME || appName}
       buildId={process.env.NEXT_PUBLIC_BUILD_ID}
       envVars={collectPublicEnvVars()}
     />

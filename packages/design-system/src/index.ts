@@ -42,6 +42,7 @@ export {
   type EnvironmentBannerProps,
   type Environment,
 } from "./components/feedback/environment-banner";
+export { EnvironmentBannerWrapper } from "./components/feedback/environment-banner-wrapper";
 export { Toaster, toast } from "sonner";
 export {
   AlertDialog,

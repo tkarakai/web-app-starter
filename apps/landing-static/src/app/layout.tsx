@@ -1,5 +1,5 @@
 import "./globals.css";
-import { EnvironmentBannerWrapper } from "@/components/environment-banner-wrapper";
+import { EnvironmentBannerWrapper } from "@repo/design-system";
 
 /**
  * Root layout — provides the required html/body shell for Next.js 16 static export.
@@ -14,7 +14,7 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
-        <EnvironmentBannerWrapper />
+        <EnvironmentBannerWrapper appName="landing-static" />
         {children}
       </body>
     </html>

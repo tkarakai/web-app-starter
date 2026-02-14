@@ -7,8 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 
-import { Toaster } from "@repo/design-system";
-import { EnvironmentBannerWrapper } from "@/components/environment-banner-wrapper";
+import { Toaster, EnvironmentBannerWrapper } from "@repo/design-system";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
@@ -111,7 +110,7 @@ export default async function LocaleLayout({
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
-          <EnvironmentBannerWrapper />
+          <EnvironmentBannerWrapper appName="web" />
           <NextIntlClientProvider messages={messages}>
             <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
             <Toaster richColors closeButton position="bottom-right" />

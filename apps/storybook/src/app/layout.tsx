@@ -3,7 +3,7 @@ import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
-import { EnvironmentBannerWrapper } from "@/components/environment-banner-wrapper";
+import { EnvironmentBannerWrapper } from "@repo/design-system";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -25,7 +25,7 @@ export default function RootLayout({
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <EnvironmentBannerWrapper />
+          <EnvironmentBannerWrapper appName="storybook" />
           {children}
         </ThemeProvider>
       </body>
