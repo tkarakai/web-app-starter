@@ -72,7 +72,7 @@ else
                 ;;
             landing)
                 START_LANDING=true
-                # Landing doesn't need Convex
+                NEED_CONVEX=true
                 ;;
             storybook)
                 START_STORYBOOK=true
@@ -474,6 +474,9 @@ if [ "$NEED_CONVEX" = true ]; then
             fi
             if [ "$START_ADMIN" = true ]; then
                 update_app_env_urls "$PROJECT_DIR/apps/admin/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+            fi
+            if [ "$START_LANDING" = true ]; then
+                update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT"
             fi
         fi
     fi
