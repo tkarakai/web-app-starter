@@ -10,6 +10,7 @@
 
 import type * as adminEmails from "../adminEmails.js";
 import type * as appSettings from "../appSettings.js";
+import type * as bootstrap from "../bootstrap.js";
 import type * as auth from "../auth.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
@@ -33,6 +34,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminEmails: typeof adminEmails;
   appSettings: typeof appSettings;
+  bootstrap: typeof bootstrap;
   auth: typeof auth;
   emailTemplates: typeof emailTemplates;
   files: typeof files;
