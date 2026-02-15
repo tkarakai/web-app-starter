@@ -10,8 +10,8 @@ import { createAuth } from "./auth";
 // ---------------------------------------------------------------------------
 
 const DEV_USERS = [
-  { email: "admin@admin.com", password: "admin", name: "Dev Admin", isAdmin: true },
-  { email: "user@user.com", password: "user", name: "Dev User", isAdmin: false },
+  { email: "admin@admin.com", password: "adminadmin", name: "Dev Admin", isAdmin: true },
+  { email: "user@user.com", password: "useruser", name: "Dev User", isAdmin: false },
 ] as const;
 
 // We use the admin email as the sentinel — if it's in adminEmails, seed already ran.
@@ -122,13 +122,19 @@ export const seed = internalAction({
 
       // 2. Create the user via Better Auth (hashes password, databaseHook promotes admin)
       const auth = createAuth(ctx);
-      await auth.api.signUpEmail({
+      const result = await auth.api.signUpEmail({
         body: {
           email: user.email,
           password: user.password,
           name: user.name,
         },
       });
+
+      if (!result?.user) {
+        throw new Error(
+          `[devSeed] signUpEmail failed for ${user.email}: ${JSON.stringify(result)}`,
+        );
+      }
 
       // 3. Finalize the invitation token
       await ctx.runMutation(internal.devSeed.finalizeDevToken, {

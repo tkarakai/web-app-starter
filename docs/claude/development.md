@@ -30,8 +30,8 @@ On first startup, `dev-start.sh` automatically creates two test accounts via `pa
 
 | Email | Password | Role |
 |-------|----------|------|
-| `admin@admin.com` | `admin` | admin |
-| `user@user.com` | `user` | user |
+| `admin@admin.com` | `adminadmin` | admin |
+| `user@user.com` | `useruser` | user |
 
 The seed is gated behind the `DEV_SEED_ENABLED` Convex env var (set automatically by `dev-start.sh`) and is idempotent — it skips if the accounts already exist. To re-seed after a database reset, just restart `bun run dev`.
 

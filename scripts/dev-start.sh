@@ -536,7 +536,7 @@ if [ "$NEED_CONVEX" = true ]; then
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
         echo -e "  ${GREEN}✔${NC} Dev users already exist"
     elif echo "$SEED_OUTPUT" | grep -q "Dev seed complete"; then
-        echo -e "  ${GREEN}✔${NC} Dev users created (admin@admin.com / admin, user@user.com / user)"
+        echo -e "  ${GREEN}✔${NC} Dev users created (admin@admin.com / adminadmin, user@user.com / useruser)"
     else
         echo -e "  ${YELLOW}⚠${NC} Dev seed: ${SEED_OUTPUT:-no output} (non-fatal)"
     fi
