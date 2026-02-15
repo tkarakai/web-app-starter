@@ -1,4 +1,4 @@
-export type PatternCategory = "Theme";
+export type PatternCategory = "Navigation" | "Theme";
 
 export interface PatternEntry {
   /** Display name shown in sidebar and headings */
@@ -12,6 +12,13 @@ export interface PatternEntry {
 }
 
 export const patternRegistry: PatternEntry[] = [
+  // Navigation
+  {
+    name: "Site Header",
+    slug: "site-header",
+    category: "Navigation",
+    description: "Shared fixed header with app icon, name, and actions slot.",
+  },
   // Theme
   {
     name: "Theme Toggle",
@@ -22,7 +29,7 @@ export const patternRegistry: PatternEntry[] = [
 ];
 
 /** Pattern categories in display order */
-export const patternCategoryOrder: PatternCategory[] = ["Theme"];
+export const patternCategoryOrder: PatternCategory[] = ["Navigation", "Theme"];
 
 /** Convert a pattern category name to a URL-friendly slug */
 export function patternCategoryToSlug(category: PatternCategory): string {
