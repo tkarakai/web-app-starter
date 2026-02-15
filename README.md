@@ -43,7 +43,14 @@ bun install
 bun run dev
 ```
 
-This starts Convex and the core apps (web, admin, landing, storybook) in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path.
+This starts Convex and the core apps (web, admin, landing, storybook) in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path and seeds two test accounts:
+
+| Account | Email | Password | Role |
+|---------|-------|----------|------|
+| Admin | `admin@admin.com` | `adminadmin` | admin |
+| User | `user@user.com` | `useruser` | user |
+
+These are created automatically via `devSeed` and persist across restarts. Subsequent runs skip seeding.
 
 To start only a specific app:
 

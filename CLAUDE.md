@@ -19,7 +19,7 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 
 ```bash
 # Start development (Convex + core apps via dev-start.sh)
-bun run dev                  # Core apps (landing:3000, web:3001, admin:3002, storybook:3003)
+bun run dev                  # Core apps + dev seed (admin@admin.com / adminadmin, user@user.com / useruser)
 bun run dev:web              # Convex + web app only (port 3001)
 bun run dev:admin            # Convex + admin app only (port 3002)
 bun run dev:landing          # Landing page only (port 3000, no Convex)

@@ -559,6 +559,23 @@ if [ "$NEED_CONVEX" = true ]; then
     else
         echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET already set"
     fi
+
+    # ============================================================
+    # SEED DEV USERS (admin + regular user for quick login)
+    # ============================================================
+    echo ""
+    echo -e "${GREEN}▶ Seeding dev users...${NC}"
+    if ! (cd "$CONVEX_DIR" && bunx convex env set DEV_SEED_ENABLED true 2>&1); then
+        echo -e "  ${YELLOW}⚠${NC} Could not set DEV_SEED_ENABLED (non-fatal)"
+    fi
+    SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run devSeed:seed 2>&1) || true
+    if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
+        echo -e "  ${GREEN}✔${NC} Dev users already exist"
+    elif echo "$SEED_OUTPUT" | grep -q "Dev seed complete"; then
+        echo -e "  ${GREEN}✔${NC} Dev users created (admin@admin.com / adminadmin, user@user.com / useruser)"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Dev seed: ${SEED_OUTPUT:-no output} (non-fatal)"
+    fi
 else
     # Create PID file even if Convex isn't needed
     > "$PID_FILE"
