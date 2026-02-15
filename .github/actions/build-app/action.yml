@@ -86,6 +86,10 @@ runs:
         echo "Ref: ${{ github.ref }}"
         echo "::endgroup::"
 
+    - name: Copy shared assets to app public directory
+      shell: bash
+      run: ./scripts/copy-shared-assets.sh
+
     - name: Build with Vercel
       shell: bash
       env:
