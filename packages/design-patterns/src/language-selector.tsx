@@ -105,7 +105,7 @@ export function LanguageSelector({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={ariaLabel}
         className={cn(
