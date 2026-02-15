@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Opatrný optimismus",
         "just-browsing": "Jen se rozhlížím",
         "friend-made-me": "Kamarád mě donutil se přihlásit"
+      },
+      "errors": {
+        "waitlistNotEnabled": "Čekací listina momentálně nepřijímá registrace. Zkuste to prosím později.",
+        "invalidEmail": "Zadejte prosím platnou e-mailovou adresu.",
+        "rateLimited": "Příliš mnoho požadavků. Počkejte chvíli a zkuste to znovu.",
+        "generic": "Něco se pokazilo. Zkuste to prosím znovu."
       }
     }
   },

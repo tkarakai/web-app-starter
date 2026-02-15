@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Voorzichtig optimistisch",
         "just-browsing": "Ik kijk alleen even rond",
         "friend-made-me": "Een vriend heeft me aangemeld"
+      },
+      "errors": {
+        "waitlistNotEnabled": "De wachtlijst accepteert momenteel geen aanmeldingen. Probeer het later opnieuw.",
+        "invalidEmail": "Voer een geldig e-mailadres in.",
+        "rateLimited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+        "generic": "Er is iets misgegaan. Probeer het opnieuw."
       }
     }
   },

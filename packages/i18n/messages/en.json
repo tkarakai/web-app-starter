@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Cautiously optimistic",
         "just-browsing": "Just browsing",
         "friend-made-me": "My friend made me sign up"
+      },
+      "errors": {
+        "waitlistNotEnabled": "The waitlist is not currently accepting sign-ups. Please try again later.",
+        "invalidEmail": "Please enter a valid email address.",
+        "rateLimited": "Too many requests. Please wait a moment and try again.",
+        "generic": "Something went wrong. Please try again."
       }
     }
   },

@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Vorsichtig optimistisch",
         "just-browsing": "Schaue mich nur um",
         "friend-made-me": "Ein Freund hat mich angemeldet"
+      },
+      "errors": {
+        "waitlistNotEnabled": "Die Warteliste nimmt derzeit keine Anmeldungen an. Bitte versuchen Sie es später erneut.",
+        "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+        "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
       }
     }
   },

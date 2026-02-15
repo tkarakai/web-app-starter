@@ -131,6 +131,12 @@
         "cautiously-optimistic": "谨慎乐观中",
         "just-browsing": "随便看看",
         "friend-made-me": "朋友拉我来注册的"
+      },
+      "errors": {
+        "waitlistNotEnabled": "候补名单目前暂不接受注册。请稍后再试。",
+        "invalidEmail": "请输入有效的电子邮箱地址。",
+        "rateLimited": "请求过于频繁。请稍等片刻后重试。",
+        "generic": "出了点问题。请重试。"
       }
     }
   },

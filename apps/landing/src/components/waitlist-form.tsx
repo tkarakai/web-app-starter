@@ -141,17 +141,22 @@ export function WaitlistForm() {
       const data = (await res.json()) as Record<string, unknown>;
 
       if (!res.ok) {
-        setError(
-          typeof data.error === "string"
-            ? data.error
-            : "Something went wrong"
-        );
+        const raw = typeof data.error === "string" ? data.error : "";
+        if (raw.includes("WAITLIST_NOT_ENABLED")) {
+          setError(t("errors.waitlistNotEnabled"));
+        } else if (raw.includes("INVALID_EMAIL")) {
+          setError(t("errors.invalidEmail"));
+        } else if (raw.includes("RATE_LIMITED")) {
+          setError(t("errors.rateLimited"));
+        } else {
+          setError(t("errors.generic"));
+        }
         return;
       }
 
       setSuccess(true);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }

@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Óvatosan optimista",
         "just-browsing": "Csak nézelődök",
         "friend-made-me": "A barátom íratott fel"
+      },
+      "errors": {
+        "waitlistNotEnabled": "A várólista jelenleg nem fogad regisztrációkat. Kérjük, próbálja újra később.",
+        "invalidEmail": "Kérjük, adjon meg egy érvényes e-mail-címet.",
+        "rateLimited": "Túl sok kérés. Kérjük, várjon egy pillanatot, és próbálja újra.",
+        "generic": "Valami hiba történt. Kérjük, próbálja újra."
       }
     }
   },

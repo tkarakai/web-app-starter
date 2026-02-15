@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Prudemment optimiste",
         "just-browsing": "Je jette juste un œil",
         "friend-made-me": "Un ami m'a forcé à m'inscrire"
+      },
+      "errors": {
+        "waitlistNotEnabled": "La liste d'attente n'accepte pas d'inscriptions pour le moment. Veuillez réessayer plus tard.",
+        "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
+        "rateLimited": "Trop de requêtes. Veuillez patienter un instant et réessayer.",
+        "generic": "Une erreur est survenue. Veuillez réessayer."
       }
     }
   },
