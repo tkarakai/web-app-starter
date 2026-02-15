@@ -81,6 +81,14 @@ bun run dev:stop
 bun run dev:status
 ```
 
+6. If processes have accumulated across multiple worktrees (causing `EMFILE: too many open files` errors or high memory usage), kill everything:
+
+```bash
+bun run dev:nuke-all
+```
+
+This finds and kills all node/next/convex processes related to this repo across all worktrees and branches. It shows the matching processes and asks for confirmation before killing, and reports open file descriptor counts before and after.
+
 ### Branch and worktree isolation
 
 Each git branch or worktree gets its own independent Convex deployment automatically. The deployment name is derived from the working directory path, so:
@@ -151,6 +159,7 @@ These values persist in the local Convex backend between sessions.
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
 │   ├── dev-stop.sh            # Stop all services
+│   ├── dev-nuke-all.sh        # Kill ALL dev processes across all worktrees
 │   ├── dev-status.sh          # Show running services
 │   ├── ci-local.sh            # Native CI checks (bun run ci)
 │   ├── ci-local-act.sh        # Docker-based CI via act
