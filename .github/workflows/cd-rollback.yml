@@ -36,6 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       vercel-env: ${{ steps.env.outputs.vercel-env }}
+      project-id-web: ${{ steps.projects.outputs.web }}
+      project-id-admin: ${{ steps.projects.outputs.admin }}
+      project-id-landing: ${{ steps.projects.outputs.landing }}
     steps:
       - name: Verify confirmation string
         if: inputs.confirm != format('rollback-{0}', inputs.environment)
@@ -76,11 +79,32 @@ jobs:
       - name: Set Vercel environment
         id: env
         run: |
-          if [ "${{ inputs.environment }}" = "production" ]; then
-            echo "vercel-env=production" >> "$GITHUB_OUTPUT"
+          echo "vercel-env=production" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Vercel project IDs
+        id: projects
+        run: |
+          if [ "${{ inputs.environment }}" = "staging" ]; then
+            web="${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}"
+            admin="${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}"
+            landing="${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}"
           else
-            echo "vercel-env=preview" >> "$GITHUB_OUTPUT"
+            web="${{ secrets.VERCEL_PROJECT_ID_WEB }}"
+            admin="${{ secrets.VERCEL_PROJECT_ID_ADMIN }}"
+            landing="${{ secrets.VERCEL_PROJECT_ID_LANDING }}"
           fi
+
+          for name in web admin landing; do
+            val=$(eval echo \$$name)
+            if [ -z "$val" ]; then
+              echo "::error::Missing Vercel project ID for $name in ${{ inputs.environment }} environment"
+              exit 1
+            fi
+          done
+
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+          echo "admin=$admin" >> "$GITHUB_OUTPUT"
+          echo "landing=$landing" >> "$GITHUB_OUTPUT"
 
   # ─── Rebuild and redeploy ────────────────────────────────────────
   build-web:
@@ -98,7 +122,7 @@ jobs:
           environment: ${{ needs.validate.outputs.vercel-env }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          vercel-project-id: ${{ needs.validate.outputs.project-id-web }}
 
   build-admin:
     name: Build Admin (Rollback)
@@ -115,7 +139,7 @@ jobs:
           environment: ${{ needs.validate.outputs.vercel-env }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          vercel-project-id: ${{ needs.validate.outputs.project-id-admin }}
 
   build-landing:
     name: Build Landing (Rollback)
@@ -132,7 +156,7 @@ jobs:
           environment: ${{ needs.validate.outputs.vercel-env }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ needs.validate.outputs.project-id-landing }}
 
   # ─── Deploy Convex (rollback functions) ──────────────────────────
   deploy-convex:
@@ -175,7 +199,7 @@ jobs:
           checksum-file: web-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          vercel-project-id: ${{ needs.validate.outputs.project-id-web }}
 
   deploy-admin:
     name: Deploy Admin (Rollback)
@@ -201,7 +225,7 @@ jobs:
           checksum-file: admin-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          vercel-project-id: ${{ needs.validate.outputs.project-id-admin }}
 
   deploy-landing:
     name: Deploy Landing (Rollback)
@@ -227,7 +251,7 @@ jobs:
           checksum-file: landing-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ needs.validate.outputs.project-id-landing }}
 
   # ─── Post-rollback ───────────────────────────────────────────────
   post-rollback:

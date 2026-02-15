@@ -4,7 +4,7 @@ Step-by-step procedures for deploying, operating, and rolling back the monorepo.
 
 For pipeline architecture, failure modes, and migration examples, see [deployment-architecture.md](./deployment-architecture.md).
 
-**How the pipeline works:** Push to `main` triggers automatic staging deployment (CI, build changed apps, deploy). After manual QA, promote to production via manual trigger. Three Vercel projects (web-app, admin-app, landing-app), two Convex projects (staging, production). Nothing reaches production without passing through staging first.
+**How the pipeline works:** Push to `main` triggers automatic staging deployment (CI, build changed apps, deploy). After manual QA, promote to production via manual trigger. Six Vercel projects (3 staging, 3 production), two Convex projects (staging, production). Nothing reaches production without passing through staging first.
 
 ---
 
@@ -40,7 +40,7 @@ gh auth login
 |---------|-------|----------------|
 | GitHub Actions | 2,000 min/month (private) | ~200 min/month |
 | GitHub Artifacts | 500 MB (private) | ~100 MB/month |
-| Vercel Hobby | 1 person, 3 projects, unlimited deploys | Fits exactly (3 apps) |
+| Vercel Hobby | 1 person, up to 200 projects | 6 projects (3 staging + 3 production) |
 | Convex Starter | 2 projects needed (staging + production) | Check [pricing](https://convex.dev/pricing) for project limits |
 
 ---
@@ -51,7 +51,7 @@ Complete these steps once, in order.
 
 ### 2a. Create Convex Projects
 
-Each Convex project comes with a production deployment and one dev deployment per team member. Dev deployments are for local development; you can't repurpose them as a shared staging environment. Instead, create **two separate projects** — one for staging, one for production. Note that we are not using "Preview Deployments" in our deployment process.
+Each Convex project comes with a production deployment and one dev deployment per team member. Dev deployments are for local development; you can't repurpose them as a shared staging environment. Instead, create **two separate projects** — one for staging, one for production.
 
 **Create two projects** in the [Convex dashboard](https://dashboard.convex.dev):
 
@@ -80,21 +80,26 @@ Make sure that you have "Production" designation selected for the project (even 
 
 ### 2b. Create Vercel Projects
 
-Create three Vercel projects — one per app. Choose **either** the dashboard or CLI approach.
+Create six Vercel projects — three for staging and three for production. Each project serves a single environment, so there's no need to split environment variables across Vercel's Preview/Production scopes.
+
+Choose **either** the dashboard or CLI approach.
 
 **Option A — Dashboard (requires GitHub connection):**
 
 1. **Install the Vercel GitHub App** (one-time): When you click "Add New Project" in the [Vercel dashboard](https://vercel.com/dashboard), Vercel prompts you to install its GitHub App. Grant access to your repository. This is a GitHub App, not an OAuth token — it lets Vercel read your repo to detect framework settings.
 
-2. **Import the repository three times** (once per app). For each: click "Add New Project" → "Import Git Repository" → select your repo → set the **Root Directory** and confirm the **Framework Preset** is **Next.js**:
+2. **Import the repository six times** (once per project). For each: click "Add New Project" → "Import Git Repository" → select your repo → set the **Root Directory** and confirm the **Framework Preset** is **Next.js**:
 
-   | Project Name | Root Directory | Framework Preset |
-   |--------------|----------------|------------------|
-   | `my-app-landing` | `apps/landing` | **Next.js** |
-   | `my-app-web` | `apps/web` | **Next.js** |
-   | `my-app-admin` | `apps/admin` | **Next.js** |
+   | Project Name | Root Directory | Framework Preset | Environment |
+   |--------------|----------------|------------------|-------------|
+   | `my-app-web` | `apps/web` | **Next.js** | Production |
+   | `my-app-admin` | `apps/admin` | **Next.js** | Production |
+   | `my-app-landing` | `apps/landing` | **Next.js** | Production |
+   | `my-app-web-staging` | `apps/web` | **Next.js** | Staging |
+   | `my-app-admin-staging` | `apps/admin` | **Next.js** | Staging |
+   | `my-app-landing-staging` | `apps/landing` | **Next.js** | Staging |
 
-   > **Important:** Both settings are required. The CI/CD build runs `vercel build` from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579). **Root Directory** tells the `@vercel/next` builder which app to build. **Framework Preset = Next.js** ensures the correct builder is used (without it, Vercel falls back to `@vercel/static-build` and fails).
+   > **Important:** Both Root Directory and Framework Preset are required on all six projects. The CI/CD build runs `vercel build` from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579). **Root Directory** tells the `@vercel/next` builder which app to build. **Framework Preset = Next.js** ensures the correct builder is used (without it, Vercel falls back to `@vercel/static-build` and fails).
 
 **Option B — CLI (no GitHub connection needed):**
 
@@ -102,13 +107,18 @@ Create three Vercel projects — one per app. Choose **either** the dashboard or
 # Authenticate with Vercel (one-time)
 vercel login
 
-# Create each project from the repo root
-vercel project add my-app-landing
+# Production projects
 vercel project add my-app-web
 vercel project add my-app-admin
+vercel project add my-app-landing
+
+# Staging projects
+vercel project add my-app-web-staging
+vercel project add my-app-admin-staging
+vercel project add my-app-landing-staging
 ```
 
-**Disable automatic deployments** on each project (required — our CI/CD pipeline manages deployments via `vercel deploy` in GitHub Actions):
+**Disable automatic deployments** on all six projects (required — our CI/CD pipeline manages deployments via `vercel deploy` in GitHub Actions):
 
 - **Dashboard:** Project Settings → **Build & Development Settings** → **Ignored Build Step** → select **"Don't build anything"**
 - **Or via `vercel.json`** in each app directory:
@@ -134,6 +144,9 @@ Or in the dashboard: each project's **Settings → General → scroll to "Projec
 | my-app-web Project ID | `prj_xxx` |
 | my-app-admin Project ID | `prj_yyy` |
 | my-app-landing Project ID | `prj_zzz` |
+| my-app-web-staging Project ID | `prj_aaa` |
+| my-app-admin-staging Project ID | `prj_bbb` |
+| my-app-landing-staging Project ID | `prj_ccc` |
 
 Also note each project's **auto-assigned Vercel URL** (visible in each project's **Deployments** page or **Settings → Domains**). You'll need these in step 2c for Convex's `SITE_URL`:
 
@@ -142,6 +155,9 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 | my-app-web | `https://my-app-web.vercel.app` |
 | my-app-admin | `https://my-app-admin.vercel.app` |
 | my-app-landing | `https://my-app-landing.vercel.app` |
+| my-app-web-staging | `https://my-app-web-staging.vercel.app` |
+| my-app-admin-staging | `https://my-app-admin-staging.vercel.app` |
+| my-app-landing-staging | `https://my-app-landing-staging.vercel.app` |
 
 > **Note:** Environment variables for Vercel projects are configured in step 2d, after Convex URLs are known.
 
@@ -194,33 +210,57 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 
 ### 2d. Configure Vercel Environment Variables
 
-Set environment variables for each Vercel project. Use the Convex URLs recorded in step 2a.
+Set environment variables for each Vercel project. Use the Convex URLs recorded in step 2a. Since each Vercel project serves a single environment, all variables use the **Production** scope only.
 
-**web-app:**
+**my-app-web (production):**
 
-| Variable | Preview (Staging) | Production |
-|----------|-------------------|------------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
-| `NEXT_PUBLIC_LANDING_URL` | `https://staging-landing.vercel.app` | `https://yourdomain.com` |
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
+| `NEXT_PUBLIC_SITE_URL` | `https://web.yourdomain.com` |
+| `NEXT_PUBLIC_LANDING_URL` | `https://yourdomain.com` |
 
-**admin-app:**
+**my-app-web-staging:**
 
-| Variable | Preview (Staging) | Production |
-|----------|-------------------|------------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://staging-admin.vercel.app` | `https://admin.yourdomain.com` |
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
+| `NEXT_PUBLIC_SITE_URL` | `https://my-app-web-staging.vercel.app` |
+| `NEXT_PUBLIC_LANDING_URL` | `https://my-app-landing-staging.vercel.app` |
 
-**landing-app** (no Convex — the landing page does not connect to the backend):
+**my-app-admin (production):**
 
-| Variable | Preview (Staging) | Production |
-|----------|-------------------|------------|
-| `NEXT_PUBLIC_SITE_URL` | `https://staging-landing.vercel.app` | `https://yourdomain.com` |
-| `NEXT_PUBLIC_WEB_APP_URL` | `https://staging-web.vercel.app` | `https://web.yourdomain.com` |
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
+| `NEXT_PUBLIC_SITE_URL` | `https://admin.yourdomain.com` |
 
-Set these in each project's Settings → Environment Variables. Use Vercel's "Preview" and "Production" scopes to assign different values per environment.
+**my-app-admin-staging:**
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
+| `NEXT_PUBLIC_SITE_URL` | `https://my-app-admin-staging.vercel.app` |
+
+**my-app-landing (production)** — no Convex (the landing page does not connect to the backend):
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` |
+| `NEXT_PUBLIC_WEB_APP_URL` | `https://web.yourdomain.com` |
+
+**my-app-landing-staging:**
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SITE_URL` | `https://my-app-landing-staging.vercel.app` |
+| `NEXT_PUBLIC_WEB_APP_URL` | `https://my-app-web-staging.vercel.app` |
+
+Set these in each project's Settings → Environment Variables using the **Production** scope.
 
 > **Cross-app linking:** The apps link to each other at runtime — the landing page has "Get Started" / "Sign In" buttons pointing to the web app (`NEXT_PUBLIC_WEB_APP_URL`), and the web app has Terms/Privacy and back-to-landing links pointing to the landing page (`NEXT_PUBLIC_LANDING_URL`). These are non-secret config values baked into the JS bundle at build time. Set them once per Vercel project and they'll be pulled automatically during CI/CD builds via `vercel pull`. In local dev, `dev-start.sh` sets them automatically.
 
@@ -247,11 +287,14 @@ These are used by the CD workflows to authenticate with Vercel when running `ver
 |--------|-------|-----------------|
 | `VERCEL_TOKEN` | Vercel personal access token | [Vercel dashboard](https://vercel.com/account/tokens) → Create Token |
 | `VERCEL_ORG_ID` | Your Vercel org/user ID | From step 2b |
-| `VERCEL_PROJECT_ID_WEB` | web-app project ID | From step 2b |
-| `VERCEL_PROJECT_ID_ADMIN` | admin-app project ID | From step 2b |
-| `VERCEL_PROJECT_ID_LANDING` | landing-app project ID | From step 2b |
+| `VERCEL_PROJECT_ID_WEB` | web production project ID | From step 2b |
+| `VERCEL_PROJECT_ID_ADMIN` | admin production project ID | From step 2b |
+| `VERCEL_PROJECT_ID_LANDING` | landing production project ID | From step 2b |
+| `VERCEL_PROJECT_ID_WEB_STAGING` | web staging project ID | From step 2b |
+| `VERCEL_PROJECT_ID_ADMIN_STAGING` | admin staging project ID | From step 2b |
+| `VERCEL_PROJECT_ID_LANDING_STAGING` | landing staging project ID | From step 2b |
 
-> **Note:** `VERCEL_PROJECT_ID_*` must be **repository secrets** (not environment secrets) because the CD workflow build jobs run without an `environment:` context and can only access repository-level secrets.
+> **Note:** All `VERCEL_PROJECT_ID_*` secrets must be **repository secrets** (not environment secrets) because the CD workflow build jobs run without an `environment:` context and can only access repository-level secrets.
 
 **Add environment secrets** (Settings > Environments > [env] > Environment secrets):
 
@@ -330,16 +373,16 @@ Run through this checklist before the first deployment or any major infrastructu
 
 - [ ] Two Convex projects created: staging and production (step 2a)
 - [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
-- [ ] Three Vercel projects created: web-app, admin-app, landing-app (step 2b)
-- [ ] Vercel Root Directory set to `apps/<app>` on all projects (step 2b)
-- [ ] Vercel Framework Preset set to **Next.js** on all projects (step 2b)
-- [ ] Vercel automatic deployments disabled for all projects (step 2b)
+- [ ] Six Vercel projects created: 3 staging + 3 production (step 2b)
+- [ ] Vercel Root Directory set to `apps/<app>` on all 6 projects (step 2b)
+- [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
+- [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
 - [ ] Convex environment variables set: `SITE_URL`, `BETTER_AUTH_SECRET` per project (step 2c)
 - [ ] `BETTER_AUTH_SECRET` is unique per project (staging ≠ production)
-- [ ] Vercel environment variables set for both Preview and Production scopes (step 2d)
+- [ ] Vercel environment variables set (Production scope) on all 6 projects (step 2d)
 - [ ] GitHub `staging` environment created (step 2e)
 - [ ] GitHub `production` environment created with required reviewers (step 2e)
-- [ ] All repository secrets set: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*` (step 2e)
+- [ ] All repository secrets set: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*`, `VERCEL_PROJECT_ID_*_STAGING` (step 2e)
 - [ ] All environment secrets set: `CONVEX_DEPLOY_KEY` per environment (step 2e)
 - [ ] Branch protection enabled on `main` with required status checks (step 2e)
 

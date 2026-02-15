@@ -48,7 +48,7 @@ Push to main → cd-staging.yml (one unified workflow)
   ├─ Build only changed apps (vercel build)
   ├─ Checksum + SLSA attest changed artifacts
   ├─ Deploy Convex to staging (if backend changed)
-  ├─ Deploy changed apps to Vercel (vercel deploy --prebuilt)
+  ├─ Deploy changed apps to Vercel (vercel deploy --prebuilt --prod)
   └─ Smoke tests + git tag
   │
   ▼
@@ -86,10 +86,10 @@ Every push to `main` triggers the unified `cd-staging.yml` workflow:
 1. **CI phase** calls 4 CI workflows as reusable workflows (parallel)
 2. **CI Gate** evaluates results and sets `ci/gate-passed` commit status
 3. **Change detection** determines which apps/packages changed
-4. **Build** only changed apps using `vercel build` with preview (staging) environment variables
+4. **Build** only changed apps using `vercel build --prod` with staging project environment variables
 5. **Attest** changed artifacts with SLSA build provenance via Sigstore
 6. **Deploy Convex** backend (only if `packages/backend` changed)
-7. **Deploy** changed apps to Vercel using `vercel deploy --prebuilt`
+7. **Deploy** changed apps to Vercel using `vercel deploy --prebuilt --prod`
 8. **Smoke test** deployed URLs
 9. **Tag** the commit with `deploy/staging/<timestamp>/<sha>`
 
@@ -166,12 +166,21 @@ git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 
 ## Vercel Project Architecture
 
-Three separate Vercel projects — one per app (`web-app`, `admin-app`, `landing-app`). None are connected to git; all deployments are pushed from GitHub Actions via `vercel deploy --prebuilt`.
+Six separate Vercel projects — three for staging and three for production:
 
-Two Vercel-specific settings are architecturally required:
+| Environment | Projects |
+|---|---|
+| Staging | `my-app-web-staging`, `my-app-admin-staging`, `my-app-landing-staging` |
+| Production | `my-app-web`, `my-app-admin`, `my-app-landing` |
+
+None are connected to git; all deployments are pushed from GitHub Actions via `vercel deploy --prebuilt --prod`. Each project serves a single environment, so only Production-scoped environment variables are needed (no Preview/Production scope splitting).
+
+Two Vercel-specific settings are architecturally required on all six projects:
 
 - **Root Directory** must be set to `apps/<app>` on each project. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build.
 - **Framework Preset** must be set to **Next.js**. Without it, Vercel's builder detects `@vercel/static-build` from the monorepo root and fails.
+
+**Why separate staging projects instead of Vercel Preview deployments?** Previously, staging used Vercel's Preview deployment feature on shared projects. Each push to `main` created a new preview URL without invalidating the old one, while the staging Convex database was updated in-place. This caused stale preview deployments to serve outdated frontend code against a mutated backend. Dedicated staging projects eliminate this problem — each deploy replaces the previous one and provides a stable URL.
 
 For setup instructions, see [deployment-runbook.md — Create Vercel Projects](./deployment-runbook.md#2b-create-vercel-projects).
 
