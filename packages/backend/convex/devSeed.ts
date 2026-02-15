@@ -150,20 +150,30 @@ export const seed = internalAction({
         isAdmin: user.isAdmin,
       });
 
-      // 2. Create the user via Better Auth (hashes password, databaseHook promotes admin)
+      // 2. Create the user via Better Auth (hashes password, databaseHook promotes admin).
+      //    "User already exists" is expected on retry after partial failure — treat as success.
       const auth = createAuth(ctx);
-      const result = await auth.api.signUpEmail({
-        body: {
-          email: user.email,
-          password: user.password,
-          name: user.name,
-        },
-      });
+      try {
+        const result = await auth.api.signUpEmail({
+          body: {
+            email: user.email,
+            password: user.password,
+            name: user.name,
+          },
+        });
 
-      if (!result?.user) {
-        throw new Error(
-          `[devSeed] signUpEmail failed for ${user.email}: ${JSON.stringify(result)}`,
-        );
+        if (!result?.user) {
+          throw new Error(
+            `[devSeed] signUpEmail failed for ${user.email}: ${JSON.stringify(result)}`,
+          );
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("already exists")) {
+          console.log(`[devSeed] ${user.email} already exists, continuing`);
+        } else {
+          throw error;
+        }
       }
 
       // 3. Finalize the invitation token
