@@ -90,6 +90,12 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Deployment environment indicator for dev and staging.",
   },
   {
+    name: "Offline Banner",
+    slug: "offline-banner",
+    category: "Feedback",
+    description: "Network status banner with frosted-glass backdrop blur.",
+  },
+  {
     name: "Tooltip",
     slug: "tooltip",
     category: "Feedback",

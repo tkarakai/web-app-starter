@@ -112,6 +112,39 @@ describe("launchItems", () => {
 
 > **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails.
 
+### Scheduled Functions and Fake Timers
+
+When a Convex mutation calls `ctx.scheduler.runAfter()`, convex-test auto-executes the scheduled function via `setTimeout`. If the scheduled function is an `internalAction` that can't run in the test environment (e.g. it calls external APIs or uses features unavailable in tests), this causes unhandled rejection errors.
+
+**Fix:** Use `vi.useFakeTimers()` to prevent `setTimeout` from firing. The scheduled function is still recorded but never executed.
+
+```typescript
+import { convexTest } from "convex-test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { internal } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.*s");
+
+describe("myModule", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("mutation that schedules an action", async () => {
+    const t = convexTest(schema, modules);
+    // The mutation calls ctx.scheduler.runAfter() internally,
+    // but fake timers prevent the scheduled action from running.
+    await t.mutation(internal.myModule.myMutation, { arg: "value" });
+  });
+});
+```
+
+> **When to use this:** Only when the scheduled function can't run in tests. If the scheduled function is a simple mutation/query that works in convex-test, you don't need fake timers — let it run normally.
+
 ## Test Helpers
 
 ### Authentication Mocking (`apps/web/qa/tests/helpers/auth-mock.ts`)

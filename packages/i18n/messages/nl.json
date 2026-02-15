@@ -252,5 +252,8 @@
       "heading": "Servicevoorwaarden",
       "lastUpdated": "Laatst bijgewerkt: {date}"
     }
+  },
+  "offline": {
+    "message": "Het lijkt erop dat je offline bent. Een actieve verbinding is nodig om door te gaan."
   }
 }

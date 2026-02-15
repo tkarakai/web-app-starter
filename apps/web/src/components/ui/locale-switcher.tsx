@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 
 import { LanguageSelector } from "@repo/design-patterns";
+import { useNetworkStatus } from "@repo/design-system";
 import { locales, localeMetadata, persistLocale, type Locale } from "@repo/i18n";
 import { api } from "@repo/backend";
 import { useAuthUser } from "@/components/auth/auth-guard";
@@ -21,6 +22,7 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
   const router = useRouter();
   const user = useAuthUser();
   const setLocale = useMutation(api.userProfiles.setLocale);
+  const isOnline = useNetworkStatus();
 
   const localeOptions = locales.map((code) => ({
     code,
@@ -55,6 +57,7 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
       ariaLabel={tl("ariaLabel")}
       className={className}
       variant={variant}
+      disabled={!isOnline}
     />
   );
 }

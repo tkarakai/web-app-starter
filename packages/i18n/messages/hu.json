@@ -252,5 +252,8 @@
       "heading": "Felhasználási feltételek",
       "lastUpdated": "Utolsó frissítés: {date}"
     }
+  },
+  "offline": {
+    "message": "Úgy tűnik, offline vagy. Az alkalmazás használatához aktív internetkapcsolat szükséges."
   }
 }

@@ -390,9 +390,56 @@ gh run list --workflow=cd-staging.yml --limit 1
 gh run watch $(gh run list --workflow=cd-staging.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
 
-### Step 2: Validate Staging
+### Step 2: Bootstrap the First Admin
 
-Once the staging workflow completes, run through this checklist:
+On a fresh deployment the database is empty — no admin user exists yet. The `bootstrap` module provides internal functions to seed the first admin without needing a UI.
+
+**Run from the Convex dashboard** (Dashboard → select your project → Functions → `bootstrap:initialize`):
+
+```
+bootstrap:initialize  { "email": "you@example.com" }
+```
+
+Or via CLI with the deploy key:
+
+```bash
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex run bootstrap:initialize '{"email": "you@example.com"}'
+```
+
+This will:
+1. Add the email to the `adminEmails` table
+2. Create a waitlist entry and mark it as "invited"
+3. Send an invitation email (or log the token to the Convex dashboard if no `RESEND_API_KEY` is set)
+
+**Check your email** for the invitation link and complete registration to claim the admin account.
+
+**Check bootstrap status** at any time:
+
+```bash
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex run bootstrap:status '{}'
+```
+
+The `status` function returns the current state and an actionable hint (e.g. "token expired — run rescue").
+
+**If something goes wrong** (typo in email, expired token, lost invitation):
+
+```bash
+# Fix email typo and resend invitation
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex run bootstrap:rescue '{"currentEmail": "typo@exmaple.com", "newEmail": "correct@example.com"}'
+
+# Same email, just resend (expired token)
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex run bootstrap:rescue '{"currentEmail": "you@example.com", "newEmail": "you@example.com"}'
+```
+
+> **Note:** All bootstrap functions are `internalMutation`/`internalQuery` — they cannot be called from the client. The `rescue` function cannot be used after the admin has claimed the invitation (i.e. completed registration). Repeat this bootstrap step for production after promoting in Step 4.
+
+### Step 3: Validate Staging
+
+Once the staging workflow completes and the admin account is bootstrapped, run through this checklist:
 
 **Automated checks (already done by the pipeline):**
 - [x] All 3 apps respond to HTTP requests (smoke tests)
@@ -422,7 +469,7 @@ Once the staging workflow completes, run through this checklist:
   ```
 - [ ] **No console errors** in browser DevTools on any app
 
-### Step 3: Promote to Production
+### Step 4: Promote to Production
 
 ```bash
 # Find the staging deployment SHA
@@ -449,7 +496,7 @@ gh run list --workflow=cd-production.yml --limit 1
 gh run watch $(gh run list --workflow=cd-production.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
 
-### Step 4: Verify Production
+### Step 5: Verify Production
 
 - [ ] All 3 production URLs respond
 - [ ] Production git tag created:
@@ -457,7 +504,8 @@ gh run watch $(gh run list --workflow=cd-production.yml --limit 1 --json databas
   git fetch --tags
   git tag --list 'deploy/production/*' --sort=-creatordate | head -1
   ```
-- [ ] Authentication works on production
+- [ ] Admin bootstrapped on production (repeat Step 2 with the production deploy key)
+- [ ] Authentication works on production (sign in with the bootstrapped admin account)
 - [ ] Custom domains resolve correctly (if configured)
 - [ ] SSL certificates active (padlock in browser)
 - [ ] Convex production deployment active in dashboard
