@@ -53,7 +53,7 @@ http.route({
       key: "waitlistEnabled",
     });
 
-    return new Response(JSON.stringify({ enabled: enabled ?? false }), {
+    return new Response(JSON.stringify({ enabled: enabled ?? true }), {
       status: 200,
       headers: corsHeaders(request),
     });

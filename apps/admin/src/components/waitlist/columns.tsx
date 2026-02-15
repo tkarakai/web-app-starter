@@ -130,6 +130,15 @@ const EXCITEMENT_LABELS: Record<string, string> = {
 function ActionsCell({ entry }: { entry: WaitlistEntry }) {
   const { onAction } = useWaitlistActions();
 
+  if (entry.status === "claimed") {
+    return (
+      <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
+        <MoreHorizontal className="h-4 w-4" />
+        <span className="sr-only">No actions available</span>
+      </Button>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -151,27 +160,14 @@ function ActionsCell({ entry }: { entry: WaitlistEntry }) {
             Revoke invitation
           </DropdownMenuItem>
         )}
-        {entry.status !== "claimed" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onSelect={() => onAction("delete", [entry])}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </>
-        )}
-        {entry.status === "claimed" && (
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onSelect={() => onAction("delete", [entry])}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onSelect={() => onAction("delete", [entry])}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
