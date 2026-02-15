@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Unirse a la lista de espera",
-      "description": "Solicite acceso anticipado uniéndose a la lista de espera.",
+      "description": "Solicite acceso uniéndose a la lista de espera.",
       "emailLabel": "Correo electrónico",
       "emailPlaceholder": "usted@ejemplo.es",
       "superpowersLabel": "¿Cuál es tu superpoder?",

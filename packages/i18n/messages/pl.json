@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Dołącz do listy oczekujących",
-      "description": "Poproś o wczesny dostęp, dołączając do listy oczekujących.",
+      "description": "Poproś o dostęp, dołączając do listy oczekujących.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "ty@przyklad.pl",
       "superpowersLabel": "Jaka jest Twoja supermoc?",

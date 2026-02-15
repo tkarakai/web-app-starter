@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "הצטרפות לרשימת ההמתנה",
-      "description": "בקשו גישה מוקדמת על ידי הצטרפות לרשימת ההמתנה.",
+      "description": "בקשו גישה על ידי הצטרפות לרשימת ההמתנה.",
       "emailLabel": "אימייל",
       "emailPlaceholder": "you@example.co.il",
       "superpowersLabel": "מה כוח העל שלך?",

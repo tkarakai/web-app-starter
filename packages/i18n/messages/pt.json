@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Entrar na lista de espera",
-      "description": "Solicite acesso antecipado entrando na lista de espera.",
+      "description": "Solicite acesso entrando na lista de espera.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "voce@exemplo.com.br",
       "superpowersLabel": "Qual é o seu superpoder?",

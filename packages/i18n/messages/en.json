@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Join the Waitlist",
-      "description": "Request early access by joining the waitlist.",
+      "description": "Request access by joining the waitlist.",
       "emailLabel": "Email",
       "emailPlaceholder": "you@example.com",
       "superpowersLabel": "What's your superpower?",

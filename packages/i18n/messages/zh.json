@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "加入候补名单",
-      "description": "加入候补名单，申请提前访问。",
+      "description": "加入候补名单，申请访问。",
       "emailLabel": "电子邮箱",
       "emailPlaceholder": "you@example.cn",
       "superpowersLabel": "你的超能力是什么？",

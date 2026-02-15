@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Připojit se na čekací listinu",
-      "description": "Požádejte o předčasný přístup připojením se na čekací listinu.",
+      "description": "Požádejte o přístup připojením se na čekací listinu.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "vy@priklad.cz",
       "superpowersLabel": "Jaká je tvoje superschopnost?",

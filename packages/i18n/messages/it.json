@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Iscriviti alla lista d'attesa",
-      "description": "Richiedi l'accesso anticipato iscrivendoti alla lista d'attesa.",
+      "description": "Richiedi l'accesso iscrivendoti alla lista d'attesa.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "tu@esempio.it",
       "superpowersLabel": "Qual è il tuo superpotere?",

@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "انضم إلى قائمة الانتظار",
-      "description": "اطلب الوصول المبكر من خلال الانضمام إلى قائمة الانتظار.",
+      "description": "اطلب الوصول من خلال الانضمام إلى قائمة الانتظار.",
       "emailLabel": "البريد الإلكتروني",
       "emailPlaceholder": "you@example.com",
       "superpowersLabel": "ما هي قوتك الخارقة؟",

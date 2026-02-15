@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Aanmelden voor de wachtlijst",
-      "description": "Vraag vroegtijdige toegang aan door u aan te melden voor de wachtlijst.",
+      "description": "Vraag toegang aan door u aan te melden voor de wachtlijst.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "u@voorbeeld.nl",
       "superpowersLabel": "Wat is jouw superkracht?",

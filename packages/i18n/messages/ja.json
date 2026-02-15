@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "ウェイトリストに参加",
-      "description": "ウェイトリストに参加して、早期アクセスをリクエストしましょう。",
+      "description": "ウェイトリストに参加して、アクセスをリクエストしましょう。",
       "emailLabel": "メールアドレス",
       "emailPlaceholder": "you@example.jp",
       "superpowersLabel": "あなたの超能力は？",

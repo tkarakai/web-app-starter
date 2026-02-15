@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Warteliste beitreten",
-      "description": "Fordern Sie frühzeitigen Zugang an, indem Sie sich auf die Warteliste setzen.",
+      "description": "Fordern Sie Zugang an, indem Sie sich auf die Warteliste setzen.",
       "emailLabel": "E-Mail",
       "emailPlaceholder": "sie@beispiel.de",
       "superpowersLabel": "Was ist deine Superkraft?",

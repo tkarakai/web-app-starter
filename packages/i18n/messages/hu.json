@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Csatlakozás a várólistához",
-      "description": "Kérjen korai hozzáférést a várólistára való feliratkozással.",
+      "description": "Kérjen hozzáférést a várólistára való feliratkozással.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "on@pelda.hu",
       "superpowersLabel": "Mi a szuperképességed?",
