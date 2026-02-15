@@ -3,6 +3,7 @@ export { cn } from "./lib/utils";
 
 /* ─── Hooks ─── */
 export { useIsMobile } from "./hooks/use-mobile";
+export { useNetworkStatus } from "./hooks/use-network-status";
 
 /* ─── Actions ─── */
 export { Button, buttonVariants, type ButtonProps } from "./components/actions/button";
@@ -43,6 +44,7 @@ export {
   type Environment,
 } from "./components/feedback/environment-banner";
 export { EnvironmentBannerWrapper } from "./components/feedback/environment-banner-wrapper";
+export { OfflineBanner, type OfflineBannerProps } from "./components/feedback/offline-banner";
 export { Toaster, toast } from "sonner";
 export {
   AlertDialog,

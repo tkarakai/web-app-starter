@@ -252,5 +252,8 @@
       "heading": "Conditions de Service",
       "lastUpdated": "Dernière mise à jour : {date}"
     }
+  },
+  "offline": {
+    "message": "Vous semblez être hors ligne. Une connexion active est nécessaire pour continuer."
   }
 }
