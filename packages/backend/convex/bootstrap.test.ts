@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -15,6 +16,15 @@ function createTestEnv() {
 }
 
 describe("bootstrap", () => {
+  // Use fake timers to prevent convex-test from auto-executing scheduled
+  // functions. The bootstrap mutations schedule an internalAction via
+  // ctx.scheduler.runAfter which can't run in the test environment.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   // -----------------------------------------------------------------------
   // initialize
   // -----------------------------------------------------------------------
@@ -23,39 +33,26 @@ describe("bootstrap", () => {
     test("seeds admin email and creates invited waitlist entry on empty system", async () => {
       const t = createTestEnv();
 
-      // Simulate what initialize does
-      const entryId = await t.run(async (ctx) => {
-        // Guard: adminEmails must be empty
-        const existing = await ctx.db.query("adminEmails").collect();
-        expect(existing).toHaveLength(0);
-
-        // Insert admin email
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-
-        // Insert waitlist entry
-        const now = Date.now();
-        const id = await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "waiting",
-          createdAt: now,
-        });
-
-        // Immediately invite
-        await ctx.db.patch(id, { status: "invited", invitedAt: now });
-
-        return id;
+      const result = await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
       });
 
-      // Verify results
+      expect(result.success).toBe(true);
+      expect(result.email).toBe("admin@example.com");
+
+      // Verify admin email was created
       const adminEmails = await t.run(async (ctx) => {
         return ctx.db.query("adminEmails").collect();
       });
       expect(adminEmails).toHaveLength(1);
       expect(adminEmails[0].email).toBe("admin@example.com");
 
+      // Verify waitlist entry was created and invited
       const entry = await t.run(async (ctx) => {
-        return ctx.db.get(entryId);
+        return ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
       });
       expect(entry).toBeDefined();
       expect(entry?.email).toBe("admin@example.com");
@@ -63,7 +60,7 @@ describe("bootstrap", () => {
       expect(entry?.invitedAt).toBeDefined();
     });
 
-    test("fails if adminEmails already has an entry", async () => {
+    test("throws BOOTSTRAP_ALREADY_INITIALIZED if adminEmails already has an entry", async () => {
       const t = createTestEnv();
 
       // Pre-seed an admin email
@@ -71,34 +68,53 @@ describe("bootstrap", () => {
         await ctx.db.insert("adminEmails", { email: "existing@example.com" });
       });
 
-      // Guard should reject
-      await t.run(async (ctx) => {
-        const existing = await ctx.db.query("adminEmails").collect();
-        expect(existing.length).toBeGreaterThan(0);
-      });
+      await expect(
+        t.mutation(internal.bootstrap.initialize, {
+          email: "new@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_ALREADY_INITIALIZED");
     });
 
-    test("creates valid meta that matches waitlist schema", async () => {
+    test("throws BOOTSTRAP_INVALID_EMAIL for invalid email", async () => {
       const t = createTestEnv();
 
-      // The synthetic meta should be insertable into waitlistEntries
-      const entryId = await t.run(async (ctx) => {
-        return ctx.db.insert("waitlistEntries", {
-          email: "test@example.com",
+      await expect(
+        t.mutation(internal.bootstrap.initialize, { email: "nope" }),
+      ).rejects.toThrow("BOOTSTRAP_INVALID_EMAIL");
+    });
+
+    test("throws BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY if email already on waitlist", async () => {
+      const t = createTestEnv();
+
+      // Pre-seed a waitlist entry (but no admin email, so the admin guard passes)
+      await t.run(async (ctx) => {
+        await ctx.db.insert("waitlistEntries", {
+          email: "admin@example.com",
           meta: BOOTSTRAP_META,
           status: "waiting",
           createdAt: Date.now(),
         });
       });
 
-      const entry = await t.run(async (ctx) => {
-        return ctx.db.get(entryId);
-      });
-      expect(entry).toBeDefined();
+      await expect(
+        t.mutation(internal.bootstrap.initialize, {
+          email: "admin@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
+    });
 
-      const meta = JSON.parse(entry!.meta);
-      expect(meta.superpowers).toContain("coffee-to-code");
-      expect(meta.excitement).toContain("take-my-money");
+    test("cannot be called twice", async () => {
+      const t = createTestEnv();
+
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      await expect(
+        t.mutation(internal.bootstrap.initialize, {
+          email: "second@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_ALREADY_INITIALIZED");
     });
   });
 
@@ -110,116 +126,92 @@ describe("bootstrap", () => {
     test("updates admin email and revokes old tokens when email changes", async () => {
       const t = createTestEnv();
 
-      // Seed: one admin email + invited entry + active token
-      const { adminId, entryId, tokenId } = await t.run(async (ctx) => {
-        const aId = await ctx.db.insert("adminEmails", {
-          email: "typo@exmaple.com",
-        });
-        const eId = await ctx.db.insert("waitlistEntries", {
-          email: "typo@exmaple.com",
-          meta: BOOTSTRAP_META,
-          status: "invited",
-          invitedAt: Date.now(),
-          createdAt: Date.now(),
-        });
-        const tId = await ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+      // Seed via initialize
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "typo@exmaple.com",
+      });
+
+      // Seed a token for the old email
+      const tokenId = await t.run(async (ctx) => {
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "typo@exmaple.com"))
+          .first();
+        return ctx.db.insert("invitationTokens", {
+          waitlistEntryId: entry!._id,
           token: "old-token-abc",
           email: "typo@exmaple.com",
           status: "sent",
           expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
           createdAt: Date.now(),
         });
-        return { adminId: aId, entryId: eId, tokenId: tId };
       });
 
-      // Simulate rescue: update email, revoke tokens, re-invite
-      await t.run(async (ctx) => {
-        // Update admin email
-        await ctx.db.patch(adminId, { email: "correct@example.com" });
-
-        // Revoke old tokens
-        const tokens = await ctx.db
-          .query("invitationTokens")
-          .withIndex("by_email", (q) => q.eq("email", "typo@exmaple.com"))
-          .collect();
-        for (const token of tokens) {
-          if (token.status === "sent" || token.status === "claiming") {
-            await ctx.db.patch(token._id, { status: "revoked" });
-          }
-        }
-
-        // Update waitlist entry
-        await ctx.db.patch(entryId, {
-          email: "correct@example.com",
-          status: "invited",
-          invitedAt: Date.now(),
-        });
+      const result = await t.mutation(internal.bootstrap.rescue, {
+        currentEmail: "typo@exmaple.com",
+        newEmail: "correct@example.com",
       });
 
-      // Verify: admin email updated
+      expect(result.success).toBe(true);
+      expect(result.changed).toBe(true);
+      expect(result.email).toBe("correct@example.com");
+
+      // Verify admin email updated
       const adminEmails = await t.run(async (ctx) => {
         return ctx.db.query("adminEmails").collect();
       });
       expect(adminEmails).toHaveLength(1);
       expect(adminEmails[0].email).toBe("correct@example.com");
 
-      // Verify: old token revoked
+      // Verify old token revoked
       const oldToken = await t.run(async (ctx) => {
         return ctx.db.get(tokenId);
       });
       expect(oldToken?.status).toBe("revoked");
 
-      // Verify: waitlist entry updated
+      // Verify waitlist entry updated
       const entry = await t.run(async (ctx) => {
-        return ctx.db.get(entryId);
+        return ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) =>
+            q.eq("email", "correct@example.com"),
+          )
+          .first();
       });
-      expect(entry?.email).toBe("correct@example.com");
+      expect(entry).toBeDefined();
       expect(entry?.status).toBe("invited");
     });
 
     test("resends invitation when email is the same (no change)", async () => {
       const t = createTestEnv();
 
-      const { entryId, tokenId } = await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        const eId = await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "invited",
-          invitedAt: Date.now() - 100000,
-          createdAt: Date.now() - 100000,
-        });
-        const tId = await ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      // Seed an expired token
+      const tokenId = await t.run(async (ctx) => {
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
+        return ctx.db.insert("invitationTokens", {
+          waitlistEntryId: entry!._id,
           token: "expired-token",
           email: "admin@example.com",
           status: "sent",
-          expiresAt: Date.now() - 1000, // expired
+          expiresAt: Date.now() - 1000,
           createdAt: Date.now() - 100000,
         });
-        return { entryId: eId, tokenId: tId };
       });
 
-      // Simulate rescue with same email
-      await t.run(async (ctx) => {
-        // Revoke old tokens
-        const tokens = await ctx.db
-          .query("invitationTokens")
-          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
-          .collect();
-        for (const token of tokens) {
-          if (token.status === "sent" || token.status === "claiming") {
-            await ctx.db.patch(token._id, { status: "revoked" });
-          }
-        }
-
-        // Reset entry and re-invite
-        await ctx.db.patch(entryId, {
-          status: "invited",
-          invitedAt: Date.now(),
-        });
+      const result = await t.mutation(internal.bootstrap.rescue, {
+        currentEmail: "admin@example.com",
+        newEmail: "admin@example.com",
       });
+
+      expect(result.success).toBe(true);
+      expect(result.changed).toBe(false);
 
       // Old token should be revoked
       const oldToken = await t.run(async (ctx) => {
@@ -229,22 +221,26 @@ describe("bootstrap", () => {
 
       // Entry should be re-invited
       const entry = await t.run(async (ctx) => {
-        return ctx.db.get(entryId);
+        return ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
       });
       expect(entry?.status).toBe("invited");
     });
 
-    test("guard: fails if no admin emails exist", async () => {
+    test("throws BOOTSTRAP_NOT_INITIALIZED if no admin emails exist", async () => {
       const t = createTestEnv();
 
-      const adminEmails = await t.run(async (ctx) => {
-        return ctx.db.query("adminEmails").collect();
-      });
-      expect(adminEmails).toHaveLength(0);
-      // rescue would throw BOOTSTRAP_NOT_INITIALIZED
+      await expect(
+        t.mutation(internal.bootstrap.rescue, {
+          currentEmail: "admin@example.com",
+          newEmail: "admin@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_NOT_INITIALIZED");
     });
 
-    test("guard: fails if multiple admin emails exist", async () => {
+    test("throws BOOTSTRAP_MULTIPLE_ADMINS if multiple admin emails exist", async () => {
       const t = createTestEnv();
 
       await t.run(async (ctx) => {
@@ -252,66 +248,85 @@ describe("bootstrap", () => {
         await ctx.db.insert("adminEmails", { email: "admin2@example.com" });
       });
 
-      const adminEmails = await t.run(async (ctx) => {
-        return ctx.db.query("adminEmails").collect();
-      });
-      expect(adminEmails.length).toBeGreaterThan(1);
-      // rescue would throw BOOTSTRAP_MULTIPLE_ADMINS
+      await expect(
+        t.mutation(internal.bootstrap.rescue, {
+          currentEmail: "admin1@example.com",
+          newEmail: "admin1@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_MULTIPLE_ADMINS");
     });
 
-    test("guard: fails if currentEmail does not match", async () => {
+    test("throws BOOTSTRAP_EMAIL_MISMATCH if currentEmail does not match", async () => {
       const t = createTestEnv();
 
-      await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "real@example.com" });
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "real@example.com",
       });
 
-      const adminEmails = await t.run(async (ctx) => {
-        return ctx.db.query("adminEmails").collect();
-      });
-      expect(adminEmails[0].email).not.toBe("wrong@example.com");
-      // rescue would throw BOOTSTRAP_EMAIL_MISMATCH
+      await expect(
+        t.mutation(internal.bootstrap.rescue, {
+          currentEmail: "wrong@example.com",
+          newEmail: "new@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_EMAIL_MISMATCH");
     });
 
-    test("guard: fails if waitlist entry is claimed", async () => {
+    test("throws BOOTSTRAP_ALREADY_COMPLETE if waitlist entry is claimed", async () => {
       const t = createTestEnv();
 
-      await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "claimed",
-          invitedAt: Date.now(),
-          claimedAt: Date.now(),
-          createdAt: Date.now(),
-        });
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
       });
 
-      const entry = await t.run(async (ctx) => {
-        return ctx.db
+      // Mark the entry as claimed
+      await t.run(async (ctx) => {
+        const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
           .first();
+        await ctx.db.patch(entry!._id, {
+          status: "claimed",
+          claimedAt: Date.now(),
+        });
       });
-      expect(entry?.status).toBe("claimed");
-      // rescue would throw BOOTSTRAP_ALREADY_COMPLETE
+
+      await expect(
+        t.mutation(internal.bootstrap.rescue, {
+          currentEmail: "admin@example.com",
+          newEmail: "admin@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_ALREADY_COMPLETE");
+    });
+
+    test("throws BOOTSTRAP_INVALID_EMAIL for invalid newEmail", async () => {
+      const t = createTestEnv();
+
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      await expect(
+        t.mutation(internal.bootstrap.rescue, {
+          currentEmail: "admin@example.com",
+          newEmail: "nope",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_INVALID_EMAIL");
     });
 
     test("revokes tokens in 'claiming' state too", async () => {
       const t = createTestEnv();
 
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
       const tokenId = await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        const eId = await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "invited",
-          invitedAt: Date.now(),
-          createdAt: Date.now(),
-        });
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
         return ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+          waitlistEntryId: entry!._id,
           token: "claiming-token",
           email: "admin@example.com",
           status: "claiming",
@@ -321,23 +336,49 @@ describe("bootstrap", () => {
         });
       });
 
-      // Revoke
-      await t.run(async (ctx) => {
-        const tokens = await ctx.db
-          .query("invitationTokens")
-          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
-          .collect();
-        for (const token of tokens) {
-          if (token.status === "sent" || token.status === "claiming") {
-            await ctx.db.patch(token._id, { status: "revoked" });
-          }
-        }
+      await t.mutation(internal.bootstrap.rescue, {
+        currentEmail: "admin@example.com",
+        newEmail: "admin@example.com",
       });
 
       const token = await t.run(async (ctx) => {
         return ctx.db.get(tokenId);
       });
       expect(token?.status).toBe("revoked");
+    });
+
+    test("recreates waitlist entry if it was manually deleted", async () => {
+      const t = createTestEnv();
+
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      // Delete the waitlist entry to simulate manual deletion
+      await t.run(async (ctx) => {
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
+        await ctx.db.delete(entry!._id);
+      });
+
+      const result = await t.mutation(internal.bootstrap.rescue, {
+        currentEmail: "admin@example.com",
+        newEmail: "admin@example.com",
+      });
+
+      expect(result.success).toBe(true);
+
+      // Entry should be recreated and invited
+      const entry = await t.run(async (ctx) => {
+        return ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
+      });
+      expect(entry).toBeDefined();
+      expect(entry?.status).toBe("invited");
     });
   });
 
@@ -349,53 +390,53 @@ describe("bootstrap", () => {
     test("returns not bootstrapped with hint when no admin email exists", async () => {
       const t = createTestEnv();
 
-      const adminEmails = await t.run(async (ctx) => {
-        return ctx.db.query("adminEmails").collect();
-      });
+      const result = await t.query(internal.bootstrap.status, {});
 
-      expect(adminEmails).toHaveLength(0);
-      // status would return { bootstrapped: false, hint: "Run bootstrap:initialize..." }
+      expect(result.bootstrapped).toBe(false);
+      expect(result.adminEmail).toBeNull();
+      expect(result.hint).toContain("bootstrap:initialize");
     });
 
     test("returns bootstrapped: true when waitlist entry is claimed", async () => {
       const t = createTestEnv();
 
-      await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "claimed",
-          invitedAt: Date.now(),
-          claimedAt: Date.now(),
-          createdAt: Date.now(),
-        });
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
       });
 
-      const entry = await t.run(async (ctx) => {
-        return ctx.db
+      // Mark claimed
+      await t.run(async (ctx) => {
+        const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
           .first();
+        await ctx.db.patch(entry!._id, {
+          status: "claimed",
+          claimedAt: Date.now(),
+        });
       });
-      expect(entry?.status).toBe("claimed");
-      // status would return { bootstrapped: true, adminEmail: "admin@example.com" }
+
+      const result = await t.query(internal.bootstrap.status, {});
+
+      expect(result.bootstrapped).toBe(true);
+      expect(result.adminEmail).toBe("admin@example.com");
     });
 
     test("reports active token when invitation is pending", async () => {
       const t = createTestEnv();
 
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      // Seed an active token
       await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        const eId = await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "invited",
-          invitedAt: Date.now(),
-          createdAt: Date.now(),
-        });
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
         await ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+          waitlistEntryId: entry!._id,
           token: "active-token",
           email: "admin@example.com",
           status: "sent",
@@ -404,65 +445,60 @@ describe("bootstrap", () => {
         });
       });
 
-      const tokens = await t.run(async (ctx) => {
-        return ctx.db
-          .query("invitationTokens")
-          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
-          .collect();
-      });
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].status).toBe("sent");
-      expect(tokens[0].expiresAt).toBeGreaterThan(Date.now());
-      // status would return { bootstrapped: false, tokenStatus: "sent", hint: "Check inbox..." }
+      const result = await t.query(internal.bootstrap.status, {});
+
+      expect(result.bootstrapped).toBe(false);
+      expect(result.adminEmail).toBe("admin@example.com");
+      expect(result.tokenStatus).toBe("sent");
+      expect(result.tokenExpired).toBe(false);
+      expect(result.hint).toContain("inbox");
     });
 
     test("detects expired token", async () => {
       const t = createTestEnv();
 
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      // Seed an expired token
       await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        const eId = await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "invited",
-          invitedAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
-          createdAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
-        });
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
         await ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+          waitlistEntryId: entry!._id,
           token: "expired-token",
           email: "admin@example.com",
           status: "sent",
-          expiresAt: Date.now() - 1000, // expired
+          expiresAt: Date.now() - 1000,
           createdAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
         });
       });
 
-      const tokens = await t.run(async (ctx) => {
-        return ctx.db
-          .query("invitationTokens")
-          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
-          .collect();
-      });
-      expect(tokens[0].expiresAt).toBeLessThan(Date.now());
-      // status would return { bootstrapped: false, tokenExpired: true, hint: "Token expired..." }
+      const result = await t.query(internal.bootstrap.status, {});
+
+      expect(result.bootstrapped).toBe(false);
+      expect(result.tokenExpired).toBe(true);
+      expect(result.hint).toContain("expired");
     });
 
     test("finds most recent token among multiple", async () => {
       const t = createTestEnv();
 
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
       await t.run(async (ctx) => {
-        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
-        const eId = await ctx.db.insert("waitlistEntries", {
-          email: "admin@example.com",
-          meta: BOOTSTRAP_META,
-          status: "invited",
-          invitedAt: Date.now(),
-          createdAt: Date.now(),
-        });
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
         // Older token (revoked)
         await ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+          waitlistEntryId: entry!._id,
           token: "old-revoked-token",
           email: "admin@example.com",
           status: "revoked",
@@ -471,7 +507,7 @@ describe("bootstrap", () => {
         });
         // Newer token (active)
         await ctx.db.insert("invitationTokens", {
-          waitlistEntryId: eId,
+          waitlistEntryId: entry!._id,
           token: "new-active-token",
           email: "admin@example.com",
           status: "sent",
@@ -480,19 +516,55 @@ describe("bootstrap", () => {
         });
       });
 
-      const tokens = await t.run(async (ctx) => {
-        return ctx.db
-          .query("invitationTokens")
-          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
-          .collect();
+      const result = await t.query(internal.bootstrap.status, {});
+
+      // Should report based on the newest token (active, not expired)
+      expect(result.bootstrapped).toBe(false);
+      expect(result.tokenStatus).toBe("sent");
+      expect(result.tokenExpired).toBe(false);
+    });
+
+    test("hints to rescue when waitlist entry is missing", async () => {
+      const t = createTestEnv();
+
+      // Insert admin email directly without a waitlist entry
+      await t.run(async (ctx) => {
+        await ctx.db.insert("adminEmails", { email: "admin@example.com" });
       });
 
-      // The most recent token should be the active one
-      const latest = tokens.reduce((a, b) =>
-        a.createdAt > b.createdAt ? a : b,
-      );
-      expect(latest.status).toBe("sent");
-      expect(latest.token).toBe("new-active-token");
+      const result = await t.query(internal.bootstrap.status, {});
+
+      expect(result.bootstrapped).toBe(false);
+      expect(result.hint).toContain("rescue");
+    });
+
+    test("hints to rescue when token is revoked", async () => {
+      const t = createTestEnv();
+
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      // Seed a revoked token
+      await t.run(async (ctx) => {
+        const entry = await ctx.db
+          .query("waitlistEntries")
+          .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
+          .first();
+        await ctx.db.insert("invitationTokens", {
+          waitlistEntryId: entry!._id,
+          token: "revoked-token",
+          email: "admin@example.com",
+          status: "revoked",
+          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          createdAt: Date.now(),
+        });
+      });
+
+      const result = await t.query(internal.bootstrap.status, {});
+
+      expect(result.tokenStatus).toBe("revoked");
+      expect(result.hint).toContain("rescue");
     });
   });
 });
