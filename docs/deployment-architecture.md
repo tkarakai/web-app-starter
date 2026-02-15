@@ -188,6 +188,16 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
   3. Run data migration
   4. Deploy cleanup (remove old field)
 
+### First-Time Initialization (Admin Bootstrap)
+
+After the very first deployment, the Convex database is empty — no admin account exists. The `bootstrap` module (`packages/backend/convex/bootstrap.ts`) provides internal functions to seed the first admin without needing a UI:
+
+- **`bootstrap:initialize`** — Seeds the admin email, creates a waitlist entry, and sends an invitation token. Can only run once.
+- **`bootstrap:rescue`** — Fixes a failed bootstrap (typo, expired token). Revokes old tokens and resends. Cannot run after claim.
+- **`bootstrap:status`** — Read-only diagnostic with actionable hints.
+
+These are `internalMutation`/`internalQuery` — not callable from the client. Run them from the Convex dashboard or via `bunx convex run`. For step-by-step instructions, see [deployment-runbook.md — Bootstrap the First Admin](./deployment-runbook.md#step-2-bootstrap-the-first-admin).
+
 For infrastructure setup, prerequisites, troubleshooting, and free tier limits, see [deployment-runbook.md](./deployment-runbook.md).
 
 ---
