@@ -106,9 +106,20 @@ http.route({
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "UNKNOWN_ERROR";
-      const status = message === "WAITLIST_NOT_ENABLED" ? 400 : 500;
+
+      // Known client errors → 400; everything else → 500
+      const clientErrors = [
+        "WAITLIST_NOT_ENABLED",
+        "INVALID_EMAIL",
+        "INVALID_META",
+        "RATE_LIMITED",
+      ];
+      const isClientError = clientErrors.some((code) =>
+        message.includes(code)
+      );
+
       return new Response(JSON.stringify({ error: message }), {
-        status,
+        status: isClientError ? 400 : 500,
         headers: corsHeaders(request),
       });
     }

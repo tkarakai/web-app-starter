@@ -185,10 +185,13 @@ function EnvironmentBanner({
 }: EnvironmentBannerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [showEnvVars, setShowEnvVars] = React.useState(true)
+  const [mounted, setMounted] = React.useState(false)
   const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
   const bannerRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => setMounted(true), [])
 
   const isFixed = position !== "static"
 
@@ -259,6 +262,56 @@ function EnvironmentBanner({
     }
   }
 
+  const collapsedBar = (
+    <span className="flex items-center font-mono">
+      {statusParts.map((part, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <Pipe />}
+          <span
+            className={
+              i === 0 ? "font-semibold" : "opacity-70"
+            }
+          >
+            {part}
+          </span>
+        </React.Fragment>
+      ))}
+    </span>
+  )
+
+  const bannerClassName = cn(
+    environmentBannerVariants({ environment, position }),
+    className
+  )
+
+  // During SSR, render a simple static bar to avoid Radix useId() hydration mismatch
+  if (!mounted) {
+    return (
+      <>
+        <div
+          ref={setRefs}
+          role="status"
+          aria-label={`Environment: ${environment}`}
+          data-slot="environment-banner"
+          data-environment={environment}
+          className={bannerClassName}
+          {...props}
+        >
+          <div className="flex w-full items-center justify-center py-px text-[10px] font-medium tracking-wide">
+            {collapsedBar}
+          </div>
+        </div>
+        {isFixed && (
+          <div
+            style={{ height: ENV_BANNER_H_PX }}
+            data-slot="environment-banner-spacer"
+            aria-hidden="true"
+          />
+        )}
+      </>
+    )
+  }
+
   return (
     <>
       <CollapsiblePrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -268,10 +321,7 @@ function EnvironmentBanner({
           aria-label={`Environment: ${environment}`}
           data-slot="environment-banner"
           data-environment={environment}
-          className={cn(
-            environmentBannerVariants({ environment, position }),
-            className
-          )}
+          className={bannerClassName}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           {...props}
@@ -283,20 +333,7 @@ function EnvironmentBanner({
               className="flex w-full items-center justify-center py-px text-[10px] font-medium tracking-wide transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
               aria-expanded={isOpen}
             >
-              <span className="flex items-center font-mono">
-                {statusParts.map((part, i) => (
-                  <React.Fragment key={i}>
-                    {i > 0 && <Pipe />}
-                    <span
-                      className={
-                        i === 0 ? "font-semibold" : "opacity-70"
-                      }
-                    >
-                      {part}
-                    </span>
-                  </React.Fragment>
-                ))}
-              </span>
+              {collapsedBar}
             </button>
           </CollapsiblePrimitive.CollapsibleTrigger>
 

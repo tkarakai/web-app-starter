@@ -1,27 +1,19 @@
 import { getTranslations } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
 
-import { Badge, Button } from "@repo/design-system";
+import { Badge } from "@repo/design-system";
 import { SiteHeader } from "@/components/site-header";
-import { WaitlistSection } from "@/components/waitlist-section";
+import { HeroCta } from "@/components/hero-cta";
 
-const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+type Props = {
+  params: Promise<{ locale: string }>;
+};
 
-async function getWaitlistStatus(): Promise<boolean> {
-  try {
-    const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/status`, {
-      next: { revalidate: 60 },
-    });
-    const data = (await res.json()) as { enabled?: boolean };
-    return data.enabled === true;
-  } catch {
-    return false;
-  }
-}
+export default async function HomePage({ params }: Props) {
+  const { locale } = await params;
+  setRequestLocale(locale);
 
-export default async function HomePage() {
   const t = await getTranslations("landing");
-  const waitlistEnabled = await getWaitlistStatus();
 
   return (
     <main
@@ -44,18 +36,7 @@ export default async function HomePage() {
           {t("description")}
         </p>
 
-        {waitlistEnabled ? (
-          <WaitlistSection />
-        ) : (
-          <div className="flex gap-3">
-            <Button asChild>
-              <a href={`${WEB_APP_URL}/sign-up`}>{t("getStarted")}</a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
-            </Button>
-          </div>
-        )}
+        <HeroCta />
       </div>
     </main>
   );

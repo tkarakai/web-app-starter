@@ -11,7 +11,7 @@ const VALID_KEYS = ["waitlistEnabled", "invitationTokenExpiryDays"] as const;
 
 /** Default values returned when a key has never been set. */
 const DEFAULTS: Record<string, unknown> = {
-  waitlistEnabled: false,
+  waitlistEnabled: true,
   invitationTokenExpiryDays: 7,
 };
 

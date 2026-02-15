@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack --port 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "npx serve out",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "bun test qa/tests/*.test.ts",
@@ -20,7 +20,6 @@
   "dependencies": {
     "@repo/design-patterns": "workspace:*",
     "@repo/design-system": "workspace:*",
-    "@repo/edge-rate-limit": "workspace:*",
     "@repo/i18n": "workspace:*",
     "lucide-react": "^0.510.0",
     "next": "^16.1.5",

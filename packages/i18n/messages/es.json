@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Unirse a la lista de espera",
-      "description": "Solicite acceso anticipado uniéndose a la lista de espera.",
+      "description": "Solicite acceso uniéndose a la lista de espera.",
       "emailLabel": "Correo electrónico",
       "emailPlaceholder": "usted@ejemplo.es",
       "superpowersLabel": "¿Cuál es tu superpoder?",
@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Cautelosamente optimista",
         "just-browsing": "Solo estoy mirando",
         "friend-made-me": "Un amigo me obligó a registrarme"
+      },
+      "errors": {
+        "waitlistNotEnabled": "La lista de espera no está aceptando registros en este momento. Inténtelo de nuevo más tarde.",
+        "invalidEmail": "Por favor, introduzca una dirección de correo electrónico válida.",
+        "rateLimited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
+        "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
       }
     }
   },

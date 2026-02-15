@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Warteliste beitreten",
-      "description": "Fordern Sie frühzeitigen Zugang an, indem Sie sich auf die Warteliste setzen.",
+      "description": "Fordern Sie Zugang an, indem Sie sich auf die Warteliste setzen.",
       "emailLabel": "E-Mail",
       "emailPlaceholder": "sie@beispiel.de",
       "superpowersLabel": "Was ist deine Superkraft?",
@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Vorsichtig optimistisch",
         "just-browsing": "Schaue mich nur um",
         "friend-made-me": "Ein Freund hat mich angemeldet"
+      },
+      "errors": {
+        "waitlistNotEnabled": "Die Warteliste nimmt derzeit keine Anmeldungen an. Bitte versuchen Sie es später erneut.",
+        "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+        "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
       }
     }
   },

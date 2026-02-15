@@ -99,6 +99,9 @@ function MultiSelectDropdown({
   );
 }
 
+const CONVEX_SITE_URL =
+  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+
 export function WaitlistForm() {
   const t = useTranslations("landing.waitlist");
   const [email, setEmail] = React.useState("");
@@ -126,7 +129,7 @@ export function WaitlistForm() {
     setPending(true);
 
     try {
-      const res = await fetch("/api/waitlist/join", {
+      const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -138,17 +141,22 @@ export function WaitlistForm() {
       const data = (await res.json()) as Record<string, unknown>;
 
       if (!res.ok) {
-        setError(
-          typeof data.error === "string"
-            ? data.error
-            : "Something went wrong"
-        );
+        const raw = typeof data.error === "string" ? data.error : "";
+        if (raw.includes("WAITLIST_NOT_ENABLED")) {
+          setError(t("errors.waitlistNotEnabled"));
+        } else if (raw.includes("INVALID_EMAIL")) {
+          setError(t("errors.invalidEmail"));
+        } else if (raw.includes("RATE_LIMITED")) {
+          setError(t("errors.rateLimited"));
+        } else {
+          setError(t("errors.generic"));
+        }
         return;
       }
 
       setSuccess(true);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }

@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Dołącz do listy oczekujących",
-      "description": "Poproś o wczesny dostęp, dołączając do listy oczekujących.",
+      "description": "Poproś o dostęp, dołączając do listy oczekujących.",
       "emailLabel": "E-mail",
       "emailPlaceholder": "ty@przyklad.pl",
       "superpowersLabel": "Jaka jest Twoja supermoc?",
@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Ostrożnie optymistyczny/a",
         "just-browsing": "Tylko przeglądam",
         "friend-made-me": "Znajomy mnie zmusił do rejestracji"
+      },
+      "errors": {
+        "waitlistNotEnabled": "Lista oczekujących nie przyjmuje obecnie zapisów. Spróbuj ponownie później.",
+        "invalidEmail": "Podaj prawidłowy adres e-mail.",
+        "rateLimited": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
+        "generic": "Coś poszło nie tak. Spróbuj ponownie."
       }
     }
   },

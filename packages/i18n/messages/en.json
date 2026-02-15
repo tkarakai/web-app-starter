@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "Join the Waitlist",
-      "description": "Request early access by joining the waitlist.",
+      "description": "Request access by joining the waitlist.",
       "emailLabel": "Email",
       "emailPlaceholder": "you@example.com",
       "superpowersLabel": "What's your superpower?",
@@ -131,6 +131,12 @@
         "cautiously-optimistic": "Cautiously optimistic",
         "just-browsing": "Just browsing",
         "friend-made-me": "My friend made me sign up"
+      },
+      "errors": {
+        "waitlistNotEnabled": "The waitlist is not currently accepting sign-ups. Please try again later.",
+        "invalidEmail": "Please enter a valid email address.",
+        "rateLimited": "Too many requests. Please wait a moment and try again.",
+        "generic": "Something went wrong. Please try again."
       }
     }
   },

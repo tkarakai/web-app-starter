@@ -10,25 +10,17 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const gitBranch = getGitBranch();
 
-// CSP is handled by proxy.ts (nonce-based)
-const securityHeaders = [
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains",
-  },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-];
-
 const nextConfig: NextConfig = {
+  output: process.env.NODE_ENV === "production" ? "export" : undefined,
+  trailingSlash: true,
   reactStrictMode: true,
   env: {
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
-  transpilePackages: ["@repo/design-system", "@repo/design-patterns", "@repo/edge-rate-limit", "@repo/i18n"],
-  headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
+  transpilePackages: ["@repo/design-system", "@repo/design-patterns", "@repo/i18n"],
+  images: {
+    unoptimized: true,
+  },
   outputFileTracingRoot: monorepoRoot,
   turbopack: {
     root: monorepoRoot,

@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "הצטרפות לרשימת ההמתנה",
-      "description": "בקשו גישה מוקדמת על ידי הצטרפות לרשימת ההמתנה.",
+      "description": "בקשו גישה על ידי הצטרפות לרשימת ההמתנה.",
       "emailLabel": "אימייל",
       "emailPlaceholder": "you@example.co.il",
       "superpowersLabel": "מה כוח העל שלך?",
@@ -131,6 +131,12 @@
         "cautiously-optimistic": "אופטימי בזהירות",
         "just-browsing": "סתם מסתכל",
         "friend-made-me": "חבר שלי גרם לי להירשם"
+      },
+      "errors": {
+        "waitlistNotEnabled": "רשימת ההמתנה אינה מקבלת הרשמות כרגע. אנא נסו שוב מאוחר יותר.",
+        "invalidEmail": "אנא הזינו כתובת אימייל תקינה.",
+        "rateLimited": "יותר מדי בקשות. אנא המתינו רגע ונסו שוב.",
+        "generic": "משהו השתבש. אנא נסו שוב."
       }
     }
   },

@@ -97,7 +97,7 @@
     },
     "waitlist": {
       "title": "ウェイトリストに参加",
-      "description": "ウェイトリストに参加して、早期アクセスをリクエストしましょう。",
+      "description": "ウェイトリストに参加して、アクセスをリクエストしましょう。",
       "emailLabel": "メールアドレス",
       "emailPlaceholder": "you@example.jp",
       "superpowersLabel": "あなたの超能力は？",
@@ -131,6 +131,12 @@
         "cautiously-optimistic": "慎重に期待している",
         "just-browsing": "ちょっと見てるだけ",
         "friend-made-me": "友達に登録させられた"
+      },
+      "errors": {
+        "waitlistNotEnabled": "現在ウェイトリストへの登録を受け付けておりません。後ほどお試しください。",
+        "invalidEmail": "有効なメールアドレスを入力してください。",
+        "rateLimited": "リクエストが多すぎます。しばらく待ってからもう一度お試しください。",
+        "generic": "エラーが発生しました。もう一度お試しください。"
       }
     }
   },
