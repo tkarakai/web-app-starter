@@ -125,6 +125,77 @@ export default function IconsShowcase() {
   return (
     <>
       <DemoSection
+        title="App Icon"
+        description="The shared brand icon used across all applications. Managed in @repo/design-system/assets/ and automatically copied to each app's public directory during build."
+      >
+        <div className="space-y-6">
+          {/* SVG icon at different sizes */}
+          <div>
+            <p className="mb-3 text-xs font-medium text-foreground">SVG (primary)</p>
+            <div className="flex flex-wrap items-end gap-8">
+              <div className="flex flex-col items-center gap-2">
+                <img src="/icon.svg" alt="App Icon SVG" className="h-16 w-16" />
+                <span className="text-xs text-muted-foreground">64×64</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <img src="/icon.svg" alt="App Icon SVG" className="h-8 w-8" />
+                <span className="text-xs text-muted-foreground">32×32</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <img src="/icon.svg" alt="App Icon SVG" className="h-4 w-4" />
+                <span className="text-xs text-muted-foreground">16×16</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Raster fallbacks */}
+          <div>
+            <p className="mb-3 text-xs font-medium text-foreground">Raster fallbacks</p>
+            <div className="flex flex-wrap items-end gap-8">
+              <div className="flex flex-col items-center gap-2">
+                <img src="/apple-touch-icon.png" alt="Apple Touch Icon" className="h-[180px] w-[180px] rounded-[40px]" />
+                <span className="text-xs text-muted-foreground">apple-touch-icon (180×180)</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <img src="/favicon.ico" alt="Favicon" className="h-8 w-8" />
+                <span className="text-xs text-muted-foreground">favicon.ico (32×32)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Usage information */}
+          <div className="space-y-2 rounded-md border border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium">Usage</p>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p>
+                <strong className="text-foreground">Source:</strong>{" "}
+                <code className="rounded bg-background px-1 py-0.5">
+                  packages/design-system/assets/
+                </code>
+              </p>
+              <p>
+                <strong className="text-foreground">Deployed to:</strong>{" "}
+                <code className="rounded bg-background px-1 py-0.5">
+                  apps/*/public/
+                </code>
+              </p>
+              <p>
+                <strong className="text-foreground">Build script:</strong>{" "}
+                <code className="rounded bg-background px-1 py-0.5">
+                  scripts/copy-shared-assets.sh
+                </code>
+              </p>
+              <p className="pt-1">
+                All icon assets are automatically copied to every app before
+                development and production builds. To update, edit the source
+                files in the design-system package.
+              </p>
+            </div>
+          </div>
+        </div>
+      </DemoSection>
+
+      <DemoSection
         title="Icon Library"
         description={`${totalIcons.toLocaleString()} icons available from Lucide. Click any icon to copy its import name.`}
         toolbar={<SearchInput value={search} onChange={setSearch} />}

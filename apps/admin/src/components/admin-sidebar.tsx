@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ListChecks, LogOut, ScrollText, Shield, Users } from "lucide-react";
+import { ListChecks, LogOut, ScrollText, Users } from "lucide-react";
 
 import { ThemeToggle } from "@repo/design-patterns";
 import { authClient } from "@repo/auth/client";
@@ -71,7 +71,7 @@ export function AdminSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton tooltip="Admin" className="font-semibold">
-              <Shield className="h-5 w-5" />
+              <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
               <span>Admin</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -129,7 +129,7 @@ export function AdminSidebar({
               <DropdownMenuContent side="top" align="start" className="w-48">
                 <ThemeToggle className="mx-1 my-1" />
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleSignOut}>
+                <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import {
@@ -9,8 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/design-system";
+import { SiteHeader } from "@repo/design-patterns";
 import { AuthForm } from "@/components/auth/auth-form";
-import { AppLogo } from "@/components/app-logo";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
 const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
@@ -37,19 +36,12 @@ export default async function SignUpPage() {
 
   return (
     <main
-      className="relative min-h-screen"
+      className="flex min-h-screen flex-col"
       style={{ background: "var(--glow-cool)" }}
     >
-      <Link
-        href={LANDING_URL}
-        className="absolute start-6 top-6 flex items-center gap-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-80"
-      >
-        <AppLogo size={24} />
-        <span>{tc("appName")}</span>
-      </Link>
-      <LocaleSwitcher className="absolute end-6 top-6" />
-      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="space-y-6">
+      <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />
+      <div className="mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 pb-16 pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:justify-items-stretch">
+        <section className="w-full max-w-md space-y-6 lg:max-w-none">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
             {tc("appName")}
           </p>

@@ -15,6 +15,11 @@ dist
 .dev-pids
 *.tsbuildinfo
 
+# Generated shared assets (copied by scripts/copy-shared-assets.sh)
+apps/*/public/icon.svg
+apps/*/public/apple-touch-icon.png
+apps/*/public/favicon.ico
+
 # Test coverage reports
 **/qa/coverage/
 

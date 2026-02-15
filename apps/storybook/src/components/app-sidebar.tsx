@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Layers,
   MousePointerClick,
+  Navigation,
   Palette,
   PanelsTopLeft,
   Ruler,
@@ -61,6 +62,7 @@ const categoryIcons: Record<ComponentCategory, LucideIcon> = {
 };
 
 const patternCategoryIcons: Record<PatternCategory, LucideIcon> = {
+  Navigation: Navigation,
   Theme: SwatchBook,
 };
 
