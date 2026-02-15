@@ -76,11 +76,7 @@ jobs:
       - name: Set Vercel environment
         id: env
         run: |
-          if [ "${{ inputs.environment }}" = "production" ]; then
-            echo "vercel-env=production" >> "$GITHUB_OUTPUT"
-          else
-            echo "vercel-env=preview" >> "$GITHUB_OUTPUT"
-          fi
+          echo "vercel-env=production" >> "$GITHUB_OUTPUT"
 
   # ─── Rebuild and redeploy ────────────────────────────────────────
   build-web:
@@ -98,7 +94,7 @@ jobs:
           environment: ${{ needs.validate.outputs.vercel-env }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          vercel-project-id: ${{ inputs.environment == 'staging' && secrets.VERCEL_PROJECT_ID_WEB_STAGING || secrets.VERCEL_PROJECT_ID_WEB }}
 
   build-admin:
     name: Build Admin (Rollback)
@@ -115,7 +111,7 @@ jobs:
           environment: ${{ needs.validate.outputs.vercel-env }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          vercel-project-id: ${{ inputs.environment == 'staging' && secrets.VERCEL_PROJECT_ID_ADMIN_STAGING || secrets.VERCEL_PROJECT_ID_ADMIN }}
 
   build-landing:
     name: Build Landing (Rollback)
@@ -132,7 +128,7 @@ jobs:
           environment: ${{ needs.validate.outputs.vercel-env }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ inputs.environment == 'staging' && secrets.VERCEL_PROJECT_ID_LANDING_STAGING || secrets.VERCEL_PROJECT_ID_LANDING }}
 
   # ─── Deploy Convex (rollback functions) ──────────────────────────
   deploy-convex:
@@ -175,7 +171,7 @@ jobs:
           checksum-file: web-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          vercel-project-id: ${{ inputs.environment == 'staging' && secrets.VERCEL_PROJECT_ID_WEB_STAGING || secrets.VERCEL_PROJECT_ID_WEB }}
 
   deploy-admin:
     name: Deploy Admin (Rollback)
@@ -201,7 +197,7 @@ jobs:
           checksum-file: admin-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          vercel-project-id: ${{ inputs.environment == 'staging' && secrets.VERCEL_PROJECT_ID_ADMIN_STAGING || secrets.VERCEL_PROJECT_ID_ADMIN }}
 
   deploy-landing:
     name: Deploy Landing (Rollback)
@@ -227,7 +223,7 @@ jobs:
           checksum-file: landing-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ inputs.environment == 'staging' && secrets.VERCEL_PROJECT_ID_LANDING_STAGING || secrets.VERCEL_PROJECT_ID_LANDING }}
 
   # ─── Post-rollback ───────────────────────────────────────────────
   post-rollback:

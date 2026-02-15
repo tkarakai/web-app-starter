@@ -168,10 +168,10 @@ jobs:
         id: build
         with:
           app: web
-          environment: preview
+          environment: production
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
 
   build-admin:
     name: Build Admin (Staging)
@@ -185,10 +185,10 @@ jobs:
         id: build
         with:
           app: admin
-          environment: preview
+          environment: production
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
 
   build-landing:
     name: Build Landing (Staging)
@@ -202,10 +202,10 @@ jobs:
         id: build
         with:
           app: landing
-          environment: preview
+          environment: production
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
 
   # ─── Attest build provenance (only for built artifacts) ────────
   attest:
@@ -221,40 +221,40 @@ jobs:
         if: needs.changes.outputs.web == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: web-preview-${{ github.sha }}
-          path: artifacts/web-preview-${{ github.sha }}
+          name: web-production-${{ github.sha }}
+          path: artifacts/web-production-${{ github.sha }}
 
       - name: Download admin artifact
         if: needs.changes.outputs.admin == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: admin-preview-${{ github.sha }}
-          path: artifacts/admin-preview-${{ github.sha }}
+          name: admin-production-${{ github.sha }}
+          path: artifacts/admin-production-${{ github.sha }}
 
       - name: Download landing artifact
         if: needs.changes.outputs.landing == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: landing-preview-${{ github.sha }}
-          path: artifacts/landing-preview-${{ github.sha }}
+          name: landing-production-${{ github.sha }}
+          path: artifacts/landing-production-${{ github.sha }}
 
       - name: Attest web artifact
         if: needs.changes.outputs.web == 'true'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: artifacts/web-preview-${{ github.sha }}/web-preview.tar.gz
+          subject-path: artifacts/web-production-${{ github.sha }}/web-production.tar.gz
 
       - name: Attest admin artifact
         if: needs.changes.outputs.admin == 'true'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: artifacts/admin-preview-${{ github.sha }}/admin-preview.tar.gz
+          subject-path: artifacts/admin-production-${{ github.sha }}/admin-production.tar.gz
 
       - name: Attest landing artifact
         if: needs.changes.outputs.landing == 'true'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: artifacts/landing-preview-${{ github.sha }}/landing-preview.tar.gz
+          subject-path: artifacts/landing-production-${{ github.sha }}/landing-production.tar.gz
 
   # ─── Deploy Convex backend (if changed) ────────────────────────
   deploy-convex:
@@ -295,13 +295,13 @@ jobs:
         id: deploy
         with:
           app: web
-          environment: preview
-          artifact-name: web-preview-${{ github.sha }}
-          tarball: web-preview.tar.gz
-          checksum-file: web-preview.tar.gz.sha256
+          environment: production
+          artifact-name: web-production-${{ github.sha }}
+          tarball: web-production.tar.gz
+          checksum-file: web-production.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
 
   deploy-admin:
     name: Deploy Admin (Staging)
@@ -323,13 +323,13 @@ jobs:
         id: deploy
         with:
           app: admin
-          environment: preview
-          artifact-name: admin-preview-${{ github.sha }}
-          tarball: admin-preview.tar.gz
-          checksum-file: admin-preview.tar.gz.sha256
+          environment: production
+          artifact-name: admin-production-${{ github.sha }}
+          tarball: admin-production.tar.gz
+          checksum-file: admin-production.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
 
   deploy-landing:
     name: Deploy Landing (Staging)
@@ -351,13 +351,13 @@ jobs:
         id: deploy
         with:
           app: landing
-          environment: preview
-          artifact-name: landing-preview-${{ github.sha }}
-          tarball: landing-preview.tar.gz
-          checksum-file: landing-preview.tar.gz.sha256
+          environment: production
+          artifact-name: landing-production-${{ github.sha }}
+          tarball: landing-production.tar.gz
+          checksum-file: landing-production.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
 
   # ─── Smoke tests (only for deployed apps) ──────────────────────
   smoke-test:
