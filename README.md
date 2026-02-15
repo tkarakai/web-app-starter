@@ -43,7 +43,14 @@ bun install
 bun run dev
 ```
 
-This starts Convex and the core apps (web, admin, landing, storybook) in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path.
+This starts Convex and the core apps (web, admin, landing, storybook) in local anonymous mode. On first run, it creates a `.env.local` file with a deployment name derived from your directory path and seeds two test accounts:
+
+| Account | Email | Password | Role |
+|---------|-------|----------|------|
+| Admin | `admin@admin.com` | `adminadmin` | admin |
+| User | `user@user.com` | `useruser` | user |
+
+These are created automatically via `devSeed` and persist across restarts. Subsequent runs skip seeding.
 
 To start only a specific app:
 
@@ -73,6 +80,14 @@ bun run dev:stop
 ```bash
 bun run dev:status
 ```
+
+6. If processes have accumulated across multiple worktrees (causing `EMFILE: too many open files` errors or high memory usage), kill everything:
+
+```bash
+bun run dev:nuke-all
+```
+
+This finds and kills all node/next/convex processes related to this repo across all worktrees and branches. It shows the matching processes and asks for confirmation before killing, and reports open file descriptor counts before and after.
 
 ### Branch and worktree isolation
 
@@ -144,6 +159,7 @@ These values persist in the local Convex backend between sessions.
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
 │   ├── dev-stop.sh            # Stop all services
+│   ├── dev-nuke-all.sh        # Kill ALL dev processes across all worktrees
 │   ├── dev-status.sh          # Show running services
 │   ├── ci-local.sh            # Native CI checks (bun run ci)
 │   ├── ci-local-act.sh        # Docker-based CI via act

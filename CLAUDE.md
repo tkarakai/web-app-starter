@@ -19,13 +19,14 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 
 ```bash
 # Start development (Convex + core apps via dev-start.sh)
-bun run dev                  # Core apps (landing:3000, web:3001, admin:3002, storybook:3003)
+bun run dev                  # Core apps + dev seed (admin@admin.com / adminadmin, user@user.com / useruser)
 bun run dev:web              # Convex + web app only (port 3001)
 bun run dev:admin            # Convex + admin app only (port 3002)
 bun run dev:landing          # Landing page only (port 3000, no Convex)
 bun run dev:landing-static   # Static landing page (port 3004, no Convex)
 bun run dev:storybook        # Component storybook only (port 3003, no Convex)
 bun run dev:stop             # Stop all services
+bun run dev:nuke-all         # Kill ALL node/convex processes across all worktrees
 bun run dev:status           # Show running processes
 
 # Run all CI checks locally before pushing (recommended!)

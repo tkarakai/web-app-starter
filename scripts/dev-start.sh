@@ -389,6 +389,29 @@ if [ "$NEED_CONVEX" = true ]; then
     # Convex runs from packages/backend/
     CONVEX_DIR="$PROJECT_DIR/packages/backend"
 
+    # Guard convex/tsconfig.json — the Convex CLI in anonymous agent mode
+    # always treats startup as a new project and calls doInitConvexFolder(),
+    # which overwrites tsconfig.json with its default template BEFORE running
+    # tsc. The default template lacks our test file exclusions, so tsc fails
+    # on .test.ts files and Convex never reaches "functions ready".
+    #
+    # Fix: start a background watcher that detects the overwrite and restores
+    # the committed version before tsc runs. The watcher exits after one restore.
+    CONVEX_TSCONFIG="$CONVEX_DIR/convex/tsconfig.json"
+    TSCONFIG_WATCHER_PID=""
+    if [ -f "$CONVEX_TSCONFIG" ]; then
+        (
+            while true; do
+                sleep 0.1
+                if ! git -C "$PROJECT_DIR" diff --quiet -- "$CONVEX_TSCONFIG" 2>/dev/null; then
+                    git -C "$PROJECT_DIR" checkout -- "$CONVEX_TSCONFIG" 2>/dev/null
+                    break
+                fi
+            done
+        ) &
+        TSCONFIG_WATCHER_PID=$!
+    fi
+
     if [ "$NON_INTERACTIVE" = true ]; then
         echo "[CI MODE] Convex state dir: $CONVEX_STATE_DIR"
         echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev (from $CONVEX_DIR)"
@@ -410,6 +433,7 @@ if [ "$NEED_CONVEX" = true ]; then
         WAITED=$((WAITED + 1))
 
         if ! kill -0 $CONVEX_PID 2>/dev/null; then
+            kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
             printf "\n"
             echo -e "${RED}✖ Convex process exited${NC}"
             echo -e "${RED}  Log output:${NC}"
@@ -454,9 +478,21 @@ if [ "$NEED_CONVEX" = true ]; then
         cat "$PROJECT_DIR/.convex-dev.log"
         echo ""
         echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
+        kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         kill $CONVEX_PID 2>/dev/null || true
         rm -f "$PID_FILE"
         exit 1
+    fi
+
+    # Clean up the tsconfig watcher (it exits on its own after one restore,
+    # but kill it just in case it's still running)
+    if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+        kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        # Check if restore happened
+        if git -C "$PROJECT_DIR" diff --quiet -- "$CONVEX_TSCONFIG" 2>/dev/null; then
+            echo -e "  ${GREEN}✔${NC} convex/tsconfig.json protected (Convex CLI overwrites it on init)"
+        fi
     fi
 
     # Read the actual ports Convex is using
@@ -522,6 +558,23 @@ if [ "$NEED_CONVEX" = true ]; then
         fi
     else
         echo -e "  ${GREEN}✔${NC} BETTER_AUTH_SECRET already set"
+    fi
+
+    # ============================================================
+    # SEED DEV USERS (admin + regular user for quick login)
+    # ============================================================
+    echo ""
+    echo -e "${GREEN}▶ Seeding dev users...${NC}"
+    if ! (cd "$CONVEX_DIR" && bunx convex env set DEV_SEED_ENABLED true 2>&1); then
+        echo -e "  ${YELLOW}⚠${NC} Could not set DEV_SEED_ENABLED (non-fatal)"
+    fi
+    SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run devSeed:seed 2>&1) || true
+    if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
+        echo -e "  ${GREEN}✔${NC} Dev users already exist"
+    elif echo "$SEED_OUTPUT" | grep -q "Dev seed complete"; then
+        echo -e "  ${GREEN}✔${NC} Dev users created (admin@admin.com / adminadmin, user@user.com / useruser)"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Dev seed: ${SEED_OUTPUT:-no output} (non-fatal)"
     fi
 else
     # Create PID file even if Convex isn't needed

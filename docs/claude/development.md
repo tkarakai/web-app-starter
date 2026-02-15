@@ -24,6 +24,17 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
+### Dev Seed Accounts
+
+On first startup, `dev-start.sh` automatically creates two test accounts via `packages/backend/convex/devSeed.ts`:
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@admin.com` | `adminadmin` | admin |
+| `user@user.com` | `useruser` | user |
+
+The seed is gated behind the `DEV_SEED_ENABLED` Convex env var (set automatically by `dev-start.sh`) and is idempotent — it skips if the accounts already exist. To re-seed after a database reset, just restart `bun run dev`.
+
 ## Testing Commands (Detailed)
 
 > **CRITICAL**: Always use `bun run test` (with `run`), never bare `bun test`.
