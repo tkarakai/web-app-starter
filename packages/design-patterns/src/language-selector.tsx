@@ -34,16 +34,20 @@ interface LanguageSelectorProps {
    * "submenu": renders DropdownMenuSub for embedding inside an existing DropdownMenu.
    */
   variant?: "standalone" | "submenu";
+  /** When true, disables locale selection (items are grayed out but the dropdown still opens). */
+  disabled?: boolean;
 }
 
 function LocaleItems({
   currentLocale,
   locales,
   onSelect,
+  disabled = false,
 }: {
   currentLocale: string;
   locales: LocaleOption[];
   onSelect: (locale: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <>
@@ -52,7 +56,11 @@ function LocaleItems({
         return (
           <DropdownMenuItem
             key={locale.code}
-            onSelect={() => onSelect(locale.code)}
+            disabled={disabled && !isSelected}
+            onSelect={() => {
+              if (disabled) return;
+              onSelect(locale.code);
+            }}
             className="justify-between pe-3"
           >
             <span className="flex items-center">
@@ -74,6 +82,7 @@ export function LanguageSelector({
   ariaLabel = "Select language",
   className,
   variant = "standalone",
+  disabled = false,
 }: LanguageSelectorProps) {
   const current = locales.find((l) => l.code === currentLocale);
 
@@ -97,6 +106,7 @@ export function LanguageSelector({
               currentLocale={currentLocale}
               locales={locales}
               onSelect={onSelect}
+              disabled={disabled}
             />
           </div>
         </DropdownMenuSubContent>
@@ -131,6 +141,7 @@ export function LanguageSelector({
             currentLocale={currentLocale}
             locales={locales}
             onSelect={onSelect}
+            disabled={disabled}
           />
         </div>
       </DropdownMenuContent>

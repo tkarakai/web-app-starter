@@ -252,5 +252,8 @@
       "heading": "Podmínky služby",
       "lastUpdated": "Poslední aktualizace: {date}"
     }
+  },
+  "offline": {
+    "message": "Zdá se, že jste offline. Pro pokračování je potřeba aktivní připojení."
   }
 }

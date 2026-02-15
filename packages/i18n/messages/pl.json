@@ -252,5 +252,8 @@
       "heading": "Warunki Usługi",
       "lastUpdated": "Ostatnia aktualizacja: {date}"
     }
+  },
+  "offline": {
+    "message": "Wygląda na to, że jesteś offline. Do kontynuacji wymagane jest aktywne połączenie."
   }
 }
