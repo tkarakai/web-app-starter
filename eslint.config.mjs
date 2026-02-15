@@ -17,6 +17,7 @@ export default [
       "**/qa/playwright-report/**",
       "**/qa/test-results/**",
       "**/qa/e2e/__screenshots__/**",
+      "**/out/**",
       ".auto-claude/**",
     ],
   },

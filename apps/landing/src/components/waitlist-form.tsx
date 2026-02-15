@@ -99,6 +99,9 @@ function MultiSelectDropdown({
   );
 }
 
+const CONVEX_SITE_URL =
+  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+
 export function WaitlistForm() {
   const t = useTranslations("landing.waitlist");
   const [email, setEmail] = React.useState("");
@@ -126,7 +129,7 @@ export function WaitlistForm() {
     setPending(true);
 
     try {
-      const res = await fetch("/api/waitlist/join", {
+      const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

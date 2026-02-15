@@ -1,37 +1,12 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Raleway, Cairo, Heebo } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, getTranslations } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
+import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
+import { DocumentLocale } from "@/components/document-locale";
 import { Footer } from "@/components/footer";
-import { EnvironmentBannerWrapper } from "@repo/design-system";
-
-const raleway = Raleway({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const cairo = Cairo({
-  subsets: ["arabic"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const heebo = Heebo({
-  subsets: ["hebrew"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const fontsByLocale: Record<string, { variable: string }> = {
-  ar: cairo,
-  he: heebo,
-};
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -82,6 +57,8 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
+export const dynamicParams = false;
+
 export default async function LocaleLayout({
   children,
   params,
@@ -95,30 +72,18 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const [nonce, messages, headersList] = await Promise.all([
-    headers().then((h) => h.get("x-nonce") ?? undefined),
-    getMessages(),
-    headers(),
-  ]);
-  const pathname = headersList.get("x-pathname") ?? "/";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  setRequestLocale(locale);
+
+  const messages = await getMessages();
   const dir = getLocaleDirection(locale);
-  const font = fontsByLocale[locale] || raleway;
 
   return (
-    <html lang={locale} dir={dir} className={font.variable} suppressHydrationWarning>
-      <head>
-        <HreflangLinks locale={locale} pathname={pathname} siteUrl={siteUrl} />
-      </head>
-      <body className="flex min-h-screen flex-col">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
-          <EnvironmentBannerWrapper appName="landing" />
-          <NextIntlClientProvider messages={messages}>
-            <div className="flex-1">{children}</div>
-            <Footer />
-          </NextIntlClientProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <NextIntlClientProvider messages={messages}>
+        <DocumentLocale lang={locale} dir={dir} />
+        <div className="flex-1">{children}</div>
+        <Footer />
+      </NextIntlClientProvider>
+    </ThemeProvider>
   );
 }
