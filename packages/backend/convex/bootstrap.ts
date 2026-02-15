@@ -32,6 +32,16 @@ export const initialize = internalMutation({
 
     assertValidEmail(args.email);
 
+    // Guard: no existing waitlist entry for this email (prevents duplicates
+    // that rescue's .first() would silently mishandle)
+    const existingEntry = await ctx.db
+      .query("waitlistEntries")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (existingEntry) {
+      throw new Error("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
+    }
+
     // Seed the admin email
     await ctx.db.insert("adminEmails", { email: args.email });
 
