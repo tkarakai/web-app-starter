@@ -2,13 +2,11 @@
 
 import * as React from "react"
 
-const POLL_INTERVAL_MS = 5_000
-
 /** Module-level state shared across all hook consumers on the same page. */
 let isOnline = true
 const listeners = new Set<() => void>()
 let refCount = 0
-let intervalId: ReturnType<typeof setInterval> | null = null
+let abortController: AbortController | null = null
 
 function notify() {
   for (const listener of listeners) {
@@ -24,16 +22,22 @@ async function checkConnectivity() {
     }
     return
   }
+
+  abortController?.abort()
+  abortController = new AbortController()
+
   try {
     await fetch(`/favicon.ico?_=${Date.now()}`, {
       method: "HEAD",
       cache: "no-store",
+      signal: abortController.signal,
     })
     if (!isOnline) {
       isOnline = true
       notify()
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return
     if (isOnline) {
       isOnline = false
       notify()
@@ -42,8 +46,8 @@ async function checkConnectivity() {
 }
 
 function handleOnline() {
-  isOnline = true
-  notify()
+  // Browser says we're online — verify with a real fetch to catch captive portals
+  checkConnectivity()
 }
 
 function handleOffline() {
@@ -51,34 +55,31 @@ function handleOffline() {
   notify()
 }
 
-function startPolling() {
+function startListening() {
   isOnline = navigator.onLine
   window.addEventListener("online", handleOnline)
   window.addEventListener("offline", handleOffline)
   checkConnectivity()
-  intervalId = setInterval(checkConnectivity, POLL_INTERVAL_MS)
 }
 
-function stopPolling() {
+function stopListening() {
   window.removeEventListener("online", handleOnline)
   window.removeEventListener("offline", handleOffline)
-  if (intervalId !== null) {
-    clearInterval(intervalId)
-    intervalId = null
-  }
+  abortController?.abort()
+  abortController = null
 }
 
 function subscribe(callback: () => void) {
   listeners.add(callback)
   refCount++
   if (refCount === 1) {
-    startPolling()
+    startListening()
   }
   return () => {
     listeners.delete(callback)
     refCount--
     if (refCount === 0) {
-      stopPolling()
+      stopListening()
     }
   }
 }
@@ -94,11 +95,12 @@ function getServerSnapshot() {
 /**
  * Returns `true` if the browser has network connectivity.
  *
- * Combines `navigator.onLine` events with periodic HEAD requests (every 5 s)
- * to detect false-positive "online" states (e.g. captive portals).
+ * Event-driven: listens for `online`/`offline` browser events and verifies
+ * transitions with a HEAD fetch to catch false-positive states (e.g. captive
+ * portals). No continuous polling — reacts only to browser network events.
  *
  * SSR-safe: always returns `true` on the server.
- * Multiple consumers share a single polling interval via a module-level singleton.
+ * Multiple consumers share a single listener via a module-level singleton.
  */
 export function useNetworkStatus(): boolean {
   return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
