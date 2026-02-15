@@ -380,8 +380,8 @@ function EnvironmentBanner({
                   </button>
 
                   {showEnvVars && (
-                    <div className="mx-auto mt-1.5 max-h-52 max-w-3xl overflow-y-auto rounded-sm bg-black/[0.06]">
-                      <table className="w-full border-collapse font-mono text-[10px]">
+                    <div className="mx-auto mt-1.5 max-h-52 w-fit overflow-y-auto rounded-sm bg-black/[0.06]">
+                      <table className="border-collapse font-mono text-[10px]">
                         <tbody>
                           {envVarEntries.map(([key, value], i) => (
                             <tr
@@ -395,7 +395,7 @@ function EnvironmentBanner({
                               <td className="whitespace-nowrap py-px pl-2 pr-3 opacity-55">
                                 {key}
                               </td>
-                              <td className="w-full break-all py-px pr-2">
+                              <td className="whitespace-nowrap py-px pr-2">
                                 {value || (
                                   <span className="opacity-30">&mdash;</span>
                                 )}
