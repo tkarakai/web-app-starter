@@ -15,6 +15,7 @@
     "dev:landing-static": "turbo dev --filter=@repo/landing-static",
     "ensure-local": "./scripts/ensure-local-deps.sh",
     "dev:stop": "./scripts/dev-stop.sh",
+    "dev:nuke-all": "./scripts/dev-nuke-all.sh",
     "dev:status": "./scripts/dev-status.sh",
     "copy-assets": "./scripts/copy-shared-assets.sh",
     "prebuild": "./scripts/copy-shared-assets.sh",
