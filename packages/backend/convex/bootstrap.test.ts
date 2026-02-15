@@ -313,6 +313,31 @@ describe("bootstrap", () => {
       ).rejects.toThrow("BOOTSTRAP_INVALID_EMAIL");
     });
 
+    test("throws BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY if newEmail already on waitlist", async () => {
+      const t = createTestEnv();
+
+      await t.mutation(internal.bootstrap.initialize, {
+        email: "admin@example.com",
+      });
+
+      // Pre-seed a waitlist entry for the new email
+      await t.run(async (ctx) => {
+        await ctx.db.insert("waitlistEntries", {
+          email: "taken@example.com",
+          meta: BOOTSTRAP_META,
+          status: "waiting",
+          createdAt: Date.now(),
+        });
+      });
+
+      await expect(
+        t.mutation(internal.bootstrap.rescue, {
+          currentEmail: "admin@example.com",
+          newEmail: "taken@example.com",
+        }),
+      ).rejects.toThrow("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
+    });
+
     test("revokes tokens in 'claiming' state too", async () => {
       const t = createTestEnv();
 

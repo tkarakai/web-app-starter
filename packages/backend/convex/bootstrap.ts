@@ -149,6 +149,18 @@ export const rescue = internalMutation({
 
     const emailChanged = args.newEmail !== args.currentEmail;
 
+    // Guard: no existing waitlist entry for the new email (prevents duplicates
+    // when changing email to one that's already on the waitlist)
+    if (emailChanged) {
+      const existingNewEntry = await ctx.db
+        .query("waitlistEntries")
+        .withIndex("by_email", (q) => q.eq("email", args.newEmail))
+        .first();
+      if (existingNewEntry) {
+        throw new Error("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
+      }
+    }
+
     // Update admin email if changed
     if (emailChanged) {
       await ctx.db.patch(adminRow._id, { email: args.newEmail });
