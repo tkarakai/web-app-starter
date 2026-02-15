@@ -14,8 +14,10 @@ const DEV_USERS = [
   { email: "user@user.com", password: "useruser", name: "Dev User", isAdmin: false },
 ] as const;
 
-// We use the admin email as the sentinel — if it's in adminEmails, seed already ran.
-const SEED_SENTINEL_EMAIL = DEV_USERS[0].email;
+// Sentinel key written to appSettings only after ALL users are fully created.
+// This avoids the idempotency bug where partial failures (e.g. signUpEmail
+// errors) would leave the sentinel set but accounts in a broken state.
+const SEED_SENTINEL_KEY = "devSeedCompleted";
 
 // ---------------------------------------------------------------------------
 // Internal query: check if seed already ran
@@ -24,11 +26,26 @@ const SEED_SENTINEL_EMAIL = DEV_USERS[0].email;
 export const isSeeded = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const existing = await ctx.db
-      .query("adminEmails")
-      .withIndex("by_email", (q) => q.eq("email", SEED_SENTINEL_EMAIL))
+    const sentinel = await ctx.db
+      .query("appSettings")
+      .withIndex("by_key", (q) => q.eq("key", SEED_SENTINEL_KEY))
       .first();
-    return !!existing;
+    return sentinel !== null;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal mutation: mark seed as complete (written as the very last step)
+// ---------------------------------------------------------------------------
+
+export const markSeeded = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.db.insert("appSettings", {
+      key: SEED_SENTINEL_KEY,
+      value: "true",
+      updatedAt: Date.now(),
+    });
   },
 });
 
@@ -44,12 +61,25 @@ export const setupDevUser = internalMutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // Admin email entry (triggers auto-promotion in databaseHook)
+    // Admin email entry (triggers auto-promotion in databaseHook).
+    // Skip if already exists (idempotent for retries after partial failure).
     if (args.isAdmin) {
-      await ctx.db.insert("adminEmails", { email: args.email });
+      const existing = await ctx.db
+        .query("adminEmails")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("adminEmails", { email: args.email });
+      }
     }
 
-    // Waitlist entry (claimed)
+    // Waitlist entry — skip if already exists (idempotent for retries).
+    const existingEntry = await ctx.db
+      .query("waitlistEntries")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (existingEntry) return;
+
     const entryId = await ctx.db.insert("waitlistEntries", {
       email: args.email,
       meta: JSON.stringify({ superpowers: ["dev-seed"], excitement: ["dev-seed"] }),
@@ -144,6 +174,10 @@ export const seed = internalAction({
       const role = user.isAdmin ? "admin" : "user";
       console.log(`[devSeed] Created ${role}: ${user.email}`);
     }
+
+    // Mark seed as complete — this is the sentinel for isSeeded.
+    // Only written after ALL users are fully created.
+    await ctx.runMutation(internal.devSeed.markSeeded);
 
     console.log("[devSeed] Dev seed complete");
   },
