@@ -52,8 +52,8 @@ export default async function SignUpPage() {
           <LocaleSwitcher />
         </div>
       </header>
-      <div className="mx-auto grid flex-1 max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="space-y-6">
+      <div className="mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:justify-items-stretch">
+        <section className="w-full max-w-md space-y-6 lg:max-w-none">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
             {tc("appName")}
           </p>
