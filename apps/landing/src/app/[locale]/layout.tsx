@@ -51,6 +51,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     description: t("description"),
     metadataBase: new URL(siteUrl),
+    icons: {
+      icon: [
+        { url: "/icon.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", sizes: "32x32" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    },
     alternates: {
       canonical: canonicalUrl,
       languages: Object.fromEntries(locales.map((loc) => [loc, `/${loc}`])),

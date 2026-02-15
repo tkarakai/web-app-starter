@@ -17,6 +17,13 @@ const raleway = Raleway({
 export const metadata: Metadata = {
   title: "Admin - Web App Starter",
   description: "Administration panel for Web App Starter.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
 };
 
 export default async function RootLayout({

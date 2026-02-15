@@ -13,8 +13,9 @@ export function SiteHeader() {
       <div className="flex items-center justify-between px-6 py-4">
         <Link
           href="/"
-          className="text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
+          className="flex items-center gap-2 text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
         >
+          <img src="/icon.svg" alt="App Icon" width={24} height={24} />
           {t("appName")}
         </Link>
         <LocaleSwitcher />

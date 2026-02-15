@@ -20,18 +20,22 @@ export default async function SignupWithInvitationPage({
 
   return (
     <main
-      className="relative min-h-screen"
+      className="flex min-h-screen flex-col"
       style={{ background: "var(--glow-cool)" }}
     >
-      <Link
-        href={LANDING_URL}
-        className="absolute start-6 top-6 flex items-center gap-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-80"
-      >
-        <AppLogo size={24} />
-        <span>{tc("appName")}</span>
-      </Link>
-      <LocaleSwitcher className="absolute end-6 top-6" />
-      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
+      <header className="sticky top-[var(--env-banner-h,0px)] z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center justify-between px-6 py-4">
+          <Link
+            href={LANDING_URL}
+            className="flex items-center gap-2 text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
+          >
+            <AppLogo size={24} />
+            <span>{tc("appName")}</span>
+          </Link>
+          <LocaleSwitcher />
+        </div>
+      </header>
+      <div className="mx-auto grid flex-1 max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="space-y-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
             {tc("appName")}
