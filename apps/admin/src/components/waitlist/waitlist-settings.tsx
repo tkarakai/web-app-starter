@@ -6,11 +6,14 @@ import { toast } from "sonner";
 
 import { api } from "@repo/backend";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Input,
   Label,
   Skeleton,
@@ -29,6 +32,9 @@ export function WaitlistSettings() {
   const [expiryInput, setExpiryInput] = React.useState("");
   const [expiryPending, setExpiryPending] = React.useState(false);
   const [togglePending, setTogglePending] = React.useState(false);
+  const [confirmToggle, setConfirmToggle] = React.useState<boolean | null>(
+    null
+  );
 
   // Sync expiry input with server value
   React.useEffect(() => {
@@ -37,7 +43,14 @@ export function WaitlistSettings() {
     }
   }, [expiryDays]);
 
-  const handleToggle = async (checked: boolean) => {
+  const handleToggleRequest = (checked: boolean) => {
+    setConfirmToggle(checked);
+  };
+
+  const handleToggleConfirm = async () => {
+    if (confirmToggle === null) return;
+    const checked = confirmToggle;
+    setConfirmToggle(null);
     setTogglePending(true);
     try {
       await setSetting({ key: "waitlistEnabled", value: String(checked) });
@@ -79,34 +92,30 @@ export function WaitlistSettings() {
   };
 
   if (waitlistEnabled === undefined) {
-    return <Skeleton className="h-36 w-full" />;
+    return <Skeleton className="h-8 w-48" />;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Waitlist Mode</CardTitle>
-        <CardDescription>
-          When enabled, new signups require an invitation. The landing page shows
-          a &ldquo;Join Waitlist&rdquo; form instead of the &ldquo;Sign
-          Up&rdquo; button.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
+    <>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Switch
             id="waitlist-toggle"
             checked={waitlistEnabled === true}
-            onCheckedChange={handleToggle}
+            onCheckedChange={handleToggleRequest}
             disabled={togglePending}
           />
-          <Label htmlFor="waitlist-toggle">
+          <Label htmlFor="waitlist-toggle" className="text-sm font-medium">
             {waitlistEnabled ? "Enabled" : "Disabled"}
           </Label>
         </div>
-        <div className="flex items-center gap-3">
-          <Label htmlFor="expiry-days" className="shrink-0">
-            Invitation expiry (days)
+        <div className="h-4 w-px bg-border" aria-hidden="true" />
+        <div className="flex items-center gap-1.5">
+          <Label
+            htmlFor="expiry-days"
+            className="shrink-0 text-sm text-muted-foreground"
+          >
+            Expiry
           </Label>
           <Input
             id="expiry-days"
@@ -117,10 +126,39 @@ export function WaitlistSettings() {
             onChange={(e) => setExpiryInput(e.target.value)}
             onBlur={handleExpiryBlur}
             disabled={expiryPending}
-            className="w-24"
+            className="h-8 w-16"
           />
+          <span className="text-sm text-muted-foreground">days</span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <AlertDialog
+        open={confirmToggle !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmToggle(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmToggle
+                ? "Enable waitlist mode?"
+                : "Disable waitlist mode?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmToggle
+                ? "New signups will require an invitation. The landing page will show a \"Join Waitlist\" form instead of the \"Sign Up\" button."
+                : "Anyone will be able to sign up freely. The waitlist form will be replaced with the standard sign-up flow."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleToggleConfirm}>
+              {confirmToggle ? "Enable" : "Disable"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

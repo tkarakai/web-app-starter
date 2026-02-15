@@ -88,7 +88,7 @@ export const join = internalMutation({
       .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
       .unique();
 
-    const waitlistEnabled = setting ? JSON.parse(setting.value) : false;
+    const waitlistEnabled = setting ? JSON.parse(setting.value) : true;
     if (waitlistEnabled !== true) {
       throw new Error("WAITLIST_NOT_ENABLED");
     }
@@ -217,6 +217,7 @@ export const remove = authedMutation({
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry) throw new Error("ENTRY_NOT_FOUND");
+    if (entry.status === "claimed") throw new Error("CANNOT_DELETE_CLAIMED");
 
     // Delete associated tokens
     const tokens = await ctx.db

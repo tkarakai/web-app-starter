@@ -187,6 +187,7 @@ export function WaitlistDataTable() {
         if (entry.status !== "invited") return;
         await uninviteMutation({ entryId: entry._id });
       } else if (batchAction.action === "delete") {
+        if (entry.status === "claimed") return;
         await removeMutation({ entryId: entry._id });
       }
     },
@@ -241,6 +242,8 @@ export function WaitlistDataTable() {
       return batchAction.entries.filter((e) => e.status === "waiting");
     if (batchAction.action === "uninvite")
       return batchAction.entries.filter((e) => e.status === "invited");
+    if (batchAction.action === "delete")
+      return batchAction.entries.filter((e) => e.status !== "claimed");
     return batchAction.entries;
   }, [batchAction]);
 
