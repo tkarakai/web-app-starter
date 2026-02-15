@@ -11,8 +11,12 @@ const CONVEX_SITE_URL =
 const WEB_APP_URL =
   process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
 
-/** How often to retry when Convex is unreachable (ms). */
-const RETRY_INTERVAL = 5_000;
+/** Initial retry delay (ms). */
+const RETRY_BASE = 5_000;
+/** Maximum retry delay (ms). */
+const RETRY_MAX = 60_000;
+/** Stop retrying after this many consecutive failures. */
+const MAX_RETRIES = 10;
 
 type Status = "loading" | "unreachable" | "waitlist" | "ready";
 
@@ -20,8 +24,9 @@ type Status = "loading" | "unreachable" | "waitlist" | "ready";
  * Client component that checks waitlist status on mount and renders
  * either the waitlist form or sign-up/sign-in buttons.
  *
- * When Convex is unreachable, hides all interactive elements and
- * polls every few seconds until the backend becomes available again.
+ * When Convex is unreachable, hides all interactive elements and retries
+ * with exponential backoff (capped at 60 s, max 10 attempts). Retries
+ * pause while the tab is hidden and resume when it becomes visible.
  */
 export function HeroCta() {
   const t = useTranslations("landing");
@@ -30,28 +35,47 @@ export function HeroCta() {
   React.useEffect(() => {
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
 
     async function checkWaitlist() {
       try {
         const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/status`);
         const data = (await res.json()) as { enabled?: boolean };
         if (!cancelled) {
+          attempt = 0;
           setStatus(data.enabled === true ? "waitlist" : "ready");
         }
       } catch {
         if (!cancelled) {
           setStatus("unreachable");
-          retryTimer = setTimeout(checkWaitlist, RETRY_INTERVAL);
+          if (attempt < MAX_RETRIES) {
+            const delay = Math.min(RETRY_BASE * 2 ** attempt, RETRY_MAX);
+            attempt++;
+            retryTimer = setTimeout(checkWaitlist, delay);
+          }
         }
       }
     }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible" && status === "unreachable") {
+        clearTimeout(retryTimer);
+        attempt = 0;
+        checkWaitlist();
+      } else if (document.visibilityState === "hidden") {
+        clearTimeout(retryTimer);
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     checkWaitlist();
     return () => {
       cancelled = true;
       clearTimeout(retryTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, []);
+  }, [status]);
 
   if (status === "loading") {
     return (
