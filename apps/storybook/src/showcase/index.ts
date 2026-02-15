@@ -10,6 +10,7 @@ import CardShowcase from "./card";
 import CheckboxShowcase from "./checkbox";
 import DialogShowcase from "./dialog";
 import EnvironmentBannerShowcase from "./environment-banner";
+import OfflineBannerShowcase from "./offline-banner";
 import DropdownMenuShowcase from "./dropdown-menu";
 import InputShowcase from "./input";
 import PopoverShowcase from "./popover";
@@ -38,6 +39,7 @@ export const showcaseMap: Record<string, ComponentType> = {
   checkbox: CheckboxShowcase,
   dialog: DialogShowcase,
   "environment-banner": EnvironmentBannerShowcase,
+  "offline-banner": OfflineBannerShowcase,
   "dropdown-menu": DropdownMenuShowcase,
   input: InputShowcase,
   popover: PopoverShowcase,

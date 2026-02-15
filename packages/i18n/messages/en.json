@@ -252,5 +252,8 @@
       "heading": "Terms of Service",
       "lastUpdated": "Last updated: {date}"
     }
+  },
+  "offline": {
+    "message": "You appear to be offline. An active connection is needed to continue."
   }
 }

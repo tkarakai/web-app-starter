@@ -252,5 +252,8 @@
       "heading": "Nutzungsbedingungen",
       "lastUpdated": "Zuletzt aktualisiert: {date}"
     }
+  },
+  "offline": {
+    "message": "Sie scheinen offline zu sein. Eine aktive Verbindung ist erforderlich, um fortzufahren."
   }
 }

@@ -7,7 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 
-import { Toaster, EnvironmentBannerWrapper } from "@repo/design-system";
+import { Toaster, EnvironmentBannerWrapper, OfflineBanner } from "@repo/design-system";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
@@ -97,11 +97,12 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const [token, nonce, messages, headersList] = await Promise.all([
+  const [token, nonce, messages, headersList, tOffline] = await Promise.all([
     getToken(),
     headers().then((h) => h.get("x-nonce") ?? undefined),
     getMessages(),
     headers(),
+    getTranslations({ locale, namespace: "offline" }),
   ]);
 
   const pathname = headersList.get("x-pathname") ?? "/";
@@ -118,6 +119,7 @@ export default async function LocaleLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <EnvironmentBannerWrapper appName="web" />
+          <OfflineBanner label={tOffline("message")} />
           <NextIntlClientProvider messages={messages}>
             <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
             <Toaster richColors closeButton position="bottom-right" />

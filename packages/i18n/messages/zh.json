@@ -252,5 +252,8 @@
       "heading": "服务条款",
       "lastUpdated": "最后更新：{date}"
     }
+  },
+  "offline": {
+    "message": "您似乎处于离线状态。需要有效的网络连接才能继续。"
   }
 }

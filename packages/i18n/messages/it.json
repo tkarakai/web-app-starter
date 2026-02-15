@@ -252,5 +252,8 @@
       "heading": "Termini di Servizio",
       "lastUpdated": "Ultimo aggiornamento: {date}"
     }
+  },
+  "offline": {
+    "message": "Sembra che tu sia offline. È necessaria una connessione attiva per continuare."
   }
 }
