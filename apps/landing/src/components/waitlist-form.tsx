@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Link } from "@repo/i18n/navigation";
 import {
   Button,
   Card,
@@ -104,6 +105,7 @@ const CONVEX_SITE_URL =
 
 export function WaitlistForm() {
   const t = useTranslations("landing.waitlist");
+  const tAuth = useTranslations("auth");
   const [email, setEmail] = React.useState("");
   const [superpowers, setSuperpowers] = React.useState<string[]>([]);
   const [excitement, setExcitement] = React.useState<string[]>([]);
@@ -224,6 +226,23 @@ export function WaitlistForm() {
           >
             {pending ? t("submitting") : t("submit")}
           </Button>
+          <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+            {tAuth("legal.prefix")}{" "}
+            <Link
+              href="/terms"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              {tAuth("legal.termsOfService")}
+            </Link>{" "}
+            {tAuth("legal.and")}{" "}
+            <Link
+              href="/privacy"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              {tAuth("legal.privacyPolicy")}
+            </Link>
+            .
+          </p>
         </form>
       </CardContent>
     </Card>
