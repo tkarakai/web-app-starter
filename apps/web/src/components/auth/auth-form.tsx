@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { authClient } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
@@ -36,6 +36,7 @@ function formatAuthError(error: { status?: number; message?: string }): string {
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations("auth");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -187,7 +188,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
             {t("legal.prefix")}{" "}
             <a
-              href={`${LANDING_URL}/terms`}
+              href={`${LANDING_URL}/${locale}/terms`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
@@ -196,7 +197,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </a>{" "}
             {t("legal.and")}{" "}
             <a
-              href={`${LANDING_URL}/privacy`}
+              href={`${LANDING_URL}/${locale}/privacy`}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-foreground"
