@@ -669,17 +669,20 @@ step_configure_vercel_env() {
     echo "  Uses the Vercel CLI with piped stdin (non-interactive)."
     echo ""
     echo -e "  ${BOLD}web-staging:${NC}"
+    echo "    NEXT_PUBLIC_APP_ENVIRONMENT = staging"
     echo "    NEXT_PUBLIC_CONVEX_URL      = $CONVEX_STAGING_URL"
     echo "    NEXT_PUBLIC_CONVEX_SITE_URL = $CONVEX_STAGING_SITE_URL"
     echo "    NEXT_PUBLIC_SITE_URL        = $VERCEL_WEB_URL"
     echo "    NEXT_PUBLIC_LANDING_URL     = $VERCEL_LANDING_URL"
     echo ""
     echo -e "  ${BOLD}admin-staging:${NC}"
+    echo "    NEXT_PUBLIC_APP_ENVIRONMENT = staging"
     echo "    NEXT_PUBLIC_CONVEX_URL      = $CONVEX_STAGING_URL"
     echo "    NEXT_PUBLIC_CONVEX_SITE_URL = $CONVEX_STAGING_SITE_URL"
     echo "    NEXT_PUBLIC_SITE_URL        = $VERCEL_ADMIN_URL"
     echo ""
     echo -e "  ${BOLD}landing-staging:${NC}"
+    echo "    NEXT_PUBLIC_APP_ENVIRONMENT = staging"
     echo "    NEXT_PUBLIC_SITE_URL        = $VERCEL_LANDING_URL"
     echo "    NEXT_PUBLIC_WEB_APP_URL     = $VERCEL_WEB_URL"
     echo "    NEXT_PUBLIC_CONVEX_SITE_URL = $CONVEX_STAGING_SITE_URL"
@@ -719,6 +722,7 @@ step_configure_vercel_env() {
     log_info "Setting web-staging env vars..."
     echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_WEB_STAGING_ID\"}" \
         > "$TMPDIR_VERCEL/.vercel/project.json"
+    (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_APP_ENVIRONMENT" "staging")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_CONVEX_URL" "$CONVEX_STAGING_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_SITE_URL" "$VERCEL_WEB_URL")
@@ -727,6 +731,7 @@ step_configure_vercel_env() {
     log_info "Setting admin-staging env vars..."
     echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ADMIN_STAGING_ID\"}" \
         > "$TMPDIR_VERCEL/.vercel/project.json"
+    (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_ADMIN_NAME" "NEXT_PUBLIC_APP_ENVIRONMENT" "staging")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_ADMIN_NAME" "NEXT_PUBLIC_CONVEX_URL" "$CONVEX_STAGING_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_ADMIN_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_ADMIN_NAME" "NEXT_PUBLIC_SITE_URL" "$VERCEL_ADMIN_URL")
@@ -734,6 +739,7 @@ step_configure_vercel_env() {
     log_info "Setting landing-staging env vars..."
     echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_LANDING_STAGING_ID\"}" \
         > "$TMPDIR_VERCEL/.vercel/project.json"
+    (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_APP_ENVIRONMENT" "staging")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_SITE_URL" "$VERCEL_LANDING_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_WEB_APP_URL" "$VERCEL_WEB_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
