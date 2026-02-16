@@ -1,28 +1,14 @@
-/** Shape of a stored email template (mirrors backend EmailTemplate type). */
-export type EmailTemplate = {
-  subject: string;
-  html: string;
-  text: string;
-};
+import {
+  renderTemplate,
+  type TemplateVariables,
+} from "@repo/backend";
 
-/** Template variable metadata for the admin UI. */
-export const TEMPLATE_VARIABLES = [
-  {
-    name: "invitation_link",
-    description: "The unique signup URL for this invitation",
-  },
-  {
-    name: "recipient_name",
-    description: 'Display name (or "there" if unknown)',
-  },
-  {
-    name: "expiry_days",
-    description: "Days until the invitation expires",
-  },
-] as const;
+// Re-export for convenience
+export { TEMPLATE_VARIABLES } from "@repo/backend";
+export type { EmailTemplate } from "@repo/backend";
 
 /** Sample values used when rendering previews in the admin UI. */
-const SAMPLE_VALUES: Record<string, string> = {
+const SAMPLE_VALUES: TemplateVariables = {
   invitation_link: "https://example.com/signup-with-invitation?token=abc123",
   recipient_name: "Alex",
   expiry_days: "7",
@@ -30,7 +16,5 @@ const SAMPLE_VALUES: Record<string, string> = {
 
 /** Replace `{{variable}}` placeholders with sample values for preview. */
 export function renderPreview(template: string): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    return SAMPLE_VALUES[key] ?? match;
-  });
+  return renderTemplate(template, SAMPLE_VALUES);
 }
