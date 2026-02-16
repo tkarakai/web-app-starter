@@ -48,6 +48,9 @@ bun run typecheck            # TypeScript check (all packages)
 
 # Build for production
 bun run build                # Build all apps via Turborepo
+
+# Infrastructure setup
+bun run infra:setup:staging  # Interactive staging setup (Convex + Vercel + GitHub)
 ```
 
 > **WARNING**: Never use bare `bun test` - it picks up ALL test files including those requiring Vitest's DOM environment. Always use `bun run test` which runs the scoped npm script.

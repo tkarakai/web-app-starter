@@ -49,6 +49,12 @@ gh auth login
 
 Complete these steps once, in order.
 
+> **Automated staging setup:** For the staging environment (steps 2a–2e), you can use the interactive setup script instead of following the manual steps below:
+> ```bash
+> bun run infra:setup:staging
+> ```
+> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `scripts/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
+
 ### 2a. Create Convex Projects
 
 Each Convex project comes with a production deployment and one dev deployment per team member. Dev deployments are for local development; you can't repurpose them as a shared staging environment. Instead, create **two separate projects** — one for staging, one for production.
