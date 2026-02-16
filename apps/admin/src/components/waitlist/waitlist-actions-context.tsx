@@ -3,7 +3,9 @@
 import * as React from "react";
 import type { Doc } from "@repo/backend";
 
-export type WaitlistEntry = Doc<"waitlistEntries">;
+export type WaitlistEntry = Doc<"waitlistEntries"> & {
+  invitationExpired: boolean;
+};
 export type WaitlistAction = "invite" | "uninvite" | "delete";
 
 type WaitlistActionsContextValue = {

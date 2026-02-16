@@ -172,9 +172,10 @@ export const rescue = internalMutation({
       .withIndex("by_email", (q) => q.eq("email", args.currentEmail))
       .collect();
 
+    const revokeNow = Date.now();
     for (const token of oldTokens) {
       if (token.status === "sent" || token.status === "claiming") {
-        await ctx.db.patch(token._id, { status: "revoked" });
+        await ctx.db.patch(token._id, { status: "revoked", revokedAt: revokeNow });
       }
     }
 

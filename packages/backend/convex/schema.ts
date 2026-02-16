@@ -94,6 +94,7 @@ export default defineSchema({
     createdAt: v.number(),
     claimedAt: v.optional(v.number()),
     claimStartedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
   })
     .index("by_token", ["token"])
     .index("by_email", ["email"])

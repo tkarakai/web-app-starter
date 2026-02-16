@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { authedQuery } from "./functions";
 import { rateLimit } from "./rateLimits";
 
 /** Tokens in "claiming" state older than this are considered stale. */
@@ -171,5 +172,26 @@ export const hasValidInvitation = internalQuery({
         (t.status === "claiming" || t.status === "claimed") &&
         Date.now() <= t.expiresAt
     );
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Admin: list all tokens for a given waitlist entry
+// ---------------------------------------------------------------------------
+
+export const listByEntry = authedQuery({
+  args: { waitlistEntryId: v.id("waitlistEntries") },
+  handler: async (ctx, args) => {
+    const role = (ctx.user as Record<string, unknown>).role;
+    if (role !== "admin") return null;
+
+    const tokens = await ctx.db
+      .query("invitationTokens")
+      .withIndex("by_waitlist_entry", (q) =>
+        q.eq("waitlistEntryId", args.waitlistEntryId)
+      )
+      .collect();
+
+    return tokens.sort((a, b) => b.createdAt - a.createdAt);
   },
 });

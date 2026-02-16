@@ -129,11 +129,37 @@ export const list = authedQuery({
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") return null;
 
-    return ctx.db
+    const entries = await ctx.db
       .query("waitlistEntries")
       .withIndex("by_created")
       .order("desc")
       .collect();
+
+    const now = Date.now();
+
+    return Promise.all(
+      entries.map(async (entry) => {
+        if (entry.status !== "invited") {
+          return { ...entry, invitationExpired: false };
+        }
+
+        // Check if all tokens for this invited entry have expired or been revoked
+        const tokens = await ctx.db
+          .query("invitationTokens")
+          .withIndex("by_waitlist_entry", (q) =>
+            q.eq("waitlistEntryId", entry._id)
+          )
+          .collect();
+
+        const hasActiveToken = tokens.some(
+          (t) =>
+            (t.status === "sent" || t.status === "claiming") &&
+            now <= t.expiresAt
+        );
+
+        return { ...entry, invitationExpired: !hasActiveToken };
+      })
+    );
   },
 });
 
@@ -149,7 +175,25 @@ export const invite = authedMutation({
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status !== "waiting") throw new Error("ALREADY_INVITED");
+    if (entry.status === "claimed") throw new Error("ALREADY_CLAIMED");
+
+    // Allow re-inviting if all tokens have expired
+    if (entry.status === "invited") {
+      const now = Date.now();
+      const tokens = await ctx.db
+        .query("invitationTokens")
+        .withIndex("by_waitlist_entry", (q) =>
+          q.eq("waitlistEntryId", args.entryId)
+        )
+        .collect();
+
+      const hasActiveToken = tokens.some(
+        (t) =>
+          (t.status === "sent" || t.status === "claiming") &&
+          now <= t.expiresAt
+      );
+      if (hasActiveToken) throw new Error("ALREADY_INVITED");
+    }
 
     // Mark as invited
     await ctx.db.patch(args.entryId, {
@@ -191,9 +235,10 @@ export const uninvite = authedMutation({
       )
       .collect();
 
+    const now = Date.now();
     for (const token of tokens) {
       if (token.status === "sent" || token.status === "claiming") {
-        await ctx.db.patch(token._id, { status: "revoked" });
+        await ctx.db.patch(token._id, { status: "revoked", revokedAt: now });
       }
     }
 
