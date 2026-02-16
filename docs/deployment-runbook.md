@@ -49,6 +49,12 @@ gh auth login
 
 Complete these steps once, in order.
 
+> **Automated staging setup:** For the staging environment (steps 2a–2e), you can use the interactive setup script instead of following the manual steps below:
+> ```bash
+> bun run infra:setup:staging
+> ```
+> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `scripts/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
+
 ### 2a. Create Convex Projects
 
 Each Convex project comes with a production deployment and one dev deployment per team member. Dev deployments are for local development; you can't repurpose them as a shared staging environment. Instead, create **two separate projects** — one for staging, one for production.
@@ -165,7 +171,7 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 
 Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
 
-In this repo, only the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex. The landing page and storybook do not connect to Convex, so their URLs are not included in `SITE_URL`.
+In this repo, the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
 
 **Option A — Convex Dashboard (recommended for one-time setup):**
 
@@ -174,6 +180,7 @@ For each Convex project, go to **Deployment Settings → Environment Variables**
 | Variable | Staging project value | Production project value |
 |----------|-----------------------|--------------------------|
 | `SITE_URL` | `https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app` | `https://your-production-web.vercel.app,https://your-production-admin.vercel.app` |
+| `LANDING_URL` | `https://your-staging-landing.vercel.app` | `https://yourdomain.com` |
 | `BETTER_AUTH_SECRET` | *(generate — see below)* | *(generate — see below)* |
 
 To generate `BETTER_AUTH_SECRET`, run this in your terminal and paste the output:
@@ -195,6 +202,9 @@ CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex env set SITE_URL "https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex env set LANDING_URL "https://your-staging-landing.vercel.app"
+
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 
 # ── Production project ───────────────────────────────────
@@ -203,10 +213,15 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set SITE_URL "https://your-production-web.vercel.app,https://your-production-admin.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set LANDING_URL "https://yourdomain.com"
+
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 ```
 
 > **How `SITE_URL` works:** The auth config in `packages/backend/convex/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
+>
+> **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Without it, the landing app's cross-origin requests to Convex would be blocked.
 
 ### 2d. Configure Vercel Environment Variables
 
@@ -246,10 +261,11 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 | `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
 | `NEXT_PUBLIC_SITE_URL` | `https://my-app-admin-staging.vercel.app` |
 
-**my-app-landing (production)** — no Convex (the landing page does not connect to the backend):
+**my-app-landing (production)** — connects to Convex via HTTP actions for the waitlist API:
 
 | Variable | Value |
 |----------|-------|
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
 | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` |
 | `NEXT_PUBLIC_WEB_APP_URL` | `https://web.yourdomain.com` |
 
@@ -257,6 +273,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 
 | Variable | Value |
 |----------|-------|
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
 | `NEXT_PUBLIC_SITE_URL` | `https://my-app-landing-staging.vercel.app` |
 | `NEXT_PUBLIC_WEB_APP_URL` | `https://my-app-web-staging.vercel.app` |
 
@@ -345,13 +362,16 @@ Vercel provisions SSL certificates automatically.
 
 **Update Vercel environment variables** after adding custom domains — the `NEXT_PUBLIC_SITE_URL` production values (step 2d) should use the custom domain instead of `.vercel.app` URLs.
 
-**Update Convex `SITE_URL`** in the production project to match the custom domains. Only the web and admin apps authenticate against Convex:
+**Update Convex environment variables** in the production project to match the custom domains:
 
 ```bash
 # Via dashboard: Deployment Settings → Environment Variables
 # Or via CLI with the production deploy key:
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set SITE_URL "https://app.yourdomain.com,https://admin.yourdomain.com"
+
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set LANDING_URL "https://yourdomain.com"
 ```
 
 ---
@@ -377,7 +397,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Vercel Root Directory set to `apps/<app>` on all 6 projects (step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
-- [ ] Convex environment variables set: `SITE_URL`, `BETTER_AUTH_SECRET` per project (step 2c)
+- [ ] Convex environment variables set: `SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` per project (step 2c)
 - [ ] `BETTER_AUTH_SECRET` is unique per project (staging ≠ production)
 - [ ] Vercel environment variables set (Production scope) on all 6 projects (step 2d)
 - [ ] GitHub `staging` environment created (step 2e)
@@ -392,7 +412,7 @@ Run through this checklist before the first deployment or any major infrastructu
 # Verify Convex env vars (run for each project using its deploy key)
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' bunx convex env list
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' bunx convex env list
-# Each should show: SITE_URL, BETTER_AUTH_SECRET
+# Each should show: SITE_URL, LANDING_URL, BETTER_AUTH_SECRET
 
 # Verify GitHub secrets are set (no way to read values, but check they exist)
 gh secret list
@@ -788,7 +808,8 @@ No automated alerting is configured by default. Options by team size:
 | Production deploy rejected | Wrong confirmation string or SHA not staged | Use exact string `deploy-production`; verify SHA has a staging tag |
 | Convex deploy fails | Wrong deploy key for the environment | Check `CONVEX_DEPLOY_KEY` secret matches the target Convex project |
 | App shows stale content | CDN cache or browser cache | Hard refresh; check Vercel deployment URL directly |
-| Auth not working after deploy | `SITE_URL` mismatch in Convex env vars | Verify `SITE_URL` matches the actual app URL(s) |
+| Auth not working after deploy | `SITE_URL` mismatch in Convex env vars | Verify `SITE_URL` matches the actual web/admin app URL(s) |
+| Waitlist form CORS errors on landing | `LANDING_URL` not set or mismatched in Convex env vars | Verify `LANDING_URL` matches the landing app's URL |
 | `BETTER_AUTH_SECRET` error | Secret not set or empty | Run `bunx convex env list` in the target project (set `CONVEX_DEPLOYMENT` first) |
 | Vercel build fails | Missing environment variables | Check Vercel dashboard > Project > Settings > Environment Variables |
 | Rollback fails on schema | New data incompatible with old schema | Roll forward instead; see [Schema Migrations](#8-schema-migrations) |
