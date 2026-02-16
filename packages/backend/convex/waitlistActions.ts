@@ -32,7 +32,7 @@ export const generateTokenAndSendEmail = internalAction({
     ).join("");
 
     const now = Date.now();
-    const expiresAt = now + 2 * 60 * 1000; // TEMP: 2 minutes for testing
+    const expiresAt = now + expiryDays * 24 * 60 * 60 * 1000;
 
     // Store the token
     await ctx.runMutation(internal.waitlistTokens.create, {
