@@ -3,7 +3,12 @@ import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
-import { buildInvitationEmailHtml } from "./emailTemplates";
+import type { EmailTemplate, TemplateVariables } from "./emailTemplates";
+import {
+  DEFAULT_EMAIL_TEMPLATE,
+  escapeHtml,
+  renderEmailTemplate,
+} from "./emailTemplates";
 
 /** Default token expiry in days (can be overridden via appSettings). */
 const DEFAULT_EXPIRY_DAYS = 7;
@@ -48,6 +53,23 @@ export const generateTokenAndSendEmail = internalAction({
       .trim();
     const signupUrl = `${siteUrl}/signup-with-invitation?token=${token}`;
 
+    // Load custom email template (if any), otherwise use default
+    const customTemplate = (await ctx.runQuery(
+      internal.appSettings.getInternal,
+      { key: "invitationEmailTemplate" }
+    )) as EmailTemplate | null;
+
+    const template: EmailTemplate = customTemplate ?? DEFAULT_EMAIL_TEMPLATE;
+
+    // Build template variables (escape recipient_name for XSS safety in HTML)
+    const variables: TemplateVariables = {
+      invitation_link: signupUrl,
+      recipient_name: escapeHtml("there"),
+      expiry_days: String(expiryDays),
+    };
+
+    const rendered = renderEmailTemplate(template, variables);
+
     // Send invitation email via Resend
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
@@ -55,6 +77,7 @@ export const generateTokenAndSendEmail = internalAction({
       console.log(
         `[waitlist] Invitation email (no RESEND_API_KEY configured):\n` +
           `  To: ${args.email}\n` +
+          `  Subject: ${rendered.subject}\n` +
           `  Signup URL: ${signupUrl}\n` +
           `  Expires in: ${expiryDays} days`
       );
@@ -67,8 +90,9 @@ export const generateTokenAndSendEmail = internalAction({
     await resend.emails.send({
       from: emailFrom,
       to: args.email,
-      subject: "You're invited to join!",
-      html: buildInvitationEmailHtml("there", signupUrl, expiryDays),
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
     });
   },
 });
