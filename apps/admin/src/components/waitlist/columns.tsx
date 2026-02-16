@@ -1,7 +1,15 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Mail, MoreHorizontal, Trash2, Undo2 } from "lucide-react";
+import {
+  ArrowUpDown,
+  KeyRound,
+  Mail,
+  MoreHorizontal,
+  Trash2,
+  Undo2,
+} from "lucide-react";
+import { useState } from "react";
 
 import {
   Badge,
@@ -16,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@repo/design-system";
+import { TokenViewerDialog } from "./token-viewer-dialog";
 import type { WaitlistEntry } from "./waitlist-actions-context";
 import { useWaitlistActions } from "./waitlist-actions-context";
 
@@ -84,10 +93,11 @@ function HighlightText({
 
 const STATUS_BADGE: Record<
   string,
-  { label: string; variant: "outline" | "default" | "secondary" }
+  { label: string; variant: "outline" | "default" | "secondary" | "destructive" }
 > = {
   waiting: { label: "Waiting", variant: "outline" },
   invited: { label: "Invited", variant: "default" },
+  expired: { label: "Invitation Expired", variant: "destructive" },
   claimed: { label: "Claimed", variant: "secondary" },
 };
 
@@ -129,47 +139,64 @@ const EXCITEMENT_LABELS: Record<string, string> = {
 
 function ActionsCell({ entry }: { entry: WaitlistEntry }) {
   const { onAction } = useWaitlistActions();
-
-  if (entry.status === "claimed") {
-    return (
-      <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-        <MoreHorizontal className="h-4 w-4" />
-        <span className="sr-only">No actions available</span>
-      </Button>
-    );
-  }
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <MoreHorizontal className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {entry.status === "waiting" && (
-          <DropdownMenuItem onSelect={() => onAction("invite", [entry])}>
-            <Mail className="mr-2 h-4 w-4" />
-            Send invitation
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {entry.status === "waiting" && (
+            <DropdownMenuItem onSelect={() => onAction("invite", [entry])}>
+              <Mail className="mr-2 h-4 w-4" />
+              Send invitation
+            </DropdownMenuItem>
+          )}
+          {entry.invitationExpired && (
+            <DropdownMenuItem onSelect={() => onAction("invite", [entry])}>
+              <Mail className="mr-2 h-4 w-4" />
+              Resend invitation
+            </DropdownMenuItem>
+          )}
+          {entry.status === "invited" && !entry.invitationExpired && (
+            <DropdownMenuItem onSelect={() => onAction("uninvite", [entry])}>
+              <Undo2 className="mr-2 h-4 w-4" />
+              Revoke invitation
+            </DropdownMenuItem>
+          )}
+          {(entry.status === "waiting" || entry.status === "invited") && (
+            <DropdownMenuSeparator />
+          )}
+          <DropdownMenuItem onSelect={() => setTokenDialogOpen(true)}>
+            <KeyRound className="mr-2 h-4 w-4" />
+            View tokens
           </DropdownMenuItem>
-        )}
-        {entry.status === "invited" && (
-          <DropdownMenuItem onSelect={() => onAction("uninvite", [entry])}>
-            <Undo2 className="mr-2 h-4 w-4" />
-            Revoke invitation
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onSelect={() => onAction("delete", [entry])}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {entry.status !== "claimed" && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => onAction("delete", [entry])}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <TokenViewerDialog
+        open={tokenDialogOpen}
+        onOpenChange={setTokenDialogOpen}
+        entry={entry}
+      />
+    </>
   );
 }
 
@@ -296,7 +323,9 @@ export function createColumns(
         </Button>
       ),
       cell: ({ row }) => {
-        const status = row.getValue("status") as string;
+        const status = row.original.invitationExpired
+          ? "expired"
+          : (row.getValue("status") as string);
         const badge = STATUS_BADGE[status] ?? {
           label: status,
           variant: "outline" as const,
@@ -312,7 +341,7 @@ export function createColumns(
           className="-ml-3"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Joined
+          Joined Waitlist
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),

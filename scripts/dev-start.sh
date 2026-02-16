@@ -723,6 +723,12 @@ if [ "$START_LANDING" = true ]; then
     start_next_app "landing" 3000
     LANDING_APP_URL="$LAST_APP_URL"
 
+    # Sync LANDING_URL to Convex so CORS allows the landing origin
+    if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
+        (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1) || true
+        echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
+    fi
+
     # Set the landing URL in the web app so auth pages can link back
     if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
         update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LANDING_APP_URL"

@@ -129,11 +129,21 @@ export const list = authedQuery({
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") return null;
 
-    return ctx.db
+    const entries = await ctx.db
       .query("waitlistEntries")
       .withIndex("by_created")
       .order("desc")
       .collect();
+
+    const now = Date.now();
+
+    return entries.map((entry) => ({
+      ...entry,
+      invitationExpired:
+        entry.status === "invited" &&
+        entry.invitationExpiresAt != null &&
+        now > entry.invitationExpiresAt,
+    }));
   },
 });
 
@@ -149,7 +159,17 @@ export const invite = authedMutation({
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status !== "waiting") throw new Error("ALREADY_INVITED");
+    if (entry.status === "claimed") throw new Error("ALREADY_CLAIMED");
+
+    // Allow re-inviting only if the invitation has expired
+    if (entry.status === "invited") {
+      if (
+        !entry.invitationExpiresAt ||
+        Date.now() <= entry.invitationExpiresAt
+      ) {
+        throw new Error("ALREADY_INVITED");
+      }
+    }
 
     // Mark as invited
     await ctx.db.patch(args.entryId, {
@@ -191,9 +211,10 @@ export const uninvite = authedMutation({
       )
       .collect();
 
+    const now = Date.now();
     for (const token of tokens) {
       if (token.status === "sent" || token.status === "claiming") {
-        await ctx.db.patch(token._id, { status: "revoked" });
+        await ctx.db.patch(token._id, { status: "revoked", revokedAt: now });
       }
     }
 
@@ -201,6 +222,7 @@ export const uninvite = authedMutation({
     await ctx.db.patch(args.entryId, {
       status: "waiting",
       invitedAt: undefined,
+      invitationExpiresAt: undefined,
     });
   },
 });
