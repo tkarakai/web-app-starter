@@ -28,6 +28,11 @@ export const create = internalMutation({
       expiresAt: args.expiresAt,
       createdAt: Date.now(),
     });
+
+    // Denormalize: keep the entry's invitationExpiresAt in sync
+    await ctx.db.patch(args.waitlistEntryId, {
+      invitationExpiresAt: args.expiresAt,
+    });
   },
 });
 

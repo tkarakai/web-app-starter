@@ -73,6 +73,7 @@ export default defineSchema({
       v.literal("claimed")
     ),
     invitedAt: v.optional(v.number()),
+    invitationExpiresAt: v.optional(v.number()),
     claimedAt: v.optional(v.number()),
     createdAt: v.number(),
   })

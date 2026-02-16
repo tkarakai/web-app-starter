@@ -137,29 +137,13 @@ export const list = authedQuery({
 
     const now = Date.now();
 
-    return Promise.all(
-      entries.map(async (entry) => {
-        if (entry.status !== "invited") {
-          return { ...entry, invitationExpired: false };
-        }
-
-        // Check if all tokens for this invited entry have expired or been revoked
-        const tokens = await ctx.db
-          .query("invitationTokens")
-          .withIndex("by_waitlist_entry", (q) =>
-            q.eq("waitlistEntryId", entry._id)
-          )
-          .collect();
-
-        const hasActiveToken = tokens.some(
-          (t) =>
-            (t.status === "sent" || t.status === "claiming") &&
-            now <= t.expiresAt
-        );
-
-        return { ...entry, invitationExpired: !hasActiveToken };
-      })
-    );
+    return entries.map((entry) => ({
+      ...entry,
+      invitationExpired:
+        entry.status === "invited" &&
+        entry.invitationExpiresAt != null &&
+        now > entry.invitationExpiresAt,
+    }));
   },
 });
 
@@ -177,22 +161,14 @@ export const invite = authedMutation({
     if (!entry) throw new Error("ENTRY_NOT_FOUND");
     if (entry.status === "claimed") throw new Error("ALREADY_CLAIMED");
 
-    // Allow re-inviting if all tokens have expired
+    // Allow re-inviting only if the invitation has expired
     if (entry.status === "invited") {
-      const now = Date.now();
-      const tokens = await ctx.db
-        .query("invitationTokens")
-        .withIndex("by_waitlist_entry", (q) =>
-          q.eq("waitlistEntryId", args.entryId)
-        )
-        .collect();
-
-      const hasActiveToken = tokens.some(
-        (t) =>
-          (t.status === "sent" || t.status === "claiming") &&
-          now <= t.expiresAt
-      );
-      if (hasActiveToken) throw new Error("ALREADY_INVITED");
+      if (
+        !entry.invitationExpiresAt ||
+        Date.now() <= entry.invitationExpiresAt
+      ) {
+        throw new Error("ALREADY_INVITED");
+      }
     }
 
     // Mark as invited
@@ -246,6 +222,7 @@ export const uninvite = authedMutation({
     await ctx.db.patch(args.entryId, {
       status: "waiting",
       invitedAt: undefined,
+      invitationExpiresAt: undefined,
     });
   },
 });

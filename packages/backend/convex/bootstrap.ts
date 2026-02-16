@@ -189,6 +189,7 @@ export const rescue = internalMutation({
         email: args.newEmail,
         status: "waiting",
         invitedAt: undefined,
+        invitationExpiresAt: undefined,
       });
       entryId = waitlistEntry._id;
     } else {
