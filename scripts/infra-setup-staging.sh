@@ -1071,12 +1071,14 @@ main() {
     local generated_ts
     generated_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     echo "# Staging Setup Record" > "$RECORD_FILE"
+    chmod 600 "$RECORD_FILE"
     echo "# Generated: $generated_ts" >> "$RECORD_FILE"
     echo "# ===========================================" >> "$RECORD_FILE"
     echo "" >> "$RECORD_FILE"
 
     # Initialize log file with matching header
     echo "# Staging Setup Session Log" > "$LOG_FILE"
+    chmod 600 "$LOG_FILE"
     echo "# Generated: $generated_ts" >> "$LOG_FILE"
     echo "# ===========================================" >> "$LOG_FILE"
     echo "" >> "$LOG_FILE"
