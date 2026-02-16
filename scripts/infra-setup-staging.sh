@@ -971,9 +971,11 @@ step_optional_bootstrap() {
         admin_email=$(ask_input "Admin email address" "")
 
         log_info "Running bootstrap:initialize..."
+        local json_arg
+        json_arg=$(jq -n --arg email "$admin_email" '{"email": $email}')
         (cd "$PROJECT_DIR/packages/backend" && \
             CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" \
-            bunx convex run bootstrap:initialize "{\"email\": \"$admin_email\"}")
+            bunx convex run bootstrap:initialize "$json_arg")
 
         record_value "BOOTSTRAP_EMAIL" "$admin_email"
         record_value "BOOTSTRAP_COMPLETE" "true"
