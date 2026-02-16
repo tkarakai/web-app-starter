@@ -39,9 +39,11 @@ runs:
         ARTIFACT_NAME="${{ inputs.app }}-${{ inputs.environment }}-${{ github.sha }}"
         TARBALL="${{ inputs.app }}-${{ inputs.environment }}.tar.gz"
         CHECKSUM="${{ inputs.app }}-${{ inputs.environment }}.tar.gz.sha256"
+        TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         echo "artifact-name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
         echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
         echo "checksum-file=${CHECKSUM}" >> "$GITHUB_OUTPUT"
+        echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
 
     - name: Install Vercel CLI
       shell: bash
@@ -96,7 +98,7 @@ runs:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
         NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
         NEXT_PUBLIC_GIT_BRANCH: ${{ github.ref_name }}
-        NEXT_PUBLIC_DEPLOY_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
+        NEXT_PUBLIC_DEPLOY_TIMESTAMP: ${{ steps.meta.outputs.timestamp }}
         NEXT_PUBLIC_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         NEXT_PUBLIC_APP_NAME: ${{ inputs.app }}
       run: |
