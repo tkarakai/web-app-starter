@@ -6,7 +6,6 @@ import { internalAction } from "./_generated/server";
 import type { EmailTemplate, TemplateVariables } from "./emailTemplates";
 import {
   DEFAULT_EMAIL_TEMPLATE,
-  escapeHtml,
   renderEmailTemplate,
 } from "./emailTemplates";
 
@@ -61,10 +60,10 @@ export const generateTokenAndSendEmail = internalAction({
 
     const template: EmailTemplate = customTemplate ?? DEFAULT_EMAIL_TEMPLATE;
 
-    // Build template variables (escape recipient_name for XSS safety in HTML)
+    // Build template variables (renderEmailTemplate handles HTML escaping)
     const variables: TemplateVariables = {
       invitation_link: signupUrl,
-      recipient_name: escapeHtml("there"),
+      recipient_name: "there",
       expiry_days: String(expiryDays),
     };
 

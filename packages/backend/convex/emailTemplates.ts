@@ -148,14 +148,20 @@ export function renderTemplate(
   });
 }
 
-/** Render all three fields of an email template. */
+/**
+ * Render all three fields of an email template.
+ * HTML-escapes variable values for subject/html; leaves them raw for text.
+ */
 export function renderEmailTemplate(
   template: EmailTemplate,
   variables: TemplateVariables
 ): EmailTemplate {
+  const escaped = Object.fromEntries(
+    Object.entries(variables).map(([k, v]) => [k, escapeHtml(v)])
+  ) as TemplateVariables;
   return {
-    subject: renderTemplate(template.subject, variables),
-    html: renderTemplate(template.html, variables),
+    subject: renderTemplate(template.subject, escaped),
+    html: renderTemplate(template.html, escaped),
     text: renderTemplate(template.text, variables),
   };
 }
