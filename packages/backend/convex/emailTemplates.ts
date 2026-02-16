@@ -165,21 +165,3 @@ export function renderEmailTemplate(
     text: renderTemplate(template.text, variables),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Legacy function (kept for backward compatibility)
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use `renderEmailTemplate` with `DEFAULT_EMAIL_TEMPLATE` instead. */
-export function buildInvitationEmailHtml(
-  name: string,
-  signupUrl: string,
-  expiryDays: number
-): string {
-  const rendered = renderEmailTemplate(DEFAULT_EMAIL_TEMPLATE, {
-    invitation_link: escapeHtml(signupUrl),
-    recipient_name: escapeHtml(name),
-    expiry_days: String(expiryDays),
-  });
-  return rendered.html;
-}
