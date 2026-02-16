@@ -469,7 +469,7 @@ create_vercel_project() {
             else
                 log_info "Keeping existing settings"
             fi
-            eval "${id_varname}='${project_id}'"
+            printf -v "$id_varname" '%s' "$project_id"
             record_value "$id_varname" "$project_id"
             return 0
         fi
@@ -502,7 +502,7 @@ create_vercel_project() {
     configure_vercel_project "$project_name" "$root_dir"
 
     # Store the ID
-    eval "${id_varname}='${project_id}'"
+    printf -v "$id_varname" '%s' "$project_id"
     record_value "$id_varname" "$project_id"
     log_success "Created '$project_name' (ID: $project_id)"
 }
