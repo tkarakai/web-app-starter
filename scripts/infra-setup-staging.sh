@@ -104,6 +104,9 @@ ask_input() {
     fi
 
     read -r value
+    # Append user input to log file (the chunk-based perl pipeline flushes
+    # the no-newline prompt before we get here, so ordering is correct)
+    [ -n "${LOG_FILE:-}" ] && echo "$value" >> "$LOG_FILE"
     value="${value:-$default}"
     # Trim whitespace
     value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
@@ -125,7 +128,7 @@ ask_secret() {
 
     echo -ne "  ${prompt}: " >&2
     read -rs value
-    echo "" >&2  # newline after hidden input
+    echo "****" >&2  # redacted marker (via tee pipeline for correct ordering)
 
     # Trim whitespace
     value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
@@ -147,6 +150,7 @@ ask_confirm() {
 
     echo -ne "  ${prompt} [y/N]: "
     read -r answer
+    [ -n "${LOG_FILE:-}" ] && echo "$answer" >> "$LOG_FILE"
 
     case "$answer" in
         [yY]|[yY][eE][sS]) return 0 ;;
@@ -324,6 +328,7 @@ collect_inputs() {
     echo ""
     log_info "Press Enter when you're ready to paste the values..."
     read -r
+    [ -n "${LOG_FILE:-}" ] && echo "" >> "$LOG_FILE"
 
     CONVEX_STAGING_URL=$(ask_input "Convex Deployment URL" "")
     if [[ ! "$CONVEX_STAGING_URL" =~ ^https://.*\.convex\.cloud$ ]]; then
@@ -1030,11 +1035,27 @@ print_final_summary() {
 # ============================================================
 
 main() {
-    # Capture all console output to the log file (ANSI codes stripped) while
-    # still showing colored output on screen. tee writes to both:
-    #   - stdout (terminal, with colors)
-    #   - process substitution (perl strips ANSI codes, writes to log file)
-    exec > >(tee >(perl -pe 's/\e\[[0-9;]*m//g' >> "$LOG_FILE")) 2>&1
+    # Capture all console output to the log file (plain ASCII) while still
+    # showing colored/Unicode output on screen. tee writes to both:
+    #   - stdout (terminal, with colors and Unicode symbols)
+    #   - process substitution (perl converts to plain ASCII, writes to log file)
+    #
+    # The perl process uses chunk-based sysread (not line-based -pe) so that
+    # no-newline prompts like "  GitHub repo: " get flushed to the log file
+    # immediately. This ensures direct >> writes for user input appear after
+    # the prompt, not before it. Raw byte matching for UTF-8 sequences.
+    exec > >(tee >(perl -e '
+        $| = 1;
+        while (sysread(STDIN, $buf, 4096)) {
+            $buf =~ s/\e\[[0-9;]*m//g;
+            $buf =~ s/\xe2\x84\xb9/[i]/g;
+            $buf =~ s/\xe2\x9c\x93/[ok]/g;
+            $buf =~ s/\xe2\x9c\x97/[FAIL]/g;
+            $buf =~ s/\xe2\x9a\xa0/[!]/g;
+            $buf =~ s/\xe2\x94\x81/=/g;
+            print $buf;
+        }
+    ' >> "$LOG_FILE")) 2>&1
 
     echo ""
     echo -e "${BOLD}  Staging Infrastructure Setup${NC}"
@@ -1045,10 +1066,18 @@ main() {
     echo ""
 
     # Initialize record file
+    local generated_ts
+    generated_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     echo "# Staging Setup Record" > "$RECORD_FILE"
-    echo "# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RECORD_FILE"
+    echo "# Generated: $generated_ts" >> "$RECORD_FILE"
     echo "# ===========================================" >> "$RECORD_FILE"
     echo "" >> "$RECORD_FILE"
+
+    # Initialize log file with matching header
+    echo "# Staging Setup Session Log" > "$LOG_FILE"
+    echo "# Generated: $generated_ts" >> "$LOG_FILE"
+    echo "# ===========================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
 
     # Phase 0: Prerequisites
     check_prerequisites
