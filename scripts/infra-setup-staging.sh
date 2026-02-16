@@ -428,7 +428,7 @@ print_summary() {
     echo ""
     echo -e "  ${BOLD}Planned Phase 3 Execution Steps:${NC}"
     echo "    Step 1: Create 3 Vercel staging projects"
-    echo "    Step 2: Set Convex environment variables (SITE_URL, BETTER_AUTH_SECRET)"
+    echo "    Step 2: Set Convex environment variables (SITE_URL, LANDING_URL, BETTER_AUTH_SECRET)"
     echo "    Step 3: Set Vercel environment variables on all 3 projects"
     echo "    Step 4: Create GitHub staging environment, set secrets, branch protection"
     echo "    Step 5: (Optional) Deploy Convex to staging and bootstrap first admin"
@@ -566,10 +566,12 @@ step_configure_convex_env() {
     log_step "Phase 3, Step 2: Convex Environment Variables"
 
     local site_url_value="${VERCEL_WEB_URL},${VERCEL_ADMIN_URL}"
+    local landing_url_value="${VERCEL_LANDING_URL}"
 
     echo ""
     echo "  Setting on the Convex staging project:"
     echo "    SITE_URL          = $site_url_value"
+    echo "    LANDING_URL       = $landing_url_value"
     echo "    BETTER_AUTH_SECRET = (auto-generated)"
     echo ""
 
@@ -584,6 +586,13 @@ step_configure_convex_env() {
         existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && \
             CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env get SITE_URL 2>/dev/null || true)
         log_warn "SITE_URL already set: $existing_site_url"
+        has_existing=true
+    fi
+    if echo "$existing_env" | grep -q "LANDING_URL" 2>/dev/null; then
+        local existing_landing_url
+        existing_landing_url=$(cd "$PROJECT_DIR/packages/backend" && \
+            CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env get LANDING_URL 2>/dev/null || true)
+        log_warn "LANDING_URL already set: $existing_landing_url"
         has_existing=true
     fi
     if echo "$existing_env" | grep -q "BETTER_AUTH_SECRET" 2>/dev/null; then
@@ -608,6 +617,11 @@ step_configure_convex_env() {
         CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env set SITE_URL "$site_url_value")
     log_success "SITE_URL set"
 
+    log_info "Setting LANDING_URL..."
+    (cd "$PROJECT_DIR/packages/backend" && \
+        CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env set LANDING_URL "$landing_url_value")
+    log_success "LANDING_URL set"
+
     log_info "Generating and setting BETTER_AUTH_SECRET..."
     local auth_secret
     auth_secret=$(openssl rand -base64 32)
@@ -616,6 +630,7 @@ step_configure_convex_env() {
     log_success "BETTER_AUTH_SECRET set"
 
     record_value "CONVEX_SITE_URL_VALUE" "$site_url_value"
+    record_value "CONVEX_LANDING_URL_VALUE" "$landing_url_value"
     record_value "BETTER_AUTH_SECRET" "$auth_secret"
 
     log_success "Convex environment variables configured"
