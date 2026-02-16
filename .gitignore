@@ -32,6 +32,10 @@ apps/*/public/favicon.ico
 .act-artifacts/
 .ci-local-artifacts/
 
+# Staging setup records and logs (contain secrets)
+.infra-setup-staging-record-*
+.infra-setup-staging-log-*
+
 # Auto Claude data directory
 .auto-claude/
 

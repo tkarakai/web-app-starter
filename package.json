@@ -33,7 +33,8 @@
     "ci:reset-coverage": "./scripts/ci-local.sh --reset-coverage",
     "ci:act": "./scripts/ci-local-act.sh",
     "ci:act:quick": "./scripts/ci-local-act.sh -q",
-    "ci:act:offline": "./scripts/ci-local-act.sh -o"
+    "ci:act:offline": "./scripts/ci-local-act.sh -o",
+    "infra:setup:staging": "./scripts/infra-setup-staging.sh"
   },
   "overrides": {
     "react": "19.2.3",
