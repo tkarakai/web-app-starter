@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Plus, Shield } from "lucide-react";
+import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
@@ -80,6 +80,7 @@ export function AppSidebar({
   const tt = useTranslations("theme");
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
+  const userProfile = useQuery(api.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -201,7 +202,12 @@ export function AppSidebar({
                     className="h-auto py-2"
                   >
                     <Avatar className="h-7 w-7 shrink-0 border border-border/60">
-                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                      <AvatarFallback
+                        className="text-xs"
+                        style={userProfile?.avatarColor ? { backgroundColor: userProfile.avatarColor, color: "#fff" } : undefined}
+                      >
+                        {initials}
+                      </AvatarFallback>
                     </Avatar>
                     {!isCollapsed && (
                       <div className="flex flex-col items-start overflow-hidden">
@@ -219,9 +225,9 @@ export function AppSidebar({
                   <ThemeToggle className="my-1 w-full" labels={themeLabels} />
                   <LocaleSwitcher variant="submenu" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings/sessions")}>
-                    <Shield className="me-2 h-4 w-4" />
-                    {td("security")}
+                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings")}>
+                    <UserCog className="me-2 h-4 w-4" />
+                    {td("account")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">

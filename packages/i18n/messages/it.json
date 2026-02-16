@@ -58,6 +58,17 @@
       "passwordMismatch": "Le password non corrispondono",
       "generic": "Si è verificato un errore"
     },
+    "twoFactorVerify": {
+      "title": "Autenticazione a due fattori",
+      "description": "Inserisci il codice a 6 cifre dalla tua app di autenticazione.",
+      "cta": "Verifica",
+      "invalidCode": "Codice non valido. Riprova.",
+      "useBackupCode": "Usa un codice di backup",
+      "backupCodeTitle": "Codice di backup",
+      "backupCodeDescription": "Inserisci uno dei tuoi codici di backup per accedere.",
+      "backupCodePlaceholder": "Inserisci il codice di backup",
+      "useAuthenticator": "Usa l'app di autenticazione"
+    },
     "footer": "E-mail + password sicuri",
     "working": "Elaborazione...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "La registrazione è attualmente solo su invito.",
       "signupBlockedDescription": "Iscriviti alla lista d'attesa sulla nostra homepage per richiedere l'accesso.",
       "goToWaitlist": "Iscriviti alla lista d'attesa"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Recupero password",
+      "title": "Hai dimenticato la password?",
+      "description": "Inserisci la tua e-mail e ti invieremo un link per reimpostare la password.",
+      "cta": "Invia link di reimpostazione",
+      "emailSent": "Controlla la tua e-mail",
+      "emailSentDescription": "Se esiste un account per {email}, abbiamo inviato un link per reimpostare la password. Controlla la posta in arrivo e la cartella spam.",
+      "backToSignIn": "Torna all'accesso",
+      "pageHeading": "Reimposta la tua password. Torna in pista.",
+      "pageDescription": "Inserisci l'indirizzo e-mail associato al tuo account e ti invieremo un link per creare una nuova password."
+    },
+    "resetPassword": {
+      "badge": "Recupero password",
+      "title": "Imposta una nuova password",
+      "description": "Scegli una password sicura per il tuo account.",
+      "newPassword": "Nuova password",
+      "cta": "Reimposta password",
+      "invalidTitle": "Link di reimpostazione non valido",
+      "tokenExpired": "Questo link di reimpostazione è scaduto. Richiedine uno nuovo.",
+      "tokenInvalid": "Questo link di reimpostazione non è valido o è già stato utilizzato.",
+      "requestNewLink": "Richiedi un nuovo link",
+      "backToSignIn": "Torna all'accesso",
+      "successTitle": "Password aggiornata",
+      "successDescription": "La tua password è stata reimpostata con successo. Ora puoi accedere con la nuova password.",
+      "signInNow": "Accedi ora",
+      "pageHeading": "Ci siamo quasi. Scegli una nuova password.",
+      "pageDescription": "Scegli una password sicura che non hai mai usato prima. La nuova password deve essere di almeno 8 caratteri."
+    },
+    "verifyEmail": {
+      "badge": "Verifica e-mail",
+      "title": "Controlla la tua e-mail",
+      "description": "Abbiamo inviato un link di verifica al tuo indirizzo e-mail. Clicca il link per verificare il tuo account.",
+      "resend": "Invia di nuovo l'e-mail di verifica",
+      "resent": "E-mail di verifica inviata! Controlla la posta in arrivo.",
+      "backToSignIn": "Torna all'accesso",
+      "pageHeading": "Ultimo passaggio. Verifica la tua e-mail.",
+      "pageDescription": "Ti abbiamo inviato un link di verifica. Cliccalo per attivare il tuo account e iniziare a usare l'app."
+    },
+    "forgotPasswordLink": "Hai dimenticato la password?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Attività",
       "attachments": "Allegati"
+    },
+    "security": "Sicurezza",
+    "sessions": {
+      "title": "Sessioni attive",
+      "description": "Gestisci le tue sessioni attive su tutti i dispositivi. Puoi disconnettere qualsiasi sessione che non riconosci.",
+      "currentSession": "Questo dispositivo",
+      "otherSessions": "Altri dispositivi",
+      "current": "Corrente",
+      "lastActive": "Attivo {time}",
+      "noOtherSessions": "Nessun'altra sessione attiva. Sei connesso solo su questo dispositivo.",
+      "revokeAll": "Disconnetti tutti gli altri",
+      "revokeAllTitle": "Disconnettere tutti gli altri dispositivi?",
+      "revokeAllDescription": "Questo ti disconnetterà da tutti gli altri dispositivi e browser. Solo la sessione corrente rimarrà attiva.",
+      "revokeAllConfirm": "Disconnetti tutti",
+      "revokeTitle": "Disconnettere questo dispositivo?",
+      "revokeDescription": "Questo terminerà la sessione per {device}. Sarà necessario accedere di nuovo per utilizzare l'account.",
+      "backToDashboard": "Torna alla dashboard"
+    },
+    "account": "Impostazioni",
+    "profile": {
+      "title": "Profilo",
+      "description": "Gestisci le informazioni del tuo profilo e le preferenze.",
+      "name": "Nome visualizzato",
+      "namePlaceholder": "Il tuo nome",
+      "email": "E-mail",
+      "emailReadonly": "Contatta il supporto per cambiare la tua e-mail.",
+      "avatarColor": "Colore avatar",
+      "saved": "Profilo aggiornato.",
+      "language": "Lingua",
+      "timezone": "Fuso orario",
+      "timezonePlaceholder": "Seleziona il tuo fuso orario",
+      "timezoneSearch": "Cerca fusi orari...",
+      "timezoneDetected": "Rilevato",
+      "noTimezoneResults": "Nessun fuso orario trovato.",
+      "theme": "Tema"
+    },
+    "changePassword": {
+      "title": "Cambia password",
+      "currentPassword": "Password attuale",
+      "newPassword": "Nuova password",
+      "confirmPassword": "Conferma nuova password",
+      "revokeOtherSessions": "Disconnetti tutti gli altri dispositivi",
+      "cta": "Aggiorna password",
+      "success": "Password aggiornata con successo.",
+      "errorCurrentPassword": "La password attuale non è corretta."
+    },
+    "twoFactor": {
+      "title": "Autenticazione a due fattori",
+      "description": "Aggiungi un ulteriore livello di sicurezza al tuo account.",
+      "enabled": "2FA è attivata",
+      "disabled": "2FA non è attivata",
+      "enable": "Attiva 2FA",
+      "disable": "Disattiva 2FA",
+      "enterPassword": "Inserisci la tua password per continuare.",
+      "scanQrCode": "Scansiona questo codice QR con la tua app di autenticazione (es. Google Authenticator, Authy).",
+      "manualEntry": "Non riesci a scansionare? Inserisci questa chiave manualmente",
+      "manualEntryDescription": "Apri la tua app di autenticazione, scegli \"Aggiungi account\", quindi seleziona \"Inserisci chiave di configurazione\" e incolla la chiave qui sotto.",
+      "secretKey": "Chiave segreta",
+      "copied": "Copiato negli appunti",
+      "enterCode": "Inserisci il codice a 6 cifre dalla tua app di autenticazione per verificare la configurazione.",
+      "verify": "Verifica",
+      "backupCodes": "Codici di backup",
+      "backupCodesDescription": "Salva questi codici in un luogo sicuro. Ogni codice può essere usato una sola volta.",
+      "viewBackupCodes": "Visualizza codici di backup",
+      "regenerateBackupCodes": "Rigenera codici di backup",
+      "disableConfirm": "Sei sicuro di voler disattivare la 2FA?",
+      "regenerateConfirm": "Questo sostituir\u00e0 i tuoi codici di backup esistenti. I codici non utilizzati non funzioneranno pi\u00f9.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

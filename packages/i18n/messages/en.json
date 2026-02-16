@@ -58,6 +58,17 @@
       "passwordMismatch": "Passwords do not match",
       "generic": "An error occurred"
     },
+    "twoFactorVerify": {
+      "title": "Two-factor authentication",
+      "description": "Enter the 6-digit code from your authenticator app.",
+      "cta": "Verify",
+      "invalidCode": "Invalid code. Please try again.",
+      "useBackupCode": "Use a backup code instead",
+      "backupCodeTitle": "Backup code",
+      "backupCodeDescription": "Enter one of your backup codes to sign in.",
+      "backupCodePlaceholder": "Enter backup code",
+      "useAuthenticator": "Use authenticator app instead"
+    },
     "footer": "Secure email + password",
     "working": "Working...",
     "legal": {
@@ -205,6 +216,57 @@
       "revokeTitle": "Sign out this device?",
       "revokeDescription": "This will end the session for {device}. They will need to sign in again to access the account.",
       "backToDashboard": "Back to dashboard"
+    },
+    "account": "Settings",
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your profile information and preferences.",
+      "name": "Display name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailReadonly": "Contact support to change your email.",
+      "avatarColor": "Avatar color",
+      "saved": "Profile updated.",
+      "language": "Language",
+      "timezone": "Timezone",
+      "timezonePlaceholder": "Select your timezone",
+      "timezoneSearch": "Search timezones...",
+      "timezoneDetected": "Detected",
+      "noTimezoneResults": "No timezone found.",
+      "theme": "Theme"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "revokeOtherSessions": "Sign out all other devices",
+      "cta": "Update password",
+      "success": "Password updated successfully.",
+      "errorCurrentPassword": "Current password is incorrect."
+    },
+    "twoFactor": {
+      "title": "Two-Factor Authentication",
+      "description": "Add an extra layer of security to your account.",
+      "enabled": "2FA is enabled",
+      "disabled": "2FA is not enabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "enterPassword": "Enter your password to continue.",
+      "scanQrCode": "Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy).",
+      "manualEntry": "Can't scan? Enter this key manually",
+      "manualEntryDescription": "Open your authenticator app, choose \"Add account\", then select \"Enter setup key\" and paste the key below.",
+      "secretKey": "Secret key",
+      "copied": "Copied to clipboard",
+      "enterCode": "Enter the 6-digit code from your authenticator app to verify setup.",
+      "verify": "Verify",
+      "backupCodes": "Backup codes",
+      "backupCodesDescription": "Save these codes in a safe place. Each code can only be used once.",
+      "viewBackupCodes": "View backup codes",
+      "regenerateBackupCodes": "Regenerate backup codes",
+      "disableConfirm": "Are you sure you want to disable 2FA?",
+      "regenerateConfirm": "This will replace your existing backup codes. Any unused codes will no longer work.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

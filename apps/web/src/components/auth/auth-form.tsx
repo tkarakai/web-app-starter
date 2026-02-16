@@ -17,6 +17,7 @@ import {
   CardTitle,
   Input,
   Label,
+  PasswordInput,
   Separator,
 } from "@repo/design-system";
 
@@ -35,9 +36,46 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [twoFactorRequired, setTwoFactorRequired] = React.useState(false);
+  const [totpCode, setTotpCode] = React.useState("");
+  const [useBackupCode, setUseBackupCode] = React.useState(false);
+  const [backupCode, setBackupCode] = React.useState("");
 
   const isSignUp = mode === "sign-up";
   const namespace = isSignUp ? "signUp" : "signIn";
+
+  const handleTwoFactorVerify = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      if (useBackupCode) {
+        if (!backupCode.trim()) return;
+        const result = await authClient.twoFactor.verifyBackupCode({
+          code: backupCode.trim(),
+        });
+        if (result.error) {
+          setError(t("twoFactorVerify.invalidCode"));
+        } else {
+          broadcastAuth();
+          await redirectWithUserLocale(router);
+        }
+      } else {
+        if (!totpCode || totpCode.length !== 6) return;
+        const result = await authClient.twoFactor.verifyTotp({
+          code: totpCode,
+        });
+        if (result.error) {
+          setError(t("twoFactorVerify.invalidCode"));
+        } else {
+          broadcastAuth();
+          await redirectWithUserLocale(router);
+        }
+      }
+    } finally {
+      setPending(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -77,6 +115,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
       if (result.error) {
         setError(formatAuthError(result.error, "Invalid email or password"));
+      } else if (
+        (result.data as Record<string, unknown> | undefined)?.twoFactorRedirect
+      ) {
+        setTwoFactorRequired(true);
       } else {
         broadcastAuth();
         await redirectWithUserLocale(router);
@@ -85,6 +127,95 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       setPending(false);
     }
   };
+
+  if (twoFactorRequired) {
+    return (
+      <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
+        <CardHeader className="space-y-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <Sparkles className="h-4 w-4" />
+            {t("badge")}
+          </div>
+          <CardTitle className="text-2xl font-semibold">
+            {useBackupCode ? t("twoFactorVerify.backupCodeTitle") : t("twoFactorVerify.title")}
+          </CardTitle>
+          <CardDescription>
+            {useBackupCode ? t("twoFactorVerify.backupCodeDescription") : t("twoFactorVerify.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleTwoFactorVerify}>
+            {useBackupCode ? (
+              <div className="space-y-2">
+                <Label htmlFor="backup-code">{t("twoFactorVerify.backupCodeTitle")}</Label>
+                <Input
+                  id="backup-code"
+                  placeholder={t("twoFactorVerify.backupCodePlaceholder")}
+                  value={backupCode}
+                  onChange={(e) => setBackupCode(e.target.value)}
+                  autoFocus
+                  autoComplete="off"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="totp-code">{t("twoFactorVerify.title")}</Label>
+                <Input
+                  id="totp-code"
+                  placeholder="000000"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  maxLength={6}
+                  autoFocus
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                />
+              </div>
+            )}
+            {error ? (
+              <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+                {error}
+              </div>
+            ) : null}
+            <Button
+              className="w-full"
+              type="submit"
+              disabled={pending || (useBackupCode ? !backupCode.trim() : totpCode.length !== 6)}
+            >
+              {pending ? t("working") : t("twoFactorVerify.cta")}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <button
+              type="button"
+              className="w-full text-center text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+              onClick={() => {
+                setUseBackupCode(!useBackupCode);
+                setError(null);
+                setTotpCode("");
+                setBackupCode("");
+              }}
+            >
+              {useBackupCode ? t("twoFactorVerify.useAuthenticator") : t("twoFactorVerify.useBackupCode")}
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setTwoFactorRequired(false);
+                setUseBackupCode(false);
+                setTotpCode("");
+                setBackupCode("");
+                setError(null);
+              }}
+            >
+              {t("forgotPassword.backToSignIn")}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
@@ -138,10 +269,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 </button>
               ) : null}
             </div>
-            <Input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               placeholder={isSignUp ? t("fields.passwordSignUpPlaceholder") : t("fields.passwordPlaceholder")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -152,10 +282,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           {isSignUp ? (
             <div className="space-y-2">
               <Label htmlFor="confirm-password">{t("fields.confirmPassword")}</Label>
-              <Input
+              <PasswordInput
                 id="confirm-password"
                 name="confirm-password"
-                type="password"
                 placeholder={t("fields.confirmPasswordPlaceholder")}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}

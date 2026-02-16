@@ -7,7 +7,9 @@ import {
   listSessionsHandler,
   revokeSessionHandler,
   revokeOtherSessionsHandler,
+  viewBackupCodesHandler,
 } from "./sessions";
+import { getDevTotpCode } from "./devTotp";
 
 const http = httpRouter();
 
@@ -201,6 +203,40 @@ http.route({
       },
     });
   }),
+});
+
+// ---------------------------------------------------------------------------
+// Two-factor backup codes (workaround for Better Auth bug — no HTTP path)
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/two-factor/backup-codes",
+  method: "GET",
+  handler: viewBackupCodesHandler,
+});
+
+http.route({
+  path: "/api/two-factor/backup-codes",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Dev TOTP helper (only active when DEV_SEED_ENABLED is set)
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/dev/totp-code",
+  method: "GET",
+  handler: getDevTotpCode,
 });
 
 export default http;

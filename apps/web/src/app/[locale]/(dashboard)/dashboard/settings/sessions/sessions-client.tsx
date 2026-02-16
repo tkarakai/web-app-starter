@@ -68,6 +68,15 @@ function DeviceIcon({ device }: { device: string }) {
   }
 }
 
+/** Normalize IPv6 loopback and IPv4-mapped IPv6 addresses for display. */
+function normalizeIp(ip: string): string {
+  if (ip === "::1") return "127.0.0.1";
+  // Strip ::ffff: prefix from IPv4-mapped IPv6 addresses
+  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (mapped) return mapped[1];
+  return ip;
+}
+
 function formatRelativeTime(date: Date): string {
   const now = Date.now();
   const diff = now - date.getTime();
@@ -368,7 +377,7 @@ function SessionCard({
             </div>
             {session.ipAddress ? (
               <p className="text-xs text-muted-foreground truncate">
-                {session.ipAddress}
+                {normalizeIp(session.ipAddress)}
               </p>
             ) : null}
             <p className="text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ import { authedMutation, authedQuery, assertMaxLength } from "./functions";
 
 export const VALID_THEMES = ["light", "dark", "system"] as const;
 const MAX_TIMEZONE_LENGTH = 64;
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
 /**
  * Get the current user's full profile.
@@ -45,6 +46,7 @@ export const upsert = authedMutation({
     locale: v.optional(v.string()),
     theme: v.optional(v.string()),
     timezone: v.optional(v.string()),
+    avatarColor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Validate locale if provided
@@ -57,6 +59,10 @@ export const upsert = authedMutation({
     }
     // Validate timezone length to prevent abuse
     assertMaxLength(args.timezone, MAX_TIMEZONE_LENGTH, "TIMEZONE");
+    // Validate avatarColor is a hex color
+    if (args.avatarColor && !HEX_COLOR_RE.test(args.avatarColor)) {
+      throw new Error("INVALID_AVATAR_COLOR");
+    }
 
     const existing = await ctx.db
       .query("userProfiles")
@@ -71,6 +77,7 @@ export const upsert = authedMutation({
       if (args.locale !== undefined) updates.locale = args.locale;
       if (args.theme !== undefined) updates.theme = args.theme;
       if (args.timezone !== undefined) updates.timezone = args.timezone;
+      if (args.avatarColor !== undefined) updates.avatarColor = args.avatarColor;
 
       await ctx.db.patch(existing._id, updates);
       return existing._id;
@@ -81,6 +88,7 @@ export const upsert = authedMutation({
         locale: args.locale,
         theme: args.theme,
         timezone: args.timezone,
+        avatarColor: args.avatarColor,
         createdAt: now,
         updatedAt: now,
       });

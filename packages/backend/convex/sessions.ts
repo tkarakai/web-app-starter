@@ -214,3 +214,49 @@ export const revokeOtherSessionsHandler = httpAction(async (_ctx, request) => {
     headers: cors,
   });
 });
+
+// ---------------------------------------------------------------------------
+// HTTP action: GET /api/two-factor/backup-codes — view existing backup codes
+// ---------------------------------------------------------------------------
+// Better Auth v1.4.12 has a bug where viewBackupCodes is registered without
+// an HTTP path, making it inaccessible via the client. This endpoint wraps
+// the server-side auth.api.viewBackupCodes() call.
+
+export const viewBackupCodesHandler = httpAction(async (_ctx, request) => {
+  const cors = corsHeaders(request);
+  const sessionToken = getSessionToken(request);
+  if (!sessionToken) {
+    return new Response(JSON.stringify({ error: "NOT_AUTHENTICATED" }), {
+      status: 401,
+      headers: cors,
+    });
+  }
+
+  const auth = createAuth(_ctx);
+  const headers = new Headers({
+    authorization: `Bearer ${sessionToken}`,
+  });
+
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    return new Response(JSON.stringify({ error: "NOT_AUTHENTICATED" }), {
+      status: 401,
+      headers: cors,
+    });
+  }
+
+  try {
+    const result = await auth.api.viewBackupCodes({
+      body: { userId: session.user.id },
+    });
+    return new Response(
+      JSON.stringify({ backupCodes: result.backupCodes ?? [] }),
+      { status: 200, headers: cors },
+    );
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "BACKUP_CODES_NOT_FOUND" }),
+      { status: 400, headers: cors },
+    );
+  }
+});

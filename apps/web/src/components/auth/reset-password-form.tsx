@@ -13,8 +13,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Input,
   Label,
+  PasswordInput,
   Separator,
 } from "@repo/design-system";
 
@@ -157,10 +157,9 @@ export function ResetPasswordForm({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="new-password">{tr("newPassword")}</Label>
-            <Input
+            <PasswordInput
               id="new-password"
               name="new-password"
-              type="password"
               placeholder={t("fields.passwordSignUpPlaceholder")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -171,10 +170,9 @@ export function ResetPasswordForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm-new-password">{t("fields.confirmPassword")}</Label>
-            <Input
+            <PasswordInput
               id="confirm-new-password"
               name="confirm-new-password"
-              type="password"
               placeholder={t("fields.confirmPasswordPlaceholder")}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}

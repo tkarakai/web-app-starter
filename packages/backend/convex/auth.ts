@@ -99,6 +99,28 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
   },
 );
 
+/** Build a TOTP issuer name that includes environment context.
+ *  - Production: "Web App Starter"
+ *  - Staging:    "Web App Starter (STAGING)"
+ *  - Dev:        "Web App Starter (DEV: branch-name)" */
+function getTotpIssuer(): string {
+  const base = "Web App Starter";
+  const isDev = process.env.DEV_SEED_ENABLED === "true";
+  const isLocalhost = siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1");
+
+  if (isDev || isLocalhost) {
+    const branch = process.env.GIT_BRANCH;
+    return branch ? `${base} (DEV: ${branch})` : `${base} (DEV)`;
+  }
+
+  const appEnv = process.env.APP_ENVIRONMENT;
+  if (appEnv && appEnv.toLowerCase() === "staging") {
+    return `${base} (STAGING)`;
+  }
+
+  return base;
+}
+
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
     baseURL: siteUrl,
@@ -163,6 +185,11 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       protectedAdminPlugin(ctx),
       admin(),
       twoFactor({
+        issuer: getTotpIssuer(),
+        totpOptions: {
+          period: 30,
+          digits: 6,
+        },
         otpOptions: {
           async sendOTP({ user, otp }) {
             await sendAuthEmail({

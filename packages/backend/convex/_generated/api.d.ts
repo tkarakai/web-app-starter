@@ -14,6 +14,7 @@ import type * as appSettings from "../appSettings.js";
 import type * as auth from "../auth.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as devSeed from "../devSeed.js";
+import type * as devTotp from "../devTotp.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as functions from "../functions.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   bootstrap: typeof bootstrap;
   devSeed: typeof devSeed;
+  devTotp: typeof devTotp;
   emailTemplates: typeof emailTemplates;
   files: typeof files;
   functions: typeof functions;

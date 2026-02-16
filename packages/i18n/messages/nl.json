@@ -58,6 +58,17 @@
       "passwordMismatch": "Wachtwoorden komen niet overeen",
       "generic": "Er is een fout opgetreden"
     },
+    "twoFactorVerify": {
+      "title": "Tweefactorauthenticatie",
+      "description": "Voer de 6-cijferige code van je authenticator-app in.",
+      "cta": "Verifi\u00ebren",
+      "invalidCode": "Ongeldige code. Probeer het opnieuw.",
+      "useBackupCode": "Gebruik een backupcode",
+      "backupCodeTitle": "Backupcode",
+      "backupCodeDescription": "Voer een van je backupcodes in om in te loggen.",
+      "backupCodePlaceholder": "Voer backupcode in",
+      "useAuthenticator": "Gebruik authenticator-app"
+    },
     "footer": "Beveiligde e-mail + wachtwoord",
     "working": "Bezig...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "Registratie is momenteel alleen op uitnodiging.",
       "signupBlockedDescription": "Meld u aan voor de wachtlijst op onze homepage om toegang aan te vragen.",
       "goToWaitlist": "Aanmelden voor de wachtlijst"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Wachtwoord herstellen",
+      "title": "Wachtwoord vergeten?",
+      "description": "Voer je e-mailadres in en we sturen je een link om je wachtwoord te herstellen.",
+      "cta": "Herstelkoppeling versturen",
+      "emailSent": "Controleer je e-mail",
+      "emailSentDescription": "Als er een account bestaat voor {email}, hebben we een link gestuurd om je wachtwoord te herstellen. Controleer je inbox en spammap.",
+      "backToSignIn": "Terug naar inloggen",
+      "pageHeading": "Herstel je wachtwoord. Ga weer aan de slag.",
+      "pageDescription": "Voer het e-mailadres in dat bij je account hoort en we sturen je een link om een nieuw wachtwoord aan te maken."
+    },
+    "resetPassword": {
+      "badge": "Wachtwoord herstellen",
+      "title": "Stel een nieuw wachtwoord in",
+      "description": "Kies een sterk wachtwoord voor je account.",
+      "newPassword": "Nieuw wachtwoord",
+      "cta": "Wachtwoord herstellen",
+      "invalidTitle": "Ongeldige herstelkoppeling",
+      "tokenExpired": "Deze herstelkoppeling is verlopen. Vraag een nieuwe aan.",
+      "tokenInvalid": "Deze herstelkoppeling is ongeldig of al gebruikt.",
+      "requestNewLink": "Nieuwe koppeling aanvragen",
+      "backToSignIn": "Terug naar inloggen",
+      "successTitle": "Wachtwoord bijgewerkt",
+      "successDescription": "Je wachtwoord is succesvol hersteld. Je kunt nu inloggen met je nieuwe wachtwoord.",
+      "signInNow": "Nu inloggen",
+      "pageHeading": "Bijna klaar. Kies een nieuw wachtwoord.",
+      "pageDescription": "Kies een sterk wachtwoord dat je nog niet eerder hebt gebruikt. Je nieuwe wachtwoord moet minimaal 8 tekens bevatten."
+    },
+    "verifyEmail": {
+      "badge": "E-mailverificatie",
+      "title": "Controleer je e-mail",
+      "description": "We hebben een verificatielink naar je e-mailadres gestuurd. Klik op de link om je account te verifiëren.",
+      "resend": "Verificatie-e-mail opnieuw versturen",
+      "resent": "Verificatie-e-mail verstuurd! Controleer je inbox.",
+      "backToSignIn": "Terug naar inloggen",
+      "pageHeading": "Nog één stap. Verifieer je e-mail.",
+      "pageDescription": "We hebben je een verificatielink gestuurd. Klik erop om je account te activeren en de app te gebruiken."
+    },
+    "forgotPasswordLink": "Wachtwoord vergeten?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Taken",
       "attachments": "Bijlagen"
+    },
+    "security": "Beveiliging",
+    "sessions": {
+      "title": "Actieve sessies",
+      "description": "Beheer je actieve sessies op alle apparaten. Je kunt elke sessie uitloggen die je niet herkent.",
+      "currentSession": "Dit apparaat",
+      "otherSessions": "Andere apparaten",
+      "current": "Huidig",
+      "lastActive": "Actief {time}",
+      "noOtherSessions": "Geen andere actieve sessies. Je bent alleen op dit apparaat ingelogd.",
+      "revokeAll": "Alle anderen uitloggen",
+      "revokeAllTitle": "Alle andere apparaten uitloggen?",
+      "revokeAllDescription": "Dit logt je uit op alle andere apparaten en browsers. Alleen je huidige sessie blijft actief.",
+      "revokeAllConfirm": "Alles uitloggen",
+      "revokeTitle": "Dit apparaat uitloggen?",
+      "revokeDescription": "Dit beëindigt de sessie voor {device}. Er moet opnieuw worden ingelogd om toegang te krijgen tot het account.",
+      "backToDashboard": "Terug naar dashboard"
+    },
+    "account": "Instellingen",
+    "profile": {
+      "title": "Profiel",
+      "description": "Beheer je profielgegevens en voorkeuren.",
+      "name": "Weergavenaam",
+      "namePlaceholder": "Je naam",
+      "email": "E-mail",
+      "emailReadonly": "Neem contact op met support om je e-mail te wijzigen.",
+      "avatarColor": "Avatarkleur",
+      "saved": "Profiel bijgewerkt.",
+      "language": "Taal",
+      "timezone": "Tijdzone",
+      "timezonePlaceholder": "Selecteer je tijdzone",
+      "timezoneSearch": "Tijdzones zoeken...",
+      "timezoneDetected": "Gedetecteerd",
+      "noTimezoneResults": "Geen tijdzone gevonden.",
+      "theme": "Thema"
+    },
+    "changePassword": {
+      "title": "Wachtwoord wijzigen",
+      "currentPassword": "Huidig wachtwoord",
+      "newPassword": "Nieuw wachtwoord",
+      "confirmPassword": "Bevestig nieuw wachtwoord",
+      "revokeOtherSessions": "Alle andere apparaten uitloggen",
+      "cta": "Wachtwoord bijwerken",
+      "success": "Wachtwoord succesvol bijgewerkt.",
+      "errorCurrentPassword": "Huidig wachtwoord is onjuist."
+    },
+    "twoFactor": {
+      "title": "Tweefactorauthenticatie",
+      "description": "Voeg een extra beveiligingslaag toe aan je account.",
+      "enabled": "2FA is ingeschakeld",
+      "disabled": "2FA is niet ingeschakeld",
+      "enable": "2FA inschakelen",
+      "disable": "2FA uitschakelen",
+      "enterPassword": "Voer je wachtwoord in om door te gaan.",
+      "scanQrCode": "Scan deze QR-code met je authenticator-app (bijv. Google Authenticator, Authy).",
+      "manualEntry": "Kun je niet scannen? Voer deze sleutel handmatig in",
+      "manualEntryDescription": "Open je authenticator-app, kies \"Account toevoegen\", selecteer vervolgens \"Instelsleutel invoeren\" en plak de onderstaande sleutel.",
+      "secretKey": "Geheime sleutel",
+      "copied": "Gekopieerd naar klembord",
+      "enterCode": "Voer de 6-cijferige code van je authenticator-app in om de instelling te verifiëren.",
+      "verify": "Verifiëren",
+      "backupCodes": "Backupcodes",
+      "backupCodesDescription": "Bewaar deze codes op een veilige plek. Elke code kan maar één keer worden gebruikt.",
+      "viewBackupCodes": "Backupcodes bekijken",
+      "regenerateBackupCodes": "Backupcodes opnieuw genereren",
+      "disableConfirm": "Weet je zeker dat je 2FA wilt uitschakelen?",
+      "regenerateConfirm": "Dit vervangt uw bestaande back-upcodes. Ongebruikte codes werken niet meer.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

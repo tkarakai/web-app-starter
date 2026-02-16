@@ -68,6 +68,7 @@ export {
 /* ─── Form ─── */
 export { Checkbox } from "./components/form/checkbox";
 export { Input, inputVariants, type InputProps } from "./components/form/input";
+export { PasswordInput, type PasswordInputProps } from "./components/form/password-input";
 export { Label } from "./components/form/label";
 export { RadioGroup, RadioGroupItem } from "./components/form/radio-group";
 export {
@@ -84,6 +85,13 @@ export {
 } from "./components/form/select";
 export { Switch } from "./components/form/switch";
 export { Textarea, textareaVariants, type TextareaProps } from "./components/form/textarea";
+export {
+  TimezoneSelector,
+  CURATED_TIMEZONES,
+  type TimezoneEntry,
+  type TimezoneGroup,
+  type TimezoneSelectorProps,
+} from "./components/form/timezone-selector";
 
 /* ─── Layout ─── */
 export {
@@ -152,7 +160,12 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from "./components/overlay/dropdown-menu";
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./components/overlay/popover";
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAnchor,
+} from "./components/overlay/popover";
 export {
   Sheet,
   SheetPortal,

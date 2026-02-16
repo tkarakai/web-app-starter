@@ -38,15 +38,19 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
   }, [user]);
 
   // Redirect to sign-in when the session is invalidated (e.g. signed out in another tab).
-  // Two signals: Convex real-time subscription (user becomes null) or Better Auth session.
+  // We rely on the Convex real-time subscription as the authoritative signal.
+  // A debounce prevents false redirects during transient session refreshes
+  // (e.g. password change, 2FA enable/disable) where the Convex query briefly
+  // returns null while the new session token propagates.
   React.useEffect(() => {
-    const convexLost = wasAuthenticated && user === null;
-    const sessionLost = !session.isPending && session.data === null;
+    if (!(wasAuthenticated && user === null)) return;
 
-    if (convexLost || sessionLost) {
+    const timeout = setTimeout(() => {
       router.replace("/sign-in");
-    }
-  }, [wasAuthenticated, user, session.isPending, session.data, router]);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [wasAuthenticated, user, router]);
 
   const authUser: AuthUser = {
     name: user?.name ?? session.data?.user?.name ?? undefined,

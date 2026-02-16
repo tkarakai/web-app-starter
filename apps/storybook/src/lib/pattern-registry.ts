@@ -1,4 +1,4 @@
-export type PatternCategory = "Navigation" | "Theme";
+export type PatternCategory = "Navigation" | "Theme" | "Form";
 
 export interface PatternEntry {
   /** Display name shown in sidebar and headings */
@@ -26,10 +26,18 @@ export const patternRegistry: PatternEntry[] = [
     category: "Theme",
     description: "Segmented control for switching between light, system, and dark themes.",
   },
+  // Form
+  {
+    name: "Timezone Selector",
+    slug: "timezone-selector",
+    category: "Form",
+    description:
+      "Searchable timezone picker with auto-detection, curated timezones grouped by region, and live UTC offsets.",
+  },
 ];
 
 /** Pattern categories in display order */
-export const patternCategoryOrder: PatternCategory[] = ["Navigation", "Theme"];
+export const patternCategoryOrder: PatternCategory[] = ["Navigation", "Theme", "Form"];
 
 /** Convert a pattern category name to a URL-friendly slug */
 export function patternCategoryToSlug(category: PatternCategory): string {

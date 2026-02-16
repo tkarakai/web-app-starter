@@ -58,6 +58,17 @@
       "passwordMismatch": "Hasła nie są zgodne",
       "generic": "Wystąpił błąd"
     },
+    "twoFactorVerify": {
+      "title": "Uwierzytelnianie dwusk\u0142adnikowe",
+      "description": "Wprowad\u017a 6-cyfrowy kod z aplikacji uwierzytelniaj\u0105cej.",
+      "cta": "Zweryfikuj",
+      "invalidCode": "Nieprawid\u0142owy kod. Spr\u00f3buj ponownie.",
+      "useBackupCode": "U\u017cyj kodu zapasowego",
+      "backupCodeTitle": "Kod zapasowy",
+      "backupCodeDescription": "Wprowad\u017a jeden ze swoich kod\u00f3w zapasowych, aby si\u0119 zalogowa\u0107.",
+      "backupCodePlaceholder": "Wprowad\u017a kod zapasowy",
+      "useAuthenticator": "U\u017cyj aplikacji uwierzytelniaj\u0105cej"
+    },
     "footer": "Bezpieczny e-mail + hasło",
     "working": "Przetwarzanie...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "Rejestracja jest obecnie możliwa tylko na zaproszenie.",
       "signupBlockedDescription": "Dołącz do listy oczekujących na naszej stronie głównej, aby poprosić o dostęp.",
       "goToWaitlist": "Dołącz do listy oczekujących"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Odzyskiwanie hasła",
+      "title": "Nie pamiętasz hasła?",
+      "description": "Wpisz swój e-mail, a wyślemy Ci link do zresetowania hasła.",
+      "cta": "Wyślij link do resetowania",
+      "emailSent": "Sprawdź swoją pocztę",
+      "emailSentDescription": "Jeśli konto dla {email} istnieje, wysłaliśmy link do resetowania hasła. Sprawdź skrzynkę odbiorczą i folder spam.",
+      "backToSignIn": "Wróć do logowania",
+      "pageHeading": "Zresetuj hasło. Wróć na właściwy tor.",
+      "pageDescription": "Wpisz adres e-mail powiązany z Twoim kontem, a wyślemy Ci link do utworzenia nowego hasła."
+    },
+    "resetPassword": {
+      "badge": "Odzyskiwanie hasła",
+      "title": "Ustaw nowe hasło",
+      "description": "Wybierz silne hasło dla swojego konta.",
+      "newPassword": "Nowe hasło",
+      "cta": "Zresetuj hasło",
+      "invalidTitle": "Nieprawidłowy link resetowania",
+      "tokenExpired": "Ten link do resetowania hasła wygasł. Poproś o nowy.",
+      "tokenInvalid": "Ten link do resetowania hasła jest nieprawidłowy lub został już użyty.",
+      "requestNewLink": "Poproś o nowy link",
+      "backToSignIn": "Wróć do logowania",
+      "successTitle": "Hasło zaktualizowane",
+      "successDescription": "Twoje hasło zostało pomyślnie zresetowane. Możesz teraz zalogować się nowym hasłem.",
+      "signInNow": "Zaloguj się teraz",
+      "pageHeading": "Prawie gotowe. Wybierz nowe hasło.",
+      "pageDescription": "Wybierz silne hasło, którego wcześniej nie używałeś. Nowe hasło musi mieć co najmniej 8 znaków."
+    },
+    "verifyEmail": {
+      "badge": "Weryfikacja e-mail",
+      "title": "Sprawdź swoją pocztę",
+      "description": "Wysłaliśmy link weryfikacyjny na Twój adres e-mail. Kliknij link, aby zweryfikować swoje konto.",
+      "resend": "Wyślij ponownie e-mail weryfikacyjny",
+      "resent": "E-mail weryfikacyjny wysłany! Sprawdź skrzynkę odbiorczą.",
+      "backToSignIn": "Wróć do logowania",
+      "pageHeading": "Ostatni krok. Zweryfikuj swój e-mail.",
+      "pageDescription": "Wysłaliśmy Ci link weryfikacyjny. Kliknij go, aby aktywować konto i zacząć korzystać z aplikacji."
+    },
+    "forgotPasswordLink": "Nie pamiętasz hasła?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Zadania",
       "attachments": "Załączniki"
+    },
+    "security": "Bezpieczeństwo",
+    "sessions": {
+      "title": "Aktywne sesje",
+      "description": "Zarządzaj swoimi aktywnymi sesjami na wszystkich urządzeniach. Możesz wylogować każdą sesję, której nie rozpoznajesz.",
+      "currentSession": "To urządzenie",
+      "otherSessions": "Inne urządzenia",
+      "current": "Bieżąca",
+      "lastActive": "Aktywna {time}",
+      "noOtherSessions": "Brak innych aktywnych sesji. Jesteś zalogowany tylko na tym urządzeniu.",
+      "revokeAll": "Wyloguj wszystkie inne",
+      "revokeAllTitle": "Wylogować wszystkie inne urządzenia?",
+      "revokeAllDescription": "Zostaniesz wylogowany ze wszystkich innych urządzeń i przeglądarek. Tylko Twoja bieżąca sesja pozostanie aktywna.",
+      "revokeAllConfirm": "Wyloguj wszystkie",
+      "revokeTitle": "Wylogować to urządzenie?",
+      "revokeDescription": "To zakończy sesję dla {device}. Ponowne zalogowanie będzie wymagane, aby uzyskać dostęp do konta.",
+      "backToDashboard": "Wróć do panelu"
+    },
+    "account": "Ustawienia",
+    "profile": {
+      "title": "Profil",
+      "description": "Zarządzaj informacjami o profilu i preferencjami.",
+      "name": "Wyświetlana nazwa",
+      "namePlaceholder": "Twoje imię",
+      "email": "E-mail",
+      "emailReadonly": "Skontaktuj się z pomocą techniczną, aby zmienić adres e-mail.",
+      "avatarColor": "Kolor awatara",
+      "saved": "Profil zaktualizowany.",
+      "language": "Język",
+      "timezone": "Strefa czasowa",
+      "timezonePlaceholder": "Wybierz strefę czasową",
+      "timezoneSearch": "Szukaj stref czasowych...",
+      "timezoneDetected": "Wykryto",
+      "noTimezoneResults": "Nie znaleziono strefy czasowej.",
+      "theme": "Motyw"
+    },
+    "changePassword": {
+      "title": "Zmień hasło",
+      "currentPassword": "Bieżące hasło",
+      "newPassword": "Nowe hasło",
+      "confirmPassword": "Potwierdź nowe hasło",
+      "revokeOtherSessions": "Wyloguj wszystkie inne urządzenia",
+      "cta": "Zaktualizuj hasło",
+      "success": "Hasło zostało pomyślnie zaktualizowane.",
+      "errorCurrentPassword": "Bieżące hasło jest nieprawidłowe."
+    },
+    "twoFactor": {
+      "title": "Uwierzytelnianie dwuskładnikowe",
+      "description": "Dodaj dodatkową warstwę zabezpieczeń do swojego konta.",
+      "enabled": "2FA jest włączone",
+      "disabled": "2FA nie jest włączone",
+      "enable": "Włącz 2FA",
+      "disable": "Wyłącz 2FA",
+      "enterPassword": "Wprowadź hasło, aby kontynuować.",
+      "scanQrCode": "Zeskanuj ten kod QR za pomocą aplikacji uwierzytelniającej (np. Google Authenticator, Authy).",
+      "manualEntry": "Nie możesz zeskanować? Wprowadź ten klucz ręcznie",
+      "manualEntryDescription": "Otwórz aplikację uwierzytelniającą, wybierz \u201eDodaj konto\u201d, następnie wybierz \u201eWprowadź klucz konfiguracji\u201d i wklej poniższy klucz.",
+      "secretKey": "Klucz tajny",
+      "copied": "Skopiowano do schowka",
+      "enterCode": "Wprowadź 6-cyfrowy kod z aplikacji uwierzytelniającej, aby zweryfikować konfigurację.",
+      "verify": "Zweryfikuj",
+      "backupCodes": "Kody zapasowe",
+      "backupCodesDescription": "Zapisz te kody w bezpiecznym miejscu. Każdy kod może być użyty tylko raz.",
+      "viewBackupCodes": "Poka\u017c kody zapasowe",
+      "regenerateBackupCodes": "Wygeneruj ponownie kody zapasowe",
+      "disableConfirm": "Czy na pewno chcesz wy\u0142\u0105czy\u0107 2FA?",
+      "regenerateConfirm": "Spowoduje to zast\u0105pienie istniej\u0105cych kod\u00f3w zapasowych. Niewykorzystane kody przestan\u0105 dzia\u0142a\u0107.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

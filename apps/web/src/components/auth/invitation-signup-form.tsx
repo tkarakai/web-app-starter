@@ -19,6 +19,7 @@ import {
   CardTitle,
   Input,
   Label,
+  PasswordInput,
   Skeleton,
 } from "@repo/design-system";
 
@@ -179,9 +180,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-password">{t("fields.password")}</Label>
-            <Input
+            <PasswordInput
               id="invite-password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("fields.passwordSignUpPlaceholder")}
@@ -193,9 +193,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
             <Label htmlFor="invite-confirm-password">
               {t("fields.confirmPassword")}
             </Label>
-            <Input
+            <PasswordInput
               id="invite-confirm-password"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder={t("fields.confirmPasswordPlaceholder")}

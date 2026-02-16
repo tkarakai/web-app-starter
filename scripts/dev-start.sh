@@ -568,6 +568,11 @@ if [ "$NEED_CONVEX" = true ]; then
     if ! (cd "$CONVEX_DIR" && bunx convex env set DEV_SEED_ENABLED true 2>&1); then
         echo -e "  ${YELLOW}⚠${NC} Could not set DEV_SEED_ENABLED (non-fatal)"
     fi
+    # Sync current git branch so TOTP issuer includes it in dev
+    CURRENT_GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    if [ -n "$CURRENT_GIT_BRANCH" ]; then
+        (cd "$CONVEX_DIR" && bunx convex env set GIT_BRANCH "$CURRENT_GIT_BRANCH" > /dev/null 2>&1) || true
+    fi
     SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run devSeed:seed 2>&1) || true
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
         echo -e "  ${GREEN}✔${NC} Dev users already exist"

@@ -10,6 +10,7 @@ export default defineSchema({
     locale: v.optional(v.string()),
     theme: v.optional(v.string()),
     timezone: v.optional(v.string()),
+    avatarColor: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_owner", ["ownerId"]),

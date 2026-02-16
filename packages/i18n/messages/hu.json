@@ -58,6 +58,17 @@
       "passwordMismatch": "A jelszavak nem egyeznek",
       "generic": "Hiba történt"
     },
+    "twoFactorVerify": {
+      "title": "K\u00e9tl\u00e9pcs\u0151s hiteles\u00edt\u00e9s",
+      "description": "Add meg a 6 jegy\u0171 k\u00f3dot a hiteles\u00edt\u0151 alkalmaz\u00e1sodb\u00f3l.",
+      "cta": "Ellen\u0151rz\u00e9s",
+      "invalidCode": "\u00c9rv\u00e9nytelen k\u00f3d. K\u00e9rlek, pr\u00f3b\u00e1ld \u00fajra.",
+      "useBackupCode": "Tartal\u00e9k k\u00f3d haszn\u00e1lata",
+      "backupCodeTitle": "Tartal\u00e9k k\u00f3d",
+      "backupCodeDescription": "Add meg az egyik tartal\u00e9k k\u00f3dodat a bejelentkez\u00e9shez.",
+      "backupCodePlaceholder": "Tartal\u00e9k k\u00f3d megad\u00e1sa",
+      "useAuthenticator": "Hiteles\u00edt\u0151 alkalmaz\u00e1s haszn\u00e1lata"
+    },
     "footer": "Biztonságos e-mail + jelszó",
     "working": "Feldolgozás...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "A regisztráció jelenleg csak meghívóval lehetséges.",
       "signupBlockedDescription": "Iratkozzon fel a várólistára a főoldalunkon a hozzáférés igényléséhez.",
       "goToWaitlist": "Csatlakozás a várólistához"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Jelszó-visszaállítás",
+      "title": "Elfelejtetted a jelszavadat?",
+      "description": "Add meg az e-mail-címedet, és küldünk egy linket a jelszó visszaállításához.",
+      "cta": "Link küldése",
+      "emailSent": "Ellenőrizd az e-mailjeidet",
+      "emailSentDescription": "Ha létezik fiók a(z) {email} címhez, küldtünk egy jelszó-visszaállító linket. Ellenőrizd a beérkezett és a spam mappát.",
+      "backToSignIn": "Vissza a bejelentkezéshez",
+      "pageHeading": "Állítsd vissza a jelszavadat. Térj vissza a nyomvonalra.",
+      "pageDescription": "Add meg a fiókodhoz tartozó e-mail-címet, és küldünk egy linket az új jelszó létrehozásához."
+    },
+    "resetPassword": {
+      "badge": "Jelszó-visszaállítás",
+      "title": "Új jelszó beállítása",
+      "description": "Válassz egy erős jelszót a fiókodhoz.",
+      "newPassword": "Új jelszó",
+      "cta": "Jelszó visszaállítása",
+      "invalidTitle": "Érvénytelen visszaállító link",
+      "tokenExpired": "Ez a jelszó-visszaállító link lejárt. Kérj egy újat.",
+      "tokenInvalid": "Ez a jelszó-visszaállító link érvénytelen vagy már felhasználták.",
+      "requestNewLink": "Új link kérése",
+      "backToSignIn": "Vissza a bejelentkezéshez",
+      "successTitle": "Jelszó frissítve",
+      "successDescription": "A jelszavad sikeresen visszaállítva. Most már bejelentkezhetsz az új jelszavaddal.",
+      "signInNow": "Bejelentkezés most",
+      "pageHeading": "Majdnem kész. Válassz új jelszót.",
+      "pageDescription": "Válassz egy erős jelszót, amelyet korábban nem használtál. Az új jelszónak legalább 8 karakterből kell állnia."
+    },
+    "verifyEmail": {
+      "badge": "E-mail-megerősítés",
+      "title": "Ellenőrizd az e-mailjeidet",
+      "description": "Megerősítő linket küldtünk az e-mail-címedre. Kattints a linkre a fiókod megerősítéséhez.",
+      "resend": "Megerősítő e-mail újraküldése",
+      "resent": "Megerősítő e-mail elküldve! Ellenőrizd a bejövő üzeneteidet.",
+      "backToSignIn": "Vissza a bejelentkezéshez",
+      "pageHeading": "Utolsó lépés. Erősítsd meg az e-mail-címedet.",
+      "pageDescription": "Küldtünk egy megerősítő linket. Kattints rá a fiókod aktiválásához és az alkalmazás használatának megkezdéséhez."
+    },
+    "forgotPasswordLink": "Elfelejtetted a jelszavadat?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Feladatok",
       "attachments": "Mellékletek"
+    },
+    "security": "Biztonság",
+    "sessions": {
+      "title": "Aktív munkamenetek",
+      "description": "Kezeld az aktív munkameneteidet az összes eszközön. Kijelentkezhetsz bármely munkamenetből, amelyet nem ismersz fel.",
+      "currentSession": "Ez az eszköz",
+      "otherSessions": "Egyéb eszközök",
+      "current": "Jelenlegi",
+      "lastActive": "Aktív {time}",
+      "noOtherSessions": "Nincs más aktív munkamenet. Csak ezen az eszközön vagy bejelentkezve.",
+      "revokeAll": "Összes többi kijelentkeztetése",
+      "revokeAllTitle": "Kijelentkezés az összes többi eszközről?",
+      "revokeAllDescription": "Kijelentkezteted magadat az összes többi eszközről és böngészőből. Csak a jelenlegi munkameneted marad aktív.",
+      "revokeAllConfirm": "Összes kijelentkeztetése",
+      "revokeTitle": "Kijelentkezés erről az eszközről?",
+      "revokeDescription": "Ez befejezi a munkamenetet a(z) {device} eszközön. Újra be kell jelentkezni a fiókhoz való hozzáféréshez.",
+      "backToDashboard": "Vissza az irányítópulthoz"
+    },
+    "account": "Beállítások",
+    "profile": {
+      "title": "Profil",
+      "description": "Kezeld a profiladataidat és beállításaidat.",
+      "name": "Megjelenítési név",
+      "namePlaceholder": "A neved",
+      "email": "E-mail",
+      "emailReadonly": "Az e-mail módosításához lépj kapcsolatba az ügyfélszolgálattal.",
+      "avatarColor": "Avatar színe",
+      "saved": "Profil frissítve.",
+      "language": "Nyelv",
+      "timezone": "Időzóna",
+      "timezonePlaceholder": "Válaszd ki az időzónádat",
+      "timezoneSearch": "Időzónák keresése...",
+      "timezoneDetected": "Felismert",
+      "noTimezoneResults": "Nem található időzóna.",
+      "theme": "Téma"
+    },
+    "changePassword": {
+      "title": "Jelszó módosítása",
+      "currentPassword": "Jelenlegi jelszó",
+      "newPassword": "Új jelszó",
+      "confirmPassword": "Új jelszó megerősítése",
+      "revokeOtherSessions": "Kijelentkezés az összes többi eszközről",
+      "cta": "Jelszó frissítése",
+      "success": "A jelszó sikeresen frissítve.",
+      "errorCurrentPassword": "A jelenlegi jelszó helytelen."
+    },
+    "twoFactor": {
+      "title": "Kétlépcsős hitelesítés",
+      "description": "Adj hozzá egy extra biztonsági réteget a fiókodhoz.",
+      "enabled": "A 2FA be van kapcsolva",
+      "disabled": "A 2FA nincs bekapcsolva",
+      "enable": "2FA bekapcsolása",
+      "disable": "2FA kikapcsolása",
+      "enterPassword": "Add meg a jelszavadat a folytatáshoz.",
+      "scanQrCode": "Olvasd be ezt a QR-kódot a hitelesítő alkalmazásoddal (pl. Google Authenticator, Authy).",
+      "manualEntry": "Nem tudod beolvasni? Írd be ezt a kulcsot kézzel",
+      "manualEntryDescription": "Nyisd meg a hitelesítő alkalmazásodat, válaszd a \u201eFiók hozzáadása\u201d lehetőséget, majd válaszd a \u201eBeállítási kulcs megadása\u201d opciót, és illeszd be az alábbi kulcsot.",
+      "secretKey": "Titkos kulcs",
+      "copied": "Vágólapra másolva",
+      "enterCode": "Add meg a 6 jegyű kódot a hitelesítő alkalmazásodból a beállítás ellenőrzéséhez.",
+      "verify": "Ellenőrzés",
+      "backupCodes": "Tartalék kódok",
+      "backupCodesDescription": "Mentsd el ezeket a kódokat biztonságos helyre. Minden kód csak egyszer használható.",
+      "viewBackupCodes": "Tartal\u00e9k k\u00f3dok megtekint\u00e9se",
+      "regenerateBackupCodes": "Tartalék kódok újragenerálása",
+      "disableConfirm": "Biztosan ki szeretn\u00e9d kapcsolni a 2FA-t?",
+      "regenerateConfirm": "Ez lecser\u00e9li a megl\u00e9v\u0151 biztons\u00e1gi k\u00f3djaidat. A fel nem haszn\u00e1lt k\u00f3dok t\u00f6bb\u00e9 nem fognak m\u0171k\u00f6dni.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {
