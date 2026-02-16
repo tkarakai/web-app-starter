@@ -3,6 +3,11 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { authComponent, createAuth } from "./auth";
+import {
+  listSessionsHandler,
+  revokeSessionHandler,
+  revokeOtherSessionsHandler,
+} from "./sessions";
 
 const http = httpRouter();
 
@@ -131,6 +136,70 @@ http.route({
   method: "OPTIONS",
   handler: httpAction(async (_ctx, request) => {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Session management endpoints (authenticated)
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/sessions",
+  method: "GET",
+  handler: listSessionsHandler,
+});
+
+http.route({
+  path: "/api/sessions",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/sessions/revoke",
+  method: "POST",
+  handler: revokeSessionHandler,
+});
+
+http.route({
+  path: "/api/sessions/revoke",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/sessions/revoke-others",
+  method: "POST",
+  handler: revokeOtherSessionsHandler,
+});
+
+http.route({
+  path: "/api/sessions/revoke-others",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
   }),
 });
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { authClient } from "@repo/auth/client";
+import { authClient, formatAuthError } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
 import {
@@ -24,15 +24,6 @@ const LANDING_URL =
   process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
 
 type AuthMode = "sign-in" | "sign-up";
-
-function formatAuthError(error: { status?: number; message?: string }): string {
-  if (error.status === 429) {
-    return "Too many attempts. Please wait a moment before trying again.";
-  }
-  // Return a generic message to prevent email enumeration via
-  // server error messages like "User not found" or "User already exists".
-  return "Invalid email or password";
-}
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
@@ -69,7 +60,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         });
 
         if (result.error) {
-          setError(formatAuthError(result.error));
+          setError(formatAuthError(result.error, "Invalid email or password"));
         } else {
           broadcastAuth();
           await redirectWithUserLocale(router);
@@ -85,7 +76,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (result.error) {
-        setError(formatAuthError(result.error));
+        setError(formatAuthError(result.error, "Invalid email or password"));
       } else {
         broadcastAuth();
         await redirectWithUserLocale(router);
@@ -135,7 +126,18 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">{t("fields.password")}</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">{t("fields.password")}</Label>
+              {!isSignUp ? (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                  onClick={() => router.push("/forgot-password")}
+                >
+                  {t("forgotPasswordLink")}
+                </button>
+              ) : null}
+            </div>
             <Input
               id="password"
               name="password"

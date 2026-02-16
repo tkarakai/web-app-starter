@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import { authClient } from "@repo/auth/client";
+import { authClient, formatAuthError } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import {
   Button,
@@ -37,7 +37,7 @@ export function AdminSignInForm() {
       });
 
       if (result.error) {
-        setError(result.error.message ?? "An error occurred");
+        setError(formatAuthError(result.error, "Invalid email or password"));
       } else {
         broadcastAuth();
         router.push("/dashboard");

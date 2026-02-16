@@ -27,7 +27,7 @@ const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
 const PROTECTED_PREFIXES = ["/dashboard"];
 
 /** Auth routes that authenticated users should skip. */
-const AUTH_ROUTES = ["/sign-in", "/sign-up", "/signup-with-invitation"];
+const AUTH_ROUTES = ["/sign-in", "/sign-up", "/signup-with-invitation", "/forgot-password", "/reset-password", "/verify-email"];
 
 /**
  * Extract the pathname without the locale prefix so auth rules

@@ -13,12 +13,14 @@ const VALID_KEYS = [
   "waitlistEnabled",
   "invitationTokenExpiryDays",
   "invitationEmailTemplate",
+  "emailMfaRequired",
 ] as const;
 
 /** Default values returned when a key has never been set. */
 const DEFAULTS: Record<string, unknown> = {
   waitlistEnabled: true,
   invitationTokenExpiryDays: 7,
+  emailMfaRequired: false,
 };
 
 function getDefault(key: string): unknown {
@@ -41,6 +43,12 @@ function validateValue(key: string, value: string): void {
     if (Number.isNaN(num) || num < 1 || num > 365) {
       throw new Error(
         "INVALID_VALUE: invitationTokenExpiryDays must be an integer between 1 and 365"
+      );
+    }
+  } else if (key === "emailMfaRequired") {
+    if (value !== "true" && value !== "false") {
+      throw new Error(
+        "INVALID_VALUE: emailMfaRequired must be 'true' or 'false'"
       );
     }
   } else if (key === "invitationEmailTemplate") {

@@ -1,5 +1,10 @@
 /* ─── Utilities ─── */
 export { cn } from "./lib/utils";
+export {
+  parseUserAgent,
+  type ParsedUserAgent,
+  type DeviceType,
+} from "./lib/parse-user-agent";
 
 /* ─── Hooks ─── */
 export { useIsMobile } from "./hooks/use-mobile";

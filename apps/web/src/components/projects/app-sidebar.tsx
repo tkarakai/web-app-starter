@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Plus } from "lucide-react";
+import { ChevronRight, LogOut, Plus, Shield } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
@@ -218,6 +218,11 @@ export function AppSidebar({
                 <DropdownMenuContent side="top" align="start" className="w-56">
                   <ThemeToggle className="my-1 w-full" labels={themeLabels} />
                   <LocaleSwitcher variant="submenu" />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings/sessions")}>
+                    <Shield className="me-2 h-4 w-4" />
+                    {td("security")}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                     <LogOut className="me-2 h-4 w-4" />

@@ -3,13 +3,14 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { admin } from "better-auth/plugins";
+import { admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
+import { sendAuthEmail } from "./sendAuthEmail";
 
 /** Parse an env var as a positive integer, falling back to a safe default. */
 function positiveInt(envVar: string | undefined, defaultValue: number): number {
@@ -104,13 +105,25 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      // TODO [SECURITY]: Set requireEmailVerification: true once an email provider
-      // (Resend, SendGrid, etc.) is configured with a sendVerificationEmail handler.
-      // Without email verification, an attacker can register with an admin's email
-      // and get auto-promoted to admin via the databaseHook below. The admin email
-      // list is protected (admin-only query) and sign-up is rate-limited (5/60s),
-      // which limits the blast radius, but email verification is the proper fix.
-      requireEmailVerification: false,
+      requireEmailVerification: true,
+      sendResetPassword: async ({ user, url }) => {
+        await sendAuthEmail({
+          to: user.email,
+          type: "reset-password",
+          urlOrCode: url,
+        });
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendAuthEmail({
+          to: user.email,
+          type: "verification",
+          urlOrCode: url,
+        });
+      },
     },
     databaseHooks: {
       user: {
@@ -149,6 +162,35 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       multiOriginPlugin(),
       protectedAdminPlugin(ctx),
       admin(),
+      twoFactor({
+        otpOptions: {
+          async sendOTP({ user, otp }) {
+            await sendAuthEmail({
+              to: user.email,
+              type: "email-otp",
+              urlOrCode: otp,
+            });
+          },
+        },
+      }),
+      emailOTP({
+        sendVerificationOTP: async ({ email, otp }) => {
+          await sendAuthEmail({
+            to: email,
+            type: "email-otp",
+            urlOrCode: otp,
+          });
+        },
+      }),
+      magicLink({
+        sendMagicLink: async ({ email, url }) => {
+          await sendAuthEmail({
+            to: email,
+            type: "magic-link",
+            urlOrCode: url,
+          });
+        },
+      }),
       convex({ authConfig }),
     ],
     rateLimit: {
@@ -164,6 +206,26 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         "/sign-up/email": {
           window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_WINDOW, 60),
           max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX, 5),
+        },
+        "/request-password-reset": {
+          window: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_WINDOW, 60),
+          max: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_MAX, 3),
+        },
+        "/reset-password": {
+          window: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_WINDOW, 60),
+          max: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_MAX, 5),
+        },
+        "/send-verification-email": {
+          window: positiveInt(process.env.AUTH_RATE_LIMIT_VERIFY_WINDOW, 60),
+          max: positiveInt(process.env.AUTH_RATE_LIMIT_VERIFY_MAX, 3),
+        },
+        "/email-otp/send-verification-otp": {
+          window: 60,
+          max: 3,
+        },
+        "/magic-link/send-magic-link": {
+          window: 60,
+          max: 3,
         },
         // Session checks must not be rate limited — real-time polling depends on them.
         "/get-session": false,

@@ -116,7 +116,13 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       if (result.error) {
         // Release claim on signup failure
         await releaseClaim({ token });
-        setError(result.error.message ?? t("errors.generic"));
+        // Use generic message to avoid leaking server error details.
+        // Rate limit errors get a specific message.
+        setError(
+          result.error.status === 429
+            ? t("errors.rateLimited")
+            : t("errors.generic"),
+        );
         return;
       }
 
@@ -125,14 +131,15 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
       broadcastAuth();
       await redirectWithUserLocale(router);
-    } catch (err) {
+    } catch {
       // Release claim on any error
       try {
         await releaseClaim({ token });
       } catch {
         // Ignore release errors
       }
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      // Use generic message — don't leak internal error details to the client.
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }
