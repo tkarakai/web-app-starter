@@ -55,6 +55,7 @@ export function WaitlistFilterBar({
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="waiting">Waiting</SelectItem>
             <SelectItem value="invited">Invited</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
             <SelectItem value="claimed">Claimed</SelectItem>
           </SelectContent>
         </Select>

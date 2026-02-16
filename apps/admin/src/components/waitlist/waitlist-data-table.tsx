@@ -69,8 +69,12 @@ export function WaitlistDataTable() {
     let entries = allEntries;
 
     // Status filter
-    if (statusFilter !== "all") {
-      entries = entries.filter((e) => e.status === statusFilter);
+    if (statusFilter === "expired") {
+      entries = entries.filter((e) => e.invitationExpired);
+    } else if (statusFilter !== "all") {
+      entries = entries.filter(
+        (e) => e.status === statusFilter && !e.invitationExpired
+      );
     }
 
     // Search filter
@@ -181,10 +185,10 @@ export function WaitlistDataTable() {
     async (entry: WaitlistEntry) => {
       if (!batchAction) return;
       if (batchAction.action === "invite") {
-        if (entry.status !== "waiting") return;
+        if (entry.status !== "waiting" && !entry.invitationExpired) return;
         await inviteMutation({ entryId: entry._id });
       } else if (batchAction.action === "uninvite") {
-        if (entry.status !== "invited") return;
+        if (entry.status !== "invited" || entry.invitationExpired) return;
         await uninviteMutation({ entryId: entry._id });
       } else if (batchAction.action === "delete") {
         if (entry.status === "claimed") return;
@@ -222,11 +226,13 @@ export function WaitlistDataTable() {
     (action: WaitlistAction, entries: WaitlistEntry[]): string => {
       const count = entries.length;
       if (action === "invite") {
-        const applicable = entries.filter((e) => e.status === "waiting").length;
+        const applicable = entries.filter(
+          (e) => e.status === "waiting" || e.invitationExpired
+        ).length;
         if (applicable === 0)
-          return "None of the selected entries can be invited (not in waiting status).";
+          return "None of the selected entries can be invited.";
         if (applicable < count)
-          return `${applicable} of ${count} selected entries will be invited (${count - applicable} not in waiting status).`;
+          return `${applicable} of ${count} selected entries will be invited (${count - applicable} not eligible).`;
         return `Send invitations to ${count} selected entries?`;
       }
       if (action === "delete")
@@ -239,9 +245,13 @@ export function WaitlistDataTable() {
   const batchApplicableEntries = React.useMemo(() => {
     if (!batchAction) return [];
     if (batchAction.action === "invite")
-      return batchAction.entries.filter((e) => e.status === "waiting");
+      return batchAction.entries.filter(
+        (e) => e.status === "waiting" || e.invitationExpired
+      );
     if (batchAction.action === "uninvite")
-      return batchAction.entries.filter((e) => e.status === "invited");
+      return batchAction.entries.filter(
+        (e) => e.status === "invited" && !e.invitationExpired
+      );
     if (batchAction.action === "delete")
       return batchAction.entries.filter((e) => e.status !== "claimed");
     return batchAction.entries;
