@@ -176,6 +176,14 @@ extract_dashboard_url() {
     grep -o 'http://127\.0\.0\.1:[0-9]*/?d=[^ ]*' "$log_file" | head -1
 }
 
+# Return the first startup-fatal line emitted by Convex, if any.
+convex_startup_failure_line() {
+    local log_file="$1"
+    # Convex sometimes writes carriage-return-updated lines; normalize first.
+    # Prefer ASCII error markers so matching is robust even in non-UTF locales.
+    tr -d '\r' < "$log_file" 2>/dev/null | grep -a -E -i -m1 'Schema validation failed|SchemaDefinitionError|TypeScript typecheck.*failed|Collecting TypeScript errors|error TS[0-9]{4}|Unable to start push to|Error fetching POST|\\[ERROR\\]' || true
+}
+
 # Get ports from Convex config
 get_convex_ports() {
     local deployment_name="$1"
@@ -335,6 +343,34 @@ kill_orphans() {
     done
 }
 
+# Stop a child process without risking an unbounded wait.
+terminate_pid_with_timeout() {
+    local pid="$1"
+    local grace_seconds="${2:-3}"
+    local waited=0
+
+    if [ -z "$pid" ]; then
+        return
+    fi
+
+    if ! kill -0 "$pid" 2>/dev/null; then
+        wait "$pid" 2>/dev/null || true
+        return
+    fi
+
+    kill "$pid" 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null && [ $waited -lt $grace_seconds ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+
+    wait "$pid" 2>/dev/null || true
+}
+
 ORPHAN_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
 ORPHAN_NEXT=$(pgrep -f "next dev" 2>/dev/null | while read pid; do
     # Only match Next.js processes rooted in this project
@@ -424,7 +460,7 @@ if [ "$NEED_CONVEX" = true ]; then
     fi
     echo "convex:$CONVEX_PID" > "$PID_FILE"
 
-    MAX_WAIT=60
+    MAX_WAIT=30
     WAITED=0
     CONVEX_READY=false
 
@@ -433,7 +469,10 @@ if [ "$NEED_CONVEX" = true ]; then
         WAITED=$((WAITED + 1))
 
         if ! kill -0 $CONVEX_PID 2>/dev/null; then
-            kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+                kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+                wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            fi
             printf "\n"
             echo -e "${RED}✖ Convex process exited${NC}"
             echo -e "${RED}  Log output:${NC}"
@@ -447,6 +486,24 @@ if [ "$NEED_CONVEX" = true ]; then
         if grep -q "Convex functions ready" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
             CONVEX_READY=true
             break
+        fi
+
+        CONVEX_FAILURE_LINE=$(convex_startup_failure_line "$PROJECT_DIR/.convex-dev.log")
+        if [ -n "$CONVEX_FAILURE_LINE" ]; then
+            if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+                kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+                wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            fi
+            printf "\n"
+            echo -e "${RED}✖ Convex failed during startup${NC}"
+            echo -e "  ${RED}Detected:${NC} $CONVEX_FAILURE_LINE"
+            echo -e "${RED}  Log output:${NC}"
+            cat "$PROJECT_DIR/.convex-dev.log"
+            echo ""
+            echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
+            terminate_pid_with_timeout "$CONVEX_PID" 3
+            rm -f "$PID_FILE"
+            exit 1
         fi
 
         if [ "$NON_INTERACTIVE" = true ] && [ $((WAITED % 5)) -eq 0 ]; then
@@ -463,8 +520,13 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ "$CONVEX_READY" = false ]; then
         echo -e "${RED}✖ Timeout waiting for Convex to start${NC}"
 
-        # Check if it got stuck on bundling (esbuild issue)
-        if grep -q "Preparing Convex functions" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
+        # If Convex already emitted a fatal startup error, show that instead of
+        # the generic bundling-timeout hint.
+        CONVEX_FAILURE_LINE=$(convex_startup_failure_line "$PROJECT_DIR/.convex-dev.log")
+        if [ -n "$CONVEX_FAILURE_LINE" ]; then
+            echo -e "  ${RED}Detected:${NC} $CONVEX_FAILURE_LINE"
+        # Otherwise check if it got stuck on bundling (esbuild issue).
+        elif grep -q "Preparing Convex functions" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
             ESBUILD_STATUS=$(check_esbuild)
             if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
                 echo ""
@@ -478,8 +540,11 @@ if [ "$NEED_CONVEX" = true ]; then
         cat "$PROJECT_DIR/.convex-dev.log"
         echo ""
         echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
-        kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
-        kill $CONVEX_PID 2>/dev/null || true
+        if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+            kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        fi
+        terminate_pid_with_timeout "$CONVEX_PID" 3
         rm -f "$PID_FILE"
         exit 1
     fi
