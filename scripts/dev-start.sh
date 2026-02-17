@@ -179,7 +179,9 @@ extract_dashboard_url() {
 # Return the first startup-fatal line emitted by Convex, if any.
 convex_startup_failure_line() {
     local log_file="$1"
-    grep -E -m1 'Schema validation failed\.|TypeScript typecheck via tsc failed\.|^✖ ' "$log_file" 2>/dev/null || true
+    # Convex sometimes writes carriage-return-updated lines; normalize first.
+    # Prefer ASCII error markers so matching is robust even in non-UTF locales.
+    tr -d '\r' < "$log_file" 2>/dev/null | grep -a -E -i -m1 'Schema validation failed|SchemaDefinitionError|TypeScript typecheck.*failed|Collecting TypeScript errors|error TS[0-9]{4}|Unable to start push to|Error fetching POST|\\[ERROR\\]' || true
 }
 
 # Get ports from Convex config
@@ -518,8 +520,13 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ "$CONVEX_READY" = false ]; then
         echo -e "${RED}✖ Timeout waiting for Convex to start${NC}"
 
-        # Check if it got stuck on bundling (esbuild issue)
-        if grep -q "Preparing Convex functions" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
+        # If Convex already emitted a fatal startup error, show that instead of
+        # the generic bundling-timeout hint.
+        CONVEX_FAILURE_LINE=$(convex_startup_failure_line "$PROJECT_DIR/.convex-dev.log")
+        if [ -n "$CONVEX_FAILURE_LINE" ]; then
+            echo -e "  ${RED}Detected:${NC} $CONVEX_FAILURE_LINE"
+        # Otherwise check if it got stuck on bundling (esbuild issue).
+        elif grep -q "Preparing Convex functions" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
             ESBUILD_STATUS=$(check_esbuild)
             if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
                 echo ""
