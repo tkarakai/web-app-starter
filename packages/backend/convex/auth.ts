@@ -148,6 +148,74 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       },
     },
     databaseHooks: {
+      session: {
+        create: {
+          after: async (session) => {
+            try {
+              const actionCtx = requireActionCtx(ctx);
+              const s = session as Record<string, unknown>;
+
+              // Look up user email via the Better Auth component
+              const user = await authComponent.getAnyUserById(ctx, s.userId as string);
+
+              const email = (user?.email as string) ?? "unknown";
+              const role = (user?.role as string) ?? "user";
+              const ip = s.ipAddress as string | undefined;
+              const userAgent = s.userAgent as string | undefined;
+              const meta: Record<string, string> = {};
+              if (ip) meta.ip = ip;
+              if (userAgent) meta.userAgent = userAgent;
+
+              await actionCtx.runMutation(internal.auditTrail.insertEvent, {
+                happenedAt: Date.now(),
+                actor: email,
+                actorType: role === "admin" ? "admin" : "user",
+                action: "auth.sign_in",
+                resource: "session",
+                status: "succeeded",
+                meta: Object.keys(meta).length > 0 ? JSON.stringify(meta) : undefined,
+              });
+            } catch {
+              // Audit logging must never break the auth flow
+            }
+          },
+        },
+        delete: {
+          before: async (session) => {
+            try {
+              const actionCtx = requireActionCtx(ctx);
+              const s = session as Record<string, unknown>;
+
+              // Fetch the Better Auth user directly by id; adapter(ctx) returns
+              // a factory, not an adapter instance.
+              const user = await authComponent.getAnyUserById(
+                ctx,
+                s.userId as string,
+              );
+
+              const email = (user?.email as string) ?? "unknown";
+              const role = (user?.role as string) ?? "user";
+              const ip = s.ipAddress as string | undefined;
+              const userAgent = s.userAgent as string | undefined;
+              const meta: Record<string, string> = {};
+              if (ip) meta.ip = ip;
+              if (userAgent) meta.userAgent = userAgent;
+
+              await actionCtx.runMutation(internal.auditTrail.insertEvent, {
+                happenedAt: Date.now(),
+                actor: email,
+                actorType: role === "admin" ? "admin" : "user",
+                action: "auth.sign_out",
+                resource: "session",
+                status: "succeeded",
+                meta: Object.keys(meta).length > 0 ? JSON.stringify(meta) : undefined,
+              });
+            } catch {
+              // Audit logging must never break the auth flow
+            }
+          },
+        },
+      },
       user: {
         create: {
           before: async (user) => {
@@ -176,6 +244,21 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
               return { data: { ...user, role: "admin" } };
             }
             return { data: user };
+          },
+          after: async (user) => {
+            try {
+              const actionCtx = requireActionCtx(ctx);
+              await actionCtx.runMutation(internal.auditTrail.insertEvent, {
+                happenedAt: Date.now(),
+                actor: user.email,
+                actorType: (user as Record<string, unknown>).role === "admin" ? "admin" : "user",
+                action: "auth.sign_up",
+                resource: "user",
+                status: "succeeded",
+              });
+            } catch {
+              // Audit logging must never break the auth flow
+            }
           },
         },
       },

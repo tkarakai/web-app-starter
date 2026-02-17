@@ -11,6 +11,8 @@
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminEmails from "../adminEmails.js";
 import type * as appSettings from "../appSettings.js";
+import type * as auditTrail from "../auditTrail.js";
+import type * as auditTrailConstants from "../auditTrailConstants.js";
 import type * as auth from "../auth.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as devSeed from "../devSeed.js";
@@ -41,6 +43,8 @@ declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminEmails: typeof adminEmails;
   appSettings: typeof appSettings;
+  auditTrail: typeof auditTrail;
+  auditTrailConstants: typeof auditTrailConstants;
   auth: typeof auth;
   bootstrap: typeof bootstrap;
   devSeed: typeof devSeed;

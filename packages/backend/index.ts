@@ -8,3 +8,5 @@ export { TEMPLATE_VARIABLES, renderTemplate } from "./convex/emailTemplates";
 export type { SessionInfo } from "./convex/sessions";
 export type { DeviceInfo } from "./convex/parseUserAgent";
 export { parseUserAgent } from "./convex/parseUserAgent";
+export { AUDIT_ACTIONS } from "./convex/auditTrailConstants";
+export type { AuditAction } from "./convex/auditTrailConstants";
