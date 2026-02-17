@@ -168,6 +168,15 @@ export const revokeSessionHandler = httpAction(async (_ctx, request) => {
     authorization: `Bearer ${sessionToken}`,
   });
 
+  // Validate the caller's session before revoking
+  const session = await auth.api.getSession({ headers });
+  if (!session?.user) {
+    return new Response(JSON.stringify({ error: "NOT_AUTHENTICATED" }), {
+      status: 401,
+      headers: cors,
+    });
+  }
+
   await auth.api.revokeSession({
     headers,
     body: { token: targetToken },
