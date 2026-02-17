@@ -341,6 +341,34 @@ kill_orphans() {
     done
 }
 
+# Stop a child process without risking an unbounded wait.
+terminate_pid_with_timeout() {
+    local pid="$1"
+    local grace_seconds="${2:-3}"
+    local waited=0
+
+    if [ -z "$pid" ]; then
+        return
+    fi
+
+    if ! kill -0 "$pid" 2>/dev/null; then
+        wait "$pid" 2>/dev/null || true
+        return
+    fi
+
+    kill "$pid" 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null && [ $waited -lt $grace_seconds ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+
+    wait "$pid" 2>/dev/null || true
+}
+
 ORPHAN_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
 ORPHAN_NEXT=$(pgrep -f "next dev" 2>/dev/null | while read pid; do
     # Only match Next.js processes rooted in this project
@@ -471,8 +499,7 @@ if [ "$NEED_CONVEX" = true ]; then
             cat "$PROJECT_DIR/.convex-dev.log"
             echo ""
             echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
-            kill $CONVEX_PID 2>/dev/null || true
-            wait $CONVEX_PID 2>/dev/null || true
+            terminate_pid_with_timeout "$CONVEX_PID" 3
             rm -f "$PID_FILE"
             exit 1
         fi
@@ -510,8 +537,7 @@ if [ "$NEED_CONVEX" = true ]; then
             kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
             wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         fi
-        kill $CONVEX_PID 2>/dev/null || true
-        wait $CONVEX_PID 2>/dev/null || true
+        terminate_pid_with_timeout "$CONVEX_PID" 3
         rm -f "$PID_FILE"
         exit 1
     fi
