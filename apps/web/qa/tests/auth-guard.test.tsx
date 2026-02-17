@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 
 // --- Mocks ---
@@ -45,12 +45,17 @@ function UserDisplay() {
 
 describe("AuthGuard", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     mockReplace.mockClear();
     mockUser = { name: "Test User", email: "test@example.com" };
     mockSession = {
       isPending: false,
       data: { user: { name: "Test User", email: "test@example.com" }, session: {} },
     };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders children when authenticated", () => {
@@ -93,7 +98,11 @@ describe("AuthGuard", () => {
       </AuthGuard>
     );
 
-    await act(async () => {});
+    // Advance past the 3-second debounce that prevents false redirects
+    // during transient session refreshes (e.g. password change, 2FA toggle)
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
 
     expect(mockReplace).toHaveBeenCalledWith("/sign-in");
   });
@@ -107,7 +116,9 @@ describe("AuthGuard", () => {
 
     await act(async () => {});
 
-    // Simulate session invalidation
+    // Simulate full sign-out: both Convex user and session become null.
+    // The component uses the Convex user as the authoritative redirect signal.
+    mockUser = null;
     mockSession = { isPending: false, data: null };
     rerender(
       <AuthGuard preloadedUser={{} as never}>
@@ -115,7 +126,9 @@ describe("AuthGuard", () => {
       </AuthGuard>
     );
 
-    await act(async () => {});
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
 
     expect(mockReplace).toHaveBeenCalledWith("/sign-in");
   });
