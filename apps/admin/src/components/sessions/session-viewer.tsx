@@ -30,11 +30,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -47,7 +42,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@repo/design-system";
-import type { AdminUser, AdminSession } from "@/lib/admin-api";
+import type { AdminSession } from "@/lib/admin-api";
 import {
   fetchUsers,
   listUserSessions,
@@ -198,8 +193,8 @@ export function SessionViewer() {
 
   // Close dropdown on outside click
   React.useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+    const handler = (e: globalThis.MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as globalThis.Node)) {
         setShowDropdown(false);
       }
     };

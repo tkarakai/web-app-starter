@@ -53,7 +53,7 @@ export function ProfileSection() {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
 
   const userProfile = useQuery(api.userProfiles.get) ?? null;
   const upsertProfile = useMutation(api.userProfiles.upsert);
@@ -123,11 +123,6 @@ export function ProfileSection() {
     segments[1] = newLocale;
     const newPath = segments.join("/") || `/${newLocale}`;
     router.push(newPath);
-  };
-
-  const handleThemeChange = (value: string) => {
-    setTheme(value);
-    upsertProfile({ theme: value }).catch(() => {});
   };
 
   return (

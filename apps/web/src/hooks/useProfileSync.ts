@@ -74,5 +74,6 @@ export function useProfileSync() {
     if (convexTheme) {
       setTheme(convexTheme);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync theme when profile.theme changes, not on every profile reference change
   }, [profile?.theme, setTheme]);
 }

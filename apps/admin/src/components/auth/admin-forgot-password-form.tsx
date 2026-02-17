@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient } from "@repo/auth/client";
 import {
   Button,
   Card,

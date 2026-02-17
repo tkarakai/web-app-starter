@@ -66,7 +66,7 @@ function detectOS(ua: string): string {
 function detectDevice(ua: string): DeviceType {
   if (/iPad/i.test(ua)) return "tablet";
   if (/Tablet|PlayBook|Silk/i.test(ua)) return "tablet";
-  if (/iPhone|iPod|Android[^ ]*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+  if (/iPhone|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || (/Android/i.test(ua) && /Mobile/i.test(ua))) {
     return "mobile";
   }
   if (/Android/i.test(ua)) return "tablet";

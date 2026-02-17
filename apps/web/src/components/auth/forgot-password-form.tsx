@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient } from "@repo/auth/client";
 import {
   Button,
   Card,

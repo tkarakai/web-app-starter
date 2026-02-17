@@ -77,7 +77,7 @@ export function TwoFactorSection() {
   const handleCopySecret = async () => {
     if (!secretKey) return;
     try {
-      await navigator.clipboard.writeText(secretKey);
+      await globalThis.navigator.clipboard.writeText(secretKey);
       toast.success(t2("copied"));
     } catch {
       // Fallback: select text
