@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { ShieldCheck } from "lucide-react";
 
 import {
   Badge,
@@ -60,14 +61,13 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ActorTypeBadge({ actorType }: { actorType: string }) {
-  if (actorType === "admin") {
-    return <Badge variant="default">admin</Badge>;
-  }
-  if (actorType === "system") {
-    return <Badge variant="secondary">system</Badge>;
-  }
-  return <Badge variant="outline">user</Badge>;
+function SourceBadge({ source }: { source: string }) {
+  const isServer = source.startsWith("server:");
+  return (
+    <Badge variant={isServer ? "secondary" : "outline"} className="font-mono text-xs">
+      {source}
+    </Badge>
+  );
 }
 
 export const columns: ColumnDef<AuditEvent>[] = [
@@ -104,27 +104,42 @@ export const columns: ColumnDef<AuditEvent>[] = [
     header: "Actor",
     cell: ({ row }) => {
       const actor = row.getValue("actor") as string;
+      const authenticatedUserId = row.original.authenticatedUserId;
       const short = truncate(actor, 20);
-      if (short === actor) {
-        return <span className="text-sm font-mono">{actor}</span>;
-      }
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="cursor-default text-sm font-mono">{short}</span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="font-mono">{actor}</p>
-          </TooltipContent>
-        </Tooltip>
+      const content = (
+        <span className="inline-flex items-center gap-1.5 text-sm font-mono">
+          {authenticatedUserId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ShieldCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Authenticated user</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {short !== actor ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-default">{short}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-mono">{actor}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span>{actor}</span>
+          )}
+        </span>
       );
+      return content;
     },
   },
   {
-    accessorKey: "actorType",
-    header: "Actor Type",
+    accessorKey: "source",
+    header: "Source",
     cell: ({ row }) => (
-      <ActorTypeBadge actorType={row.getValue("actorType") as string} />
+      <SourceBadge source={row.getValue("source") as string} />
     ),
   },
   {
@@ -158,7 +173,7 @@ export const columns: ColumnDef<AuditEvent>[] = [
     header: "",
     cell: ({ row }) => {
       const event = row.original;
-      const hasDetails = event.oldValue || event.newValue || event.reason || event.meta;
+      const hasDetails = event.oldValue || event.newValue || event.reason || event.meta || event.truncatedFields;
       if (!hasDetails) return null;
       return <EventDetails event={event} />;
     },

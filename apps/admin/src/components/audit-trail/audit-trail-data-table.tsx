@@ -27,16 +27,16 @@ const INITIAL_NUM_ITEMS = 50;
 
 export function AuditTrailDataTable() {
   const [filterAction, setFilterAction] = React.useState("all");
-  const [filterActorType, setFilterActorType] = React.useState("all");
+  const [filterSource, setFilterSource] = React.useState("all");
   const [filterStatus, setFilterStatus] = React.useState("all");
 
   const queryArgs = React.useMemo(() => {
     const args: Record<string, string | undefined> = {};
     if (filterAction !== "all") args.filterAction = filterAction;
-    if (filterActorType !== "all") args.filterActorType = filterActorType;
+    if (filterSource !== "all") args.filterSource = filterSource;
     if (filterStatus !== "all") args.filterStatus = filterStatus;
     return args;
-  }, [filterAction, filterActorType, filterStatus]);
+  }, [filterAction, filterSource, filterStatus]);
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.auditTrail.list,
@@ -60,8 +60,8 @@ export function AuditTrailDataTable() {
         <FilterBar
           filterAction={filterAction}
           onFilterActionChange={setFilterAction}
-          filterActorType={filterActorType}
-          onFilterActorTypeChange={setFilterActorType}
+          filterSource={filterSource}
+          onFilterSourceChange={setFilterSource}
           filterStatus={filterStatus}
           onFilterStatusChange={setFilterStatus}
           total={results.length}

@@ -1,8 +1,9 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { AlertTriangle, Eye } from "lucide-react";
 
 import {
+  Badge,
   Button,
   Popover,
   PopoverContent,
@@ -47,13 +48,13 @@ export function EventDetails({ event }: { event: AuditEvent }) {
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-muted-foreground">Event ID</span>
-              <p className="font-mono break-all">{event.eventId}</p>
+              <span className="text-muted-foreground">ID</span>
+              <p className="font-mono break-all">{event._id}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Received At</span>
               <p>
-                {new Date(event.receivedAt).toLocaleString("en-US", {
+                {new Date(event._creationTime).toLocaleString("en-US", {
                   month: "short",
                   day: "numeric",
                   hour: "2-digit",
@@ -63,6 +64,26 @@ export function EventDetails({ event }: { event: AuditEvent }) {
               </p>
             </div>
           </div>
+
+          {event.authenticatedUserId && (
+            <div className="text-xs">
+              <span className="text-muted-foreground">Authenticated User ID</span>
+              <p className="font-mono break-all">{event.authenticatedUserId}</p>
+            </div>
+          )}
+
+          {event.truncatedFields && (
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                Truncated fields: {event.truncatedFields.split(",").map((f) => (
+                  <Badge key={f} variant="outline" className="ml-1 text-[10px] px-1 py-0">
+                    {f}
+                  </Badge>
+                ))}
+              </span>
+            </div>
+          )}
 
           {event.reason && (
             <div>

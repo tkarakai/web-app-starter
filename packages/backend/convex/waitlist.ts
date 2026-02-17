@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
+import { scheduleAuditEvent } from "./auditTrailHelpers";
 import {
   authedMutation,
   authedQuery,
@@ -105,14 +106,34 @@ export const join = internalMutation({
       .unique();
 
     if (existing) {
+      await scheduleAuditEvent(ctx, {
+        actor: args.email,
+        sourceDetail: "waitlist",
+        action: "waitlist.joined",
+        resource: `waitlist-entry:${existing._id}`,
+        status: "succeeded",
+        meta: JSON.stringify({
+          ip: args.clientIp ?? "unknown",
+          alreadyJoined: true,
+        }),
+      });
       return { alreadyJoined: true };
     }
 
-    await ctx.db.insert("waitlistEntries", {
+    const entryId = await ctx.db.insert("waitlistEntries", {
       email: args.email,
       meta: args.meta,
       status: "waiting",
       createdAt: Date.now(),
+    });
+
+    await scheduleAuditEvent(ctx, {
+      actor: args.email,
+      sourceDetail: "waitlist",
+      action: "waitlist.joined",
+      resource: `waitlist-entry:${entryId}`,
+      status: "succeeded",
+      meta: JSON.stringify({ ip: args.clientIp ?? "unknown" }),
     });
 
     return { alreadyJoined: false };
@@ -186,6 +207,17 @@ export const invite = authedMutation({
         email: entry.email,
       }
     );
+
+    const email = (ctx.user as Record<string, unknown>).email as string;
+    await scheduleAuditEvent(ctx, {
+      actor: email,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
+      action: "waitlist.invitation.sent",
+      resource: `waitlist-entry:${args.entryId}`,
+      status: "succeeded",
+      meta: JSON.stringify({ inviteeEmail: entry.email }),
+    });
   },
 });
 
@@ -224,6 +256,17 @@ export const uninvite = authedMutation({
       invitedAt: undefined,
       invitationExpiresAt: undefined,
     });
+
+    const email = (ctx.user as Record<string, unknown>).email as string;
+    await scheduleAuditEvent(ctx, {
+      actor: email,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
+      action: "waitlist.invitation.revoked",
+      resource: `waitlist-entry:${args.entryId}`,
+      status: "succeeded",
+      meta: JSON.stringify({ inviteeEmail: entry.email }),
+    });
   },
 });
 
@@ -254,5 +297,16 @@ export const remove = authedMutation({
     }
 
     await ctx.db.delete(args.entryId);
+
+    const email = (ctx.user as Record<string, unknown>).email as string;
+    await scheduleAuditEvent(ctx, {
+      actor: email,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
+      action: "waitlist.entry.deleted",
+      resource: `waitlist-entry:${args.entryId}`,
+      status: "succeeded",
+      meta: JSON.stringify({ deletedEmail: entry.email }),
+    });
   },
 });

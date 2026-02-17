@@ -2,7 +2,8 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 
-export default defineSchema({
+export default defineSchema(
+{
   ...rateLimitTables,
 
   userProfiles: defineTable({
@@ -106,24 +107,30 @@ export default defineSchema({
   // --- Audit trail (append-only) ---
 
   auditTrail: defineTable({
-    eventId: v.string(),
     happenedAt: v.number(),
-    receivedAt: v.number(),
+    authenticatedUserId: v.optional(v.string()),
     actor: v.string(),
-    actorType: v.string(),
+    source: v.string(),
     action: v.string(),
     resource: v.string(),
+    status: v.string(),
     oldValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     reason: v.optional(v.string()),
-    status: v.string(),
     meta: v.optional(v.string()),
+    truncatedFields: v.optional(v.string()),
   })
     .index("by_happenedAt", ["happenedAt"])
     .index("by_action_happenedAt", ["action", "happenedAt"])
     .index("by_actor_happenedAt", ["actor", "happenedAt"])
-    .index("by_actorType_happenedAt", ["actorType", "happenedAt"])
+    .index("by_source_happenedAt", ["source", "happenedAt"])
     .index("by_status_happenedAt", ["status", "happenedAt"])
     .index("by_action_status_happenedAt", ["action", "status", "happenedAt"])
-    .index("by_eventId", ["eventId"]),
-});
+    .index("by_authenticatedUserId_happenedAt", ["authenticatedUserId", "happenedAt"]),
+},
+// Schema validation is relaxed during audit trail migration (v1 → v2).
+// Old records have different fields (eventId, actorType, receivedAt) and are
+// missing new required fields (source). Run `migrations:migrateAuditTrailV2`
+// to clean up old records, then set this back to true.
+{ schemaValidation: false },
+);

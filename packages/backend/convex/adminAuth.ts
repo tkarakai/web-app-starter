@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { buildAuditEvent } from "./auditTrail";
+import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
 
@@ -50,6 +50,7 @@ export const setMfaPolicy = authedMutation({
 
     const key = "emailMfaRequired";
     const value = JSON.stringify(args.required);
+    let oldValue: string | undefined;
 
     const existing = await ctx.db
       .query("appSettings")
@@ -57,6 +58,7 @@ export const setMfaPolicy = authedMutation({
       .unique();
 
     if (existing) {
+      oldValue = existing.value;
       await ctx.db.patch(existing._id, {
         value,
         updatedAt: Date.now(),
@@ -71,17 +73,16 @@ export const setMfaPolicy = authedMutation({
       });
     }
 
-    await ctx.db.insert(
-      "auditTrail",
-      buildAuditEvent({
-        actor: ctx.ownerId,
-        actorType: "admin",
-        action: "admin.mfa_policy_changed",
-        resource: "appSettings:emailMfaRequired",
-        status: "succeeded",
-        newValue: value,
-      }),
-    );
+    await scheduleAuditEvent(ctx, {
+      actor: ctx.ownerId,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
+      action: "admin.mfa_policy_changed",
+      resource: `appSettings:${key}`,
+      status: "succeeded",
+      oldValue,
+      newValue: value,
+    });
   },
 });
 

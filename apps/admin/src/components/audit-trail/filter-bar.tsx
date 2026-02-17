@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { AUDIT_ACTIONS } from "@repo/backend";
+import { AUDIT_ACTIONS, AUDIT_STATUSES, AUDIT_SOURCE_TRANSPORTS } from "@repo/backend";
 
 import {
   Button,
@@ -15,34 +15,19 @@ import {
 type FilterBarProps = {
   filterAction: string;
   onFilterActionChange: (value: string) => void;
-  filterActorType: string;
-  onFilterActorTypeChange: (value: string) => void;
+  filterSource: string;
+  onFilterSourceChange: (value: string) => void;
   filterStatus: string;
   onFilterStatusChange: (value: string) => void;
   total: number | undefined;
   loading: boolean;
 };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "succeeded", label: "Succeeded" },
-  { value: "failed:invalid_credentials", label: "Failed: invalid credentials" },
-  { value: "failed:forbidden", label: "Failed: forbidden" },
-  { value: "failed:rate_limited", label: "Failed: rate limited" },
-];
-
-const ACTOR_TYPE_OPTIONS = [
-  { value: "all", label: "All actor types" },
-  { value: "user", label: "User" },
-  { value: "admin", label: "Admin" },
-  { value: "system", label: "System" },
-];
-
 export function FilterBar({
   filterAction,
   onFilterActionChange,
-  filterActorType,
-  onFilterActorTypeChange,
+  filterSource,
+  onFilterSourceChange,
   filterStatus,
   onFilterStatusChange,
   total,
@@ -50,12 +35,12 @@ export function FilterBar({
 }: FilterBarProps) {
   const hasActiveFilters =
     filterAction !== "all" ||
-    filterActorType !== "all" ||
+    filterSource !== "all" ||
     filterStatus !== "all";
 
   const clearFilters = () => {
     onFilterActionChange("all");
-    onFilterActorTypeChange("all");
+    onFilterSourceChange("all");
     onFilterStatusChange("all");
   };
 
@@ -76,14 +61,15 @@ export function FilterBar({
           </SelectContent>
         </Select>
 
-        <Select value={filterActorType} onValueChange={onFilterActorTypeChange}>
+        <Select value={filterSource} onValueChange={onFilterSourceChange}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Actor type" />
+            <SelectValue placeholder="Source" />
           </SelectTrigger>
           <SelectContent>
-            {ACTOR_TYPE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+            <SelectItem value="all">All sources</SelectItem>
+            {AUDIT_SOURCE_TRANSPORTS.map((transport) => (
+              <SelectItem key={transport} value={transport}>
+                {transport}
               </SelectItem>
             ))}
           </SelectContent>
@@ -94,9 +80,10 @@ export function FilterBar({
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+            <SelectItem value="all">All statuses</SelectItem>
+            {AUDIT_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status}
               </SelectItem>
             ))}
           </SelectContent>

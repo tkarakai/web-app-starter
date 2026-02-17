@@ -2,11 +2,16 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
 import { authComponent } from "./auth";
+import {
+  AUDIT_ACTIONS,
+  AUDIT_SOURCE_TRANSPORTS,
+  AUDIT_STATUSES,
+} from "./auditTrailConstants";
 import { authedMutation } from "./functions";
 import { internalMutation, query } from "./_generated/server";
 
 // ---------------------------------------------------------------------------
-// Field length limits (defense in depth)
+// Field length limits (defense in depth — truncate, never reject)
 // ---------------------------------------------------------------------------
 
 const MAX_ACTOR_LENGTH = 500;
@@ -16,75 +21,115 @@ const MAX_VALUE_LENGTH = 10_000;
 const MAX_REASON_LENGTH = 2_000;
 const MAX_META_LENGTH = 5_000;
 const MAX_STATUS_LENGTH = 200;
+const MAX_SOURCE_LENGTH = 200;
 
-function assertLength(
+function truncateField(
   value: string | undefined,
   max: number,
-  field: string,
-): void {
-  if (value !== undefined && value.length > max) {
-    throw new Error(`${field}_TOO_LONG`);
-  }
+): { value: string | undefined; wasTruncated: boolean } {
+  if (value === undefined) return { value: undefined, wasTruncated: false };
+  if (value.length <= max) return { value, wasTruncated: false };
+  return { value: value.slice(0, max), wasTruncated: true };
 }
 
 // ---------------------------------------------------------------------------
-// buildAuditEvent — helper that creates the full document shape
+// buildAuditEvent — private helper that creates the full document shape
 // ---------------------------------------------------------------------------
 
 interface AuditEventInput {
   happenedAt?: number;
+  authenticatedUserId?: string;
   actor: string;
-  actorType: string;
+  source: string;
   action: string;
   resource: string;
+  status: string;
   oldValue?: string;
   newValue?: string;
   reason?: string;
-  status: string;
   meta?: string;
 }
 
 interface AuditTrailDoc {
-  eventId: string;
   happenedAt: number;
-  receivedAt: number;
+  authenticatedUserId?: string;
   actor: string;
-  actorType: string;
+  source: string;
   action: string;
   resource: string;
+  status: string;
   oldValue?: string;
   newValue?: string;
   reason?: string;
-  status: string;
   meta?: string;
+  truncatedFields?: string;
 }
 
-export function buildAuditEvent(fields: AuditEventInput): AuditTrailDoc {
-  assertLength(fields.actor, MAX_ACTOR_LENGTH, "actor");
-  assertLength(fields.action, MAX_ACTION_LENGTH, "action");
-  assertLength(fields.resource, MAX_RESOURCE_LENGTH, "resource");
-  assertLength(fields.oldValue, MAX_VALUE_LENGTH, "oldValue");
-  assertLength(fields.newValue, MAX_VALUE_LENGTH, "newValue");
-  assertLength(fields.reason, MAX_REASON_LENGTH, "reason");
-  assertLength(fields.status, MAX_STATUS_LENGTH, "status");
-  assertLength(fields.meta, MAX_META_LENGTH, "meta");
+function buildAuditEvent(fields: AuditEventInput): AuditTrailDoc {
+  // Validate action against enum
+  if (!(AUDIT_ACTIONS as readonly string[]).includes(fields.action)) {
+    throw new Error(`UNKNOWN_AUDIT_ACTION: ${fields.action}`);
+  }
 
-  const now = Date.now();
+  // Validate status against enum
+  if (!(AUDIT_STATUSES as readonly string[]).includes(fields.status)) {
+    throw new Error(`UNKNOWN_AUDIT_STATUS: ${fields.status}`);
+  }
+
+  // Validate source transport prefix
+  const colonIdx = fields.source.indexOf(":");
+  const transport = colonIdx >= 0 ? fields.source.slice(0, colonIdx) : fields.source;
+  if (!(AUDIT_SOURCE_TRANSPORTS as readonly string[]).includes(transport)) {
+    throw new Error(`UNKNOWN_AUDIT_SOURCE_TRANSPORT: ${transport}`);
+  }
+
+  // Truncate fields and track which were truncated
+  const truncated: string[] = [];
+
+  const actor = truncateField(fields.actor, MAX_ACTOR_LENGTH);
+  if (actor.wasTruncated) truncated.push("actor");
+
+  const action = truncateField(fields.action, MAX_ACTION_LENGTH);
+  if (action.wasTruncated) truncated.push("action");
+
+  const resource = truncateField(fields.resource, MAX_RESOURCE_LENGTH);
+  if (resource.wasTruncated) truncated.push("resource");
+
+  const status = truncateField(fields.status, MAX_STATUS_LENGTH);
+  if (status.wasTruncated) truncated.push("status");
+
+  const source = truncateField(fields.source, MAX_SOURCE_LENGTH);
+  if (source.wasTruncated) truncated.push("source");
+
+  const oldValue = truncateField(fields.oldValue, MAX_VALUE_LENGTH);
+  if (oldValue.wasTruncated) truncated.push("oldValue");
+
+  const newValue = truncateField(fields.newValue, MAX_VALUE_LENGTH);
+  if (newValue.wasTruncated) truncated.push("newValue");
+
+  const reason = truncateField(fields.reason, MAX_REASON_LENGTH);
+  if (reason.wasTruncated) truncated.push("reason");
+
+  const meta = truncateField(fields.meta, MAX_META_LENGTH);
+  if (meta.wasTruncated) truncated.push("meta");
+
   const doc: AuditTrailDoc = {
-    eventId: crypto.randomUUID(),
-    happenedAt: fields.happenedAt ?? now,
-    receivedAt: now,
-    actor: fields.actor,
-    actorType: fields.actorType,
-    action: fields.action,
-    resource: fields.resource,
-    status: fields.status,
+    happenedAt: fields.happenedAt ?? Date.now(),
+    actor: actor.value!,
+    source: source.value!,
+    action: action.value!,
+    resource: resource.value!,
+    status: status.value!,
   };
 
-  if (fields.oldValue !== undefined) doc.oldValue = fields.oldValue;
-  if (fields.newValue !== undefined) doc.newValue = fields.newValue;
-  if (fields.reason !== undefined) doc.reason = fields.reason;
-  if (fields.meta !== undefined) doc.meta = fields.meta;
+  if (fields.authenticatedUserId !== undefined) {
+    doc.authenticatedUserId = fields.authenticatedUserId;
+  }
+  if (oldValue.value !== undefined) doc.oldValue = oldValue.value;
+  if (newValue.value !== undefined) doc.newValue = newValue.value;
+  if (reason.value !== undefined) doc.reason = reason.value;
+  if (meta.value !== undefined) doc.meta = meta.value;
+  if (truncated.length > 0) doc.truncatedFields = truncated.join(",");
 
   return doc;
 }
@@ -96,19 +141,21 @@ export function buildAuditEvent(fields: AuditEventInput): AuditTrailDoc {
 export const insertEvent = internalMutation({
   args: {
     happenedAt: v.optional(v.number()),
+    authenticatedUserId: v.optional(v.string()),
     actor: v.string(),
-    actorType: v.string(),
+    sourceDetail: v.string(),
     action: v.string(),
     resource: v.string(),
+    status: v.string(),
     oldValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     reason: v.optional(v.string()),
-    status: v.string(),
     meta: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const doc = buildAuditEvent({
       ...args,
+      source: `server:${args.sourceDetail}`,
       happenedAt: args.happenedAt ?? undefined,
     });
     await ctx.db.insert("auditTrail", doc);
@@ -122,22 +169,29 @@ export const insertEvent = internalMutation({
 export const postEvent = authedMutation({
   args: {
     happenedAt: v.number(),
+    sourceDetail: v.optional(v.string()),
     action: v.string(),
     resource: v.string(),
+    status: v.optional(v.string()),
     oldValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     reason: v.optional(v.string()),
-    status: v.optional(v.string()),
     meta: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const actorType =
-      (ctx.user as Record<string, unknown>).role === "admin" ? "admin" : "user";
+    const email = (ctx.user as Record<string, unknown>).email as string;
     const doc = buildAuditEvent({
-      actor: ctx.ownerId,
-      actorType,
-      ...args,
+      authenticatedUserId: ctx.ownerId,
+      actor: email,
+      source: `web:${args.sourceDetail ?? ""}`,
+      action: args.action,
+      resource: args.resource,
       status: args.status ?? "succeeded",
+      happenedAt: args.happenedAt,
+      oldValue: args.oldValue,
+      newValue: args.newValue,
+      reason: args.reason,
+      meta: args.meta,
     });
     await ctx.db.insert("auditTrail", doc);
   },
@@ -152,8 +206,9 @@ export const list = query({
     paginationOpts: paginationOptsValidator,
     filterAction: v.optional(v.string()),
     filterActor: v.optional(v.string()),
-    filterActorType: v.optional(v.string()),
+    filterSource: v.optional(v.string()),
     filterStatus: v.optional(v.string()),
+    filterAuthenticatedUserId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Return empty page when auth hasn't resolved yet or user isn't admin.
@@ -186,11 +241,17 @@ export const list = query({
         .withIndex("by_actor_happenedAt", (idx) =>
           idx.eq("actor", args.filterActor!),
         );
-    } else if (args.filterActorType) {
+    } else if (args.filterSource) {
       q = ctx.db
         .query("auditTrail")
-        .withIndex("by_actorType_happenedAt", (idx) =>
-          idx.eq("actorType", args.filterActorType!),
+        .withIndex("by_source_happenedAt", (idx) =>
+          idx.eq("source", args.filterSource!),
+        );
+    } else if (args.filterAuthenticatedUserId) {
+      q = ctx.db
+        .query("auditTrail")
+        .withIndex("by_authenticatedUserId_happenedAt", (idx) =>
+          idx.eq("authenticatedUserId", args.filterAuthenticatedUserId!),
         );
     } else if (args.filterStatus) {
       q = ctx.db
