@@ -129,3 +129,53 @@ export async function setUserRole(userId: string, role: "user" | "admin"): Promi
     throw new Error(result.error.message ?? "Failed to set user role");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Session management
+// ---------------------------------------------------------------------------
+
+export type AdminSession = {
+  id: string;
+  userId: string;
+  token: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export async function listUserSessions(userId: string): Promise<AdminSession[]> {
+  const result = await authClient.admin.listUserSessions({ userId });
+  if (result.error) {
+    throw new Error(result.error.message ?? "Failed to list user sessions");
+  }
+  const sessions = result.data?.sessions ?? [];
+  return sessions.map((s) => {
+    const raw = s as unknown as Record<string, unknown>;
+    return {
+      id: raw.id as string,
+      userId: raw.userId as string,
+      token: raw.token as string,
+      ipAddress: (raw.ipAddress as string | null) ?? null,
+      userAgent: (raw.userAgent as string | null) ?? null,
+      expiresAt: new Date(raw.expiresAt as string | number),
+      createdAt: new Date(raw.createdAt as string | number),
+      updatedAt: new Date(raw.updatedAt as string | number),
+    };
+  });
+}
+
+export async function revokeSession(sessionToken: string): Promise<void> {
+  const result = await authClient.admin.revokeUserSession({ sessionToken });
+  if (result.error) {
+    throw new Error(result.error.message ?? "Failed to revoke session");
+  }
+}
+
+export async function revokeAllSessions(userId: string): Promise<void> {
+  const result = await authClient.admin.revokeUserSessions({ userId });
+  if (result.error) {
+    throw new Error(result.error.message ?? "Failed to revoke sessions");
+  }
+}

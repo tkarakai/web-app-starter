@@ -3,6 +3,13 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { authComponent, createAuth } from "./auth";
+import {
+  listSessionsHandler,
+  revokeSessionHandler,
+  revokeOtherSessionsHandler,
+  viewBackupCodesHandler,
+} from "./sessions";
+import { getDevTotpCode } from "./devTotp";
 
 const http = httpRouter();
 
@@ -132,6 +139,104 @@ http.route({
   handler: httpAction(async (_ctx, request) => {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
   }),
+});
+
+// ---------------------------------------------------------------------------
+// Session management endpoints (authenticated)
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/sessions",
+  method: "GET",
+  handler: listSessionsHandler,
+});
+
+http.route({
+  path: "/api/sessions",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/sessions/revoke",
+  method: "POST",
+  handler: revokeSessionHandler,
+});
+
+http.route({
+  path: "/api/sessions/revoke",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/sessions/revoke-others",
+  method: "POST",
+  handler: revokeOtherSessionsHandler,
+});
+
+http.route({
+  path: "/api/sessions/revoke-others",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Two-factor backup codes (workaround for Better Auth bug — no HTTP path)
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/two-factor/backup-codes",
+  method: "GET",
+  handler: viewBackupCodesHandler,
+});
+
+http.route({
+  path: "/api/two-factor/backup-codes",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders(request),
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Dev TOTP helper (only active when DEV_SEED_ENABLED is set)
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/dev/totp-code",
+  method: "GET",
+  handler: getDevTotpCode,
 });
 
 export default http;

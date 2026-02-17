@@ -58,6 +58,17 @@
       "passwordMismatch": "Passwords do not match",
       "generic": "An error occurred"
     },
+    "twoFactorVerify": {
+      "title": "Two-factor authentication",
+      "description": "Enter the 6-digit code from your authenticator app.",
+      "cta": "Verify",
+      "invalidCode": "Invalid code. Please try again.",
+      "useBackupCode": "Use a backup code instead",
+      "backupCodeTitle": "Backup code",
+      "backupCodeDescription": "Enter one of your backup codes to sign in.",
+      "backupCodePlaceholder": "Enter backup code",
+      "useAuthenticator": "Use authenticator app instead"
+    },
     "footer": "Secure email + password",
     "working": "Working...",
     "legal": {
@@ -66,6 +77,45 @@
       "and": "and",
       "privacyPolicy": "Privacy Policy"
     },
+    "forgotPassword": {
+      "badge": "Password Recovery",
+      "title": "Forgot your password?",
+      "description": "Enter your email and we'll send you a link to reset your password.",
+      "cta": "Send reset link",
+      "emailSent": "Check your email",
+      "emailSentDescription": "If an account exists for {email}, we've sent a password reset link. Check your inbox and spam folder.",
+      "backToSignIn": "Back to sign in",
+      "pageHeading": "Reset your password. Get back on track.",
+      "pageDescription": "Enter the email address associated with your account and we'll send you a link to create a new password."
+    },
+    "resetPassword": {
+      "badge": "Password Recovery",
+      "title": "Set a new password",
+      "description": "Choose a strong password for your account.",
+      "newPassword": "New password",
+      "cta": "Reset password",
+      "invalidTitle": "Invalid Reset Link",
+      "tokenExpired": "This password reset link has expired. Please request a new one.",
+      "tokenInvalid": "This password reset link is invalid or has already been used.",
+      "requestNewLink": "Request a new link",
+      "backToSignIn": "Back to sign in",
+      "successTitle": "Password updated",
+      "successDescription": "Your password has been reset successfully. You can now sign in with your new password.",
+      "signInNow": "Sign in now",
+      "pageHeading": "Almost there. Choose a new password.",
+      "pageDescription": "Pick a strong password you haven't used before. Your new password must be at least 8 characters."
+    },
+    "verifyEmail": {
+      "badge": "Email Verification",
+      "title": "Check your email",
+      "description": "We've sent a verification link to your email address. Click the link to verify your account.",
+      "resend": "Resend verification email",
+      "resent": "Verification email sent! Check your inbox.",
+      "backToSignIn": "Back to sign in",
+      "pageHeading": "One last step. Verify your email.",
+      "pageDescription": "We've sent you a verification link. Click it to activate your account and start using the app."
+    },
+    "forgotPasswordLink": "Forgot password?",
     "invitation": {
       "badge": "Invitation",
       "title": "Complete your signup",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Tasks",
       "attachments": "Attachments"
+    },
+    "security": "Security",
+    "sessions": {
+      "title": "Active Sessions",
+      "description": "Manage your active sessions across all devices. You can sign out of any session you no longer recognize.",
+      "currentSession": "This device",
+      "otherSessions": "Other devices",
+      "current": "Current",
+      "lastActive": "Active {time}",
+      "noOtherSessions": "No other active sessions. You're only signed in on this device.",
+      "revokeAll": "Sign out all others",
+      "revokeAllTitle": "Sign out all other devices?",
+      "revokeAllDescription": "This will sign you out of all other devices and browsers. Only your current session will remain active.",
+      "revokeAllConfirm": "Sign out all",
+      "revokeTitle": "Sign out this device?",
+      "revokeDescription": "This will end the session for {device}. They will need to sign in again to access the account.",
+      "backToDashboard": "Back to dashboard"
+    },
+    "account": "Settings",
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your profile information and preferences.",
+      "name": "Display name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailReadonly": "Contact support to change your email.",
+      "avatarColor": "Avatar color",
+      "saved": "Profile updated.",
+      "language": "Language",
+      "timezone": "Timezone",
+      "timezonePlaceholder": "Select your timezone",
+      "timezoneSearch": "Search timezones...",
+      "timezoneDetected": "Detected",
+      "noTimezoneResults": "No timezone found.",
+      "theme": "Theme"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "revokeOtherSessions": "Sign out all other devices",
+      "cta": "Update password",
+      "success": "Password updated successfully.",
+      "errorCurrentPassword": "Current password is incorrect."
+    },
+    "twoFactor": {
+      "title": "Two-Factor Authentication",
+      "description": "Add an extra layer of security to your account.",
+      "enabled": "2FA is enabled",
+      "disabled": "2FA is not enabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "enterPassword": "Enter your password to continue.",
+      "scanQrCode": "Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy).",
+      "manualEntry": "Can't scan? Enter this key manually",
+      "manualEntryDescription": "Open your authenticator app, choose \"Add account\", then select \"Enter setup key\" and paste the key below.",
+      "secretKey": "Secret key",
+      "copied": "Copied to clipboard",
+      "enterCode": "Enter the 6-digit code from your authenticator app to verify setup.",
+      "verify": "Verify",
+      "backupCodes": "Backup codes",
+      "backupCodesDescription": "Save these codes in a safe place. Each code can only be used once.",
+      "viewBackupCodes": "View backup codes",
+      "regenerateBackupCodes": "Regenerate backup codes",
+      "disableConfirm": "Are you sure you want to disable 2FA?",
+      "regenerateConfirm": "This will replace your existing backup codes. Any unused codes will no longer work.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

@@ -64,6 +64,7 @@ const categoryIcons: Record<ComponentCategory, LucideIcon> = {
 const patternCategoryIcons: Record<PatternCategory, LucideIcon> = {
   Navigation: Navigation,
   Theme: SwatchBook,
+  Form: TextCursorInput,
 };
 
 const foundationCategoryIcons: Record<FoundationCategory, LucideIcon> = {

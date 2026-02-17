@@ -58,6 +58,17 @@
       "passwordMismatch": "הסיסמאות אינן תואמות",
       "generic": "אירעה שגיאה"
     },
+    "twoFactorVerify": {
+      "title": "אימות דו-שלבי",
+      "description": "הזן את הקוד בן 6 הספרות מאפליקציית האימות.",
+      "cta": "אמת",
+      "invalidCode": "קוד לא תקין. אנא נסה שוב.",
+      "useBackupCode": "השתמש בקוד גיבוי במקום",
+      "backupCodeTitle": "קוד גיבוי",
+      "backupCodeDescription": "הזן אחד מקודי הגיבוי שלך כדי להתחבר.",
+      "backupCodePlaceholder": "הזן קוד גיבוי",
+      "useAuthenticator": "השתמש באפליקציית אימות במקום"
+    },
     "footer": "דוא״ל + סיסמה מאובטחים",
     "working": "מעבד...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "ההרשמה כרגע בהזמנה בלבד.",
       "signupBlockedDescription": "הצטרפו לרשימת ההמתנה בדף הבית שלנו כדי לבקש גישה.",
       "goToWaitlist": "הצטרפות לרשימת ההמתנה"
-    }
+    },
+    "forgotPassword": {
+      "badge": "שחזור סיסמה",
+      "title": "שכחת את הסיסמה?",
+      "description": "הזן את כתובת הדוא״ל שלך ונשלח לך קישור לאיפוס הסיסמה.",
+      "cta": "שלח קישור איפוס",
+      "emailSent": "בדוק את הדוא״ל שלך",
+      "emailSentDescription": "אם קיים חשבון עבור {email}, שלחנו קישור לאיפוס סיסמה. בדוק את תיבת הדואר הנכנס ותיקיית הספאם.",
+      "backToSignIn": "חזרה להתחברות",
+      "pageHeading": "אפס את הסיסמה שלך. חזור למסלול.",
+      "pageDescription": "הזן את כתובת הדוא״ל המשויכת לחשבון שלך ונשלח לך קישור ליצירת סיסמה חדשה."
+    },
+    "resetPassword": {
+      "badge": "שחזור סיסמה",
+      "title": "הגדר סיסמה חדשה",
+      "description": "בחר סיסמה חזקה לחשבון שלך.",
+      "newPassword": "סיסמה חדשה",
+      "cta": "אפס סיסמה",
+      "invalidTitle": "קישור איפוס לא תקין",
+      "tokenExpired": "פג תוקף קישור איפוס הסיסמה. אנא בקש קישור חדש.",
+      "tokenInvalid": "קישור איפוס הסיסמה אינו תקין או שכבר נעשה בו שימוש.",
+      "requestNewLink": "בקש קישור חדש",
+      "backToSignIn": "חזרה להתחברות",
+      "successTitle": "הסיסמה עודכנה",
+      "successDescription": "הסיסמה שלך אופסה בהצלחה. כעת תוכל להתחבר עם הסיסמה החדשה.",
+      "signInNow": "התחבר עכשיו",
+      "pageHeading": "כמעט שם. בחר סיסמה חדשה.",
+      "pageDescription": "בחר סיסמה חזקה שלא השתמשת בה בעבר. הסיסמה החדשה חייבת להכיל לפחות 8 תווים."
+    },
+    "verifyEmail": {
+      "badge": "אימות דוא״ל",
+      "title": "בדוק את הדוא״ל שלך",
+      "description": "שלחנו קישור אימות לכתובת הדוא״ל שלך. לחץ על הקישור כדי לאמת את חשבונך.",
+      "resend": "שלח שוב דוא״ל אימות",
+      "resent": "דוא״ל אימות נשלח! בדוק את תיבת הדואר הנכנס.",
+      "backToSignIn": "חזרה להתחברות",
+      "pageHeading": "שלב אחרון. אמת את הדוא״ל שלך.",
+      "pageDescription": "שלחנו לך קישור אימות. לחץ עליו כדי להפעיל את חשבונך ולהתחיל להשתמש באפליקציה."
+    },
+    "forgotPasswordLink": "שכחת סיסמה?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "משימות",
       "attachments": "קבצים מצורפים"
+    },
+    "security": "אבטחה",
+    "sessions": {
+      "title": "סשנים פעילים",
+      "description": "נהל את הסשנים הפעילים שלך בכל המכשירים. ניתן להתנתק מכל סשן שאינך מזהה.",
+      "currentSession": "מכשיר זה",
+      "otherSessions": "מכשירים אחרים",
+      "current": "נוכחי",
+      "lastActive": "פעיל {time}",
+      "noOtherSessions": "אין סשנים פעילים אחרים. אתה מחובר רק במכשיר זה.",
+      "revokeAll": "התנתק מכל האחרים",
+      "revokeAllTitle": "להתנתק מכל המכשירים האחרים?",
+      "revokeAllDescription": "תתנתק מכל המכשירים והדפדפנים האחרים. רק הסשן הנוכחי שלך יישאר פעיל.",
+      "revokeAllConfirm": "התנתק מהכל",
+      "revokeTitle": "להתנתק ממכשיר זה?",
+      "revokeDescription": "פעולה זו תסיים את הסשן עבור {device}. יהיה צורך להתחבר מחדש כדי לגשת לחשבון.",
+      "backToDashboard": "חזרה ללוח הבקרה"
+    },
+    "account": "הגדרות",
+    "profile": {
+      "title": "פרופיל",
+      "description": "נהל את פרטי הפרופיל וההעדפות שלך.",
+      "name": "שם תצוגה",
+      "namePlaceholder": "השם שלך",
+      "email": "דוא״ל",
+      "emailReadonly": "פנה לתמיכה כדי לשנות את הדוא״ל.",
+      "avatarColor": "צבע אווטר",
+      "saved": "הפרופיל עודכן.",
+      "language": "שפה",
+      "timezone": "אזור זמן",
+      "timezonePlaceholder": "בחר את אזור הזמן שלך",
+      "timezoneSearch": "חיפוש אזורי זמן...",
+      "timezoneDetected": "זוהה",
+      "noTimezoneResults": "לא נמצא אזור זמן.",
+      "theme": "ערכת נושא"
+    },
+    "changePassword": {
+      "title": "שינוי סיסמה",
+      "currentPassword": "סיסמה נוכחית",
+      "newPassword": "סיסמה חדשה",
+      "confirmPassword": "אשר סיסמה חדשה",
+      "revokeOtherSessions": "התנתק מכל המכשירים האחרים",
+      "cta": "עדכן סיסמה",
+      "success": "הסיסמה עודכנה בהצלחה.",
+      "errorCurrentPassword": "הסיסמה הנוכחית שגויה."
+    },
+    "twoFactor": {
+      "title": "אימות דו-שלבי",
+      "description": "הוסף שכבת אבטחה נוספת לחשבון שלך.",
+      "enabled": "אימות דו-שלבי מופעל",
+      "disabled": "אימות דו-שלבי אינו מופעל",
+      "enable": "הפעל אימות דו-שלבי",
+      "disable": "השבת אימות דו-שלבי",
+      "enterPassword": "הזן את הסיסמה שלך כדי להמשיך.",
+      "scanQrCode": "סרוק את קוד ה-QR באמצעות אפליקציית האימות (למשל Google Authenticator, Authy).",
+      "manualEntry": "לא ניתן לסרוק? הזן מפתח זה ידנית",
+      "manualEntryDescription": "פתח את אפליקציית האימות, בחר \"הוספת חשבון\", לאחר מכן בחר \"הזנת מפתח הגדרה\" והדבק את המפתח למטה.",
+      "secretKey": "מפתח סודי",
+      "copied": "הועתק ללוח",
+      "enterCode": "הזן את הקוד בן 6 הספרות מאפליקציית האימות לאימות ההגדרה.",
+      "verify": "אמת",
+      "backupCodes": "קודי גיבוי",
+      "backupCodesDescription": "שמור קודים אלה במקום בטוח. ניתן להשתמש בכל קוד פעם אחת בלבד.",
+      "viewBackupCodes": "הצג קודי גיבוי",
+      "regenerateBackupCodes": "חדש קודי גיבוי",
+      "disableConfirm": "\u05d4\u05d0\u05dd \u05d0\u05ea\u05d4 \u05d1\u05d8\u05d5\u05d7 \u05e9\u05d1\u05e8\u05e6\u05d5\u05e0\u05da \u05dc\u05d4\u05e9\u05d1\u05d9\u05ea \u05d0\u05ea \u05d4\u05d0\u05d9\u05de\u05d5\u05ea \u05d4\u05d3\u05d5-\u05e9\u05dc\u05d1\u05d9?",
+      "regenerateConfirm": "\u05e4\u05e2\u05d5\u05dc\u05d4 \u05d6\u05d5 \u05ea\u05d7\u05dc\u05d9\u05e3 \u05d0\u05ea \u05e7\u05d5\u05d3\u05d9 \u05d4\u05d2\u05d9\u05d1\u05d5\u05d9 \u05d4\u05e7\u05d9\u05d9\u05de\u05d9\u05dd \u05e9\u05dc\u05da. \u05e7\u05d5\u05d3\u05d9\u05dd \u05e9\u05dc\u05d0 \u05e0\u05e2\u05e9\u05d4 \u05d1\u05d4\u05dd \u05e9\u05d9\u05de\u05d5\u05e9 \u05dc\u05d0 \u05d9\u05e2\u05d1\u05d3\u05d5 \u05d9\u05d5\u05ea\u05e8.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

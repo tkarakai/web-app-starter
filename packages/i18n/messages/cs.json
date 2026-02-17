@@ -58,6 +58,17 @@
       "passwordMismatch": "Hesla se neshodují",
       "generic": "Došlo k chybě"
     },
+    "twoFactorVerify": {
+      "title": "Dvoufaktorov\u00e9 ov\u011b\u0159en\u00ed",
+      "description": "Zadejte 6m\u00edstn\u00fd k\u00f3d z autentiza\u010dn\u00ed aplikace.",
+      "cta": "Ov\u011b\u0159it",
+      "invalidCode": "Neplatn\u00fd k\u00f3d. Zkuste to pros\u00edm znovu.",
+      "useBackupCode": "Pou\u017e\u00edt z\u00e1lo\u017en\u00ed k\u00f3d",
+      "backupCodeTitle": "Z\u00e1lo\u017en\u00ed k\u00f3d",
+      "backupCodeDescription": "Zadejte jeden ze sv\u00fdch z\u00e1lo\u017en\u00edch k\u00f3d\u016f pro p\u0159ihl\u00e1\u0161en\u00ed.",
+      "backupCodePlaceholder": "Zadejte z\u00e1lo\u017en\u00ed k\u00f3d",
+      "useAuthenticator": "Pou\u017e\u00edt autentiza\u010dn\u00ed aplikaci"
+    },
     "footer": "Bezpečný e-mail + heslo",
     "working": "Zpracování...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "Registrace je v současné době pouze na pozvánku.",
       "signupBlockedDescription": "Připojte se na čekací listinu na naší hlavní stránce a požádejte o přístup.",
       "goToWaitlist": "Připojit se na čekací listinu"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Obnovení hesla",
+      "title": "Zapomněli jste heslo?",
+      "description": "Zadejte svůj e-mail a pošleme vám odkaz pro obnovení hesla.",
+      "cta": "Odeslat odkaz pro obnovení",
+      "emailSent": "Zkontrolujte svůj e-mail",
+      "emailSentDescription": "Pokud pro {email} existuje účet, odeslali jsme odkaz pro obnovení hesla. Zkontrolujte doručenou poštu i složku se spamem.",
+      "backToSignIn": "Zpět na přihlášení",
+      "pageHeading": "Obnovte si heslo. Vraťte se zpět.",
+      "pageDescription": "Zadejte e-mailovou adresu spojenou s vaším účtem a pošleme vám odkaz pro vytvoření nového hesla."
+    },
+    "resetPassword": {
+      "badge": "Obnovení hesla",
+      "title": "Nastavte nové heslo",
+      "description": "Zvolte silné heslo pro svůj účet.",
+      "newPassword": "Nové heslo",
+      "cta": "Obnovit heslo",
+      "invalidTitle": "Neplatný odkaz pro obnovení",
+      "tokenExpired": "Platnost tohoto odkazu pro obnovení hesla vypršela. Vyžádejte si prosím nový.",
+      "tokenInvalid": "Tento odkaz pro obnovení hesla je neplatný nebo již byl použit.",
+      "requestNewLink": "Vyžádat nový odkaz",
+      "backToSignIn": "Zpět na přihlášení",
+      "successTitle": "Heslo aktualizováno",
+      "successDescription": "Vaše heslo bylo úspěšně obnoveno. Nyní se můžete přihlásit s novým heslem.",
+      "signInNow": "Přihlásit se",
+      "pageHeading": "Skoro hotovo. Zvolte nové heslo.",
+      "pageDescription": "Vyberte si silné heslo, které jste dosud nepoužili. Nové heslo musí mít alespoň 8 znaků."
+    },
+    "verifyEmail": {
+      "badge": "Ověření e-mailu",
+      "title": "Zkontrolujte svůj e-mail",
+      "description": "Na vaši e-mailovou adresu jsme odeslali ověřovací odkaz. Klikněte na něj pro ověření svého účtu.",
+      "resend": "Znovu odeslat ověřovací e-mail",
+      "resent": "Ověřovací e-mail odeslán! Zkontrolujte svou schránku.",
+      "backToSignIn": "Zpět na přihlášení",
+      "pageHeading": "Poslední krok. Ověřte svůj e-mail.",
+      "pageDescription": "Poslali jsme vám ověřovací odkaz. Klikněte na něj pro aktivaci účtu a zahájení používání aplikace."
+    },
+    "forgotPasswordLink": "Zapomněli jste heslo?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Úkoly",
       "attachments": "Přílohy"
+    },
+    "security": "Zabezpečení",
+    "sessions": {
+      "title": "Aktivní relace",
+      "description": "Spravujte své aktivní relace na všech zařízeních. Můžete se odhlásit z jakékoli relace, kterou nepoznáváte.",
+      "currentSession": "Toto zařízení",
+      "otherSessions": "Ostatní zařízení",
+      "current": "Aktuální",
+      "lastActive": "Aktivní {time}",
+      "noOtherSessions": "Žádné další aktivní relace. Jste přihlášeni pouze na tomto zařízení.",
+      "revokeAll": "Odhlásit ze všech ostatních",
+      "revokeAllTitle": "Odhlásit ze všech ostatních zařízení?",
+      "revokeAllDescription": "Budete odhlášeni ze všech ostatních zařízení a prohlížečů. Aktivní zůstane pouze vaše aktuální relace.",
+      "revokeAllConfirm": "Odhlásit ze všech",
+      "revokeTitle": "Odhlásit toto zařízení?",
+      "revokeDescription": "Tím ukončíte relaci pro {device}. Pro přístup k účtu se bude muset znovu přihlásit.",
+      "backToDashboard": "Zpět na přehled"
+    },
+    "account": "Nastavení",
+    "profile": {
+      "title": "Profil",
+      "description": "Spravujte informace o svém profilu a předvolby.",
+      "name": "Zobrazované jméno",
+      "namePlaceholder": "Vaše jméno",
+      "email": "E-mail",
+      "emailReadonly": "Pro změnu e-mailu kontaktujte podporu.",
+      "avatarColor": "Barva avatara",
+      "saved": "Profil aktualizován.",
+      "language": "Jazyk",
+      "timezone": "Časové pásmo",
+      "timezonePlaceholder": "Vyberte časové pásmo",
+      "timezoneSearch": "Hledat časová pásma...",
+      "timezoneDetected": "Zjištěno",
+      "noTimezoneResults": "Časové pásmo nenalezeno.",
+      "theme": "Motiv"
+    },
+    "changePassword": {
+      "title": "Změna hesla",
+      "currentPassword": "Aktuální heslo",
+      "newPassword": "Nové heslo",
+      "confirmPassword": "Potvrďte nové heslo",
+      "revokeOtherSessions": "Odhlásit ze všech ostatních zařízení",
+      "cta": "Aktualizovat heslo",
+      "success": "Heslo bylo úspěšně aktualizováno.",
+      "errorCurrentPassword": "Aktuální heslo je nesprávné."
+    },
+    "twoFactor": {
+      "title": "Dvoufaktorové ověření",
+      "description": "Přidejte k účtu další vrstvu zabezpečení.",
+      "enabled": "2FA je zapnuto",
+      "disabled": "2FA není zapnuto",
+      "enable": "Zapnout 2FA",
+      "disable": "Vypnout 2FA",
+      "enterPassword": "Pro pokračování zadejte heslo.",
+      "scanQrCode": "Naskenujte tento QR kód pomocí autentizační aplikace (např. Google Authenticator, Authy).",
+      "manualEntry": "Nejde naskenovat? Zadejte tento klíč ručně",
+      "manualEntryDescription": "Otevřete svou autentizační aplikaci, zvolte \u201ePřidat účet\u201c a poté vyberte \u201eZadat klíč nastavení\u201c a vložte klíč níže.",
+      "secretKey": "Tajný klíč",
+      "copied": "Zkopírováno do schránky",
+      "enterCode": "Zadejte 6místný kód z autentizační aplikace pro ověření nastavení.",
+      "verify": "Ověřit",
+      "backupCodes": "Záložní kódy",
+      "backupCodesDescription": "Uložte si tyto kódy na bezpečné místo. Každý kód lze použít pouze jednou.",
+      "viewBackupCodes": "Zobrazit z\u00e1lo\u017en\u00ed k\u00f3dy",
+      "regenerateBackupCodes": "Vygenerovat nové záložní kódy",
+      "disableConfirm": "Opravdu chcete vypnout 2FA?",
+      "regenerateConfirm": "T\u00edmto nahrad\u00edte sv\u00e9 st\u00e1vaj\u00edc\u00ed z\u00e1lo\u017en\u00ed k\u00f3dy. Nepou\u017eit\u00e9 k\u00f3dy p\u0159estanou fungovat.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

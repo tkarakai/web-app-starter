@@ -176,7 +176,19 @@ export const seed = internalAction({
         }
       }
 
-      // 3. Finalize the invitation token
+      // 3. Mark user as email-verified (requireEmailVerification is enabled).
+      //    Use Better Auth's internal adapter to directly update the user record.
+      const authForVerify = createAuth(ctx);
+      const authContext = await authForVerify.$context;
+      const existingUser = await authContext.internalAdapter.findUserByEmail(user.email);
+      if (existingUser && !existingUser.user.emailVerified) {
+        await authContext.internalAdapter.updateUser(
+          existingUser.user.id,
+          { emailVerified: true },
+        );
+      }
+
+      // 4. Finalize the invitation token
       await ctx.runMutation(internal.devSeed.finalizeDevToken, {
         email: user.email,
       });

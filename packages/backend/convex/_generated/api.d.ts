@@ -8,18 +8,23 @@
  * @module
  */
 
+import type * as adminAuth from "../adminAuth.js";
 import type * as adminEmails from "../adminEmails.js";
 import type * as appSettings from "../appSettings.js";
 import type * as auth from "../auth.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as devSeed from "../devSeed.js";
+import type * as devTotp from "../devTotp.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as meta from "../meta.js";
+import type * as parseUserAgent from "../parseUserAgent.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
+import type * as sendAuthEmail from "../sendAuthEmail.js";
+import type * as sessions from "../sessions.js";
 import type * as tasks from "../tasks.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as waitlist from "../waitlist.js";
@@ -33,18 +38,23 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminAuth: typeof adminAuth;
   adminEmails: typeof adminEmails;
   appSettings: typeof appSettings;
   auth: typeof auth;
   bootstrap: typeof bootstrap;
   devSeed: typeof devSeed;
+  devTotp: typeof devTotp;
   emailTemplates: typeof emailTemplates;
   files: typeof files;
   functions: typeof functions;
   http: typeof http;
   meta: typeof meta;
+  parseUserAgent: typeof parseUserAgent;
   projects: typeof projects;
   rateLimits: typeof rateLimits;
+  sendAuthEmail: typeof sendAuthEmail;
+  sessions: typeof sessions;
   tasks: typeof tasks;
   userProfiles: typeof userProfiles;
   waitlist: typeof waitlist;

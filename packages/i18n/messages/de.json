@@ -58,6 +58,17 @@
       "passwordMismatch": "Die Passwörter stimmen nicht überein",
       "generic": "Ein Fehler ist aufgetreten"
     },
+    "twoFactorVerify": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App ein.",
+      "cta": "\u00dcberpr\u00fcfen",
+      "invalidCode": "Ung\u00fcltiger Code. Bitte versuchen Sie es erneut.",
+      "useBackupCode": "Backup-Code verwenden",
+      "backupCodeTitle": "Backup-Code",
+      "backupCodeDescription": "Geben Sie einen Ihrer Backup-Codes ein, um sich anzumelden.",
+      "backupCodePlaceholder": "Backup-Code eingeben",
+      "useAuthenticator": "Authentifizierungs-App verwenden"
+    },
     "footer": "Sichere E-Mail + Passwort",
     "working": "Wird verarbeitet...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "Die Registrierung ist derzeit nur mit Einladung möglich.",
       "signupBlockedDescription": "Treten Sie der Warteliste auf unserer Startseite bei, um Zugang anzufordern.",
       "goToWaitlist": "Zur Warteliste"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Passwort-Wiederherstellung",
+      "title": "Passwort vergessen?",
+      "description": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+      "cta": "Link senden",
+      "emailSent": "Überprüfen Sie Ihre E-Mails",
+      "emailSentDescription": "Falls ein Konto für {email} existiert, haben wir einen Link zum Zurücksetzen des Passworts gesendet. Überprüfen Sie Ihren Posteingang und Spam-Ordner.",
+      "backToSignIn": "Zurück zur Anmeldung",
+      "pageHeading": "Setzen Sie Ihr Passwort zurück. Kommen Sie zurück auf Kurs.",
+      "pageDescription": "Geben Sie die mit Ihrem Konto verknüpfte E-Mail-Adresse ein und wir senden Ihnen einen Link zum Erstellen eines neuen Passworts."
+    },
+    "resetPassword": {
+      "badge": "Passwort-Wiederherstellung",
+      "title": "Neues Passwort festlegen",
+      "description": "Wählen Sie ein sicheres Passwort für Ihr Konto.",
+      "newPassword": "Neues Passwort",
+      "cta": "Passwort zurücksetzen",
+      "invalidTitle": "Ungültiger Link",
+      "tokenExpired": "Dieser Link zum Zurücksetzen des Passworts ist abgelaufen. Bitte fordern Sie einen neuen an.",
+      "tokenInvalid": "Dieser Link zum Zurücksetzen des Passworts ist ungültig oder wurde bereits verwendet.",
+      "requestNewLink": "Neuen Link anfordern",
+      "backToSignIn": "Zurück zur Anmeldung",
+      "successTitle": "Passwort aktualisiert",
+      "successDescription": "Ihr Passwort wurde erfolgreich zurückgesetzt. Sie können sich jetzt mit Ihrem neuen Passwort anmelden.",
+      "signInNow": "Jetzt anmelden",
+      "pageHeading": "Fast geschafft. Wählen Sie ein neues Passwort.",
+      "pageDescription": "Wählen Sie ein sicheres Passwort, das Sie noch nicht verwendet haben. Ihr neues Passwort muss mindestens 8 Zeichen lang sein."
+    },
+    "verifyEmail": {
+      "badge": "E-Mail-Verifizierung",
+      "title": "Überprüfen Sie Ihre E-Mails",
+      "description": "Wir haben einen Bestätigungslink an Ihre E-Mail-Adresse gesendet. Klicken Sie auf den Link, um Ihr Konto zu verifizieren.",
+      "resend": "Bestätigungs-E-Mail erneut senden",
+      "resent": "Bestätigungs-E-Mail gesendet! Überprüfen Sie Ihren Posteingang.",
+      "backToSignIn": "Zurück zur Anmeldung",
+      "pageHeading": "Letzter Schritt. Verifizieren Sie Ihre E-Mail.",
+      "pageDescription": "Wir haben Ihnen einen Bestätigungslink gesendet. Klicken Sie darauf, um Ihr Konto zu aktivieren und die App zu nutzen."
+    },
+    "forgotPasswordLink": "Passwort vergessen?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Aufgaben",
       "attachments": "Anhänge"
+    },
+    "security": "Sicherheit",
+    "sessions": {
+      "title": "Aktive Sitzungen",
+      "description": "Verwalten Sie Ihre aktiven Sitzungen auf allen Geräten. Sie können sich von jeder Sitzung abmelden, die Sie nicht erkennen.",
+      "currentSession": "Dieses Gerät",
+      "otherSessions": "Andere Geräte",
+      "current": "Aktuell",
+      "lastActive": "Aktiv {time}",
+      "noOtherSessions": "Keine weiteren aktiven Sitzungen. Sie sind nur auf diesem Gerät angemeldet.",
+      "revokeAll": "Alle anderen abmelden",
+      "revokeAllTitle": "Von allen anderen Geräten abmelden?",
+      "revokeAllDescription": "Sie werden von allen anderen Geräten und Browsern abgemeldet. Nur Ihre aktuelle Sitzung bleibt aktiv.",
+      "revokeAllConfirm": "Alle abmelden",
+      "revokeTitle": "Von diesem Gerät abmelden?",
+      "revokeDescription": "Dies beendet die Sitzung für {device}. Eine erneute Anmeldung ist erforderlich, um auf das Konto zuzugreifen.",
+      "backToDashboard": "Zurück zum Dashboard"
+    },
+    "account": "Einstellungen",
+    "profile": {
+      "title": "Profil",
+      "description": "Verwalten Sie Ihre Profilinformationen und Einstellungen.",
+      "name": "Anzeigename",
+      "namePlaceholder": "Ihr Name",
+      "email": "E-Mail",
+      "emailReadonly": "Kontaktieren Sie den Support, um Ihre E-Mail zu ändern.",
+      "avatarColor": "Avatar-Farbe",
+      "saved": "Profil aktualisiert.",
+      "language": "Sprache",
+      "timezone": "Zeitzone",
+      "timezonePlaceholder": "Zeitzone auswählen",
+      "timezoneSearch": "Zeitzonen durchsuchen...",
+      "timezoneDetected": "Erkannt",
+      "noTimezoneResults": "Keine Zeitzone gefunden.",
+      "theme": "Design"
+    },
+    "changePassword": {
+      "title": "Passwort ändern",
+      "currentPassword": "Aktuelles Passwort",
+      "newPassword": "Neues Passwort",
+      "confirmPassword": "Neues Passwort bestätigen",
+      "revokeOtherSessions": "Alle anderen Geräte abmelden",
+      "cta": "Passwort aktualisieren",
+      "success": "Passwort erfolgreich aktualisiert.",
+      "errorCurrentPassword": "Das aktuelle Passwort ist falsch."
+    },
+    "twoFactor": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Fügen Sie Ihrem Konto eine zusätzliche Sicherheitsebene hinzu.",
+      "enabled": "2FA ist aktiviert",
+      "disabled": "2FA ist nicht aktiviert",
+      "enable": "2FA aktivieren",
+      "disable": "2FA deaktivieren",
+      "enterPassword": "Geben Sie Ihr Passwort ein, um fortzufahren.",
+      "scanQrCode": "Scannen Sie diesen QR-Code mit Ihrer Authentifizierungs-App (z. B. Google Authenticator, Authy).",
+      "manualEntry": "Scannen nicht möglich? Geben Sie diesen Schlüssel manuell ein",
+      "manualEntryDescription": "Öffnen Sie Ihre Authentifizierungs-App, wählen Sie \u201eKonto hinzufügen\u201c, dann \u201eEinrichtungsschlüssel eingeben\u201c und fügen Sie den Schlüssel unten ein.",
+      "secretKey": "Geheimer Schlüssel",
+      "copied": "In die Zwischenablage kopiert",
+      "enterCode": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App ein, um die Einrichtung zu bestätigen.",
+      "verify": "Überprüfen",
+      "backupCodes": "Backup-Codes",
+      "backupCodesDescription": "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden.",
+      "viewBackupCodes": "Backup-Codes anzeigen",
+      "regenerateBackupCodes": "Backup-Codes neu generieren",
+      "disableConfirm": "Sind Sie sicher, dass Sie 2FA deaktivieren m\u00f6chten?",
+      "regenerateConfirm": "Dadurch werden Ihre bestehenden Backup-Codes ersetzt. Nicht verwendete Codes funktionieren nicht mehr.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

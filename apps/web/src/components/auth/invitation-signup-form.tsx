@@ -19,6 +19,7 @@ import {
   CardTitle,
   Input,
   Label,
+  PasswordInput,
   Skeleton,
 } from "@repo/design-system";
 
@@ -116,7 +117,13 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       if (result.error) {
         // Release claim on signup failure
         await releaseClaim({ token });
-        setError(result.error.message ?? t("errors.generic"));
+        // Use generic message to avoid leaking server error details.
+        // Rate limit errors get a specific message.
+        setError(
+          result.error.status === 429
+            ? t("errors.rateLimited")
+            : t("errors.generic"),
+        );
         return;
       }
 
@@ -125,14 +132,15 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
       broadcastAuth();
       await redirectWithUserLocale(router);
-    } catch (err) {
+    } catch {
       // Release claim on any error
       try {
         await releaseClaim({ token });
       } catch {
         // Ignore release errors
       }
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      // Use generic message — don't leak internal error details to the client.
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }
@@ -172,9 +180,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-password">{t("fields.password")}</Label>
-            <Input
+            <PasswordInput
               id="invite-password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("fields.passwordSignUpPlaceholder")}
@@ -186,9 +193,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
             <Label htmlFor="invite-confirm-password">
               {t("fields.confirmPassword")}
             </Label>
-            <Input
+            <PasswordInput
               id="invite-confirm-password"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder={t("fields.confirmPasswordPlaceholder")}

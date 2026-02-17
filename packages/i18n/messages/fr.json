@@ -58,6 +58,17 @@
       "passwordMismatch": "Les mots de passe ne correspondent pas",
       "generic": "Une erreur est survenue"
     },
+    "twoFactorVerify": {
+      "title": "Authentification \u00e0 deux facteurs",
+      "description": "Saisissez le code \u00e0 6 chiffres de votre application d'authentification.",
+      "cta": "V\u00e9rifier",
+      "invalidCode": "Code invalide. Veuillez r\u00e9essayer.",
+      "useBackupCode": "Utiliser un code de secours",
+      "backupCodeTitle": "Code de secours",
+      "backupCodeDescription": "Saisissez l'un de vos codes de secours pour vous connecter.",
+      "backupCodePlaceholder": "Saisissez le code de secours",
+      "useAuthenticator": "Utiliser l'application d'authentification"
+    },
     "footer": "E-mail + mot de passe sécurisés",
     "working": "En cours...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "L'inscription est actuellement sur invitation uniquement.",
       "signupBlockedDescription": "Rejoignez la liste d'attente sur notre page d'accueil pour demander l'accès.",
       "goToWaitlist": "Rejoindre la liste d'attente"
-    }
+    },
+    "forgotPassword": {
+      "badge": "Récupération du mot de passe",
+      "title": "Mot de passe oublié ?",
+      "description": "Saisissez votre e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+      "cta": "Envoyer le lien",
+      "emailSent": "Vérifiez vos e-mails",
+      "emailSentDescription": "Si un compte existe pour {email}, nous avons envoyé un lien de réinitialisation. Vérifiez votre boîte de réception et votre dossier spam.",
+      "backToSignIn": "Retour à la connexion",
+      "pageHeading": "Réinitialisez votre mot de passe. Reprenez le fil.",
+      "pageDescription": "Saisissez l'adresse e-mail associée à votre compte et nous vous enverrons un lien pour créer un nouveau mot de passe."
+    },
+    "resetPassword": {
+      "badge": "Récupération du mot de passe",
+      "title": "Définir un nouveau mot de passe",
+      "description": "Choisissez un mot de passe robuste pour votre compte.",
+      "newPassword": "Nouveau mot de passe",
+      "cta": "Réinitialiser le mot de passe",
+      "invalidTitle": "Lien invalide",
+      "tokenExpired": "Ce lien de réinitialisation a expiré. Veuillez en demander un nouveau.",
+      "tokenInvalid": "Ce lien de réinitialisation est invalide ou a déjà été utilisé.",
+      "requestNewLink": "Demander un nouveau lien",
+      "backToSignIn": "Retour à la connexion",
+      "successTitle": "Mot de passe mis à jour",
+      "successDescription": "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+      "signInNow": "Se connecter maintenant",
+      "pageHeading": "Presque terminé. Choisissez un nouveau mot de passe.",
+      "pageDescription": "Choisissez un mot de passe robuste que vous n'avez jamais utilisé. Votre nouveau mot de passe doit contenir au moins 8 caractères."
+    },
+    "verifyEmail": {
+      "badge": "Vérification de l'e-mail",
+      "title": "Vérifiez vos e-mails",
+      "description": "Nous avons envoyé un lien de vérification à votre adresse e-mail. Cliquez sur le lien pour vérifier votre compte.",
+      "resend": "Renvoyer l'e-mail de vérification",
+      "resent": "E-mail de vérification envoyé ! Vérifiez votre boîte de réception.",
+      "backToSignIn": "Retour à la connexion",
+      "pageHeading": "Dernière étape. Vérifiez votre e-mail.",
+      "pageDescription": "Nous vous avons envoyé un lien de vérification. Cliquez dessus pour activer votre compte et commencer à utiliser l'application."
+    },
+    "forgotPasswordLink": "Mot de passe oublié ?"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "Tâches",
       "attachments": "Pièces jointes"
+    },
+    "security": "Sécurité",
+    "sessions": {
+      "title": "Sessions actives",
+      "description": "Gérez vos sessions actives sur tous vos appareils. Vous pouvez vous déconnecter de toute session que vous ne reconnaissez pas.",
+      "currentSession": "Cet appareil",
+      "otherSessions": "Autres appareils",
+      "current": "Actuelle",
+      "lastActive": "Actif {time}",
+      "noOtherSessions": "Aucune autre session active. Vous n'êtes connecté que sur cet appareil.",
+      "revokeAll": "Déconnecter tous les autres",
+      "revokeAllTitle": "Déconnecter tous les autres appareils ?",
+      "revokeAllDescription": "Vous serez déconnecté de tous les autres appareils et navigateurs. Seule votre session actuelle restera active.",
+      "revokeAllConfirm": "Tout déconnecter",
+      "revokeTitle": "Déconnecter cet appareil ?",
+      "revokeDescription": "Cela mettra fin à la session pour {device}. Une nouvelle connexion sera nécessaire pour accéder au compte.",
+      "backToDashboard": "Retour au tableau de bord"
+    },
+    "account": "Paramètres",
+    "profile": {
+      "title": "Profil",
+      "description": "Gérez vos informations de profil et vos préférences.",
+      "name": "Nom d'affichage",
+      "namePlaceholder": "Votre nom",
+      "email": "E-mail",
+      "emailReadonly": "Contactez le support pour modifier votre e-mail.",
+      "avatarColor": "Couleur de l'avatar",
+      "saved": "Profil mis à jour.",
+      "language": "Langue",
+      "timezone": "Fuseau horaire",
+      "timezonePlaceholder": "Sélectionnez votre fuseau horaire",
+      "timezoneSearch": "Rechercher un fuseau horaire...",
+      "timezoneDetected": "Détecté",
+      "noTimezoneResults": "Aucun fuseau horaire trouvé.",
+      "theme": "Thème"
+    },
+    "changePassword": {
+      "title": "Changer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe",
+      "revokeOtherSessions": "Déconnecter tous les autres appareils",
+      "cta": "Mettre à jour le mot de passe",
+      "success": "Mot de passe mis à jour avec succès.",
+      "errorCurrentPassword": "Le mot de passe actuel est incorrect."
+    },
+    "twoFactor": {
+      "title": "Authentification à deux facteurs",
+      "description": "Ajoutez une couche de sécurité supplémentaire à votre compte.",
+      "enabled": "2FA est activé",
+      "disabled": "2FA n'est pas activé",
+      "enable": "Activer 2FA",
+      "disable": "Désactiver 2FA",
+      "enterPassword": "Saisissez votre mot de passe pour continuer.",
+      "scanQrCode": "Scannez ce QR code avec votre application d'authentification (ex. Google Authenticator, Authy).",
+      "manualEntry": "Impossible de scanner ? Saisissez cette clé manuellement",
+      "manualEntryDescription": "Ouvrez votre application d'authentification, choisissez « Ajouter un compte », puis sélectionnez « Saisir la clé de configuration » et collez la clé ci-dessous.",
+      "secretKey": "Clé secrète",
+      "copied": "Copié dans le presse-papiers",
+      "enterCode": "Saisissez le code à 6 chiffres de votre application d'authentification pour vérifier la configuration.",
+      "verify": "Vérifier",
+      "backupCodes": "Codes de secours",
+      "backupCodesDescription": "Conservez ces codes en lieu sûr. Chaque code ne peut être utilisé qu'une seule fois.",
+      "viewBackupCodes": "Voir les codes de secours",
+      "regenerateBackupCodes": "Régénérer les codes de secours",
+      "disableConfirm": "Voulez-vous vraiment d\u00e9sactiver 2FA ?",
+      "regenerateConfirm": "Cela remplacera vos codes de secours existants. Les codes non utilis\u00e9s ne fonctionneront plus.",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

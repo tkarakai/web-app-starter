@@ -19,7 +19,7 @@ const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
 const PROTECTED_PREFIXES = ["/dashboard"];
 
 /** Auth routes that authenticated users should skip. */
-const AUTH_ROUTES = ["/sign-in"];
+const AUTH_ROUTES = ["/sign-in", "/forgot-password", "/reset-password"];
 
 export function proxy(request: NextRequest) {
   // --- Rate limiting (first check) ---

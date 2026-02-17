@@ -58,6 +58,17 @@
       "passwordMismatch": "パスワードが一致しません",
       "generic": "エラーが発生しました"
     },
+    "twoFactorVerify": {
+      "title": "二要素認証",
+      "description": "認証アプリの6桁のコードを入力してください。",
+      "cta": "認証",
+      "invalidCode": "無効なコードです。もう一度お試しください。",
+      "useBackupCode": "バックアップコードを使用する",
+      "backupCodeTitle": "バックアップコード",
+      "backupCodeDescription": "バックアップコードを入力してログインしてください。",
+      "backupCodePlaceholder": "バックアップコードを入力",
+      "useAuthenticator": "認証アプリを使用する"
+    },
     "footer": "安全なメール + パスワード認証",
     "working": "処理中...",
     "legal": {
@@ -81,7 +92,46 @@
       "signupBlocked": "現在、登録は招待制のみです。",
       "signupBlockedDescription": "ホームページのウェイトリストに参加してアクセスをリクエストしてください。",
       "goToWaitlist": "ウェイトリストに参加"
-    }
+    },
+    "forgotPassword": {
+      "badge": "パスワードの復旧",
+      "title": "パスワードをお忘れですか？",
+      "description": "メールアドレスを入力してください。パスワード再設定用のリンクをお送りします。",
+      "cta": "再設定リンクを送信",
+      "emailSent": "メールをご確認ください",
+      "emailSentDescription": "{email} のアカウントが存在する場合、パスワード再設定リンクを送信しました。受信トレイと迷惑メールフォルダをご確認ください。",
+      "backToSignIn": "ログインに戻る",
+      "pageHeading": "パスワードを再設定しましょう。",
+      "pageDescription": "アカウントに関連付けられたメールアドレスを入力してください。新しいパスワードを作成するためのリンクをお送りします。"
+    },
+    "resetPassword": {
+      "badge": "パスワードの復旧",
+      "title": "新しいパスワードを設定",
+      "description": "アカウント用の強力なパスワードを選択してください。",
+      "newPassword": "新しいパスワード",
+      "cta": "パスワードを再設定",
+      "invalidTitle": "無効な再設定リンク",
+      "tokenExpired": "このパスワード再設定リンクは期限切れです。新しいリンクをリクエストしてください。",
+      "tokenInvalid": "このパスワード再設定リンクは無効か、すでに使用されています。",
+      "requestNewLink": "新しいリンクをリクエスト",
+      "backToSignIn": "ログインに戻る",
+      "successTitle": "パスワードを更新しました",
+      "successDescription": "パスワードが正常に再設定されました。新しいパスワードでログインできます。",
+      "signInNow": "今すぐログイン",
+      "pageHeading": "あと少しです。新しいパスワードを設定しましょう。",
+      "pageDescription": "以前使用したことのない強力なパスワードを選択してください。新しいパスワードは8文字以上である必要があります。"
+    },
+    "verifyEmail": {
+      "badge": "メール認証",
+      "title": "メールをご確認ください",
+      "description": "メールアドレスに認証リンクを送信しました。リンクをクリックしてアカウントを認証してください。",
+      "resend": "認証メールを再送信",
+      "resent": "認証メールを送信しました！受信トレイをご確認ください。",
+      "backToSignIn": "ログインに戻る",
+      "pageHeading": "最後のステップです。メールを認証してください。",
+      "pageDescription": "認証リンクを送信しました。クリックしてアカウントを有効化し、アプリの使用を開始してください。"
+    },
+    "forgotPasswordLink": "パスワードをお忘れですか？"
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -149,6 +199,74 @@
     "tabs": {
       "tasks": "タスク",
       "attachments": "添付ファイル"
+    },
+    "security": "セキュリティ",
+    "sessions": {
+      "title": "アクティブなセッション",
+      "description": "すべてのデバイスでのアクティブなセッションを管理します。覚えのないセッションはログアウトできます。",
+      "currentSession": "このデバイス",
+      "otherSessions": "その他のデバイス",
+      "current": "現在",
+      "lastActive": "{time}にアクティブ",
+      "noOtherSessions": "他にアクティブなセッションはありません。このデバイスでのみログインしています。",
+      "revokeAll": "他のすべてをログアウト",
+      "revokeAllTitle": "他のすべてのデバイスからログアウトしますか？",
+      "revokeAllDescription": "他のすべてのデバイスとブラウザからログアウトされます。現在のセッションのみアクティブのまま残ります。",
+      "revokeAllConfirm": "すべてログアウト",
+      "revokeTitle": "このデバイスからログアウトしますか？",
+      "revokeDescription": "{device}のセッションが終了します。アカウントにアクセスするには再度ログインが必要です。",
+      "backToDashboard": "ダッシュボードに戻る"
+    },
+    "account": "設定",
+    "profile": {
+      "title": "プロフィール",
+      "description": "プロフィール情報と設定を管理します。",
+      "name": "表示名",
+      "namePlaceholder": "あなたの名前",
+      "email": "メールアドレス",
+      "emailReadonly": "メールアドレスの変更はサポートにお問い合わせください。",
+      "avatarColor": "アバターの色",
+      "saved": "プロフィールを更新しました。",
+      "language": "言語",
+      "timezone": "タイムゾーン",
+      "timezonePlaceholder": "タイムゾーンを選択",
+      "timezoneSearch": "タイムゾーンを検索...",
+      "timezoneDetected": "検出済み",
+      "noTimezoneResults": "タイムゾーンが見つかりません。",
+      "theme": "テーマ"
+    },
+    "changePassword": {
+      "title": "パスワード変更",
+      "currentPassword": "現在のパスワード",
+      "newPassword": "新しいパスワード",
+      "confirmPassword": "新しいパスワードの確認",
+      "revokeOtherSessions": "他のすべてのデバイスからログアウト",
+      "cta": "パスワードを更新",
+      "success": "パスワードを更新しました。",
+      "errorCurrentPassword": "現在のパスワードが正しくありません。"
+    },
+    "twoFactor": {
+      "title": "二要素認証",
+      "description": "アカウントにセキュリティレイヤーを追加します。",
+      "enabled": "2FAは有効です",
+      "disabled": "2FAは無効です",
+      "enable": "2FAを有効にする",
+      "disable": "2FAを無効にする",
+      "enterPassword": "続行するにはパスワードを入力してください。",
+      "scanQrCode": "認証アプリ（Google Authenticator、Authyなど）でこのQRコードをスキャンしてください。",
+      "manualEntry": "スキャンできませんか？このキーを手動で入力してください",
+      "manualEntryDescription": "認証アプリを開き、「アカウントを追加」を選択してから「セットアップキーを入力」を選び、以下のキーを貼り付けてください。",
+      "secretKey": "シークレットキー",
+      "copied": "クリップボードにコピーしました",
+      "enterCode": "設定を確認するため、認証アプリの6桁のコードを入力してください。",
+      "verify": "認証",
+      "backupCodes": "バックアップコード",
+      "backupCodesDescription": "これらのコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
+      "viewBackupCodes": "バックアップコードを表示",
+      "regenerateBackupCodes": "バックアップコードを再生成",
+      "disableConfirm": "2FA\u3092\u7121\u52b9\u306b\u3057\u3066\u3082\u3088\u308d\u3057\u3044\u3067\u3059\u304b\uff1f",
+      "regenerateConfirm": "\u65e2\u5b58\u306e\u30d0\u30c3\u30af\u30a2\u30c3\u30d7\u30b3\u30fc\u30c9\u304c\u7f6e\u304d\u63db\u3048\u3089\u308c\u307e\u3059\u3002\u672a\u4f7f\u7528\u306e\u30b3\u30fc\u30c9\u306f\u4f7f\u7528\u3067\u304d\u306a\u304f\u306a\u308a\u307e\u3059\u3002",
+      "codePlaceholder": "000000"
     }
   },
   "projects": {

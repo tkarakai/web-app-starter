@@ -10,6 +10,7 @@ export default defineSchema({
     locale: v.optional(v.string()),
     theme: v.optional(v.string()),
     timezone: v.optional(v.string()),
+    avatarColor: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_owner", ["ownerId"]),
@@ -100,4 +101,17 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_email", ["email"])
     .index("by_waitlist_entry", ["waitlistEntryId"]),
+
+  // --- Admin audit log ---
+
+  auditLog: defineTable({
+    action: v.string(),
+    actorId: v.string(),
+    targetId: v.optional(v.string()),
+    details: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_actor", ["actorId"])
+    .index("by_action", ["action"])
+    .index("by_created", ["createdAt"]),
 });
