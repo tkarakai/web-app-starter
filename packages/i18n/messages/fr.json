@@ -308,7 +308,14 @@
       "title": "Titre",
       "titlePlaceholder": "Que faut-il faire ?",
       "description": "Description",
-      "descriptionPlaceholder": "Ajouter des détails..."
+      "descriptionPlaceholder": "Ajouter des détails...",
+      "deadline": "Échéance",
+      "deadlinePlaceholder": "Pas d'échéance",
+      "clearDeadline": "Supprimer l'échéance"
+    },
+    "deadline": {
+      "overdue": "En retard",
+      "dueToday": "Échéance aujourd'hui"
     },
     "aria": {
       "changeStatus": "Changer le statut depuis {status}"

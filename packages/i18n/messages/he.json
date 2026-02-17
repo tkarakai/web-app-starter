@@ -308,7 +308,14 @@
       "title": "כותרת",
       "titlePlaceholder": "מה צריך לעשות?",
       "description": "תיאור",
-      "descriptionPlaceholder": "הוסף פרטים..."
+      "descriptionPlaceholder": "הוסף פרטים...",
+      "deadline": "תאריך יעד",
+      "deadlinePlaceholder": "ללא תאריך יעד",
+      "clearDeadline": "הסר תאריך יעד"
+    },
+    "deadline": {
+      "overdue": "באיחור",
+      "dueToday": "נדרש היום"
     },
     "aria": {
       "changeStatus": "שנה סטטוס מ-{status}"

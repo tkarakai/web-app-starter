@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { useQuery } from "convex/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -33,6 +33,7 @@ import {
 } from "@repo/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
+import { DeadlineInput } from "./deadline-input";
 import { TaskRow } from "./task-row";
 
 type Task = {
@@ -41,6 +42,7 @@ type Task = {
   title: string;
   description: string;
   status: TaskStatus;
+  deadline?: number;
   projectId: Id<"projects">;
   ownerId: string;
   createdAt: number;
@@ -52,15 +54,20 @@ type TaskListProps = {
 
 export function TaskList({ projectId }: TaskListProps) {
   const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
+  const profile = useQuery(api.userProfiles.get);
   const createTask = useMutationWithToast(api.tasks.create);
   const t = useTranslations("tasks");
   const tc = useTranslations("common");
+  const locale = useLocale();
+
+  const timeZone = profile?.timezone ?? undefined;
 
   const [tab, setTab] = React.useState<"all" | TaskStatus>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [status, setStatus] = React.useState<TaskStatus>("todo");
+  const [deadline, setDeadline] = React.useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = React.useState(false);
 
   const filteredTasks = tasks.filter((task) => tab === "all" || task.status === tab);
@@ -79,10 +86,12 @@ export function TaskList({ projectId }: TaskListProps) {
         description: normalizeText(description),
         status,
         projectId,
+        deadline,
       });
       setTitle("");
       setDescription("");
       setStatus("todo");
+      setDeadline(undefined);
       setDialogOpen(false);
     } finally {
       setSubmitting(false);
@@ -140,6 +149,7 @@ export function TaskList({ projectId }: TaskListProps) {
                     </SelectContent>
                   </Select>
                 </div>
+                <DeadlineInput value={deadline} onChange={setDeadline} />
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? tc("creating") : t("createTask")}
                 </Button>
@@ -178,7 +188,7 @@ export function TaskList({ projectId }: TaskListProps) {
         ) : (
           <div className="space-y-2">
             {filteredTasks.map((task) => (
-              <TaskRow key={task._id} task={task} />
+              <TaskRow key={task._id} task={task} locale={locale} timeZone={timeZone} />
             ))}
           </div>
         )}

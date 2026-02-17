@@ -334,6 +334,142 @@ describe("tasks", () => {
     });
   });
 
+  describe("deadline", () => {
+    test("creates a task with a deadline", async () => {
+      const t = createTestEnv();
+
+      const projectId = await t.run(async (ctx) => {
+        return ctx.db.insert("projects", {
+          name: "Test Project",
+          description: "",
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+        });
+      });
+
+      const deadline = new Date("2026-03-15T14:00:00Z").getTime();
+      const taskId = await t.run(async (ctx) => {
+        return ctx.db.insert("tasks", {
+          title: "Task with deadline",
+          description: "",
+          status: "todo",
+          projectId,
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+          deadline,
+        });
+      });
+
+      const result = await t.run(async (ctx) => {
+        return ctx.db.get(taskId);
+      });
+
+      expect(result?.deadline).toBe(deadline);
+    });
+
+    test("creates a task without a deadline", async () => {
+      const t = createTestEnv();
+
+      const projectId = await t.run(async (ctx) => {
+        return ctx.db.insert("projects", {
+          name: "Test Project",
+          description: "",
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+        });
+      });
+
+      const taskId = await t.run(async (ctx) => {
+        return ctx.db.insert("tasks", {
+          title: "Task without deadline",
+          description: "",
+          status: "todo",
+          projectId,
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+        });
+      });
+
+      const result = await t.run(async (ctx) => {
+        return ctx.db.get(taskId);
+      });
+
+      expect(result?.deadline).toBeUndefined();
+    });
+
+    test("updates a task deadline", async () => {
+      const t = createTestEnv();
+
+      const projectId = await t.run(async (ctx) => {
+        return ctx.db.insert("projects", {
+          name: "Test Project",
+          description: "",
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+        });
+      });
+
+      const taskId = await t.run(async (ctx) => {
+        return ctx.db.insert("tasks", {
+          title: "Task",
+          description: "",
+          status: "todo",
+          projectId,
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+        });
+      });
+
+      const deadline = new Date("2026-04-01T10:00:00Z").getTime();
+      await t.run(async (ctx) => {
+        return ctx.db.patch(taskId, { deadline });
+      });
+
+      const result = await t.run(async (ctx) => {
+        return ctx.db.get(taskId);
+      });
+
+      expect(result?.deadline).toBe(deadline);
+    });
+
+    test("clears a task deadline by patching to undefined", async () => {
+      const t = createTestEnv();
+
+      const projectId = await t.run(async (ctx) => {
+        return ctx.db.insert("projects", {
+          name: "Test Project",
+          description: "",
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+        });
+      });
+
+      const deadline = new Date("2026-04-01T10:00:00Z").getTime();
+      const taskId = await t.run(async (ctx) => {
+        return ctx.db.insert("tasks", {
+          title: "Task",
+          description: "",
+          status: "todo",
+          projectId,
+          ownerId: mockUser._id,
+          createdAt: Date.now(),
+          deadline,
+        });
+      });
+
+      // Clearing: patch with undefined removes the optional field
+      await t.run(async (ctx) => {
+        return ctx.db.patch(taskId, { deadline: undefined });
+      });
+
+      const result = await t.run(async (ctx) => {
+        return ctx.db.get(taskId);
+      });
+
+      expect(result?.deadline).toBeUndefined();
+    });
+  });
+
   describe("updates", () => {
     test("updates task fields correctly", async () => {
       const t = createTestEnv();

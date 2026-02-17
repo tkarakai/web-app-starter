@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Circle, CircleCheck, CircleDashed, Pencil, Trash2 } from "lucide-react";
+import { Circle, CircleCheck, CircleDashed, Clock, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
@@ -23,13 +23,16 @@ import {
   Textarea,
 } from "@repo/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
+import { formatDeadline, getDeadlineUrgency, type DeadlineUrgency } from "@/lib/format";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
+import { DeadlineInput } from "./deadline-input";
 
 type Task = {
   _id: Id<"tasks">;
   title: string;
   description: string;
   status: TaskStatus;
+  deadline?: number;
   projectId: Id<"projects">;
   createdAt: number;
 };
@@ -52,6 +55,13 @@ const statusTranslationKey: Record<TaskStatus, string> = {
   done: "status.done",
 };
 
+const urgencyStyles: Record<DeadlineUrgency, string> = {
+  overdue: "text-destructive",
+  urgent: "text-amber-600 dark:text-amber-500",
+  normal: "text-muted-foreground",
+  done: "text-muted-foreground line-through",
+};
+
 function StatusIcon({ status, className }: { status: TaskStatus; className?: string }) {
   switch (status) {
     case "todo":
@@ -65,9 +75,11 @@ function StatusIcon({ status, className }: { status: TaskStatus; className?: str
 
 type TaskRowProps = {
   task: Task;
+  locale?: string;
+  timeZone?: string;
 };
 
-export function TaskRow({ task }: TaskRowProps) {
+export function TaskRow({ task, locale, timeZone }: TaskRowProps) {
   const updateTask = useMutationWithToast(api.tasks.update);
   const removeTask = useMutationWithToast(api.tasks.remove);
   const t = useTranslations("tasks");
@@ -77,6 +89,7 @@ export function TaskRow({ task }: TaskRowProps) {
   const [title, setTitle] = React.useState(task.title);
   const [description, setDescription] = React.useState(task.description);
   const [status, setStatus] = React.useState<TaskStatus>(task.status);
+  const [deadline, setDeadline] = React.useState<number | undefined>(task.deadline);
   const [submitting, setSubmitting] = React.useState(false);
   const [confirming, setConfirming] = React.useState(false);
 
@@ -84,7 +97,8 @@ export function TaskRow({ task }: TaskRowProps) {
     setTitle(task.title);
     setDescription(task.description);
     setStatus(task.status);
-  }, [task.title, task.description, task.status]);
+    setDeadline(task.deadline);
+  }, [task.title, task.description, task.status, task.deadline]);
 
   // Auto-revert the confirm state after 2 seconds
   React.useEffect(() => {
@@ -109,6 +123,7 @@ export function TaskRow({ task }: TaskRowProps) {
         title: trimmedTitle,
         description: normalizeText(description),
         status,
+        deadline: deadline === task.deadline ? undefined : (deadline ?? null),
       });
       setEditOpen(false);
     } finally {
@@ -126,6 +141,10 @@ export function TaskRow({ task }: TaskRowProps) {
 
   const isDone = task.status === "done";
   const statusLabel = t(statusTranslationKey[task.status]);
+
+  const deadlineUrgency = task.deadline
+    ? getDeadlineUrgency(task.deadline, task.status)
+    : null;
 
   return (
     <>
@@ -146,6 +165,16 @@ export function TaskRow({ task }: TaskRowProps) {
           {task.description && (
             <div className="mt-0.5 text-xs text-muted-foreground truncate">
               {task.description}
+            </div>
+          )}
+          {task.deadline && deadlineUrgency && (
+            <div className={`mt-1 flex items-center gap-1 text-xs ${urgencyStyles[deadlineUrgency]}`}>
+              <Clock className="h-3 w-3" />
+              <span>
+                {deadlineUrgency === "overdue" && `${t("deadline.overdue")} · `}
+                {deadlineUrgency === "urgent" && `${t("deadline.dueToday")} · `}
+                {formatDeadline(task.deadline, { locale, timeZone })}
+              </span>
             </div>
           )}
         </div>
@@ -219,6 +248,7 @@ export function TaskRow({ task }: TaskRowProps) {
                 </SelectContent>
               </Select>
             </div>
+            <DeadlineInput value={deadline} onChange={setDeadline} />
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? tc("saving") : tc("save")}
             </Button>

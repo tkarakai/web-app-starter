@@ -308,7 +308,14 @@
       "title": "Tytuł",
       "titlePlaceholder": "Co trzeba zrobić?",
       "description": "Opis",
-      "descriptionPlaceholder": "Dodaj szczegóły..."
+      "descriptionPlaceholder": "Dodaj szczegóły...",
+      "deadline": "Termin",
+      "deadlinePlaceholder": "Brak terminu",
+      "clearDeadline": "Usuń termin"
+    },
+    "deadline": {
+      "overdue": "Po terminie",
+      "dueToday": "Termin dzisiaj"
     },
     "aria": {
       "changeStatus": "Zmień status z {status}"

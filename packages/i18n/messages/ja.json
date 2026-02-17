@@ -308,7 +308,14 @@
       "title": "タイトル",
       "titlePlaceholder": "何をする必要がありますか？",
       "description": "説明",
-      "descriptionPlaceholder": "詳細を追加..."
+      "descriptionPlaceholder": "詳細を追加...",
+      "deadline": "期限",
+      "deadlinePlaceholder": "期限なし",
+      "clearDeadline": "期限を削除"
+    },
+    "deadline": {
+      "overdue": "期限超過",
+      "dueToday": "本日期限"
     },
     "aria": {
       "changeStatus": "{status}からステータスを変更"

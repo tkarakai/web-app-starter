@@ -308,7 +308,14 @@
       "title": "العنوان",
       "titlePlaceholder": "ما الذي يجب إنجازه؟",
       "description": "الوصف",
-      "descriptionPlaceholder": "أضف تفاصيل..."
+      "descriptionPlaceholder": "أضف تفاصيل...",
+      "deadline": "الموعد النهائي",
+      "deadlinePlaceholder": "بدون موعد نهائي",
+      "clearDeadline": "إزالة الموعد النهائي"
+    },
+    "deadline": {
+      "overdue": "متأخرة",
+      "dueToday": "مستحقة اليوم"
     },
     "aria": {
       "changeStatus": "تغيير الحالة من {status}"

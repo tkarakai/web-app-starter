@@ -16,10 +16,50 @@ export function formatBytes(bytes: number) {
   }`;
 }
 
-export function formatDateTime(value: number | Date) {
+type FormatOptions = {
+  locale?: string;
+  timeZone?: string;
+};
+
+export function formatDateTime(
+  value: number | Date,
+  options?: FormatOptions,
+) {
   const date = typeof value === "number" ? new Date(value) : value;
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(options?.locale ?? "en", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: options?.timeZone,
   }).format(date);
+}
+
+export function formatDeadline(
+  value: number | Date,
+  options?: FormatOptions,
+) {
+  const date = typeof value === "number" ? new Date(value) : value;
+  return new Intl.DateTimeFormat(options?.locale ?? "en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: options?.timeZone,
+  }).format(date);
+}
+
+export type DeadlineUrgency = "overdue" | "urgent" | "normal" | "done";
+
+export function getDeadlineUrgency(
+  deadline: number,
+  status: string,
+): DeadlineUrgency {
+  if (status === "done") return "done";
+
+  const now = Date.now();
+  if (deadline < now) return "overdue";
+
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+  if (deadline - now < twentyFourHours) return "urgent";
+
+  return "normal";
 }
