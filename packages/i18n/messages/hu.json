@@ -308,7 +308,14 @@
       "title": "Cím",
       "titlePlaceholder": "Mit kell megcsinálni?",
       "description": "Leírás",
-      "descriptionPlaceholder": "Részletek hozzáadása..."
+      "descriptionPlaceholder": "Részletek hozzáadása...",
+      "deadline": "Határidő",
+      "deadlinePlaceholder": "Nincs határidő",
+      "clearDeadline": "Határidő törlése"
+    },
+    "deadline": {
+      "overdue": "Lejárt",
+      "dueToday": "Ma esedékes"
     },
     "aria": {
       "changeStatus": "Állapot módosítása innen: {status}"

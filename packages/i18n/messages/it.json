@@ -308,7 +308,14 @@
       "title": "Titolo",
       "titlePlaceholder": "Cosa bisogna fare?",
       "description": "Descrizione",
-      "descriptionPlaceholder": "Aggiungi dettagli..."
+      "descriptionPlaceholder": "Aggiungi dettagli...",
+      "deadline": "Scadenza",
+      "deadlinePlaceholder": "Nessuna scadenza",
+      "clearDeadline": "Rimuovi scadenza"
+    },
+    "deadline": {
+      "overdue": "Scaduta",
+      "dueToday": "Scade oggi"
     },
     "aria": {
       "changeStatus": "Cambia stato da {status}"

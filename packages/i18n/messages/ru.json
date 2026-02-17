@@ -308,7 +308,14 @@
       "title": "Название",
       "titlePlaceholder": "Что нужно сделать?",
       "description": "Описание",
-      "descriptionPlaceholder": "Добавить подробности..."
+      "descriptionPlaceholder": "Добавить подробности...",
+      "deadline": "Срок",
+      "deadlinePlaceholder": "Без срока",
+      "clearDeadline": "Убрать срок"
+    },
+    "deadline": {
+      "overdue": "Просрочено",
+      "dueToday": "Срок сегодня"
     },
     "aria": {
       "changeStatus": "Изменить статус с {status}"

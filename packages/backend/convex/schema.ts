@@ -34,6 +34,7 @@ export default defineSchema({
       v.literal("in_progress"),
       v.literal("done")
     ),
+    deadline: v.optional(v.number()),
     projectId: v.id("projects"),
     ownerId: v.string(),
     createdAt: v.number(),

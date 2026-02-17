@@ -32,6 +32,7 @@ export const create = authedMutation({
       v.literal("done")
     ),
     projectId: v.id("projects"),
+    deadline: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.projectId);
@@ -45,6 +46,7 @@ export const create = authedMutation({
       projectId: args.projectId,
       ownerId: ctx.ownerId,
       createdAt: Date.now(),
+      deadline: args.deadline,
     });
   },
 });
@@ -61,6 +63,7 @@ export const update = authedMutation({
         v.literal("done")
       )
     ),
+    deadline: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.id);
@@ -77,11 +80,15 @@ export const update = authedMutation({
       title: string;
       description: string;
       status: "todo" | "in_progress" | "done";
+      deadline: number | undefined;
     }> = {};
 
     if (args.title !== undefined) updates.title = args.title;
     if (args.description !== undefined) updates.description = args.description;
     if (args.status !== undefined) updates.status = args.status;
+    if (args.deadline !== undefined) {
+      updates.deadline = args.deadline === null ? undefined : args.deadline;
+    }
 
     return ctx.db.patch(args.id, updates);
   },

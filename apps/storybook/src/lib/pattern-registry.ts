@@ -28,6 +28,13 @@ export const patternRegistry: PatternEntry[] = [
   },
   // Form
   {
+    name: "Date/Time Picker",
+    slug: "date-time-picker",
+    category: "Form",
+    description:
+      "Locale-aware date and time picker with calendar, first-day-of-week, 12h/24h clock, and date-only mode.",
+  },
+  {
     name: "Timezone Selector",
     slug: "timezone-selector",
     category: "Form",

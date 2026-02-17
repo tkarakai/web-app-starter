@@ -308,7 +308,14 @@
       "title": "Titel",
       "titlePlaceholder": "Was muss erledigt werden?",
       "description": "Beschreibung",
-      "descriptionPlaceholder": "Details hinzufügen..."
+      "descriptionPlaceholder": "Details hinzufügen...",
+      "deadline": "Frist",
+      "deadlinePlaceholder": "Keine Frist",
+      "clearDeadline": "Frist entfernen"
+    },
+    "deadline": {
+      "overdue": "Überfällig",
+      "dueToday": "Heute fällig"
     },
     "aria": {
       "changeStatus": "Status ändern von {status}"

@@ -308,7 +308,14 @@
       "title": "标题",
       "titlePlaceholder": "需要做什么？",
       "description": "描述",
-      "descriptionPlaceholder": "添加详情..."
+      "descriptionPlaceholder": "添加详情...",
+      "deadline": "截止日期",
+      "deadlinePlaceholder": "无截止日期",
+      "clearDeadline": "清除截止日期"
+    },
+    "deadline": {
+      "overdue": "已逾期",
+      "dueToday": "今天到期"
     },
     "aria": {
       "changeStatus": "将状态从 {status} 更改"

@@ -308,7 +308,14 @@
       "title": "Název",
       "titlePlaceholder": "Co je potřeba udělat?",
       "description": "Popis",
-      "descriptionPlaceholder": "Přidat podrobnosti..."
+      "descriptionPlaceholder": "Přidat podrobnosti...",
+      "deadline": "Termín",
+      "deadlinePlaceholder": "Bez termínu",
+      "clearDeadline": "Odstranit termín"
+    },
+    "deadline": {
+      "overdue": "Po termínu",
+      "dueToday": "Splatné dnes"
     },
     "aria": {
       "changeStatus": "Změnit stav z {status}"

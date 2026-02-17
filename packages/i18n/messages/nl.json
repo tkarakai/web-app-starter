@@ -308,7 +308,14 @@
       "title": "Titel",
       "titlePlaceholder": "Wat moet er gedaan worden?",
       "description": "Beschrijving",
-      "descriptionPlaceholder": "Details toevoegen..."
+      "descriptionPlaceholder": "Details toevoegen...",
+      "deadline": "Deadline",
+      "deadlinePlaceholder": "Geen deadline",
+      "clearDeadline": "Deadline verwijderen"
+    },
+    "deadline": {
+      "overdue": "Achterstallig",
+      "dueToday": "Vandaag verlopen"
     },
     "aria": {
       "changeStatus": "Status wijzigen van {status}"
