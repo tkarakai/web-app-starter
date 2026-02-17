@@ -32,15 +32,14 @@ export function AdminForgotPasswordForm() {
         redirectTo: "/reset-password",
       });
 
-      if (result.error) {
-        setError(
-          formatAuthError(result.error, "Something went wrong. Please try again.")
-        );
+      // Always show "email sent" to prevent email enumeration, except for
+      // rate limiting which is safe to surface (not user-specific).
+      if (result.error?.status === 429) {
+        setError("Too many requests. Please try again later.");
       } else {
         setEmailSent(true);
       }
     } catch {
-      // Always show success to prevent email enumeration.
       setEmailSent(true);
     } finally {
       setPending(false);

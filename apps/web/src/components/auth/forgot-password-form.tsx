@@ -38,15 +38,14 @@ export function ForgotPasswordForm() {
         redirectTo: "/reset-password",
       });
 
-      if (result.error) {
-        setError(formatAuthError(result.error, "Something went wrong. Please try again."));
+      // Always show "email sent" to prevent email enumeration, except for
+      // rate limiting which is safe to surface (not user-specific).
+      if (result.error?.status === 429) {
+        setError("Too many requests. Please try again later.");
       } else {
         setEmailSent(true);
       }
     } catch {
-      // Always show success to prevent email enumeration.
-      // If requestPasswordReset throws (e.g. user not found), we still show the
-      // "check your email" screen so attackers can't probe for valid emails.
       setEmailSent(true);
     } finally {
       setPending(false);
