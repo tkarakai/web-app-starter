@@ -176,6 +176,12 @@ extract_dashboard_url() {
     grep -o 'http://127\.0\.0\.1:[0-9]*/?d=[^ ]*' "$log_file" | head -1
 }
 
+# Return the first startup-fatal line emitted by Convex, if any.
+convex_startup_failure_line() {
+    local log_file="$1"
+    grep -E -m1 'Schema validation failed\.|TypeScript typecheck via tsc failed\.|^✖ ' "$log_file" 2>/dev/null || true
+}
+
 # Get ports from Convex config
 get_convex_ports() {
     local deployment_name="$1"
@@ -424,7 +430,7 @@ if [ "$NEED_CONVEX" = true ]; then
     fi
     echo "convex:$CONVEX_PID" > "$PID_FILE"
 
-    MAX_WAIT=60
+    MAX_WAIT=30
     WAITED=0
     CONVEX_READY=false
 
@@ -433,7 +439,10 @@ if [ "$NEED_CONVEX" = true ]; then
         WAITED=$((WAITED + 1))
 
         if ! kill -0 $CONVEX_PID 2>/dev/null; then
-            kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+                kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+                wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            fi
             printf "\n"
             echo -e "${RED}✖ Convex process exited${NC}"
             echo -e "${RED}  Log output:${NC}"
@@ -447,6 +456,25 @@ if [ "$NEED_CONVEX" = true ]; then
         if grep -q "Convex functions ready" "$PROJECT_DIR/.convex-dev.log" 2>/dev/null; then
             CONVEX_READY=true
             break
+        fi
+
+        CONVEX_FAILURE_LINE=$(convex_startup_failure_line "$PROJECT_DIR/.convex-dev.log")
+        if [ -n "$CONVEX_FAILURE_LINE" ]; then
+            if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+                kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+                wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            fi
+            printf "\n"
+            echo -e "${RED}✖ Convex failed during startup${NC}"
+            echo -e "  ${RED}Detected:${NC} $CONVEX_FAILURE_LINE"
+            echo -e "${RED}  Log output:${NC}"
+            cat "$PROJECT_DIR/.convex-dev.log"
+            echo ""
+            echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
+            kill $CONVEX_PID 2>/dev/null || true
+            wait $CONVEX_PID 2>/dev/null || true
+            rm -f "$PID_FILE"
+            exit 1
         fi
 
         if [ "$NON_INTERACTIVE" = true ] && [ $((WAITED % 5)) -eq 0 ]; then
@@ -478,8 +506,12 @@ if [ "$NEED_CONVEX" = true ]; then
         cat "$PROJECT_DIR/.convex-dev.log"
         echo ""
         echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
-        kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        if [ -n "$TSCONFIG_WATCHER_PID" ]; then
+            kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        fi
         kill $CONVEX_PID 2>/dev/null || true
+        wait $CONVEX_PID 2>/dev/null || true
         rm -f "$PID_FILE"
         exit 1
     fi
