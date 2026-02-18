@@ -74,7 +74,7 @@ Promote to production
   → Production deploys                ✓ all documents already migrated
 ```
 
-### If production broke becasue the narrowed schema reached it before data was migrated
+### If production broke because the narrowed schema reached it before data was migrated
 
 If production deploy fails with a schema error like these:
 
