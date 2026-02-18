@@ -1,10 +1,14 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { migrationsTable } from "convex-helpers/server/migrations";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 
 export default defineSchema(
 {
   ...rateLimitTables,
+
+  // --- Migrations state (convex-helpers framework) ---
+  migrations: migrationsTable,
 
   userProfiles: defineTable({
     ownerId: v.string(),
@@ -128,9 +132,4 @@ export default defineSchema(
     .index("by_action_status_happenedAt", ["action", "status", "happenedAt"])
     .index("by_authenticatedUserId_happenedAt", ["authenticatedUserId", "happenedAt"]),
 },
-// Schema validation is relaxed during audit trail migration (v1 → v2).
-// Old records have different fields (eventId, actorType, receivedAt) and are
-// missing new required fields (source). Run `migrations:migrateAuditTrailV2`
-// to clean up old records, then set this back to true.
-{ schemaValidation: false },
 );

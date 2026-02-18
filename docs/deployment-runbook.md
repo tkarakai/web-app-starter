@@ -734,6 +734,8 @@ These require a migration strategy:
 - [ ] Verified rollback is no longer possible past Phase 1 (accepted risk)
 
 > See [deployment-architecture.md — Convex Schema Migration Safety](./deployment-architecture.md#convex-schema-migration-safety) for detailed examples.
+>
+> If production was broken by a narrowed schema, use [convex-migrations.md — If production broke becasue the narrowed schema reached it before data was migrated](./convex-migrations.md#if-production-broke-becasue-the-narrowed-schema-reached-it-before-data-was-migrated).
 
 ---
 
@@ -812,7 +814,7 @@ No automated alerting is configured by default. Options by team size:
 | Waitlist form CORS errors on landing | `LANDING_URL` not set or mismatched in Convex env vars | Verify `LANDING_URL` matches the landing app's URL |
 | `BETTER_AUTH_SECRET` error | Secret not set or empty | Run `bunx convex env list` in the target project (set `CONVEX_DEPLOYMENT` first) |
 | Vercel build fails | Missing environment variables | Check Vercel dashboard > Project > Settings > Environment Variables |
-| Rollback fails on schema | New data incompatible with old schema | Roll forward instead; see [Schema Migrations](#8-schema-migrations) |
+| Rollback fails on schema | New data incompatible with old schema | Roll forward instead; see [Schema Migrations](#8-schema-migrations) and [Emergency re-widen runbook](./convex-migrations.md#if-production-broke-becasue-the-narrowed-schema-reached-it-before-data-was-migrated) |
 | Health checks timeout | Cold start or CDN propagation | Re-run the job; if persistent, check Vercel logs |
 
 ---
