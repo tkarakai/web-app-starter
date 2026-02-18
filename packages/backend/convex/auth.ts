@@ -11,6 +11,12 @@ import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import authSchema from "./betterAuth/schema";
+
+/** Truncate a string to at most `max` characters. */
+function truncate(value: string | undefined, max: number): string | undefined {
+  if (value === undefined) return undefined;
+  return value.length <= max ? value : value.slice(0, max);
+}
 import { sendAuthEmail } from "./sendAuthEmail";
 
 /** Parse an env var as a positive integer, falling back to a safe default. */
@@ -161,8 +167,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             const user = await authComponent.getAnyUserById(ctx, userId);
 
             const email = (user?.email as string) ?? "unknown";
-            const ip = s.ipAddress as string | undefined;
-            const userAgent = s.userAgent as string | undefined;
+            const ip = truncate(s.ipAddress as string | undefined, 200);
+            const userAgent = truncate(s.userAgent as string | undefined, 500);
             const meta: Record<string, string> = {};
             if (ip) meta.ip = ip;
             if (userAgent) meta.userAgent = userAgent;
@@ -189,8 +195,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             const user = await authComponent.getAnyUserById(ctx, userId);
 
             const email = (user?.email as string) ?? "unknown";
-            const ip = s.ipAddress as string | undefined;
-            const userAgent = s.userAgent as string | undefined;
+            const ip = truncate(s.ipAddress as string | undefined, 200);
+            const userAgent = truncate(s.userAgent as string | undefined, 500);
             const meta: Record<string, string> = {};
             if (ip) meta.ip = ip;
             if (userAgent) meta.userAgent = userAgent;
