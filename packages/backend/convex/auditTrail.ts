@@ -222,47 +222,98 @@ export const list = query({
       };
     }
 
+    // Step 1: Pick the best index for the primary filter dimension.
+    // Remaining active filters are applied as post-query .filter() calls
+    // so all selected filters combine conjunctively.
+    const wantAction = args.filterAction ?? null;
+    const wantStatus = args.filterStatus ?? null;
+    const wantActor = args.filterActor ?? null;
+    const wantSource = args.filterSource ?? null;
+    const wantUserId = args.filterAuthenticatedUserId ?? null;
+
+    // Track which dimensions are handled by the index
+    let actionHandled = false;
+    let statusHandled = false;
+    let actorHandled = false;
+    let sourceHandled = false;
+    let userIdHandled = false;
+
     let q;
-    if (args.filterAction && args.filterStatus) {
+    if (wantAction !== null && wantStatus !== null) {
       q = ctx.db
         .query("auditTrail")
         .withIndex("by_action_status_happenedAt", (idx) =>
-          idx.eq("action", args.filterAction!).eq("status", args.filterStatus!),
+          idx.eq("action", wantAction).eq("status", wantStatus),
         );
-    } else if (args.filterAction) {
+      actionHandled = true;
+      statusHandled = true;
+    } else if (wantAction !== null) {
       q = ctx.db
         .query("auditTrail")
         .withIndex("by_action_happenedAt", (idx) =>
-          idx.eq("action", args.filterAction!),
+          idx.eq("action", wantAction),
         );
-    } else if (args.filterActor) {
+      actionHandled = true;
+    } else if (wantActor !== null) {
       q = ctx.db
         .query("auditTrail")
         .withIndex("by_actor_happenedAt", (idx) =>
-          idx.eq("actor", args.filterActor!),
+          idx.eq("actor", wantActor),
         );
-    } else if (args.filterSource) {
+      actorHandled = true;
+    } else if (wantSource !== null) {
       q = ctx.db
         .query("auditTrail")
         .withIndex("by_source_happenedAt", (idx) =>
-          idx.eq("source", args.filterSource!),
+          idx.eq("source", wantSource),
         );
-    } else if (args.filterAuthenticatedUserId) {
+      sourceHandled = true;
+    } else if (wantUserId !== null) {
       q = ctx.db
         .query("auditTrail")
         .withIndex("by_authenticatedUserId_happenedAt", (idx) =>
-          idx.eq("authenticatedUserId", args.filterAuthenticatedUserId!),
+          idx.eq("authenticatedUserId", wantUserId),
         );
-    } else if (args.filterStatus) {
+      userIdHandled = true;
+    } else if (wantStatus !== null) {
       q = ctx.db
         .query("auditTrail")
         .withIndex("by_status_happenedAt", (idx) =>
-          idx.eq("status", args.filterStatus!),
+          idx.eq("status", wantStatus),
         );
+      statusHandled = true;
     } else {
       q = ctx.db.query("auditTrail").withIndex("by_happenedAt");
     }
 
-    return await q.order("desc").paginate(args.paginationOpts);
+    // Step 2: Post-filter remaining dimensions not covered by the index
+    let filtered = q;
+    if (wantAction !== null && !actionHandled) {
+      filtered = filtered.filter((f) =>
+        f.eq(f.field("action"), wantAction),
+      );
+    }
+    if (wantStatus !== null && !statusHandled) {
+      filtered = filtered.filter((f) =>
+        f.eq(f.field("status"), wantStatus),
+      );
+    }
+    if (wantActor !== null && !actorHandled) {
+      filtered = filtered.filter((f) =>
+        f.eq(f.field("actor"), wantActor),
+      );
+    }
+    if (wantSource !== null && !sourceHandled) {
+      filtered = filtered.filter((f) =>
+        f.eq(f.field("source"), wantSource),
+      );
+    }
+    if (wantUserId !== null && !userIdHandled) {
+      filtered = filtered.filter((f) =>
+        f.eq(f.field("authenticatedUserId"), wantUserId),
+      );
+    }
+
+    return await filtered.order("desc").paginate(args.paginationOpts);
   },
 });
