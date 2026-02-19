@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { SiteHeader } from "@repo/design-patterns";
@@ -28,7 +29,9 @@ export default async function VerifyEmailPage() {
             {t("pageDescription")}
           </p>
         </section>
-        <VerifyEmailForm />
+        <Suspense fallback={null}>
+          <VerifyEmailForm />
+        </Suspense>
       </div>
     </main>
   );

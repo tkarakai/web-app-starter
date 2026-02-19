@@ -10,21 +10,40 @@ type AuthEmailType =
   | "magic-link"
   | "email-otp";
 
-interface SendAuthEmailOptions {
-  to: string;
-  type: AuthEmailType;
-  /** The URL or OTP code to include in the email. */
-  urlOrCode: string;
-}
+type SendAuthEmailOptions =
+  | {
+      to: string;
+      type: AuthEmailType;
+      /** The URL or OTP code to include in the email. */
+      urlOrCode: string;
+      /** Human-readable link expiry (e.g. "1 hour"). Used by the verification template. */
+      linkExpiry?: string;
+      subject?: never;
+      html?: never;
+      text?: never;
+    }
+  | {
+      to: string;
+      type: "custom";
+      subject: string;
+      html: string;
+      text: string;
+      urlOrCode?: never;
+      linkExpiry?: never;
+    };
 
 /**
  * Send an authentication email via Resend (if RESEND_API_KEY is set)
  * or fall back to a formatted console.log for local development.
  */
 export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
-  const { to, type, urlOrCode } = opts;
-  const { subject, html, text } = buildEmailContent(type, urlOrCode);
+  const { to, type } = opts;
+  const { subject, html, text } =
+    type === "custom"
+      ? { subject: opts.subject, html: opts.html, text: opts.text }
+      : buildEmailContent(type, opts.urlOrCode, opts.linkExpiry);
 
+  const urlOrCode = type !== "custom" ? opts.urlOrCode : undefined;
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     // Development fallback — log to server console with clear formatting
@@ -35,7 +54,7 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
         `╠══════════════════════════════════════════════════════╣\n` +
         `║  To:      ${to}\n` +
         `║  Subject: ${subject}\n` +
-        `║  ${type === "email-otp" ? "Code" : "URL"}:     ${urlOrCode}\n` +
+        `║  ${type === "email-otp" ? "Code" : "URL"}:     ${urlOrCode ?? "(custom template)"}\n` +
         `╚══════════════════════════════════════════════════════╝\n`,
     );
     return;
@@ -60,6 +79,7 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
 function buildEmailContent(
   type: AuthEmailType,
   urlOrCode: string,
+  linkExpiry?: string,
 ): { subject: string; html: string; text: string } {
   switch (type) {
     case "reset-password":
@@ -79,22 +99,29 @@ function buildEmailContent(
           `If you didn't request this, you can safely ignore this email. The link expires in 1 hour.`,
       };
 
-    case "verification":
+    case "verification": {
+      const expiryNote = linkExpiry
+        ? `This link is valid for ${escapeHtml(linkExpiry)}. `
+        : "";
+      const expiryNoteText = linkExpiry
+        ? `This link is valid for ${linkExpiry}. `
+        : "";
       return {
         subject: "Verify your email address",
         html: wrapHtml(
           "Verify your email",
           `<p style="${pStyle}">Thanks for signing up! Please verify your email address by clicking the link below:</p>` +
             ctaButton("Verify email", urlOrCode) +
-            `<p style="${smallStyle}">If you didn't create an account, you can safely ignore this email.</p>` +
+            `<p style="${smallStyle}">${expiryNote}If you didn't create an account, you can safely ignore this email.</p>` +
             fallbackUrl(urlOrCode),
         ),
         text:
           `Verify your email address\n\n` +
           `Thanks for signing up! Please verify your email address by visiting:\n\n` +
           `${urlOrCode}\n\n` +
-          `If you didn't create an account, you can safely ignore this email.`,
+          `${expiryNoteText}If you didn't create an account, you can safely ignore this email.`,
       };
+    }
 
     case "magic-link":
       return {

@@ -13,6 +13,11 @@ vi.mock("@convex-dev/better-auth/nextjs/client", () => ({
   usePreloadedAuthQuery: () => mockUser,
 }));
 
+let mockEmailVerifRequired: boolean | null | undefined = undefined;
+vi.mock("convex/react", () => ({
+  useQuery: () => mockEmailVerifRequired,
+}));
+
 let mockSession: { isPending: boolean; data: { user: { name: string; email: string }; session: object } | null } = {
   isPending: false,
   data: { user: { name: "Test User", email: "test@example.com" }, session: {} },
@@ -48,6 +53,7 @@ describe("AuthGuard", () => {
     vi.useFakeTimers();
     mockReplace.mockClear();
     mockUser = { name: "Test User", email: "test@example.com" };
+    mockEmailVerifRequired = undefined;
     mockSession = {
       isPending: false,
       data: { user: { name: "Test User", email: "test@example.com" }, session: {} },

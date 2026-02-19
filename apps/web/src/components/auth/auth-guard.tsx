@@ -3,9 +3,10 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
+import { useQuery } from "convex/react";
 import type { Preloaded } from "convex/react";
 
-import type { api } from "@repo/backend";
+import { api } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
 
 type AuthUser = {
@@ -30,6 +31,11 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
   const session = authClient.useSession();
   const [wasAuthenticated, setWasAuthenticated] = React.useState(false);
 
+  // Real-time email verification required setting
+  const emailVerifRequired = useQuery(api.appSettings.getPublic, {
+    key: "emailVerificationRequired",
+  });
+
   // Track that we had a valid user at least once (avoids redirect during initial load).
   React.useEffect(() => {
     if (user != null) {
@@ -51,6 +57,19 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
 
     return () => clearTimeout(timeout);
   }, [wasAuthenticated, user, router]);
+
+  // Real-time email verification gate: if the admin enables verification while
+  // the user is on the dashboard, or if an unverified user somehow bypasses
+  // the server-side check, redirect them to the verify-email page immediately.
+  React.useEffect(() => {
+    if (!wasAuthenticated || user === null || emailVerifRequired === undefined) return;
+    // Default is true when the setting has never been stored (null from getPublic)
+    const verificationRequired = emailVerifRequired !== false;
+    const userRecord = user as Record<string, unknown>;
+    if (verificationRequired && !userRecord.emailVerified) {
+      router.replace("/verify-email");
+    }
+  }, [wasAuthenticated, user, emailVerifRequired, router]);
 
   const authUser: AuthUser = {
     name: user?.name ?? session.data?.user?.name ?? undefined,

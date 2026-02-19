@@ -5,8 +5,9 @@ import { test, expect } from "@playwright/test";
  *
  * Verify the verify-email page loads and handles different states:
  * - Page accessible as guest route
+ * - Verification callback renders success state instead of redirecting
+ * - Invalid/expired verification tokens render an error state
  * - Sign-up triggers verification flow
- * - Error handling for invalid/expired tokens
  */
 
 test.describe("Verify Email Page", () => {
@@ -27,6 +28,40 @@ test.describe("Verify Email Page", () => {
     // The page should have some interactive element (form or button)
     const mainContent = page.locator("main");
     await expect(mainContent).toBeVisible();
+  });
+
+  test("shows verification success message and sign-in link when no active session exists", async ({
+    page,
+  }) => {
+    const context = page.context();
+    await context.clearCookies();
+
+    await page.goto("/en/verify-email?verified=1");
+    await page.waitForLoadState("networkidle");
+
+    await expect(
+      page.getByRole("heading", { name: "Thank you for verifying your email." }),
+    ).toBeVisible();
+    await expect(page.getByText("Please sign in to use the app.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go to Sign In page" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Close this window" })).toBeVisible();
+    await expect(page).not.toHaveURL(/\/dashboard/);
+  });
+
+  test("shows a friendly error message when verification token is invalid", async ({
+    page,
+  }) => {
+    await page.goto("/en/verify-email?verified=1&error=invalid_token");
+    await page.waitForLoadState("networkidle");
+
+    await expect(
+      page.getByRole("heading", { name: "Email verification failed" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("This verification link is invalid or has already been used."),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Close this window" })).toBeVisible();
+    await expect(page).not.toHaveURL(/\/dashboard/);
   });
 });
 
