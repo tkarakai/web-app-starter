@@ -54,6 +54,8 @@ export function AdminSignInForm() {
         broadcastAuth();
         router.push("/dashboard");
       }
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setPending(false);
     }
@@ -61,12 +63,14 @@ export function AdminSignInForm() {
 
   const handleTotpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (useBackupCode && !backupCode.trim()) return;
+    if (!useBackupCode && totpCode.length !== 6) return;
+
     setError(null);
     setPending(true);
 
     try {
       if (useBackupCode) {
-        if (!backupCode.trim()) return;
         const result = await authClient.twoFactor.verifyBackupCode({
           code: backupCode.trim(),
         });
@@ -85,6 +89,8 @@ export function AdminSignInForm() {
           router.push("/dashboard");
         }
       }
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setPending(false);
     }

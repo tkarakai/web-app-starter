@@ -13,6 +13,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation } from "convex/react";
+import { api } from "@repo/backend";
 
 import {
   AlertDialog,
@@ -113,6 +115,8 @@ type UserSearchResult = {
 };
 
 export function SessionViewer() {
+  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+
   // User search state
   const [searchInput, setSearchInput] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -240,7 +244,7 @@ export function SessionViewer() {
     if (!revokeTarget || !selectedUser) return;
     setRevokePending(true);
     try {
-      await revokeSession(revokeTarget.token);
+      await revokeSession(revokeTarget.token, postAuditEvent);
       toast.success("Session revoked");
       setRevokeTarget(null);
       fetchSessions(selectedUser.id);
@@ -256,7 +260,7 @@ export function SessionViewer() {
     if (!selectedUser) return;
     setRevokeAllPending(true);
     try {
-      await revokeAllSessions(selectedUser.id);
+      await revokeAllSessions(selectedUser.id, postAuditEvent);
       toast.success(`All sessions revoked for ${selectedUser.email}`);
       setRevokeAllOpen(false);
       fetchSessions(selectedUser.id);

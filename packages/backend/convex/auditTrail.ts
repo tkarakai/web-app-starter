@@ -7,8 +7,8 @@ import {
   AUDIT_SOURCE_TRANSPORTS,
   AUDIT_STATUSES,
 } from "./auditTrailConstants";
-import { authedMutation } from "./functions";
-import { internalMutation, query } from "./_generated/server";
+import { rateLimit } from "./rateLimits";
+import { internalMutation, mutation, query } from "./_generated/server";
 
 // ---------------------------------------------------------------------------
 // Field length limits (defense in depth — truncate, never reject)
@@ -163,10 +163,10 @@ export const insertEvent = internalMutation({
 });
 
 // ---------------------------------------------------------------------------
-// postEvent — authedMutation for frontend clients (over Convex WebSocket)
+// postEvent — frontend clients (over Convex WebSocket)
 // ---------------------------------------------------------------------------
 
-export const postEvent = authedMutation({
+export const postEvent = mutation({
   args: {
     happenedAt: v.number(),
     sourceDetail: v.optional(v.string()),
@@ -179,9 +179,24 @@ export const postEvent = authedMutation({
     meta: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const email = (ctx.user as Record<string, unknown>).email as string;
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return;
+
+    const ownerId = (
+      (user.userId as string | undefined) ??
+      (user._id as string | undefined)
+    )?.toString();
+    if (!ownerId) return;
+
+    await rateLimit(ctx, {
+      name: "mutationGlobal",
+      key: ownerId,
+      throws: true,
+    });
+
+    const email = (user as Record<string, unknown>).email as string;
     const doc = buildAuditEvent({
-      authenticatedUserId: ctx.ownerId,
+      authenticatedUserId: ownerId,
       actor: email,
       source: `web:${args.sourceDetail ?? ""}`,
       action: args.action,

@@ -46,11 +46,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   const handleTwoFactorVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (useBackupCode && !backupCode.trim()) return;
+    if (!useBackupCode && (!totpCode || totpCode.length !== 6)) return;
+
     setError(null);
     setPending(true);
+
     try {
       if (useBackupCode) {
-        if (!backupCode.trim()) return;
         const result = await authClient.twoFactor.verifyBackupCode({
           code: backupCode.trim(),
         });
@@ -61,7 +64,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           await redirectWithUserLocale(router);
         }
       } else {
-        if (!totpCode || totpCode.length !== 6) return;
         const result = await authClient.twoFactor.verifyTotp({
           code: totpCode,
         });
@@ -72,6 +74,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           await redirectWithUserLocale(router);
         }
       }
+    } catch {
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }
@@ -123,6 +127,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         broadcastAuth();
         await redirectWithUserLocale(router);
       }
+    } catch {
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }

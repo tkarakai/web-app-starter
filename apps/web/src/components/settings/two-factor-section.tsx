@@ -87,6 +87,7 @@ export function TwoFactorSection() {
   const handleEnable = async () => {
     if (!password) return;
     setLoading(true);
+
     try {
       const result = await authClient.twoFactor.enable({ password });
       if (result.error) {
@@ -111,6 +112,7 @@ export function TwoFactorSection() {
   const handleVerify = async () => {
     if (!code || code.length !== 6) return;
     setLoading(true);
+
     try {
       const result = await authClient.twoFactor.verifyTotp({ code });
       if (result.error) {
@@ -132,6 +134,7 @@ export function TwoFactorSection() {
   const handleDisable = async () => {
     if (!password) return;
     setLoading(true);
+
     try {
       const result = await authClient.twoFactor.disable({ password });
       if (result.error) {
@@ -173,6 +176,7 @@ export function TwoFactorSection() {
   const handleRegenerateBackupCodes = async () => {
     if (!password) return;
     setLoading(true);
+
     try {
       const result = await authClient.twoFactor.generateBackupCodes({ password });
       if (result.error) {

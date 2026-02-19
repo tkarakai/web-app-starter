@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useMutation } from "convex/react";
+import { api } from "@repo/backend";
+import type { AuditStatus } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
 import {
   AlertDialog,
@@ -79,6 +82,7 @@ export function SessionsList() {
   const ts = useTranslations("dashboard.sessions");
   const tc = useTranslations("common");
 
+  const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const [sessions, setSessions] = React.useState<Session[] | null>(null);
   const [currentSessionToken, setCurrentSessionToken] = React.useState<string | null>(null);
   const [revoking, setRevoking] = React.useState<string | null>(null);
@@ -107,26 +111,48 @@ export function SessionsList() {
   const handleRevoke = async (sessionToken: string) => {
     setRevoking(sessionToken);
     setError(null);
+    const happenedAt = Date.now();
+    let status: AuditStatus = "succeeded";
+
     try {
       await authClient.revokeSession({ token: sessionToken });
       setSessions((prev) => prev?.filter((s) => s.token !== sessionToken) ?? null);
     } catch {
+      status = "failed.unknown";
       setError("Failed to revoke session.");
     } finally {
       setRevoking(null);
+      postAuditEvent({
+        happenedAt,
+        sourceDetail: "settings",
+        action: "auth.session.revoked",
+        resource: `session:${sessionToken}`,
+        status,
+      }).catch(() => {});
     }
   };
 
   const handleRevokeAll = async () => {
     setRevokingAll(true);
     setError(null);
+    const happenedAt = Date.now();
+    let status: AuditStatus = "succeeded";
+
     try {
       await authClient.revokeSessions();
       await fetchSessions();
     } catch {
+      status = "failed.unknown";
       setError("Failed to revoke sessions.");
     } finally {
       setRevokingAll(false);
+      postAuditEvent({
+        happenedAt,
+        sourceDetail: "settings",
+        action: "auth.session.revoked_all",
+        resource: "session:all-others",
+        status,
+      }).catch(() => {});
     }
   };
 

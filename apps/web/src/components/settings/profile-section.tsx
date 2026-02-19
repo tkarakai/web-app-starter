@@ -8,6 +8,7 @@ import { useTheme } from "next-themes";
 
 import { authClient } from "@repo/auth/client";
 import { api } from "@repo/backend";
+import type { AuditStatus } from "@repo/backend";
 import {
   Avatar,
   AvatarFallback,
@@ -58,6 +59,7 @@ export function ProfileSection() {
   const userProfile = useQuery(api.userProfiles.get) ?? null;
   const upsertProfile = useMutation(api.userProfiles.upsert);
   const setLocale = useMutation(api.userProfiles.setLocale);
+  const postAuditEvent = useMutation(api.auditTrail.postEvent);
 
   const [name, setName] = React.useState(authUser?.name ?? "");
   const [avatarColor, setAvatarColor] = React.useState<string>("");
@@ -94,10 +96,14 @@ export function ProfileSection() {
 
   const handleSave = async () => {
     setSaving(true);
+    const happenedAt = Date.now();
+    let status: AuditStatus = "succeeded";
+    const currentName = authUser?.name ?? "";
+    const nameChanged = name.trim() && name.trim() !== currentName;
+
     try {
       // Update name via Better Auth if changed
-      const currentName = authUser?.name ?? "";
-      if (name.trim() && name.trim() !== currentName) {
+      if (nameChanged) {
         await authClient.updateUser({ name: name.trim() });
       }
 
@@ -110,9 +116,19 @@ export function ProfileSection() {
 
       toast.success(tp("saved"));
     } catch {
+      status = "failed.unknown";
       toast.error(tc("error"));
     } finally {
       setSaving(false);
+      postAuditEvent({
+        happenedAt,
+        sourceDetail: "settings",
+        action: nameChanged ? "user.name_changed" : "user.profile_updated",
+        resource: "user:self",
+        status,
+        oldValue: nameChanged ? JSON.stringify({ name: currentName }) : undefined,
+        newValue: nameChanged ? JSON.stringify({ name: name.trim() }) : undefined,
+      }).catch(() => {});
     }
   };
 

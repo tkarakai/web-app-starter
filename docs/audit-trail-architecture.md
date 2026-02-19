@@ -110,6 +110,18 @@ Examples: `server:auth-hook`, `server:admin-mutation`, `server:cron-cleanup`, `w
 
 The transport prefix is always set by the audit trail based on which entry point was used. This prevents web clients from claiming to be server events.
 
+### Client-Side `postEvent` vs Server-Side Auth Hooks
+
+Better Auth's database hooks (`session.create.after`, `user.update.after`, etc.) already capture many successful auth operations server-side via `insertEvent`. Given this overlap, here is the rationale for when client-side `postEvent` adds value and when it is redundant.
+
+#### What client-side `postEvent` adds
+
+1. **Failure visibility** — Server-side hooks only fire on *successful* operations (e.g. a successful password change triggers `user.update.after`). Client-side `postEvent` in `finally` captures failures too (`failed.wrong_password`, `failed.invalid_code`, `failed.unknown`), which are invisible to hooks.
+
+2. **Client context (`sourceDetail`)** — Client-side events carry the UI origin (`web:settings`, `admin`, `admin-settings`) whereas hooks only know `server:auth-hook`. This distinguishes "admin banned a user from the admin dashboard" from "system operation" in the audit log.
+
+3. **Operations without corresponding hooks** — Not every Better Auth API call has a matching database hook. Admin operations (`banUser`, `unbanUser`, `removeUser`, `setRole`, `revokeSession`, `revokeSessions`) and self-service session revocation may not trigger hooks, making client-side auditing the only coverage.
+
 ---
 
 ## 4. Unauthenticated Events

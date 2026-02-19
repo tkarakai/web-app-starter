@@ -14,13 +14,23 @@
 export const AUDIT_ACTIONS = [
   // auth.*
   "auth.sign_in",
+  "auth.sign_in.requested",
   "auth.sign_out",
   "auth.sign_up",
+  "auth.sign_up.requested",
   "auth.password_reset.requested",
   "auth.password_reset.completed",
+  "auth.password_changed",
   "auth.email_verified",
+  "auth.email_verification.requested",
+  "auth.two_factor.setup_started",
   "auth.two_factor.enabled",
   "auth.two_factor.disabled",
+  "auth.two_factor.verify_totp",
+  "auth.two_factor.verify_backup_code",
+  "auth.two_factor.backup_codes_regenerated",
+  "auth.session.revoked",
+  "auth.session.revoked_all",
 
   // user.*
   "user.profile_updated",
@@ -34,6 +44,8 @@ export const AUDIT_ACTIONS = [
   "admin.role_changed",
   "admin.mfa_policy_changed",
   "admin.waitlist_setting_changed",
+  "admin.session.revoked",
+  "admin.session.revoked_all",
 
   // waitlist.*
   "waitlist.joined",
@@ -63,6 +75,8 @@ export const AUDIT_STATUSES = [
   "failed.expired",
   "failed.already_used",
   "failed.blocked",
+  "failed.invalid_code",
+  "failed.unknown",
 ] as const;
 
 export type AuditStatus = (typeof AUDIT_STATUSES)[number];
