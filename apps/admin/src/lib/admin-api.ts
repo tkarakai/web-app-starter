@@ -341,7 +341,7 @@ export async function revokeSession(
       happenedAt,
       sourceDetail: "admin",
       action: "admin.session.revoked",
-      resource: `session:${sessionToken}`,
+      resource: `session:…${sessionToken.slice(-8)}`,
       status,
     }).catch(() => {});
   }

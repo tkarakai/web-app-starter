@@ -150,7 +150,7 @@ export function SessionsClient() {
         happenedAt,
         sourceDetail: "settings",
         action: "auth.session.revoked",
-        resource: `session:${sessionToken}`,
+        resource: `session:…${sessionToken.slice(-8)}`,
         status,
       }).catch(() => {});
     }
