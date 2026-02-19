@@ -12,13 +12,13 @@ import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
 import authSchema from "./betterAuth/schema";
+import { sendAuthEmail } from "./sendAuthEmail";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
   if (value === undefined) return undefined;
   return value.length <= max ? value : value.slice(0, max);
 }
-import { sendAuthEmail } from "./sendAuthEmail";
 
 /** Parse an env var as a positive integer, falling back to a safe default. */
 function positiveInt(envVar: string | undefined, defaultValue: number): number {
