@@ -1,14 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { migrationsTable } from "convex-helpers/server/migrations";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 
 export default defineSchema(
 {
   ...rateLimitTables,
-
-  // --- Migrations state (convex-helpers framework) ---
-  migrations: migrationsTable,
 
   userProfiles: defineTable({
     ownerId: v.string(),
