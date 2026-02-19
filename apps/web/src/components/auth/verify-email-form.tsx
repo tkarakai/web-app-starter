@@ -7,8 +7,9 @@ import { useTranslations } from "next-intl";
 
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient, formatAuthError } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
+import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
 import {
   Button,
@@ -17,6 +18,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
+  Label,
   Separator,
   parseUserAgent,
 } from "@repo/design-system";
@@ -44,6 +47,9 @@ export function VerifyEmailForm() {
     null,
   );
   const [deviceName, setDeviceName] = React.useState("this device");
+  const [resending, setResending] = React.useState(false);
+  const [resent, setResent] = React.useState(false);
+  const [resendError, setResendError] = React.useState<string | null>(null);
 
   // Email may be passed as a URL param (recovery flow: redirected from sign-in)
   // or derived from the current session (post-signup flow).
@@ -51,6 +57,13 @@ export function VerifyEmailForm() {
   const session = authClient.useSession();
   const sessionEmail = session.data?.user?.email ?? "";
   const email = emailParam || sessionEmail;
+  const [resendEmail, setResendEmail] = React.useState(email);
+
+  React.useEffect(() => {
+    if (!resendEmail && email) {
+      setResendEmail(email);
+    }
+  }, [email, resendEmail]);
 
   // Real-time subscription: when the user verifies via the email link (even in
   // another tab), Convex pushes the updated record and we redirect automatically.
@@ -98,6 +111,38 @@ export function VerifyEmailForm() {
 
   const handleCloseWindow = () => {
     globalThis.window?.close();
+  };
+
+  const handleResend = async () => {
+    setResendError(null);
+    setResent(false);
+
+    const normalizedEmail = resendEmail.trim();
+    if (!normalizedEmail) {
+      setResendError(tv("verificationErrorUnknown"));
+      return;
+    }
+
+    setResending(true);
+    try {
+      const result = await authClient.sendVerificationEmail({
+        email: normalizedEmail,
+        callbackURL: EMAIL_VERIFICATION_CALLBACK_URL,
+      });
+
+      if (result.error) {
+        setResendError(
+          formatAuthError(result.error, tv("verificationErrorUnknown")),
+        );
+        return;
+      }
+
+      setResent(true);
+    } catch {
+      setResendError(tv("verificationErrorUnknown"));
+    } finally {
+      setResending(false);
+    }
   };
 
   if (showTokenResult) {
@@ -164,6 +209,39 @@ export function VerifyEmailForm() {
                 </a>
               </div>
             )
+          ) : null}
+          {!isVerificationSuccess ? (
+            <div className="space-y-3 text-left">
+              <div className="space-y-2">
+                <Label htmlFor="verify-resend-email">{t("fields.email")}</Label>
+                <Input
+                  id="verify-resend-email"
+                  type="email"
+                  value={resendEmail}
+                  placeholder={t("fields.emailPlaceholder")}
+                  onChange={(event) => setResendEmail(event.target.value)}
+                />
+              </div>
+              {resendError ? (
+                <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+                  {resendError}
+                </div>
+              ) : null}
+              {resent ? (
+                <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
+                  {tv("resent")}
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleResend}
+                disabled={resending || !resendEmail.trim()}
+              >
+                {resending ? t("working") : tv("resend")}
+              </Button>
+            </div>
           ) : null}
           <Button
             type="button"
