@@ -9,8 +9,16 @@ import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
+import { runAuditEvent } from "./auditTrailHelpers";
+import type { AuditStatus } from "./auditTrailConstants";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
+
+/** Truncate a string to at most `max` characters. */
+function truncate(value: string | undefined, max: number): string | undefined {
+  if (value === undefined) return undefined;
+  return value.length <= max ? value : value.slice(0, max);
+}
 
 /** Parse an env var as a positive integer, falling back to a safe default. */
 function positiveInt(envVar: string | undefined, defaultValue: number): number {
@@ -121,6 +129,141 @@ function getTotpIssuer(): string {
   return base;
 }
 
+type AuthEndpointAction =
+  | "auth.sign_in.requested"
+  | "auth.sign_up.requested"
+  | "auth.password_reset.requested"
+  | "auth.password_reset.completed"
+  | "auth.email_verification.requested"
+  | "auth.two_factor.setup_started"
+  | "auth.two_factor.disabled"
+  | "auth.two_factor.verify_totp"
+  | "auth.two_factor.verify_backup_code"
+  | "auth.two_factor.backup_codes_regenerated";
+
+type AuthEndpointAuditConfig = {
+  action: AuthEndpointAction;
+  resource: (actor: string) => string;
+};
+
+const AUTH_ENDPOINT_AUDIT_CONFIG: Record<string, AuthEndpointAuditConfig> = {
+  "/sign-in/email": {
+    action: "auth.sign_in.requested",
+    resource: (actor) => `user:${actor}`,
+  },
+  "/sign-up/email": {
+    action: "auth.sign_up.requested",
+    resource: (actor) => `user:${actor}`,
+  },
+  "/request-password-reset": {
+    action: "auth.password_reset.requested",
+    resource: (actor) => `user:${actor}`,
+  },
+  "/reset-password": {
+    action: "auth.password_reset.completed",
+    resource: () => "password-reset:self",
+  },
+  "/send-verification-email": {
+    action: "auth.email_verification.requested",
+    resource: (actor) => `user:${actor}`,
+  },
+  "/two-factor/enable": {
+    action: "auth.two_factor.setup_started",
+    resource: () => "user:self",
+  },
+  "/two-factor/disable": {
+    action: "auth.two_factor.disabled",
+    resource: () => "user:self",
+  },
+  "/two-factor/verify-totp": {
+    action: "auth.two_factor.verify_totp",
+    resource: () => "session:pending-2fa",
+  },
+  "/two-factor/verify-backup-code": {
+    action: "auth.two_factor.verify_backup_code",
+    resource: () => "session:pending-2fa",
+  },
+  "/two-factor/generate-backup-codes": {
+    action: "auth.two_factor.backup_codes_regenerated",
+    resource: () => "user:self",
+  },
+};
+
+type ApiErrorLike = {
+  statusCode: number;
+  message?: string;
+};
+
+function normalizeAuthPath(path: string): string {
+  return path.replace(/^\/api\/auth/, "");
+}
+
+function normalizeEmail(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function getApiErrorLike(value: unknown): ApiErrorLike | null {
+  if (!value || typeof value !== "object") return null;
+  const maybeError = value as {
+    statusCode?: unknown;
+    body?: { message?: unknown };
+  };
+  if (typeof maybeError.statusCode !== "number") return null;
+  return {
+    statusCode: maybeError.statusCode,
+    message:
+      typeof maybeError.body?.message === "string"
+        ? maybeError.body.message
+        : undefined,
+  };
+}
+
+function mapEndpointErrorToStatus(
+  path: string,
+  error: ApiErrorLike | null,
+): AuditStatus {
+  if (!error) return "succeeded";
+
+  const message = (error.message ?? "").toLowerCase();
+
+  if (error.statusCode === 401) {
+    if (
+      path === "/two-factor/verify-totp" ||
+      path === "/two-factor/verify-backup-code"
+    ) {
+      return "failed.invalid_code";
+    }
+    if (path === "/sign-in/email") return "failed.wrong_password";
+    return "failed.unauthorized";
+  }
+
+  if (error.statusCode === 403) return "failed.blocked";
+  if (error.statusCode === 404) return "failed.not_found";
+  if (error.statusCode === 429) return "failed.rate_limited";
+
+  if (error.statusCode === 400 || error.statusCode === 422) {
+    if (message.includes("invalid_password")) {
+      return "failed.wrong_password";
+    }
+    if (message.includes("invalid_token") || message.includes("expired")) {
+      return "failed.expired";
+    }
+    if (
+      (path === "/two-factor/verify-totp" ||
+        path === "/two-factor/verify-backup-code") &&
+      (message.includes("invalid") || message.includes("code"))
+    ) {
+      return "failed.invalid_code";
+    }
+    return "failed.validation_error";
+  }
+
+  if (error.statusCode >= 500) return "failed.internal_error";
+  return "failed.unknown";
+}
+
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
     baseURL: siteUrl,
@@ -147,7 +290,109 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         });
       },
     },
+    hooks: {
+      after: async (endpointCtx) => {
+        const middlewareCtx = endpointCtx as unknown as {
+          path?: string;
+          body?: unknown;
+          context?: {
+            returned?: unknown;
+            session?: { user?: { email?: unknown } };
+          };
+        };
+
+        const rawPath =
+          typeof middlewareCtx.path === "string" ? middlewareCtx.path : "";
+        const path = normalizeAuthPath(rawPath);
+        const config = AUTH_ENDPOINT_AUDIT_CONFIG[path];
+        if (!config) return {};
+
+        const body =
+          middlewareCtx.body && typeof middlewareCtx.body === "object"
+            ? (middlewareCtx.body as Record<string, unknown>)
+            : {};
+        const sessionUser = middlewareCtx.context?.session?.user;
+        const actor =
+          normalizeEmail(body.email) ??
+          normalizeEmail(sessionUser?.email) ??
+          "unknown";
+        const error = getApiErrorLike(middlewareCtx.context?.returned);
+        const status = mapEndpointErrorToStatus(path, error);
+
+        const actionCtx = requireActionCtx(ctx);
+        await runAuditEvent(actionCtx, {
+          happenedAt: Date.now(),
+          actor,
+          sourceDetail: "auth-endpoint-hook",
+          action: config.action,
+          resource: config.resource(actor),
+          status,
+          reason: error?.message,
+          meta: JSON.stringify({ endpoint: path }),
+        });
+        return {};
+      },
+    },
     databaseHooks: {
+      session: {
+        create: {
+          after: async (session) => {
+            const actionCtx = requireActionCtx(ctx);
+            const s = session as Record<string, unknown>;
+            const userId = s.userId as string;
+            const sessionId = (s.id ?? s._id ?? "") as string;
+
+            // Look up user email via the Better Auth component
+            const user = await authComponent.getAnyUserById(ctx, userId);
+
+            const email = (user?.email as string) ?? "unknown";
+            const ip = truncate(s.ipAddress as string | undefined, 200);
+            const userAgent = truncate(s.userAgent as string | undefined, 500);
+            const meta: Record<string, string> = {};
+            if (ip) meta.ip = ip;
+            if (userAgent) meta.userAgent = userAgent;
+
+            await runAuditEvent(actionCtx, {
+              happenedAt: Date.now(),
+              actor: email,
+              authenticatedUserId: userId,
+              sourceDetail: "auth-hook",
+              action: "auth.sign_in",
+              resource: `session:${sessionId}`,
+              status: "succeeded",
+              meta: Object.keys(meta).length > 0 ? JSON.stringify(meta) : undefined,
+            });
+          },
+        },
+        delete: {
+          before: async (session) => {
+            const actionCtx = requireActionCtx(ctx);
+            const s = session as Record<string, unknown>;
+            const userId = s.userId as string;
+            const sessionId = (s.id ?? s._id ?? "") as string;
+
+            const user = await authComponent.getAnyUserById(ctx, userId);
+
+            const email = (user?.email as string) ?? "unknown";
+            const ip = truncate(s.ipAddress as string | undefined, 200);
+            const userAgent = truncate(s.userAgent as string | undefined, 500);
+            const meta: Record<string, string> = {};
+            if (ip) meta.ip = ip;
+            if (userAgent) meta.userAgent = userAgent;
+
+            await runAuditEvent(actionCtx, {
+              happenedAt: Date.now(),
+              actor: email,
+              authenticatedUserId: userId,
+              sourceDetail: "auth-hook",
+              action: "auth.sign_out",
+              resource: `session:${sessionId}`,
+              status: "succeeded",
+              meta: Object.keys(meta).length > 0 ? JSON.stringify(meta) : undefined,
+            });
+          },
+        },
+      },
       user: {
         create: {
           before: async (user) => {
@@ -176,6 +421,20 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
               return { data: { ...user, role: "admin" } };
             }
             return { data: user };
+          },
+          after: async (user) => {
+            const actionCtx = requireActionCtx(ctx);
+            const userId = (user as Record<string, unknown>).id as string ?? "";
+
+            await runAuditEvent(actionCtx, {
+              happenedAt: Date.now(),
+              actor: user.email,
+              authenticatedUserId: userId || undefined,
+              sourceDetail: "auth-hook",
+              action: "auth.sign_up",
+              resource: `user:${userId}`,
+              status: "succeeded",
+            });
           },
         },
       },

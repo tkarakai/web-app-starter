@@ -11,6 +11,9 @@
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminEmails from "../adminEmails.js";
 import type * as appSettings from "../appSettings.js";
+import type * as auditTrail from "../auditTrail.js";
+import type * as auditTrailConstants from "../auditTrailConstants.js";
+import type * as auditTrailHelpers from "../auditTrailHelpers.js";
 import type * as auth from "../auth.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as devSeed from "../devSeed.js";
@@ -20,6 +23,7 @@ import type * as files from "../files.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as meta from "../meta.js";
+import type * as migrations from "../migrations.js";
 import type * as parseUserAgent from "../parseUserAgent.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
@@ -41,6 +45,9 @@ declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminEmails: typeof adminEmails;
   appSettings: typeof appSettings;
+  auditTrail: typeof auditTrail;
+  auditTrailConstants: typeof auditTrailConstants;
+  auditTrailHelpers: typeof auditTrailHelpers;
   auth: typeof auth;
   bootstrap: typeof bootstrap;
   devSeed: typeof devSeed;
@@ -50,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   functions: typeof functions;
   http: typeof http;
   meta: typeof meta;
+  migrations: typeof migrations;
   parseUserAgent: typeof parseUserAgent;
   projects: typeof projects;
   rateLimits: typeof rateLimits;

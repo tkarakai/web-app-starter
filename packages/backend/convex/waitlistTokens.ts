@@ -2,6 +2,8 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import type { AuditStatus } from "./auditTrailConstants";
+import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery } from "./functions";
 import { rateLimit } from "./rateLimits";
 
@@ -74,28 +76,55 @@ export const beginClaim = mutation({
       throws: true,
     });
 
-    const tokenDoc = await ctx.db
-      .query("invitationTokens")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .unique();
+    let email: string | undefined;
+    let tokenId: string | undefined;
+    let error: unknown;
+    let status: AuditStatus = "succeeded";
 
-    if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
-    if (Date.now() > tokenDoc.expiresAt) throw new Error("TOKEN_EXPIRED");
+    try {
+      const tokenDoc = await ctx.db
+        .query("invitationTokens")
+        .withIndex("by_token", (q) => q.eq("token", args.token))
+        .unique();
 
-    // Auto-reset stale "claiming" tokens back to "sent"
-    if (tokenDoc.status === "claiming") {
-      const claimAge = Date.now() - (tokenDoc.claimStartedAt ?? 0);
-      if (claimAge < CLAIMING_TTL_MS) {
+      if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
+      email = tokenDoc.email;
+      tokenId = tokenDoc._id;
+
+      if (Date.now() > tokenDoc.expiresAt) throw new Error("TOKEN_EXPIRED");
+
+      // Auto-reset stale "claiming" tokens back to "sent"
+      if (tokenDoc.status === "claiming") {
+        const claimAge = Date.now() - (tokenDoc.claimStartedAt ?? 0);
+        if (claimAge < CLAIMING_TTL_MS) {
+          throw new Error("TOKEN_ALREADY_USED");
+        }
+        // Stale claim — fall through and re-claim
+      } else if (tokenDoc.status !== "sent") {
         throw new Error("TOKEN_ALREADY_USED");
       }
-      // Stale claim — fall through and re-claim
-    } else if (tokenDoc.status !== "sent") {
-      throw new Error("TOKEN_ALREADY_USED");
+
+      await ctx.db.patch(tokenDoc._id, { status: "claiming", claimStartedAt: Date.now() });
+    } catch (e) {
+      error = e;
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "TOKEN_NOT_FOUND") status = "failed.not_found";
+      else if (msg === "TOKEN_EXPIRED") status = "failed.expired";
+      else if (msg === "TOKEN_ALREADY_USED") status = "failed.already_used";
+      else status = "failed.internal_error";
+    } finally {
+      await scheduleAuditEvent(ctx, {
+        actor: email ?? "unknown",
+        sourceDetail: "waitlist-token",
+        action: "waitlist.token.claimed",
+        resource: tokenId ? `invitation-token:${tokenId}` : `token:unknown`,
+        status,
+        reason: error instanceof Error ? error.message : undefined,
+      });
     }
 
-    await ctx.db.patch(tokenDoc._id, { status: "claiming", claimStartedAt: Date.now() });
-
-    return { email: tokenDoc.email };
+    if (error) throw error;
+    return { email: email! };
   },
 });
 
@@ -156,6 +185,14 @@ export const releaseClaim = mutation({
     if (!tokenDoc) return;
     if (tokenDoc.status === "claiming") {
       await ctx.db.patch(tokenDoc._id, { status: "sent" });
+
+      await scheduleAuditEvent(ctx, {
+        actor: tokenDoc.email,
+        sourceDetail: "waitlist-token",
+        action: "waitlist.token.released",
+        resource: `invitation-token:${tokenDoc._id}`,
+        status: "succeeded",
+      });
     }
   },
 });

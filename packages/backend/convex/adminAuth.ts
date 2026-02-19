@@ -1,10 +1,11 @@
 import { v } from "convex/values";
 
+import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
 
 // ---------------------------------------------------------------------------
-// Admin auth functions — session management, MFA policy, and audit trail
+// Admin auth functions — session management, MFA policy
 // All functions verify the caller has role === "admin".
 // ---------------------------------------------------------------------------
 
@@ -49,6 +50,7 @@ export const setMfaPolicy = authedMutation({
 
     const key = "emailMfaRequired";
     const value = JSON.stringify(args.required);
+    let oldValue: string | undefined;
 
     const existing = await ctx.db
       .query("appSettings")
@@ -56,6 +58,7 @@ export const setMfaPolicy = authedMutation({
       .unique();
 
     if (existing) {
+      oldValue = existing.value;
       await ctx.db.patch(existing._id, {
         value,
         updatedAt: Date.now(),
@@ -70,60 +73,15 @@ export const setMfaPolicy = authedMutation({
       });
     }
 
-    // Audit trail
-    await ctx.db.insert("auditLog", {
-      action: "mfa_policy_changed",
-      actorId: ctx.ownerId,
-      details: JSON.stringify({ mfaRequired: args.required }),
-      createdAt: Date.now(),
-    });
-  },
-});
-
-// ---------------------------------------------------------------------------
-// Admin query: list audit log entries
-// ---------------------------------------------------------------------------
-
-export const listAuditLog = authedQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
-
-    const limit = args.limit ?? 50;
-    const entries = await ctx.db
-      .query("auditLog")
-      .withIndex("by_created")
-      .order("desc")
-      .take(limit);
-
-    return entries.map((entry) => ({
-      ...entry,
-      details: entry.details ? JSON.parse(entry.details) : null,
-    }));
-  },
-});
-
-// ---------------------------------------------------------------------------
-// Admin mutation: log an admin action (for HTTP-action-based operations)
-// ---------------------------------------------------------------------------
-
-export const logAdminAction = authedMutation({
-  args: {
-    action: v.string(),
-    targetId: v.optional(v.string()),
-    details: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
-
-    await ctx.db.insert("auditLog", {
-      action: args.action,
-      actorId: ctx.ownerId,
-      targetId: args.targetId,
-      details: args.details,
-      createdAt: Date.now(),
+    await scheduleAuditEvent(ctx, {
+      actor: ctx.ownerId,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
+      action: "admin.mfa_policy_changed",
+      resource: `appSettings:${key}`,
+      status: "succeeded",
+      oldValue,
+      newValue: value,
     });
   },
 });

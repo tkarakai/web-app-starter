@@ -9,7 +9,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@repo/backend";
 
 import {
@@ -66,6 +66,7 @@ const SEARCH_DEBOUNCE = 300;
 export function UsersDataTable() {
   const authUser = useAuthUser();
   const currentUserId = authUser?.id;
+  const postAuditEvent = useMutation(api.auditTrail.postEvent);
 
   // Protected admin emails (from adminEmails table) — these users cannot be banned/deleted/demoted.
   const protectedEmailsList = useQuery(api.adminEmails.listProtected);
@@ -212,7 +213,7 @@ export function UsersDataTable() {
     if (banTarget.length === 1) {
       setBanPending(true);
       try {
-        await banUser(banTarget[0].id, banReason, banExpiresIn);
+        await banUser(banTarget[0].id, banReason, banExpiresIn, postAuditEvent);
         toast.success(`${banTarget[0].email} has been banned`);
         setBanTarget(null);
         setRowSelection({});
@@ -237,7 +238,7 @@ export function UsersDataTable() {
     if (!unbanTarget) return;
     setUnbanPending(true);
     try {
-      await unbanUser(unbanTarget.id);
+      await unbanUser(unbanTarget.id, postAuditEvent);
       toast.success(`${unbanTarget.email} has been unbanned`);
       setUnbanTarget(null);
       setRowSelection({});
@@ -258,9 +259,9 @@ export function UsersDataTable() {
 
     setSinglePending(true);
     try {
-      if (action === "delete") await removeUser(user.id);
-      else if (action === "makeAdmin") await setUserRole(user.id, "admin");
-      else if (action === "removeAdmin") await setUserRole(user.id, "user");
+      if (action === "delete") await removeUser(user.id, postAuditEvent);
+      else if (action === "makeAdmin") await setUserRole(user.id, "admin", postAuditEvent);
+      else if (action === "removeAdmin") await setUserRole(user.id, "user", postAuditEvent);
 
       const messages: Record<string, string> = {
         delete: `${user.email} has been deleted`,
@@ -298,15 +299,15 @@ export function UsersDataTable() {
       if (batchAction.action === "ban") {
         if (user.banned === true) return; // Already banned — skip (defense-in-depth)
         const params = batchBanParamsRef.current;
-        await banUser(user.id, params?.banReason ?? "", params?.banExpiresIn);
+        await banUser(user.id, params?.banReason ?? "", params?.banExpiresIn, postAuditEvent);
       } else if (batchAction.action === "unban") {
         if (user.banned !== true) return; // Not banned — skip (defense-in-depth)
-        await unbanUser(user.id);
+        await unbanUser(user.id, postAuditEvent);
       } else if (batchAction.action === "delete") {
-        await removeUser(user.id);
+        await removeUser(user.id, postAuditEvent);
       }
     },
-    [batchAction],
+    [batchAction, postAuditEvent],
   );
 
   // ----- Label helpers -----

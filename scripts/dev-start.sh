@@ -646,6 +646,20 @@ if [ "$NEED_CONVEX" = true ]; then
     else
         echo -e "  ${YELLOW}⚠${NC} Dev seed: ${SEED_OUTPUT:-no output} (non-fatal)"
     fi
+
+    # ============================================================
+    # RUN PENDING MIGRATIONS
+    # ============================================================
+    echo ""
+    echo -e "${GREEN}▶ Running pending migrations...${NC}"
+    MIGRATION_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run migrations 2>&1) || true
+    if echo "$MIGRATION_OUTPUT" | grep -q "Migration .* already done"; then
+        echo -e "  ${GREEN}✔${NC} No pending migrations"
+    elif [ -z "$MIGRATION_OUTPUT" ]; then
+        echo -e "  ${GREEN}✔${NC} Migrations complete"
+    else
+        echo -e "  ${GREEN}✔${NC} Migrations: ${MIGRATION_OUTPUT}"
+    fi
 else
     # Create PID file even if Convex isn't needed
     > "$PID_FILE"

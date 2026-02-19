@@ -26,6 +26,16 @@ runs:
         bunx convex deploy --cmd 'echo "skip build"'
         echo "Convex deployment complete"
 
+    - name: Run pending migrations
+      shell: bash
+      env:
+        CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
+      run: |
+        echo "Running pending migrations on ${{ inputs.environment }}..."
+        cd packages/backend
+        bunx convex run migrations
+        echo "Migrations complete"
+
     - name: Verify deployment
       shell: bash
       env:

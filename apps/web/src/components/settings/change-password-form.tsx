@@ -3,6 +3,9 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 
+import { useMutation } from "convex/react";
+import { api } from "@repo/backend";
+import type { AuditStatus } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
 import {
   Button,
@@ -16,6 +19,7 @@ export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");
   const tc = useTranslations("common");
 
+  const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -30,6 +34,9 @@ export function ChangePasswordForm() {
     }
 
     setSubmitting(true);
+    const happenedAt = Date.now();
+    let status: AuditStatus = "succeeded";
+
     try {
       const result = await authClient.changePassword({
         currentPassword,
@@ -37,6 +44,7 @@ export function ChangePasswordForm() {
         revokeOtherSessions,
       });
       if (result.error) {
+        status = "failed.wrong_password";
         toast.error(tcp("errorCurrentPassword"));
       } else {
         toast.success(tcp("success"));
@@ -46,9 +54,18 @@ export function ChangePasswordForm() {
         setRevokeOtherSessions(false);
       }
     } catch {
+      status = "failed.unknown";
       toast.error(tc("error"));
     } finally {
       setSubmitting(false);
+      postAuditEvent({
+        happenedAt,
+        sourceDetail: "settings",
+        action: "auth.password_changed",
+        resource: "user:self",
+        status,
+        meta: revokeOtherSessions ? JSON.stringify({ revokeOtherSessions: true }) : undefined,
+      }).catch(() => {});
     }
   };
 

@@ -1,9 +1,14 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { migrationsTable } from "convex-helpers/server/migrations";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 
-export default defineSchema({
+export default defineSchema(
+{
   ...rateLimitTables,
+
+  // --- Migrations state (convex-helpers framework) ---
+  migrations: migrationsTable,
 
   userProfiles: defineTable({
     ownerId: v.string(),
@@ -103,16 +108,28 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_waitlist_entry", ["waitlistEntryId"]),
 
-  // --- Admin audit log ---
+  // --- Audit trail (append-only) ---
 
-  auditLog: defineTable({
+  auditTrail: defineTable({
+    happenedAt: v.number(),
+    authenticatedUserId: v.optional(v.string()),
+    actor: v.string(),
+    source: v.string(),
     action: v.string(),
-    actorId: v.string(),
-    targetId: v.optional(v.string()),
-    details: v.optional(v.string()),
-    createdAt: v.number(),
+    resource: v.string(),
+    status: v.string(),
+    oldValue: v.optional(v.string()),
+    newValue: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    meta: v.optional(v.string()),
+    truncatedFields: v.optional(v.string()),
   })
-    .index("by_actor", ["actorId"])
-    .index("by_action", ["action"])
-    .index("by_created", ["createdAt"]),
-});
+    .index("by_happenedAt", ["happenedAt"])
+    .index("by_action_happenedAt", ["action", "happenedAt"])
+    .index("by_actor_happenedAt", ["actor", "happenedAt"])
+    .index("by_source_happenedAt", ["source", "happenedAt"])
+    .index("by_status_happenedAt", ["status", "happenedAt"])
+    .index("by_action_status_happenedAt", ["action", "status", "happenedAt"])
+    .index("by_authenticatedUserId_happenedAt", ["authenticatedUserId", "happenedAt"]),
+},
+);
