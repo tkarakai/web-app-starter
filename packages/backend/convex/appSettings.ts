@@ -4,7 +4,7 @@ import { internalQuery, query } from "./_generated/server";
 import type { EmailTemplate } from "./emailTemplates";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE } from "./emailTemplates";
 import { authedMutation, authedQuery } from "./functions";
-import { isOnboardingType } from "./onboardingType";
+import { isOnboardingType, parseOnboardingType } from "./onboardingType";
 
 /** Keys that unauthenticated callers may read via getPublic. */
 const PUBLIC_KEYS = ["onboardingType", "emailVerificationRequired"] as const;
@@ -21,7 +21,7 @@ const VALID_KEYS = [
 
 /** Default values returned when a key has never been set. */
 const DEFAULTS: Record<string, unknown> = {
-  onboardingType: "none",
+  onboardingType: "inviteOnly",
   invitationTokenExpiryDays: 7,
   emailMfaRequired: false,
   emailVerificationRequired: true,
@@ -33,16 +33,7 @@ function getDefault(key: string): unknown {
 
 function parseSettingValue(key: string, value: string): unknown {
   if (key === "onboardingType") {
-    if (isOnboardingType(value)) return value;
-    try {
-      const parsed = JSON.parse(value);
-      if (typeof parsed === "string" && isOnboardingType(parsed)) {
-        return parsed;
-      }
-    } catch {
-      return getDefault(key);
-    }
-    return getDefault(key);
+    return parseOnboardingType(value);
   }
   return JSON.parse(value);
 }
@@ -55,7 +46,7 @@ function validateValue(key: string, value: string): void {
   if (key === "onboardingType") {
     if (!isOnboardingType(value)) {
       throw new Error(
-        "INVALID_VALUE: onboardingType must be one of 'none', 'waitlist', or 'signup'"
+        "INVALID_VALUE: onboardingType must be one of 'inviteOnly', 'publicWaitlist', or 'publicSignup'"
       );
     }
   } else if (key === "invitationTokenExpiryDays") {
@@ -184,8 +175,8 @@ export const getPublic = query({
       if (legacyWaitlist) {
         try {
           return JSON.parse(legacyWaitlist.value) === true
-            ? "waitlist"
-            : "signup";
+            ? "publicWaitlist"
+            : "publicSignup";
         } catch {
           return getDefault(args.key);
         }
@@ -219,8 +210,8 @@ export const get = authedQuery({
       if (legacyWaitlist) {
         try {
           return JSON.parse(legacyWaitlist.value) === true
-            ? "waitlist"
-            : "signup";
+            ? "publicWaitlist"
+            : "publicSignup";
         } catch {
           return getDefault(args.key);
         }
@@ -383,8 +374,8 @@ export const getInternal = internalQuery({
       if (legacyWaitlist) {
         try {
           return JSON.parse(legacyWaitlist.value) === true
-            ? "waitlist"
-            : "signup";
+            ? "publicWaitlist"
+            : "publicSignup";
         } catch {
           return getDefault(args.key);
         }

@@ -62,10 +62,10 @@ export function WaitlistFeatureCard() {
     try {
       await setSetting({
         key: "onboardingType",
-        value: checked ? "waitlist" : "none",
+        value: checked ? "publicWaitlist" : "inviteOnly",
       });
       toast.success(
-        checked ? "Waitlist onboarding enabled" : "Waitlist onboarding disabled"
+        checked ? "Public waitlist enabled" : "Public waitlist disabled"
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update setting");
@@ -100,8 +100,8 @@ export function WaitlistFeatureCard() {
   };
 
   const isLoading = onboardingType === undefined;
-  const isEnabled = onboardingType === "waitlist";
-  const mode = typeof onboardingType === "string" ? onboardingType : "none";
+  const isEnabled = onboardingType === "publicWaitlist";
+  const mode = typeof onboardingType === "string" ? onboardingType : "inviteOnly";
 
   return (
     <>
@@ -112,9 +112,9 @@ export function WaitlistFeatureCard() {
               <ListChecks className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">Waitlist</CardTitle>
+              <CardTitle className="text-base">Public Waitlist</CardTitle>
               <CardDescription>
-                Require invitations for new signups
+                Allow visitors to join a public waitlist
               </CardDescription>
             </div>
           </div>
@@ -139,11 +139,11 @@ export function WaitlistFeatureCard() {
                 </Label>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {mode === "waitlist"
+                {mode === "publicWaitlist"
                   ? "Landing shows the waitlist form. Public self-signup is disabled."
-                  : mode === "signup"
-                  ? "Public self-signup is enabled. Waitlist onboarding is disabled."
-                  : "Both public self-signup and waitlist onboarding are disabled."}
+                  : mode === "publicSignup"
+                  ? "Public self-signup is enabled. Public waitlist is disabled."
+                  : "Invite-only onboarding is enabled. No public self-service onboarding is available."}
               </p>
               {invitationExpiryDays === undefined ? (
                 <Skeleton className="h-8 w-44" />
@@ -188,13 +188,13 @@ export function WaitlistFeatureCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmToggle
-                ? "Enable waitlist onboarding?"
-                : "Disable waitlist onboarding?"}
+                ? "Enable public waitlist?"
+                : "Disable public waitlist?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
                 ? "Landing will show a \"Join Waitlist\" form. Public self-signup will be turned off."
-                : "Waitlist onboarding will be disabled. If signup onboarding is also disabled, landing will only show sign-in."}
+                : "Public waitlist will be disabled. Onboarding mode will switch to Invite Only."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

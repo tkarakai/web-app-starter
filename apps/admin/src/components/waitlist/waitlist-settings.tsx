@@ -42,10 +42,10 @@ export function WaitlistSettings() {
     try {
       await setSetting({
         key: "onboardingType",
-        value: checked ? "waitlist" : "none",
+        value: checked ? "publicWaitlist" : "inviteOnly",
       });
       toast.success(
-        checked ? "Waitlist onboarding enabled" : "Waitlist onboarding disabled"
+        checked ? "Public waitlist enabled" : "Public waitlist disabled"
       );
     } catch (err) {
       toast.error(
@@ -60,7 +60,7 @@ export function WaitlistSettings() {
     return <Skeleton className="h-8 w-32" />;
   }
 
-  const waitlistEnabled = onboardingType === "waitlist";
+  const waitlistEnabled = onboardingType === "publicWaitlist";
 
   return (
     <>
@@ -86,13 +86,13 @@ export function WaitlistSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmToggle
-                ? "Enable waitlist onboarding?"
-                : "Disable waitlist onboarding?"}
+                ? "Enable public waitlist?"
+                : "Disable public waitlist?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
                 ? "Landing will show a \"Join Waitlist\" form. Public self-signup will be turned off."
-                : "Waitlist onboarding will be disabled. If signup onboarding is also disabled, landing will only show sign-in."}
+                : "Public waitlist will be disabled. Onboarding mode will switch to Invite Only."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

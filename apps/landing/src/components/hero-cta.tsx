@@ -41,18 +41,27 @@ export function HeroCta() {
       try {
         const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/status`);
         const data = (await res.json()) as {
-          onboardingType?: "none" | "waitlist" | "signup";
+          onboardingType?:
+            | "inviteOnly"
+            | "publicWaitlist"
+            | "publicSignup"
+            | "none"
+            | "waitlist"
+            | "signup";
           waitlistEnabled?: boolean;
           signupEnabled?: boolean;
           enabled?: boolean;
         };
 
         const nextStatus: Status =
+          data.onboardingType === "publicWaitlist" ||
           data.onboardingType === "waitlist" ||
           data.waitlistEnabled === true ||
           data.enabled === true
             ? "waitlist"
-            : data.onboardingType === "signup" || data.signupEnabled === true
+            : data.onboardingType === "publicSignup" ||
+              data.onboardingType === "signup" ||
+              data.signupEnabled === true
             ? "signup"
             : "closed";
 

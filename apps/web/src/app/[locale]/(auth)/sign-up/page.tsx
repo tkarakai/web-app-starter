@@ -16,7 +16,7 @@ const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:300
 const CONVEX_SITE_URL =
   process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
 
-type OnboardingType = "none" | "waitlist" | "signup";
+type OnboardingType = "inviteOnly" | "publicWaitlist" | "publicSignup";
 
 async function getOnboardingType(): Promise<OnboardingType> {
   try {
@@ -24,20 +24,31 @@ async function getOnboardingType(): Promise<OnboardingType> {
       next: { revalidate: 60 },
     });
     const data = (await res.json()) as {
-      onboardingType?: OnboardingType;
+      onboardingType?:
+        | OnboardingType
+        | "none"
+        | "waitlist"
+        | "signup";
       waitlistEnabled?: boolean;
       signupEnabled?: boolean;
       enabled?: boolean;
     };
 
-    if (data.onboardingType === "none" || data.onboardingType === "waitlist" || data.onboardingType === "signup") {
+    if (
+      data.onboardingType === "inviteOnly" ||
+      data.onboardingType === "publicWaitlist" ||
+      data.onboardingType === "publicSignup"
+    ) {
       return data.onboardingType;
     }
-    if (data.waitlistEnabled === true || data.enabled === true) return "waitlist";
-    if (data.signupEnabled === true) return "signup";
-    return "none";
+    if (data.onboardingType === "waitlist") return "publicWaitlist";
+    if (data.onboardingType === "signup") return "publicSignup";
+    if (data.onboardingType === "none") return "inviteOnly";
+    if (data.waitlistEnabled === true || data.enabled === true) return "publicWaitlist";
+    if (data.signupEnabled === true) return "publicSignup";
+    return "inviteOnly";
   } catch {
-    return "none";
+    return "inviteOnly";
   }
 }
 
@@ -66,25 +77,25 @@ export default async function SignUpPage() {
             {t("pageDescription")}
           </p>
         </section>
-        {onboardingType === "signup" ? (
+        {onboardingType === "publicSignup" ? (
           <AuthForm mode="sign-up" />
         ) : (
           <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
             <CardHeader>
               <CardTitle>
-                {onboardingType === "waitlist"
+                {onboardingType === "publicWaitlist"
                   ? ti("signupBlocked")
                   : "Sign-up is currently disabled."}
               </CardTitle>
               <CardDescription>
-                {onboardingType === "waitlist"
+                {onboardingType === "publicWaitlist"
                   ? ti("signupBlockedDescription")
-                  : "Self-service sign-up and waitlist onboarding are both disabled."}
+                  : "The app is currently in invite-only onboarding mode."}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                {onboardingType === "waitlist" ? (
+                {onboardingType === "publicWaitlist" ? (
                   <a href={LANDING_URL}>{ti("goToWaitlist")}</a>
                 ) : (
                   <a href="/sign-in">{ts("cta")}</a>

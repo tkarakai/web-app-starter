@@ -38,9 +38,9 @@ const dashboardSections = [
     title: "Manage",
     items: [
       {
-        title: "Waitlist, Invitations",
-        description: "Manage waitlist entries and invitations.",
-        href: "/manage/waitlist",
+        title: "Onboarding",
+        description: "Manage onboarding mode, waitlist entries, and invitations.",
+        href: "/manage/onboarding",
         icon: ListChecks,
       },
       {

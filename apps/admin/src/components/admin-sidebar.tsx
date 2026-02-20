@@ -47,7 +47,7 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 const manageItems = [
-  { label: "Waitlist, Invitations", href: "/manage/waitlist", icon: ListChecks },
+  { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
   { label: "Users", href: "/manage/users", icon: Users },
 ];
 

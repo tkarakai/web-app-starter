@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
-import { UserRoundPlus } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@repo/backend";
@@ -25,32 +25,32 @@ import {
   Switch,
 } from "@repo/design-system";
 
-export function SignupFeatureCard() {
+export function InviteOnlyFeatureCard() {
   const onboardingType = useQuery(api.appSettings.get, {
     key: "onboardingType",
   });
   const setSetting = useMutation(api.appSettings.set);
 
   const [togglePending, setTogglePending] = React.useState(false);
-  const [confirmToggle, setConfirmToggle] = React.useState<boolean | null>(null);
+  const [confirmEnable, setConfirmEnable] = React.useState(false);
+
+  const isLoading = onboardingType === undefined;
+  const isEnabled = onboardingType === "inviteOnly";
 
   const handleToggleRequest = (checked: boolean) => {
-    setConfirmToggle(checked);
+    // This acts like a radio option: selecting this mode only.
+    if (checked) setConfirmEnable(true);
   };
 
-  const handleToggleConfirm = async () => {
-    if (confirmToggle === null) return;
-    const checked = confirmToggle;
-    setConfirmToggle(null);
+  const handleConfirm = async () => {
+    setConfirmEnable(false);
     setTogglePending(true);
     try {
       await setSetting({
         key: "onboardingType",
-        value: checked ? "publicSignup" : "inviteOnly",
+        value: "inviteOnly",
       });
-      toast.success(
-        checked ? "Public self-signup enabled" : "Public self-signup disabled"
-      );
+      toast.success("Invite-only onboarding enabled");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update setting");
     } finally {
@@ -58,22 +58,18 @@ export function SignupFeatureCard() {
     }
   };
 
-  const isLoading = onboardingType === undefined;
-  const isEnabled = onboardingType === "publicSignup";
-  const mode = typeof onboardingType === "string" ? onboardingType : "inviteOnly";
-
   return (
     <>
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-              <UserRoundPlus className="h-5 w-5 text-primary" />
+              <KeyRound className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">Public Self-Signup</CardTitle>
+              <CardTitle className="text-base">Invite Only</CardTitle>
               <CardDescription>
-                Allow public self-service account creation
+                Only admins can invite people to onboard
               </CardDescription>
             </div>
           </div>
@@ -88,51 +84,35 @@ export function SignupFeatureCard() {
             <>
               <div className="flex items-center gap-3">
                 <Switch
-                  id="signup-toggle"
+                  id="invite-only-toggle"
                   checked={isEnabled}
                   onCheckedChange={handleToggleRequest}
                   disabled={togglePending}
                 />
-                <Label htmlFor="signup-toggle" className="text-sm font-medium">
+                <Label htmlFor="invite-only-toggle" className="text-sm font-medium">
                   {isEnabled ? "Enabled" : "Disabled"}
                 </Label>
               </div>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                {mode === "publicSignup"
-                  ? "Landing shows self-signup and sign-in. Public waitlist is disabled."
-                  : mode === "publicWaitlist"
-                  ? "Public waitlist is enabled. Public self-signup is disabled."
-                  : "Invite-only onboarding is enabled. No public self-service onboarding is available."}
+                Landing shows only sign-in. Admins can still invite users directly from
+                the Onboarding page.
               </p>
             </>
           )}
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={confirmToggle !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirmToggle(null);
-        }}
-      >
+      <AlertDialog open={confirmEnable} onOpenChange={setConfirmEnable}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmToggle
-                ? "Enable public self-signup?"
-                : "Disable public self-signup?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Enable invite-only onboarding?</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmToggle
-                ? "Landing will show self-signup. Waitlist onboarding will be turned off."
-                : "Public self-signup will be disabled. Onboarding mode will switch to Invite Only."}
+              Public waitlist and public self-signup will both be disabled.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleToggleConfirm}>
-              {confirmToggle ? "Enable" : "Disable"}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirm}>Enable</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
