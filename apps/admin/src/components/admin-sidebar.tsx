@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ListChecks,
   LogOut,
+  PlugZap,
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
@@ -46,7 +47,7 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 const manageItems = [
-  { label: "Waitlist", href: "/manage/waitlist", icon: ListChecks },
+  { label: "Waitlist, Invitations", href: "/manage/waitlist", icon: ListChecks },
   { label: "Users", href: "/manage/users", icon: Users },
 ];
 
@@ -57,6 +58,7 @@ const observabilityItems = [
 const configureItems = [
   { label: "Features", href: "/configure/features", icon: SlidersHorizontal },
   { label: "Security", href: "/configure/security", icon: ShieldCheck },
+  { label: "Integrations", href: "/configure/integrations", icon: PlugZap },
 ];
 
 export function AdminSidebar({
@@ -220,7 +222,11 @@ export function AdminSidebar({
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   tooltip={displayName}
-                  className="h-auto py-2"
+                  className={
+                    isCollapsed
+                      ? "h-auto py-2 !size-8 !p-0 justify-center"
+                      : "h-auto py-2"
+                  }
                 >
                   <Avatar className="h-7 w-7 shrink-0 border border-border/60">
                     <AvatarFallback className="text-xs">{initials}</AvatarFallback>

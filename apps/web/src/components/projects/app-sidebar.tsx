@@ -199,7 +199,11 @@ export function AppSidebar({
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton
                     tooltip={displayName}
-                    className="h-auto py-2"
+                    className={
+                      isCollapsed
+                        ? "h-auto py-2 !size-8 !p-0 justify-center"
+                        : "h-auto py-2"
+                    }
                   >
                     <Avatar className="h-7 w-7 shrink-0 border border-border/60">
                       <AvatarFallback

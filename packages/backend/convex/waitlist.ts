@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import {
@@ -11,6 +12,8 @@ import {
   MAX_DESCRIPTION_LENGTH,
 } from "./functions";
 import { rateLimit } from "./rateLimits";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Valid superpower values for the waitlist meta field. */
 const VALID_SUPERPOWERS = [
@@ -63,6 +66,10 @@ function validateMeta(meta: string): void {
       throw new Error("INVALID_META: invalid excitement value");
     }
   }
+}
+
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +225,103 @@ export const invite = authedMutation({
       status: "succeeded",
       meta: JSON.stringify({ inviteeEmail: entry.email }),
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Admin: invite many by email (upsert entries, then send invitation emails)
+// ---------------------------------------------------------------------------
+
+export const inviteMany = authedMutation({
+  args: { emails: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const role = (ctx.user as Record<string, unknown>).role;
+    if (role !== "admin") throw new Error("NOT_ADMIN");
+
+    const normalized = Array.from(
+      new Set(args.emails.map((email) => normalizeEmail(email)).filter(Boolean))
+    );
+
+    if (normalized.length === 0) {
+      throw new Error("NO_EMAILS_PROVIDED");
+    }
+
+    const invited: string[] = [];
+    const skipped: Array<{ email: string; reason: string }> = [];
+    const now = Date.now();
+    const actorEmail = (ctx.user as Record<string, unknown>).email as string;
+
+    for (const email of normalized) {
+      if (email.length > MAX_NAME_LENGTH) {
+        skipped.push({ email, reason: "EMAIL_TOO_LONG" });
+        continue;
+      }
+
+      if (!EMAIL_PATTERN.test(email)) {
+        skipped.push({ email, reason: "INVALID_EMAIL" });
+        continue;
+      }
+
+      const existing = await ctx.db
+        .query("waitlistEntries")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .unique();
+
+      let entryId: Id<"waitlistEntries">;
+
+      if (existing) {
+        if (existing.status === "claimed") {
+          skipped.push({ email, reason: "ALREADY_CLAIMED" });
+          continue;
+        }
+
+        const alreadyInvited =
+          existing.status === "invited" &&
+          (!existing.invitationExpiresAt || now <= existing.invitationExpiresAt);
+        if (alreadyInvited) {
+          skipped.push({ email, reason: "ALREADY_INVITED" });
+          continue;
+        }
+
+        await ctx.db.patch(existing._id, {
+          status: "invited",
+          invitedAt: now,
+          invitationExpiresAt: undefined,
+        });
+        entryId = existing._id;
+      } else {
+        entryId = await ctx.db.insert("waitlistEntries", {
+          email,
+          meta: JSON.stringify({ source: "admin-invite" }),
+          status: "invited",
+          invitedAt: now,
+          createdAt: now,
+        });
+      }
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.waitlistActions.generateTokenAndSendEmail,
+        {
+          entryId,
+          email,
+        }
+      );
+
+      invited.push(email);
+
+      await scheduleAuditEvent(ctx, {
+        actor: actorEmail,
+        authenticatedUserId: ctx.ownerId,
+        sourceDetail: "admin-mutation",
+        action: "waitlist.invitation.sent",
+        resource: `waitlist-entry:${entryId}`,
+        status: "succeeded",
+        meta: JSON.stringify({ inviteeEmail: email, source: "direct-invite" }),
+      });
+    }
+
+    return { invited, skipped };
   },
 });
 

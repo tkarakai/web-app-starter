@@ -1,8 +1,6 @@
 "use client";
 
-import * as React from "react";
-import type { Table } from "@tanstack/react-table";
-import { Mail, Trash2 } from "lucide-react";
+import { Mail, Plus, Trash2 } from "lucide-react";
 import {
   Button,
   Input,
@@ -12,17 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/design-system";
-import type { WaitlistEntry } from "./waitlist-actions-context";
 
 type WaitlistFilterBarProps = {
   searchValue: string;
   onSearchChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
+  onInvite: () => void;
   selectedCount: number;
   onBatchInvite: () => void;
   onBatchDelete: () => void;
-  table: Table<WaitlistEntry>;
   total: number;
   loading: boolean;
 };
@@ -32,6 +29,7 @@ export function WaitlistFilterBar({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  onInvite,
   selectedCount,
   onBatchInvite,
   onBatchDelete,
@@ -81,6 +79,10 @@ export function WaitlistFilterBar({
             <div className="h-4 w-px bg-border" aria-hidden="true" />
           </>
         )}
+        <Button size="sm" onClick={onInvite}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Invite
+        </Button>
       </div>
     </div>
   );

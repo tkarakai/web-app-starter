@@ -1,5 +1,6 @@
-import { Separator } from "@repo/design-system";
+import { KeyRound, Link2 } from "lucide-react";
 
+import { NotImplementedCard } from "@/components/configure/not-implemented-card";
 import { EmailVerificationPolicyCard } from "@/components/settings/email-verification-policy-card";
 import { MfaPolicyCard } from "@/components/settings/mfa-policy-card";
 
@@ -14,8 +15,17 @@ export default function SecurityPage() {
       </div>
       <div className="max-w-2xl space-y-6">
         <EmailVerificationPolicyCard />
-        <Separator />
         <MfaPolicyCard />
+        <NotImplementedCard
+          icon={KeyRound}
+          title="PassKey"
+          description="Allow users to sign in using a passkey."
+        />
+        <NotImplementedCard
+          icon={Link2}
+          title="Magic Link"
+          description="Allow users to sign in via a magic link sent to their email."
+        />
       </div>
     </div>
   );

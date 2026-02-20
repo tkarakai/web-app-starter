@@ -19,10 +19,11 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 
 const segmentLabels: Record<string, string> = {
   users: "Users",
-  waitlist: "Waitlist",
+  waitlist: "Waitlist, Invitations",
   "audit-trail": "Audit Trail",
   security: "Security",
   features: "Features",
+  integrations: "Integrations",
   "setup-2fa": "Set Up 2FA",
 };
 

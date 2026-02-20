@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   ListChecks,
+  PlugZap,
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
@@ -25,14 +26,20 @@ const dashboardSections = [
         href: "/configure/security",
         icon: ShieldCheck,
       },
+      {
+        title: "Integrations",
+        description: "Configure external provider integrations.",
+        href: "/configure/integrations",
+        icon: PlugZap,
+      },
     ],
   },
   {
     title: "Manage",
     items: [
       {
-        title: "Waitlist",
-        description: "Manage waitlist entries and send invitations.",
+        title: "Waitlist, Invitations",
+        description: "Manage waitlist entries and invitations.",
         href: "/manage/waitlist",
         icon: ListChecks,
       },

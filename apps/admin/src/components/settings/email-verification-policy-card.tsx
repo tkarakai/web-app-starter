@@ -74,7 +74,7 @@ export function EmailVerificationPolicyCard() {
             </div>
             <div>
               <CardTitle className="text-base">
-                Email Verification
+                Email Verification Policy
               </CardTitle>
               <CardDescription>
                 Require users to verify their email address before accessing the app
