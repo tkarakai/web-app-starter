@@ -82,15 +82,11 @@ export default async function SignUpPage() {
         ) : (
           <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
             <CardHeader>
-              <CardTitle>
-                {onboardingType === "publicWaitlist"
-                  ? ti("signupBlocked")
-                  : "Sign-up is currently disabled."}
-              </CardTitle>
+              <CardTitle>{ti("signupBlocked")}</CardTitle>
               <CardDescription>
                 {onboardingType === "publicWaitlist"
                   ? ti("signupBlockedDescription")
-                  : "The app is currently in invite-only onboarding mode."}
+                  : ts("description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
