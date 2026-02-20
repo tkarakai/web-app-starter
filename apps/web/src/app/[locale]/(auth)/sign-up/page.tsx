@@ -46,9 +46,9 @@ async function getOnboardingType(): Promise<OnboardingType> {
     if (data.onboardingType === "none") return "inviteOnly";
     if (data.waitlistEnabled === true || data.enabled === true) return "publicWaitlist";
     if (data.signupEnabled === true) return "publicSignup";
-    return "inviteOnly";
+    return "publicSignup";
   } catch {
-    return "inviteOnly";
+    return "publicSignup";
   }
 }
 
