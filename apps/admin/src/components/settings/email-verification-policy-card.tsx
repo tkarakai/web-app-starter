@@ -24,6 +24,7 @@ import {
   Skeleton,
   Switch,
 } from "@repo/design-system";
+import { EmailVerificationTemplateEditor } from "./email-verification-template-editor";
 
 export function EmailVerificationPolicyCard() {
   const emailVerifRequired = useQuery(api.appSettings.get, {
@@ -107,6 +108,10 @@ export function EmailVerificationPolicyCard() {
               </p>
             </>
           )}
+          <EmailVerificationTemplateEditor
+            disabled={isLoading || !isEnabled}
+            embedded
+          />
         </CardContent>
       </Card>
 

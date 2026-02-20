@@ -2,15 +2,10 @@
 
 import * as React from "react";
 import type { Table } from "@tanstack/react-table";
-import { useMutation, useQuery } from "convex/react";
 import { Mail, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-
-import { api } from "@repo/backend";
 import {
   Button,
   Input,
-  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -31,72 +26,6 @@ type WaitlistFilterBarProps = {
   total: number;
   loading: boolean;
 };
-
-function InvitationExpiry() {
-  const expiryDays = useQuery(api.appSettings.get, {
-    key: "invitationTokenExpiryDays",
-  });
-  const setSetting = useMutation(api.appSettings.set);
-
-  const [expiryInput, setExpiryInput] = React.useState("");
-  const [expiryPending, setExpiryPending] = React.useState(false);
-
-  React.useEffect(() => {
-    if (expiryDays !== undefined && expiryDays !== null) {
-      setExpiryInput(String(expiryDays));
-    }
-  }, [expiryDays]);
-
-  const handleExpiryBlur = async () => {
-    const num = parseInt(expiryInput, 10);
-    if (Number.isNaN(num) || num < 1 || num > 365) {
-      toast.error("Token expiry must be between 1 and 365 days");
-      setExpiryInput(String(expiryDays ?? 7));
-      return;
-    }
-    if (num === expiryDays) return;
-
-    setExpiryPending(true);
-    try {
-      await setSetting({
-        key: "invitationTokenExpiryDays",
-        value: String(num),
-      });
-      toast.success(`Invitation tokens now expire in ${num} days`);
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update setting"
-      );
-    } finally {
-      setExpiryPending(false);
-    }
-  };
-
-  if (expiryDays === undefined) return null;
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <Label
-        htmlFor="expiry-days"
-        className="shrink-0 text-sm text-muted-foreground"
-      >
-        Invitation Expiry
-      </Label>
-      <Input
-        id="expiry-days"
-        type="number"
-        min={1}
-        max={365}
-        value={expiryInput || "7"}
-        onChange={(e) => setExpiryInput(e.target.value)}
-        onBlur={handleExpiryBlur}
-        disabled={expiryPending}
-        className="h-8 w-16"
-      />
-      <span className="text-sm text-muted-foreground">days</span>
-    </div>
-  );
-}
 
 export function WaitlistFilterBar({
   searchValue,
@@ -152,7 +81,6 @@ export function WaitlistFilterBar({
             <div className="h-4 w-px bg-border" aria-hidden="true" />
           </>
         )}
-        <InvitationExpiry />
       </div>
     </div>
   );

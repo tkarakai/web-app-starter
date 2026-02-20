@@ -5,6 +5,7 @@ import {
   ArrowUpDown,
   Ban,
   Check,
+  Monitor,
   MoreHorizontal,
   Shield,
   ShieldOff,
@@ -114,6 +115,11 @@ function ActionsCell({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => onAction("sessions", [user])}>
+          <Monitor className="mr-2 h-4 w-4" />
+          Sessions
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         {isBanned ? (
           <DropdownMenuItem
             disabled={!canBanOrDelete}

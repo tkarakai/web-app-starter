@@ -17,18 +17,37 @@ import {
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
 
-/** Map route segments to display labels. */
 const segmentLabels: Record<string, string> = {
-  dashboard: "Dashboard",
   users: "Users",
   sessions: "Sessions",
   waitlist: "Waitlist",
   "audit-trail": "Audit Trail",
-  settings: "Settings",
+  settings: "Security",
+  security: "Security",
+  features: "Features",
+  "setup-2fa": "Set Up 2FA",
 };
 
+const sectionBySegment: Record<string, string> = {
+  users: "Manage",
+  sessions: "Manage",
+  waitlist: "Manage",
+  "audit-trail": "Monitor",
+  settings: "Configure",
+  security: "Configure",
+  features: "Configure",
+  "setup-2fa": "Configure",
+};
+
+function titleCase(value: string): string {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function formatSegment(segment: string): string {
-  return segmentLabels[segment] ?? segment;
+  return segmentLabels[segment] ?? titleCase(segment);
 }
 
 export default function DashboardShellLayout({
@@ -45,6 +64,10 @@ export default function DashboardShellLayout({
     .filter(Boolean)
     .filter((s) => s !== "dashboard");
 
+  const sectionLabel = segments[0]
+    ? (sectionBySegment[segments[0]] ?? titleCase(segments[0]))
+    : "Manage";
+
   return (
     <SidebarProvider>
       <AdminSidebar
@@ -58,16 +81,19 @@ export default function DashboardShellLayout({
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>Dashboard</BreadcrumbPage>
+                <BreadcrumbPage>{sectionLabel}</BreadcrumbPage>
               </BreadcrumbItem>
-              {segments.map((segment) => (
-                <span key={segment} className="contents">
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{formatSegment(segment)}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </span>
-              ))}
+              {segments
+                .map((segment) => formatSegment(segment))
+                .filter((label) => label !== sectionLabel)
+                .map((label, index) => (
+                  <span key={`${label}-${index}`} className="contents">
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{label}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </span>
+                ))}
             </BreadcrumbList>
           </Breadcrumb>
         </header>

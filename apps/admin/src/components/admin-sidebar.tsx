@@ -3,13 +3,24 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ListChecks, LogOut, Monitor, ScrollText, Settings, Users } from "lucide-react";
+import {
+  ChevronRight,
+  ListChecks,
+  LogOut,
+  ScrollText,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 
 import { ThemeToggle } from "@repo/design-patterns";
 import { authClient } from "@repo/auth/client";
 import {
   Avatar,
   AvatarFallback,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,12 +45,18 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
   displayEmail?: string;
 };
 
-const navItems = [
-  { label: "Users", href: "/dashboard/users", icon: Users },
-  { label: "Sessions", href: "/dashboard/sessions", icon: Monitor },
+const manageItems = [
   { label: "Waitlist", href: "/dashboard/waitlist", icon: ListChecks },
+  { label: "Users", href: "/dashboard/users", icon: Users },
+];
+
+const observabilityItems = [
   { label: "Audit Trail", href: "/dashboard/audit-trail", icon: ScrollText },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+];
+
+const configureItems = [
+  { label: "Features", href: "/dashboard/features", icon: SlidersHorizontal },
+  { label: "Security", href: "/dashboard/security", icon: ShieldCheck },
 ];
 
 export function AdminSidebar({
@@ -51,6 +68,10 @@ export function AdminSidebar({
   const pathname = usePathname();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const sectionItemsIndentClass = "ps-3 group-data-[collapsible=icon]:ps-0";
+  const [manageOpen, setManageOpen] = React.useState(true);
+  const [observabilityOpen, setObservabilityOpen] = React.useState(true);
+  const [configureOpen, setConfigureOpen] = React.useState(true);
 
   const initials = displayName
     .split(" ")
@@ -67,14 +88,17 @@ export function AdminSidebar({
     });
   };
 
+  const isItemActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Admin" className="font-semibold">
+            <SidebarMenuButton tooltip="Web App Starter Admin" className="font-semibold">
               <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
-              <span>Admin</span>
+              <span>Web App Starter Admin</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -82,25 +106,104 @@ export function AdminSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Manage</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(item.href)}
-                    tooltip={item.label}
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          <Collapsible
+            open={configureOpen}
+            onOpenChange={setConfigureOpen}
+            className="group/configure"
+          >
+            <CollapsibleTrigger asChild>
+              <SidebarGroupLabel className="cursor-pointer">
+                <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/configure:rotate-90" />
+                Configure
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent className={sectionItemsIndentClass}>
+                <SidebarMenu>
+                  {configureItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isItemActive(item.href)}
+                        tooltip={item.label}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <Collapsible open={manageOpen} onOpenChange={setManageOpen} className="group/manage">
+            <CollapsibleTrigger asChild>
+              <SidebarGroupLabel className="cursor-pointer">
+                <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/manage:rotate-90" />
+                Manage
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent className={sectionItemsIndentClass}>
+                <SidebarMenu>
+                  {manageItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isItemActive(item.href)}
+                        tooltip={item.label}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <Collapsible
+            open={observabilityOpen}
+            onOpenChange={setObservabilityOpen}
+            className="group/observability"
+          >
+            <CollapsibleTrigger asChild>
+              <SidebarGroupLabel className="cursor-pointer">
+                <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/observability:rotate-90" />
+                Monitor
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent className={sectionItemsIndentClass}>
+                <SidebarMenu>
+                  {observabilityItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isItemActive(item.href)}
+                        tooltip={item.label}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
         </SidebarGroup>
       </SidebarContent>
 

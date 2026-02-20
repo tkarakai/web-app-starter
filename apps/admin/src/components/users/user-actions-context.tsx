@@ -3,7 +3,13 @@
 import * as React from "react";
 import type { AdminUser } from "@/lib/admin-api";
 
-type UserAction = "ban" | "unban" | "delete" | "makeAdmin" | "removeAdmin";
+type UserAction =
+  | "ban"
+  | "unban"
+  | "delete"
+  | "makeAdmin"
+  | "removeAdmin"
+  | "sessions";
 
 type UserActionsContextValue = {
   onAction: (action: UserAction, users: AdminUser[]) => void;

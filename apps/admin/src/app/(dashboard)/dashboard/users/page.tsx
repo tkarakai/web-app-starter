@@ -6,7 +6,7 @@ export default function UsersPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
         <p className="text-sm text-muted-foreground">
-          Manage user accounts, ban or remove users.
+          Manage user accounts, session access, and role permissions.
         </p>
       </div>
       <UsersDataTable />

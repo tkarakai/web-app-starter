@@ -34,8 +34,15 @@ import { BanDialog } from "./ban-dialog";
 import { UnbanDialog } from "./unban-dialog";
 import { BatchActionDialog } from "./batch-action-dialog";
 import { UserActionsProvider } from "./user-actions-context";
+import { UserSessionsDialog } from "./user-sessions-dialog";
 
-type UserAction = "ban" | "unban" | "delete" | "makeAdmin" | "removeAdmin";
+type UserAction =
+  | "ban"
+  | "unban"
+  | "delete"
+  | "makeAdmin"
+  | "removeAdmin"
+  | "sessions";
 
 type PendingAction = {
   action: UserAction;
@@ -173,6 +180,7 @@ export function UsersDataTable() {
 
   // Batch action dialog (unban batch, delete batch)
   const [batchAction, setBatchAction] = React.useState<PendingAction | null>(null);
+  const [sessionsTarget, setSessionsTarget] = React.useState<AdminUser | null>(null);
 
   // Ban params ref for batch ban execution
   const batchBanParamsRef = React.useRef<{
@@ -192,7 +200,11 @@ export function UsersDataTable() {
 
   const handleAction = React.useCallback(
     (action: UserAction, actionUsers: AdminUser[]) => {
-      if (action === "ban") {
+      if (action === "sessions") {
+        if (actionUsers.length === 1) {
+          setSessionsTarget(actionUsers[0]);
+        }
+      } else if (action === "ban") {
         setBanTarget(actionUsers);
       } else if (action === "unban" && actionUsers.length === 1) {
         setUnbanTarget(actionUsers[0]);
@@ -319,6 +331,7 @@ export function UsersDataTable() {
       delete: "Delete",
       makeAdmin: "Make admin",
       removeAdmin: "Remove admin",
+      sessions: "Sessions",
     };
     return labels[action];
   };
@@ -514,6 +527,14 @@ export function UsersDataTable() {
           confirmDisabled={batchApplicableUsers.length === 0}
         />
       )}
+
+      <UserSessionsDialog
+        open={sessionsTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setSessionsTarget(null);
+        }}
+        user={sessionsTarget}
+      />
     </UserActionsProvider>
   );
 }
