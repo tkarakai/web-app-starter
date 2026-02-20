@@ -14,6 +14,7 @@ import {
 import { rateLimit } from "./rateLimits";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_BULK_INVITE_EMAILS = 100;
 
 /** Valid superpower values for the waitlist meta field. */
 const VALID_SUPERPOWERS = [
@@ -237,6 +238,9 @@ export const inviteMany = authedMutation({
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (args.emails.length > MAX_BULK_INVITE_EMAILS) {
+      throw new Error("TOO_MANY_EMAILS");
+    }
 
     const normalized = Array.from(
       new Set(args.emails.map((email) => normalizeEmail(email)).filter(Boolean))
