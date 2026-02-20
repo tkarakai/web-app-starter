@@ -13,6 +13,8 @@ import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
+import type { EmailTemplate } from "./emailTemplates";
+import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -264,14 +266,26 @@ function mapEndpointErrorToStatus(
   return "failed.unknown";
 }
 
-export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
+/** Email verification token lifetime in seconds (BetterAuth default: 3600 = 1 hour). */
+const EMAIL_VERIFICATION_EXPIRY_SECONDS = positiveInt(
+  process.env.AUTH_EMAIL_VERIFICATION_EXPIRY,
+  3600,
+);
+
+export const createAuthOptions = (
+  ctx: GenericCtx<DataModel>,
+) => {
   return {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
-      sendResetPassword: async ({ user, url }) => {
+      // requireEmailVerification is kept false here so Better Auth does not
+      // block sign-ins at the protocol level. Enforcement is done at the
+      // app level (dashboard layout + AuthGuard) so the admin toggle works
+      // without requiring an async createAuth factory.
+      requireEmailVerification: false,
+      sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
         await sendAuthEmail({
           to: user.email,
           type: "reset-password",
@@ -280,14 +294,56 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       },
     },
     emailVerification: {
+      // Always trigger the callback on sign-up; the callback decides whether
+      // to actually send based on the current admin setting.
       sendOnSignUp: true,
-      autoSignInAfterVerification: true,
-      sendVerificationEmail: async ({ user, url }) => {
-        await sendAuthEmail({
-          to: user.email,
-          type: "verification",
-          urlOrCode: url,
-        });
+      // Verifying an email should update the user record only; it must not
+      // create or refresh an authenticated session from the verification link.
+      autoSignInAfterVerification: false,
+      expiresIn: EMAIL_VERIFICATION_EXPIRY_SECONDS,
+      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+        // Read settings per-request — callbacks are async and have ctx.
+        const actionCtx = requireActionCtx(ctx);
+        const emailVerifRequired = await actionCtx.runQuery(
+          internal.appSettings.getInternal,
+          { key: "emailVerificationRequired" }
+        );
+        // If the admin has disabled email verification, skip sending.
+        if (emailVerifRequired === false) return;
+
+        const verificationTemplateSetting = await actionCtx.runQuery(
+          internal.appSettings.getInternal,
+          { key: "emailVerificationTemplate" }
+        );
+        const verificationTemplate: EmailTemplate | null =
+          typeof verificationTemplateSetting === "string"
+            ? (JSON.parse(verificationTemplateSetting) as EmailTemplate)
+            : verificationTemplateSetting != null
+            ? (verificationTemplateSetting as EmailTemplate)
+            : null;
+
+        const linkExpiry = formatDurationHuman(EMAIL_VERIFICATION_EXPIRY_SECONDS);
+
+        if (verificationTemplate) {
+          const rendered = renderVerificationEmailTemplate(verificationTemplate, {
+            verification_link: url,
+            link_expiry: linkExpiry,
+          });
+          await sendAuthEmail({
+            to: user.email,
+            type: "custom",
+            subject: rendered.subject,
+            html: rendered.html,
+            text: rendered.text,
+          });
+        } else {
+          await sendAuthEmail({
+            to: user.email,
+            type: "verification",
+            urlOrCode: url,
+            linkExpiry,
+          });
+        }
       },
     },
     hooks: {

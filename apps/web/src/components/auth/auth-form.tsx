@@ -4,9 +4,12 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useQuery } from "convex/react";
 
+import { api } from "@repo/backend";
 import { authClient, formatAuthError } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
+import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
 import {
   Button,
@@ -43,6 +46,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   const isSignUp = mode === "sign-up";
   const namespace = isSignUp ? "signUp" : "signIn";
+
+  // Read admin setting so we know whether to gate unverified users.
+  const emailVerifRequired = useQuery(api.appSettings.getPublic, {
+    key: "emailVerificationRequired",
+  });
 
   const handleTwoFactorVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -98,12 +106,22 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           name,
           email,
           password,
-          callbackURL: "/dashboard",
+          callbackURL: EMAIL_VERIFICATION_CALLBACK_URL,
         });
 
         if (result.error) {
           setError(formatAuthError(result.error, "Invalid email or password"));
         } else {
+          // requireEmailVerification is false in Better Auth, so a session is
+          // always created on sign-up. We detect verification need by checking
+          // the user's emailVerified field + the admin setting.
+          const data = result.data as Record<string, unknown> | undefined;
+          const user = data?.user as Record<string, unknown> | undefined;
+          // Only send users to verify-email when verification is explicitly enabled.
+          if (user && !user.emailVerified && emailVerifRequired === true) {
+            router.push("/verify-email");
+            return;
+          }
           broadcastAuth();
           await redirectWithUserLocale(router);
         }
@@ -118,6 +136,18 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (result.error) {
+        // When email verification is required and the user hasn't verified yet,
+        // redirect them to the verify-email page instead of showing a generic error.
+        const errData = result.error as Record<string, unknown>;
+        const code = errData.code as string | undefined;
+        const message = (errData.message as string | undefined)?.toLowerCase() ?? "";
+        const isUnverified =
+          code === "EMAIL_NOT_VERIFIED" ||
+          (message.includes("email") && message.includes("verif"));
+        if (isUnverified) {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          return;
+        }
         setError(formatAuthError(result.error, "Invalid email or password"));
       } else if (
         (result.data as Record<string, unknown> | undefined)?.twoFactorRedirect

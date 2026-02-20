@@ -3,8 +3,15 @@ export type { Id, Doc, DataModel } from "./convex/_generated/dataModel";
 export type {
   EmailTemplate,
   TemplateVariables,
+  VerificationTemplateVariables,
 } from "./convex/emailTemplates";
-export { TEMPLATE_VARIABLES, renderTemplate } from "./convex/emailTemplates";
+export {
+  TEMPLATE_VARIABLES,
+  VERIFICATION_TEMPLATE_VARIABLES,
+  renderTemplate,
+  renderTemplateGeneric,
+  formatDurationHuman,
+} from "./convex/emailTemplates";
 export type { SessionInfo } from "./convex/sessions";
 export type { DeviceInfo } from "./convex/parseUserAgent";
 export { parseUserAgent } from "./convex/parseUserAgent";

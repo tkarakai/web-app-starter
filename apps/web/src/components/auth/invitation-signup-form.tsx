@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
+import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
 import {
   Button,
@@ -38,6 +39,11 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   const finalizeClaim = useMutation(api.waitlistTokens.finalizeClaim);
   const releaseClaim = useMutation(api.waitlistTokens.releaseClaim);
 
+  // Read admin setting so we know whether to gate unverified users after sign-up.
+  const emailVerifRequired = useQuery(api.appSettings.getPublic, {
+    key: "emailVerificationRequired",
+  });
+
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -48,9 +54,13 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   if (!token) {
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
-        <CardHeader>
-          <CardTitle>{ti("invalidTitle")}</CardTitle>
-          <CardDescription>{ti("noToken")}</CardDescription>
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {ti("invalidTitle")}
+          </CardTitle>
+          <CardDescription className="text-xl font-semibold leading-tight text-foreground">
+            {ti("noToken")}
+          </CardDescription>
         </CardHeader>
       </Card>
     );
@@ -81,9 +91,11 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
-        <CardHeader>
-          <CardTitle>{ti("invalidTitle")}</CardTitle>
-          <CardDescription>
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {ti("invalidTitle")}
+          </CardTitle>
+          <CardDescription className="text-xl font-semibold leading-tight text-foreground">
             {reasonMessages[tokenValidation.reason] ?? ti("tokenInvalid")}
           </CardDescription>
         </CardHeader>
@@ -111,7 +123,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
         name,
         email: tokenValidation.email,
         password,
-        callbackURL: "/dashboard",
+        callbackURL: EMAIL_VERIFICATION_CALLBACK_URL,
       });
 
       if (result.error) {
@@ -131,6 +143,16 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       await finalizeClaim({ token });
 
       broadcastAuth();
+
+      // If email verification is required and the user isn't verified yet,
+      // redirect to the verify-email page (same gate as the main sign-up form).
+      const data = result.data as Record<string, unknown> | undefined;
+      const newUser = data?.user as Record<string, unknown> | undefined;
+      if (newUser && !newUser.emailVerified && emailVerifRequired === true) {
+        router.push("/verify-email");
+        return;
+      }
+
       await redirectWithUserLocale(router);
     } catch {
       // Release claim on any error

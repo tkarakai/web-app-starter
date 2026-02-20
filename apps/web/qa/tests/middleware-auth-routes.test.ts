@@ -89,12 +89,11 @@ describe("proxy — new auth guest routes", () => {
       expect(response.status).toBe(200);
     });
 
-    it("redirects /en/verify-email to /en/dashboard when authenticated", () => {
+    it("allows /en/verify-email when authenticated", () => {
       const response = proxy(
         createRequest("/en/verify-email", { "better-auth.session_token": "token-123" })
       );
-      expect(response.status).toBe(307);
-      expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
+      expect(response.status).toBe(200);
     });
   });
 

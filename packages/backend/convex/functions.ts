@@ -10,6 +10,24 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
+const EMAIL_VERIFICATION_REQUIRED_KEY = "emailVerificationRequired";
+
+async function isEmailVerificationRequired(ctx: QueryCtx): Promise<boolean> {
+  const setting = await ctx.db
+    .query("appSettings")
+    .withIndex("by_key", (q) => q.eq("key", EMAIL_VERIFICATION_REQUIRED_KEY))
+    .unique();
+
+  if (!setting) return true;
+
+  try {
+    return JSON.parse(setting.value) === true;
+  } catch {
+    // Fail closed: keep verification required if the setting value is malformed.
+    return true;
+  }
+}
+
 /**
  * Resolve the authenticated user without throwing.
  * Uses `authComponent.safeGetAuthUser` (returns undefined when
@@ -18,6 +36,12 @@ import { mutation, query } from "./_generated/server";
 async function getAuth(ctx: QueryCtx) {
   const user = await authComponent.safeGetAuthUser(ctx);
   if (!user) return null;
+
+  const emailVerificationRequired = await isEmailVerificationRequired(ctx);
+  if (emailVerificationRequired && (user as Record<string, unknown>).emailVerified !== true) {
+    return null;
+  }
+
   return { user, ownerId: (user.userId ?? user._id).toString() };
 }
 

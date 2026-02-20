@@ -2,11 +2,11 @@ import { v } from "convex/values";
 
 import { internalQuery, query } from "./_generated/server";
 import type { EmailTemplate } from "./emailTemplates";
-import { DEFAULT_EMAIL_TEMPLATE } from "./emailTemplates";
+import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE } from "./emailTemplates";
 import { authedMutation, authedQuery } from "./functions";
 
 /** Keys that unauthenticated callers may read via getPublic. */
-const PUBLIC_KEYS = ["waitlistEnabled"] as const;
+const PUBLIC_KEYS = ["waitlistEnabled", "emailVerificationRequired"] as const;
 
 /** All valid setting keys and their value validators. */
 const VALID_KEYS = [
@@ -14,6 +14,8 @@ const VALID_KEYS = [
   "invitationTokenExpiryDays",
   "invitationEmailTemplate",
   "emailMfaRequired",
+  "emailVerificationRequired",
+  "emailVerificationTemplate",
 ] as const;
 
 /** Default values returned when a key has never been set. */
@@ -21,6 +23,7 @@ const DEFAULTS: Record<string, unknown> = {
   waitlistEnabled: true,
   invitationTokenExpiryDays: 7,
   emailMfaRequired: false,
+  emailVerificationRequired: true,
 };
 
 function getDefault(key: string): unknown {
@@ -49,6 +52,53 @@ function validateValue(key: string, value: string): void {
     if (value !== "true" && value !== "false") {
       throw new Error(
         "INVALID_VALUE: emailMfaRequired must be 'true' or 'false'"
+      );
+    }
+  } else if (key === "emailVerificationRequired") {
+    if (value !== "true" && value !== "false") {
+      throw new Error(
+        "INVALID_VALUE: emailVerificationRequired must be 'true' or 'false'"
+      );
+    }
+  } else if (key === "emailVerificationTemplate") {
+    if (value.length > MAX_TEMPLATE_SIZE) {
+      throw new Error(
+        `INVALID_VALUE: emailVerificationTemplate exceeds ${MAX_TEMPLATE_SIZE} bytes`
+      );
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      throw new Error(
+        "INVALID_VALUE: emailVerificationTemplate must be valid JSON"
+      );
+    }
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof (parsed as Record<string, unknown>).subject !== "string" ||
+      typeof (parsed as Record<string, unknown>).html !== "string" ||
+      typeof (parsed as Record<string, unknown>).text !== "string"
+    ) {
+      throw new Error(
+        "INVALID_VALUE: emailVerificationTemplate must have subject, html, and text string fields"
+      );
+    }
+    const tpl = parsed as EmailTemplate;
+    if (!tpl.subject.trim()) {
+      throw new Error(
+        "INVALID_VALUE: emailVerificationTemplate subject cannot be empty"
+      );
+    }
+    if (!tpl.html.includes("{{verification_link}}")) {
+      throw new Error(
+        "INVALID_VALUE: emailVerificationTemplate html must contain {{verification_link}}"
+      );
+    }
+    if (!tpl.text.includes("{{verification_link}}")) {
+      throw new Error(
+        "INVALID_VALUE: emailVerificationTemplate text must contain {{verification_link}}"
       );
     }
   } else if (key === "invitationEmailTemplate") {
@@ -153,6 +203,30 @@ export const getEmailTemplate = authedQuery({
     }
 
     return { ...DEFAULT_EMAIL_TEMPLATE, isCustom: false as const };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Admin query — get effective verification email template (custom or default)
+// ---------------------------------------------------------------------------
+
+export const getVerificationEmailTemplate = authedQuery({
+  args: {},
+  handler: async (ctx) => {
+    const role = (ctx.user as Record<string, unknown>).role;
+    if (role !== "admin") return null;
+
+    const setting = await ctx.db
+      .query("appSettings")
+      .withIndex("by_key", (q) => q.eq("key", "emailVerificationTemplate"))
+      .unique();
+
+    if (setting) {
+      const template = JSON.parse(setting.value) as EmailTemplate;
+      return { ...template, isCustom: true as const };
+    }
+
+    return { ...DEFAULT_VERIFICATION_EMAIL_TEMPLATE, isCustom: false as const };
   },
 });
 
