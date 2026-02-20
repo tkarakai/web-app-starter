@@ -12,7 +12,7 @@ test.describe("Admin Security / MFA Policy Page", () => {
     const context = page.context();
     await context.clearCookies();
 
-    await page.goto("/dashboard/security");
+    await page.goto("/configure/security");
     await expect(page).toHaveURL(/\/sign-in/);
   });
 
@@ -26,7 +26,7 @@ test.describe("Admin Security / MFA Policy Page", () => {
       },
     ]);
 
-    await page.goto("/dashboard/security");
+    await page.goto("/configure/security");
     // Proxy allows access with a cookie; page renders (even if backend rejects fake token)
   });
 
@@ -40,7 +40,7 @@ test.describe("Admin Security / MFA Policy Page", () => {
       },
     ]);
 
-    await page.goto("/dashboard/security");
+    await page.goto("/configure/security");
     await page.waitForLoadState("networkidle");
 
     const heading = page.locator("h1");

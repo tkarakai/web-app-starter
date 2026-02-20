@@ -16,7 +16,7 @@ const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
 };
 
 /** Routes that require authentication. */
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/manage", "/configure", "/monitor"];
 
 /** Auth routes that authenticated users should skip. */
 const AUTH_ROUTES = ["/sign-in", "/forgot-password", "/reset-password"];

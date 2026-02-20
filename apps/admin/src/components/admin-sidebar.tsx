@@ -46,17 +46,17 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 const manageItems = [
-  { label: "Waitlist", href: "/dashboard/waitlist", icon: ListChecks },
-  { label: "Users", href: "/dashboard/users", icon: Users },
+  { label: "Waitlist", href: "/manage/waitlist", icon: ListChecks },
+  { label: "Users", href: "/manage/users", icon: Users },
 ];
 
 const observabilityItems = [
-  { label: "Audit Trail", href: "/dashboard/audit-trail", icon: ScrollText },
+  { label: "Audit Trail", href: "/monitor/audit-trail", icon: ScrollText },
 ];
 
 const configureItems = [
-  { label: "Features", href: "/dashboard/features", icon: SlidersHorizontal },
-  { label: "Security", href: "/dashboard/security", icon: ShieldCheck },
+  { label: "Features", href: "/configure/features", icon: SlidersHorizontal },
+  { label: "Security", href: "/configure/security", icon: ShieldCheck },
 ];
 
 export function AdminSidebar({
@@ -96,9 +96,15 @@ export function AdminSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Web App Starter Admin" className="font-semibold">
-              <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
-              <span>Web App Starter Admin</span>
+            <SidebarMenuButton
+              asChild
+              tooltip="Web App Starter Admin"
+              className="font-semibold"
+            >
+              <Link href="/dashboard">
+                <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
+                <span>Web App Starter Admin</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

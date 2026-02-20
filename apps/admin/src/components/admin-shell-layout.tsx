@@ -21,20 +21,16 @@ const segmentLabels: Record<string, string> = {
   users: "Users",
   waitlist: "Waitlist",
   "audit-trail": "Audit Trail",
-  settings: "Security",
   security: "Security",
   features: "Features",
   "setup-2fa": "Set Up 2FA",
 };
 
-const sectionBySegment: Record<string, string> = {
-  users: "Manage",
-  waitlist: "Manage",
-  "audit-trail": "Monitor",
-  settings: "Configure",
-  security: "Configure",
-  features: "Configure",
-  "setup-2fa": "Configure",
+const sectionLabels: Record<string, string> = {
+  dashboard: "Dashboard",
+  manage: "Manage",
+  configure: "Configure",
+  monitor: "Monitor",
 };
 
 function titleCase(value: string): string {
@@ -48,23 +44,18 @@ function formatSegment(segment: string): string {
   return segmentLabels[segment] ?? titleCase(segment);
 }
 
-export default function DashboardShellLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AdminShellLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useAuthUser();
 
-  // Build breadcrumb segments from the pathname, starting after "/dashboard".
-  const segments = pathname
-    .split("/")
-    .filter(Boolean)
-    .filter((s) => s !== "dashboard");
+  const segments = pathname.split("/").filter(Boolean);
+  const sectionSegment = segments[0] ?? "dashboard";
+  const sectionLabel = sectionLabels[sectionSegment] ?? titleCase(sectionSegment);
 
-  const sectionLabel = segments[0]
-    ? (sectionBySegment[segments[0]] ?? titleCase(segments[0]))
-    : "Manage";
+  const detailLabels = segments
+    .slice(1)
+    .map((segment) => formatSegment(segment))
+    .filter((label) => label !== sectionLabel);
 
   return (
     <SidebarProvider>
@@ -81,23 +72,18 @@ export default function DashboardShellLayout({
               <BreadcrumbItem>
                 <BreadcrumbPage>{sectionLabel}</BreadcrumbPage>
               </BreadcrumbItem>
-              {segments
-                .map((segment) => formatSegment(segment))
-                .filter((label) => label !== sectionLabel)
-                .map((label, index) => (
-                  <span key={`${label}-${index}`} className="contents">
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>{label}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </span>
-                ))}
+              {detailLabels.map((label, index) => (
+                <span key={`${label}-${index}`} className="contents">
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{label}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </span>
+              ))}
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex-1 min-w-0 overflow-y-auto p-6">
-          {children}
-        </div>
+        <div className="flex-1 min-w-0 overflow-y-auto p-6">{children}</div>
         <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />
       </SidebarInset>
       <Toaster position="bottom-right" duration={4000} />

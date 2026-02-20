@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function LegacyUsersPage() {
+export default function LegacySessionsPage() {
   redirect("/manage/users");
 }

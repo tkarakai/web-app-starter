@@ -15,7 +15,7 @@ test.describe("Admin User Sessions", () => {
     const context = page.context();
     await context.clearCookies();
 
-    await page.goto("/dashboard/users");
+    await page.goto("/manage/users");
     // Should redirect to sign-in
     await expect(page).toHaveURL(/\/sign-in/);
   });
@@ -32,7 +32,7 @@ test.describe("Admin User Sessions", () => {
     ]);
 
     await page.goto("/dashboard/sessions");
-    await expect(page).toHaveURL(/\/dashboard\/users/);
+    await expect(page).toHaveURL(/\/manage\/users/);
   });
 
   test("users page has user search input", async ({ page, context }) => {
@@ -45,7 +45,7 @@ test.describe("Admin User Sessions", () => {
       },
     ]);
 
-    await page.goto("/dashboard/users");
+    await page.goto("/manage/users");
     await page.waitForLoadState("networkidle");
 
     const searchInput = page.locator('input[placeholder*="Search"]');

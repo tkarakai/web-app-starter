@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function LegacySecurityPage() {
+export default function ConfigurePage() {
   redirect("/configure/security");
 }
