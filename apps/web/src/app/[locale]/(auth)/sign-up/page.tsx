@@ -16,23 +16,37 @@ const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:300
 const CONVEX_SITE_URL =
   process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
 
-async function getWaitlistEnabled(): Promise<boolean> {
+type OnboardingType = "none" | "waitlist" | "signup";
+
+async function getOnboardingType(): Promise<OnboardingType> {
   try {
     const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/status`, {
       next: { revalidate: 60 },
     });
-    const data = (await res.json()) as { enabled?: boolean };
-    return data.enabled === true;
+    const data = (await res.json()) as {
+      onboardingType?: OnboardingType;
+      waitlistEnabled?: boolean;
+      signupEnabled?: boolean;
+      enabled?: boolean;
+    };
+
+    if (data.onboardingType === "none" || data.onboardingType === "waitlist" || data.onboardingType === "signup") {
+      return data.onboardingType;
+    }
+    if (data.waitlistEnabled === true || data.enabled === true) return "waitlist";
+    if (data.signupEnabled === true) return "signup";
+    return "none";
   } catch {
-    return false;
+    return "none";
   }
 }
 
 export default async function SignUpPage() {
   const t = await getTranslations("auth.signUp");
+  const ts = await getTranslations("auth.signIn");
   const tc = await getTranslations("common");
   const ti = await getTranslations("auth.invitation");
-  const waitlistEnabled = await getWaitlistEnabled();
+  const onboardingType = await getOnboardingType();
 
   return (
     <main
@@ -52,22 +66,32 @@ export default async function SignUpPage() {
             {t("pageDescription")}
           </p>
         </section>
-        {waitlistEnabled ? (
+        {onboardingType === "signup" ? (
+          <AuthForm mode="sign-up" />
+        ) : (
           <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
             <CardHeader>
-              <CardTitle>{ti("signupBlocked")}</CardTitle>
+              <CardTitle>
+                {onboardingType === "waitlist"
+                  ? ti("signupBlocked")
+                  : "Sign-up is currently disabled."}
+              </CardTitle>
               <CardDescription>
-                {ti("signupBlockedDescription")}
+                {onboardingType === "waitlist"
+                  ? ti("signupBlockedDescription")
+                  : "Self-service sign-up and waitlist onboarding are both disabled."}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <a href={LANDING_URL}>{ti("goToWaitlist")}</a>
+                {onboardingType === "waitlist" ? (
+                  <a href={LANDING_URL}>{ti("goToWaitlist")}</a>
+                ) : (
+                  <a href="/sign-in">{ts("cta")}</a>
+                )}
               </Button>
             </CardContent>
           </Card>
-        ) : (
-          <AuthForm mode="sign-up" />
         )}
       </div>
     </main>

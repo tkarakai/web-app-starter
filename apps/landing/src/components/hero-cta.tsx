@@ -18,11 +18,11 @@ const RETRY_MAX = 60_000;
 /** Stop retrying after this many consecutive failures. */
 const MAX_RETRIES = 10;
 
-type Status = "loading" | "unreachable" | "waitlist" | "ready";
+type Status = "loading" | "unreachable" | "waitlist" | "signup" | "closed";
 
 /**
- * Client component that checks waitlist status on mount and renders
- * either the waitlist form or sign-up/sign-in buttons.
+ * Client component that checks onboarding mode on mount and renders one of:
+ * waitlist form, sign-up + sign-in, or sign-in only.
  *
  * When Convex is unreachable, hides all interactive elements and retries
  * with exponential backoff (capped at 60 s, max 10 attempts). Retries
@@ -40,10 +40,25 @@ export function HeroCta() {
     async function checkWaitlist() {
       try {
         const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/status`);
-        const data = (await res.json()) as { enabled?: boolean };
+        const data = (await res.json()) as {
+          onboardingType?: "none" | "waitlist" | "signup";
+          waitlistEnabled?: boolean;
+          signupEnabled?: boolean;
+          enabled?: boolean;
+        };
+
+        const nextStatus: Status =
+          data.onboardingType === "waitlist" ||
+          data.waitlistEnabled === true ||
+          data.enabled === true
+            ? "waitlist"
+            : data.onboardingType === "signup" || data.signupEnabled === true
+            ? "signup"
+            : "closed";
+
         if (!cancelled) {
           attempt = 0;
-          setStatus(data.enabled === true ? "waitlist" : "ready");
+          setStatus(nextStatus);
         }
       } catch {
         if (!cancelled) {
@@ -95,14 +110,22 @@ export function HeroCta() {
     return <WaitlistSection />;
   }
 
+  if (status === "signup") {
+    return (
+      <div className="flex gap-3">
+        <Button asChild>
+          <a href={`${WEB_APP_URL}/sign-up`}>{t("getStarted")}</a>
+        </Button>
+        <Button variant="outline" asChild>
+          <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex gap-3">
-      <Button asChild>
-        <a href={`${WEB_APP_URL}/sign-up`}>{t("getStarted")}</a>
-      </Button>
-      <Button variant="outline" asChild>
-        <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
-      </Button>
-    </div>
+    <Button variant="outline" asChild>
+      <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
+    </Button>
   );
 }

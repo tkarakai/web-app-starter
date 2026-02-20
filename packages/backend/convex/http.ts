@@ -10,6 +10,11 @@ import {
   viewBackupCodesHandler,
 } from "./sessions";
 import { getDevTotpCode } from "./devTotp";
+import {
+  isSignupOnboarding,
+  isWaitlistOnboarding,
+  parseOnboardingType,
+} from "./onboardingType";
 
 const http = httpRouter();
 
@@ -49,21 +54,36 @@ function corsHeaders(request?: Request): Record<string, string> {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/waitlist/status — check if waitlist mode is enabled
+// GET /api/waitlist/status — check onboarding mode
 // ---------------------------------------------------------------------------
 
 http.route({
   path: "/api/waitlist/status",
   method: "GET",
   handler: httpAction(async (ctx, request) => {
-    const enabled = await ctx.runQuery(internal.appSettings.getInternal, {
-      key: "waitlistEnabled",
-    });
+    const onboardingTypeRaw = await ctx.runQuery(
+      internal.appSettings.getInternal,
+      {
+        key: "onboardingType",
+      }
+    );
+    const onboardingType = parseOnboardingType(onboardingTypeRaw);
+    const waitlistEnabled = isWaitlistOnboarding(onboardingType);
+    const signupEnabled = isSignupOnboarding(onboardingType);
 
-    return new Response(JSON.stringify({ enabled: enabled ?? true }), {
-      status: 200,
-      headers: corsHeaders(request),
-    });
+    return new Response(
+      JSON.stringify({
+        // Backward-compatible field for existing clients.
+        enabled: waitlistEnabled,
+        onboardingType,
+        waitlistEnabled,
+        signupEnabled,
+      }),
+      {
+        status: 200,
+        headers: corsHeaders(request),
+      }
+    );
   }),
 });
 

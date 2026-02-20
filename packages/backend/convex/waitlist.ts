@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { parseOnboardingType, isWaitlistOnboarding } from "./onboardingType";
 import {
   authedMutation,
   authedQuery,
@@ -91,14 +92,13 @@ export const join = internalMutation({
       throws: true,
     });
 
-    // Check waitlist is enabled
-    const setting = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
-      .unique();
-
-    const waitlistEnabled = setting ? JSON.parse(setting.value) : true;
-    if (waitlistEnabled !== true) {
+    // Waitlist joins are only allowed in waitlist onboarding mode.
+    const onboardingTypeRaw = await ctx.runQuery(
+      internal.appSettings.getInternal,
+      { key: "onboardingType" }
+    );
+    const onboardingType = parseOnboardingType(onboardingTypeRaw);
+    if (!isWaitlistOnboarding(onboardingType)) {
       throw new Error("WAITLIST_NOT_ENABLED");
     }
 
