@@ -108,22 +108,33 @@ export function UserSessionsDialog({
   const [revokePending, setRevokePending] = React.useState(false);
   const [revokeAllOpen, setRevokeAllOpen] = React.useState(false);
   const [revokeAllPending, setRevokeAllPending] = React.useState(false);
+  const requestIdRef = React.useRef(0);
 
   const fetchSessions = React.useCallback(async () => {
     if (!user) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       const result = await listUserSessions(user.id);
+      if (requestId !== requestIdRef.current) return;
       setSessions(result);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       toast.error(err instanceof Error ? err.message : "Failed to load sessions");
       setSessions([]);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [user]);
 
   React.useEffect(() => {
+    requestIdRef.current += 1;
+    setSessions([]);
+    setRevokeTarget(null);
+    setRevokeAllOpen(false);
+    setLoading(false);
     if (!open || !user) return;
     void fetchSessions();
   }, [open, user, fetchSessions]);
@@ -199,7 +210,7 @@ export function UserSessionsDialog({
             <Button
               variant="destructive"
               size="sm"
-              disabled={sessions.length === 0}
+              disabled={loading || sessions.length === 0}
               onClick={() => setRevokeAllOpen(true)}
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -304,6 +315,7 @@ export function UserSessionsDialog({
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
+                            disabled={loading}
                             onClick={() => setRevokeTarget(session)}
                           >
                             Revoke
