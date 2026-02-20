@@ -7,6 +7,7 @@ import {
   isAuthenticated,
 } from "@repo/auth/server";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { AdminShellLayout } from "@/components/admin-shell-layout";
 
 export default async function DashboardLayout({
   children,
@@ -31,5 +32,9 @@ export default async function DashboardLayout({
     redirect("/api/auth/clear-session");
   }
 
-  return <AuthGuard preloadedUser={preloadedUser}>{children}</AuthGuard>;
+  return (
+    <AuthGuard preloadedUser={preloadedUser}>
+      <AdminShellLayout>{children}</AdminShellLayout>
+    </AuthGuard>
+  );
 }

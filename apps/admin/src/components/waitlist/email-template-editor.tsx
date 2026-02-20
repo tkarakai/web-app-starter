@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import {
   Check,
+  ChevronRight,
   ClipboardCopy,
   Code2,
   Eye,
@@ -32,12 +33,14 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   cn,
   Input,
   Label,
   Skeleton,
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
   Textarea,
@@ -91,9 +94,15 @@ function VariableBadge({ name, description }: { name: string; description: strin
 
 type EmailTemplateEditorProps = {
   onDirtyChange?: (dirty: boolean) => void;
+  disabled?: boolean;
+  embedded?: boolean;
 };
 
-export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps) {
+export function EmailTemplateEditor({
+  onDirtyChange,
+  disabled = false,
+  embedded = false,
+}: EmailTemplateEditorProps) {
   const router = useRouter();
   const templateData = useQuery(api.appSettings.getEmailTemplate);
   const setSetting = useMutation(api.appSettings.set);
@@ -107,8 +116,12 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   const [confirmReset, setConfirmReset] = React.useState(false);
   const [confirmCancel, setConfirmCancel] = React.useState(false);
   const [pendingNavigation, setPendingNavigation] = React.useState<string | null>(null);
+  const [viewPreviewTab, setViewPreviewTab] = React.useState<"html" | "text">("html");
   const [activeBodyTab, setActiveBodyTab] = React.useState<"html" | "text">("html");
   const [htmlMode, setHtmlMode] = React.useState<"edit" | "preview">("edit");
+  const [isExpanded, setIsExpanded] = React.useState(!embedded);
+  const previousDisabledRef = React.useRef(disabled);
+  const cardClassName = embedded ? "mt-4 border-dashed bg-muted/20" : "mt-4";
 
   // Track whether the draft has diverged from the saved template
   const isDirty =
@@ -122,6 +135,17 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   React.useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
+
+  React.useEffect(() => {
+    const becameDisabled = disabled && !previousDisabledRef.current;
+    previousDisabledRef.current = disabled;
+    if (!becameDisabled || mode !== "edit") return;
+    if (isDirty) {
+      setConfirmCancel(true);
+      return;
+    }
+    setMode("view");
+  }, [disabled, isDirty, mode]);
 
   // Warn on browser navigation (refresh, close tab, external URL)
   React.useEffect(() => {
@@ -166,7 +190,7 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   // Loading state
   if (templateData === undefined) {
     return (
-      <Card className="mt-4">
+      <Card className={cardClassName}>
         <CardHeader className="pb-4">
           <Skeleton className="h-5 w-52" />
           <Skeleton className="mt-2 h-4 w-80" />
@@ -182,6 +206,7 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   if (templateData === null) return null;
 
   const enterEdit = () => {
+    if (disabled) return;
     setDraftSubject(templateData.subject);
     setDraftHtml(templateData.html);
     setDraftText(templateData.text);
@@ -210,6 +235,7 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   };
 
   const handleSave = async () => {
+    if (disabled) return;
     if (!draftSubject.trim()) {
       toast.error("Subject line cannot be empty");
       return;
@@ -245,6 +271,7 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   };
 
   const handleReset = async () => {
+    if (disabled) return;
     setConfirmReset(false);
     setSaving(true);
     try {
@@ -264,85 +291,129 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
 
   if (mode === "view") {
     return (
-      <Card className="mt-4">
-        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <h3 className="text-base font-semibold leading-none tracking-tight">
-                Invitation Email
-              </h3>
-              <Badge
-                variant={templateData.isCustom ? "default" : "secondary"}
-                className="text-[11px]"
-              >
-                {templateData.isCustom ? "Custom" : "Default"}
-              </Badge>
+      <Card className={cardClassName}>
+        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-base font-semibold leading-none tracking-tight">
+                  Invitation Email
+                </h3>
+                <Badge
+                  variant={templateData.isCustom ? "default" : "secondary"}
+                  className="text-[11px]"
+                >
+                  {templateData.isCustom ? "Custom" : "Default"}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This email is sent when you invite someone from the waitlist.
+              </p>
+              {disabled && (
+                <p className="text-xs text-muted-foreground">
+                  Enable Waitlist to edit this template.
+                </p>
+              )}
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 -ml-2 w-fit px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronRight
+                    className={cn(
+                      "mr-1 h-3.5 w-3.5 transition-transform",
+                      isExpanded && "rotate-90"
+                    )}
+                  />
+                  {isExpanded ? "Hide template" : "Show template"}
+                </Button>
+              </CollapsibleTrigger>
             </div>
-            <p className="text-sm text-muted-foreground">
-              This email is sent when you invite someone from the waitlist.
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            {templateData.isCustom && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmReset(true)}
-                disabled={saving}
-              >
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                Reset
+            <div className="flex shrink-0 gap-2">
+              {templateData.isCustom && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmReset(true)}
+                  disabled={saving || disabled}
+                >
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  Reset
+                </Button>
+              )}
+              <Button size="sm" onClick={enterEdit} disabled={disabled}>
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                Edit
               </Button>
-            )}
-            <Button size="sm" onClick={enterEdit}>
-              <Pencil className="mr-1.5 h-3.5 w-3.5" />
-              Edit
-            </Button>
-          </div>
-        </CardHeader>
+            </div>
+          </CardHeader>
 
-        <CardContent className="space-y-5">
-          {/* Subject */}
-          <div className="space-y-1">
-            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Subject
-            </Label>
-            <p className="text-sm font-medium">
-              {renderPreview(templateData.subject)}
-            </p>
-          </div>
+          <CollapsibleContent>
+            <CardContent className="space-y-5">
+              {/* Subject */}
+              <div className="space-y-1">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Subject
+                </Label>
+                <p className="text-sm font-medium">
+                  {renderPreview(templateData.subject)}
+                </p>
+              </div>
 
-          {/* Email Body — HTML / Plain Text tabs */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Email Body
-            </Label>
-            <Tabs defaultValue="html">
-              <TabsList>
-                <TabsTrigger value="html" className="gap-1.5">
-                  <Code2 className="h-3.5 w-3.5" />
-                  HTML
-                </TabsTrigger>
-                <TabsTrigger value="text" className="gap-1.5">
-                  <FileText className="h-3.5 w-3.5" />
-                  Plain Text
-                </TabsTrigger>
-              </TabsList>
+              {/* Email Body — HTML / Plain Text tabs */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Email Body
+                </Label>
+                <Tabs
+                  value={viewPreviewTab}
+                  onValueChange={(value) =>
+                    setViewPreviewTab(value as "html" | "text")
+                  }
+                >
+                  <TabsList>
+                    <TabsTrigger value="html" className="gap-1.5">
+                      <Code2 className="h-3.5 w-3.5" />
+                      HTML
+                    </TabsTrigger>
+                    <TabsTrigger value="text" className="gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      Plain Text
+                    </TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="html">
-                <EmailHtmlPreview html={templateData.html} />
-              </TabsContent>
-
-              <TabsContent value="text">
-                <div className="rounded-md border bg-muted/30 p-4">
-                  <pre className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/80">
-                    {renderPreview(templateData.text)}
-                  </pre>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </CardContent>
+                  <div className="relative mt-2 h-[500px] overflow-hidden rounded-md">
+                    <div
+                      className={cn(
+                        "absolute inset-0 transition-opacity duration-200",
+                        viewPreviewTab === "html"
+                          ? "opacity-100"
+                          : "pointer-events-none opacity-0"
+                      )}
+                    >
+                      <EmailHtmlPreview html={templateData.html} className="h-full" />
+                    </div>
+                    <div
+                      className={cn(
+                        "absolute inset-0 transition-opacity duration-200",
+                        viewPreviewTab === "text"
+                          ? "opacity-100"
+                          : "pointer-events-none opacity-0"
+                      )}
+                    >
+                      <div className="h-full overflow-y-auto rounded-md border bg-muted/30 p-4">
+                        <pre className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/80">
+                          {renderPreview(templateData.text)}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                </Tabs>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Reset confirmation */}
         <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
@@ -369,7 +440,7 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
   // ── EDIT MODE ──────────────────────────────────────────────────────────
 
   return (
-    <Card className="mt-4">
+    <Card className={cardClassName}>
       <CardHeader className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -491,50 +562,46 @@ export function EmailTemplateEditor({ onDirtyChange }: EmailTemplateEditorProps)
             )}
           </div>
 
-          {/* HTML content */}
-          {activeBodyTab === "html" && (
-            <>
-              {htmlMode === "edit" ? (
-                <>
-                  <Textarea
-                    value={draftHtml}
-                    onChange={(e) => setDraftHtml(e.target.value)}
-                    className="min-h-[420px] resize-y font-mono text-xs leading-relaxed"
-                    placeholder="HTML email template..."
-                    spellCheck={false}
-                  />
-                  {draftHtml && !draftHtml.includes("{{invitation_link}}") && (
-                    <p className="text-xs text-destructive">
-                      Template must contain {"{{invitation_link}}"}
-                    </p>
-                  )}
-                </>
+          <div className="mt-2 h-[500px] overflow-hidden rounded-md">
+            {activeBodyTab === "html" &&
+              (htmlMode === "edit" ? (
+                <Textarea
+                  value={draftHtml}
+                  onChange={(e) => setDraftHtml(e.target.value)}
+                  className="h-full resize-none font-mono text-xs leading-relaxed"
+                  placeholder="HTML email template..."
+                  spellCheck={false}
+                />
               ) : draftHtml ? (
-                <EmailHtmlPreview html={draftHtml} />
+                <EmailHtmlPreview html={draftHtml} className="h-full" />
               ) : (
-                <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
                   No HTML content to preview
                 </div>
-              )}
-            </>
-          )}
-
-          {/* Plain text content */}
-          {activeBodyTab === "text" && (
-            <>
+              ))}
+            {activeBodyTab === "text" && (
               <Textarea
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
-                className="min-h-[300px] resize-y font-mono text-xs leading-relaxed"
+                className="h-full resize-none font-mono text-xs leading-relaxed"
                 placeholder="Plain text email template..."
                 spellCheck={false}
               />
-              {draftText && !draftText.includes("{{invitation_link}}") && (
-                <p className="text-xs text-destructive">
-                  Template must contain {"{{invitation_link}}"}
-                </p>
-              )}
-            </>
+            )}
+          </div>
+          {activeBodyTab === "html" &&
+            draftHtml &&
+            !draftHtml.includes("{{invitation_link}}") && (
+              <p className="text-xs text-destructive">
+                Template must contain {"{{invitation_link}}"}
+              </p>
+          )}
+          {activeBodyTab === "text" &&
+            draftText &&
+            !draftText.includes("{{invitation_link}}") && (
+              <p className="text-xs text-destructive">
+                Template must contain {"{{invitation_link}}"}
+              </p>
           )}
         </div>
       </CardContent>

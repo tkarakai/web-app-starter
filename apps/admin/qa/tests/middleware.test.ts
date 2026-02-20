@@ -37,8 +37,8 @@ describe("proxy", () => {
       expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
     });
 
-    it("redirects /dashboard/settings to /sign-in when no session cookie", () => {
-      const response = proxy(createRequest("/dashboard/settings"));
+    it("redirects /configure/security to /sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/configure/security"));
 
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
@@ -219,7 +219,7 @@ describe("proxy", () => {
     });
 
     it("deeply nested protected routes redirect when unauthenticated", () => {
-      const response = proxy(createRequest("/dashboard/settings/profile"));
+      const response = proxy(createRequest("/configure/security/profile"));
 
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");

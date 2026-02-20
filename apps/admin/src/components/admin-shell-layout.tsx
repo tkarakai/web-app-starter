@@ -17,33 +17,46 @@ import {
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
 
-/** Map route segments to display labels. */
 const segmentLabels: Record<string, string> = {
-  dashboard: "Dashboard",
   users: "Users",
-  sessions: "Sessions",
-  waitlist: "Waitlist",
+  waitlist: "Waitlist, Invitations",
   "audit-trail": "Audit Trail",
-  settings: "Settings",
+  security: "Security",
+  features: "Features",
+  integrations: "Integrations",
+  "setup-2fa": "Set Up 2FA",
 };
 
-function formatSegment(segment: string): string {
-  return segmentLabels[segment] ?? segment;
+const sectionLabels: Record<string, string> = {
+  dashboard: "Dashboard",
+  manage: "Manage",
+  configure: "Configure",
+  monitor: "Monitor",
+};
+
+function titleCase(value: string): string {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
-export default function DashboardShellLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function formatSegment(segment: string): string {
+  return segmentLabels[segment] ?? titleCase(segment);
+}
+
+export function AdminShellLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useAuthUser();
 
-  // Build breadcrumb segments from the pathname, starting after "/dashboard".
-  const segments = pathname
-    .split("/")
-    .filter(Boolean)
-    .filter((s) => s !== "dashboard");
+  const segments = pathname.split("/").filter(Boolean);
+  const sectionSegment = segments[0] ?? "dashboard";
+  const sectionLabel = sectionLabels[sectionSegment] ?? titleCase(sectionSegment);
+
+  const detailLabels = segments
+    .slice(1)
+    .map((segment) => formatSegment(segment))
+    .filter((label) => label !== sectionLabel);
 
   return (
     <SidebarProvider>
@@ -58,22 +71,20 @@ export default function DashboardShellLayout({
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>Dashboard</BreadcrumbPage>
+                <BreadcrumbPage>{sectionLabel}</BreadcrumbPage>
               </BreadcrumbItem>
-              {segments.map((segment) => (
-                <span key={segment} className="contents">
+              {detailLabels.map((label, index) => (
+                <span key={`${label}-${index}`} className="contents">
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{formatSegment(segment)}</BreadcrumbPage>
+                    <BreadcrumbPage>{label}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </span>
               ))}
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex-1 min-w-0 overflow-y-auto p-6">
-          {children}
-        </div>
+        <div className="flex-1 min-w-0 overflow-y-auto p-6">{children}</div>
         <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />
       </SidebarInset>
       <Toaster position="bottom-right" duration={4000} />

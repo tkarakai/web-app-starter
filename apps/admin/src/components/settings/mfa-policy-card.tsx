@@ -47,8 +47,8 @@ export function MfaPolicyCard() {
       await setSetting({ key: "emailMfaRequired", value: String(checked) });
       toast.success(
         checked
-          ? "Email MFA requirement enabled"
-          : "Email MFA requirement disabled",
+          ? "2FA requirement enabled"
+          : "2FA requirement disabled",
       );
     } catch (err) {
       toast.error(
@@ -72,10 +72,10 @@ export function MfaPolicyCard() {
             </div>
             <div>
               <CardTitle className="text-base">
-                Email Multi-Factor Authentication
+                Two-Factor Authentication Policy
               </CardTitle>
               <CardDescription>
-                Require email-based MFA for all users
+                Require authenticator app (TOTP) 2FA for all users
               </CardDescription>
             </div>
           </div>
@@ -101,8 +101,8 @@ export function MfaPolicyCard() {
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isEnabled
-                  ? "All users will be prompted to verify their identity via email code on their next login. Users cannot skip this step."
-                  : "Email MFA is optional. Users can choose whether to enable additional verification on their accounts."}
+                  ? "All users will be required to enter a 6-digit code from their authenticator app at sign-in."
+                  : "2FA is optional. Users can still enable authenticator app verification in their account settings."}
               </p>
             </>
           )}
@@ -119,13 +119,13 @@ export function MfaPolicyCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmToggle
-                ? "Require email MFA for all users?"
-                : "Make email MFA optional?"}
+                ? "Require 2FA for all users?"
+                : "Make 2FA optional?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
-                ? "All users will be required to verify their identity via an email code on their next login. This adds an extra layer of security but may impact user experience."
-                : "Email MFA will become optional. Users who already have MFA enabled will keep it, but new logins will not require verification."}
+                ? "All users will be required to verify sign-in with an authenticator app code."
+                : "2FA will no longer be mandatory. Users who already enabled 2FA can keep using it."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

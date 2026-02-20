@@ -31,12 +31,14 @@ import { createColumns } from "./columns";
 import { WaitlistFilterBar } from "./waitlist-filter-bar";
 import { ConfirmationDialog } from "../users/confirmation-dialog";
 import { WaitlistBatchDialog } from "./waitlist-batch-dialog";
+import { WaitlistInviteDialog } from "./waitlist-invite-dialog";
 
 const SEARCH_DEBOUNCE = 300;
 
 export function WaitlistDataTable() {
   const allEntries = useQuery(api.waitlist.list);
   const inviteMutation = useMutation(api.waitlist.invite);
+  const inviteManyMutation = useMutation(api.waitlist.inviteMany);
   const uninviteMutation = useMutation(api.waitlist.uninvite);
   const removeMutation = useMutation(api.waitlist.remove);
 
@@ -121,6 +123,7 @@ export function WaitlistDataTable() {
     action: WaitlistAction;
     entries: WaitlistEntry[];
   } | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false);
 
   const selectedEntries = React.useMemo(() => {
     const ids = Object.keys(rowSelection).filter((id) => rowSelection[id]);
@@ -257,6 +260,36 @@ export function WaitlistDataTable() {
     return batchAction.entries;
   }, [batchAction]);
 
+  const handleInviteMany = React.useCallback(
+    async (emails: string[]) => {
+      const result = await inviteManyMutation({ emails });
+      const invitedCount = result.invited.length;
+      const skippedCount = result.skipped.length;
+
+      if (invitedCount === 0) {
+        const firstSkipped = result.skipped[0];
+        throw new Error(
+          firstSkipped
+            ? `No invitations were sent (${firstSkipped.email}: ${firstSkipped.reason}).`
+            : "No invitations were sent."
+        );
+      }
+
+      toast.success(
+        invitedCount === 1
+          ? `Invitation sent to ${result.invited[0]}`
+          : `Invitations sent to ${invitedCount} people`
+      );
+
+      if (skippedCount > 0) {
+        toast.message(
+          `${skippedCount} address${skippedCount === 1 ? " was" : "es were"} skipped.`
+        );
+      }
+    },
+    [inviteManyMutation]
+  );
+
   return (
     <WaitlistActionsProvider onAction={handleAction}>
       <TooltipProvider>
@@ -266,10 +299,10 @@ export function WaitlistDataTable() {
             onSearchChange={setSearchInput}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
+            onInvite={() => setInviteDialogOpen(true)}
             selectedCount={selectedEntries.length}
             onBatchInvite={() => handleAction("invite", selectedEntries)}
             onBatchDelete={() => handleAction("delete", selectedEntries)}
-            table={table}
             total={filteredEntries.length}
             loading={loading}
           />
@@ -336,6 +369,13 @@ export function WaitlistDataTable() {
           </div>
         </div>
       </TooltipProvider>
+
+      {/* Single-entry confirmation dialog */}
+      <WaitlistInviteDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        onInvite={handleInviteMany}
+      />
 
       {/* Single-entry confirmation dialog */}
       {singleAction && singleAction.entries.length === 1 && (
