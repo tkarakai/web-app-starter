@@ -137,6 +137,7 @@ export function EmailVerificationTemplateEditor({
   const [activeBodyTab, setActiveBodyTab] = React.useState<"html" | "text">("html");
   const [htmlMode, setHtmlMode] = React.useState<"edit" | "preview">("edit");
   const [isExpanded, setIsExpanded] = React.useState(!embedded);
+  const previousDisabledRef = React.useRef(disabled);
   const cardClassName = embedded ? "mt-4 border-dashed bg-muted/20" : "mt-4";
 
   const isDirty =
@@ -151,10 +152,15 @@ export function EmailVerificationTemplateEditor({
   }, [isDirty, onDirtyChange]);
 
   React.useEffect(() => {
-    if (disabled && mode === "edit") {
-      setMode("view");
+    const becameDisabled = disabled && !previousDisabledRef.current;
+    previousDisabledRef.current = disabled;
+    if (!becameDisabled || mode !== "edit") return;
+    if (isDirty) {
+      setConfirmCancel(true);
+      return;
     }
-  }, [disabled, mode]);
+    setMode("view");
+  }, [disabled, isDirty, mode]);
 
   React.useEffect(() => {
     if (!isDirty) return;
@@ -569,16 +575,9 @@ export function EmailVerificationTemplateEditor({
             )}
           </div>
 
-          <div className="relative mt-2 h-[500px] overflow-hidden rounded-md">
-            <div
-              className={cn(
-                "absolute inset-0 transition-opacity duration-200",
-                activeBodyTab === "html"
-                  ? "opacity-100"
-                  : "pointer-events-none opacity-0"
-              )}
-            >
-              {htmlMode === "edit" ? (
+          <div className="mt-2 h-[500px] overflow-hidden rounded-md">
+            {activeBodyTab === "html" &&
+              (htmlMode === "edit" ? (
                 <Textarea
                   value={draftHtml}
                   onChange={(e) => setDraftHtml(e.target.value)}
@@ -592,16 +591,8 @@ export function EmailVerificationTemplateEditor({
                 <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
                   No HTML content to preview
                 </div>
-              )}
-            </div>
-            <div
-              className={cn(
-                "absolute inset-0 transition-opacity duration-200",
-                activeBodyTab === "text"
-                  ? "opacity-100"
-                  : "pointer-events-none opacity-0"
-              )}
-            >
+              ))}
+            {activeBodyTab === "text" && (
               <Textarea
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
@@ -609,7 +600,7 @@ export function EmailVerificationTemplateEditor({
                 placeholder="Plain text email template..."
                 spellCheck={false}
               />
-            </div>
+            )}
           </div>
           {activeBodyTab === "html" &&
             draftHtml &&
