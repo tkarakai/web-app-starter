@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function LegacyWaitlistPage() {
-  redirect("/manage/waitlist");
+  redirect("/manage/onboarding");
 }

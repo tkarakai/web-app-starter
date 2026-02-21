@@ -20,8 +20,8 @@ import {
 } from "@repo/design-system";
 
 export function WaitlistSettings() {
-  const waitlistEnabled = useQuery(api.appSettings.get, {
-    key: "waitlistEnabled",
+  const onboardingType = useQuery(api.appSettings.get, {
+    key: "onboardingType",
   });
   const setSetting = useMutation(api.appSettings.set);
 
@@ -40,9 +40,12 @@ export function WaitlistSettings() {
     setConfirmToggle(null);
     setTogglePending(true);
     try {
-      await setSetting({ key: "waitlistEnabled", value: String(checked) });
+      await setSetting({
+        key: "onboardingType",
+        value: checked ? "publicWaitlist" : "inviteOnly",
+      });
       toast.success(
-        checked ? "Waitlist mode enabled" : "Waitlist mode disabled"
+        checked ? "Public waitlist enabled" : "Public waitlist disabled"
       );
     } catch (err) {
       toast.error(
@@ -53,9 +56,11 @@ export function WaitlistSettings() {
     }
   };
 
-  if (waitlistEnabled === undefined) {
+  if (onboardingType === undefined) {
     return <Skeleton className="h-8 w-32" />;
   }
+
+  const waitlistEnabled = onboardingType === "publicWaitlist";
 
   return (
     <>
@@ -81,13 +86,13 @@ export function WaitlistSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmToggle
-                ? "Enable waitlist mode?"
-                : "Disable waitlist mode?"}
+                ? "Enable public waitlist?"
+                : "Disable public waitlist?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
-                ? "New signups will require an invitation. The landing page will show a \"Join Waitlist\" form instead of the \"Sign Up\" button."
-                : "Anyone will be able to sign up freely. The waitlist form will be replaced with the standard sign-up flow."}
+                ? "Landing will show a \"Join Waitlist\" form. Public self-signup will be turned off."
+                : "Public waitlist will be disabled. Onboarding mode will switch to Invite Only."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -202,7 +202,8 @@ describe("MFA settings (emailMfaRequired)", () => {
 
   describe("emailMfaRequired is NOT public", () => {
     test("emailMfaRequired is not in PUBLIC_KEYS whitelist", async () => {
-      // The PUBLIC_KEYS constant only includes "waitlistEnabled".
+      // The PUBLIC_KEYS constant includes onboarding mode settings,
+      // but not "emailMfaRequired".
       // emailMfaRequired should only be accessible to admin users
       // via the authedQuery `get`, not the unauthenticated `getPublic`.
       // This is verified by the code structure (PUBLIC_KEYS array does not

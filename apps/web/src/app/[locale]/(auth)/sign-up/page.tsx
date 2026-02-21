@@ -16,23 +16,48 @@ const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:300
 const CONVEX_SITE_URL =
   process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
 
-async function getWaitlistEnabled(): Promise<boolean> {
+type OnboardingType = "inviteOnly" | "publicWaitlist" | "publicSignup";
+
+async function getOnboardingType(): Promise<OnboardingType> {
   try {
     const res = await fetch(`${CONVEX_SITE_URL}/api/waitlist/status`, {
       next: { revalidate: 60 },
     });
-    const data = (await res.json()) as { enabled?: boolean };
-    return data.enabled === true;
+    const data = (await res.json()) as {
+      onboardingType?:
+        | OnboardingType
+        | "none"
+        | "waitlist"
+        | "signup";
+      waitlistEnabled?: boolean;
+      signupEnabled?: boolean;
+      enabled?: boolean;
+    };
+
+    if (
+      data.onboardingType === "inviteOnly" ||
+      data.onboardingType === "publicWaitlist" ||
+      data.onboardingType === "publicSignup"
+    ) {
+      return data.onboardingType;
+    }
+    if (data.onboardingType === "waitlist") return "publicWaitlist";
+    if (data.onboardingType === "signup") return "publicSignup";
+    if (data.onboardingType === "none") return "inviteOnly";
+    if (data.waitlistEnabled === true || data.enabled === true) return "publicWaitlist";
+    if (data.signupEnabled === true) return "publicSignup";
+    return "publicSignup";
   } catch {
-    return false;
+    return "publicSignup";
   }
 }
 
 export default async function SignUpPage() {
   const t = await getTranslations("auth.signUp");
+  const ts = await getTranslations("auth.signIn");
   const tc = await getTranslations("common");
   const ti = await getTranslations("auth.invitation");
-  const waitlistEnabled = await getWaitlistEnabled();
+  const onboardingType = await getOnboardingType();
 
   return (
     <main
@@ -52,22 +77,28 @@ export default async function SignUpPage() {
             {t("pageDescription")}
           </p>
         </section>
-        {waitlistEnabled ? (
+        {onboardingType === "publicSignup" ? (
+          <AuthForm mode="sign-up" />
+        ) : (
           <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
             <CardHeader>
               <CardTitle>{ti("signupBlocked")}</CardTitle>
               <CardDescription>
-                {ti("signupBlockedDescription")}
+                {onboardingType === "publicWaitlist"
+                  ? ti("signupBlockedDescription")
+                  : ts("description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <a href={LANDING_URL}>{ti("goToWaitlist")}</a>
+                {onboardingType === "publicWaitlist" ? (
+                  <a href={LANDING_URL}>{ti("goToWaitlist")}</a>
+                ) : (
+                  <a href="/sign-in">{ts("cta")}</a>
+                )}
               </Button>
             </CardContent>
           </Card>
-        ) : (
-          <AuthForm mode="sign-up" />
         )}
       </div>
     </main>

@@ -4,13 +4,14 @@ import { internalQuery, query } from "./_generated/server";
 import type { EmailTemplate } from "./emailTemplates";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE } from "./emailTemplates";
 import { authedMutation, authedQuery } from "./functions";
+import { isOnboardingType, parseOnboardingType } from "./onboardingType";
 
 /** Keys that unauthenticated callers may read via getPublic. */
-const PUBLIC_KEYS = ["waitlistEnabled", "emailVerificationRequired"] as const;
+const PUBLIC_KEYS = ["onboardingType", "emailVerificationRequired"] as const;
 
 /** All valid setting keys and their value validators. */
 const VALID_KEYS = [
-  "waitlistEnabled",
+  "onboardingType",
   "invitationTokenExpiryDays",
   "invitationEmailTemplate",
   "emailMfaRequired",
@@ -20,7 +21,7 @@ const VALID_KEYS = [
 
 /** Default values returned when a key has never been set. */
 const DEFAULTS: Record<string, unknown> = {
-  waitlistEnabled: true,
+  onboardingType: "inviteOnly",
   invitationTokenExpiryDays: 7,
   emailMfaRequired: false,
   emailVerificationRequired: true,
@@ -30,15 +31,22 @@ function getDefault(key: string): unknown {
   return DEFAULTS[key] ?? null;
 }
 
+function parseSettingValue(key: string, value: string): unknown {
+  if (key === "onboardingType") {
+    return parseOnboardingType(value);
+  }
+  return JSON.parse(value);
+}
+
 /** Max size for the email template JSON value (50 KB). */
 const MAX_TEMPLATE_SIZE = 50_000;
 
 /** Validate the JSON-encoded value for a given key. Throws on invalid input. */
 function validateValue(key: string, value: string): void {
-  if (key === "waitlistEnabled") {
-    if (value !== "true" && value !== "false") {
+  if (key === "onboardingType") {
+    if (!isOnboardingType(value)) {
       throw new Error(
-        "INVALID_VALUE: waitlistEnabled must be 'true' or 'false'"
+        "INVALID_VALUE: onboardingType must be one of 'inviteOnly', 'publicWaitlist', or 'publicSignup'"
       );
     }
   } else if (key === "invitationTokenExpiryDays") {
@@ -159,7 +167,23 @@ export const getPublic = query({
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .unique();
 
-    return setting ? JSON.parse(setting.value) : getDefault(args.key);
+    if (!setting && args.key === "onboardingType") {
+      const legacyWaitlist = await ctx.db
+        .query("appSettings")
+        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
+        .unique();
+      if (legacyWaitlist) {
+        try {
+          return JSON.parse(legacyWaitlist.value) === true
+            ? "publicWaitlist"
+            : "publicSignup";
+        } catch {
+          return getDefault(args.key);
+        }
+      }
+    }
+
+    return setting ? parseSettingValue(args.key, setting.value) : getDefault(args.key);
   },
 });
 
@@ -178,7 +202,23 @@ export const get = authedQuery({
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .unique();
 
-    return setting ? JSON.parse(setting.value) : getDefault(args.key);
+    if (!setting && args.key === "onboardingType") {
+      const legacyWaitlist = await ctx.db
+        .query("appSettings")
+        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
+        .unique();
+      if (legacyWaitlist) {
+        try {
+          return JSON.parse(legacyWaitlist.value) === true
+            ? "publicWaitlist"
+            : "publicSignup";
+        } catch {
+          return getDefault(args.key);
+        }
+      }
+    }
+
+    return setting ? parseSettingValue(args.key, setting.value) : getDefault(args.key);
   },
 });
 
@@ -265,6 +305,17 @@ export const set = authedMutation({
         updatedBy: ctx.ownerId,
       });
     }
+
+    // Cleanup legacy setting once onboardingType is explicitly managed.
+    if (args.key === "onboardingType") {
+      const legacyWaitlist = await ctx.db
+        .query("appSettings")
+        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
+        .unique();
+      if (legacyWaitlist) {
+        await ctx.db.delete(legacyWaitlist._id);
+      }
+    }
   },
 });
 
@@ -290,6 +341,16 @@ export const remove = authedMutation({
     if (existing) {
       await ctx.db.delete(existing._id);
     }
+
+    if (args.key === "onboardingType") {
+      const legacyWaitlist = await ctx.db
+        .query("appSettings")
+        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
+        .unique();
+      if (legacyWaitlist) {
+        await ctx.db.delete(legacyWaitlist._id);
+      }
+    }
   },
 });
 
@@ -305,6 +366,22 @@ export const getInternal = internalQuery({
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .unique();
 
-    return setting ? JSON.parse(setting.value) : getDefault(args.key);
+    if (!setting && args.key === "onboardingType") {
+      const legacyWaitlist = await ctx.db
+        .query("appSettings")
+        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
+        .unique();
+      if (legacyWaitlist) {
+        try {
+          return JSON.parse(legacyWaitlist.value) === true
+            ? "publicWaitlist"
+            : "publicSignup";
+        } catch {
+          return getDefault(args.key);
+        }
+      }
+    }
+
+    return setting ? parseSettingValue(args.key, setting.value) : getDefault(args.key);
   },
 });

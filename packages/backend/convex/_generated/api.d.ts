@@ -24,6 +24,7 @@ import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as meta from "../meta.js";
 import type * as migrations from "../migrations.js";
+import type * as onboardingType from "../onboardingType.js";
 import type * as parseUserAgent from "../parseUserAgent.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   meta: typeof meta;
   migrations: typeof migrations;
+  onboardingType: typeof onboardingType;
   parseUserAgent: typeof parseUserAgent;
   projects: typeof projects;
   rateLimits: typeof rateLimits;

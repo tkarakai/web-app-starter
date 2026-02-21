@@ -28,8 +28,8 @@ import {
 import { EmailTemplateEditor } from "@/components/waitlist/email-template-editor";
 
 export function WaitlistFeatureCard() {
-  const waitlistEnabled = useQuery(api.appSettings.get, {
-    key: "waitlistEnabled",
+  const onboardingType = useQuery(api.appSettings.get, {
+    key: "onboardingType",
   });
   const invitationExpiryDays = useQuery(api.appSettings.get, {
     key: "invitationTokenExpiryDays",
@@ -60,8 +60,13 @@ export function WaitlistFeatureCard() {
     setConfirmToggle(null);
     setTogglePending(true);
     try {
-      await setSetting({ key: "waitlistEnabled", value: String(checked) });
-      toast.success(checked ? "Waitlist mode enabled" : "Waitlist mode disabled");
+      await setSetting({
+        key: "onboardingType",
+        value: checked ? "publicWaitlist" : "inviteOnly",
+      });
+      toast.success(
+        checked ? "Public waitlist enabled" : "Public waitlist disabled"
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update setting");
     } finally {
@@ -94,8 +99,9 @@ export function WaitlistFeatureCard() {
     }
   };
 
-  const isLoading = waitlistEnabled === undefined;
-  const isEnabled = waitlistEnabled === true;
+  const isLoading = onboardingType === undefined;
+  const isEnabled = onboardingType === "publicWaitlist";
+  const mode = typeof onboardingType === "string" ? onboardingType : "inviteOnly";
 
   return (
     <>
@@ -106,9 +112,9 @@ export function WaitlistFeatureCard() {
               <ListChecks className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">Waitlist</CardTitle>
+              <CardTitle className="text-base">Public Waitlist</CardTitle>
               <CardDescription>
-                Require invitations for new signups
+                Allow visitors to join a public waitlist
               </CardDescription>
             </div>
           </div>
@@ -133,9 +139,11 @@ export function WaitlistFeatureCard() {
                 </Label>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {isEnabled
-                  ? "New signups require an invitation and the landing page shows a waitlist form."
-                  : "Anyone can sign up directly without invitation approval."}
+                {mode === "publicWaitlist"
+                  ? "Landing shows the waitlist form. Public self-signup is disabled."
+                  : mode === "publicSignup"
+                  ? "Public self-signup is enabled. Public waitlist is disabled."
+                  : "Invite-only onboarding is enabled. No public self-service onboarding is available."}
               </p>
               {invitationExpiryDays === undefined ? (
                 <Skeleton className="h-8 w-44" />
@@ -179,12 +187,14 @@ export function WaitlistFeatureCard() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmToggle ? "Enable waitlist mode?" : "Disable waitlist mode?"}
+              {confirmToggle
+                ? "Enable public waitlist?"
+                : "Disable public waitlist?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
-                ? "New signups will require an invitation. The landing page will show a \"Join Waitlist\" form instead of the \"Sign Up\" button."
-                : "Anyone will be able to sign up freely. The waitlist form will be replaced with the standard sign-up flow."}
+                ? "Landing will show a \"Join Waitlist\" form. Public self-signup will be turned off."
+                : "Public waitlist will be disabled. Onboarding mode will switch to Invite Only."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -15,6 +15,7 @@ import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
+import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -454,19 +455,19 @@ export const createAuthOptions = (
           before: async (user) => {
             const actionCtx = requireActionCtx(ctx);
 
-            // --- Waitlist guard: block signups when waitlist mode is active ---
-            const waitlistEnabled = await actionCtx.runQuery(
+            // Public signup is allowed only in signup onboarding mode.
+            // Invitation-based signups remain allowed regardless of mode.
+            const onboardingTypeRaw = await actionCtx.runQuery(
               internal.appSettings.getInternal,
-              { key: "waitlistEnabled" },
+              { key: "onboardingType" },
             );
-            if (waitlistEnabled === true) {
-              const hasInvitation = await actionCtx.runQuery(
-                internal.waitlistTokens.hasValidInvitation,
-                { email: user.email },
-              );
-              if (!hasInvitation) {
-                throw new Error("SIGNUP_BLOCKED_WAITLIST_ACTIVE");
-              }
+            const onboardingType = parseOnboardingType(onboardingTypeRaw);
+            const hasInvitation = await actionCtx.runQuery(
+              internal.waitlistTokens.hasValidInvitation,
+              { email: user.email },
+            );
+            if (!isSignupOnboarding(onboardingType) && !hasInvitation) {
+              throw new Error("SIGNUP_DISABLED");
             }
 
             // Auto-assign "admin" role to users whose email is in the adminEmails table.
