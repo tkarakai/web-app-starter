@@ -100,13 +100,13 @@ function formatDisplay(
   }).format(date)
 }
 
-function getUtcOffset(tz: string): string {
+function getUtcOffset(tz: string, value?: number): string {
   try {
-    const now = new Date()
+    const date = value !== undefined ? new Date(value) : new Date()
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
       timeZoneName: "shortOffset",
-    }).formatToParts(now)
+    }).formatToParts(date)
     const offsetPart = parts.find((p) => p.type === "timeZoneName")
     return offsetPart?.value ?? ""
   } catch {
@@ -114,7 +114,10 @@ function getUtcOffset(tz: string): string {
   }
 }
 
-function getTimezoneDisplay(timeZone?: string): TimezoneDisplay | undefined {
+function getTimezoneDisplay(
+  timeZone?: string,
+  value?: number,
+): TimezoneDisplay | undefined {
   if (!timeZone) return undefined
   const label =
     CURATED_TIMEZONES.flatMap((group) => group.zones).find(
@@ -124,7 +127,7 @@ function getTimezoneDisplay(timeZone?: string): TimezoneDisplay | undefined {
   try {
     return {
       label,
-      offset: getUtcOffset(timeZone),
+      offset: getUtcOffset(timeZone, value),
     }
   } catch {
     return { label, offset: "" }
@@ -172,7 +175,7 @@ function DateTimeWithTimezone({
       : placeholder
   const timezoneDisplay =
     timestamp !== undefined
-      ? getTimezoneDisplay(effectiveTimeZone)
+      ? getTimezoneDisplay(effectiveTimeZone, timestamp)
       : undefined
 
   return (
