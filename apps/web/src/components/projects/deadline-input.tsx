@@ -22,6 +22,7 @@ export function DeadlineInput({ value, onChange, timeZone }: DeadlineInputProps)
         onChange={onChange}
         locale={locale}
         timeZone={timeZone}
+        pickerTimeZone={timeZone}
         placeholder={t("fields.deadlinePlaceholder")}
         clearLabel={t("fields.clearDeadline")}
       />

@@ -35,6 +35,13 @@ export const patternRegistry: PatternEntry[] = [
       "Locale-aware date and time picker with calendar, first-day-of-week, 12h/24h clock, and date-only mode.",
   },
   {
+    name: "Date/Time with Timezone",
+    slug: "date-time-with-timezone",
+    category: "Form",
+    description:
+      "Compact read-only date/time display with a two-line timezone label and current GMT offset.",
+  },
+  {
     name: "Timezone Selector",
     slug: "timezone-selector",
     category: "Form",

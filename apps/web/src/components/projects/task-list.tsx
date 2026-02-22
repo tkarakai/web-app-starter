@@ -149,7 +149,7 @@ export function TaskList({ projectId }: TaskListProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <DeadlineInput value={deadline} onChange={setDeadline} />
+                <DeadlineInput value={deadline} onChange={setDeadline} timeZone={timeZone} />
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? tc("creating") : t("createTask")}
                 </Button>

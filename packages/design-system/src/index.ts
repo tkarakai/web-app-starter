@@ -18,6 +18,10 @@ export { Toggle, toggleVariants } from "./components/actions/toggle";
 export { Avatar, AvatarImage, AvatarFallback } from "./components/data-display/avatar";
 export { Badge, badgeVariants, type BadgeProps } from "./components/data-display/badge";
 export {
+  DateTimeWithTimezone,
+  type DateTimeWithTimezoneProps,
+} from "./components/data-display/date-time-with-timezone";
+export {
   Breadcrumb,
   BreadcrumbList,
   BreadcrumbItem,
