@@ -178,13 +178,13 @@ type TimezoneDisplay = {
   offset: string
 }
 
-function getUtcOffset(tz: string): string {
+function getUtcOffset(tz: string, value?: number): string {
   try {
-    const now = new Date()
+    const date = value !== undefined ? new Date(value) : new Date()
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
       timeZoneName: "shortOffset",
-    }).formatToParts(now)
+    }).formatToParts(date)
     const offsetPart = parts.find((p) => p.type === "timeZoneName")
     return offsetPart?.value ?? ""
   } catch {
@@ -192,7 +192,10 @@ function getUtcOffset(tz: string): string {
   }
 }
 
-function getTimezoneDisplay(timeZone?: string): TimezoneDisplay | undefined {
+function getTimezoneDisplay(
+  timeZone?: string,
+  value?: number,
+): TimezoneDisplay | undefined {
   if (!timeZone) return undefined
   const label =
     CURATED_TIMEZONES.flatMap((group) => group.zones).find(
@@ -202,7 +205,7 @@ function getTimezoneDisplay(timeZone?: string): TimezoneDisplay | undefined {
   try {
     return {
       label,
-      offset: getUtcOffset(timeZone),
+      offset: getUtcOffset(timeZone, value),
     }
   } catch {
     return { label, offset: "" }
@@ -379,8 +382,8 @@ function DateTimePicker({
   const displayText = value
     ? formatDisplay(value, locale, mode, displayTimeZone)
     : placeholder
-  const displayTimezoneDisplay = getTimezoneDisplay(displayTimeZone)
-  const selectionTimezoneDisplay = getTimezoneDisplay(selectionTimeZone)
+  const displayTimezoneDisplay = getTimezoneDisplay(displayTimeZone, value)
+  const selectionTimezoneDisplay = getTimezoneDisplay(selectionTimeZone, value)
 
   return (
     <div className="flex items-center gap-2">
