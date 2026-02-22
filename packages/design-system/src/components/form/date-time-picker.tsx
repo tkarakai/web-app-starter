@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "./select"
 import { Calendar } from "./calendar"
+import { CURATED_TIMEZONES } from "./timezone-selector"
 
 /* ─── Locale helpers ─── */
 
@@ -22,6 +23,14 @@ function usesAmPm(locale: string): boolean {
     hour: "numeric",
   }).resolvedOptions()
   return resolved.hour12 === true
+}
+
+function detectBrowserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {
+    return undefined
+  }
 }
 
 function formatDisplay(
@@ -50,16 +59,171 @@ function formatDisplay(
 
 /* ─── Time helpers ─── */
 
+type DateParts = {
+  year: number
+  month: number
+  day: number
+}
+
+type DateTimeParts = DateParts & {
+  hour: number
+  minute: number
+}
+
+type DateTimePartType =
+  | "year"
+  | "month"
+  | "day"
+  | "hour"
+  | "minute"
+  | "second"
+
+function getNumberPart(
+  parts: Intl.DateTimeFormatPart[],
+  type: DateTimePartType,
+): number {
+  const value = parts.find((part) => part.type === type)?.value
+  return value ? parseInt(value, 10) : 0
+}
+
+function getDateTimeParts(value: number, timeZone?: string): DateTimeParts {
+  const date = new Date(value)
+  if (!timeZone) {
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+    }
+  }
+
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date)
+
+    return {
+      year: getNumberPart(parts, "year"),
+      month: getNumberPart(parts, "month"),
+      day: getNumberPart(parts, "day"),
+      hour: getNumberPart(parts, "hour"),
+      minute: getNumberPart(parts, "minute"),
+    }
+  } catch {
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+    }
+  }
+}
+
+function getTimeZoneOffsetMs(value: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(value))
+
+  const year = getNumberPart(parts, "year")
+  const month = getNumberPart(parts, "month")
+  const day = getNumberPart(parts, "day")
+  const hour = getNumberPart(parts, "hour")
+  const minute = getNumberPart(parts, "minute")
+  const second = getNumberPart(parts, "second")
+  const asUtc = Date.UTC(year, month - 1, day, hour, minute, second)
+  return asUtc - value
+}
+
+function buildTimestampFromParts(parts: DateTimeParts, timeZone?: string): number {
+  const { year, month, day, hour, minute } = parts
+  if (!timeZone) {
+    return new Date(year, month - 1, day, hour, minute, 0, 0).getTime()
+  }
+
+  try {
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0)
+    const offsetAtGuess = getTimeZoneOffsetMs(utcGuess, timeZone)
+    let timestamp = utcGuess - offsetAtGuess
+    const offsetAtResolved = getTimeZoneOffsetMs(timestamp, timeZone)
+    if (offsetAtResolved !== offsetAtGuess) {
+      timestamp = utcGuess - offsetAtResolved
+    }
+    return timestamp
+  } catch {
+    return new Date(year, month - 1, day, hour, minute, 0, 0).getTime()
+  }
+}
+
+function toCalendarDate(parts: DateParts): Date {
+  return new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0, 0)
+}
+
+type TimezoneDisplay = {
+  label: string
+  offset: string
+}
+
+function getUtcOffset(tz: string, value?: number): string {
+  try {
+    const date = value !== undefined ? new Date(value) : new Date()
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+    }).formatToParts(date)
+    const offsetPart = parts.find((p) => p.type === "timeZoneName")
+    return offsetPart?.value ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function getTimezoneDisplay(
+  timeZone?: string,
+  value?: number,
+): TimezoneDisplay | undefined {
+  if (!timeZone) return undefined
+  const label =
+    CURATED_TIMEZONES.flatMap((group) => group.zones).find(
+      (zone) => zone.value === timeZone,
+    )?.label ?? timeZone.replace(/_/g, " ")
+
+  try {
+    return {
+      label,
+      offset: getUtcOffset(timeZone, value),
+    }
+  } catch {
+    return { label, offset: "" }
+  }
+}
+
 function roundToFive(n: number): number {
-  return Math.round(n / 5) * 5
+  const rounded = Math.round(n / 5) * 5
+  return rounded === 60 ? 55 : rounded
 }
 
 function extractTimeParts(
-  date: Date,
+  hour24: number,
+  minuteValue: number,
   is12h: boolean,
 ): { hour: number; minute: number; period: "AM" | "PM" } {
-  const h = date.getHours()
-  const minute = roundToFive(date.getMinutes())
+  const h = hour24
+  const minute = roundToFive(minuteValue)
   if (!is12h) return { hour: h, minute, period: h < 12 ? "AM" : "PM" }
   const period: "AM" | "PM" = h < 12 ? "AM" : "PM"
   let hour = h % 12
@@ -86,6 +250,8 @@ export type DateTimePickerProps = {
   locale?: string
   /** IANA timezone for display formatting (e.g. "America/New_York") */
   timeZone?: string
+  /** IANA timezone used for date/time selection and value conversion */
+  pickerTimeZone?: string
   /** Placeholder text when no date is selected */
   placeholder?: string
   /** Show a clear button when a value is set. Defaults to true. */
@@ -102,16 +268,31 @@ function DateTimePicker({
   mode = "datetime",
   locale = "en",
   timeZone,
+  pickerTimeZone,
   placeholder = "Pick a date",
   clearable = true,
   clearLabel = "Clear",
   className,
 }: DateTimePickerProps) {
+  const browserTimeZone = React.useMemo(() => detectBrowserTimeZone(), [])
+  const displayTimeZone = timeZone ?? browserTimeZone
+  const selectionTimeZone = pickerTimeZone ?? displayTimeZone
   const is12h = mode === "datetime" ? usesAmPm(locale) : false
 
-  const selectedDate = value ? new Date(value) : undefined
-  const timeParts = selectedDate
-    ? extractTimeParts(selectedDate, is12h)
+  const selectedDateTimeParts =
+    value !== undefined ? getDateTimeParts(value, selectionTimeZone) : undefined
+  const selectedDate = selectedDateTimeParts
+    ? toCalendarDate(selectedDateTimeParts)
+    : undefined
+  const selectedDayParts = selectedDateTimeParts
+    ? {
+        year: selectedDateTimeParts.year,
+        month: selectedDateTimeParts.month,
+        day: selectedDateTimeParts.day,
+      }
+    : undefined
+  const timeParts = selectedDateTimeParts
+    ? extractTimeParts(selectedDateTimeParts.hour, selectedDateTimeParts.minute, is12h)
     : { hour: is12h ? 12 : 0, minute: 0, period: "AM" as const }
 
   const [hour, setHour] = React.useState(timeParts.hour)
@@ -120,50 +301,76 @@ function DateTimePicker({
 
   // Sync local time state when value changes externally
   React.useEffect(() => {
-    if (selectedDate) {
-      const parts = extractTimeParts(selectedDate, is12h)
+    if (selectedDateTimeParts) {
+      const parts = extractTimeParts(
+        selectedDateTimeParts.hour,
+        selectedDateTimeParts.minute,
+        is12h,
+      )
       setHour(parts.hour)
       setMinute(parts.minute)
       setPeriod(parts.period)
     }
-  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value, is12h, selectionTimeZone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildTimestamp = (
-    date: Date,
+    date: DateParts,
     h: number,
     m: number,
     p: "AM" | "PM",
   ) => {
-    const d = new Date(date)
     if (mode === "date") {
-      d.setHours(0, 0, 0, 0)
-    } else {
-      d.setHours(toHour24(h, p, is12h), m, 0, 0)
+      return buildTimestampFromParts(
+        {
+          ...date,
+          hour: 0,
+          minute: 0,
+        },
+        selectionTimeZone,
+      )
     }
-    return d.getTime()
+
+    return buildTimestampFromParts(
+      {
+        ...date,
+        hour: toHour24(h, p, is12h),
+        minute: m,
+      },
+      selectionTimeZone,
+    )
   }
 
   const handleDaySelect = (day: Date) => {
-    onChange(buildTimestamp(day, hour, minute, period))
+    const dayParts = {
+      year: day.getFullYear(),
+      month: day.getMonth() + 1,
+      day: day.getDate(),
+    }
+    onChange(buildTimestamp(dayParts, hour, minute, period))
   }
 
   const handleHourChange = (val: string) => {
     const h = parseInt(val, 10)
     setHour(h)
-    if (selectedDate) onChange(buildTimestamp(selectedDate, h, minute, period))
+    if (selectedDayParts) {
+      onChange(buildTimestamp(selectedDayParts, h, minute, period))
+    }
   }
 
   const handleMinuteChange = (val: string) => {
     const m = parseInt(val, 10)
     setMinute(m)
-    if (selectedDate) onChange(buildTimestamp(selectedDate, hour, m, period))
+    if (selectedDayParts) {
+      onChange(buildTimestamp(selectedDayParts, hour, m, period))
+    }
   }
 
   const handlePeriodChange = (p: string) => {
     const newPeriod = p as "AM" | "PM"
     setPeriod(newPeriod)
-    if (selectedDate)
-      onChange(buildTimestamp(selectedDate, hour, minute, newPeriod))
+    if (selectedDayParts) {
+      onChange(buildTimestamp(selectedDayParts, hour, minute, newPeriod))
+    }
   }
 
   const hours = is12h
@@ -173,8 +380,10 @@ function DateTimePicker({
   const minutes = Array.from({ length: 12 }, (_, i) => i * 5)
 
   const displayText = value
-    ? formatDisplay(value, locale, mode, timeZone)
+    ? formatDisplay(value, locale, mode, displayTimeZone)
     : placeholder
+  const displayTimezoneDisplay = getTimezoneDisplay(displayTimeZone, value)
+  const selectionTimezoneDisplay = getTimezoneDisplay(selectionTimeZone, value)
 
   return (
     <div className="flex items-center gap-2">
@@ -190,7 +399,17 @@ function DateTimePicker({
             )}
           >
             <CalendarDays className="h-4 w-4 shrink-0" />
-            <span className="truncate">{displayText}</span>
+            <span className="min-w-0 flex-1 truncate">{displayText}</span>
+            {value && displayTimezoneDisplay && (
+              <div className="ml-0 max-w-[65px] shrink-0 text-left text-[11px] leading-[1.1] text-muted-foreground">
+                <span className="block truncate">{displayTimezoneDisplay.label}</span>
+                {displayTimezoneDisplay.offset && (
+                  <span className="block truncate">
+                    ({displayTimezoneDisplay.offset})
+                  </span>
+                )}
+              </div>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -202,9 +421,9 @@ function DateTimePicker({
 
           {mode === "datetime" && (
             <div className="border-t border-border px-3 py-3">
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <Select value={String(hour)} onValueChange={handleHourChange}>
-                  <SelectTrigger className="h-8 w-[60px] tabular-nums">
+                  <SelectTrigger className="h-8 w-[60px] shrink-0 tabular-nums">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -222,7 +441,7 @@ function DateTimePicker({
                   value={String(minute)}
                   onValueChange={handleMinuteChange}
                 >
-                  <SelectTrigger className="h-8 w-[60px] tabular-nums">
+                  <SelectTrigger className="h-8 w-[60px] shrink-0 tabular-nums">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -235,7 +454,7 @@ function DateTimePicker({
                 </Select>
                 {is12h && (
                   <Select value={period} onValueChange={handlePeriodChange}>
-                    <SelectTrigger className="h-8 w-[62px]">
+                    <SelectTrigger className="h-8 w-[62px] shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -243,6 +462,18 @@ function DateTimePicker({
                       <SelectItem value="PM">PM</SelectItem>
                     </SelectContent>
                   </Select>
+                )}
+                {selectionTimezoneDisplay && (
+                  <div className="ml-auto min-w-0 max-w-[100px] pl-3 text-left text-xs leading-[1.1] text-muted-foreground">
+                    <span className="block truncate">
+                      {selectionTimezoneDisplay.label}
+                    </span>
+                    {selectionTimezoneDisplay.offset && (
+                      <span className="block truncate">
+                        ({selectionTimezoneDisplay.offset})
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -9,6 +9,7 @@ import { type Id } from "@repo/backend";
 import {
   Badge,
   Button,
+  DateTimeWithTimezone,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -23,7 +24,7 @@ import {
   Textarea,
 } from "@repo/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
-import { formatDeadline, getDeadlineUrgency, type DeadlineUrgency } from "@/lib/format";
+import { getDeadlineUrgency, type DeadlineUrgency } from "@/lib/format";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
 import { DeadlineInput } from "./deadline-input";
 
@@ -168,13 +169,24 @@ export function TaskRow({ task, locale, timeZone }: TaskRowProps) {
             </div>
           )}
           {task.deadline && deadlineUrgency && (
-            <div className={`mt-1 flex items-center gap-1 text-xs ${urgencyStyles[deadlineUrgency]}`}>
-              <Clock className="h-3 w-3" />
-              <span>
-                {deadlineUrgency === "overdue" && `${t("deadline.overdue")} · `}
-                {deadlineUrgency === "urgent" && `${t("deadline.dueToday")} · `}
-                {formatDeadline(task.deadline, { locale, timeZone })}
-              </span>
+            <div className={`mt-1 flex items-start gap-1 ${urgencyStyles[deadlineUrgency]}`}>
+              <Clock className="mt-0.5 h-3 w-3 shrink-0" />
+              <div className="min-w-0 space-y-0.5 text-xs">
+                {deadlineUrgency === "overdue" && (
+                  <div>{t("deadline.overdue")}</div>
+                )}
+                {deadlineUrgency === "urgent" && (
+                  <div>{t("deadline.dueToday")}</div>
+                )}
+                <DateTimeWithTimezone
+                  value={task.deadline}
+                  locale={locale}
+                  timeZone={timeZone}
+                  mode="datetime"
+                  timezoneLineMode="one-line"
+                  className="min-w-0"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -248,7 +260,7 @@ export function TaskRow({ task, locale, timeZone }: TaskRowProps) {
                 </SelectContent>
               </Select>
             </div>
-            <DeadlineInput value={deadline} onChange={setDeadline} />
+            <DeadlineInput value={deadline} onChange={setDeadline} timeZone={timeZone} />
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? tc("saving") : tc("save")}
             </Button>
