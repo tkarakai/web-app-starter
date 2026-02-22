@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
+import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { DocumentLocale } from "@/components/document-locale";
 import { Footer } from "@/components/footer";
 
@@ -81,6 +82,7 @@ export default async function LocaleLayout({
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <NextIntlClientProvider messages={messages}>
         <DocumentLocale lang={locale} dir={dir} />
+        <AnnouncementBannerHost />
         <div className="flex-1">{children}</div>
         <Footer />
       </NextIntlClientProvider>

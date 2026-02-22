@@ -110,6 +110,30 @@ export default defineSchema(
 
   // --- Audit trail (append-only) ---
 
+  // --- Announcements ---
+
+  announcements: defineTable({
+    name: v.string(),
+    bannerText: v.string(),
+    callToActionName: v.optional(v.string()),
+    callToActionUrl: v.optional(v.string()),
+    learnMoreName: v.optional(v.string()),
+    learnMoreContent: v.optional(v.string()),
+    scheduleStart: v.optional(v.number()),
+    scheduleEnd: v.optional(v.number()),
+    publishJobId: v.optional(v.id("_scheduled_functions")),
+    unpublishJobId: v.optional(v.id("_scheduled_functions")),
+    isLive: v.boolean(),
+    isArchived: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+  })
+    .index("by_isLive", ["isLive"])
+    .index("by_scheduleEnd", ["scheduleEnd"])
+    .index("by_updatedAt", ["updatedAt"]),
+
   auditTrail: defineTable({
     happenedAt: v.number(),
     authenticatedUserId: v.optional(v.string()),

@@ -18,6 +18,7 @@ import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
 
 const segmentLabels: Record<string, string> = {
+  announcements: "Announcements",
   users: "Users",
   onboarding: "Onboarding",
   waitlist: "Onboarding",

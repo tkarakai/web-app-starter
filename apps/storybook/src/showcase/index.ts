@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import AlertShowcase from "./alert";
 import AlertDialogShowcase from "./alert-dialog";
+import AnnouncementBannerShowcase from "./announcement-banner";
 import AvatarShowcase from "./avatar";
 import BadgeShowcase from "./badge";
 import BreadcrumbShowcase from "./breadcrumb";
@@ -31,6 +32,7 @@ import TooltipShowcase from "./tooltip";
 export const showcaseMap: Record<string, ComponentType> = {
   alert: AlertShowcase,
   "alert-dialog": AlertDialogShowcase,
+  "announcement-banner": AnnouncementBannerShowcase,
   avatar: AvatarShowcase,
   badge: BadgeShowcase,
   breadcrumb: BreadcrumbShowcase,

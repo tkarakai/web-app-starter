@@ -2,6 +2,8 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpDown,
   KeyRound,
   Mail,
@@ -27,6 +29,12 @@ import {
 import { TokenViewerDialog } from "./token-viewer-dialog";
 import type { WaitlistEntry } from "./waitlist-actions-context";
 import { useWaitlistActions } from "./waitlist-actions-context";
+
+function renderSortIcon(sorted: false | "asc" | "desc") {
+  if (sorted === "asc") return <ArrowUp className="ml-2 h-4 w-4" />;
+  if (sorted === "desc") return <ArrowDown className="ml-2 h-4 w-4" />;
+  return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground" />;
+}
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
@@ -251,16 +259,19 @@ export function createColumns(
     },
     {
       accessorKey: "email",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Email
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => (
         <HighlightText
           text={row.getValue("email") as string}
@@ -312,16 +323,19 @@ export function createColumns(
     },
     {
       accessorKey: "status",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Status
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => {
         const status = row.original.invitationExpired
           ? "expired"
@@ -335,16 +349,19 @@ export function createColumns(
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Joined Waitlist
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Joined Waitlist
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => (
         <DateCell timestamp={row.getValue("createdAt") as number} />
       ),

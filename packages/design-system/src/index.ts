@@ -47,6 +47,10 @@ export {
 /* ─── Feedback ─── */
 export { Alert, AlertTitle, AlertDescription, alertVariants } from "./components/feedback/alert";
 export {
+  AnnouncementBanner,
+  type AnnouncementBannerProps,
+} from "./components/feedback/announcement-banner";
+export {
   EnvironmentBanner,
   environmentBannerVariants,
   type EnvironmentBannerProps,

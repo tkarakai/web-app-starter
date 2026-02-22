@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useQuery } from "convex/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronRight,
   ListChecks,
   LogOut,
+  Megaphone,
   PlugZap,
   ScrollText,
   ShieldCheck,
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@repo/design-patterns";
+import { api } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
 import {
   Avatar,
@@ -47,6 +50,7 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 const manageItems = [
+  { label: "Announcements", href: "/manage/announcements", icon: Megaphone },
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
   { label: "Users", href: "/manage/users", icon: Users },
 ];
@@ -76,6 +80,11 @@ export function AdminSidebar({
   const [manageOpen, setManageOpen] = React.useState(true);
   const [observabilityOpen, setObservabilityOpen] = React.useState(true);
   const [configureOpen, setConfigureOpen] = React.useState(true);
+  const announcements = useQuery(api.announcements.list, {});
+  const hasLiveAnnouncement = React.useMemo(
+    () => Boolean(announcements?.some((announcement) => announcement.isLive)),
+    [announcements]
+  );
 
   const initials = displayName
     .split(" ")
@@ -170,7 +179,19 @@ export function AdminSidebar({
                       >
                         <Link href={item.href}>
                           <item.icon className="h-4 w-4" />
-                          <span>{item.label}</span>
+                          {item.href === "/manage/announcements" ? (
+                            <div className="relative inline-block pe-3">
+                              {item.label}
+                              {hasLiveAnnouncement ? (
+                                <span
+                                  aria-hidden
+                                  className="absolute right-0.5 top-0 inline-flex h-2 w-2 rounded-full ring-1 ring-border bg-emerald-500 animate-pulse"
+                                />
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span>{item.label}</span>
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

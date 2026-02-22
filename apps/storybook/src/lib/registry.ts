@@ -72,6 +72,12 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Important messages and callouts.",
   },
   {
+    name: "Announcement Banner",
+    slug: "announcement-banner",
+    category: "Feedback",
+    description: "Product announcement strip with optional CTA and learn-more modal.",
+  },
+  {
     name: "Progress",
     slug: "progress",
     category: "Feedback",
