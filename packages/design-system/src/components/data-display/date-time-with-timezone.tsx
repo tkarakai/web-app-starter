@@ -7,6 +7,7 @@ import { CURATED_TIMEZONES } from "../form/timezone-selector"
 
 type DisplayMode = "auto" | "date" | "datetime"
 type TimezoneLineMode = "two-line" | "one-line"
+type TimezonePlacement = "inline" | "below"
 
 type TimezoneDisplay = {
   label: string
@@ -147,6 +148,8 @@ export type DateTimeWithTimezoneProps = {
   placeholder?: string
   /** Timezone text layout */
   timezoneLineMode?: TimezoneLineMode
+  /** Place timezone text beside or under the date/time text */
+  timezonePlacement?: TimezonePlacement
   /** Additional wrapper className */
   className?: string
 }
@@ -158,6 +161,7 @@ function DateTimeWithTimezone({
   mode = "auto",
   placeholder = "No date",
   timezoneLineMode = "two-line",
+  timezonePlacement = "inline",
   className,
 }: DateTimeWithTimezoneProps) {
   const browserTimeZone = React.useMemo(() => detectBrowserTimeZone(), [])
@@ -178,8 +182,21 @@ function DateTimeWithTimezone({
       ? getTimezoneDisplay(effectiveTimeZone, timestamp)
       : undefined
 
+  const timezoneLabel =
+    timezoneDisplay && timezoneDisplay.offset
+      ? `${timezoneDisplay.label} (${timezoneDisplay.offset})`
+      : timezoneDisplay?.label
+
   return (
-    <div className={cn("flex min-w-0 items-center gap-2", className)}>
+    <div
+      className={cn(
+        "flex min-w-0",
+        timezonePlacement === "inline"
+          ? "items-center gap-2"
+          : "flex-col items-start gap-0.5",
+        className,
+      )}
+    >
       <span
         className={cn(
           "min-w-0 shrink truncate",
@@ -190,15 +207,25 @@ function DateTimeWithTimezone({
       </span>
       {timezoneDisplay && (
         timezoneLineMode === "one-line" ? (
-          <div className="max-w-[130px] shrink-0 text-left text-[11px] text-muted-foreground">
-            <span className="block truncate">
-              {timezoneDisplay.offset
-                ? `${timezoneDisplay.label} (${timezoneDisplay.offset})`
-                : timezoneDisplay.label}
-            </span>
+          <div
+            className={cn(
+              "text-left text-[11px] text-muted-foreground",
+              timezonePlacement === "inline"
+                ? "max-w-[130px] shrink-0"
+                : "max-w-full leading-[1.05]",
+            )}
+          >
+            <span className="block truncate">{timezoneLabel}</span>
           </div>
         ) : (
-          <div className="w-[65px] shrink-0 text-left text-[11px] leading-[1.1] text-muted-foreground">
+          <div
+            className={cn(
+              "text-left text-[11px] text-muted-foreground",
+              timezonePlacement === "inline"
+                ? "w-[65px] shrink-0 leading-[1.1]"
+                : "w-full leading-[1.05]",
+            )}
+          >
             <span className="block truncate">{timezoneDisplay.label}</span>
             {timezoneDisplay.offset && (
               <span className="block truncate">({timezoneDisplay.offset})</span>

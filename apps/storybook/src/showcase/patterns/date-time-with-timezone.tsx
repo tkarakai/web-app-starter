@@ -159,6 +159,23 @@ export default function DateTimeWithTimezoneShowcase() {
           />
         </div>
       </DemoSection>
+
+      <DemoSection
+        title="Timezone Below Date/Time"
+        description='Set `timezonePlacement="below"` to render timezone text underneath the main date/time with compact line spacing.'
+      >
+        <div className="max-w-[280px] space-y-2">
+          <Label>Release window</Label>
+          <DateTimeWithTimezone
+            value={comparisonInstant}
+            locale={locale}
+            timeZone="America/Argentina/Buenos_Aires"
+            mode="datetime"
+            timezoneLineMode="one-line"
+            timezonePlacement="below"
+          />
+        </div>
+      </DemoSection>
     </>
   );
 }

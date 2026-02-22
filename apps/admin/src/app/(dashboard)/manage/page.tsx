@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ManagePage() {
-  redirect("/manage/users");
+  redirect("/manage/announcements");
 }

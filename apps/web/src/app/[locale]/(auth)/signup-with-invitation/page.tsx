@@ -23,7 +23,7 @@ export default async function SignupWithInvitationPage({
       style={{ background: "var(--glow-cool)" }}
     >
       <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />
-      <div className="mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 pb-16 pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:justify-items-stretch">
+      <div className="mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 pb-16 pt-[calc(6rem+var(--announcement-banner-h,0px))] lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:justify-items-stretch">
         <section className="w-full max-w-md space-y-6 lg:max-w-none">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
             {tc("appName")}

@@ -11,6 +11,7 @@ import { Toaster, EnvironmentBannerWrapper, OfflineBanner } from "@repo/design-s
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
+import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -121,7 +122,10 @@ export default async function LocaleLayout({
           <EnvironmentBannerWrapper appName="web" />
           <OfflineBanner label={tOffline("message")} />
           <NextIntlClientProvider messages={messages}>
-            <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+            <ConvexClientProvider initialToken={token}>
+              <AnnouncementBannerHost hideOnDashboard fixed />
+              {children}
+            </ConvexClientProvider>
             <Toaster richColors closeButton position="bottom-right" />
           </NextIntlClientProvider>
         </ThemeProvider>

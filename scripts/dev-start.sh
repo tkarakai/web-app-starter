@@ -196,6 +196,25 @@ get_convex_ports() {
     fi
 }
 
+extract_port_from_url() {
+    local url="$1"
+    echo "$url" | sed -nE 's|^[a-zA-Z]+://[^:/]+:([0-9]+).*$|\1|p'
+}
+
+get_convex_urls_from_backend_env() {
+    local backend_env_file="$PROJECT_DIR/packages/backend/.env.local"
+    if [ ! -f "$backend_env_file" ]; then
+        return
+    fi
+
+    local cloud_url=$(grep "^CONVEX_URL=" "$backend_env_file" 2>/dev/null | sed 's/CONVEX_URL=//' | sed 's/ #.*//')
+    local site_url=$(grep "^CONVEX_SITE_URL=" "$backend_env_file" 2>/dev/null | sed 's/CONVEX_SITE_URL=//' | sed 's/ #.*//')
+
+    if [ -n "$cloud_url" ] && [ -n "$site_url" ]; then
+        echo "$cloud_url $site_url"
+    fi
+}
+
 # Update Convex URLs in an app's .env.local
 update_app_env_urls() {
     local env_file="$1"
@@ -562,32 +581,51 @@ if [ "$NEED_CONVEX" = true ]; then
 
     # Read the actual ports Convex is using
     DEPLOYMENT_NAME=$(get_deployment_name)
+    CONVEX_CLOUD_URL=""
+    CONVEX_SITE_URL=""
 
-    if [ -n "$DEPLOYMENT_NAME" ]; then
+    # Prefer URLs written by Convex itself to packages/backend/.env.local.
+    CONVEX_URLS=$(get_convex_urls_from_backend_env)
+    if [ -n "$CONVEX_URLS" ]; then
+        CONVEX_CLOUD_URL=$(echo "$CONVEX_URLS" | cut -d' ' -f1)
+        CONVEX_SITE_URL=$(echo "$CONVEX_URLS" | cut -d' ' -f2)
+        CLOUD_PORT=$(extract_port_from_url "$CONVEX_CLOUD_URL")
+        SITE_PORT=$(extract_port_from_url "$CONVEX_SITE_URL")
+    fi
+
+    if [ -z "$CLOUD_PORT" ] || [ -z "$SITE_PORT" ]; then
+        if [ -n "$DEPLOYMENT_NAME" ]; then
         PORTS=$(get_convex_ports "$DEPLOYMENT_NAME")
         if [ -n "$PORTS" ]; then
             CLOUD_PORT=$(echo $PORTS | cut -d' ' -f1)
             SITE_PORT=$(echo $PORTS | cut -d' ' -f2)
-
-            # Update .env.local for each app that needs Convex
-            if [ "$START_WEB" = true ]; then
-                update_app_env_urls "$PROJECT_DIR/apps/web/.env.local" "$CLOUD_PORT" "$SITE_PORT"
-            fi
-            if [ "$START_ADMIN" = true ]; then
-                update_app_env_urls "$PROJECT_DIR/apps/admin/.env.local" "$CLOUD_PORT" "$SITE_PORT"
-            fi
-            if [ "$START_LANDING" = true ]; then
-                update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT"
-            fi
+            CONVEX_CLOUD_URL="http://127.0.0.1:$CLOUD_PORT"
+            CONVEX_SITE_URL="http://127.0.0.1:$SITE_PORT"
         fi
+        fi
+    fi
+
+    if [ -n "$CLOUD_PORT" ] && [ -n "$SITE_PORT" ]; then
+        # Update .env.local for each app that needs Convex
+        if [ "$START_WEB" = true ]; then
+            update_app_env_urls "$PROJECT_DIR/apps/web/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+        fi
+        if [ "$START_ADMIN" = true ]; then
+            update_app_env_urls "$PROJECT_DIR/apps/admin/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+        fi
+        if [ "$START_LANDING" = true ]; then
+            update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+        fi
+    else
+        echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi
 
     DASHBOARD_URL=$(extract_dashboard_url "$PROJECT_DIR/.convex-dev.log")
 
     echo -e "${GREEN}✔ Convex ready (PID: $CONVEX_PID)${NC}"
     echo -e "  ${BLUE}Deployment:${NC} $DEPLOYMENT_NAME"
-    echo -e "  ${BLUE}Convex URL:${NC} http://127.0.0.1:$CLOUD_PORT"
-    echo -e "  ${BLUE}Site URL:${NC}   http://127.0.0.1:$SITE_PORT"
+    echo -e "  ${BLUE}Convex URL:${NC} ${CONVEX_CLOUD_URL:-http://127.0.0.1:$CLOUD_PORT}"
+    echo -e "  ${BLUE}Site URL:${NC}   ${CONVEX_SITE_URL:-http://127.0.0.1:$SITE_PORT}"
     if [ -n "$DASHBOARD_URL" ]; then
         echo -e "  ${BLUE}Dashboard:${NC}  $DASHBOARD_URL"
     fi
@@ -760,8 +798,11 @@ start_next_app() {
 
     # Sync SITE_URL to Convex if this is the web app
     if [ "$app_name" = "web" ] && [ "$NEED_CONVEX" = true ] && [ -n "$next_port" ]; then
-        (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "http://localhost:$next_port" > /dev/null 2>&1) || true
-        echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex"
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "http://localhost:$next_port" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Failed to sync SITE_URL to Convex"
+        fi
     fi
 
     # Export the URL so callers can use it (e.g. to configure cross-app links)
@@ -809,8 +850,11 @@ if [ "$START_LANDING" = true ]; then
 
     # Sync LANDING_URL to Convex so CORS allows the landing origin
     if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1) || true
-        echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Failed to sync LANDING_URL to Convex"
+        fi
     fi
 
     # Set the landing URL in the web app so auth pages can link back
@@ -832,8 +876,11 @@ fi
 if [ "$NEED_CONVEX" = true ] && [ -n "$APP_URLS" ]; then
     echo ""
     echo -e "${GREEN}▶ Updating Better Auth with app origins...${NC}"
-    (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$APP_URLS" > /dev/null 2>&1) || true
-    echo -e "  ${GREEN}✔${NC} SITE_URL set to: $APP_URLS"
+    if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$APP_URLS" > /dev/null 2>&1); then
+        echo -e "  ${GREEN}✔${NC} SITE_URL set to: $APP_URLS"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Failed to set SITE_URL to: $APP_URLS"
+    fi
 fi
 
 # In CI mode, show final env contents

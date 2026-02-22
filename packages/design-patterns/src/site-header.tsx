@@ -22,7 +22,7 @@ export function SiteHeader({
   return (
     <header
       className={cn(
-        "fixed top-[var(--env-banner-h,0px)] z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "fixed top-[calc(var(--env-banner-h,0px)+var(--announcement-banner-h,0px))] z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
         className,
       )}
     >

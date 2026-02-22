@@ -8,11 +8,12 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { toast } from "sonner";
 
 import { api } from "@repo/backend";
 import {
+  Button,
   Skeleton,
   Table,
   TableBody,
@@ -34,15 +35,22 @@ import { WaitlistBatchDialog } from "./waitlist-batch-dialog";
 import { WaitlistInviteDialog } from "./waitlist-invite-dialog";
 
 const SEARCH_DEBOUNCE = 300;
+const PAGE_SIZE = 50;
 
 export function WaitlistDataTable() {
-  const allEntries = useQuery(api.waitlist.list);
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.waitlist.list,
+    {},
+    { initialNumItems: PAGE_SIZE }
+  );
   const inviteMutation = useMutation(api.waitlist.invite);
   const inviteManyMutation = useMutation(api.waitlist.inviteMany);
   const uninviteMutation = useMutation(api.waitlist.uninvite);
   const removeMutation = useMutation(api.waitlist.remove);
 
-  const loading = allEntries === undefined;
+  const loading = status === "LoadingFirstPage";
+  const loadingMore = status === "LoadingMore";
+  const canLoadMore = status === "CanLoadMore";
 
   // Filter state
   const [searchInput, setSearchInput] = React.useState("");
@@ -66,9 +74,9 @@ export function WaitlistDataTable() {
 
   // Client-side filtering
   const filteredEntries = React.useMemo(() => {
-    if (!allEntries) return [];
+    if (!results) return [];
 
-    let entries = allEntries;
+    let entries = results;
 
     // Status filter
     if (statusFilter === "expired") {
@@ -88,7 +96,7 @@ export function WaitlistDataTable() {
     }
 
     return entries;
-  }, [allEntries, statusFilter, debouncedSearch]);
+  }, [results, statusFilter, debouncedSearch]);
 
   // Clear selection when filters change
   React.useEffect(() => {
@@ -307,7 +315,7 @@ export function WaitlistDataTable() {
             loading={loading}
           />
 
-          <div className="rounded-md border">
+        <div className="rounded-md border">
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -366,8 +374,21 @@ export function WaitlistDataTable() {
                 )}
               </TableBody>
             </Table>
-          </div>
         </div>
+
+        {(canLoadMore || loadingMore) && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadMore(PAGE_SIZE)}
+              disabled={loadingMore}
+            >
+              {loadingMore ? "Loading..." : "Load more"}
+            </Button>
+          </div>
+        )}
+      </div>
       </TooltipProvider>
 
       {/* Single-entry confirmation dialog */}

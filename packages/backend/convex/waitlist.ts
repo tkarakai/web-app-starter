@@ -1,13 +1,14 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
+import { authComponent } from "./auth";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { parseOnboardingType, isWaitlistOnboarding } from "./onboardingType";
 import {
   authedMutation,
-  authedQuery,
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
@@ -152,27 +153,37 @@ export const join = internalMutation({
 // Admin: list all waitlist entries
 // ---------------------------------------------------------------------------
 
-export const list = authedQuery({
-  args: {},
-  handler: async (ctx) => {
-    const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") return null;
+export const list = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    const role = user ? (user as Record<string, unknown>).role : undefined;
+    if (role !== "admin") {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
+    }
 
     const entries = await ctx.db
       .query("waitlistEntries")
       .withIndex("by_created")
       .order("desc")
-      .collect();
+      .paginate(args.paginationOpts);
 
     const now = Date.now();
 
-    return entries.map((entry) => ({
-      ...entry,
-      invitationExpired:
-        entry.status === "invited" &&
-        entry.invitationExpiresAt != null &&
-        now > entry.invitationExpiresAt,
-    }));
+    return {
+      ...entries,
+      page: entries.page.map((entry) => ({
+        ...entry,
+        invitationExpired:
+          entry.status === "invited" &&
+          entry.invitationExpiresAt != null &&
+          now > entry.invitationExpiresAt,
+      })),
+    };
   },
 });
 

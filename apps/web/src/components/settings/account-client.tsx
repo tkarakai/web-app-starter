@@ -23,6 +23,7 @@ import {
 } from "@repo/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AppSidebar } from "@/components/projects/app-sidebar";
+import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ProfileSection } from "@/components/settings/profile-section";
 import { SecuritySection } from "@/components/settings/security-section";
 
@@ -43,6 +44,7 @@ export function AccountClient() {
         onSelectProject={() => router.push("/dashboard")}
       />
       <SidebarInset className="flex flex-col h-dvh">
+        <AnnouncementBannerHost className="shrink-0" />
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background px-4">
           <SidebarTrigger className="-ms-1" />
           <Separator

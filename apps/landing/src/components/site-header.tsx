@@ -14,6 +14,7 @@ export function SiteHeader() {
       appName={t("appName")}
       linkAs={Link}
       actions={<LocaleSwitcher />}
+      className="top-[calc(var(--env-banner-h,0px)+var(--announcement-banner-h,0px))]"
     />
   );
 }

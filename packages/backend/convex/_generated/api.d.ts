@@ -10,6 +10,7 @@
 
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminEmails from "../adminEmails.js";
+import type * as announcements from "../announcements.js";
 import type * as appSettings from "../appSettings.js";
 import type * as auditTrail from "../auditTrail.js";
 import type * as auditTrailConstants from "../auditTrailConstants.js";
@@ -45,6 +46,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminEmails: typeof adminEmails;
+  announcements: typeof announcements;
   appSettings: typeof appSettings;
   auditTrail: typeof auditTrail;
   auditTrailConstants: typeof auditTrailConstants;

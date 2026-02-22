@@ -162,6 +162,36 @@ http.route({
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/announcements/active — currently active announcement banner
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/announcements/active",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const announcement = await ctx.runQuery(internal.announcements.getActiveInternal, {});
+
+    return new Response(
+      JSON.stringify({
+        announcement,
+      }),
+      {
+        status: 200,
+        headers: corsHeaders(request),
+      }
+    );
+  }),
+});
+
+http.route({
+  path: "/api/announcements/active",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }),
+});
+
+// ---------------------------------------------------------------------------
 // Session management endpoints (authenticated)
 // ---------------------------------------------------------------------------
 

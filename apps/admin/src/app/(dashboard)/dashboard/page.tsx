@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   ListChecks,
+  Megaphone,
   PlugZap,
   ScrollText,
   ShieldCheck,
@@ -37,6 +38,12 @@ const dashboardSections = [
   {
     title: "Manage",
     items: [
+      {
+        title: "Announcements",
+        description: "Manage banner announcements for landing and web apps.",
+        href: "/manage/announcements",
+        icon: Megaphone,
+      },
       {
         title: "Onboarding",
         description: "Manage onboarding mode, waitlist entries, and invitations.",

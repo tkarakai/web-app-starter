@@ -23,8 +23,13 @@ export function ContentPageLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SiteHeader appName={t("appName")} linkAs={Link} actions={<LocaleSwitcher />} />
-      <main className="flex-1 pt-20">
+      <SiteHeader
+        appName={t("appName")}
+        linkAs={Link}
+        actions={<LocaleSwitcher />}
+        className="top-[calc(var(--env-banner-h,0px)+var(--announcement-banner-h,0px))]"
+      />
+      <main className="flex-1 pt-[calc(5rem+var(--announcement-banner-h,0px))]">
         <div className="mx-auto flex max-w-3xl flex-col px-6 py-8">
           <Link
             href="/"

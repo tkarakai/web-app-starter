@@ -2,6 +2,8 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpDown,
   Ban,
   Check,
@@ -36,6 +38,12 @@ import {
 import type { AdminUser } from "@/lib/admin-api";
 import { useUserActions } from "./user-actions-context";
 import { BanDetailsCard } from "./ban-details-card";
+
+function renderSortIcon(sorted: false | "asc" | "desc") {
+  if (sorted === "asc") return <ArrowUp className="ml-2 h-4 w-4" />;
+  if (sorted === "desc") return <ArrowDown className="ml-2 h-4 w-4" />;
+  return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground" />;
+}
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
@@ -257,16 +265,19 @@ export function createColumns(config: ColumnsConfig): ColumnDef<AdminUser>[] {
     },
     {
       accessorKey: "name",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Name
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => {
         const isSelf =
           currentUserId != null && row.original.id === currentUserId;
@@ -283,32 +294,38 @@ export function createColumns(config: ColumnsConfig): ColumnDef<AdminUser>[] {
     },
     {
       accessorKey: "email",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Email
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => (
         <HighlightText text={row.getValue("email") as string} highlight={searchTerm} />
       ),
     },
     {
       accessorKey: "role",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Role
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Role
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => {
         const role = row.getValue("role") as string | null;
         return (
@@ -320,16 +337,19 @@ export function createColumns(config: ColumnsConfig): ColumnDef<AdminUser>[] {
     },
     {
       id: "status",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Status
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       accessorFn: (row) => row.banned,
       cell: ({ row }) => {
         const user = row.original;
@@ -355,30 +375,36 @@ export function createColumns(config: ColumnsConfig): ColumnDef<AdminUser>[] {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Created
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Created
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => <DateCell date={row.getValue("createdAt") as Date} />,
     },
     {
       accessorKey: "updatedAt",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Updated
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <Button
+            variant="ghost"
+            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
+            onClick={() => column.toggleSorting(sorted === "asc")}
+          >
+            Updated
+            {renderSortIcon(sorted)}
+          </Button>
+        );
+      },
       cell: ({ row }) => <DateCell date={row.getValue("updatedAt") as Date} />,
     },
     {
