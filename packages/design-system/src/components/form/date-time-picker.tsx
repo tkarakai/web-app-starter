@@ -272,11 +272,12 @@ function DateTimePicker({
   className,
 }: DateTimePickerProps) {
   const browserTimeZone = React.useMemo(() => detectBrowserTimeZone(), [])
-  const effectiveTimeZone = pickerTimeZone ?? timeZone ?? browserTimeZone
+  const displayTimeZone = timeZone ?? browserTimeZone
+  const selectionTimeZone = pickerTimeZone ?? displayTimeZone
   const is12h = mode === "datetime" ? usesAmPm(locale) : false
 
   const selectedDateTimeParts =
-    value !== undefined ? getDateTimeParts(value, effectiveTimeZone) : undefined
+    value !== undefined ? getDateTimeParts(value, selectionTimeZone) : undefined
   const selectedDate = selectedDateTimeParts
     ? toCalendarDate(selectedDateTimeParts)
     : undefined
@@ -307,7 +308,7 @@ function DateTimePicker({
       setMinute(parts.minute)
       setPeriod(parts.period)
     }
-  }, [value, is12h, effectiveTimeZone]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value, is12h, selectionTimeZone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildTimestamp = (
     date: DateParts,
@@ -322,7 +323,7 @@ function DateTimePicker({
           hour: 0,
           minute: 0,
         },
-        effectiveTimeZone,
+        selectionTimeZone,
       )
     }
 
@@ -332,7 +333,7 @@ function DateTimePicker({
         hour: toHour24(h, p, is12h),
         minute: m,
       },
-      effectiveTimeZone,
+      selectionTimeZone,
     )
   }
 
@@ -376,9 +377,10 @@ function DateTimePicker({
   const minutes = Array.from({ length: 12 }, (_, i) => i * 5)
 
   const displayText = value
-    ? formatDisplay(value, locale, mode, effectiveTimeZone)
+    ? formatDisplay(value, locale, mode, displayTimeZone)
     : placeholder
-  const timezoneDisplay = getTimezoneDisplay(effectiveTimeZone)
+  const displayTimezoneDisplay = getTimezoneDisplay(displayTimeZone)
+  const selectionTimezoneDisplay = getTimezoneDisplay(selectionTimeZone)
 
   return (
     <div className="flex items-center gap-2">
@@ -395,11 +397,13 @@ function DateTimePicker({
           >
             <CalendarDays className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate">{displayText}</span>
-            {value && timezoneDisplay && (
+            {value && displayTimezoneDisplay && (
               <div className="ml-0 max-w-[65px] shrink-0 text-left text-[11px] leading-[1.1] text-muted-foreground">
-                <span className="block truncate">{timezoneDisplay.label}</span>
-                {timezoneDisplay.offset && (
-                  <span className="block truncate">({timezoneDisplay.offset})</span>
+                <span className="block truncate">{displayTimezoneDisplay.label}</span>
+                {displayTimezoneDisplay.offset && (
+                  <span className="block truncate">
+                    ({displayTimezoneDisplay.offset})
+                  </span>
                 )}
               </div>
             )}
@@ -456,11 +460,15 @@ function DateTimePicker({
                     </SelectContent>
                   </Select>
                 )}
-                {timezoneDisplay && (
+                {selectionTimezoneDisplay && (
                   <div className="ml-auto min-w-0 max-w-[100px] pl-3 text-left text-xs leading-[1.1] text-muted-foreground">
-                    <span className="block truncate">{timezoneDisplay.label}</span>
-                    {timezoneDisplay.offset && (
-                      <span className="block truncate">({timezoneDisplay.offset})</span>
+                    <span className="block truncate">
+                      {selectionTimezoneDisplay.label}
+                    </span>
+                    {selectionTimezoneDisplay.offset && (
+                      <span className="block truncate">
+                        ({selectionTimezoneDisplay.offset})
+                      </span>
                     )}
                   </div>
                 )}
