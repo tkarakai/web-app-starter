@@ -6,6 +6,8 @@ import { AnnouncementBanner } from "@repo/design-system";
 
 const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 const ANNOUNCEMENT_ENDPOINT_PATH = "/api/announcements/active";
+const ANNOUNCEMENT_POLL_INTERVAL_MS = 15_000;
+const ANNOUNCEMENT_REQUEST_TIMEOUT_MS = 8_000;
 
 function getConvexSiteUrlCandidates(): string[] {
   const fromEnv = process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
@@ -46,11 +48,25 @@ export function AnnouncementBannerHost() {
 
   React.useEffect(() => {
     let cancelled = false;
+    let pollTimeoutId: number | null = null;
+    let activeController: { abort: () => void } | null = null;
+
     const loadAnnouncement = async () => {
       for (const baseUrl of getConvexSiteUrlCandidates()) {
+        if (cancelled) {
+          return;
+        }
+
+        const requestController = new window.AbortController();
+        activeController = requestController;
+        const requestTimeoutId = window.setTimeout(() => {
+          requestController.abort();
+        }, ANNOUNCEMENT_REQUEST_TIMEOUT_MS);
+
         try {
           const res = await fetch(`${baseUrl}${ANNOUNCEMENT_ENDPOINT_PATH}`, {
             cache: "no-store",
+            signal: requestController.signal,
           });
           if (!res.ok) {
             continue;
@@ -64,6 +80,11 @@ export function AnnouncementBannerHost() {
           return;
         } catch {
           // Try the next candidate URL.
+        } finally {
+          window.clearTimeout(requestTimeoutId);
+          if (activeController === requestController) {
+            activeController = null;
+          }
         }
       }
 
@@ -72,14 +93,24 @@ export function AnnouncementBannerHost() {
       }
     };
 
-    void loadAnnouncement();
-    const intervalId = window.setInterval(() => {
-      void loadAnnouncement();
-    }, 15_000);
+    const runPollingLoop = async () => {
+      await loadAnnouncement();
+      if (cancelled) {
+        return;
+      }
+      pollTimeoutId = window.setTimeout(() => {
+        void runPollingLoop();
+      }, ANNOUNCEMENT_POLL_INTERVAL_MS);
+    };
+
+    void runPollingLoop();
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
+      if (pollTimeoutId !== null) {
+        window.clearTimeout(pollTimeoutId);
+      }
+      activeController?.abort();
     };
   }, []);
 
