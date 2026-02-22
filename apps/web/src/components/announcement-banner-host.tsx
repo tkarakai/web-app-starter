@@ -23,10 +23,14 @@ export function AnnouncementBannerHost({
   const pathname = usePathname();
   const announcement = useQuery(api.announcements.getActivePublic);
   const [dismissedId, setDismissedId] = React.useState<string | null>(null);
+  const [hasHydratedDismissal, setHasHydratedDismissal] = React.useState(false);
   const bannerContainerRef = React.useRef<HTMLDivElement | null>(null);
   const isDashboardRoute = pathname?.split("/").includes("dashboard") ?? false;
   const shouldHide = hideOnDashboard && isDashboardRoute;
-  const isVisible = !shouldHide && Boolean(announcement && dismissedId !== announcement._id);
+  const isVisible =
+    !shouldHide &&
+    hasHydratedDismissal &&
+    Boolean(announcement && dismissedId !== announcement._id);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -34,8 +38,10 @@ export function AnnouncementBannerHost({
       setDismissedId(window.localStorage.getItem(LOCAL_STORAGE_DISMISS_KEY));
     } catch {
       setDismissedId(null);
+    } finally {
+      setHasHydratedDismissal(true);
     }
-  }, [announcement?._id]);
+  }, []);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -69,6 +75,7 @@ export function AnnouncementBannerHost({
   }, [fixed, isVisible, announcement?._id]);
 
   if (shouldHide) return null;
+  if (!hasHydratedDismissal) return null;
   if (!announcement) return null;
   if (dismissedId === announcement._id) return null;
 
