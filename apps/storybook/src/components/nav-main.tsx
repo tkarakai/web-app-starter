@@ -180,6 +180,7 @@ export function NavMain({ items, query = "", label = "Components" }: { items: Na
                   <SidebarMenuButton
                     tooltip={item.title}
                     isActive={isCategoryActive}
+                    closeOnSelectMobile
                     className={
                       isCategoryActive
                         ? "bg-sidebar-primary/10 font-semibold text-sidebar-primary"

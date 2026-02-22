@@ -25,6 +25,12 @@ import {
   Skeleton,
   Switch,
 } from "@repo/design-system";
+import {
+  getOnboardingChangeCopy,
+  normalizeOnboardingPolicy,
+  type OnboardingPolicy,
+} from "@/components/onboarding/onboarding-policy-copy";
+import { OnboardingModeTransition } from "@/components/onboarding/onboarding-mode-transition";
 import { EmailTemplateEditor } from "@/components/waitlist/email-template-editor";
 
 export function WaitlistFeatureCard() {
@@ -102,6 +108,17 @@ export function WaitlistFeatureCard() {
   const isLoading = onboardingType === undefined;
   const isEnabled = onboardingType === "publicWaitlist";
   const mode = typeof onboardingType === "string" ? onboardingType : "inviteOnly";
+  const currentPolicy = normalizeOnboardingPolicy(onboardingType);
+  const nextPolicy: OnboardingPolicy | null =
+    confirmToggle === null
+      ? null
+      : confirmToggle
+        ? "publicWaitlist"
+        : "inviteOnly";
+  const confirmCopy = getOnboardingChangeCopy(
+    currentPolicy,
+    nextPolicy ?? currentPolicy
+  );
 
   return (
     <>
@@ -186,21 +203,19 @@ export function WaitlistFeatureCard() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmToggle
-                ? "Enable public waitlist?"
-                : "Disable public waitlist?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmToggle
-                ? "Landing will show a \"Join Waitlist\" form. Public self-signup will be turned off."
-                : "Public waitlist will be disabled. Onboarding mode will switch to Invite Only."}
+              Review the mode transition before confirming.
             </AlertDialogDescription>
+            <OnboardingModeTransition
+              currentLabel={confirmCopy.currentLabel}
+              nextLabel={confirmCopy.nextLabel}
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleToggleConfirm}>
-              {confirmToggle ? "Enable" : "Disable"}
+              {confirmCopy.confirmLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

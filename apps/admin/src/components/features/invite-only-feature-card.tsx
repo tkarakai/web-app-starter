@@ -24,6 +24,11 @@ import {
   Skeleton,
   Switch,
 } from "@repo/design-system";
+import {
+  getOnboardingChangeCopy,
+  normalizeOnboardingPolicy,
+} from "@/components/onboarding/onboarding-policy-copy";
+import { OnboardingModeTransition } from "@/components/onboarding/onboarding-mode-transition";
 
 export function InviteOnlyFeatureCard() {
   const onboardingType = useQuery(api.appSettings.get, {
@@ -36,6 +41,8 @@ export function InviteOnlyFeatureCard() {
 
   const isLoading = onboardingType === undefined;
   const isEnabled = onboardingType === "inviteOnly";
+  const currentPolicy = normalizeOnboardingPolicy(onboardingType);
+  const confirmCopy = getOnboardingChangeCopy(currentPolicy, "inviteOnly");
 
   const handleToggleRequest = (checked: boolean) => {
     // This acts like a radio option: selecting this mode only.
@@ -105,14 +112,20 @@ export function InviteOnlyFeatureCard() {
       <AlertDialog open={confirmEnable} onOpenChange={setConfirmEnable}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Enable invite-only onboarding?</AlertDialogTitle>
+            <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Public waitlist and public self-signup will both be disabled.
+              Review the mode transition before confirming.
             </AlertDialogDescription>
+            <OnboardingModeTransition
+              currentLabel={confirmCopy.currentLabel}
+              nextLabel={confirmCopy.nextLabel}
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>Enable</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirm}>
+              {confirmCopy.confirmLabel}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -177,6 +177,7 @@ export function AppSidebar({
                         <SidebarMenuItem key={project._id}>
                           <SidebarMenuButton
                             isActive={project._id === selectedProjectId}
+                            closeOnSelectMobile
                             onClick={() => onSelectProject(project._id)}
                             tooltip={project.name}
                           >
