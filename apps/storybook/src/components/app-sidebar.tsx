@@ -186,9 +186,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarSearch query={query} onQueryChange={setQuery} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={foundationNavItems} query={query} label="Foundations" />
-        <NavMain items={navItems} query={query} label="Components" />
-        <NavMain items={patternNavItems} query={query} label="Patterns" />
+        <NavMain
+          items={foundationNavItems}
+          query={query}
+          label="Foundations"
+          labelHref="/foundations"
+        />
+        <NavMain
+          items={navItems}
+          query={query}
+          label="Components"
+          labelHref="/components"
+        />
+        <NavMain
+          items={patternNavItems}
+          query={query}
+          label="Patterns"
+          labelHref="/patterns"
+        />
       </SidebarContent>
       <SidebarFooter>
         <p className="text-xs text-muted-foreground text-center py-1">v0.0.1</p>

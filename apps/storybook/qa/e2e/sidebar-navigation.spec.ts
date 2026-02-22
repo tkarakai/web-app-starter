@@ -74,21 +74,20 @@ test.describe("Sidebar navigation", () => {
     await expect(categoryButton(page, "Actions")).toBeVisible();
   });
 
-  // ── 1. No hardcoded default-open categories ─────────────────────
+  // ── 1. Categories are expanded by default ───────────────────────
 
-  test("no category is hardcoded to be expanded by default", async ({
+  test("all categories are expanded by default", async ({
     page,
   }) => {
-    // Navigate to the dashboard (not a component/category route)
-    // so no auto-expand should trigger
+    // Navigate to a non-component route and confirm default expansion state.
     await page.goto("/dashboard");
     await expect(categoryButton(page, "Actions")).toBeVisible();
 
     for (const cat of CATEGORIES) {
       expect(
         await isCategoryExpanded(page, cat),
-        `"${cat}" should be collapsed`,
-      ).toBe(false);
+        `"${cat}" should be expanded`,
+      ).toBe(true);
     }
   });
 
@@ -97,32 +96,33 @@ test.describe("Sidebar navigation", () => {
   test("sidebar categories hold their expand/collapse state when navigating between components", async ({
     page,
   }) => {
-    // "Actions" is auto-expanded (because we're on /components/button)
+    // Categories are expanded by default.
     expect(await isCategoryExpanded(page, "Actions")).toBe(true);
 
-    // Manually expand "Feedback"
+    // Manually collapse "Feedback"
     await toggleCategory(page, "Feedback");
-    expect(await isCategoryExpanded(page, "Feedback")).toBe(true);
+    expect(await isCategoryExpanded(page, "Feedback")).toBe(false);
 
-    // Click a component in "Feedback"
-    await subItemLinks(page, "Feedback")
-      .filter({ hasText: "Alert" })
-      .click();
-    await expect(page).toHaveURL(/\/components\/alert$/);
-
-    // Both should still be expanded
-    expect(await isCategoryExpanded(page, "Actions")).toBe(true);
-    expect(await isCategoryExpanded(page, "Feedback")).toBe(true);
-
-    // Click a component in "Actions"
+    // Navigate to another component in "Actions"
     await subItemLinks(page, "Actions")
       .filter({ hasText: "Toggle" })
       .click();
     await expect(page).toHaveURL(/\/components\/toggle$/);
 
-    // Both should still be expanded
+    // "Feedback" should stay collapsed and "Actions" should stay expanded.
+    expect(await isCategoryExpanded(page, "Feedback")).toBe(false);
     expect(await isCategoryExpanded(page, "Actions")).toBe(true);
-    expect(await isCategoryExpanded(page, "Feedback")).toBe(true);
+
+    // Navigate to a component in "Form"
+    await subItemLinks(page, "Form")
+      .filter({ hasText: "Checkbox" })
+      .click();
+    await expect(page).toHaveURL(/\/components\/checkbox$/);
+
+    // Collapsed/expanded state should still persist.
+    expect(await isCategoryExpanded(page, "Feedback")).toBe(false);
+    expect(await isCategoryExpanded(page, "Actions")).toBe(true);
+    expect(await isCategoryExpanded(page, "Form")).toBe(true);
   });
 
   // ── 3. Category click shows cards page ──────────────────────────
@@ -199,11 +199,8 @@ test.describe("Sidebar navigation", () => {
   test("clicking category breadcrumb link does not collapse other sidebar categories", async ({
     page,
   }) => {
-    // On /components/button — "Actions" is auto-expanded
+    // Categories are expanded by default.
     expect(await isCategoryExpanded(page, "Actions")).toBe(true);
-
-    // Manually expand "Overlay"
-    await toggleCategory(page, "Overlay");
     expect(await isCategoryExpanded(page, "Overlay")).toBe(true);
 
     // Click the "Actions" breadcrumb dropdown, then the Actions menuitem
@@ -259,33 +256,36 @@ test.describe("Sidebar navigation", () => {
     await expect(inputItem).not.toHaveAttribute("data-active", "true");
   });
 
-  // ── 10. Auto-expand when selecting from cards page ──────────────
+  // ── 10. Fresh page loads still start expanded ───────────────────
 
-  test("category auto-expands when navigating to a component whose category was collapsed", async ({
+  test("fresh navigation starts with categories expanded", async ({
     page,
   }) => {
-    // "Layout" should be collapsed (we're on /components/button, "Actions" is expanded)
+    // Collapse "Layout" in the current client session.
+    await toggleCategory(page, "Layout");
     expect(await isCategoryExpanded(page, "Layout")).toBe(false);
 
-    // Navigate directly to a Layout component
+    // Full navigation reloads the page; defaults should apply again.
     await page.goto("/components/tabs");
 
-    // "Layout" should now be auto-expanded (wait for sidebar state to settle after navigation)
+    // "Layout" is expanded on fresh load because default state is expanded.
     await expect
       .poll(() => isCategoryExpanded(page, "Layout"), { timeout: 5000 })
       .toBe(true);
   });
 
-  test("clicking a card on the category page auto-expands the target category in sidebar", async ({
+  test("category is expanded after fresh load before clicking a category card", async ({
     page,
   }) => {
+    // Fresh load resets to defaults (expanded).
     await page.goto("/components/category/form");
+    expect(await isCategoryExpanded(page, "Form")).toBe(true);
 
     // Click a card to navigate to the component page
     await page.locator("a.group").filter({ hasText: "Checkbox" }).click();
     await expect(page).toHaveURL(/\/components\/checkbox$/);
 
-    // "Form" should be expanded and active
+    // "Form" should stay expanded and still be active.
     expect(await isCategoryExpanded(page, "Form")).toBe(true);
     await expect(categoryButton(page, "Form")).toHaveAttribute(
       "data-active",
