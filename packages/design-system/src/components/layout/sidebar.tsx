@@ -761,22 +761,85 @@ const sidebarMenuButtonVariants = cva(
   }
 );
 
+function shouldCloseMobileSidebarOnSelect({
+  event,
+  closeOnSelectMobile,
+  currentTarget,
+}: {
+  event: React.MouseEvent<HTMLElement>;
+  closeOnSelectMobile?: boolean;
+  currentTarget: EventTarget | null;
+}): boolean {
+  if (event.defaultPrevented) {
+    return false;
+  }
+
+  if (closeOnSelectMobile) {
+    return true;
+  }
+
+  if (!(currentTarget instanceof HTMLAnchorElement)) {
+    return false;
+  }
+
+  const href = currentTarget.getAttribute("href");
+  if (!href) {
+    return false;
+  }
+
+  if (
+    currentTarget.target === "_blank" ||
+    currentTarget.hasAttribute("download") ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.altKey ||
+    event.shiftKey
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function SidebarMenuButton({
   asChild = false,
   isActive = false,
+  closeOnSelectMobile = false,
   variant = "default",
   size = "default",
   tooltip,
   className,
+  onClick,
   ref,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean;
   isActive?: boolean;
+  closeOnSelectMobile?: boolean;
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? SlotPrimitive.Slot :"button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, state, setOpenMobile } = useSidebar();
+
+  const handleClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(event);
+      if (!isMobile) {
+        return;
+      }
+
+      const shouldClose = shouldCloseMobileSidebarOnSelect({
+        event: event as React.MouseEvent<HTMLElement>,
+        closeOnSelectMobile,
+        currentTarget: event.currentTarget as EventTarget | null,
+      });
+
+      if (shouldClose) {
+        setOpenMobile(false);
+      }
+    },
+    [closeOnSelectMobile, isMobile, onClick, setOpenMobile]
+  );
 
   const button = (
     <Comp
@@ -786,6 +849,7 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      onClick={handleClick}
       {...props}
     />
   );
@@ -935,15 +999,39 @@ function SidebarMenuSubButton({
   asChild = false,
   size = "md",
   isActive,
+  closeOnSelectMobile = false,
   className,
+  onClick,
   ref,
   ...props
 }: React.ComponentProps<"a"> & {
   asChild?: boolean;
   size?: "sm" | "md";
   isActive?: boolean;
+  closeOnSelectMobile?: boolean;
 }) {
   const Comp = asChild ? SlotPrimitive.Slot :"a";
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleClick = React.useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      onClick?.(event);
+      if (!isMobile) {
+        return;
+      }
+
+      const shouldClose = shouldCloseMobileSidebarOnSelect({
+        event,
+        closeOnSelectMobile,
+        currentTarget: event.currentTarget,
+      });
+
+      if (shouldClose) {
+        setOpenMobile(false);
+      }
+    },
+    [closeOnSelectMobile, isMobile, onClick, setOpenMobile]
+  );
 
   return (
     <Comp
@@ -960,6 +1048,7 @@ function SidebarMenuSubButton({
         "group-data-[collapsible=icon]:hidden",
         className
       )}
+      onClick={handleClick}
       {...props}
     />
   );

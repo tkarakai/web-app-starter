@@ -6,16 +6,10 @@ import { Info } from "lucide-react";
 
 import { api } from "@repo/backend";
 import { Alert, AlertTitle } from "@repo/design-system";
-
-function getOnboardingLabel(value: unknown): string {
-  if (value === "publicWaitlist" || value === "waitlist") {
-    return "Public Waitlist";
-  }
-  if (value === "publicSignup" || value === "signup") {
-    return "Public Self-Signup";
-  }
-  return "Invite Only";
-}
+import {
+  getOnboardingPolicyLabel,
+  normalizeOnboardingPolicy,
+} from "./onboarding-policy-copy";
 
 export function OnboardingModeNote() {
   const onboardingType = useQuery(api.appSettings.get, {
@@ -25,7 +19,7 @@ export function OnboardingModeNote() {
   const label =
     onboardingType === undefined
       ? "Checking current onboarding mode..."
-      : getOnboardingLabel(onboardingType);
+      : getOnboardingPolicyLabel(normalizeOnboardingPolicy(onboardingType));
 
   if (onboardingType === undefined) {
     return (
