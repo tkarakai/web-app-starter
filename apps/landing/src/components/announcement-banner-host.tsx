@@ -8,16 +8,22 @@ const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 const ANNOUNCEMENT_ENDPOINT_PATH = "/api/announcements/active";
 
 function getConvexSiteUrlCandidates(): string[] {
-  const fromEnv = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
-  const candidates = [
-    fromEnv,
-    "http://127.0.0.1:3211",
-    "http://localhost:3211",
-    "http://127.0.0.1:3210",
-    "http://localhost:3210",
-  ].filter((value): value is string => Boolean(value && value.trim()));
+  const fromEnv = process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
+  const envCandidates = fromEnv ? [fromEnv] : [];
 
-  return [...new Set(candidates)];
+  if (process.env.NODE_ENV === "production") {
+    return envCandidates;
+  }
+
+  return [
+    ...new Set([
+      ...envCandidates,
+      "http://127.0.0.1:3211",
+      "http://localhost:3211",
+      "http://127.0.0.1:3210",
+      "http://localhost:3210",
+    ]),
+  ];
 }
 
 type ActiveAnnouncement = {
