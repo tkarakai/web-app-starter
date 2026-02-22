@@ -659,13 +659,13 @@ export function AnnouncementsFeatureCard() {
               id="show-archived"
               checked={showArchived}
               onCheckedChange={(checked) => setShowArchived(checked === true)}
-              aria-label="Show Arcived"
+              aria-label="Show Archived"
             />
             <Label
               htmlFor="show-archived"
               className="cursor-pointer text-sm font-normal text-muted-foreground"
             >
-              Show Arcived
+              Show Archived
             </Label>
           </div>
           <Button size="sm" onClick={openCreate}>
