@@ -71,6 +71,8 @@ export function AdminSidebar({
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const sectionItemsIndentClass = "ps-3 group-data-[collapsible=icon]:ps-0";
+  const sectionLabelClass =
+    "mb-1 h-7 cursor-pointer rounded-sm px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-primary hover:text-sidebar-primary/80";
   const [manageOpen, setManageOpen] = React.useState(true);
   const [observabilityOpen, setObservabilityOpen] = React.useState(true);
   const [configureOpen, setConfigureOpen] = React.useState(true);
@@ -120,7 +122,7 @@ export function AdminSidebar({
             className="group/configure"
           >
             <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="cursor-pointer">
+              <SidebarGroupLabel className={sectionLabelClass}>
                 <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/configure:rotate-90" />
                 Configure
               </SidebarGroupLabel>
@@ -151,7 +153,7 @@ export function AdminSidebar({
         <SidebarGroup>
           <Collapsible open={manageOpen} onOpenChange={setManageOpen} className="group/manage">
             <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="cursor-pointer">
+              <SidebarGroupLabel className={sectionLabelClass}>
                 <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/manage:rotate-90" />
                 Manage
               </SidebarGroupLabel>
@@ -186,7 +188,7 @@ export function AdminSidebar({
             className="group/observability"
           >
             <CollapsibleTrigger asChild>
-              <SidebarGroupLabel className="cursor-pointer">
+              <SidebarGroupLabel className={sectionLabelClass}>
                 <ChevronRight className="mr-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/observability:rotate-90" />
                 Monitor
               </SidebarGroupLabel>
