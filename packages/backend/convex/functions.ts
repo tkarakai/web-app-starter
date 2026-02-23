@@ -6,26 +6,58 @@ import type { ObjectType, PropertyValidators } from "convex/values";
 
 import { authComponent } from "./auth";
 import { rateLimit } from "./rateLimits";
+import {
+  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  getEmailVerificationRequiredKey,
+  getPolicyScopeFromRole,
+} from "./securityPolicies";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
-const EMAIL_VERIFICATION_REQUIRED_KEY = "emailVerificationRequired";
-
-async function isEmailVerificationRequired(ctx: QueryCtx): Promise<boolean> {
+async function getBooleanSetting(
+  ctx: QueryCtx,
+  key: string,
+  defaultValue: boolean,
+): Promise<boolean> {
   const setting = await ctx.db
     .query("appSettings")
-    .withIndex("by_key", (q) => q.eq("key", EMAIL_VERIFICATION_REQUIRED_KEY))
+    .withIndex("by_key", (q) => q.eq("key", key))
     .unique();
 
-  if (!setting) return true;
+  if (!setting) return defaultValue;
 
   try {
     return JSON.parse(setting.value) === true;
   } catch {
-    // Fail closed: keep verification required if the setting value is malformed.
-    return true;
+    return defaultValue;
   }
+}
+
+async function isEmailVerificationRequired(
+  ctx: QueryCtx,
+  user: Record<string, unknown>,
+): Promise<boolean> {
+  const scope = getPolicyScopeFromRole(user.role);
+  const scopedKey = getEmailVerificationRequiredKey(scope);
+  const scoped = await ctx.db
+    .query("appSettings")
+    .withIndex("by_key", (q) => q.eq("key", scopedKey))
+    .unique();
+
+  if (scoped) {
+    try {
+      return JSON.parse(scoped.value) === true;
+    } catch {
+      return true;
+    }
+  }
+
+  if (scope === "user") {
+    return await getBooleanSetting(ctx, LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true);
+  }
+
+  return true;
 }
 
 /**
@@ -37,7 +69,10 @@ async function getAuth(ctx: QueryCtx) {
   const user = await authComponent.safeGetAuthUser(ctx);
   if (!user) return null;
 
-  const emailVerificationRequired = await isEmailVerificationRequired(ctx);
+  const emailVerificationRequired = await isEmailVerificationRequired(
+    ctx,
+    user as Record<string, unknown>,
+  );
   if (emailVerificationRequired && (user as Record<string, unknown>).emailVerified !== true) {
     return null;
   }

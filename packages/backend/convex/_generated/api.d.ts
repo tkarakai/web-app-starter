@@ -29,6 +29,7 @@ import type * as onboardingType from "../onboardingType.js";
 import type * as parseUserAgent from "../parseUserAgent.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
+import type * as securityPolicies from "../securityPolicies.js";
 import type * as sendAuthEmail from "../sendAuthEmail.js";
 import type * as sessions from "../sessions.js";
 import type * as tasks from "../tasks.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   parseUserAgent: typeof parseUserAgent;
   projects: typeof projects;
   rateLimits: typeof rateLimits;
+  securityPolicies: typeof securityPolicies;
   sendAuthEmail: typeof sendAuthEmail;
   sessions: typeof sessions;
   tasks: typeof tasks;

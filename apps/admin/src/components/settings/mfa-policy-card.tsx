@@ -25,9 +25,18 @@ import {
   Switch,
 } from "@repo/design-system";
 
-export function MfaPolicyCard() {
+type Scope = "admin" | "user";
+
+const SETTINGS_KEY: Record<Scope, string> = {
+  user: "userMfaRequired",
+  admin: "adminMfaRequired",
+};
+
+export function MfaPolicyCard({ scope }: { scope: Scope }) {
+  const isAdminScope = scope === "admin";
+  const key = SETTINGS_KEY[scope];
   const mfaRequired = useQuery(api.appSettings.get, {
-    key: "emailMfaRequired",
+    key,
   });
   const setSetting = useMutation(api.appSettings.set);
 
@@ -44,11 +53,11 @@ export function MfaPolicyCard() {
     setConfirmToggle(null);
     setTogglePending(true);
     try {
-      await setSetting({ key: "emailMfaRequired", value: String(checked) });
+      await setSetting({ key, value: String(checked) });
       toast.success(
         checked
-          ? "2FA requirement enabled"
-          : "2FA requirement disabled",
+          ? `2FA requirement enabled for ${scope}s`
+          : `2FA requirement disabled for ${scope}s`,
       );
     } catch (err) {
       toast.error(
@@ -72,10 +81,14 @@ export function MfaPolicyCard() {
             </div>
             <div>
               <CardTitle className="text-base">
-                Two-Factor Authentication Policy
+                {isAdminScope
+                  ? "Admin Two-Factor Authentication Policy"
+                  : "User Two-Factor Authentication Policy"}
               </CardTitle>
               <CardDescription>
-                Require authenticator app (TOTP) 2FA for all users
+                {isAdminScope
+                  ? "Require authenticator app (TOTP) 2FA for admins"
+                  : "Require authenticator app (TOTP) 2FA for users"}
               </CardDescription>
             </div>
           </div>
@@ -101,8 +114,8 @@ export function MfaPolicyCard() {
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isEnabled
-                  ? "All users will be required to enter a 6-digit code from their authenticator app at sign-in."
-                  : "2FA is optional. Users can still enable authenticator app verification in their account settings."}
+                  ? `All ${scope}s will be required to enter a 6-digit code from their authenticator app at sign-in.`
+                  : `2FA is optional for ${scope}s.`}
               </p>
             </>
           )}
@@ -119,13 +132,13 @@ export function MfaPolicyCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmToggle
-                ? "Require 2FA for all users?"
-                : "Make 2FA optional?"}
+                ? `Require 2FA for all ${scope}s?`
+                : `Make 2FA optional for ${scope}s?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
-                ? "All users will be required to verify sign-in with an authenticator app code."
-                : "2FA will no longer be mandatory. Users who already enabled 2FA can keep using it."}
+                ? `All ${scope}s will be required to verify sign-in with an authenticator app code.`
+                : `2FA will no longer be mandatory for ${scope}s.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

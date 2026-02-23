@@ -41,7 +41,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
   // Read admin setting so we know whether to gate unverified users after sign-up.
   const emailVerifRequired = useQuery(api.appSettings.getPublic, {
-    key: "emailVerificationRequired",
+    key: "userEmailVerificationRequired",
   });
 
   const [name, setName] = React.useState("");

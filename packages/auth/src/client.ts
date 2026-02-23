@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import { convexClient } from "@convex-dev/better-auth/client/plugins";
+import { passkeyClient } from "@better-auth/passkey/client";
 import {
   adminClient,
   emailOTPClient,
@@ -38,6 +39,7 @@ export const authClient = createAuthClient({
     emailOTPClient(),
     magicLinkClient(),
     twoFactorClient(),
+    passkeyClient(),
   ],
   fetchOptions: {
     onError: async (context) => {

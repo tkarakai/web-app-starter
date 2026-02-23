@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { UserCog } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -29,8 +29,16 @@ import { SecuritySection } from "@/components/settings/security-section";
 
 export function AccountClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const authUser = useAuthUser();
   const td = useTranslations("dashboard");
+  const [tab, setTab] = React.useState<"profile" | "security">(
+    searchParams.get("tab") === "security" ? "security" : "profile",
+  );
+
+  React.useEffect(() => {
+    setTab(searchParams.get("tab") === "security" ? "security" : "profile");
+  }, [searchParams]);
 
   const displayName = authUser?.name ?? "Anonymous";
   const displayEmail = authUser?.email;
@@ -87,7 +95,7 @@ export function AccountClient() {
 
             <Separator />
 
-            <Tabs defaultValue="profile">
+            <Tabs value={tab} onValueChange={(value) => setTab(value === "security" ? "security" : "profile")}>
               <TabsList>
                 <TabsTrigger value="profile">{td("profile.title")}</TabsTrigger>
                 <TabsTrigger value="security">{td("security")}</TabsTrigger>

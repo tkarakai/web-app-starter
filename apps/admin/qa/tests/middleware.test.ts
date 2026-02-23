@@ -43,6 +43,13 @@ describe("proxy", () => {
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
     });
+
+    it("redirects /settings to /sign-in when no session cookie", () => {
+      const response = proxy(createRequest("/settings"));
+
+      expect(response.status).toBe(307);
+      expect(new URL(response.headers.get("location")!).pathname).toBe("/sign-in");
+    });
   });
 
   describe("protected routes (authenticated)", () => {
@@ -59,6 +66,14 @@ describe("proxy", () => {
         createRequest("/dashboard", {
           "__Secure-better-auth.session_token": "token-123",
         })
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it("allows /settings with dev session cookie", () => {
+      const response = proxy(
+        createRequest("/settings", { "better-auth.session_token": "token-123" })
       );
 
       expect(response.status).toBe(200);

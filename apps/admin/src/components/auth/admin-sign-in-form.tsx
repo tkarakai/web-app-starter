@@ -3,7 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
 
+import { api } from "@repo/backend";
 import { authClient, formatAuthError } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import {
@@ -18,6 +20,16 @@ import {
   PasswordInput,
 } from "@repo/design-system";
 
+type PasskeyPolicy = "disabled" | "optional" | "required";
+
+function toPasskeyPolicy(value: unknown): PasskeyPolicy {
+  return value === "disabled" || value === "required" ? value : "optional";
+}
+
+function toBoolean(value: unknown, defaultValue: boolean): boolean {
+  return typeof value === "boolean" ? value : defaultValue;
+}
+
 export function AdminSignInForm() {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
@@ -30,6 +42,78 @@ export function AdminSignInForm() {
   const [totpCode, setTotpCode] = React.useState("");
   const [useBackupCode, setUseBackupCode] = React.useState(false);
   const [backupCode, setBackupCode] = React.useState("");
+  const userMfaRequired = useQuery(api.appSettings.getPublic, {
+    key: "userMfaRequired",
+  });
+  const adminMfaRequired = useQuery(api.appSettings.getPublic, {
+    key: "adminMfaRequired",
+  });
+  const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+    key: "userPasskeyPolicy",
+  });
+  const adminPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+    key: "adminPasskeyPolicy",
+  });
+
+  const getRolePolicies = React.useCallback((role: unknown) => {
+    const isAdmin = role === "admin";
+    return {
+      mfaRequired: toBoolean(isAdmin ? adminMfaRequired : userMfaRequired, false),
+      passkeyPolicy: toPasskeyPolicy(
+        isAdmin ? adminPasskeyPolicy : userPasskeyPolicy,
+      ),
+    };
+  }, [adminMfaRequired, adminPasskeyPolicy, userMfaRequired, userPasskeyPolicy]);
+
+  const enforcePostSignInPolicies = React.useCallback(async ({
+    usedPasskey,
+  }: {
+    usedPasskey: boolean;
+  }): Promise<boolean> => {
+    const sessionResult = await authClient.getSession();
+    const sessionUser = sessionResult.data?.user as Record<string, unknown> | undefined;
+    if (!sessionUser) return false;
+
+    const policies = getRolePolicies(sessionUser.role);
+    if (usedPasskey && policies.passkeyPolicy === "disabled") {
+      await authClient.signOut();
+      setError("Passkey sign-in is disabled for your account.");
+      return true;
+    }
+
+    if (policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
+      router.push("/settings?tab=security&enforce=mfa");
+      return true;
+    }
+
+    if (policies.passkeyPolicy === "required") {
+      const passkeyResult = await (authClient as unknown as {
+        passkey?: {
+          listUserPasskeys?: () => Promise<{ data?: unknown[]; error?: unknown }>;
+        };
+      }).passkey?.listUserPasskeys?.();
+
+      if (!passkeyResult || passkeyResult.error) {
+        await authClient.signOut();
+        setError("Unable to verify passkey policy. Please sign in with passkey.");
+        return true;
+      }
+
+      const passkeys = passkeyResult.data ?? [];
+      if (passkeys.length > 0 && !usedPasskey) {
+        await authClient.signOut();
+        setError("Passkey sign-in is required for your account.");
+        return true;
+      }
+
+      if (passkeys.length === 0) {
+        router.push("/settings?tab=security&enforce=passkey");
+        return true;
+      }
+    }
+
+    return false;
+  }, [getRolePolicies, router]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,9 +135,43 @@ export function AdminSignInForm() {
       ) {
         setTwoFactorRequired(true);
       } else {
+        if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
         broadcastAuth();
         router.push("/dashboard");
       }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    if (!email.trim()) return;
+    setError(null);
+    setPending(true);
+    try {
+      const result = await (authClient as unknown as {
+        signIn: {
+          passkey: (args: {
+            email: string;
+            callbackURL: string;
+          }) => Promise<{ error?: { message?: string } }>;
+        };
+      }).signIn.passkey({
+        email: email.trim(),
+        callbackURL: "/dashboard",
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Passkey sign-in failed");
+        return;
+      }
+
+      if (await enforcePostSignInPolicies({ usedPasskey: true })) return;
+
+      broadcastAuth();
+      router.push("/dashboard");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -77,6 +195,7 @@ export function AdminSignInForm() {
         if (result.error) {
           setError(formatAuthError(result.error, "Invalid backup code"));
         } else {
+          if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           broadcastAuth();
           router.push("/dashboard");
         }
@@ -85,6 +204,7 @@ export function AdminSignInForm() {
         if (result.error) {
           setError(formatAuthError(result.error, "Invalid verification code"));
         } else {
+          if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           broadcastAuth();
           router.push("/dashboard");
         }
@@ -242,6 +362,15 @@ export function AdminSignInForm() {
           ) : null}
           <Button className="w-full" type="submit" disabled={pending}>
             {pending ? "Signing in..." : "Sign in"}
+          </Button>
+          <Button
+            className="w-full"
+            type="button"
+            variant="outline"
+            onClick={handlePasskeySignIn}
+            disabled={pending || !email.trim()}
+          >
+            Sign in with passkey
           </Button>
         </form>
       </CardContent>
