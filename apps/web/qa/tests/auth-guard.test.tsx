@@ -8,23 +8,41 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
-let mockUser: { name: string; email: string } | null = { name: "Test User", email: "test@example.com" };
+type MockUser = {
+  name: string;
+  email: string;
+  role?: string;
+  emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
+};
+
+let mockUser: MockUser | null = {
+  name: "Test User",
+  email: "test@example.com",
+  role: "user",
+  emailVerified: true,
+  twoFactorEnabled: true,
+};
 vi.mock("@convex-dev/better-auth/nextjs/client", () => ({
   usePreloadedAuthQuery: () => mockUser,
 }));
 
-let mockEmailVerifRequired: boolean | null | undefined = undefined;
+let mockPublicSettings: Record<string, unknown> = {};
 vi.mock("convex/react", () => ({
-  useQuery: () => mockEmailVerifRequired,
+  useQuery: (_query: unknown, args: { key: string }) => mockPublicSettings[args.key],
 }));
 
 let mockSession: { isPending: boolean; data: { user: { name: string; email: string }; session: object } | null } = {
   isPending: false,
   data: { user: { name: "Test User", email: "test@example.com" }, session: {} },
 };
+const mockListUserPasskeys = vi.fn(async () => ({ data: [{ id: "pk-1" }] }));
 vi.mock("@repo/auth/client", () => ({
   authClient: {
     useSession: () => mockSession,
+    passkey: {
+      listUserPasskeys: () => mockListUserPasskeys(),
+    },
   },
 }));
 
@@ -52,8 +70,16 @@ describe("AuthGuard", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockReplace.mockClear();
-    mockUser = { name: "Test User", email: "test@example.com" };
-    mockEmailVerifRequired = undefined;
+    mockUser = {
+      name: "Test User",
+      email: "test@example.com",
+      role: "user",
+      emailVerified: true,
+      twoFactorEnabled: true,
+    };
+    mockPublicSettings = {};
+    mockListUserPasskeys.mockReset();
+    mockListUserPasskeys.mockResolvedValue({ data: [{ id: "pk-1" }] });
     mockSession = {
       isPending: false,
       data: { user: { name: "Test User", email: "test@example.com" }, session: {} },
@@ -169,5 +195,48 @@ describe("AuthGuard", () => {
 
     expect(screen.getByTestId("name")).toHaveTextContent("Session User");
     expect(screen.getByTestId("email")).toHaveTextContent("session@example.com");
+  });
+
+  it("redirects to security settings when MFA is required but not enabled", async () => {
+    mockPublicSettings.userMfaRequired = true;
+    mockPublicSettings.userPasskeyPolicy = "optional";
+    mockUser = {
+      name: "Test User",
+      email: "test@example.com",
+      role: "user",
+      emailVerified: true,
+      twoFactorEnabled: false,
+    };
+
+    render(
+      <AuthGuard preloadedUser={{} as never}>
+        <div>Content</div>
+      </AuthGuard>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard/settings?tab=security&enforce=mfa");
+  });
+
+  it("redirects to security settings when passkey is required but none exist", async () => {
+    mockPublicSettings.userMfaRequired = false;
+    mockPublicSettings.userPasskeyPolicy = "required";
+    mockListUserPasskeys.mockResolvedValue({ data: [] });
+
+    render(
+      <AuthGuard preloadedUser={{} as never}>
+        <div>Content</div>
+      </AuthGuard>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard/settings?tab=security&enforce=passkey");
   });
 });
