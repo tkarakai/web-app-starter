@@ -180,6 +180,7 @@ For each Convex project, go to **Deployment Settings → Environment Variables**
 | Variable | Staging project value | Production project value |
 |----------|-----------------------|--------------------------|
 | `SITE_URL` | `https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app` | `https://your-production-web.vercel.app,https://your-production-admin.vercel.app` |
+| `PASSKEY_RP_ID` *(optional)* | `staging.yourdomain.com` | `yourdomain.com` |
 | `LANDING_URL` | `https://your-staging-landing.vercel.app` | `https://yourdomain.com` |
 | `BETTER_AUTH_SECRET` | *(generate — see below)* | *(generate — see below)* |
 
@@ -202,6 +203,9 @@ CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex env set SITE_URL "https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex env set PASSKEY_RP_ID "staging.yourdomain.com"
+
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex env set LANDING_URL "https://your-staging-landing.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
@@ -213,6 +217,9 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set SITE_URL "https://your-production-web.vercel.app,https://your-production-admin.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set PASSKEY_RP_ID "yourdomain.com"
+
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set LANDING_URL "https://yourdomain.com"
 
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
@@ -220,6 +227,8 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 ```
 
 > **How `SITE_URL` works:** The auth config in `packages/backend/convex/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
+>
+> **How `PASSKEY_RP_ID` works:** Passkeys use a single relying party ID (RP ID). If web/admin must both use passkeys, set `PASSKEY_RP_ID` to a shared parent domain (for example `staging.example.com` for `web.staging.example.com` and `admin.staging.example.com`). With default `*.vercel.app` hostnames, this shared RP setup is generally not viable; use custom domains.
 >
 > **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Without it, the landing app's cross-origin requests to Convex would be blocked.
 
@@ -397,7 +406,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Vercel Root Directory set to `apps/<app>` on all 6 projects (step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
-- [ ] Convex environment variables set: `SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` per project (step 2c)
+- [ ] Convex environment variables set: `SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)
 - [ ] `BETTER_AUTH_SECRET` is unique per project (staging ≠ production)
 - [ ] Vercel environment variables set (Production scope) on all 6 projects (step 2d)
 - [ ] GitHub `staging` environment created (step 2e)
@@ -412,7 +421,7 @@ Run through this checklist before the first deployment or any major infrastructu
 # Verify Convex env vars (run for each project using its deploy key)
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' bunx convex env list
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' bunx convex env list
-# Each should show: SITE_URL, LANDING_URL, BETTER_AUTH_SECRET
+# Each should show: SITE_URL, LANDING_URL, BETTER_AUTH_SECRET (and PASSKEY_RP_ID if used)
 
 # Verify GitHub secrets are set (no way to read values, but check they exist)
 gh secret list
@@ -811,6 +820,7 @@ No automated alerting is configured by default. Options by team size:
 | Convex deploy fails | Wrong deploy key for the environment | Check `CONVEX_DEPLOY_KEY` secret matches the target Convex project |
 | App shows stale content | CDN cache or browser cache | Hard refresh; check Vercel deployment URL directly |
 | Auth not working after deploy | `SITE_URL` mismatch in Convex env vars | Verify `SITE_URL` matches the actual web/admin app URL(s) |
+| Passkey registration fails with RP ID/domain error | RP ID does not match current app hostname | Set `PASSKEY_RP_ID` to a shared parent domain and use custom web/admin subdomains under it |
 | Waitlist form CORS errors on landing | `LANDING_URL` not set or mismatched in Convex env vars | Verify `LANDING_URL` matches the landing app's URL |
 | `BETTER_AUTH_SECRET` error | Secret not set or empty | Run `bunx convex env list` in the target project (set `CONVEX_DEPLOYMENT` first) |
 | Vercel build fails | Missing environment variables | Check Vercel dashboard > Project > Settings > Environment Variables |
