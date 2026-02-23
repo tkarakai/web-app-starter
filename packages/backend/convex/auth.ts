@@ -38,6 +38,17 @@ function positiveInt(envVar: string | undefined, defaultValue: number): number {
 const siteUrlRaw = process.env.SITE_URL || "http://localhost:3001";
 const siteUrls = siteUrlRaw.split(",").map((url) => url.trim()).filter(Boolean);
 const siteUrl = siteUrls[0]; // Primary URL for baseURL
+// Optional override for passkey RP ID. Use a shared parent domain (hostname only)
+// when web/admin should both register and use the same passkeys.
+const passkeyRpId = (() => {
+  const raw = process.env.PASSKEY_RP_ID?.trim();
+  if (!raw) return undefined;
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return raw;
+  }
+})();
 
 // Custom plugin to set trusted origins for all app URLs
 const multiOriginPlugin = (): BetterAuthPlugin => ({
@@ -536,7 +547,7 @@ export const createAuthOptions = (
           });
         },
       }),
-      passkey(),
+      passkey(passkeyRpId ? { rpID: passkeyRpId } : undefined),
       convex({ authConfig }),
     ],
     rateLimit: {

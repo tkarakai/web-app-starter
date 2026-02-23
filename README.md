@@ -239,6 +239,8 @@ NEXT_PUBLIC_SITE_URL=https://your-app-domain.com
 ```bash
 bunx convex env set BETTER_AUTH_SECRET $(openssl rand -base64 32)
 bunx convex env set SITE_URL https://your-app-domain.com
+# Optional for passkeys across sibling subdomains (hostname only):
+# bunx convex env set PASSKEY_RP_ID your-shared-parent-domain.com
 ```
 
 Important: Better Auth validates request origins. If you are running the app locally
@@ -254,6 +256,7 @@ bunx convex env set BETTER_AUTH_TRUSTED_ORIGINS "http://localhost:3001,https://y
 Notes:
 - Better Auth data lives inside the same Convex deployment, so there is no separate auth database to provision.
 - The `SITE_URL` Convex env var must match your app URL for auth redirects to work.
+- Passkeys use a single RP ID. If web/admin are on different hostnames and both must use passkeys, set `PASSKEY_RP_ID` to a shared parent domain (for example `staging.example.com` for `web.staging.example.com` + `admin.staging.example.com`).
 
 ## Sample functionality
 
@@ -399,4 +402,3 @@ NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
 NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
 NEXT_PUBLIC_SITE_URL=https://app.example.com
 ```
-
