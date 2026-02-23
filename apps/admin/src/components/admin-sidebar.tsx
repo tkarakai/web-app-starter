@@ -13,6 +13,7 @@ import {
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -269,6 +270,10 @@ export function AdminSidebar({
               <DropdownMenuContent side="top" align="start" className="w-48">
                 <ThemeToggle className="mx-1 my-1" />
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => router.push("/settings")}>
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out

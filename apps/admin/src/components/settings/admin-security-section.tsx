@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
 
 import {
   Card,
@@ -14,18 +13,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "@repo/design-system";
-import { ChangePasswordForm } from "@/components/settings/change-password-form";
-import { PasskeySection } from "@/components/settings/passkey-section";
-import { TwoFactorSection } from "@/components/settings/two-factor-section";
-import { SessionsList } from "@/components/settings/sessions-list";
+import { AdminChangePasswordForm } from "@/components/settings/admin-change-password-form";
+import { AdminPasskeySection } from "@/components/settings/admin-passkey-section";
+import { AdminSessionsList } from "@/components/settings/admin-sessions-list";
+import { AdminTwoFactorSection } from "@/components/settings/admin-two-factor-section";
 
 function normalizeTab(value: string | null): "password" | "2fa" | "passkeys" | "sessions" {
   if (value === "2fa" || value === "passkeys" || value === "sessions") return value;
   return "password";
 }
 
-export function SecuritySection() {
-  const td = useTranslations("dashboard");
+export function AdminSecuritySection() {
   const searchParams = useSearchParams();
   const [tab, setTab] = React.useState<"password" | "2fa" | "passkeys" | "sessions">(
     normalizeTab(searchParams.get("tab")),
@@ -40,7 +38,7 @@ export function SecuritySection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{td("security")}</CardTitle>
+        <CardTitle>Security</CardTitle>
       </CardHeader>
       <CardContent>
         {enforce ? (
@@ -52,22 +50,22 @@ export function SecuritySection() {
         ) : null}
         <Tabs value={tab} onValueChange={(value) => setTab(normalizeTab(value))}>
           <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="password">{td("changePassword.title")}</TabsTrigger>
-            <TabsTrigger value="2fa">{td("twoFactor.title")}</TabsTrigger>
+            <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsTrigger value="2fa">Two-factor</TabsTrigger>
             <TabsTrigger value="passkeys">Passkeys</TabsTrigger>
-            <TabsTrigger value="sessions">{td("sessions.title")}</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
           </TabsList>
           <TabsContent value="password" className="mt-4">
-            <ChangePasswordForm />
+            <AdminChangePasswordForm />
           </TabsContent>
           <TabsContent value="2fa" className="mt-4">
-            <TwoFactorSection />
+            <AdminTwoFactorSection />
           </TabsContent>
           <TabsContent value="passkeys" className="mt-4">
-            <PasskeySection />
+            <AdminPasskeySection />
           </TabsContent>
           <TabsContent value="sessions" className="mt-4">
-            <SessionsList />
+            <AdminSessionsList />
           </TabsContent>
         </Tabs>
       </CardContent>

@@ -1,21 +1,51 @@
 import { v } from "convex/values";
 
-import { internalQuery, query } from "./_generated/server";
+import { internalQuery, query, type QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import type { EmailTemplate } from "./emailTemplates";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE } from "./emailTemplates";
+import type { AuditAction } from "./auditTrailConstants";
+import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedMutation, authedQuery } from "./functions";
 import { isOnboardingType, parseOnboardingType } from "./onboardingType";
+import {
+  ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY,
+  ADMIN_MFA_REQUIRED_KEY,
+  ADMIN_PASSKEY_POLICY_KEY,
+  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  LEGACY_MFA_REQUIRED_KEY,
+  USER_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_MFA_REQUIRED_KEY,
+  USER_PASSKEY_POLICY_KEY,
+  isPasskeyPolicy,
+  parsePasskeyPolicy,
+} from "./securityPolicies";
 
 /** Keys that unauthenticated callers may read via getPublic. */
-const PUBLIC_KEYS = ["onboardingType", "emailVerificationRequired"] as const;
+const PUBLIC_KEYS = [
+  "onboardingType",
+  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_EMAIL_VERIFICATION_REQUIRED_KEY,
+  ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_MFA_REQUIRED_KEY,
+  ADMIN_MFA_REQUIRED_KEY,
+  USER_PASSKEY_POLICY_KEY,
+  ADMIN_PASSKEY_POLICY_KEY,
+] as const;
 
 /** All valid setting keys and their value validators. */
 const VALID_KEYS = [
   "onboardingType",
   "invitationTokenExpiryDays",
   "invitationEmailTemplate",
-  "emailMfaRequired",
-  "emailVerificationRequired",
+  LEGACY_MFA_REQUIRED_KEY,
+  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_MFA_REQUIRED_KEY,
+  ADMIN_MFA_REQUIRED_KEY,
+  USER_EMAIL_VERIFICATION_REQUIRED_KEY,
+  ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_PASSKEY_POLICY_KEY,
+  ADMIN_PASSKEY_POLICY_KEY,
   "emailVerificationTemplate",
 ] as const;
 
@@ -23,8 +53,14 @@ const VALID_KEYS = [
 const DEFAULTS: Record<string, unknown> = {
   onboardingType: "inviteOnly",
   invitationTokenExpiryDays: 7,
-  emailMfaRequired: false,
-  emailVerificationRequired: true,
+  [LEGACY_MFA_REQUIRED_KEY]: false,
+  [LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
+  [USER_MFA_REQUIRED_KEY]: false,
+  [ADMIN_MFA_REQUIRED_KEY]: false,
+  [USER_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
+  [ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
+  [USER_PASSKEY_POLICY_KEY]: "optional",
+  [ADMIN_PASSKEY_POLICY_KEY]: "optional",
 };
 
 function getDefault(key: string): unknown {
@@ -34,6 +70,14 @@ function getDefault(key: string): unknown {
 function parseSettingValue(key: string, value: string): unknown {
   if (key === "onboardingType") {
     return parseOnboardingType(value);
+  }
+  if (key === USER_PASSKEY_POLICY_KEY || key === ADMIN_PASSKEY_POLICY_KEY) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsePasskeyPolicy(parsed);
+    } catch {
+      return parsePasskeyPolicy(value);
+    }
   }
   return JSON.parse(value);
 }
@@ -56,16 +100,30 @@ function validateValue(key: string, value: string): void {
         "INVALID_VALUE: invitationTokenExpiryDays must be an integer between 1 and 365"
       );
     }
-  } else if (key === "emailMfaRequired") {
+  } else if (
+    key === LEGACY_MFA_REQUIRED_KEY ||
+    key === USER_MFA_REQUIRED_KEY ||
+    key === ADMIN_MFA_REQUIRED_KEY
+  ) {
     if (value !== "true" && value !== "false") {
       throw new Error(
-        "INVALID_VALUE: emailMfaRequired must be 'true' or 'false'"
+        "INVALID_VALUE: mfa required setting must be 'true' or 'false'"
       );
     }
-  } else if (key === "emailVerificationRequired") {
+  } else if (
+    key === LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY ||
+    key === USER_EMAIL_VERIFICATION_REQUIRED_KEY ||
+    key === ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY
+  ) {
     if (value !== "true" && value !== "false") {
       throw new Error(
-        "INVALID_VALUE: emailVerificationRequired must be 'true' or 'false'"
+        "INVALID_VALUE: email verification required setting must be 'true' or 'false'"
+      );
+    }
+  } else if (key === USER_PASSKEY_POLICY_KEY || key === ADMIN_PASSKEY_POLICY_KEY) {
+    if (!isPasskeyPolicy(value)) {
+      throw new Error(
+        "INVALID_VALUE: passkey policy must be one of 'disabled', 'optional', or 'required'"
       );
     }
   } else if (key === "emailVerificationTemplate") {
@@ -153,6 +211,66 @@ function validateValue(key: string, value: string): void {
   }
 }
 
+type SettingReadCtx = Pick<QueryCtx, "db">;
+
+async function getSettingRecord(ctx: SettingReadCtx, key: string) {
+  return await ctx.db
+    .query("appSettings")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique() as Doc<"appSettings"> | null;
+}
+
+async function getSettingValueWithFallback(
+  ctx: SettingReadCtx,
+  key: string,
+): Promise<unknown> {
+  const setting = await getSettingRecord(ctx, key);
+
+  if (setting) {
+    return parseSettingValue(key, setting.value);
+  }
+
+  if (key === "onboardingType") {
+    const legacyWaitlist = await getSettingRecord(ctx, "waitlistEnabled");
+    if (legacyWaitlist) {
+      try {
+        return JSON.parse(legacyWaitlist.value) === true
+          ? "publicWaitlist"
+          : "publicSignup";
+      } catch {
+        return getDefault(key);
+      }
+    }
+  }
+
+  if (key === USER_EMAIL_VERIFICATION_REQUIRED_KEY) {
+    const legacy = await getSettingRecord(ctx, LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY);
+    if (legacy) {
+      return parseSettingValue(LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, legacy.value);
+    }
+  }
+
+  if (key === USER_MFA_REQUIRED_KEY) {
+    const legacy = await getSettingRecord(ctx, LEGACY_MFA_REQUIRED_KEY);
+    if (legacy) {
+      return parseSettingValue(LEGACY_MFA_REQUIRED_KEY, legacy.value);
+    }
+  }
+
+  return getDefault(key);
+}
+
+const POLICY_AUDIT_ACTIONS: Partial<Record<string, AuditAction>> = {
+  [USER_MFA_REQUIRED_KEY]: "admin.user_mfa_policy_changed",
+  [ADMIN_MFA_REQUIRED_KEY]: "admin.admin_mfa_policy_changed",
+  [USER_EMAIL_VERIFICATION_REQUIRED_KEY]:
+    "admin.user_email_verification_policy_changed",
+  [ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY]:
+    "admin.admin_email_verification_policy_changed",
+  [USER_PASSKEY_POLICY_KEY]: "admin.user_passkey_policy_changed",
+  [ADMIN_PASSKEY_POLICY_KEY]: "admin.admin_passkey_policy_changed",
+};
+
 // ---------------------------------------------------------------------------
 // Public query — only for allow-listed keys (used by landing page via httpAction)
 // ---------------------------------------------------------------------------
@@ -161,29 +279,7 @@ export const getPublic = query({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if (!(PUBLIC_KEYS as readonly string[]).includes(args.key)) return null;
-
-    const setting = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
-
-    if (!setting && args.key === "onboardingType") {
-      const legacyWaitlist = await ctx.db
-        .query("appSettings")
-        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
-        .unique();
-      if (legacyWaitlist) {
-        try {
-          return JSON.parse(legacyWaitlist.value) === true
-            ? "publicWaitlist"
-            : "publicSignup";
-        } catch {
-          return getDefault(args.key);
-        }
-      }
-    }
-
-    return setting ? parseSettingValue(args.key, setting.value) : getDefault(args.key);
+    return await getSettingValueWithFallback(ctx, args.key);
   },
 });
 
@@ -196,29 +292,7 @@ export const get = authedQuery({
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") return null;
-
-    const setting = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
-
-    if (!setting && args.key === "onboardingType") {
-      const legacyWaitlist = await ctx.db
-        .query("appSettings")
-        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
-        .unique();
-      if (legacyWaitlist) {
-        try {
-          return JSON.parse(legacyWaitlist.value) === true
-            ? "publicWaitlist"
-            : "publicSignup";
-        } catch {
-          return getDefault(args.key);
-        }
-      }
-    }
-
-    return setting ? parseSettingValue(args.key, setting.value) : getDefault(args.key);
+    return await getSettingValueWithFallback(ctx, args.key);
   },
 });
 
@@ -286,10 +360,7 @@ export const set = authedMutation({
 
     validateValue(args.key, args.value);
 
-    const existing = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
+    const existing = await getSettingRecord(ctx, args.key);
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -306,12 +377,24 @@ export const set = authedMutation({
       });
     }
 
+    const policyAction = POLICY_AUDIT_ACTIONS[args.key];
+    if (policyAction) {
+      await scheduleAuditEvent(ctx, {
+        happenedAt: Date.now(),
+        actor: ctx.ownerId,
+        authenticatedUserId: ctx.ownerId,
+        sourceDetail: "admin-settings",
+        action: policyAction,
+        resource: `appSettings:${args.key}`,
+        status: "succeeded",
+        oldValue: existing?.value,
+        newValue: args.value,
+      });
+    }
+
     // Cleanup legacy setting once onboardingType is explicitly managed.
     if (args.key === "onboardingType") {
-      const legacyWaitlist = await ctx.db
-        .query("appSettings")
-        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
-        .unique();
+      const legacyWaitlist = await getSettingRecord(ctx, "waitlistEnabled");
       if (legacyWaitlist) {
         await ctx.db.delete(legacyWaitlist._id);
       }
@@ -333,20 +416,14 @@ export const remove = authedMutation({
       throw new Error("INVALID_SETTING_KEY");
     }
 
-    const existing = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
+    const existing = await getSettingRecord(ctx, args.key);
 
     if (existing) {
       await ctx.db.delete(existing._id);
     }
 
     if (args.key === "onboardingType") {
-      const legacyWaitlist = await ctx.db
-        .query("appSettings")
-        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
-        .unique();
+      const legacyWaitlist = await getSettingRecord(ctx, "waitlistEnabled");
       if (legacyWaitlist) {
         await ctx.db.delete(legacyWaitlist._id);
       }
@@ -361,27 +438,6 @@ export const remove = authedMutation({
 export const getInternal = internalQuery({
   args: { key: v.string() },
   handler: async (ctx, args) => {
-    const setting = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
-
-    if (!setting && args.key === "onboardingType") {
-      const legacyWaitlist = await ctx.db
-        .query("appSettings")
-        .withIndex("by_key", (q) => q.eq("key", "waitlistEnabled"))
-        .unique();
-      if (legacyWaitlist) {
-        try {
-          return JSON.parse(legacyWaitlist.value) === true
-            ? "publicWaitlist"
-            : "publicSignup";
-        } catch {
-          return getDefault(args.key);
-        }
-      }
-    }
-
-    return setting ? parseSettingValue(args.key, setting.value) : getDefault(args.key);
+    return await getSettingValueWithFallback(ctx, args.key);
   },
 });

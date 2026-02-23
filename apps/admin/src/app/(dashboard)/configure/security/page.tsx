@@ -1,8 +1,6 @@
-import { KeyRound, Link2 } from "lucide-react";
-
-import { NotImplementedCard } from "@/components/configure/not-implemented-card";
 import { EmailVerificationPolicyCard } from "@/components/settings/email-verification-policy-card";
 import { MfaPolicyCard } from "@/components/settings/mfa-policy-card";
+import { PasskeyPolicyCard } from "@/components/settings/passkey-policy-card";
 
 export default function SecurityPage() {
   return (
@@ -14,18 +12,18 @@ export default function SecurityPage() {
         </p>
       </div>
       <div className="max-w-2xl space-y-6">
-        <EmailVerificationPolicyCard />
-        <MfaPolicyCard />
-        <NotImplementedCard
-          icon={KeyRound}
-          title="PassKey"
-          description="Allow users to sign in using a passkey."
-        />
-        <NotImplementedCard
-          icon={Link2}
-          title="Magic Link"
-          description="Allow users to sign in via a magic link sent to their email."
-        />
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">User Policies</h2>
+          <EmailVerificationPolicyCard scope="user" />
+          <MfaPolicyCard scope="user" />
+          <PasskeyPolicyCard scope="user" />
+        </section>
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">Admin Policies</h2>
+          <EmailVerificationPolicyCard scope="admin" />
+          <MfaPolicyCard scope="admin" />
+          <PasskeyPolicyCard scope="admin" />
+        </section>
       </div>
     </div>
   );

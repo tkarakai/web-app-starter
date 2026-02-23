@@ -26,9 +26,19 @@ import {
 } from "@repo/design-system";
 import { EmailVerificationTemplateEditor } from "./email-verification-template-editor";
 
-export function EmailVerificationPolicyCard() {
+type Scope = "admin" | "user";
+
+const SETTINGS_KEY: Record<Scope, string> = {
+  user: "userEmailVerificationRequired",
+  admin: "adminEmailVerificationRequired",
+};
+
+export function EmailVerificationPolicyCard({ scope }: { scope: Scope }) {
+  const isAdminScope = scope === "admin";
+  const key = SETTINGS_KEY[scope];
+
   const emailVerifRequired = useQuery(api.appSettings.get, {
-    key: "emailVerificationRequired",
+    key,
   });
   const setSetting = useMutation(api.appSettings.set);
 
@@ -45,11 +55,11 @@ export function EmailVerificationPolicyCard() {
     setConfirmToggle(null);
     setTogglePending(true);
     try {
-      await setSetting({ key: "emailVerificationRequired", value: String(checked) });
+      await setSetting({ key, value: String(checked) });
       toast.success(
         checked
-          ? "Email verification requirement enabled"
-          : "Email verification requirement disabled",
+          ? `Email verification requirement enabled for ${scope}s`
+          : `Email verification requirement disabled for ${scope}s`,
       );
     } catch (err) {
       toast.error(
@@ -74,10 +84,12 @@ export function EmailVerificationPolicyCard() {
             </div>
             <div>
               <CardTitle className="text-base">
-                Email Verification Policy
+                {isAdminScope ? "Admin Email Verification Policy" : "User Email Verification Policy"}
               </CardTitle>
               <CardDescription>
-                Require users to verify their email address before accessing the app
+                {isAdminScope
+                  ? "Require admins to verify their email address before accessing admin routes"
+                  : "Require users to verify their email address before accessing the app"}
               </CardDescription>
             </div>
           </div>
@@ -103,15 +115,21 @@ export function EmailVerificationPolicyCard() {
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isEnabled
-                  ? "Users must verify their email address before accessing the dashboard. Unverified users are redirected to a verification page."
+                  ? isAdminScope
+                    ? "Admins must verify their email address before accessing dashboard routes."
+                    : "Users must verify their email address before accessing the dashboard. Unverified users are redirected to a verification page."
+                  : isAdminScope
+                  ? "Email verification is optional for admins."
                   : "Email verification is optional. Users can access the app immediately after signing up without verifying their email."}
               </p>
             </>
           )}
-          <EmailVerificationTemplateEditor
-            disabled={isLoading || !isEnabled}
-            embedded
-          />
+          {!isAdminScope ? (
+            <EmailVerificationTemplateEditor
+              disabled={isLoading || !isEnabled}
+              embedded
+            />
+          ) : null}
         </CardContent>
       </Card>
 
@@ -125,13 +143,13 @@ export function EmailVerificationPolicyCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmToggle
-                ? "Require email verification for all users?"
-                : "Make email verification optional?"}
+                ? `Require email verification for all ${scope}s?`
+                : `Make email verification optional for ${scope}s?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle
-                ? "All users will be required to verify their email address before accessing the app. Existing unverified users will be redirected to a verification page on their next login."
-                : "Email verification will become optional. Users will be able to sign in and access the app without verifying their email address. Verification emails will no longer be sent on sign-up."}
+                ? `All ${scope}s will be required to verify their email before protected access.`
+                : `Email verification becomes optional for ${scope}s.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

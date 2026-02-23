@@ -1,6 +1,7 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
@@ -16,6 +17,7 @@ import { sendAuthEmail } from "./sendAuthEmail";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
+import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -307,7 +309,7 @@ export const createAuthOptions = (
         const actionCtx = requireActionCtx(ctx);
         const emailVerifRequired = await actionCtx.runQuery(
           internal.appSettings.getInternal,
-          { key: "emailVerificationRequired" }
+          { key: USER_EMAIL_VERIFICATION_REQUIRED_KEY }
         );
         // If the admin has disabled email verification, skip sending.
         if (emailVerifRequired === false) return;
@@ -534,6 +536,7 @@ export const createAuthOptions = (
           });
         },
       }),
+      passkey(),
       convex({ authConfig }),
     ],
     rateLimit: {

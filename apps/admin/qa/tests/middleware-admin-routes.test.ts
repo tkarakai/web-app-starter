@@ -68,6 +68,13 @@ describe("proxy — admin session and MFA settings routes", () => {
       );
       expect(response.status).toBe(200);
     });
+
+    it("allows /settings with dev session cookie", () => {
+      const response = proxy(
+        createRequest("/settings", { "better-auth.session_token": "token-123" })
+      );
+      expect(response.status).toBe(200);
+    });
   });
 
   describe("CSP on new admin pages", () => {

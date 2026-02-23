@@ -28,6 +28,21 @@ const LANDING_URL =
   process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
 
 type AuthMode = "sign-in" | "sign-up";
+type PasskeyPolicy = "disabled" | "optional" | "required";
+type RolePolicies = {
+  mfaRequired: boolean;
+  passkeyPolicy: PasskeyPolicy;
+  emailVerificationRequired: boolean;
+  isResolved: boolean;
+};
+
+function toPasskeyPolicy(value: unknown): PasskeyPolicy {
+  return value === "disabled" || value === "required" ? value : "optional";
+}
+
+function toBoolean(value: unknown, defaultValue: boolean): boolean {
+  return typeof value === "boolean" ? value : defaultValue;
+}
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
@@ -47,10 +62,107 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const isSignUp = mode === "sign-up";
   const namespace = isSignUp ? "signUp" : "signIn";
 
-  // Read admin setting so we know whether to gate unverified users.
-  const emailVerifRequired = useQuery(api.appSettings.getPublic, {
-    key: "emailVerificationRequired",
+  const userEmailVerifRequired = useQuery(api.appSettings.getPublic, {
+    key: "userEmailVerificationRequired",
   });
+  const adminEmailVerifRequired = useQuery(api.appSettings.getPublic, {
+    key: "adminEmailVerificationRequired",
+  });
+  const userMfaRequired = useQuery(api.appSettings.getPublic, {
+    key: "userMfaRequired",
+  });
+  const adminMfaRequired = useQuery(api.appSettings.getPublic, {
+    key: "adminMfaRequired",
+  });
+  const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+    key: "userPasskeyPolicy",
+  });
+  const adminPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+    key: "adminPasskeyPolicy",
+  });
+
+  const getRolePolicies = React.useCallback((role: unknown): RolePolicies => {
+    const isAdmin = role === "admin";
+    const selectedMfaRequired = isAdmin ? adminMfaRequired : userMfaRequired;
+    const selectedPasskeyPolicy = isAdmin ? adminPasskeyPolicy : userPasskeyPolicy;
+    const selectedEmailVerificationRequired = isAdmin
+      ? adminEmailVerifRequired
+      : userEmailVerifRequired;
+
+    return {
+      mfaRequired: toBoolean(selectedMfaRequired, false),
+      passkeyPolicy: toPasskeyPolicy(selectedPasskeyPolicy),
+      emailVerificationRequired: toBoolean(selectedEmailVerificationRequired, true),
+      isResolved:
+        selectedMfaRequired !== undefined &&
+        selectedPasskeyPolicy !== undefined &&
+        selectedEmailVerificationRequired !== undefined,
+    };
+  }, [
+    adminEmailVerifRequired,
+    adminMfaRequired,
+    adminPasskeyPolicy,
+    userEmailVerifRequired,
+    userMfaRequired,
+    userPasskeyPolicy,
+  ]);
+
+  const enforcePostSignInPolicies = React.useCallback(async ({
+    usedPasskey,
+  }: {
+    usedPasskey: boolean;
+  }): Promise<boolean> => {
+    const sessionResult = await authClient.getSession();
+    const sessionUser = sessionResult.data?.user as Record<string, unknown> | undefined;
+    if (!sessionUser) return false;
+
+    const policies = getRolePolicies(sessionUser.role);
+
+    if (!policies.isResolved) {
+      await authClient.signOut();
+      setError("Unable to verify security policy. Please sign in again.");
+      return true;
+    }
+
+    if (usedPasskey && policies.passkeyPolicy === "disabled") {
+      await authClient.signOut();
+      setError("Passkey sign-in is disabled for your account.");
+      return true;
+    }
+
+    if (policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
+      router.push("/dashboard/settings?tab=security&enforce=mfa");
+      return true;
+    }
+
+    if (policies.passkeyPolicy === "required") {
+      const passkeyResult = await (authClient as unknown as {
+        passkey?: {
+          listUserPasskeys?: () => Promise<{ data?: unknown[]; error?: unknown }>;
+        };
+      }).passkey?.listUserPasskeys?.();
+
+      if (!passkeyResult || passkeyResult.error) {
+        await authClient.signOut();
+        setError("Unable to verify passkey policy. Please sign in with passkey.");
+        return true;
+      }
+
+      const passkeys = passkeyResult.data ?? [];
+      if (passkeys.length > 0 && !usedPasskey) {
+        await authClient.signOut();
+        setError("Passkey sign-in is required for your account.");
+        return true;
+      }
+
+      if (passkeys.length === 0) {
+        router.push("/dashboard/settings?tab=security&enforce=passkey");
+        return true;
+      }
+    }
+
+    return false;
+  }, [getRolePolicies, router]);
 
   const handleTwoFactorVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -68,6 +180,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         if (result.error) {
           setError(t("twoFactorVerify.invalidCode"));
         } else {
+          if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           broadcastAuth();
           await redirectWithUserLocale(router);
         }
@@ -78,10 +191,45 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         if (result.error) {
           setError(t("twoFactorVerify.invalidCode"));
         } else {
+          if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           broadcastAuth();
           await redirectWithUserLocale(router);
         }
       }
+    } catch {
+      setError(t("errors.generic"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    if (!email.trim()) return;
+    setError(null);
+    setPending(true);
+
+    try {
+      const result = await (authClient as unknown as {
+        signIn: {
+          passkey: (args: {
+            email: string;
+            callbackURL: string;
+          }) => Promise<{ error?: { message?: string } }>;
+        };
+      }).signIn.passkey({
+        email: email.trim(),
+        callbackURL: "/dashboard",
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Passkey sign-in failed");
+        return;
+      }
+
+      if (await enforcePostSignInPolicies({ usedPasskey: true })) return;
+
+      broadcastAuth();
+      await redirectWithUserLocale(router);
     } catch {
       setError(t("errors.generic"));
     } finally {
@@ -118,7 +266,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           const data = result.data as Record<string, unknown> | undefined;
           const user = data?.user as Record<string, unknown> | undefined;
           // Only send users to verify-email when verification is explicitly enabled.
-          if (user && !user.emailVerified && emailVerifRequired === true) {
+          const role = user?.role;
+          const policies = getRolePolicies(role);
+          if (user && !user.emailVerified && policies.emailVerificationRequired) {
             router.push("/verify-email");
             return;
           }
@@ -154,6 +304,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       ) {
         setTwoFactorRequired(true);
       } else {
+        if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
         broadcastAuth();
         await redirectWithUserLocale(router);
       }
@@ -338,6 +489,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             {pending ? t("working") : t(`${namespace}.cta`)}
             <ArrowRight className="h-4 w-4" />
           </Button>
+          {!isSignUp ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handlePasskeySignIn}
+              disabled={pending || !email.trim()}
+            >
+              Sign in with passkey
+            </Button>
+          ) : null}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <Separator className="flex-1 min-w-0 w-auto" />
             <span>{t("footer")}</span>

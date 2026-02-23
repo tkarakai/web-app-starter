@@ -27,6 +27,7 @@ const segmentLabels: Record<string, string> = {
   features: "Features",
   integrations: "Integrations",
   "setup-2fa": "Set Up 2FA",
+  settings: "Settings",
 };
 
 const sectionLabels: Record<string, string> = {
