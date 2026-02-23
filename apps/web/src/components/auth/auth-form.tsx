@@ -29,6 +29,12 @@ const LANDING_URL =
 
 type AuthMode = "sign-in" | "sign-up";
 type PasskeyPolicy = "disabled" | "optional" | "required";
+type RolePolicies = {
+  mfaRequired: boolean;
+  passkeyPolicy: PasskeyPolicy;
+  emailVerificationRequired: boolean;
+  isResolved: boolean;
+};
 
 function toPasskeyPolicy(value: unknown): PasskeyPolicy {
   return value === "disabled" || value === "required" ? value : "optional";
@@ -75,17 +81,22 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     key: "adminPasskeyPolicy",
   });
 
-  const getRolePolicies = React.useCallback((role: unknown) => {
+  const getRolePolicies = React.useCallback((role: unknown): RolePolicies => {
     const isAdmin = role === "admin";
+    const selectedMfaRequired = isAdmin ? adminMfaRequired : userMfaRequired;
+    const selectedPasskeyPolicy = isAdmin ? adminPasskeyPolicy : userPasskeyPolicy;
+    const selectedEmailVerificationRequired = isAdmin
+      ? adminEmailVerifRequired
+      : userEmailVerifRequired;
+
     return {
-      mfaRequired: toBoolean(isAdmin ? adminMfaRequired : userMfaRequired, false),
-      passkeyPolicy: toPasskeyPolicy(
-        isAdmin ? adminPasskeyPolicy : userPasskeyPolicy,
-      ),
-      emailVerificationRequired: toBoolean(
-        isAdmin ? adminEmailVerifRequired : userEmailVerifRequired,
-        true,
-      ),
+      mfaRequired: toBoolean(selectedMfaRequired, false),
+      passkeyPolicy: toPasskeyPolicy(selectedPasskeyPolicy),
+      emailVerificationRequired: toBoolean(selectedEmailVerificationRequired, true),
+      isResolved:
+        selectedMfaRequired !== undefined &&
+        selectedPasskeyPolicy !== undefined &&
+        selectedEmailVerificationRequired !== undefined,
     };
   }, [
     adminEmailVerifRequired,
@@ -106,6 +117,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     if (!sessionUser) return false;
 
     const policies = getRolePolicies(sessionUser.role);
+
+    if (!policies.isResolved) {
+      await authClient.signOut();
+      setError("Unable to verify security policy. Please sign in again.");
+      return true;
+    }
 
     if (usedPasskey && policies.passkeyPolicy === "disabled") {
       await authClient.signOut();
