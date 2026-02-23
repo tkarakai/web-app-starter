@@ -313,7 +313,11 @@ export function AdminTwoFactorSection() {
               size="sm"
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(secretKey || totpUri);
+                  const clipboard = globalThis.navigator?.clipboard;
+                  if (!clipboard) {
+                    throw new Error("Clipboard API unavailable");
+                  }
+                  await clipboard.writeText(secretKey || totpUri);
                   toast.success("Copied setup key.");
                 } catch {
                   toast.error("Failed to copy.");
