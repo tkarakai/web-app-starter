@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
 import { ALLOWED_CONTENT_TYPES } from "./files";
-import { requireProjectAccess } from "./functions";
+import { isEmailVerificationRequired, requireProjectAccess } from "./functions";
 import schema from "./schema";
 import { VALID_THEMES } from "./userProfiles";
 
@@ -40,6 +40,45 @@ describe("authentication security", () => {
       // 2. Enforces per-user rate limit (mutationGlobal)
       // Both are critical security gates
     });
+  });
+});
+
+describe("email verification policy fallback", () => {
+  test("admin scope falls back to legacy setting when scoped key is missing", async () => {
+    const t = createTestEnv();
+
+    const required = await t.run(async (ctx) => {
+      await ctx.db.insert("appSettings", {
+        key: "emailVerificationRequired",
+        value: "false",
+        updatedAt: Date.now(),
+      });
+
+      return await isEmailVerificationRequired(ctx, { role: "admin" });
+    });
+
+    expect(required).toBe(false);
+  });
+
+  test("admin scoped value overrides legacy fallback when present", async () => {
+    const t = createTestEnv();
+
+    const required = await t.run(async (ctx) => {
+      await ctx.db.insert("appSettings", {
+        key: "emailVerificationRequired",
+        value: "false",
+        updatedAt: Date.now(),
+      });
+      await ctx.db.insert("appSettings", {
+        key: "adminEmailVerificationRequired",
+        value: "true",
+        updatedAt: Date.now(),
+      });
+
+      return await isEmailVerificationRequired(ctx, { role: "admin" });
+    });
+
+    expect(required).toBe(true);
   });
 });
 

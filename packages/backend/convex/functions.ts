@@ -34,7 +34,7 @@ async function getBooleanSetting(
   }
 }
 
-async function isEmailVerificationRequired(
+export async function isEmailVerificationRequired(
   ctx: QueryCtx,
   user: Record<string, unknown>,
 ): Promise<boolean> {
@@ -53,11 +53,7 @@ async function isEmailVerificationRequired(
     }
   }
 
-  if (scope === "user") {
-    return await getBooleanSetting(ctx, LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true);
-  }
-
-  return true;
+  return await getBooleanSetting(ctx, LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true);
 }
 
 /**
