@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "Sie scheinen offline zu sein. Eine aktive Verbindung ist erforderlich, um fortzufahren."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Sehr schwach",
+      "weak": "Schwach",
+      "fair": "Ausreichend",
+      "good": "Gut",
+      "strong": "Stark"
+    },
+    "crackTimeLabel": "Geschätzte Knackzeit: {time}",
+    "minLength": "Mindestens {count} Zeichen erforderlich.",
+    "strengthRequirement": "Das Passwort erfüllt nicht die Stärkeanforderungen.",
+    "warnings": {
+      "straightRow": "Gerade Tastenreihen auf Ihrer Tastatur sind leicht zu erraten.",
+      "keyPattern": "Kurze Tastaturmuster sind leicht zu erraten.",
+      "simpleRepeat": "Wiederholte Zeichen wie \"aaa\" sind leicht zu erraten.",
+      "extendedRepeat": "Wiederholte Zeichenmuster wie \"abcabcabc\" sind leicht zu erraten.",
+      "sequences": "Häufige Zeichenfolgen wie \"abc\" sind leicht zu erraten.",
+      "recentYears": "Aktuelle Jahreszahlen sind leicht zu erraten.",
+      "dates": "Datumsangaben sind leicht zu erraten.",
+      "topTen": "Dies ist ein sehr häufig verwendetes Passwort.",
+      "topHundred": "Dies ist ein häufig verwendetes Passwort.",
+      "common": "Dies ist ein gängiges Passwort.",
+      "similarToCommon": "Dies ähnelt einem gängigen Passwort.",
+      "wordByItself": "Einzelne Wörter sind leicht zu erraten.",
+      "namesByThemselves": "Einzelne Vor- oder Nachnamen sind leicht zu erraten.",
+      "commonNames": "Häufige Vor- und Nachnamen sind leicht zu erraten.",
+      "userInputs": "Es sollten keine persönlichen oder seitenbezogenen Daten enthalten sein.",
+      "pwned": "Ihr Passwort wurde bei einem Datenleck im Internet offengelegt."
+    },
+    "suggestions": {
+      "l33t": "Vermeiden Sie vorhersehbare Buchstabenersetzungen wie \"@\" für \"a\".",
+      "reverseWords": "Vermeiden Sie umgekehrte Schreibweisen gängiger Wörter.",
+      "allUppercase": "Schreiben Sie einige, aber nicht alle Buchstaben groß.",
+      "capitalization": "Schreiben Sie mehr als nur den ersten Buchstaben groß.",
+      "dates": "Vermeiden Sie Daten und Jahre, die mit Ihnen in Verbindung stehen.",
+      "recentYears": "Vermeiden Sie aktuelle Jahreszahlen.",
+      "associatedYears": "Vermeiden Sie Jahre, die mit Ihnen in Verbindung stehen.",
+      "sequences": "Vermeiden Sie häufige Zeichenfolgen.",
+      "repeated": "Vermeiden Sie wiederholte Wörter und Zeichen.",
+      "longerKeyboardPattern": "Verwenden Sie längere Tastaturmuster und ändern Sie die Tipprichtung.",
+      "anotherWord": "Fügen Sie weniger gebräuchliche Wörter hinzu.",
+      "useWords": "Verwenden Sie mehrere Wörter, aber vermeiden Sie gängige Redewendungen.",
+      "noNeed": "Sie können starke Passwörter ohne Symbole, Zahlen oder Großbuchstaben erstellen.",
+      "pwned": "Wenn Sie dieses Passwort anderswo verwenden, sollten Sie es ändern."
+    },
+    "timeEstimation": {
+      "ltSecond": "weniger als eine Sekunde",
+      "second": "{base} Sekunde",
+      "seconds": "{base} Sekunden",
+      "minute": "{base} Minute",
+      "minutes": "{base} Minuten",
+      "hour": "{base} Stunde",
+      "hours": "{base} Stunden",
+      "day": "{base} Tag",
+      "days": "{base} Tage",
+      "month": "{base} Monat",
+      "months": "{base} Monate",
+      "year": "{base} Jahr",
+      "years": "{base} Jahre",
+      "centuries": "Jahrhunderte"
+    }
   }
 }

@@ -122,6 +122,12 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Single-line text input field.",
   },
   {
+    name: "Password Strength Meter",
+    slug: "password-strength-meter",
+    category: "Form",
+    description: "Real-time password strength feedback with crack time estimation.",
+  },
+  {
     name: "Radio Group",
     slug: "radio-group",
     category: "Form",

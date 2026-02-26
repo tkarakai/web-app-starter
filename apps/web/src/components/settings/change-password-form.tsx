@@ -12,12 +12,16 @@ import {
   Checkbox,
   Label,
   PasswordInput,
+  PasswordStrengthMeter,
+  validatePassword,
   toast,
 } from "@repo/design-system";
 
 export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");
   const tc = useTranslations("common");
+  const ta = useTranslations("auth");
+  const tps = useTranslations("passwordStrength");
 
   const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
@@ -26,10 +30,20 @@ export function ChangePasswordForm() {
   const [revokeOtherSessions, setRevokeOtherSessions] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
+  const passwordValidation = newPassword
+    ? validatePassword(newPassword, "", "user")
+    : null;
+  const isNewPasswordValid = passwordValidation?.valid ?? false;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast.error(tc("error"));
+      toast.error(ta("errors.passwordMismatch"));
+      return;
+    }
+
+    if (!isNewPasswordValid) {
+      toast.error(tps("strengthRequirement"));
       return;
     }
 
@@ -69,6 +83,14 @@ export function ChangePasswordForm() {
     }
   };
 
+  const canSubmit =
+    currentPassword.length > 0 &&
+    newPassword.length > 0 &&
+    confirmPassword.length > 0 &&
+    isNewPasswordValid &&
+    newPassword === confirmPassword &&
+    !submitting;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
       <div className="space-y-2">
@@ -88,7 +110,9 @@ export function ChangePasswordForm() {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           required
+          minLength={12}
         />
+        <PasswordStrengthMeter password={newPassword} email="" role="user" t={tps} />
       </div>
 
       <div className="space-y-2">
@@ -98,6 +122,7 @@ export function ChangePasswordForm() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
+          minLength={12}
         />
       </div>
 
@@ -112,7 +137,7 @@ export function ChangePasswordForm() {
         </Label>
       </div>
 
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={!canSubmit}>
         {submitting ? tc("saving") : tcp("cta")}
       </Button>
     </form>

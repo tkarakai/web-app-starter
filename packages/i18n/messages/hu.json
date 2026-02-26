@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "Úgy tűnik, offline vagy. Az alkalmazás használatához aktív internetkapcsolat szükséges."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Nagyon gyenge",
+      "weak": "Gyenge",
+      "fair": "Elfogadható",
+      "good": "Jó",
+      "strong": "Erős"
+    },
+    "crackTimeLabel": "Becsült feltörési idő: {time}",
+    "minLength": "Legalább {count} karakter szükséges.",
+    "strengthRequirement": "A jelszó nem felel meg az erősségi követelményeknek.",
+    "warnings": {
+      "straightRow": "Az egyenes billentyűsorok könnyen kitalálhatók.",
+      "keyPattern": "A rövid billentyűzetminták könnyen kitalálhatók.",
+      "simpleRepeat": "Az ismétlődő karakterek, mint az \"aaa\", könnyen kitalálhatók.",
+      "extendedRepeat": "Az ismétlődő minták, mint az \"abcabcabc\", könnyen kitalálhatók.",
+      "sequences": "A gyakori karaktersorozatok, mint az \"abc\", könnyen kitalálhatók.",
+      "recentYears": "A közelmúlt évszámai könnyen kitalálhatók.",
+      "dates": "A dátumok könnyen kitalálhatók.",
+      "topTen": "Ez egy rendkívül gyakran használt jelszó.",
+      "topHundred": "Ez egy gyakran használt jelszó.",
+      "common": "Ez egy általánosan használt jelszó.",
+      "similarToCommon": "Ez hasonlít egy általánosan használt jelszóhoz.",
+      "wordByItself": "Az egyedülálló szavak könnyen kitalálhatók.",
+      "namesByThemselves": "Az önálló nevek vagy vezetéknevek könnyen kitalálhatók.",
+      "commonNames": "A gyakori nevek és vezetéknevek könnyen kitalálhatók.",
+      "userInputs": "Ne tartalmazzon személyes vagy oldalhoz kapcsolódó adatokat.",
+      "pwned": "A jelszava adatszivárgás során nyilvánosságra került az interneten."
+    },
+    "suggestions": {
+      "l33t": "Kerülje a kiszámítható betűcseréket, mint a \"@\" az \"a\" helyett.",
+      "reverseWords": "Kerülje a gyakori szavak visszafelé írását.",
+      "allUppercase": "Néhány betűt írjon nagybetűvel, de ne az összeset.",
+      "capitalization": "Ne csak az első betűt írja nagybetűvel.",
+      "dates": "Kerülje az Önhöz kapcsolódó dátumokat és évszámokat.",
+      "recentYears": "Kerülje a közelmúlt évszámait.",
+      "associatedYears": "Kerülje az Önhöz kapcsolódó évszámokat.",
+      "sequences": "Kerülje a gyakori karaktersorozatokat.",
+      "repeated": "Kerülje az ismétlődő szavakat és karaktereket.",
+      "longerKeyboardPattern": "Használjon hosszabb billentyűzetmintákat és változtasson irányt.",
+      "anotherWord": "Adjon hozzá kevésbé gyakori szavakat.",
+      "useWords": "Használjon több szót, de kerülje a gyakori kifejezéseket.",
+      "noNeed": "Erős jelszavakat szimbólumok, számok vagy nagybetűk nélkül is létrehozhat.",
+      "pwned": "Ha ezt a jelszót máshol is használja, változtassa meg."
+    },
+    "timeEstimation": {
+      "ltSecond": "kevesebb mint egy másodperc",
+      "second": "{base} másodperc",
+      "seconds": "{base} másodperc",
+      "minute": "{base} perc",
+      "minutes": "{base} perc",
+      "hour": "{base} óra",
+      "hours": "{base} óra",
+      "day": "{base} nap",
+      "days": "{base} nap",
+      "month": "{base} hónap",
+      "months": "{base} hónap",
+      "year": "{base} év",
+      "years": "{base} év",
+      "centuries": "évszázadok"
+    }
   }
 }

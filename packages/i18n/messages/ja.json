@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "オフラインのようです。続行するにはインターネット接続が必要です。"
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "非常に弱い",
+      "weak": "弱い",
+      "fair": "普通",
+      "good": "良い",
+      "strong": "強い"
+    },
+    "crackTimeLabel": "推定解読時間：{time}",
+    "minLength": "最低 {count} 文字必要です。",
+    "strengthRequirement": "パスワードが強度の要件を満たしていません。",
+    "warnings": {
+      "straightRow": "キーボードの連続したキーの並びは推測されやすいです。",
+      "keyPattern": "短いキーボードパターンは推測されやすいです。",
+      "simpleRepeat": "\"aaa\" のような繰り返し文字は推測されやすいです。",
+      "extendedRepeat": "\"abcabcabc\" のような繰り返しパターンは推測されやすいです。",
+      "sequences": "\"abc\" のような一般的な文字列は推測されやすいです。",
+      "recentYears": "最近の年号は推測されやすいです。",
+      "dates": "日付は推測されやすいです。",
+      "topTen": "これは非常に多く使われているパスワードです。",
+      "topHundred": "これは頻繁に使われているパスワードです。",
+      "common": "これはよく使われているパスワードです。",
+      "similarToCommon": "これはよく使われているパスワードに似ています。",
+      "wordByItself": "単一の単語は推測されやすいです。",
+      "namesByThemselves": "単独の名前や姓は推測されやすいです。",
+      "commonNames": "よくある名前や姓は推測されやすいです。",
+      "userInputs": "個人情報やページに関連するデータを含めないでください。",
+      "pwned": "あなたのパスワードはインターネット上のデータ漏洩で流出しています。"
+    },
+    "suggestions": {
+      "l33t": "\"@\" を \"a\" の代わりに使うなど、予測可能な文字の置き換えは避けてください。",
+      "reverseWords": "一般的な単語の逆綴りは避けてください。",
+      "allUppercase": "すべてではなく、一部の文字を大文字にしてください。",
+      "capitalization": "最初の文字だけでなく、他の文字も大文字にしてください。",
+      "dates": "自分に関連する日付や年号は避けてください。",
+      "recentYears": "最近の年号は避けてください。",
+      "associatedYears": "自分に関連する年号は避けてください。",
+      "sequences": "一般的な文字列は避けてください。",
+      "repeated": "繰り返しの単語や文字は避けてください。",
+      "longerKeyboardPattern": "より長いキーボードパターンを使用し、入力方向を複数回変えてください。",
+      "anotherWord": "あまり一般的でない単語を追加してください。",
+      "useWords": "複数の単語を使用してください。ただし、よくあるフレーズは避けてください。",
+      "noNeed": "記号、数字、大文字を使わなくても強力なパスワードを作成できます。",
+      "pwned": "このパスワードを他の場所でも使用している場合は、変更することをお勧めします。"
+    },
+    "timeEstimation": {
+      "ltSecond": "1秒未満",
+      "second": "{base} 秒",
+      "seconds": "{base} 秒",
+      "minute": "{base} 分",
+      "minutes": "{base} 分",
+      "hour": "{base} 時間",
+      "hours": "{base} 時間",
+      "day": "{base} 日",
+      "days": "{base} 日",
+      "month": "{base} か月",
+      "months": "{base} か月",
+      "year": "{base} 年",
+      "years": "{base} 年",
+      "centuries": "数百年"
+    }
   }
 }

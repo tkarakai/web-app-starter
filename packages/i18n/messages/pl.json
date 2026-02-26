@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "Wygląda na to, że jesteś offline. Do kontynuacji wymagane jest aktywne połączenie."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Bardzo slabe",
+      "weak": "Slabe",
+      "fair": "Przecietne",
+      "good": "Dobre",
+      "strong": "Silne"
+    },
+    "crackTimeLabel": "Szacowany czas zlamania: {time}",
+    "minLength": "Wymagane co najmniej {count} znaków.",
+    "strengthRequirement": "Haslo nie spelnia wymagan dotyczacych sily.",
+    "warnings": {
+      "straightRow": "Proste rzedy klawiszy na klawiaturze sa latwe do odgadniecia.",
+      "keyPattern": "Krótkie wzorce klawiaturowe sa latwe do odgadniecia.",
+      "simpleRepeat": "Powtórzone znaki jak \"aaa\" sa latwe do odgadniecia.",
+      "extendedRepeat": "Powtórzone wzorce jak \"abcabcabc\" sa latwe do odgadniecia.",
+      "sequences": "Typowe sekwencje znaków jak \"abc\" sa latwe do odgadniecia.",
+      "recentYears": "Ostatnie lata sa latwe do odgadniecia.",
+      "dates": "Daty sa latwe do odgadniecia.",
+      "topTen": "To jest bardzo czesto uzywane haslo.",
+      "topHundred": "To jest czesto uzywane haslo.",
+      "common": "To jest powszechnie uzywane haslo.",
+      "similarToCommon": "To jest podobne do powszechnie uzywanego hasla.",
+      "wordByItself": "Pojedyncze slowa sa latwe do odgadniecia.",
+      "namesByThemselves": "Pojedyncze imiona lub nazwiska sa latwe do odgadniecia.",
+      "commonNames": "Popularne imiona i nazwiska sa latwe do odgadniecia.",
+      "userInputs": "Nie powinno zawierac danych osobowych ani zwiazanych ze strona.",
+      "pwned": "Twoje haslo zostalo ujawnione w wycieku danych w Internecie."
+    },
+    "suggestions": {
+      "l33t": "Unikaj przewidywalnych zamian liter, jak \"@\" zamiast \"a\".",
+      "reverseWords": "Unikaj odwróconej pisowni popularnych slów.",
+      "allUppercase": "Uzywaj wielkich liter tylko w niektórych miejscach, nie wszedzie.",
+      "capitalization": "Uzywaj wielkich liter nie tylko na poczatku.",
+      "dates": "Unikaj dat i lat zwiazanych z Toba.",
+      "recentYears": "Unikaj ostatnich lat.",
+      "associatedYears": "Unikaj lat zwiazanych z Toba.",
+      "sequences": "Unikaj typowych sekwencji znaków.",
+      "repeated": "Unikaj powtórzonych slów i znaków.",
+      "longerKeyboardPattern": "Uzywaj dluzszych wzorców klawiaturowych i zmieniaj kierunek pisania.",
+      "anotherWord": "Dodaj mniej popularne slowa.",
+      "useWords": "Uzywaj wielu slów, ale unikaj popularnych fraz.",
+      "noNeed": "Silne hasla mozna tworzyc bez symboli, cyfr i wielkich liter.",
+      "pwned": "Jesli uzywasz tego hasla gdzie indziej, powinienes je zmienic."
+    },
+    "timeEstimation": {
+      "ltSecond": "mniej niz sekunda",
+      "second": "{base} sekunda",
+      "seconds": "{base} sekund",
+      "minute": "{base} minuta",
+      "minutes": "{base} minut",
+      "hour": "{base} godzina",
+      "hours": "{base} godzin",
+      "day": "{base} dzien",
+      "days": "{base} dni",
+      "month": "{base} miesiac",
+      "months": "{base} miesiecy",
+      "year": "{base} rok",
+      "years": "{base} lat",
+      "centuries": "wieki"
+    }
   }
 }

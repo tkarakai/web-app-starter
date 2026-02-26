@@ -5,6 +5,13 @@ export {
   type ParsedUserAgent,
   type DeviceType,
 } from "./lib/parse-user-agent";
+export {
+  validatePassword,
+  getMinPasswordLength,
+  formatCrackTime,
+  type PasswordRole,
+  type PasswordValidationResult,
+} from "./lib/password-validation";
 
 /* ─── Hooks ─── */
 export { useIsMobile } from "./hooks/use-mobile";
@@ -72,6 +79,13 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
 } from "./components/feedback/alert-dialog";
+
+/* ─── Password ─── */
+export {
+  PasswordStrengthMeter,
+  type PasswordStrengthMeterProps,
+  type PasswordStrengthTranslateFn,
+} from "./components/password-strength-meter";
 
 /* ─── Form ─── */
 export { Calendar, type CalendarProps } from "./components/form/calendar";

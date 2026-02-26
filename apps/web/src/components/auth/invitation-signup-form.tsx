@@ -21,13 +21,16 @@ import {
   Input,
   Label,
   PasswordInput,
+  PasswordStrengthMeter,
   Skeleton,
+  validatePassword,
 } from "@repo/design-system";
 
 export function InvitationSignupForm({ token }: { token?: string }) {
   const router = useRouter();
   const t = useTranslations("auth");
   const ti = useTranslations("auth.invitation");
+  const tps = useTranslations("passwordStrength");
 
   // Validate token via Convex query (real-time)
   const tokenValidation = useQuery(
@@ -108,6 +111,11 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
     if (password !== confirmPassword) {
       setError(t("errors.passwordMismatch"));
+      return;
+    }
+
+    if (!validatePassword(password, tokenValidation.email, "user").valid) {
+      setError(tps("strengthRequirement"));
       return;
     }
 
@@ -203,8 +211,9 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("fields.passwordSignUpPlaceholder")}
               required
-              minLength={8}
+              minLength={12}
             />
+            <PasswordStrengthMeter password={password} email={tokenValidation.email} role="user" t={tps} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-confirm-password">
@@ -216,7 +225,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder={t("fields.confirmPasswordPlaceholder")}
               required
-              minLength={8}
+              minLength={12}
             />
           </div>
           {error ? (

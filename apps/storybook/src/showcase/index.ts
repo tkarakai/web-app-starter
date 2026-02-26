@@ -14,6 +14,7 @@ import EnvironmentBannerShowcase from "./environment-banner";
 import OfflineBannerShowcase from "./offline-banner";
 import DropdownMenuShowcase from "./dropdown-menu";
 import InputShowcase from "./input";
+import PasswordStrengthMeterShowcase from "./password-strength-meter";
 import PopoverShowcase from "./popover";
 import ProgressShowcase from "./progress";
 import RadioGroupShowcase from "./radio-group";
@@ -44,6 +45,7 @@ export const showcaseMap: Record<string, ComponentType> = {
   "offline-banner": OfflineBannerShowcase,
   "dropdown-menu": DropdownMenuShowcase,
   input: InputShowcase,
+  "password-strength-meter": PasswordStrengthMeterShowcase,
   popover: PopoverShowcase,
   progress: ProgressShowcase,
   "radio-group": RadioGroupShowcase,

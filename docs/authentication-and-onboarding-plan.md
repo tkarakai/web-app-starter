@@ -56,7 +56,7 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
    }
    ```
    - Admin: 40-char min, score 4
-   - User: 15-char min, score 4
+   - User: 12-char min, score 4
    - Uses `zxcvbnOptions.setOptions()` with English + common dictionaries
    - Adds email/app name/role as user inputs to prevent them from appearing in passwords
 
@@ -67,7 +67,7 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
    - Shows `feedback.warning` and `feedback.suggestions` inline
    - Props: `password`, `email`, `role`
 
-4. **Integrate into web sign-up** — In `apps/web/src/components/auth/auth-form.tsx`, render the meter below the password field in sign-up mode. Update min-length from current 8 to 15. Block submit when `valid === false`.
+4. **Integrate into web sign-up** — In `apps/web/src/components/auth/auth-form.tsx`, render the meter below the password field in sign-up mode. Update min-length from current 8 to 12. Block submit when `valid === false`.
 
 5. **Export from design-system** — Add `PasswordStrengthMeter` and `validatePassword` to `packages/design-system/src/index.ts`.
 
@@ -85,7 +85,7 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
 ### Verification
 
 - Web sign-up form shows real-time strength meter while typing
-- Passwords under 15 chars or with score < 4 prevent submission
+- Passwords under 12 chars or with score < 4 prevent submission
 - Meter shows crack time and feedback suggestions
 - Existing sign-in flows unaffected (no meter on sign-in)
 - `bun run typecheck` and `bun run test:unit` pass

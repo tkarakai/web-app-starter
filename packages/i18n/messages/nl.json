@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "Het lijkt erop dat je offline bent. Een actieve verbinding is nodig om door te gaan."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Zeer zwak",
+      "weak": "Zwak",
+      "fair": "Redelijk",
+      "good": "Goed",
+      "strong": "Sterk"
+    },
+    "crackTimeLabel": "Geschatte kraaktijd: {time}",
+    "minLength": "Minimaal {count} tekens vereist.",
+    "strengthRequirement": "Het wachtwoord voldoet niet aan de sterkte-eisen.",
+    "warnings": {
+      "straightRow": "Rechte rijen toetsen op uw toetsenbord zijn makkelijk te raden.",
+      "keyPattern": "Korte toetsenbordpatronen zijn makkelijk te raden.",
+      "simpleRepeat": "Herhaalde tekens zoals \"aaa\" zijn makkelijk te raden.",
+      "extendedRepeat": "Herhaalde tekenpatronen zoals \"abcabcabc\" zijn makkelijk te raden.",
+      "sequences": "Veelvoorkomende tekenreeksen zoals \"abc\" zijn makkelijk te raden.",
+      "recentYears": "Recente jaren zijn makkelijk te raden.",
+      "dates": "Datums zijn makkelijk te raden.",
+      "topTen": "Dit is een veelgebruikt wachtwoord.",
+      "topHundred": "Dit is een vaak gebruikt wachtwoord.",
+      "common": "Dit is een algemeen gebruikt wachtwoord.",
+      "similarToCommon": "Dit lijkt op een algemeen gebruikt wachtwoord.",
+      "wordByItself": "Losse woorden zijn makkelijk te raden.",
+      "namesByThemselves": "Losse voor- of achternamen zijn makkelijk te raden.",
+      "commonNames": "Veelvoorkomende voor- en achternamen zijn makkelijk te raden.",
+      "userInputs": "Er mogen geen persoonlijke of paginagerelateerde gegevens in staan.",
+      "pwned": "Uw wachtwoord is blootgesteld bij een datalek op internet."
+    },
+    "suggestions": {
+      "l33t": "Vermijd voorspelbare lettersubstituties zoals \"@\" voor \"a\".",
+      "reverseWords": "Vermijd omgekeerde spellingen van veelvoorkomende woorden.",
+      "allUppercase": "Gebruik hoofdletters voor sommige, maar niet alle letters.",
+      "capitalization": "Gebruik hoofdletters voor meer dan alleen de eerste letter.",
+      "dates": "Vermijd data en jaren die met u verbonden zijn.",
+      "recentYears": "Vermijd recente jaren.",
+      "associatedYears": "Vermijd jaren die met u verbonden zijn.",
+      "sequences": "Vermijd veelvoorkomende tekenreeksen.",
+      "repeated": "Vermijd herhaalde woorden en tekens.",
+      "longerKeyboardPattern": "Gebruik langere toetsenbordpatronen en wissel van typrichting.",
+      "anotherWord": "Voeg minder gebruikelijke woorden toe.",
+      "useWords": "Gebruik meerdere woorden, maar vermijd veelgebruikte uitdrukkingen.",
+      "noNeed": "U kunt sterke wachtwoorden maken zonder symbolen, cijfers of hoofdletters.",
+      "pwned": "Als u dit wachtwoord elders gebruikt, moet u het wijzigen."
+    },
+    "timeEstimation": {
+      "ltSecond": "minder dan een seconde",
+      "second": "{base} seconde",
+      "seconds": "{base} seconden",
+      "minute": "{base} minuut",
+      "minutes": "{base} minuten",
+      "hour": "{base} uur",
+      "hours": "{base} uur",
+      "day": "{base} dag",
+      "days": "{base} dagen",
+      "month": "{base} maand",
+      "months": "{base} maanden",
+      "year": "{base} jaar",
+      "years": "{base} jaar",
+      "centuries": "eeuwen"
+    }
   }
 }

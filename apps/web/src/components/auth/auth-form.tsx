@@ -21,7 +21,9 @@ import {
   Input,
   Label,
   PasswordInput,
+  PasswordStrengthMeter,
   Separator,
+  validatePassword,
 } from "@repo/design-system";
 
 const LANDING_URL =
@@ -48,6 +50,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("auth");
+  const tps = useTranslations("passwordStrength");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [name, setName] = React.useState("");
@@ -243,6 +246,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
     if (isSignUp && password !== confirmPassword) {
       setError(t("errors.passwordMismatch"));
+      return;
+    }
+
+    if (isSignUp && !validatePassword(password, email, "user").valid) {
+      setError(tps("strengthRequirement"));
       return;
     }
 
@@ -469,8 +477,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              {...(isSignUp ? { minLength: 8 } : {})}
+              {...(isSignUp ? { minLength: 12 } : {})}
             />
+            {isSignUp ? (
+              <PasswordStrengthMeter password={password} email={email} role="user" t={tps} />
+            ) : null}
           </div>
           {isSignUp ? (
             <div className="space-y-2">
@@ -482,7 +493,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
-                minLength={8}
+                minLength={12}
               />
             </div>
           ) : null}

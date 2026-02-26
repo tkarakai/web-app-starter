@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "Vous semblez être hors ligne. Une connexion active est nécessaire pour continuer."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Très faible",
+      "weak": "Faible",
+      "fair": "Passable",
+      "good": "Bon",
+      "strong": "Fort"
+    },
+    "crackTimeLabel": "Temps de crack estimé : {time}",
+    "minLength": "{count} caractères minimum requis.",
+    "strengthRequirement": "Le mot de passe ne répond pas aux exigences de sécurité.",
+    "warnings": {
+      "straightRow": "Les rangées de touches consécutives sont faciles à deviner.",
+      "keyPattern": "Les motifs de clavier courts sont faciles à deviner.",
+      "simpleRepeat": "Les caractères répétés comme \"aaa\" sont faciles à deviner.",
+      "extendedRepeat": "Les motifs répétés comme \"abcabcabc\" sont faciles à deviner.",
+      "sequences": "Les séquences courantes comme \"abc\" sont faciles à deviner.",
+      "recentYears": "Les années récentes sont faciles à deviner.",
+      "dates": "Les dates sont faciles à deviner.",
+      "topTen": "C'est un mot de passe très utilisé.",
+      "topHundred": "C'est un mot de passe fréquemment utilisé.",
+      "common": "C'est un mot de passe couramment utilisé.",
+      "similarToCommon": "C'est similaire à un mot de passe couramment utilisé.",
+      "wordByItself": "Les mots seuls sont faciles à deviner.",
+      "namesByThemselves": "Les noms ou prénoms seuls sont faciles à deviner.",
+      "commonNames": "Les noms et prénoms courants sont faciles à deviner.",
+      "userInputs": "Il ne doit pas contenir de données personnelles.",
+      "pwned": "Votre mot de passe a été exposé lors d'une fuite de données sur Internet."
+    },
+    "suggestions": {
+      "l33t": "Évitez les substitutions prévisibles comme \"@\" pour \"a\".",
+      "reverseWords": "Évitez d'écrire des mots courants à l'envers.",
+      "allUppercase": "Mettez certaines lettres en majuscule, mais pas toutes.",
+      "capitalization": "Mettez en majuscule plus que la première lettre.",
+      "dates": "Évitez les dates et années qui vous sont associées.",
+      "recentYears": "Évitez les années récentes.",
+      "associatedYears": "Évitez les années qui vous sont associées.",
+      "sequences": "Évitez les séquences de caractères courantes.",
+      "repeated": "Évitez les mots et caractères répétés.",
+      "longerKeyboardPattern": "Utilisez des motifs de clavier plus longs et changez de direction.",
+      "anotherWord": "Ajoutez des mots moins courants.",
+      "useWords": "Utilisez plusieurs mots, mais évitez les expressions courantes.",
+      "noNeed": "Vous pouvez créer des mots de passe forts sans symboles, chiffres ou majuscules.",
+      "pwned": "Si vous utilisez ce mot de passe ailleurs, vous devriez le changer."
+    },
+    "timeEstimation": {
+      "ltSecond": "moins d'une seconde",
+      "second": "{base} seconde",
+      "seconds": "{base} secondes",
+      "minute": "{base} minute",
+      "minutes": "{base} minutes",
+      "hour": "{base} heure",
+      "hours": "{base} heures",
+      "day": "{base} jour",
+      "days": "{base} jours",
+      "month": "{base} mois",
+      "months": "{base} mois",
+      "year": "{base} an",
+      "years": "{base} ans",
+      "centuries": "siècles"
+    }
   }
 }

@@ -400,5 +400,67 @@
   },
   "offline": {
     "message": "Parece que estás sin conexión. Se necesita una conexión activa para continuar."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Muy débil",
+      "weak": "Débil",
+      "fair": "Aceptable",
+      "good": "Buena",
+      "strong": "Fuerte"
+    },
+    "crackTimeLabel": "Tiempo estimado de descifrado: {time}",
+    "minLength": "Se requieren al menos {count} caracteres.",
+    "strengthRequirement": "La contraseña no cumple los requisitos de seguridad.",
+    "warnings": {
+      "straightRow": "Las filas rectas de teclas en su teclado son fáciles de adivinar.",
+      "keyPattern": "Los patrones cortos de teclado son fáciles de adivinar.",
+      "simpleRepeat": "Los caracteres repetidos como \"aaa\" son fáciles de adivinar.",
+      "extendedRepeat": "Los patrones repetidos como \"abcabcabc\" son fáciles de adivinar.",
+      "sequences": "Las secuencias comunes como \"abc\" son fáciles de adivinar.",
+      "recentYears": "Los años recientes son fáciles de adivinar.",
+      "dates": "Las fechas son fáciles de adivinar.",
+      "topTen": "Esta es una contraseña muy utilizada.",
+      "topHundred": "Esta es una contraseña frecuentemente utilizada.",
+      "common": "Esta es una contraseña de uso común.",
+      "similarToCommon": "Es similar a una contraseña de uso común.",
+      "wordByItself": "Las palabras sueltas son fáciles de adivinar.",
+      "namesByThemselves": "Los nombres o apellidos solos son fáciles de adivinar.",
+      "commonNames": "Los nombres y apellidos comunes son fáciles de adivinar.",
+      "userInputs": "No debe contener datos personales o relacionados con la página.",
+      "pwned": "Su contraseña fue expuesta en una filtración de datos en Internet."
+    },
+    "suggestions": {
+      "l33t": "Evite sustituciones predecibles como \"@\" por \"a\".",
+      "reverseWords": "Evite escribir palabras comunes al revés.",
+      "allUppercase": "Ponga en mayúscula algunas letras, pero no todas.",
+      "capitalization": "Ponga en mayúscula más que solo la primera letra.",
+      "dates": "Evite fechas y años asociados con usted.",
+      "recentYears": "Evite años recientes.",
+      "associatedYears": "Evite años asociados con usted.",
+      "sequences": "Evite secuencias de caracteres comunes.",
+      "repeated": "Evite palabras y caracteres repetidos.",
+      "longerKeyboardPattern": "Use patrones de teclado más largos y cambie la dirección de escritura.",
+      "anotherWord": "Agregue más palabras menos comunes.",
+      "useWords": "Use varias palabras, pero evite frases comunes.",
+      "noNeed": "Puede crear contraseñas seguras sin símbolos, números o mayúsculas.",
+      "pwned": "Si usa esta contraseña en otro sitio, debería cambiarla."
+    },
+    "timeEstimation": {
+      "ltSecond": "menos de un segundo",
+      "second": "{base} segundo",
+      "seconds": "{base} segundos",
+      "minute": "{base} minuto",
+      "minutes": "{base} minutos",
+      "hour": "{base} hora",
+      "hours": "{base} horas",
+      "day": "{base} día",
+      "days": "{base} días",
+      "month": "{base} mes",
+      "months": "{base} meses",
+      "year": "{base} año",
+      "years": "{base} años",
+      "centuries": "siglos"
+    }
   }
 }

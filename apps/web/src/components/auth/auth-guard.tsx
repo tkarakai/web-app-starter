@@ -85,7 +85,7 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
   // the user is on the dashboard, or if an unverified user somehow bypasses
   // the server-side check, redirect them to the verify-email page immediately.
   React.useEffect(() => {
-    if (!wasAuthenticated || user === null) return;
+    if (!wasAuthenticated || user == null) return;
     const userRecord = user as Record<string, unknown>;
     const isAdmin = userRecord.role === "admin";
     const selectedSetting = isAdmin
@@ -106,7 +106,7 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
   ]);
 
   React.useEffect(() => {
-    if (!wasAuthenticated || user === null) return;
+    if (!wasAuthenticated || user == null) return;
     const userRecord = user as Record<string, unknown>;
     const isAdmin = userRecord.role === "admin";
     const selectedMfaRequired = isAdmin ? adminMfaRequired : userMfaRequired;
