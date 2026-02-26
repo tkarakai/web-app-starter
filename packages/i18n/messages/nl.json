@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Taak niet gevonden",
     "FILE_NOT_FOUND": "Bestand niet gevonden in opslag",
     "FILE_TOO_LARGE": "Bestand te groot (max. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Upload niet gevonden"
+    "UPLOAD_NOT_FOUND": "Upload niet gevonden",
+    "convex": {
+      "rateLimited": "Te veel verzoeken. Wacht {seconds} seconden.",
+      "notAuthenticated": "Uw sessie is verlopen. Log opnieuw in.",
+      "connectionLost": "Kan geen verbinding maken met de server. Controleer uw verbinding.",
+      "serverError": "Er is iets misgegaan. Probeer het opnieuw.",
+      "projectNotFound": "Project niet gevonden.",
+      "taskNotFound": "Taak niet gevonden.",
+      "fileNotFound": "Bestand niet gevonden in opslag.",
+      "fileTooLarge": "Bestand te groot (max. 1 MB).",
+      "uploadNotFound": "Upload niet gevonden."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

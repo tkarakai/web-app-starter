@@ -12,6 +12,7 @@ import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
+import { ConvexErrorToast } from "@/components/convex-error-toast";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -123,6 +124,7 @@ export default async function LocaleLayout({
           <OfflineBanner label={tOffline("message")} />
           <NextIntlClientProvider messages={messages}>
             <ConvexClientProvider initialToken={token}>
+              <ConvexErrorToast />
               <AnnouncementBannerHost hideOnDashboard fixed />
               {children}
             </ConvexClientProvider>

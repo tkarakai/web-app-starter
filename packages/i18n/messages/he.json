@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "המשימה לא נמצאה",
     "FILE_NOT_FOUND": "הקובץ לא נמצא באחסון",
     "FILE_TOO_LARGE": "הקובץ גדול מדי (מקסימום 1MB)",
-    "UPLOAD_NOT_FOUND": "ההעלאה לא נמצאה"
+    "UPLOAD_NOT_FOUND": "ההעלאה לא נמצאה",
+    "convex": {
+      "rateLimited": "יותר מדי בקשות. אנא המתן {seconds} שניות.",
+      "notAuthenticated": "פג תוקף ההפעלה שלך. אנא התחבר שוב.",
+      "connectionLost": "לא ניתן להתחבר לשרת. אנא בדוק את החיבור שלך.",
+      "serverError": "משהו השתבש. אנא נסה שוב.",
+      "projectNotFound": "הפרויקט לא נמצא.",
+      "taskNotFound": "המשימה לא נמצאה.",
+      "fileNotFound": "הקובץ לא נמצא באחסון.",
+      "fileTooLarge": "הקובץ גדול מדי (מקסימום 1 מ\"ב).",
+      "uploadNotFound": "ההעלאה לא נמצאה."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

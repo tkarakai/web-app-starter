@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Tâche introuvable",
     "FILE_NOT_FOUND": "Fichier introuvable dans le stockage",
     "FILE_TOO_LARGE": "Fichier trop volumineux (max 1 Mo)",
-    "UPLOAD_NOT_FOUND": "Téléchargement introuvable"
+    "UPLOAD_NOT_FOUND": "Téléchargement introuvable",
+    "convex": {
+      "rateLimited": "Trop de requêtes. Veuillez patienter {seconds} secondes.",
+      "notAuthenticated": "Votre session a expiré. Veuillez vous reconnecter.",
+      "connectionLost": "Impossible de se connecter au serveur. Vérifiez votre connexion.",
+      "serverError": "Une erreur est survenue. Veuillez réessayer.",
+      "projectNotFound": "Projet introuvable.",
+      "taskNotFound": "Tâche introuvable.",
+      "fileNotFound": "Fichier introuvable dans le stockage.",
+      "fileTooLarge": "Fichier trop volumineux (max 1 Mo).",
+      "uploadNotFound": "Téléchargement introuvable."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

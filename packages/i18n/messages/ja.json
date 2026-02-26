@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "タスクが見つかりません",
     "FILE_NOT_FOUND": "ストレージにファイルが見つかりません",
     "FILE_TOO_LARGE": "ファイルが大きすぎます（最大1MB）",
-    "UPLOAD_NOT_FOUND": "アップロードが見つかりません"
+    "UPLOAD_NOT_FOUND": "アップロードが見つかりません",
+    "convex": {
+      "rateLimited": "リクエストが多すぎます。{seconds}秒お待ちください。",
+      "notAuthenticated": "セッションの有効期限が切れました。再度サインインしてください。",
+      "connectionLost": "サーバーに接続できません。接続を確認してください。",
+      "serverError": "エラーが発生しました。もう一度お試しください。",
+      "projectNotFound": "プロジェクトが見つかりません。",
+      "taskNotFound": "タスクが見つかりません。",
+      "fileNotFound": "ストレージにファイルが見つかりません。",
+      "fileTooLarge": "ファイルが大きすぎます（最大1MB）。",
+      "uploadNotFound": "アップロードが見つかりません。"
+    }
   },
   "metadata": {
     "title": "Web App Starter",

@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Attività non trovata",
     "FILE_NOT_FOUND": "File non trovato nell'archivio",
     "FILE_TOO_LARGE": "File troppo grande (max 1 MB)",
-    "UPLOAD_NOT_FOUND": "Caricamento non trovato"
+    "UPLOAD_NOT_FOUND": "Caricamento non trovato",
+    "convex": {
+      "rateLimited": "Troppe richieste. Attendere {seconds} secondi.",
+      "notAuthenticated": "La sessione è scaduta. Effettua nuovamente l'accesso.",
+      "connectionLost": "Impossibile connettersi al server. Controlla la connessione.",
+      "serverError": "Qualcosa è andato storto. Riprova.",
+      "projectNotFound": "Progetto non trovato.",
+      "taskNotFound": "Attività non trovata.",
+      "fileNotFound": "File non trovato nell'archivio.",
+      "fileTooLarge": "File troppo grande (max 1 MB).",
+      "uploadNotFound": "Caricamento non trovato."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

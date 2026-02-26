@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "المهمة غير موجودة",
     "FILE_NOT_FOUND": "الملف غير موجود في التخزين",
     "FILE_TOO_LARGE": "الملف كبير جداً (الحد الأقصى 1 ميغابايت)",
-    "UPLOAD_NOT_FOUND": "الرفع غير موجود"
+    "UPLOAD_NOT_FOUND": "الرفع غير موجود",
+    "convex": {
+      "rateLimited": "طلبات كثيرة جداً. يرجى الانتظار {seconds} ثانية.",
+      "notAuthenticated": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+      "connectionLost": "تعذر الاتصال بالخادم. يرجى التحقق من اتصالك.",
+      "serverError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+      "projectNotFound": "المشروع غير موجود.",
+      "taskNotFound": "المهمة غير موجودة.",
+      "fileNotFound": "الملف غير موجود في التخزين.",
+      "fileTooLarge": "الملف كبير جداً (الحد الأقصى 1 ميغابايت).",
+      "uploadNotFound": "الرفع غير موجود."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

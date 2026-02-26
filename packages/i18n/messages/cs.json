@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Úkol nenalezen",
     "FILE_NOT_FOUND": "Soubor nenalezen v úložišti",
     "FILE_TOO_LARGE": "Soubor je příliš velký (max. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Nahrávání nenalezeno"
+    "UPLOAD_NOT_FOUND": "Nahrávání nenalezeno",
+    "convex": {
+      "rateLimited": "Příliš mnoho požadavků. Počkejte prosím {seconds} sekund.",
+      "notAuthenticated": "Vaše relace vypršela. Přihlaste se prosím znovu.",
+      "connectionLost": "Nelze se připojit k serveru. Zkontrolujte prosím připojení.",
+      "serverError": "Něco se pokazilo. Zkuste to prosím znovu.",
+      "projectNotFound": "Projekt nenalezen.",
+      "taskNotFound": "Úkol nenalezen.",
+      "fileNotFound": "Soubor nenalezen v úložišti.",
+      "fileTooLarge": "Soubor je příliš velký (max 1 MB).",
+      "uploadNotFound": "Nahrávání nenalezeno."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

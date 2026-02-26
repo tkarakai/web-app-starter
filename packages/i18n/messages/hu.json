@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Feladat nem található",
     "FILE_NOT_FOUND": "Fájl nem található a tárhelyen",
     "FILE_TOO_LARGE": "A fájl túl nagy (max. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Feltöltés nem található"
+    "UPLOAD_NOT_FOUND": "Feltöltés nem található",
+    "convex": {
+      "rateLimited": "Túl sok kérés. Kérjük, várjon {seconds} másodpercet.",
+      "notAuthenticated": "A munkamenete lejárt. Kérjük, jelentkezzen be újra.",
+      "connectionLost": "Nem sikerült csatlakozni a szerverhez. Kérjük, ellenőrizze a kapcsolatot.",
+      "serverError": "Valami hiba történt. Kérjük, próbálja újra.",
+      "projectNotFound": "Projekt nem található.",
+      "taskNotFound": "Feladat nem található.",
+      "fileNotFound": "Fájl nem található a tárhelyen.",
+      "fileTooLarge": "A fájl túl nagy (max. 1 MB).",
+      "uploadNotFound": "Feltöltés nem található."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Zadanie nie znalezione",
     "FILE_NOT_FOUND": "Plik nie znaleziony w magazynie",
     "FILE_TOO_LARGE": "Plik za duży (maks. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Przesyłanie nie znalezione"
+    "UPLOAD_NOT_FOUND": "Przesyłanie nie znalezione",
+    "convex": {
+      "rateLimited": "Zbyt wiele żądań. Poczekaj {seconds} sekund.",
+      "notAuthenticated": "Sesja wygasła. Zaloguj się ponownie.",
+      "connectionLost": "Nie można połączyć się z serwerem. Sprawdź połączenie.",
+      "serverError": "Coś poszło nie tak. Spróbuj ponownie.",
+      "projectNotFound": "Projekt nie znaleziony.",
+      "taskNotFound": "Zadanie nie znalezione.",
+      "fileNotFound": "Plik nie znaleziony w magazynie.",
+      "fileTooLarge": "Plik za duży (maks. 1 MB).",
+      "uploadNotFound": "Przesyłanie nie znalezione."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

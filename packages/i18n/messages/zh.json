@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "任务未找到",
     "FILE_NOT_FOUND": "文件未在存储中找到",
     "FILE_TOO_LARGE": "文件过大（最大 1MB）",
-    "UPLOAD_NOT_FOUND": "上传未找到"
+    "UPLOAD_NOT_FOUND": "上传未找到",
+    "convex": {
+      "rateLimited": "请求过多。请等待 {seconds} 秒。",
+      "notAuthenticated": "您的会话已过期。请重新登录。",
+      "connectionLost": "无法连接到服务器。请检查您的网络连接。",
+      "serverError": "出了点问题。请重试。",
+      "projectNotFound": "项目未找到。",
+      "taskNotFound": "任务未找到。",
+      "fileNotFound": "文件未在存储中找到。",
+      "fileTooLarge": "文件过大（最大 1MB）。",
+      "uploadNotFound": "上传未找到。"
+    }
   },
   "metadata": {
     "title": "Web App Starter",

@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Задача не найдена",
     "FILE_NOT_FOUND": "Файл не найден в хранилище",
     "FILE_TOO_LARGE": "Файл слишком большой (макс. 1 МБ)",
-    "UPLOAD_NOT_FOUND": "Загрузка не найдена"
+    "UPLOAD_NOT_FOUND": "Загрузка не найдена",
+    "convex": {
+      "rateLimited": "Слишком много запросов. Подождите {seconds} секунд.",
+      "notAuthenticated": "Сеанс истёк. Войдите снова.",
+      "connectionLost": "Не удалось подключиться к серверу. Проверьте соединение.",
+      "serverError": "Что-то пошло не так. Попробуйте ещё раз.",
+      "projectNotFound": "Проект не найден.",
+      "taskNotFound": "Задача не найдена.",
+      "fileNotFound": "Файл не найден в хранилище.",
+      "fileTooLarge": "Файл слишком большой (макс. 1 МБ).",
+      "uploadNotFound": "Загрузка не найдена."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

@@ -363,7 +363,18 @@
     "TASK_NOT_FOUND": "Task not found",
     "FILE_NOT_FOUND": "File not found in storage",
     "FILE_TOO_LARGE": "File too large (max 1MB)",
-    "UPLOAD_NOT_FOUND": "Upload not found"
+    "UPLOAD_NOT_FOUND": "Upload not found",
+    "convex": {
+      "rateLimited": "Too many requests. Please wait {seconds} seconds.",
+      "notAuthenticated": "Your session has expired. Please sign in again.",
+      "connectionLost": "Unable to connect to the server. Please check your connection.",
+      "serverError": "Something went wrong. Please try again.",
+      "projectNotFound": "Project not found.",
+      "taskNotFound": "Task not found.",
+      "fileNotFound": "File not found in storage.",
+      "fileTooLarge": "File too large (max 1MB).",
+      "uploadNotFound": "Upload not found."
+    }
   },
   "metadata": {
     "title": "Web App Starter",

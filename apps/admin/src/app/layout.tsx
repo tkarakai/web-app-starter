@@ -7,6 +7,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { EnvironmentBannerWrapper, OfflineBanner } from "@repo/design-system";
 import { getToken } from "@repo/auth/server";
+import { ConvexErrorToast } from "@/components/convex-error-toast";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -42,7 +43,10 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <EnvironmentBannerWrapper appName="admin" />
           <OfflineBanner />
-          <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+          <ConvexClientProvider initialToken={token}>
+            <ConvexErrorToast />
+            {children}
+          </ConvexClientProvider>
         </ThemeProvider>
       </body>
     </html>
