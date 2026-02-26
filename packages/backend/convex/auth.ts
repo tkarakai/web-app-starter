@@ -4,7 +4,7 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -292,6 +292,12 @@ export const createAuthOptions = (
   return {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
+    session: {
+      // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
+      // Admin sessions (4 hours) are enforced at the middleware level.
+      expiresIn: 60 * 60 * 24 * 7,  // 7 days
+      updateAge: 60 * 60,            // 1 hour
+    },
     emailAndPassword: {
       enabled: true,
       // requireEmailVerification is kept false here so Better Auth does not
@@ -548,6 +554,7 @@ export const createAuthOptions = (
         },
       }),
       passkey(passkeyRpId ? { rpID: passkeyRpId } : undefined),
+      haveIBeenPwned(),
       convex({ authConfig }),
     ],
     rateLimit: {

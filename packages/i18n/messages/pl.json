@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Hasła nie są zgodne",
+      "passwordCompromised": "Wprowadzone hasło zostało naruszone. Proszę wybrać inne hasło.",
+      "rateLimited": "Zbyt wiele prób. Proszę chwilę poczekać przed ponowną próbą.",
+      "invalidCredentials": "Nieprawidłowy adres e-mail lub hasło",
       "generic": "Wystąpił błąd"
     },
     "twoFactorVerify": {

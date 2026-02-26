@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "הסיסמאות אינן תואמות",
+      "passwordCompromised": "הסיסמה שהזנת נחשפה. אנא בחר/י סיסמה אחרת.",
+      "rateLimited": "יותר מדי ניסיונות. אנא המתן/י רגע לפני שתנסה/י שוב.",
+      "invalidCredentials": "כתובת אימייל או סיסמה שגויים",
       "generic": "אירעה שגיאה"
     },
     "twoFactorVerify": {

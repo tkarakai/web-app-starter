@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Die Passwörter stimmen nicht überein",
+      "passwordCompromised": "Das eingegebene Passwort wurde kompromittiert. Bitte wählen Sie ein anderes Passwort.",
+      "rateLimited": "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
+      "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
       "generic": "Ein Fehler ist aufgetreten"
     },
     "twoFactorVerify": {

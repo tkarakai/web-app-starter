@@ -52,6 +52,7 @@ export const AUDIT_ACTIONS = [
   "admin.admin_mfa_policy_changed",
   "admin.user_email_verification_policy_changed",
   "admin.admin_email_verification_policy_changed",
+  "admin.user_magic_link_policy_changed",
   "admin.user_passkey_policy_changed",
   "admin.admin_passkey_policy_changed",
   "admin.waitlist_setting_changed",

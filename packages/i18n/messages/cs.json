@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Hesla se neshodují",
+      "passwordCompromised": "Zadané heslo bylo kompromitováno. Zvolte prosím jiné heslo.",
+      "rateLimited": "Příliš mnoho pokusů. Počkejte prosím chvíli a zkuste to znovu.",
+      "invalidCredentials": "Neplatný e-mail nebo heslo",
       "generic": "Došlo k chybě"
     },
     "twoFactorVerify": {

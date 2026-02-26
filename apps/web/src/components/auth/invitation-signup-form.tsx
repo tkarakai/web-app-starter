@@ -7,7 +7,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient, isAuthRateLimited, isConvexRateLimited } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
@@ -37,7 +37,6 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
   const beginClaim = useMutation(api.waitlistTokens.beginClaim);
   const finalizeClaim = useMutation(api.waitlistTokens.finalizeClaim);
-  const releaseClaim = useMutation(api.waitlistTokens.releaseClaim);
 
   // Read admin setting so we know whether to gate unverified users after sign-up.
   const emailVerifRequired = useQuery(api.appSettings.getPublic, {
@@ -115,10 +114,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
     setPending(true);
 
     try {
-      // Step 1: Begin claim (sent → claiming)
-      await beginClaim({ token });
-
-      // Step 2: Create account via Better Auth
+      // Step 1: Create account via Better Auth (before claiming the token,
+      // so that password validation failures like HIBP don't consume the token).
       const result = await authClient.signUp.email({
         name,
         email: tokenValidation.email,
@@ -127,20 +124,25 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       });
 
       if (result.error) {
-        // Release claim on signup failure
-        await releaseClaim({ token });
-        // Use generic message to avoid leaking server error details.
-        // Rate limit errors get a specific message.
-        setError(
-          result.error.status === 429
-            ? t("errors.rateLimited")
-            : t("errors.generic"),
-        );
+        if (isAuthRateLimited(result.error)) {
+          setError(t("errors.rateLimited"));
+        } else if (result.error.message?.toLowerCase().includes("compromised")) {
+          setError(t("errors.passwordCompromised"));
+        } else {
+          setError(t("errors.generic"));
+        }
         return;
       }
 
-      // Step 3: Finalize claim (claiming → claimed)
-      await finalizeClaim({ token });
+      // Step 2: Account created — now claim the token (sent → claiming → claimed).
+      // If claiming fails, the account still exists but the token can be retried.
+      try {
+        await beginClaim({ token });
+        await finalizeClaim({ token });
+      } catch {
+        // Token claim failure is non-fatal — the account was already created.
+        // The token will auto-reset from "claiming" after the TTL expires.
+      }
 
       broadcastAuth();
 
@@ -154,15 +156,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       }
 
       await redirectWithUserLocale(router);
-    } catch {
-      // Release claim on any error
-      try {
-        await releaseClaim({ token });
-      } catch {
-        // Ignore release errors
-      }
-      // Use generic message — don't leak internal error details to the client.
-      setError(t("errors.generic"));
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? t("errors.rateLimited") : t("errors.generic"));
     } finally {
       setPending(false);
     }

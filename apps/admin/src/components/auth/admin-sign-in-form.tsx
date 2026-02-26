@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import {
   Button,
@@ -139,8 +139,8 @@ export function AdminSignInForm() {
         broadcastAuth();
         router.push("/dashboard");
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
       setPending(false);
     }
@@ -172,8 +172,8 @@ export function AdminSignInForm() {
 
       broadcastAuth();
       router.push("/dashboard");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
       setPending(false);
     }
@@ -209,8 +209,8 @@ export function AdminSignInForm() {
           router.push("/dashboard");
         }
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
       setPending(false);
     }

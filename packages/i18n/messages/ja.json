@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "パスワードが一致しません",
+      "passwordCompromised": "入力されたパスワードは漏洩しています。別のパスワードを選択してください。",
+      "rateLimited": "試行回数が多すぎます。しばらく待ってからもう一度お試しください。",
+      "invalidCredentials": "メールアドレスまたはパスワードが無効です",
       "generic": "エラーが発生しました"
     },
     "twoFactorVerify": {

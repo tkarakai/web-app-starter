@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient, isAuthRateLimited, isConvexRateLimited } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
@@ -196,8 +196,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           await redirectWithUserLocale(router);
         }
       }
-    } catch {
-      setError(t("errors.generic"));
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? t("errors.rateLimited") : t("errors.generic"));
     } finally {
       setPending(false);
     }
@@ -230,8 +230,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
       broadcastAuth();
       await redirectWithUserLocale(router);
-    } catch {
-      setError(t("errors.generic"));
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? t("errors.rateLimited") : t("errors.generic"));
     } finally {
       setPending(false);
     }
@@ -258,7 +258,13 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         });
 
         if (result.error) {
-          setError(formatAuthError(result.error, "Invalid email or password"));
+          if (isAuthRateLimited(result.error)) {
+            setError(t("errors.rateLimited"));
+          } else if (result.error.message?.toLowerCase().includes("compromised")) {
+            setError(t("errors.passwordCompromised"));
+          } else {
+            setError(t("errors.generic"));
+          }
         } else {
           // requireEmailVerification is false in Better Auth, so a session is
           // always created on sign-up. We detect verification need by checking
@@ -298,7 +304,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           router.push(`/verify-email?email=${encodeURIComponent(email)}`);
           return;
         }
-        setError(formatAuthError(result.error, "Invalid email or password"));
+        setError(isAuthRateLimited(result.error) ? t("errors.rateLimited") : t("errors.invalidCredentials"));
       } else if (
         (result.data as Record<string, unknown> | undefined)?.twoFactorRedirect
       ) {
@@ -308,8 +314,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         broadcastAuth();
         await redirectWithUserLocale(router);
       }
-    } catch {
-      setError(t("errors.generic"));
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? t("errors.rateLimited") : t("errors.generic"));
     } finally {
       setPending(false);
     }

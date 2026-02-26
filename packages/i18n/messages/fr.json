@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "passwordCompromised": "Le mot de passe que vous avez saisi a été compromis. Veuillez en choisir un autre.",
+      "rateLimited": "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
+      "invalidCredentials": "Adresse e-mail ou mot de passe incorrect",
       "generic": "Une erreur est survenue"
     },
     "twoFactorVerify": {

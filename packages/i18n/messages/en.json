@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Passwords do not match",
+      "passwordCompromised": "The password you entered has been compromised. Please choose a different password.",
+      "rateLimited": "Too many attempts. Please wait a moment before trying again.",
+      "invalidCredentials": "Invalid email or password",
       "generic": "An error occurred"
     },
     "twoFactorVerify": {

@@ -23,13 +23,41 @@ export const AUTH_RATE_LIMIT_MESSAGE =
 /**
  * Format an auth API error for display. Returns the rate-limit message
  * when applicable, otherwise falls back to the provided message.
+ *
+ * Pass `{ showServerMessage: true }` to surface the server's error message
+ * for 4xx responses (e.g. "Password is compromised" from the HIBP plugin).
  */
 export function formatAuthError(
   error: { status?: number; message?: string },
   fallbackMessage: string,
+  options?: { showServerMessage?: boolean },
 ): string {
   if (isAuthRateLimited(error)) return AUTH_RATE_LIMIT_MESSAGE;
+  if (
+    options?.showServerMessage &&
+    error.message &&
+    error.status &&
+    error.status >= 400 &&
+    error.status < 500
+  ) {
+    return error.message;
+  }
   return fallbackMessage;
+}
+
+/**
+ * Check if a caught error is a Convex rate-limit error (ConvexError with
+ * `data.kind === "RateLimited"`).
+ */
+export function isConvexRateLimited(err: unknown): boolean {
+  if (!err || typeof err !== "object" || !("data" in err)) return false;
+  const data = (err as { data: unknown }).data;
+  return (
+    !!data &&
+    typeof data === "object" &&
+    "kind" in data &&
+    (data as { kind: string }).kind === "RateLimited"
+  );
 }
 
 export const authClient = createAuthClient({

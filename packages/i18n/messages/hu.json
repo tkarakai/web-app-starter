@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "A jelszavak nem egyeznek",
+      "passwordCompromised": "A megadott jelszó kompromittálódott. Kérjük, válasszon másik jelszót.",
+      "rateLimited": "Túl sok próbálkozás. Kérjük, várjon egy pillanatot, mielőtt újra próbálkozna.",
+      "invalidCredentials": "Érvénytelen e-mail cím vagy jelszó",
       "generic": "Hiba történt"
     },
     "twoFactorVerify": {

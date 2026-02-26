@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Wachtwoorden komen niet overeen",
+      "passwordCompromised": "Het ingevoerde wachtwoord is gecompromitteerd. Kies een ander wachtwoord.",
+      "rateLimited": "Te veel pogingen. Wacht even voordat u het opnieuw probeert.",
+      "invalidCredentials": "Ongeldig e-mailadres of wachtwoord",
       "generic": "Er is een fout opgetreden"
     },
     "twoFactorVerify": {

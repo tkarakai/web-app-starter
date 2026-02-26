@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "两次输入的密码不一致",
+      "passwordCompromised": "您输入的密码已被泄露，请选择其他密码。",
+      "rateLimited": "尝试次数过多，请稍后再试。",
+      "invalidCredentials": "邮箱或密码无效",
       "generic": "发生了错误"
     },
     "twoFactorVerify": {

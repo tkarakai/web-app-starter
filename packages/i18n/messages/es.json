@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Las contraseñas no coinciden",
+      "passwordCompromised": "La contraseña que ingresaste ha sido comprometida. Por favor, elige una contraseña diferente.",
+      "rateLimited": "Demasiados intentos. Por favor, espera un momento antes de intentarlo de nuevo.",
+      "invalidCredentials": "Correo electrónico o contraseña no válidos",
       "generic": "Se produjo un error"
     },
     "twoFactorVerify": {

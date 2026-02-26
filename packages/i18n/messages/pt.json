@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "As senhas não coincidem",
+      "passwordCompromised": "A senha que você digitou foi comprometida. Por favor, escolha uma senha diferente.",
+      "rateLimited": "Muitas tentativas. Por favor, aguarde um momento antes de tentar novamente.",
+      "invalidCredentials": "Email ou senha inválidos",
       "generic": "Ocorreu um erro"
     },
     "twoFactorVerify": {
