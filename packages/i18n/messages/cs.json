@@ -462,5 +462,10 @@
       "years": "{base} let",
       "centuries": "staleti"
     }
+  },
+  "forbidden": {
+    "title": "Přístup odepřen",
+    "description": "Váš účet byl pozastaven nebo nemáte oprávnění k přístupu k tomuto prostředku. Pokud se domníváte, že jde o chybu, kontaktujte prosím administrátora vaší organizace.",
+    "backToSignIn": "Zpět na přihlášení"
   }
 }

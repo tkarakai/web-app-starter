@@ -462,5 +462,10 @@
       "years": "{base} lat",
       "centuries": "wieki"
     }
+  },
+  "forbidden": {
+    "title": "Odmowa dostępu",
+    "description": "Twoje konto zostało zawieszone lub nie masz uprawnień do uzyskania dostępu do tego zasobu. Jeśli uważasz, że to błąd, skontaktuj się z administratorem swojej organizacji.",
+    "backToSignIn": "Wróć do logowania"
   }
 }

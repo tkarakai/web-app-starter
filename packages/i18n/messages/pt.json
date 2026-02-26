@@ -462,5 +462,10 @@
       "years": "{base} anos",
       "centuries": "séculos"
     }
+  },
+  "forbidden": {
+    "title": "Acesso negado",
+    "description": "Sua conta foi suspensa ou você não tem permissão para acessar este recurso. Se você acredita que isso é um erro, entre em contato com o administrador da sua organização.",
+    "backToSignIn": "Voltar para o login"
   }
 }

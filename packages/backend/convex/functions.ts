@@ -65,6 +65,11 @@ async function getAuth(ctx: QueryCtx) {
   const user = await authComponent.safeGetAuthUser(ctx);
   if (!user) return null;
 
+  // Banned users are treated as unauthenticated (spec §14)
+  if ((user as Record<string, unknown>).banned === true) {
+    return null;
+  }
+
   const emailVerificationRequired = await isEmailVerificationRequired(
     ctx,
     user as Record<string, unknown>,

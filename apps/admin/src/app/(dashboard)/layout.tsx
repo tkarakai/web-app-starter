@@ -32,6 +32,17 @@ export default async function DashboardLayout({
     redirect("/api/auth/clear-session");
   }
 
+  // Banned admins cannot access the dashboard (spec §14)
+  if ((user as Record<string, unknown>).banned === true) {
+    redirect("/forbidden");
+  }
+
+  // Admins without 2FA set up must complete onboarding first (spec §14)
+  // The /onboarding route is created in Stage 6; until then this shows a 404.
+  if ((user as Record<string, unknown>).twoFactorEnabled !== true) {
+    redirect("/onboarding");
+  }
+
   return (
     <AuthGuard preloadedUser={preloadedUser}>
       <AdminShellLayout>{children}</AdminShellLayout>

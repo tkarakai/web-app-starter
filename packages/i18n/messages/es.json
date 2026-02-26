@@ -462,5 +462,10 @@
       "years": "{base} años",
       "centuries": "siglos"
     }
+  },
+  "forbidden": {
+    "title": "Acceso denegado",
+    "description": "Su cuenta ha sido suspendida o no tiene permiso para acceder a este recurso. Si cree que se trata de un error, comuníquese con el administrador de su organización.",
+    "backToSignIn": "Volver a iniciar sesión"
   }
 }

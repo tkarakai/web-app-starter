@@ -462,5 +462,10 @@
       "years": "{base} anni",
       "centuries": "secoli"
     }
+  },
+  "forbidden": {
+    "title": "Accesso negato",
+    "description": "Il tuo account è stato sospeso oppure non hai il permesso di accedere a questa risorsa. Se ritieni che si tratti di un errore, contatta l'amministratore della tua organizzazione.",
+    "backToSignIn": "Torna all'accesso"
   }
 }
