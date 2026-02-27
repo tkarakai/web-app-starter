@@ -21,10 +21,9 @@ import {
   Input,
   Label,
   PasswordInput,
-  PasswordStrengthMeter,
   Skeleton,
-  validatePassword,
 } from "@repo/design-system";
+import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
 
 export function InvitationSignupForm({ token }: { token?: string }) {
   const router = useRouter();
@@ -51,6 +50,20 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Debounced password for server-side strength evaluation
+  const [debouncedPassword, setDebouncedPassword] = React.useState("");
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
+    return () => clearTimeout(timer);
+  }, [password]);
+
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    debouncedPassword && tokenValidation?.valid
+      ? { password: debouncedPassword, email: tokenValidation.email, role: "user" as const }
+      : "skip",
+  );
 
   // Session conflict detection
   const [sessionConflict, setSessionConflict] = React.useState<{
@@ -183,7 +196,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       return;
     }
 
-    if (!validatePassword(password, tokenValidation.email, "user").valid) {
+    if (!strengthResult?.valid) {
       setError(tps("strengthRequirement"));
       return;
     }
@@ -282,7 +295,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               required
               minLength={12}
             />
-            <PasswordStrengthMeter password={password} email={tokenValidation.email} role="user" t={tps} />
+            <PasswordStrengthMeter result={strengthResult} t={tps} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-confirm-password">

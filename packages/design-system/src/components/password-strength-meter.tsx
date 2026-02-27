@@ -2,17 +2,23 @@
 
 import * as React from "react";
 
-import {
-  validatePassword,
-  formatCrackTime,
-  getMinPasswordLength,
-  type PasswordRole,
-} from "../lib/password-validation";
+import { formatCrackTime } from "../lib/password-validation";
 
 export type PasswordStrengthTranslateFn = (
   key: string,
   params?: Record<string, string | number>,
 ) => string;
+
+/** Shape of the server-side password strength evaluation result. */
+export interface PasswordStrengthResult {
+  valid: boolean;
+  score: number;
+  warningKey: string | null;
+  suggestionKeys: string[];
+  crackTimeSeconds: number;
+  tooShort: boolean;
+  minLength: number;
+}
 
 const SCORE_COLORS = [
   "bg-destructive", // 0 — very weak
@@ -30,40 +36,26 @@ const SCORE_LABEL_KEYS = [
   "labels.strong",
 ] as const;
 
-interface PasswordStrengthMeterProps {
-  password: string;
-  email: string;
-  role: PasswordRole;
+export interface PasswordStrengthMeterProps {
+  /** Result from the server-side passwordStrength.evaluate query. */
+  result: PasswordStrengthResult | null | undefined;
   t: PasswordStrengthTranslateFn;
 }
 
 function PasswordStrengthMeter({
-  password,
-  email,
-  role,
+  result,
   t,
 }: PasswordStrengthMeterProps): React.ReactNode {
-  const result = password
-    ? validatePassword(password, email, role)
-    : null;
-
   if (!result) return null;
 
-  const minLength = getMinPasswordLength(role);
-  const tooShort = password.length < minLength;
-
-  // When password is too short, cap the visual score at 2 (orange)
-  const effectiveScore = tooShort
-    ? Math.min(result.score, 2)
-    : result.score;
-  const barColor = SCORE_COLORS[effectiveScore];
-  const barWidth = ((effectiveScore + 1) / 5) * 100;
-  const label = t(SCORE_LABEL_KEYS[effectiveScore]);
+  const barColor = SCORE_COLORS[result.score];
+  const barWidth = ((result.score + 1) / 5) * 100;
+  const label = t(SCORE_LABEL_KEYS[result.score]);
 
   // Build feedback parts
   const feedbackParts: string[] = [];
-  if (tooShort) {
-    feedbackParts.push(t("minLength", { count: minLength }));
+  if (result.tooShort) {
+    feedbackParts.push(t("minLength", { count: result.minLength }));
   }
   if (result.warningKey) {
     feedbackParts.push(t(result.warningKey));
@@ -107,7 +99,4 @@ function PasswordStrengthMeter({
   );
 }
 
-export {
-  PasswordStrengthMeter,
-  type PasswordStrengthMeterProps,
-};
+export { PasswordStrengthMeter };

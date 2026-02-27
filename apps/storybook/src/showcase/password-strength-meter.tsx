@@ -1,15 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { Label, PasswordInput } from "@repo/design-system";
 import {
-  Input,
-  Label,
-  PasswordInput,
   PasswordStrengthMeter,
-  validatePassword,
-  getMinPasswordLength,
-  type PasswordRole,
-} from "@repo/design-system";
+  type PasswordStrengthResult,
+} from "@repo/design-system/password-strength";
 import { DemoSection } from "@/components/demo-section";
 
 /** Simple pass-through translate function for storybook (no i18n). */
@@ -78,46 +74,148 @@ function t(key: string, params?: Record<string, string | number>): string {
   return text;
 }
 
-function InteractiveDemo({ role, defaultEmail }: { role: PasswordRole; defaultEmail: string }) {
+/** Mock results that simulate what the server-side query would return. */
+const MOCK_RESULTS: { label: string; result: PasswordStrengthResult }[] = [
+  {
+    label: "Very Weak — \"password\"",
+    result: {
+      valid: false,
+      score: 0,
+      warningKey: "warnings.topTen",
+      suggestionKeys: ["suggestions.anotherWord"],
+      crackTimeSeconds: 0.001,
+      tooShort: false,
+      minLength: 12,
+    },
+  },
+  {
+    label: "Weak — \"MyP@ss123!ab\"",
+    result: {
+      valid: false,
+      score: 1,
+      warningKey: "warnings.similarToCommon",
+      suggestionKeys: ["suggestions.anotherWord"],
+      crackTimeSeconds: 120,
+      tooShort: false,
+      minLength: 12,
+    },
+  },
+  {
+    label: "Fair — \"sunflower-cake99\"",
+    result: {
+      valid: false,
+      score: 2,
+      warningKey: null,
+      suggestionKeys: ["suggestions.anotherWord"],
+      crackTimeSeconds: 86400,
+      tooShort: false,
+      minLength: 12,
+    },
+  },
+  {
+    label: "Good — \"correct-horse-battery\"",
+    result: {
+      valid: false,
+      score: 3,
+      warningKey: null,
+      suggestionKeys: [],
+      crackTimeSeconds: 31536000,
+      tooShort: false,
+      minLength: 12,
+    },
+  },
+  {
+    label: "Strong — \"correct-horse-battery-staple-xyz\"",
+    result: {
+      valid: true,
+      score: 4,
+      warningKey: null,
+      suggestionKeys: [],
+      crackTimeSeconds: 3153600000,
+      tooShort: false,
+      minLength: 12,
+    },
+  },
+  {
+    label: "Too Short (admin role, min 40)",
+    result: {
+      valid: false,
+      score: 2,
+      warningKey: null,
+      suggestionKeys: [],
+      crackTimeSeconds: 86400,
+      tooShort: true,
+      minLength: 40,
+    },
+  },
+];
+
+function StaticDemo({ label, result }: { label: string; result: PasswordStrengthResult }) {
+  return (
+    <div className="max-w-md space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      <PasswordStrengthMeter result={result} t={t} />
+      <div className="rounded-md border bg-muted/50 p-3 text-xs font-mono space-y-1">
+        <p>valid: <span className={result.valid ? "text-green-600" : "text-destructive"}>{String(result.valid)}</span></p>
+        <p>score: {result.score}/4</p>
+        <p>crackTimeSeconds: {result.crackTimeSeconds.toLocaleString()}</p>
+        {result.warningKey ? <p>warning: {result.warningKey}</p> : null}
+        {result.suggestionKeys.length > 0 ? (
+          <p>suggestions: {result.suggestionKeys.join(", ")}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function InteractiveDemo() {
   const [password, setPassword] = React.useState("");
-  const [email, setEmail] = React.useState(defaultEmail);
-  const minLength = getMinPasswordLength(role);
-  const result = password ? validatePassword(password, email, role) : null;
+  const [selectedScore, setSelectedScore] = React.useState(0);
+
+  // Simulate server result based on selected score
+  const mockResult: PasswordStrengthResult | null = password
+    ? {
+        valid: selectedScore >= 4,
+        score: selectedScore,
+        warningKey: selectedScore <= 1 ? "warnings.common" : null,
+        suggestionKeys: selectedScore <= 2 ? ["suggestions.anotherWord"] : [],
+        crackTimeSeconds: [0.001, 120, 86400, 31536000, 3153600000][selectedScore],
+        tooShort: password.length < 12,
+        minLength: 12,
+      }
+    : null;
 
   return (
     <div className="max-w-md space-y-3">
       <div className="space-y-2">
-        <Label htmlFor={`demo-email-${role}`}>Email (passwords containing it score lower)</Label>
-        <Input
-          id={`demo-email-${role}`}
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={`demo-password-${role}`}>
-          Password (min {minLength} chars, role: {role})
-        </Label>
+        <Label htmlFor="demo-password">Password</Label>
         <PasswordInput
-          id={`demo-password-${role}`}
-          placeholder="Type a password to see strength feedback…"
+          id="demo-password"
+          placeholder="Type something to see the meter…"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <PasswordStrengthMeter password={password} email={email} role={role} t={t} />
+        <PasswordStrengthMeter result={mockResult} t={t} />
       </div>
-      {result ? (
-        <div className="rounded-md border bg-muted/50 p-3 text-xs font-mono space-y-1">
-          <p>valid: <span className={result.valid ? "text-green-600" : "text-destructive"}>{String(result.valid)}</span></p>
-          <p>score: {result.score}/4</p>
-          <p>crackTimeSeconds: {result.crackTimeSeconds.toLocaleString()}</p>
-          {result.warningKey ? <p>warning: {result.warningKey}</p> : null}
-          {result.suggestionKeys.length > 0 ? (
-            <p>suggestions: {result.suggestionKeys.join(", ")}</p>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="flex items-center gap-2">
+        <Label htmlFor="demo-score" className="text-sm whitespace-nowrap">Simulated score:</Label>
+        <select
+          id="demo-score"
+          className="rounded border bg-background px-2 py-1 text-sm"
+          value={selectedScore}
+          onChange={(e) => setSelectedScore(Number(e.target.value))}
+        >
+          <option value={0}>0 — Very Weak</option>
+          <option value={1}>1 — Weak</option>
+          <option value={2}>2 — Fair</option>
+          <option value={3}>3 — Good</option>
+          <option value={4}>4 — Strong</option>
+        </select>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        In production, the score comes from the server-side zxcvbn evaluation via Convex query.
+        This demo uses a mock score selector.
+      </p>
     </div>
   );
 }
@@ -125,21 +223,16 @@ function InteractiveDemo({ role, defaultEmail }: { role: PasswordRole; defaultEm
 export default function PasswordStrengthMeterShowcase() {
   return (
     <>
-      <DemoSection title="User Role (min 12 chars)">
-        <InteractiveDemo role="user" defaultEmail="user@example.com" />
-      </DemoSection>
-
-      <DemoSection title="Admin Role (min 40 chars)">
-        <InteractiveDemo role="admin" defaultEmail="admin@example.com" />
-      </DemoSection>
-
       <DemoSection title="Strength Levels">
-        <p className="text-sm text-muted-foreground mb-4">
-          Try these passwords to see different strength levels: &quot;password&quot; (very weak),
-          &quot;MyP@ss123&quot; (weak/fair), &quot;correct-horse-battery&quot; (good),
-          &quot;correct-horse-battery-staple-xyz&quot; (strong).
-        </p>
-        <InteractiveDemo role="user" defaultEmail="" />
+        <div className="space-y-6">
+          {MOCK_RESULTS.map((item) => (
+            <StaticDemo key={item.label} label={item.label} result={item.result} />
+          ))}
+        </div>
+      </DemoSection>
+
+      <DemoSection title="Interactive Demo (Mocked)">
+        <InteractiveDemo />
       </DemoSection>
     </>
   );

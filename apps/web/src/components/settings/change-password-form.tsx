@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
@@ -12,10 +12,9 @@ import {
   Checkbox,
   Label,
   PasswordInput,
-  PasswordStrengthMeter,
-  validatePassword,
   toast,
 } from "@repo/design-system";
+import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
 
 export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");
@@ -30,10 +29,20 @@ export function ChangePasswordForm() {
   const [revokeOtherSessions, setRevokeOtherSessions] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const passwordValidation = newPassword
-    ? validatePassword(newPassword, "", "user")
-    : null;
-  const isNewPasswordValid = passwordValidation?.valid ?? false;
+  // Debounced password for server-side strength evaluation
+  const [debouncedPassword, setDebouncedPassword] = React.useState("");
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPassword(newPassword), 1000);
+    return () => clearTimeout(timer);
+  }, [newPassword]);
+
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    debouncedPassword
+      ? { password: debouncedPassword, email: "", role: "user" as const }
+      : "skip",
+  );
+  const isNewPasswordValid = strengthResult?.valid ?? false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +121,7 @@ export function ChangePasswordForm() {
           required
           minLength={12}
         />
-        <PasswordStrengthMeter password={newPassword} email="" role="user" t={tps} />
+        <PasswordStrengthMeter result={strengthResult} t={tps} />
       </div>
 
       <div className="space-y-2">

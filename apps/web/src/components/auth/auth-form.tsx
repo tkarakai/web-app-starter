@@ -24,12 +24,11 @@ import {
   type OtpInputHandle,
   PasskeyUnsupportedAlert,
   PasswordInput,
-  PasswordStrengthMeter,
   Separator,
   SlideTransition,
   usePasskeySupport,
-  validatePassword,
 } from "@repo/design-system";
+import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
 
 const LANDING_URL =
   process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
@@ -64,6 +63,20 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
+
+  // Debounced password for server-side strength evaluation
+  const [debouncedPassword, setDebouncedPassword] = React.useState("");
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
+    return () => clearTimeout(timer);
+  }, [password]);
+
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    debouncedPassword
+      ? { password: debouncedPassword, email, role: "user" as const }
+      : "skip",
+  );
 
   // Multi-step sign-in state
   const [step, setStep] = React.useState<SignInStep>(0);
@@ -362,7 +375,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
-    if (!validatePassword(password, email, "user").valid) {
+    if (!strengthResult?.valid) {
       setError(tps("strengthRequirement"));
       return;
     }
@@ -480,7 +493,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 required
                 minLength={12}
               />
-              <PasswordStrengthMeter password={password} email={email} role="user" t={tps} />
+              <PasswordStrengthMeter result={strengthResult} t={tps} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">{t("fields.confirmPassword")}</Label>

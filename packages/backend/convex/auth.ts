@@ -18,6 +18,7 @@ import { sendAuthEmail } from "./sendAuthEmail";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
+import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 
 /** Truncate a string to at most `max` characters. */
@@ -109,6 +110,55 @@ const protectedAdminPlugin = (
             error: { message: "Cannot modify a protected admin" },
           }),
           { status: 403, headers: { "Content-Type": "application/json" } },
+        ),
+      };
+    }
+  },
+});
+
+// Endpoints that accept a password in the request body.
+const PASSWORD_ENDPOINTS = ["/sign-up/email", "/reset-password", "/change-password"];
+
+// Plugin that enforces password strength server-side on all password-accepting
+// endpoints. Even if the client-side meter didn't load, the server will reject
+// weak passwords before Better Auth processes them.
+const passwordStrengthPlugin = (
+  convexCtx: GenericCtx<DataModel>,
+): BetterAuthPlugin => ({
+  id: "password-strength",
+  async onRequest(request) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+
+    if (!PASSWORD_ENDPOINTS.some((p) => path.endsWith(p))) return;
+
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.clone().json()) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+
+    const password =
+      (body.password as string | undefined) ??
+      (body.newPassword as string | undefined);
+    const email = (body.email as string | undefined) ?? "";
+    if (!password) return;
+
+    // Determine role: admin emails get the stricter threshold
+    const actionCtx = requireActionCtx(convexCtx);
+    const adminEmails = await actionCtx.runQuery(internal.adminEmails.list);
+    const role =
+      email && adminEmails.some((row: { email: string }) => row.email === email)
+        ? "admin"
+        : "user";
+
+    const result = validatePasswordStrength(password, email, role);
+    if (!result.valid) {
+      return {
+        response: new Response(
+          JSON.stringify({ error: { message: result.reason } }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
         ),
       };
     }
@@ -301,6 +351,7 @@ export const createAuthOptions = (
     },
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: 12,
       // requireEmailVerification is kept false here so Better Auth does not
       // block sign-ins at the protocol level. Enforcement is done at the
       // app level (dashboard layout + AuthGuard) so the admin toggle works
@@ -523,6 +574,7 @@ export const createAuthOptions = (
     plugins: [
       multiOriginPlugin(),
       protectedAdminPlugin(ctx),
+      passwordStrengthPlugin(ctx),
       admin(),
       twoFactor({
         issuer: getTotpIssuer(),

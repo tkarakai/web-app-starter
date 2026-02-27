@@ -2,16 +2,20 @@
 
 import * as React from "react";
 import { ArrowLeft } from "lucide-react";
+import { useQuery } from "convex/react";
 
+import { api } from "@repo/backend";
 import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@repo/auth/client";
 import {
   Button,
   Input,
   Label,
   PasswordInput,
+} from "@repo/design-system";
+import {
   PasswordStrengthMeter,
   type PasswordStrengthTranslateFn,
-} from "@repo/design-system";
+} from "@repo/design-system/password-strength";
 
 // Plain-English translation function for PasswordStrengthMeter.
 // The admin app has no i18n, so we provide direct English strings for all
@@ -97,8 +101,22 @@ export function CreateAccountStep({ email, onComplete, onBack }: CreateAccountSt
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Debounced password for server-side strength evaluation
+  const [debouncedPassword, setDebouncedPassword] = React.useState("");
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
+    return () => clearTimeout(timer);
+  }, [password]);
+
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    debouncedPassword
+      ? { password: debouncedPassword, email, role: "admin" as const }
+      : "skip",
+  );
+
   const passwordsMatch = password === confirmPassword;
-  const canSubmit = name.trim() && password.length >= 40 && passwordsMatch && !loading;
+  const canSubmit = name.trim() && (strengthResult?.valid ?? false) && passwordsMatch && !loading;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -166,12 +184,7 @@ export function CreateAccountStep({ email, onComplete, onBack }: CreateAccountSt
           onChange={(event) => setPassword(event.target.value)}
           required
         />
-        <PasswordStrengthMeter
-          password={password}
-          email={email}
-          role="admin"
-          t={t}
-        />
+        <PasswordStrengthMeter result={strengthResult} t={t} />
       </div>
 
       <div className="space-y-2">

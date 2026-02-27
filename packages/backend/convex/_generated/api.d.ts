@@ -29,6 +29,7 @@ import type * as meta from "../meta.js";
 import type * as migrations from "../migrations.js";
 import type * as onboardingType from "../onboardingType.js";
 import type * as parseUserAgent from "../parseUserAgent.js";
+import type * as passwordStrength from "../passwordStrength.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as securityPolicies from "../securityPolicies.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   onboardingType: typeof onboardingType;
   parseUserAgent: typeof parseUserAgent;
+  passwordStrength: typeof passwordStrength;
   projects: typeof projects;
   rateLimits: typeof rateLimits;
   securityPolicies: typeof securityPolicies;
