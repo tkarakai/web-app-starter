@@ -32,6 +32,7 @@ import type * as rateLimits from "../rateLimits.js";
 import type * as securityPolicies from "../securityPolicies.js";
 import type * as sendAuthEmail from "../sendAuthEmail.js";
 import type * as sessions from "../sessions.js";
+import type * as signInMethods from "../signInMethods.js";
 import type * as tasks from "../tasks.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as waitlist from "../waitlist.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   securityPolicies: typeof securityPolicies;
   sendAuthEmail: typeof sendAuthEmail;
   sessions: typeof sessions;
+  signInMethods: typeof signInMethods;
   tasks: typeof tasks;
   userProfiles: typeof userProfiles;
   waitlist: typeof waitlist;

@@ -108,6 +108,14 @@ export default defineSchema(
     .index("by_email", ["email"])
     .index("by_waitlist_entry", ["waitlistEntryId"]),
 
+  // --- Sign-in preferences (tracks preferred sign-in method per email) ---
+
+  signInPreferences: defineTable({
+    email: v.string(),
+    preferredMethod: v.string(), // "password" | "passkey" | "magicLink"
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
   // --- Audit trail (append-only) ---
 
   // --- Announcements ---

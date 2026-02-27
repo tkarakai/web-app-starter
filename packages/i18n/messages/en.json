@@ -72,6 +72,31 @@
       "backupCodePlaceholder": "Enter backup code",
       "useAuthenticator": "Use authenticator app instead"
     },
+    "multiStep": {
+      "emailStep": {
+        "title": "Welcome back",
+        "description": "Sign in to continue to your dashboard.",
+        "continue": "Continue"
+      },
+      "authStep": {
+        "title": "Sign in",
+        "signingInAs": "Signing in as {email}",
+        "signInWithPassword": "Sign in with password",
+        "signInWithPasskey": "Sign in with passkey",
+        "signInWithMagicLink": "Sign in with magic link",
+        "forgotPassword": "Forgot password?",
+        "or": "or"
+      },
+      "magicLinkStep": {
+        "sent": "Check your inbox",
+        "sentDescription": "We sent a sign-in link to {email}. Click the link to continue.",
+        "resend": "Resend magic link",
+        "resent": "Magic link sent!",
+        "usePassword": "Use password instead",
+        "usePasskey": "Use passkey instead"
+      },
+      "back": "Back"
+    },
     "footer": "Secure email + password",
     "working": "Working...",
     "legal": {

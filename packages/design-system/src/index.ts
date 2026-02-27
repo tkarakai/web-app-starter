@@ -80,6 +80,9 @@ export {
   AlertDialogCancel,
 } from "./components/feedback/alert-dialog";
 
+/* ─── Animation ─── */
+export { SlideTransition } from "./components/slide-transition";
+
 /* ─── Password ─── */
 export {
   PasswordStrengthMeter,
