@@ -178,7 +178,7 @@ export function AdminOnboardingWizard() {
     }
 
     init();
-  }, [token, tokenResult, onboardingStatus]);
+  }, [token, tokenResult, onboardingStatus, router]);
 
   // Step 0 complete: account created
   const handleAccountCreated = React.useCallback(async (password: string) => {

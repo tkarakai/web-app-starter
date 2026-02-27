@@ -122,13 +122,17 @@ export function proxy(request: NextRequest) {
         try {
           const url = new URL(process.env.NEXT_PUBLIC_CONVEX_URL ?? "");
           origins.push(url.origin, `ws://${url.host}`);
-        } catch {}
+        } catch {
+          // Invalid URL — skip
+        }
         try {
           const siteUrl = new URL(process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "");
           if (!origins.includes(siteUrl.origin)) {
             origins.push(siteUrl.origin);
           }
-        } catch {}
+        } catch {
+          // Invalid URL — skip
+        }
         return origins.length > 0 ? ` ${origins.join(" ")}` : "";
       })()
     : "";

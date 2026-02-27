@@ -272,7 +272,7 @@ export function AdminsDataTable() {
         toast.success(`Invitation sent to ${email}`);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to send invitation.";
-        throw new Error(message);
+        throw new Error(message, { cause: err });
       }
     },
     [inviteMutation]
