@@ -102,7 +102,8 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
 
 1. **Admin dashboard layout** (`apps/admin/src/app/(dashboard)/layout.tsx`) — Currently checks `isAuthenticated()` and `role === "admin"`. Add:
    - `user.banned === true` → redirect to a `/forbidden` page with explanation
-   - `user.twoFactorEnabled !== true` → redirect to `/onboarding` (the route won't exist yet; it will show a 404 which is fine — Stage 6 creates it)
+   - `user.twoFactorEnabled !== true` → redirect to `/enroll?reason=mfa` (the route won't exist yet; it will show a 404 which is fine — Stage 7 creates it)
+   - `adminPasskeyPolicy === "required"` and user has no passkey → redirect to `/enroll?reason=passkey`
    - For now, skip `onboardingCompleted` check since the field doesn't exist yet
 
 2. **Web dashboard layout** (`apps/web/src/app/[locale]/(dashboard)/layout.tsx`) — Add:
@@ -307,7 +308,95 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
 
 ---
 
-## Stage 7: Recovery Flows + Emergency Reset
+## Stage 7: Forced Enrollment for Existing Users & Admins
+
+**Goal:** When 2FA or passkey policies become mandatory, existing users/admins who haven't enrolled are hard-blocked from dashboard access and forced through a dedicated enrollment flow. This closes the gap between the bypassable post-sign-in redirects (to `/settings?enforce=...`) and the new-admin onboarding wizard (which requires an invitation token and is for first-time account creation).
+
+### Problem
+
+Currently, when an admin makes 2FA or passkeys mandatory, the enforcement has gaps:
+
+- **Post-sign-in redirect** (`enforcePostSignInPolicies`) sends users to `/settings?tab=security&enforce=mfa|passkey` — but they can navigate away from the settings page.
+- **Web app `AuthGuard`** runs a `useEffect` that re-checks policies — but this is client-side and doesn't prevent server-rendered dashboard content from loading.
+- **Admin app has no real-time dashboard guard** beyond the sign-in check.
+- **The settings page is generic** — not a guided enrollment experience. Users must figure out 2FA/passkey setup themselves from the security tab.
+- **Stage 6's onboarding wizard** (`/onboarding`) requires an invitation token and creates a new account — it doesn't apply to existing users who already have accounts.
+
+### Changes
+
+1. **`/enroll` route (admin app)** — Create `apps/admin/src/app/(enroll)/enroll/page.tsx`:
+   - Outside the `(dashboard)` layout — uses its own minimal layout (similar to `(onboarding)`)
+   - Requires authentication (redirect to `/sign-in` if not logged in)
+   - Reads the `reason` query param (`mfa`, `passkey`, or both) to determine which steps to show
+   - Renders focused enrollment steps, reusing components from Stage 6's onboarding wizard:
+     - **2FA enrollment:** TOTP setup step + backup codes step (from `totp-setup-step.tsx` and `backup-codes-step.tsx`)
+     - **Passkey enrollment:** Passkey registration step (from `passkey-step.tsx`) — **no "Skip for now"** when policy is `"required"`
+   - If both 2FA and passkey are required, shows them sequentially
+   - On completion → redirect to `/` (dashboard)
+   - Audit events: `admin.enrollment.totp_configured`, `admin.enrollment.passkey_registered`
+
+2. **`/enroll` route (web app)** — Create `apps/web/src/app/[locale]/(enroll)/enroll/page.tsx`:
+   - Same pattern as admin, but checks user-scoped policies (`userMfaRequired`, `userPasskeyPolicy`)
+   - Reuses shared TOTP/passkey setup components
+   - On completion → redirect to `/dashboard`
+
+3. **Hard-block in admin dashboard layout** — Update the Stage 3 TODO in `apps/admin/src/app/(dashboard)/layout.tsx`:
+   - Replace the commented-out `/onboarding` redirect with `/enroll` checks
+   - Server-side queries for both policies and user state:
+     - `adminMfaRequired === true` and `user.twoFactorEnabled !== true` → `redirect("/enroll?reason=mfa")`
+     - `adminPasskeyPolicy === "required"` and user has no passkey → `redirect("/enroll?reason=passkey")`
+   - Requires a new Convex query to check if a user has registered passkeys (e.g. `api.auth.userHasPasskey`)
+   - **Server-side check** — cannot be bypassed by client-side navigation
+
+4. **Hard-block in web dashboard layout** — Update `apps/web/src/app/[locale]/(dashboard)/layout.tsx`:
+   - Same server-side checks for user policies (`userMfaRequired`, `userPasskeyPolicy`)
+   - Redirect to `/enroll?reason=mfa|passkey`
+
+5. **Update post-sign-in redirects** — Change both apps' `enforcePostSignInPolicies` to redirect to `/enroll` instead of `/settings?enforce=...`:
+   - Admin `enforcePostSignInPolicies` in `admin-sign-in-form.tsx`
+   - Web `enforcePostSignInPolicies` in `auth-form.tsx`
+   - Web `AuthGuard` `useEffect` in `auth-guard.tsx`
+
+6. **Remove enforcement banner from settings** — The `enforce` query param handling in settings pages becomes unnecessary. Clean up the banner logic in `admin-security-section.tsx` and `security-section.tsx`.
+
+### Files to Create
+
+- `apps/admin/src/app/(enroll)/layout.tsx` — minimal authenticated layout (no dashboard chrome)
+- `apps/admin/src/app/(enroll)/enroll/page.tsx`
+- `apps/admin/src/components/enroll/enrollment-wizard.tsx` — orchestrates required enrollment steps
+- `apps/web/src/app/[locale]/(enroll)/layout.tsx`
+- `apps/web/src/app/[locale]/(enroll)/enroll/page.tsx`
+- `apps/web/src/components/enroll/enrollment-wizard.tsx`
+
+### Files to Modify
+
+- `apps/admin/src/app/(dashboard)/layout.tsx` — replace Stage 3 TODO with hard-block redirect to `/enroll`
+- `apps/web/src/app/[locale]/(dashboard)/layout.tsx` — add hard-block redirect to `/enroll`
+- `apps/admin/src/components/auth/admin-sign-in-form.tsx` — redirect to `/enroll` instead of `/settings?enforce=...`
+- `apps/web/src/components/auth/auth-form.tsx` — same
+- `apps/web/src/components/auth/auth-guard.tsx` — redirect to `/enroll` instead of `/settings?enforce=...`
+- `apps/admin/src/components/settings/admin-security-section.tsx` — remove `enforce` query param banner
+- `apps/web/src/components/settings/security-section.tsx` — remove `enforce` query param banner
+- `packages/backend/convex/auditTrailConstants.ts` — enrollment audit events
+
+### Verification
+
+- Enable mandatory 2FA for admins → existing admin without 2FA is blocked from dashboard, redirected to `/enroll`
+- Admin cannot navigate to any dashboard route — server-side layout blocks it
+- Admin completes 2FA enrollment on `/enroll` → gains dashboard access
+- Enable required passkeys for admins → existing admin without passkey is redirected to `/enroll`
+- Passkey enrollment step has **no skip option** (unlike the optional passkey in Stage 6 onboarding)
+- Same flow works for web app users when `userMfaRequired` or `userPasskeyPolicy` becomes `"required"`
+- If both 2FA and passkey are required, enrollment wizard shows all required steps sequentially
+- Already-enrolled users/admins pass through to dashboard without redirect
+- Post-sign-in flow also redirects to `/enroll` (no longer goes to `/settings`)
+- `bun run ci:quick` passes
+
+**Complexity: M** | **Dependencies: Stage 6** (reuses onboarding wizard step components)
+
+---
+
+## Stage 8: Recovery Flows + Emergency Reset
 
 **Goal:** Backup code usage prompts, email bypass recovery for admins, emergency reset script, and user recovery parallels.
 
@@ -356,7 +445,7 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
 - Normal login flows unaffected
 - `bun run ci:quick` passes
 
-**Complexity: M** | **Dependencies: Stage 6** (onboarding wizard for TOTP re-setup)
+**Complexity: M** | **Dependencies: Stages 6, 7** (onboarding wizard for TOTP re-setup, enrollment route for forced re-enrollment)
 
 ---
 
@@ -370,6 +459,7 @@ Staged plan for implementing [authentication-and-onboarding.md](./authentication
 | 4 | Multi-step login flow with slide animations + magic link gating | M-L | Stages 1, 3 |
 | 5 | Manage > Onboarding tabs (Users + Admins) | M | — |
 | 6 | Admin invitation + onboarding wizard (4 steps) | L | Stages 1, 2, 3, 5 |
-| 7 | Recovery flows + emergency reset script | M | Stage 6 |
+| 7 | Forced enrollment for existing users & admins | M | Stage 6 |
+| 8 | Recovery flows + emergency reset script | M | Stages 6, 7 |
 
 **Stages 1, 2, 3, and 5 can be worked in parallel** — they have no interdependencies.
