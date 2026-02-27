@@ -13,6 +13,7 @@ import CheckboxShowcase from "./checkbox";
 import DialogShowcase from "./dialog";
 import EnvironmentBannerShowcase from "./environment-banner";
 import OfflineBannerShowcase from "./offline-banner";
+import PasskeyUnsupportedAlertShowcase from "./passkey-unsupported-alert";
 import DropdownMenuShowcase from "./dropdown-menu";
 import InputShowcase from "./input";
 import OtpInputShowcase from "./otp-input";
@@ -47,6 +48,7 @@ export const showcaseMap: Record<string, ComponentType> = {
   dialog: DialogShowcase,
   "environment-banner": EnvironmentBannerShowcase,
   "offline-banner": OfflineBannerShowcase,
+  "passkey-unsupported-alert": PasskeyUnsupportedAlertShowcase,
   "dropdown-menu": DropdownMenuShowcase,
   input: InputShowcase,
   "otp-input": OtpInputShowcase,

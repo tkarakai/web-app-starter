@@ -22,10 +22,12 @@ import {
   Label,
   OtpInput,
   type OtpInputHandle,
+  PasskeyUnsupportedAlert,
   PasswordInput,
   PasswordStrengthMeter,
   Separator,
   SlideTransition,
+  usePasskeySupport,
   validatePassword,
 } from "@repo/design-system";
 
@@ -52,6 +54,7 @@ function toBoolean(value: unknown, defaultValue: boolean): boolean {
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
+  const { supported: passkeySupported } = usePasskeySupport();
   const locale = useLocale();
   const t = useTranslations("auth");
   const tps = useTranslations("passwordStrength");
@@ -420,6 +423,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   const preferred = preferredMethodResult?.preferred;
   const isMagicLinkAvailable = magicLinkEnabled === true;
+  const effectivePreferred =
+    passkeySupported === false && preferred === "passkey"
+      ? isMagicLinkAvailable
+        ? "magicLink"
+        : "password"
+      : preferred;
 
   // ── Sign-up form (unchanged) ──
   if (isSignUp) {
@@ -626,7 +635,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </form>
           ) : step === 1 ? (
             /* ── Step 1: Auth Method (adaptive) ── */
-            preferred === "passkey" ? (
+            effectivePreferred === "passkey" ? (
               /* Passkey-primary layout */
               <div className="space-y-4">
                 <Button
@@ -696,7 +705,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                   {t("multiStep.back")}
                 </Button>
               </div>
-            ) : preferred === "magicLink" && isMagicLinkAvailable ? (
+            ) : effectivePreferred === "magicLink" && isMagicLinkAvailable ? (
               /* Magic link-primary layout */
               <MagicLinkPrimaryStep
                 email={email}
@@ -704,6 +713,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 pending={pending}
                 error={error}
                 password={password}
+                passkeySupported={passkeySupported}
                 onSendMagicLink={handleMagicLinkSignIn}
                 onPasswordChange={setPassword}
                 onPasswordSubmit={handlePasswordSignIn}
@@ -750,9 +760,13 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                   <span>{t("multiStep.authStep.or")}</span>
                   <Separator className="flex-1 min-w-0 w-auto" />
                 </div>
-                <Button type="button" variant="ghost" className="w-full" onClick={handlePasskeySignIn} disabled={pending}>
-                  {t("multiStep.authStep.signInWithPasskey")}
-                </Button>
+                {passkeySupported !== false ? (
+                  <Button type="button" variant="ghost" className="w-full" onClick={handlePasskeySignIn} disabled={pending}>
+                    {t("multiStep.authStep.signInWithPasskey")}
+                  </Button>
+                ) : (
+                  <PasskeyUnsupportedAlert />
+                )}
                 {isMagicLinkAvailable ? (
                   <>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -897,6 +911,7 @@ function MagicLinkPrimaryStep({
   pending,
   error,
   password,
+  passkeySupported,
   onSendMagicLink,
   onPasswordChange,
   onPasswordSubmit,
@@ -910,6 +925,7 @@ function MagicLinkPrimaryStep({
   pending: boolean;
   error: string | null;
   password: string;
+  passkeySupported: boolean | null;
   onSendMagicLink: () => void;
   onPasswordChange: (value: string) => void;
   onPasswordSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -960,9 +976,11 @@ function MagicLinkPrimaryStep({
         >
           {t("multiStep.magicLinkStep.usePassword")}
         </button>
-        <Button type="button" variant="secondary" className="w-full" onClick={onPasskeySignIn} disabled={pending}>
-          {t("multiStep.magicLinkStep.usePasskey")}
-        </Button>
+        {passkeySupported !== false ? (
+          <Button type="button" variant="secondary" className="w-full" onClick={onPasskeySignIn} disabled={pending}>
+            {t("multiStep.magicLinkStep.usePasskey")}
+          </Button>
+        ) : null}
         <Button
           className="w-full"
           type="button"
@@ -1009,9 +1027,11 @@ function MagicLinkPrimaryStep({
       <Button className="w-full" type="submit" disabled={pending}>
         {pending ? t("working") : t("multiStep.authStep.signInWithPassword")}
       </Button>
-      <Button type="button" variant="secondary" className="w-full" onClick={onPasskeySignIn} disabled={pending}>
-        {t("multiStep.authStep.signInWithPasskey")}
-      </Button>
+      {passkeySupported !== false ? (
+        <Button type="button" variant="secondary" className="w-full" onClick={onPasskeySignIn} disabled={pending}>
+          {t("multiStep.authStep.signInWithPasskey")}
+        </Button>
+      ) : null}
       <Button
         className="w-full"
         type="button"

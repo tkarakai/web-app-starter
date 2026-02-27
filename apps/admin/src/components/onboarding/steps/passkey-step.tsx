@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Check, KeyRound, MonitorSmartphone } from "lucide-react";
+import { Check, KeyRound } from "lucide-react";
 
 import { authClient } from "@repo/auth/client";
-import { Button, Input, Label, toast } from "@repo/design-system";
+import { Button, Input, Label, PasskeyUnsupportedAlert, toast, usePasskeySupport } from "@repo/design-system";
 
 interface PasskeyStepProps {
   onComplete: (added: boolean) => Promise<void>;
@@ -16,29 +16,7 @@ export function PasskeyStep({ onComplete }: PasskeyStepProps) {
   const [added, setAdded] = React.useState(false);
   const [completing, setCompleting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [supported, setSupported] = React.useState<boolean | null>(null);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    async function check() {
-      try {
-        if (
-          typeof window !== "undefined" &&
-          window.PublicKeyCredential &&
-          typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function"
-        ) {
-          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-          if (!cancelled) setSupported(available);
-        } else {
-          if (!cancelled) setSupported(false);
-        }
-      } catch {
-        if (!cancelled) setSupported(false);
-      }
-    }
-    check();
-    return () => { cancelled = true; };
-  }, []);
+  const { supported } = usePasskeySupport();
 
   const handleAddPasskey = async () => {
     setAdding(true);
@@ -89,19 +67,7 @@ export function PasskeyStep({ onComplete }: PasskeyStepProps) {
   if (supported === false) {
     return (
       <div className="space-y-4">
-        <div className="flex items-start gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
-          <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <div className="space-y-1 text-sm text-amber-800 dark:text-amber-300">
-            <p className="font-medium">
-              Passkeys aren't supported on this device or browser.
-            </p>
-            <p>
-              Passkeys are two-factor by design — no separate 2FA needed, making
-              them more secure and more convenient for daily use. Sign in later
-              from a device that supports passkeys to set one up.
-            </p>
-          </div>
-        </div>
+        <PasskeyUnsupportedAlert />
         <Button className="w-full" type="button" onClick={() => handleComplete(false)} disabled={completing}>
           {completing ? "Completing setup..." : "Continue without passkey"}
         </Button>

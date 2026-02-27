@@ -114,6 +114,12 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Network status banner with frosted-glass backdrop blur.",
   },
   {
+    name: "Passkey Unsupported Alert",
+    slug: "passkey-unsupported-alert",
+    category: "Feedback",
+    description: "Amber info block for browsers that do not support passkeys.",
+  },
+  {
     name: "Tooltip",
     slug: "tooltip",
     category: "Feedback",

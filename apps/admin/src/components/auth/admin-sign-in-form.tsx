@@ -20,9 +20,11 @@ import {
   Label,
   OtpInput,
   type OtpInputHandle,
+  PasskeyUnsupportedAlert,
   PasswordInput,
   Separator,
   SlideTransition,
+  usePasskeySupport,
 } from "@repo/design-system";
 
 type PasskeyPolicy = "disabled" | "optional" | "required";
@@ -38,6 +40,7 @@ function toBoolean(value: unknown, defaultValue: boolean): boolean {
 
 export function AdminSignInForm() {
   const router = useRouter();
+  const { supported: passkeySupported } = usePasskeySupport();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [step, setStep] = React.useState<SignInStep>(0);
@@ -264,6 +267,10 @@ export function AdminSignInForm() {
   };
 
   const preferred = preferredMethodResult?.preferred;
+  const effectivePreferred =
+    passkeySupported === false && preferred === "passkey"
+      ? "password"
+      : preferred;
 
   const stepTitle = [
     "Sign in",
@@ -320,7 +327,7 @@ export function AdminSignInForm() {
             </form>
           ) : step === 1 ? (
             /* ── Step 1: Auth Method ── */
-            preferred === "passkey" ? (
+            effectivePreferred === "passkey" ? (
               /* Passkey-primary layout */
               <div className="space-y-4">
                 <Button
@@ -411,14 +418,20 @@ export function AdminSignInForm() {
                   {pending ? "Signing in..." : "Sign in"}
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <Separator className="flex-1 min-w-0 w-auto" />
-                  <span>OR</span>
-                  <Separator className="flex-1 min-w-0 w-auto" />
-                </div>
-                <Button type="button" variant="ghost" className="w-full" onClick={handlePasskeySignIn} disabled={pending}>
-                  Sign in with passkey
-                </Button>
+                {passkeySupported !== false ? (
+                  <>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <Separator className="flex-1 min-w-0 w-auto" />
+                      <span>OR</span>
+                      <Separator className="flex-1 min-w-0 w-auto" />
+                    </div>
+                    <Button type="button" variant="ghost" className="w-full" onClick={handlePasskeySignIn} disabled={pending}>
+                      Sign in with passkey
+                    </Button>
+                  </>
+                ) : (
+                  <PasskeyUnsupportedAlert />
+                )}
                 <Button
                   className="w-full"
                   type="button"

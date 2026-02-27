@@ -16,6 +16,7 @@ export {
 /* ─── Hooks ─── */
 export { useIsMobile } from "./hooks/use-mobile";
 export { useNetworkStatus } from "./hooks/use-network-status";
+export { usePasskeySupport } from "./hooks/use-passkey-support";
 
 /* ─── Actions ─── */
 export { Button, buttonVariants, type ButtonProps } from "./components/actions/button";
@@ -75,6 +76,10 @@ export {
 } from "./components/feedback/environment-banner";
 export { EnvironmentBannerWrapper } from "./components/feedback/environment-banner-wrapper";
 export { OfflineBanner, type OfflineBannerProps } from "./components/feedback/offline-banner";
+export {
+  PasskeyUnsupportedAlert,
+  type PasskeyUnsupportedAlertProps,
+} from "./components/feedback/passkey-unsupported-alert";
 export { Toaster, toast } from "sonner";
 export {
   AlertDialog,
