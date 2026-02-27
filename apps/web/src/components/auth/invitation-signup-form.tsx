@@ -52,6 +52,32 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Session conflict detection
+  const [sessionConflict, setSessionConflict] = React.useState<{
+    sessionEmail: string;
+  } | null>(null);
+  const [signingOut, setSigningOut] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!token || !tokenValidation?.valid) return;
+
+    async function checkSession() {
+      try {
+        const session = await authClient.getSession();
+        const userEmail = (session.data?.user as Record<string, unknown>)?.email as string | undefined;
+        if (session.data?.session && userEmail && userEmail !== tokenValidation!.email) {
+          setSessionConflict({ sessionEmail: userEmail });
+        } else {
+          setSessionConflict(null);
+        }
+      } catch {
+        // No session or error checking — not a conflict
+      }
+    }
+
+    checkSession();
+  }, [token, tokenValidation]);
+
   // No token provided
   if (!token) {
     return (
@@ -101,6 +127,49 @@ export function InvitationSignupForm({ token }: { token?: string }) {
             {reasonMessages[tokenValidation.reason] ?? ti("tokenInvalid")}
           </CardDescription>
         </CardHeader>
+      </Card>
+    );
+  }
+
+  // Session conflict: different user already signed in
+  if (sessionConflict) {
+    return (
+      <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {ti("sessionConflictTitle")}
+          </CardTitle>
+          <CardDescription className="text-xl font-semibold leading-tight text-foreground">
+            {ti("sessionConflictDescription", { email: sessionConflict.sessionEmail })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2">
+            <Button
+              className="w-full"
+              disabled={signingOut}
+              onClick={async () => {
+                setSigningOut(true);
+                try {
+                  await authClient.signOut();
+                  window.location.reload();
+                } catch {
+                  setSigningOut(false);
+                }
+              }}
+            >
+              {signingOut ? t("working") : ti("signOutAndContinue")}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={signingOut}
+              onClick={() => router.push("/dashboard")}
+            >
+              {ti("cancel")}
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     );
   }

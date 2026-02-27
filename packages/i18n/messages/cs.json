@@ -94,7 +94,11 @@
       "tokenInvalid": "Tento odkaz pozvánky je neplatný.",
       "signupBlocked": "Registrace je v současné době pouze na pozvánku.",
       "signupBlockedDescription": "Připojte se na čekací listinu na naší hlavní stránce a požádejte o přístup.",
-      "goToWaitlist": "Připojit se na čekací listinu"
+      "goToWaitlist": "Připojit se na čekací listinu",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Obnovení hesla",

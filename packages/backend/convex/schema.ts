@@ -112,17 +112,21 @@ export default defineSchema(
 
   adminInvitations: defineTable({
     email: v.string(),
+    token: v.optional(v.string()),
     status: v.union(
       v.literal("invited"),
-      v.literal("claimed")
+      v.literal("claimed"),
+      v.literal("completed")
     ),
+    onboardingStep: v.optional(v.number()),
     invitedAt: v.number(),
     invitationExpiresAt: v.optional(v.number()),
     claimedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_token", ["token"]),
 
   // --- Sign-in preferences (tracks preferred sign-in method per email) ---
 

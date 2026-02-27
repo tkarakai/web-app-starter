@@ -94,7 +94,11 @@
       "tokenInvalid": "この招待リンクは無効です。",
       "signupBlocked": "現在、登録は招待制のみです。",
       "signupBlockedDescription": "ホームページのウェイトリストに参加してアクセスをリクエストしてください。",
-      "goToWaitlist": "ウェイトリストに参加"
+      "goToWaitlist": "ウェイトリストに参加",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "パスワードの復旧",

@@ -94,7 +94,11 @@
       "tokenInvalid": "קישור הזמנה זה אינו תקין.",
       "signupBlocked": "ההרשמה כרגע בהזמנה בלבד.",
       "signupBlockedDescription": "הצטרפו לרשימת ההמתנה בדף הבית שלנו כדי לבקש גישה.",
-      "goToWaitlist": "הצטרפות לרשימת ההמתנה"
+      "goToWaitlist": "הצטרפות לרשימת ההמתנה",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "שחזור סיסמה",

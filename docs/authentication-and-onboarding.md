@@ -200,90 +200,106 @@ There are exactly two ways to begin admin onboarding:
 
 There is no self-signup for admin accounts. The admin app's sign-up page does not exist — only the onboarding flow, which requires either a bootstrap token or a valid invitation link.
 
-**Email verification is handled by the entry point itself.** When an admin clicks an invitation link, their email is verified by the act of clicking the link. The bootstrap process similarly establishes the email as verified. There is no separate "verify your email" step in the admin onboarding wizard.
+**Email verification is handled by the entry point itself.** When an admin clicks an invitation link, their email is verified by the act of clicking the link. The auth hook in `auth.ts` (`user.create.before`) sets `emailVerified: true` on accounts whose email is in the `adminEmails` table. The bootstrap process similarly establishes the email as verified. There is no separate "verify your email" step in the admin onboarding wizard.
 
-### 6.1 Step 1 — Create Account (email + password)
+### 6.0.1 Token Claiming & Onboarding Progress Tracking
 
-The admin's email is pre-filled and non-editable (from the invitation or bootstrap). They create their password.
+**Token is claimed after Step 0 (account creation), not at the end of the wizard.** Once the admin's Better Auth account exists, the invitation token is marked `"claimed"` and cannot be reused to create another account. This is the critical security boundary — one token, one account.
+
+**Onboarding progress is tracked server-side** via the `adminInvitations` table:
+- `status`: `"invited"` → `"claimed"` → `"completed"`
+- `onboardingStep: v.optional(v.number())` — which wizard step to resume from (1=TOTP, 2=backup codes, 3=passkey)
+
+**Dashboard enforcement checks the invitation status, NOT `twoFactorEnabled`.** This ensures ALL onboarding steps are enforced — including backup code acknowledgment and the passkey decision — not just 2FA setup. The `twoFactorEnabled` check for existing admins without invitation records is handled separately in Stage 7 (forced enrollment).
+
+**Seed admins** (`createForSeed`) are created with `status: "completed"` so dev seed admins bypass onboarding and can access the dashboard immediately.
+
+#### Invitation Lifecycle
+
+```
+"invited"    → token sent, waiting for signup
+"claimed"    → account created, onboarding in progress (onboardingStep tracks position)
+"completed"  → all 4 steps done, full dashboard access
+```
+
+### 6.0.2 Abandonment & Resume
+
+Admins who abandon the onboarding wizard at any point can resume later. The multi-step sign-in form already adapts to what the admin has set up (password only vs password+TOTP), so no changes are needed to the sign-in flow. The dashboard layout redirects incomplete admins to `/onboarding`, where the wizard queries the saved `onboardingStep` and resumes from there.
+
+| Case | When abandoned | Invitation status | Auth state | How they return | Wizard resumes at |
+|------|---------------|-------------------|------------|----------------|-------------------|
+| A | Never opened link | `invited` | No account | Open invitation link | Step 0 (Create Account) |
+| B | Opened link, closed before creating account | `invited` | No account | Open invitation link | Step 0 |
+| C | Created account (Step 0 done) | `claimed`, step=1 | Password, no 2FA | Sign in: Email → Password | Step 1 (TOTP) — shows password prompt |
+| D | Started TOTP, closed before verifying code | `claimed`, step=1 | Password, 2FA secret unverified | Sign in: Email → Password | Step 1 — calls `enable()` again with new secret |
+| E | Verified TOTP (Step 1 done) | `claimed`, step=2 | Password + 2FA | Sign in: Email → Password → TOTP | Step 2 (Backup Codes) — re-fetches codes from server |
+| F | Saved backup codes (Step 2 done) | `claimed`, step=3 | Password + 2FA | Sign in: Email → Password → TOTP | Step 3 (Passkey) |
+| G | Completed all steps | `completed` | Full setup | Sign in normally | No redirect — full dashboard access |
+| H | No invitation record (e.g. bootstrap admin) | None | Varies | Sign in normally | No redirect (Stage 7 handles forced enrollment) |
+
+### 6.0.3 Wizard Entry Modes
+
+The onboarding wizard has two entry modes:
+
+1. **Fresh start** (token in URL, unauthenticated): validate token → start at Step 0 → claim token after account creation → continue through remaining steps
+2. **Resume** (no token, authenticated, redirected from dashboard): query `getMyOnboardingStatus` → start at saved `onboardingStep`
+
+If the user is already authenticated AND has a token in the URL, the wizard ignores the token (it's already claimed) and queries the invitation record to determine the resume step.
+
+### 6.1 Step 0 — Create Account (email + password)
+
+The admin's email is pre-filled and non-editable (from the invitation token validation). They enter their name and create their password.
 
 Display a password input with a live strength meter (zxcvbn-ts). See §5 for enforcement details.
 
-Show a contextual explanation:
+On submit:
+1. Better Auth's `signUp.email()` creates the credential account. The auth hook sets `emailVerified: true` and `role: "admin"` for emails in the `adminEmails` table (which was populated when the invitation was sent).
+2. The invitation token is claimed via `claimInvitation({ token })`, setting status to `"claimed"` and `onboardingStep: 1`.
+3. The password is kept in a React ref (in-memory only, never persisted) so Step 1 can auto-enable TOTP without re-prompting.
 
-> **Why a password?**
-> Two-factor authentication requires a password to activate. Your password lives in your password manager and is used once during setup. After that, you can sign in with a passkey instead — you won't need to type this password during normal use.
->
-> **Requirements:** At least 40 characters. Use a randomly generated password from your password manager.
+### 6.2 Step 1 — TOTP Setup
 
-On submit, Better Auth's `signUp.email()` creates the credential account with `emailVerified: true` (since the invitation/bootstrap already verified the email).
+This step has two modes depending on whether the password is available in memory:
 
-### 6.2 Step 2 — TOTP Setup (requires password)
+**Fresh flow** (password available from Step 0): Automatically calls `twoFactor.enable({ password })` on mount — no password prompt needed. This is the seamless experience for admins completing onboarding in one session.
 
-This step calls `twoFactor.enable({ password })` and `getTotpUri({ password })`. The admin enters their password (from their password manager) to unlock TOTP setup.
+**Resume flow** (password not in memory — admin abandoned and returned later): Shows a password prompt first. The admin enters their password (from their password manager), then TOTP is enabled.
 
-Display the TOTP QR code. The raw secret string is hidden by default behind a button.
-
-```
-┌──────────────────────────────────────────────────────┐
-│  Scan with your authenticator app                    │
-│                                                      │
-│  [QR CODE]                                           │
-│                                                      │
-│  Can't scan?                                         │
-│  [Show secret key]  ← reveals raw secret on click    │
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
-
-When "Show secret key" is clicked, reveal the key inline:
-
-```
-│  Secret key: JBSWY3DPEHPK3PXP                       │
-│  Enter this key manually in your authenticator app.  │
-```
-
-After scanning, require the admin to enter a valid 6-digit code before proceeding. This proves:
-- The authenticator app is working correctly
-- The admin's authenticator is in sync with the server
-- The admin actually has TOTP set up, not just displayed
+After enabling:
+1. Display the TOTP QR code (generated via `QRCode.toDataURL()` from the `qrcode` library)
+2. Show a collapsible "Manual setup key" with the raw secret extracted from the TOTP URI, plus a copy button
+3. The admin enters a valid 6-digit code from their authenticator app
+4. `twoFactor.verifyTotp({ code })` validates and returns `{ backupCodes }` — these are passed to Step 2
 
 Only after successful code verification does `twoFactorEnabled` get set to `true`. Write audit event: `admin.onboarding.totp_configured`.
 
-### 6.3 Step 3 — Backup Codes
+### 6.3 Step 2 — Backup Codes
 
-Better Auth generates backup codes when 2FA is enabled. This step requires the admin to actually engage with them.
+Better Auth generates backup codes when 2FA is verified. This step requires the admin to actually engage with them.
 
-Display the codes in a grid. Provide:
-- **"Download as .txt"** button
-- **"Copy all"** button
+This step has two modes:
 
-Then require a two-part confirmation:
-1. Checkbox: *"I have stored these codes somewhere other than this browser — a password manager, printed paper, or offline file."*
-2. Enter any **two** of the codes into input fields to confirm they have been recorded.
+**Fresh flow** (backup codes available from Step 1's `verifyTotp` response): Shows codes directly.
 
-If the entered codes match, mark codes as acknowledged. Write audit event: `admin.onboarding.backup_codes_acknowledged`.
+**Resume flow** (no codes in memory — admin abandoned after TOTP setup): Fetches codes from `{CONVEX_SITE_URL}/api/two-factor/backup-codes` with `credentials: "include"`.
 
-### 6.4 Step 4 — Passkey Registration (optional but recommended)
+Then:
+1. Display codes in a grid with **"Download .txt"** and **"Copy all"** buttons
+2. Checkbox: *"I have saved my backup codes in a secure place"*
+3. After checkbox: two input fields to enter any two of the backup codes for verification (must be distinct, must match actual codes)
 
-Present passkey registration as the recommended daily sign-in method:
+Write audit event: `admin.onboarding.backup_codes_acknowledged`.
 
-> **Add a passkey for faster sign-in**
->
-> A passkey lets you sign in with Face ID, Touch ID, Windows Hello, or a hardware key — no password or TOTP code needed at login. It's phishing-resistant and the most secure sign-in option.
->
-> Your password and TOTP remain active as backup methods.
->
-> [Register passkey]    [Skip for now]
+### 6.4 Step 3 — Passkey Registration (optional)
 
-**If the admin registers a passkey:** After successful WebAuthn registration, show:
+Present passkey registration with an optional name/label input:
+- **"Add passkey"** button → calls `authClient.passkey.addPasskey({ name? })`
+- On success: confirmation message + **"Complete setup"** button
+- **"Skip for now"** link for admins who don't want a passkey yet
 
-> "Where did you save this passkey? Check your password manager or device settings to confirm it's backed up. A passkey saved only to this browser session may not survive a device wipe."
->
-> [Confirm: "My passkey is saved in iCloud Keychain / Google Password Manager / 1Password or another cloud manager"] checkbox
+Write audit event: `admin.onboarding.passkey_registered` (if added) or `admin.onboarding.passkey_skipped` (if skipped), then `admin.onboarding.completed`.
 
-Write audit event: `admin.onboarding.passkey_registered` (if registered) then `admin.onboarding.completed`.
-
-Then redirect to `/sign-in` — the admin must complete a full proper login.
+Then: call `completeOnboarding()` (sets invitation status to `"completed"`, clears `onboardingStep`), sign out, redirect to `/sign-in`. The admin must complete a full proper login.
 
 > **Why redirect to sign-in?** The onboarding session was scoped to onboarding routes. The first real admin session should go through the full normal auth flow, proving end-to-end that authentication is working.
 
@@ -478,22 +494,30 @@ userSession: {
 
 From the admin app's **Manage > Onboarding** page (Admins tab), an admin clicks "Invite Admin". This opens a form with a **single email address field** (not multi-email like user invitations).
 
-The invitation:
-- Sends an email with a link to `admin-app/onboarding?token=<invitation-token>`
-- The token is scoped to the admin app — it cannot be used on the web app
-- The token includes the invited email address, which is pre-filled and non-editable during onboarding
-- The token has an expiration (e.g., 48 hours)
-- Write audit event: `admin.invitation.sent` with `meta: { invitedEmail, invitedBy }`
+The `invite` mutation:
+1. Validates the email and checks for existing invitations (rejects if already claimed/completed, allows re-invite if expired)
+2. Creates or updates the `adminInvitations` row with `status: "invited"`
+3. Ensures the email is in the `adminEmails` table (so the auth hook auto-promotes them to admin role on signup)
+4. Writes audit event: `admin.invitation.sent` with `meta: { inviteeEmail }`
+5. Schedules an `internalAction` (`adminInvitationActions.generateTokenAndSendEmail`) which:
+   - Generates a 32-byte crypto-random token (64 hex chars)
+   - Stores the token + expiry (default 7 days, configurable via `invitationTokenExpiryDays` in `appSettings`) on the invitation row
+   - Builds onboarding URL: `{ADMIN_SITE_URL}/onboarding?token={token}` (env var, default `http://localhost:3002`)
+   - Sends an HTML email via Resend (or logs the URL to console in dev when no `RESEND_API_KEY` is set)
 
 ### 9.2 Accepting an Admin Invitation
 
 When the invited person clicks the link:
-1. Token is validated (not expired, not already used, correct app)
-2. Email is marked as verified (the act of clicking the invite link proves email ownership)
-3. The admin onboarding wizard starts at Step 1 (§6.1) with the email pre-filled
-4. The full onboarding flow completes (password → TOTP → backup codes → optional passkey)
+1. The onboarding wizard validates the token via `validateToken` query (checks: exists, not already claimed/completed, not expired)
+2. Email is extracted from the token validation response and pre-filled in the account creation form
+3. The admin onboarding wizard starts at Step 0 (§6.1) with the email pre-filled and non-editable
+4. After account creation, the token is claimed (§6.0.1) and the full onboarding flow continues
 
-### 9.3 User Invitations (comparison)
+### 9.3 Auth Hook: Admin Signup Bypass
+
+The auth hook (`user.create.before` in `auth.ts`) checks both `hasValidInvitation` (waitlist) AND `hasValidAdminInvitation` before blocking signups in non-signup onboarding modes. This ensures admin invitees can create accounts even when public signup is disabled (invite-only or waitlist mode). The hook also sets `emailVerified: true` for admin accounts.
+
+### 9.4 User Invitations (comparison)
 
 User invitations are sent from **Manage > Onboarding** (Users tab) and allow **multiple email addresses**. The invitation link points to `web-app/sign-up?token=<invitation-token>` and is only valid for the web app. User invitations follow the user sign-up flow (§7).
 
@@ -594,6 +618,7 @@ All onboarding, login, and recovery events are recorded in the `auditTrail` tabl
 | Onboarding: TOTP configured | `admin.onboarding.totp_configured` | |
 | Onboarding: backup codes acknowledged | `admin.onboarding.backup_codes_acknowledged` | |
 | Onboarding: passkey registered | `admin.onboarding.passkey_registered` | Optional step |
+| Onboarding: passkey skipped | `admin.onboarding.passkey_skipped` | Admin chose "Skip for now" |
 | Onboarding: completed | `admin.onboarding.completed` | |
 | Login: via passkey | `admin.auth.sign_in` | `meta: { method: "passkey" }` |
 | Login: via password+TOTP | `admin.auth.sign_in` | `meta: { method: "password" }` |
@@ -639,15 +664,24 @@ No special intro needed. The sign-up form is standard: email, password (with str
 
 ### Admin App
 
+The admin app uses three route groups with different auth levels:
+
+**`(auth)` group** — guest-only pages (sign-in, forgot-password). Wrapped in `GuestGuard` which redirects authenticated users to `/dashboard`.
+
+**`(onboarding)` group** — the onboarding wizard. No `AuthGuard` or `GuestGuard` — it handles both unauthenticated (fresh invite with token) and authenticated (resume after abandonment) sessions. Only applies `ForceSystemTheme`.
+
+**`(dashboard)` group** — all protected admin pages. The server-side layout enforces:
+
 ```
-1. Valid Better Auth session exists      → else redirect to /sign-in
-2. user.role === "admin"                 → else 403
-3. user.isBanned !== true                → else 403 with explanation
-4. user.twoFactorEnabled === true        → else redirect to /onboarding
-5. user.onboardingCompleted === true     → else redirect to /onboarding
+1. Valid Better Auth session exists                       → else redirect to /api/auth/clear-session
+2. user.role === "admin"                                  → else redirect to /api/auth/clear-session
+3. user.banned !== true                                   → else redirect to /forbidden
+4. adminInvitations.getMyOnboardingStatus.completed       → else redirect to /onboarding
 ```
 
-The `/onboarding` route group is outside the protected middleware — it handles partially-authenticated sessions during the onboarding wizard.
+Step 4 queries `getMyOnboardingStatus` which looks up the admin's invitation record by email. If the status is not `"completed"` (i.e., `"claimed"` with an in-progress `onboardingStep`), the admin is redirected to `/onboarding` to continue the wizard. Admins with no invitation record (e.g., bootstrap admins with `status: "completed"`, or admins created before Stage 6) pass through — `getMyOnboardingStatus` returns `{ completed: true }` for admins with no record or with `status: "completed"`.
+
+> **Note:** This check uses invitation status, NOT `twoFactorEnabled`. This is intentional — it ensures ALL onboarding steps are enforced (TOTP, backup codes, passkey decision), not just 2FA. Stage 7 will add the `twoFactorEnabled` check for forced enrollment of existing admins who were never invited.
 
 ### Web App
 
@@ -665,9 +699,49 @@ The `/onboarding` route group is outside the protected middleware — it handles
 ## 15. Convex-Specific Implementation Notes
 
 - `twoFactor.enable({ password })` and `getTotpUri({ password })` both require a credential (email+password) account. This is why every account starts with email+password.
-- Admin invitation tokens should be stored in a Convex table with expiration, invited email, and `usedAt` tracking.
 - The `adminEmails` table (bootstrap allow-list) gates the initial admin creation and protects those accounts from being banned.
 - Security policy settings (`userMagicLinkEnabled`, `userMfaRequired`, `userPasskeyPolicy`) are stored in `appSettings` and read at request time via `api.appSettings.getPublic()`.
+
+### 15.1 `adminInvitations` Table Schema
+
+Admin invitation tokens, onboarding progress, and lifecycle state are all stored on the `adminInvitations` table:
+
+```typescript
+adminInvitations: defineTable({
+  email: v.string(),
+  token: v.optional(v.string()),                    // 64-hex-char crypto-random token
+  status: v.union(
+    v.literal("invited"),                            // token sent, awaiting signup
+    v.literal("claimed"),                            // account created, onboarding in progress
+    v.literal("completed"),                          // all steps done
+  ),
+  onboardingStep: v.optional(v.number()),            // 1=TOTP, 2=backup codes, 3=passkey
+  invitedAt: v.number(),
+  invitationExpiresAt: v.optional(v.number()),       // token expiry timestamp
+  claimedAt: v.optional(v.number()),                 // when account was created
+  createdAt: v.number(),
+})
+  .index("by_email", ["email"])
+  .index("by_created", ["createdAt"])
+  .index("by_token", ["token"])
+```
+
+Key functions on this table:
+- `invite` — creates/updates invitation, adds email to `adminEmails`, schedules token generation + email
+- `validateToken` — public query, returns `{ valid, email }` or `{ valid: false, reason }`
+- `claimInvitation` — public mutation, sets `"claimed"` + `onboardingStep: 1` (called after account creation)
+- `advanceOnboardingStep` — authenticated mutation, updates `onboardingStep` after each wizard step
+- `completeOnboarding` — authenticated mutation, sets `"completed"`, clears `onboardingStep`
+- `getMyOnboardingStatus` — authenticated query, returns `{ completed, step }` (used by dashboard layout)
+- `hasValidAdminInvitation` — internal query, checks if email has a valid invitation (used by auth hook)
+
+### 15.2 Token Generation
+
+Tokens are generated in an `internalAction` (`adminInvitationActions.generateTokenAndSendEmail`) following the same pattern as waitlist token generation:
+- 32 bytes from `crypto.getRandomValues` → 64 hex characters
+- Stored on the invitation row via `internal.adminInvitations.setToken`
+- Expiry defaults to 7 days (configurable via `invitationTokenExpiryDays` in `appSettings`)
+- Email sent via Resend (falls back to console.log in dev when `RESEND_API_KEY` is not set)
 
 
 ## 16. Security Checklist

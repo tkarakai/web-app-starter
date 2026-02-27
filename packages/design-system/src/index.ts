@@ -38,6 +38,16 @@ export {
   BreadcrumbEllipsis,
 } from "./components/data-display/breadcrumb";
 export { Progress } from "./components/data-display/progress";
+export {
+  CopyableField,
+  type CopyableFieldProps,
+} from "./components/data-display/copyable-field";
+export {
+  StyledQrCode,
+  type StyledQrCodeProps,
+  type ErrorCorrectionLevel,
+  type ModuleStyle,
+} from "./components/data-display/styled-qr-code";
 export { Separator } from "./components/data-display/separator";
 export { Skeleton } from "./components/data-display/skeleton";
 export {
@@ -113,6 +123,11 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 } from "./components/form/select";
+export {
+  OtpInput,
+  type OtpInputHandle,
+  type OtpInputProps,
+} from "./components/form/otp-input";
 export { Switch } from "./components/form/switch";
 export { Textarea, textareaVariants, type TextareaProps } from "./components/form/textarea";
 export {

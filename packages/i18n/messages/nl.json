@@ -94,7 +94,11 @@
       "tokenInvalid": "Deze uitnodigingslink is ongeldig.",
       "signupBlocked": "Registratie is momenteel alleen op uitnodiging.",
       "signupBlockedDescription": "Meld u aan voor de wachtlijst op onze homepage om toegang aan te vragen.",
-      "goToWaitlist": "Aanmelden voor de wachtlijst"
+      "goToWaitlist": "Aanmelden voor de wachtlijst",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Wachtwoord herstellen",

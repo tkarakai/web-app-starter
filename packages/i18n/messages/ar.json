@@ -94,7 +94,11 @@
       "tokenInvalid": "رابط الدعوة هذا غير صالح.",
       "signupBlocked": "التسجيل متاح حالياً بالدعوة فقط.",
       "signupBlockedDescription": "انضم إلى قائمة الانتظار على صفحتنا الرئيسية لطلب الوصول.",
-      "goToWaitlist": "انضم إلى قائمة الانتظار"
+      "goToWaitlist": "انضم إلى قائمة الانتظار",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "استعادة كلمة المرور",

@@ -58,6 +58,18 @@ export const componentRegistry: ComponentEntry[] = [
     description: "Container for grouped content.",
   },
   {
+    name: "Copyable Field",
+    slug: "copyable-field",
+    category: "Data Display",
+    description: "Read-only field with an inline copy-to-clipboard button.",
+  },
+  {
+    name: "Styled QR Code",
+    slug: "styled-qr-code",
+    category: "Data Display",
+    description: "Modern QR code with dot modules, custom colors, and optional center icon.",
+  },
+  {
     name: "Table",
     slug: "table",
     category: "Data Display",
@@ -120,6 +132,12 @@ export const componentRegistry: ComponentEntry[] = [
     slug: "input",
     category: "Form",
     description: "Single-line text input field.",
+  },
+  {
+    name: "OTP Input",
+    slug: "otp-input",
+    category: "Form",
+    description: "Individual digit boxes for one-time password entry with auto-advance.",
   },
   {
     name: "Password Strength Meter",

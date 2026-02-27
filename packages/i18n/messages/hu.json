@@ -94,7 +94,11 @@
       "tokenInvalid": "Ez a meghívó link érvénytelen.",
       "signupBlocked": "A regisztráció jelenleg csak meghívóval lehetséges.",
       "signupBlockedDescription": "Iratkozzon fel a várólistára a főoldalunkon a hozzáférés igényléséhez.",
-      "goToWaitlist": "Csatlakozás a várólistához"
+      "goToWaitlist": "Csatlakozás a várólistához",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Jelszó-visszaállítás",

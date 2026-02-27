@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useAction } from "convex/react";
 import { ChevronDown, Copy, ShieldCheck, ShieldOff } from "lucide-react";
-import QRCode from "qrcode";
 
+import { api } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
 import {
   AlertDialog,
@@ -17,18 +18,18 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  CopyableField,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  Input,
   Label,
+  OtpInput,
+  type OtpInputHandle,
   PasswordInput,
   Separator,
+  StyledQrCode,
   toast,
 } from "@repo/design-system";
-
-const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
 
 type Step = "idle" | "password-enable" | "totp-uri" | "verify-code" | "backup-codes" | "password-disable" | "password-regenerate";
 
@@ -41,11 +42,12 @@ export function TwoFactorSection() {
   const [enabled, setEnabled] = React.useState(false);
   const [password, setPassword] = React.useState("");
   const [totpUri, setTotpUri] = React.useState("");
-  const [qrDataUrl, setQrDataUrl] = React.useState("");
   const [code, setCode] = React.useState("");
   const [backupCodes, setBackupCodes] = React.useState<string[]>([]);
+  const otpRef = React.useRef<OtpInputHandle>(null);
   const [loading, setLoading] = React.useState(false);
   const [statusLoading, setStatusLoading] = React.useState(true);
+  const fetchBackupCodes = useAction(api.auth.viewBackupCodes);
   const [disableDialogOpen, setDisableDialogOpen] = React.useState(false);
   const [regenerateDialogOpen, setRegenerateDialogOpen] = React.useState(false);
 
@@ -96,10 +98,6 @@ export function TwoFactorSection() {
       }
       const uri = (result.data as { totpURI?: string })?.totpURI ?? "";
       setTotpUri(uri);
-      if (uri) {
-        const dataUrl = await QRCode.toDataURL(uri, { width: 200, margin: 2 });
-        setQrDataUrl(dataUrl);
-      }
       setStep("totp-uri");
       setPassword("");
     } catch {
@@ -109,12 +107,13 @@ export function TwoFactorSection() {
     }
   };
 
-  const handleVerify = async () => {
-    if (!code || code.length !== 6) return;
+  const handleVerify = async (codeOverride?: string) => {
+    const effectiveCode = codeOverride ?? code;
+    if (!effectiveCode || effectiveCode.length !== 6) return;
     setLoading(true);
 
     try {
-      const result = await authClient.twoFactor.verifyTotp({ code });
+      const result = await authClient.twoFactor.verifyTotp({ code: effectiveCode });
       if (result.error) {
         toast.error(tc("error"));
         return;
@@ -128,6 +127,7 @@ export function TwoFactorSection() {
       toast.error(tc("error"));
     } finally {
       setLoading(false);
+      window.requestAnimationFrame(() => otpRef.current?.focus());
     }
   };
 
@@ -155,16 +155,11 @@ export function TwoFactorSection() {
   const handleViewBackupCodes = async () => {
     setLoading(true);
     try {
-      // Custom endpoint — Better Auth v1.4.12 bug: viewBackupCodes has no HTTP path
-      const res = await fetch(`${CONVEX_SITE_URL}/api/two-factor/backup-codes`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        toast.error(tc("error"));
-        return;
-      }
-      const data = (await res.json()) as { backupCodes?: string[] };
-      setBackupCodes(data.backupCodes ?? []);
+      // Use Convex action via the already-authenticated WebSocket connection.
+      // Better Auth v1.4.12 bug: viewBackupCodes has no HTTP path, so we call
+      // the server-side API through a Convex action instead of a direct fetch.
+      const codes = await fetchBackupCodes();
+      setBackupCodes(codes ?? []);
       setStep("backup-codes");
     } catch {
       toast.error(tc("error"));
@@ -319,9 +314,15 @@ export function TwoFactorSection() {
         <p className="text-sm text-muted-foreground">{t2("scanQrCode")}</p>
 
         {/* QR Code */}
-        {qrDataUrl && (
-          <div className="flex justify-center rounded-md border bg-white p-4">
-            <img src={qrDataUrl} alt="TOTP QR Code" width={200} height={200} />
+        {totpUri && (
+          <div className="flex justify-center">
+            <StyledQrCode
+              value={totpUri}
+              size={200}
+              icon={
+                <img src="/icon.svg" alt="" className="h-full w-full" />
+              }
+            />
           </div>
         )}
 
@@ -348,27 +349,29 @@ export function TwoFactorSection() {
         </Collapsible>
 
         {/* Verification code input */}
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleVerify(); }}>
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="totp-code">{t2("enterCode")}</Label>
-            <Input
-              id="totp-code"
-              placeholder={t2("codePlaceholder")}
+            <Label>{t2("enterCode")}</Label>
+            <OtpInput
+              ref={otpRef}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              maxLength={6}
+              onChange={setCode}
+              autoSubmit
+              onComplete={(completedCode) => handleVerify(completedCode)}
+              disabled={loading}
               autoFocus
+              aria-label={t2("enterCode")}
             />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading || code.length !== 6}>
+            <Button type="button" onClick={() => handleVerify()} disabled={loading || code.length !== 6}>
               {loading ? tc("loading") : t2("verify")}
             </Button>
-            <Button type="button" variant="outline" onClick={() => { setStep("idle"); setCode(""); setTotpUri(""); setQrDataUrl(""); }}>
+            <Button type="button" variant="outline" onClick={() => { setStep("idle"); setCode(""); setTotpUri(""); }}>
               {tc("cancel")}
             </Button>
           </div>
-        </form>
+        </div>
       </div>
     );
   }
@@ -386,13 +389,7 @@ export function TwoFactorSection() {
         <div className="space-y-2">
           <Label>{t2("backupCodes")}</Label>
           <p className="text-xs text-muted-foreground">{t2("backupCodesDescription")}</p>
-          <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted p-3">
-            {backupCodes.map((bc) => (
-              <code key={bc} className="text-xs font-mono">
-                {bc}
-              </code>
-            ))}
-          </div>
+          <CopyableField value={backupCodes.join("\n")} rows={10} />
         </div>
         <Button variant="outline" onClick={() => { setStep("idle"); setBackupCodes([]); }}>
           {tc("save")}

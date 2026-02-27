@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
-import { internalMutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedMutation } from "./functions";
@@ -67,8 +68,10 @@ export const invite = authedMutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
+    let invitationId: string;
+
     if (existing) {
-      if (existing.status === "claimed") {
+      if (existing.status === "claimed" || existing.status === "completed") {
         throw new Error("ALREADY_CLAIMED");
       }
       const alreadyInvited =
@@ -83,10 +86,12 @@ export const invite = authedMutation({
         status: "invited",
         invitedAt: Date.now(),
         invitationExpiresAt: undefined,
+        token: undefined,
       });
+      invitationId = existing._id;
     } else {
       const now = Date.now();
-      await ctx.db.insert("adminInvitations", {
+      invitationId = await ctx.db.insert("adminInvitations", {
         email,
         status: "invited",
         invitedAt: now,
@@ -114,6 +119,13 @@ export const invite = authedMutation({
       status: "succeeded",
       meta: JSON.stringify({ inviteeEmail: email }),
     });
+
+    // Schedule token generation and email sending
+    await ctx.scheduler.runAfter(
+      0,
+      internal.adminInvitationActions.generateTokenAndSendEmail,
+      { adminInvitationId: invitationId as never, email }
+    );
   },
 });
 
@@ -129,12 +141,15 @@ export const uninvite = authedMutation({
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status === "claimed") throw new Error("ALREADY_CLAIMED");
+    if (entry.status === "claimed" || entry.status === "completed") {
+      throw new Error("ALREADY_CLAIMED");
+    }
 
     await ctx.db.patch(args.entryId, {
       status: "invited",
       invitedAt: undefined,
       invitationExpiresAt: undefined,
+      token: undefined,
     });
 
     const actorEmail = (ctx.user as Record<string, unknown>).email as string;
@@ -162,7 +177,9 @@ export const remove = authedMutation({
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status === "claimed") throw new Error("CANNOT_DELETE_CLAIMED");
+    if (entry.status === "claimed" || entry.status === "completed") {
+      throw new Error("CANNOT_DELETE_CLAIMED");
+    }
 
     await ctx.db.delete(args.entryId);
 
@@ -197,10 +214,178 @@ export const createForSeed = internalMutation({
     const now = Date.now();
     await ctx.db.insert("adminInvitations", {
       email: args.email,
-      status: "claimed",
+      status: "completed",
       invitedAt: now,
       claimedAt: now,
       createdAt: now,
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal: store token on invitation row (called by action)
+// ---------------------------------------------------------------------------
+
+export const setToken = internalMutation({
+  args: {
+    adminInvitationId: v.id("adminInvitations"),
+    token: v.string(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.adminInvitationId, {
+      token: args.token,
+      invitationExpiresAt: args.expiresAt,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public query: validate an invitation token
+// ---------------------------------------------------------------------------
+
+export const validateToken = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("adminInvitations")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!doc) {
+      return { valid: false as const, reason: "NOT_FOUND" as const };
+    }
+    if (doc.status === "claimed" || doc.status === "completed") {
+      return { valid: false as const, reason: "ALREADY_CLAIMED" as const };
+    }
+    if (doc.invitationExpiresAt && Date.now() > doc.invitationExpiresAt) {
+      return { valid: false as const, reason: "EXPIRED" as const };
+    }
+
+    return { valid: true as const, email: doc.email };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Public mutation: claim invitation after account creation (Step 0)
+// ---------------------------------------------------------------------------
+
+export const claimInvitation = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("adminInvitations")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!doc) throw new Error("TOKEN_NOT_FOUND");
+    if (doc.status === "claimed" || doc.status === "completed") {
+      throw new Error("ALREADY_CLAIMED");
+    }
+    if (doc.invitationExpiresAt && Date.now() > doc.invitationExpiresAt) {
+      throw new Error("TOKEN_EXPIRED");
+    }
+
+    await ctx.db.patch(doc._id, {
+      status: "claimed",
+      claimedAt: Date.now(),
+      onboardingStep: 1,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Authenticated mutation: advance onboarding step
+// ---------------------------------------------------------------------------
+
+export const advanceOnboardingStep = mutation({
+  args: { step: v.number() },
+  handler: async (ctx, args) => {
+    // Auth session may not have propagated yet during onboarding (race with
+    // Better Auth sign-up). This mutation is non-critical — it only persists
+    // the step for resume-on-abandon — so silently bail out if unauthenticated.
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return;
+
+    const doc = await ctx.db
+      .query("adminInvitations")
+      .withIndex("by_email", (q) => q.eq("email", user.email))
+      .unique();
+
+    if (!doc || doc.status !== "claimed") return;
+
+    await ctx.db.patch(doc._id, { onboardingStep: args.step });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Authenticated mutation: complete onboarding
+// ---------------------------------------------------------------------------
+
+export const completeOnboarding = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) throw new Error("NOT_AUTHENTICATED");
+
+    const doc = await ctx.db
+      .query("adminInvitations")
+      .withIndex("by_email", (q) => q.eq("email", user.email))
+      .unique();
+
+    if (!doc || doc.status === "completed") return;
+
+    await ctx.db.patch(doc._id, {
+      status: "completed",
+      onboardingStep: undefined,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Authenticated query: get onboarding status for current user
+// ---------------------------------------------------------------------------
+
+export const getMyOnboardingStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return null;
+    if ((user as Record<string, unknown>).role !== "admin") return null;
+
+    const doc = await ctx.db
+      .query("adminInvitations")
+      .withIndex("by_email", (q) => q.eq("email", user.email))
+      .unique();
+
+    if (!doc) return { completed: true, step: null };
+
+    return {
+      completed: doc.status === "completed",
+      step: doc.onboardingStep ?? null,
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal query: check if email has a valid admin invitation (for auth hook)
+// ---------------------------------------------------------------------------
+
+export const hasValidAdminInvitation = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("adminInvitations")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .unique();
+
+    if (!doc) return false;
+    // An admin with a claimed or completed invitation already has an account
+    if (doc.status === "claimed" || doc.status === "completed") return true;
+    // A valid invitation: status is "invited" and not expired
+    if (doc.invitationExpiresAt && Date.now() > doc.invitationExpiresAt) {
+      return false;
+    }
+    return true;
   },
 });

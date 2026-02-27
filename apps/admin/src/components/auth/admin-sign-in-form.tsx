@@ -18,6 +18,8 @@ import {
   CardTitle,
   Input,
   Label,
+  OtpInput,
+  type OtpInputHandle,
   PasswordInput,
   Separator,
   SlideTransition,
@@ -48,6 +50,7 @@ export function AdminSignInForm() {
   const [totpCode, setTotpCode] = React.useState("");
   const [useBackupCode, setUseBackupCode] = React.useState(false);
   const [backupCode, setBackupCode] = React.useState("");
+  const otpRef = React.useRef<OtpInputHandle>(null);
 
   // Preferred method from server
   const preferredMethodResult = useQuery(
@@ -207,10 +210,10 @@ export function AdminSignInForm() {
   };
 
   // Step 2: TOTP verification
-  const handleTotpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleTotpSubmit = async (codeOverride?: string) => {
+    const effectiveCode = codeOverride ?? totpCode;
     if (useBackupCode && !backupCode.trim()) return;
-    if (!useBackupCode && totpCode.length !== 6) return;
+    if (!useBackupCode && effectiveCode.length !== 6) return;
 
     setError(null);
     setPending(true);
@@ -229,7 +232,7 @@ export function AdminSignInForm() {
           router.push("/dashboard");
         }
       } else {
-        const result = await authClient.twoFactor.verifyTotp({ code: totpCode });
+        const result = await authClient.twoFactor.verifyTotp({ code: effectiveCode });
         if (result.error) {
           setError(formatAuthError(result.error, "Invalid verification code"));
         } else {
@@ -243,6 +246,7 @@ export function AdminSignInForm() {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
       setPending(false);
+      if (!useBackupCode) window.requestAnimationFrame(() => otpRef.current?.focus());
     }
   };
 
@@ -364,15 +368,16 @@ export function AdminSignInForm() {
                     {pending ? "Signing in..." : "Sign in with password"}
                   </Button>
                 </form>
-                <button
+                <Button
+                  className="w-full"
                   type="button"
-                  className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  variant="ghost"
                   onClick={goBack}
                   disabled={pending}
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <ArrowLeft className="h-4 w-4" />
                   Back
-                </button>
+                </Button>
               </div>
             ) : (
               /* Password-primary layout (default) */
@@ -414,20 +419,21 @@ export function AdminSignInForm() {
                 <Button type="button" variant="ghost" className="w-full" onClick={handlePasskeySignIn} disabled={pending}>
                   Sign in with passkey
                 </Button>
-                <button
+                <Button
+                  className="w-full"
                   type="button"
-                  className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  variant="ghost"
                   onClick={goBack}
                   disabled={pending}
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <ArrowLeft className="h-4 w-4" />
                   Back
-                </button>
+                </Button>
               </form>
             )
           ) : (
             /* ── Step 2: TOTP ── */
-            <form className="space-y-4" onSubmit={handleTotpSubmit}>
+            <div className="space-y-4">
               {useBackupCode ? (
                 <div className="space-y-2">
                   <Label htmlFor="backup-code">Backup code</Label>
@@ -444,31 +450,19 @@ export function AdminSignInForm() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="totp-code">Verification code</Label>
-                  <Input
-                    id="totp-code"
-                    name="code"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    placeholder="000000"
+                  <Label className="sr-only">Verification code</Label>
+                  <OtpInput
+                    ref={otpRef}
                     value={totpCode}
-                    onChange={(event) =>
-                      setTotpCode(event.target.value.replace(/\D/g, ""))
-                    }
-                    required
+                    onChange={setTotpCode}
+                    autoSubmit
+                    onComplete={(completedCode) => handleTotpSubmit(completedCode)}
+                    disabled={pending}
                     autoFocus
-                    autoComplete="one-time-code"
-                    className="text-center text-lg tracking-widest font-mono"
+                    aria-label="Verification code"
                   />
                 </div>
               )}
-              {process.env.NODE_ENV === "development" ? (
-                <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                  Dev: Check server console for TOTP code.
-                </div>
-              ) : null}
               {error ? (
                 <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}
@@ -476,7 +470,8 @@ export function AdminSignInForm() {
               ) : null}
               <Button
                 className="w-full"
-                type="submit"
+                type="button"
+                onClick={() => handleTotpSubmit()}
                 disabled={pending || (useBackupCode ? !backupCode.trim() : totpCode.length !== 6)}
               >
                 {pending ? "Verifying..." : "Verify"}
@@ -493,16 +488,17 @@ export function AdminSignInForm() {
               >
                 {useBackupCode ? "Use authenticator app instead" : "Use a backup code instead"}
               </button>
-              <button
+              <Button
+                className="w-full"
                 type="button"
-                className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                variant="ghost"
                 onClick={goBack}
                 disabled={pending}
               >
-                <ArrowLeft className="h-3 w-3" />
+                <ArrowLeft className="h-4 w-4" />
                 Back
-              </button>
-            </form>
+              </Button>
+            </div>
           )}
         </SlideTransition>
       </CardContent>

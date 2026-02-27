@@ -94,7 +94,11 @@
       "tokenInvalid": "Dieser Einladungslink ist ungültig.",
       "signupBlocked": "Die Registrierung ist derzeit nur mit Einladung möglich.",
       "signupBlockedDescription": "Treten Sie der Warteliste auf unserer Startseite bei, um Zugang anzufordern.",
-      "goToWaitlist": "Zur Warteliste"
+      "goToWaitlist": "Zur Warteliste",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Passwort-Wiederherstellung",

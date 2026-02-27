@@ -74,6 +74,14 @@ export const AUDIT_ACTIONS = [
   "admin.invitation.revoked",
   "admin.invitation.deleted",
 
+  // admin.onboarding.*
+  "admin.onboarding.account_created",
+  "admin.onboarding.totp_configured",
+  "admin.onboarding.backup_codes_acknowledged",
+  "admin.onboarding.passkey_registered",
+  "admin.onboarding.passkey_skipped",
+  "admin.onboarding.completed",
+
   // waitlist.*
   "waitlist.joined",
   "waitlist.invitation.sent",

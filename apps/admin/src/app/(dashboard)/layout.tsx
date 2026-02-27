@@ -37,11 +37,14 @@ export default async function DashboardLayout({
     redirect("/forbidden");
   }
 
-  // TODO(stage-6): Admins without 2FA set up must complete onboarding first (spec §14).
-  // The /onboarding route is created in Stage 6. Uncomment when that route exists.
-  // if ((user as Record<string, unknown>).twoFactorEnabled !== true) {
-  //   redirect("/onboarding");
-  // }
+  // Stage 6: Invited admins must complete onboarding before accessing the dashboard.
+  // This checks the invitation status, NOT twoFactorEnabled — ensuring ALL onboarding
+  // steps are enforced (TOTP, backup codes, passkey decision).
+  // Stage 7 will handle forced enrollment for existing admins without invitations.
+  const onboardingStatus = await fetchAuthQuery(api.adminInvitations.getMyOnboardingStatus);
+  if (onboardingStatus && !onboardingStatus.completed) {
+    redirect("/onboarding");
+  }
 
   return (
     <AuthGuard preloadedUser={preloadedUser}>

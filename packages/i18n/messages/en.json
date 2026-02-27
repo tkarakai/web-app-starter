@@ -175,7 +175,11 @@
       "tokenInvalid": "This invitation link is invalid.",
       "signupBlocked": "Sign-up is currently by invitation only.",
       "signupBlockedDescription": "Join the waitlist on our homepage to request access.",
-      "goToWaitlist": "Join waitlist"
+      "goToWaitlist": "Join waitlist",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     }
   },
   "landing": {

@@ -94,7 +94,11 @@
       "tokenInvalid": "Эта ссылка приглашения недействительна.",
       "signupBlocked": "Регистрация в настоящее время только по приглашению.",
       "signupBlockedDescription": "Присоединитесь к списку ожидания на нашей главной странице, чтобы запросить доступ.",
-      "goToWaitlist": "В список ожидания"
+      "goToWaitlist": "В список ожидания",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Восстановление пароля",

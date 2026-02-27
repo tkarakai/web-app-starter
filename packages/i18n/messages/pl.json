@@ -94,7 +94,11 @@
       "tokenInvalid": "Ten link zaproszenia jest nieprawidłowy.",
       "signupBlocked": "Rejestracja jest obecnie możliwa tylko na zaproszenie.",
       "signupBlockedDescription": "Dołącz do listy oczekujących na naszej stronie głównej, aby poprosić o dostęp.",
-      "goToWaitlist": "Dołącz do listy oczekujących"
+      "goToWaitlist": "Dołącz do listy oczekujących",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Odzyskiwanie hasła",

@@ -3,12 +3,13 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
+import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
@@ -481,11 +482,15 @@ export const createAuthOptions = (
               { key: "onboardingType" },
             );
             const onboardingType = parseOnboardingType(onboardingTypeRaw);
-            const hasInvitation = await actionCtx.runQuery(
+            const hasWaitlistInvitation = await actionCtx.runQuery(
               internal.waitlistTokens.hasValidInvitation,
               { email: user.email },
             );
-            if (!isSignupOnboarding(onboardingType) && !hasInvitation) {
+            const hasAdminInvitation = await actionCtx.runQuery(
+              internal.adminInvitations.hasValidAdminInvitation,
+              { email: user.email },
+            );
+            if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation) {
               throw new Error("SIGNUP_DISABLED");
             }
 
@@ -494,7 +499,7 @@ export const createAuthOptions = (
               internal.adminEmails.list,
             );
             if (adminEmails.some((row: { email: string }) => row.email === user.email)) {
-              return { data: { ...user, role: "admin" } };
+              return { data: { ...user, role: "admin", emailVerified: true } };
             }
             return { data: user };
           },
@@ -615,5 +620,60 @@ export const getCurrentUser = query({
     } catch {
       return null;
     }
+  },
+});
+
+/**
+ * Fetch the current user's 2FA backup codes via the authenticated WebSocket
+ * connection. This avoids cross-origin HTTP / httpOnly cookie issues that
+ * affect direct fetches to the Convex site URL.
+ *
+ * We query the Better Auth adapter directly instead of calling
+ * `auth.api.viewBackupCodes()` because the `@convex-dev/better-auth` convex
+ * plugin has a bug where its afterHook matcher accesses `ctx.path.startsWith()`
+ * without optional chaining, crashing when there is no HTTP request context.
+ */
+export const viewBackupCodes = action({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) throw new Error("NOT_AUTHENTICATED");
+
+    const result = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      {
+        model: "twoFactor" as const,
+        where: [
+          {
+            field: "userId",
+            operator: "eq" as const,
+            value: user._id as string,
+          },
+        ],
+        paginationOpts: { cursor: null, numItems: 1 },
+      },
+    );
+
+    const page =
+      (result as { page?: Array<{ backupCodes: string }> }).page ?? [];
+    if (page.length === 0) return [];
+
+    const raw = page[0].backupCodes;
+
+    // Try plain JSON first (freshly generated codes).
+    // Fall back to symmetric decryption (Better Auth encrypts codes after
+    // any backup code is consumed, and some versions encrypt by default).
+    try {
+      const plain = JSON.parse(raw);
+      if (Array.isArray(plain)) return plain as string[];
+    } catch {
+      // not plain JSON — try decryption
+    }
+
+    const secret = process.env.BETTER_AUTH_SECRET;
+    if (!secret) throw new Error("BETTER_AUTH_SECRET not configured");
+
+    const decrypted = await symmetricDecrypt({ key: secret, data: raw });
+    return JSON.parse(decrypted) as string[];
   },
 });

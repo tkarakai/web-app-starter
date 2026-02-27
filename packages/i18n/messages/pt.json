@@ -94,7 +94,11 @@
       "tokenInvalid": "Este link de convite é inválido.",
       "signupBlocked": "O cadastro é atualmente apenas por convite.",
       "signupBlockedDescription": "Entre na lista de espera em nossa página inicial para solicitar acesso.",
-      "goToWaitlist": "Entrar na lista de espera"
+      "goToWaitlist": "Entrar na lista de espera",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Recuperação de senha",

@@ -94,7 +94,11 @@
       "tokenInvalid": "此邀请链接无效。",
       "signupBlocked": "目前仅限邀请注册。",
       "signupBlockedDescription": "请在首页加入候补名单以申请访问权限。",
-      "goToWaitlist": "加入候补名单"
+      "goToWaitlist": "加入候补名单",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "找回密码",

@@ -20,6 +20,8 @@ import {
   CardTitle,
   Input,
   Label,
+  OtpInput,
+  type OtpInputHandle,
   PasswordInput,
   PasswordStrengthMeter,
   Separator,
@@ -65,6 +67,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [totpCode, setTotpCode] = React.useState("");
   const [useBackupCode, setUseBackupCode] = React.useState(false);
   const [backupCode, setBackupCode] = React.useState("");
+  const otpRef = React.useRef<OtpInputHandle>(null);
   const [magicLinkSent, setMagicLinkSent] = React.useState(false);
 
   const isSignUp = mode === "sign-up";
@@ -304,10 +307,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   };
 
   // ── Sign-in: TOTP verification (Step 2) ──
-  const handleTwoFactorVerify = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleTwoFactorVerify = async (codeOverride?: string) => {
+    const effectiveCode = codeOverride ?? totpCode;
     if (useBackupCode && !backupCode.trim()) return;
-    if (!useBackupCode && (!totpCode || totpCode.length !== 6)) return;
+    if (!useBackupCode && (!effectiveCode || effectiveCode.length !== 6)) return;
 
     setError(null);
     setPending(true);
@@ -327,7 +330,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         }
       } else {
         const result = await authClient.twoFactor.verifyTotp({
-          code: totpCode,
+          code: effectiveCode,
         });
         if (result.error) {
           setError(t("twoFactorVerify.invalidCode"));
@@ -342,6 +345,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       setError(isConvexRateLimited(err) ? t("errors.rateLimited") : t("errors.generic"));
     } finally {
       setPending(false);
+      if (!useBackupCode) window.requestAnimationFrame(() => otpRef.current?.focus());
     }
   };
 
@@ -681,15 +685,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                     {t("multiStep.authStep.signInWithMagicLink")}
                   </button>
                 ) : null}
-                <button
+                <Button
+                  className="w-full"
                   type="button"
-                  className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  variant="ghost"
                   onClick={goBack}
                   disabled={pending}
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <ArrowLeft className="h-4 w-4" />
                   {t("multiStep.back")}
-                </button>
+                </Button>
               </div>
             ) : preferred === "magicLink" && isMagicLinkAvailable ? (
               /* Magic link-primary layout */
@@ -766,15 +771,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                     </Button>
                   </>
                 ) : null}
-                <button
+                <Button
+                  className="w-full"
                   type="button"
-                  className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  variant="ghost"
                   onClick={goBack}
                   disabled={pending}
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <ArrowLeft className="h-4 w-4" />
                   {t("multiStep.back")}
-                </button>
+                </Button>
               </form>
             )
           ) : step === 3 ? (
@@ -798,19 +804,20 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               >
                 {t("multiStep.magicLinkStep.resend")}
               </Button>
-              <button
+              <Button
+                className="w-full"
                 type="button"
-                className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                variant="ghost"
                 onClick={goBack}
                 disabled={pending}
               >
-                <ArrowLeft className="h-3 w-3" />
+                <ArrowLeft className="h-4 w-4" />
                 {t("multiStep.back")}
-              </button>
+              </Button>
             </div>
           ) : (
             /* ── Step 2: TOTP ── */
-            <form className="space-y-4" onSubmit={handleTwoFactorVerify}>
+            <div className="space-y-4">
               {useBackupCode ? (
                 <div className="space-y-2">
                   <Label htmlFor="backup-code">{t("twoFactorVerify.backupCodeTitle")}</Label>
@@ -825,16 +832,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="totp-code">{t("twoFactorVerify.title")}</Label>
-                  <Input
-                    id="totp-code"
-                    placeholder="000000"
+                  <Label className="sr-only">{t("twoFactorVerify.title")}</Label>
+                  <OtpInput
+                    ref={otpRef}
                     value={totpCode}
-                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    maxLength={6}
+                    onChange={setTotpCode}
+                    autoSubmit
+                    onComplete={(completedCode) => handleTwoFactorVerify(completedCode)}
+                    disabled={pending}
                     autoFocus
-                    autoComplete="one-time-code"
-                    inputMode="numeric"
+                    aria-label={t("twoFactorVerify.title")}
                   />
                 </div>
               )}
@@ -845,7 +852,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               ) : null}
               <Button
                 className="w-full"
-                type="submit"
+                type="button"
+                onClick={() => handleTwoFactorVerify()}
                 disabled={pending || (useBackupCode ? !backupCode.trim() : totpCode.length !== 6)}
               >
                 {pending ? t("working") : t("twoFactorVerify.cta")}
@@ -863,16 +871,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               >
                 {useBackupCode ? t("twoFactorVerify.useAuthenticator") : t("twoFactorVerify.useBackupCode")}
               </button>
-              <button
+              <Button
+                className="w-full"
                 type="button"
-                className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                variant="ghost"
                 onClick={goBack}
                 disabled={pending}
               >
-                <ArrowLeft className="h-3 w-3" />
+                <ArrowLeft className="h-4 w-4" />
                 {t("multiStep.back")}
-              </button>
-            </form>
+              </Button>
+            </div>
           )}
         </SlideTransition>
       </CardContent>
@@ -954,15 +963,16 @@ function MagicLinkPrimaryStep({
         <Button type="button" variant="secondary" className="w-full" onClick={onPasskeySignIn} disabled={pending}>
           {t("multiStep.magicLinkStep.usePasskey")}
         </Button>
-        <button
+        <Button
+          className="w-full"
           type="button"
-          className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          variant="ghost"
           onClick={onBack}
           disabled={pending}
         >
-          <ArrowLeft className="h-3 w-3" />
+          <ArrowLeft className="h-4 w-4" />
           {t("multiStep.back")}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -1002,15 +1012,16 @@ function MagicLinkPrimaryStep({
       <Button type="button" variant="secondary" className="w-full" onClick={onPasskeySignIn} disabled={pending}>
         {t("multiStep.authStep.signInWithPasskey")}
       </Button>
-      <button
+      <Button
+        className="w-full"
         type="button"
-        className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        variant="ghost"
         onClick={onBack}
         disabled={pending}
       >
-        <ArrowLeft className="h-3 w-3" />
+        <ArrowLeft className="h-4 w-4" />
         {t("multiStep.back")}
-      </button>
+      </Button>
     </form>
   );
 }
