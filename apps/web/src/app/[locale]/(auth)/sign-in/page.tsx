@@ -12,7 +12,7 @@ export default async function SignInPage() {
 
   return (
     <main
-      className="flex min-h-screen flex-col"
+      className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
       style={{ background: "var(--glow-warm-intense)" }}
     >
       <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />
