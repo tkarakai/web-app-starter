@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { components } from "./_generated/api";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
@@ -150,6 +151,34 @@ export const setEmailVerificationPolicy = authedMutation({
       oldValue,
       newValue: value,
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Admin query: passkey status for a set of user IDs
+// ---------------------------------------------------------------------------
+
+export const listAdminPasskeyUserIds = authedQuery({
+  args: { userIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    requireAdmin(ctx.user as Record<string, unknown>);
+
+    if (args.userIds.length === 0) return [];
+
+    const result = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      {
+        model: "passkey" as const,
+        where: [
+          { field: "userId", operator: "in" as const, value: args.userIds },
+        ],
+        paginationOpts: { cursor: null, numItems: 1000 },
+      },
+    );
+
+    const page = (result as { page?: Array<{ userId: string }> }).page ?? [];
+    const userIdsWithPasskey = [...new Set(page.map((p) => p.userId))];
+    return userIdsWithPasskey;
   },
 });
 

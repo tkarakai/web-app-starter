@@ -150,6 +150,13 @@ export const seed = internalAction({
         isAdmin: user.isAdmin,
       });
 
+      // 1b. For admin users, also create an adminInvitations entry
+      if (user.isAdmin) {
+        await ctx.runMutation(internal.adminInvitations.createForSeed, {
+          email: user.email,
+        });
+      }
+
       // 2. Create the user via Better Auth (hashes password, databaseHook promotes admin).
       //    "User already exists" is expected on retry after partial failure — treat as success.
       const auth = createAuth(ctx);

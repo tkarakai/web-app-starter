@@ -108,6 +108,22 @@ export default defineSchema(
     .index("by_email", ["email"])
     .index("by_waitlist_entry", ["waitlistEntryId"]),
 
+  // --- Admin Invitations ---
+
+  adminInvitations: defineTable({
+    email: v.string(),
+    status: v.union(
+      v.literal("invited"),
+      v.literal("claimed")
+    ),
+    invitedAt: v.number(),
+    invitationExpiresAt: v.optional(v.number()),
+    claimedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_created", ["createdAt"]),
+
   // --- Sign-in preferences (tracks preferred sign-in method per email) ---
 
   signInPreferences: defineTable({

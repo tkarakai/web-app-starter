@@ -70,6 +70,9 @@ export const AUDIT_ACTIONS = [
   "announcement.unpublish_noop",
   "admin.session.revoked",
   "admin.session.revoked_all",
+  "admin.invitation.sent",
+  "admin.invitation.revoked",
+  "admin.invitation.deleted",
 
   // waitlist.*
   "waitlist.joined",

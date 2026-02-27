@@ -172,17 +172,25 @@ export const list = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
+    // Exclude emails that belong to admin accounts
+    const adminEmailDocs = await ctx.db.query("adminEmails").collect();
+    const adminEmailSet = new Set(
+      adminEmailDocs.map((d) => d.email.toLowerCase())
+    );
+
     const now = Date.now();
 
     return {
       ...entries,
-      page: entries.page.map((entry) => ({
-        ...entry,
-        invitationExpired:
-          entry.status === "invited" &&
-          entry.invitationExpiresAt != null &&
-          now > entry.invitationExpiresAt,
-      })),
+      page: entries.page
+        .filter((entry) => !adminEmailSet.has(entry.email.toLowerCase()))
+        .map((entry) => ({
+          ...entry,
+          invitationExpired:
+            entry.status === "invited" &&
+            entry.invitationExpiresAt != null &&
+            now > entry.invitationExpiresAt,
+        })),
     };
   },
 });
