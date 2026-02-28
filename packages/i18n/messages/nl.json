@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Wachtwoorden komen niet overeen",
+      "passwordCompromised": "Het ingevoerde wachtwoord is gecompromitteerd. Kies een ander wachtwoord.",
+      "rateLimited": "Te veel pogingen. Wacht even voordat u het opnieuw probeert.",
+      "invalidCredentials": "Ongeldig e-mailadres of wachtwoord",
       "generic": "Er is een fout opgetreden"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "Deze uitnodigingslink is ongeldig.",
       "signupBlocked": "Registratie is momenteel alleen op uitnodiging.",
       "signupBlockedDescription": "Meld u aan voor de wachtlijst op onze homepage om toegang aan te vragen.",
-      "goToWaitlist": "Aanmelden voor de wachtlijst"
+      "goToWaitlist": "Aanmelden voor de wachtlijst",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Wachtwoord herstellen",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "Taak niet gevonden",
     "FILE_NOT_FOUND": "Bestand niet gevonden in opslag",
     "FILE_TOO_LARGE": "Bestand te groot (max. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Upload niet gevonden"
+    "UPLOAD_NOT_FOUND": "Upload niet gevonden",
+    "convex": {
+      "rateLimited": "Te veel verzoeken. Wacht {seconds} seconden.",
+      "notAuthenticated": "Uw sessie is verlopen. Log opnieuw in.",
+      "connectionLost": "Kan geen verbinding maken met de server. Controleer uw verbinding.",
+      "serverError": "Er is iets misgegaan. Probeer het opnieuw.",
+      "projectNotFound": "Project niet gevonden.",
+      "taskNotFound": "Taak niet gevonden.",
+      "fileNotFound": "Bestand niet gevonden in opslag.",
+      "fileTooLarge": "Bestand te groot (max. 1 MB).",
+      "uploadNotFound": "Upload niet gevonden."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "Het lijkt erop dat je offline bent. Een actieve verbinding is nodig om door te gaan."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Zeer zwak",
+      "weak": "Zwak",
+      "fair": "Redelijk",
+      "good": "Goed",
+      "strong": "Sterk"
+    },
+    "crackTimeLabel": "Geschatte kraaktijd: {time}",
+    "minLength": "Minimaal {count} tekens vereist.",
+    "strengthRequirement": "Het wachtwoord voldoet niet aan de sterkte-eisen.",
+    "warnings": {
+      "straightRow": "Rechte rijen toetsen op uw toetsenbord zijn makkelijk te raden.",
+      "keyPattern": "Korte toetsenbordpatronen zijn makkelijk te raden.",
+      "simpleRepeat": "Herhaalde tekens zoals \"aaa\" zijn makkelijk te raden.",
+      "extendedRepeat": "Herhaalde tekenpatronen zoals \"abcabcabc\" zijn makkelijk te raden.",
+      "sequences": "Veelvoorkomende tekenreeksen zoals \"abc\" zijn makkelijk te raden.",
+      "recentYears": "Recente jaren zijn makkelijk te raden.",
+      "dates": "Datums zijn makkelijk te raden.",
+      "topTen": "Dit is een veelgebruikt wachtwoord.",
+      "topHundred": "Dit is een vaak gebruikt wachtwoord.",
+      "common": "Dit is een algemeen gebruikt wachtwoord.",
+      "similarToCommon": "Dit lijkt op een algemeen gebruikt wachtwoord.",
+      "wordByItself": "Losse woorden zijn makkelijk te raden.",
+      "namesByThemselves": "Losse voor- of achternamen zijn makkelijk te raden.",
+      "commonNames": "Veelvoorkomende voor- en achternamen zijn makkelijk te raden.",
+      "userInputs": "Er mogen geen persoonlijke of paginagerelateerde gegevens in staan.",
+      "pwned": "Uw wachtwoord is blootgesteld bij een datalek op internet."
+    },
+    "suggestions": {
+      "l33t": "Vermijd voorspelbare lettersubstituties zoals \"@\" voor \"a\".",
+      "reverseWords": "Vermijd omgekeerde spellingen van veelvoorkomende woorden.",
+      "allUppercase": "Gebruik hoofdletters voor sommige, maar niet alle letters.",
+      "capitalization": "Gebruik hoofdletters voor meer dan alleen de eerste letter.",
+      "dates": "Vermijd data en jaren die met u verbonden zijn.",
+      "recentYears": "Vermijd recente jaren.",
+      "associatedYears": "Vermijd jaren die met u verbonden zijn.",
+      "sequences": "Vermijd veelvoorkomende tekenreeksen.",
+      "repeated": "Vermijd herhaalde woorden en tekens.",
+      "longerKeyboardPattern": "Gebruik langere toetsenbordpatronen en wissel van typrichting.",
+      "anotherWord": "Voeg minder gebruikelijke woorden toe.",
+      "useWords": "Gebruik meerdere woorden, maar vermijd veelgebruikte uitdrukkingen.",
+      "noNeed": "U kunt sterke wachtwoorden maken zonder symbolen, cijfers of hoofdletters.",
+      "pwned": "Als u dit wachtwoord elders gebruikt, moet u het wijzigen."
+    },
+    "timeEstimation": {
+      "ltSecond": "minder dan een seconde",
+      "second": "{base} seconde",
+      "seconds": "{base} seconden",
+      "minute": "{base} minuut",
+      "minutes": "{base} minuten",
+      "hour": "{base} uur",
+      "hours": "{base} uur",
+      "day": "{base} dag",
+      "days": "{base} dagen",
+      "month": "{base} maand",
+      "months": "{base} maanden",
+      "year": "{base} jaar",
+      "years": "{base} jaar",
+      "centuries": "eeuwen"
+    }
+  },
+  "forbidden": {
+    "title": "Toegang geweigerd",
+    "description": "Uw account is opgeschort of u heeft geen toestemming om toegang te krijgen tot deze bron. Als u denkt dat dit een fout is, neem dan contact op met de beheerder van uw organisatie.",
+    "backToSignIn": "Terug naar inloggen"
   }
 }

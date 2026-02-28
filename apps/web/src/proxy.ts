@@ -113,18 +113,27 @@ export function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
 
-  // In dev, Convex runs locally on a dynamic port (e.g. http://127.0.0.1:3210).
+  // In dev, Convex runs locally on dynamic ports (e.g. http://127.0.0.1:3210).
   // Derive both http and ws origins so the CSP allows API calls and WebSocket sync.
+  // Also include the Convex site URL (HTTP actions) which runs on a separate port.
   const devConvexOrigins = isDev
     ? (() => {
+        const origins: string[] = [];
         try {
           const url = new URL(process.env.NEXT_PUBLIC_CONVEX_URL ?? "");
-          const httpOrigin = url.origin;
-          const wsOrigin = `ws://${url.host}`;
-          return ` ${httpOrigin} ${wsOrigin}`;
+          origins.push(url.origin, `ws://${url.host}`);
         } catch {
-          return "";
+          // Invalid URL — skip
         }
+        try {
+          const siteUrl = new URL(process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "");
+          if (!origins.includes(siteUrl.origin)) {
+            origins.push(siteUrl.origin);
+          }
+        } catch {
+          // Invalid URL — skip
+        }
+        return origins.length > 0 ? ` ${origins.join(" ")}` : "";
       })()
     : "";
 

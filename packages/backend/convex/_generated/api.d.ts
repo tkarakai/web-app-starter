@@ -10,6 +10,8 @@
 
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminEmails from "../adminEmails.js";
+import type * as adminInvitationActions from "../adminInvitationActions.js";
+import type * as adminInvitations from "../adminInvitations.js";
 import type * as announcements from "../announcements.js";
 import type * as appSettings from "../appSettings.js";
 import type * as auditTrail from "../auditTrail.js";
@@ -27,12 +29,14 @@ import type * as meta from "../meta.js";
 import type * as migrations from "../migrations.js";
 import type * as onboardingType from "../onboardingType.js";
 import type * as parseUserAgent from "../parseUserAgent.js";
+import type * as passwordStrength from "../passwordStrength.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as securityPolicies from "../securityPolicies.js";
 import type * as sendAuthEmail from "../sendAuthEmail.js";
 import type * as sessions from "../sessions.js";
 import type * as tasks from "../tasks.js";
+import type * as tokenHash from "../tokenHash.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as waitlist from "../waitlist.js";
 import type * as waitlistActions from "../waitlistActions.js";
@@ -47,6 +51,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminEmails: typeof adminEmails;
+  adminInvitationActions: typeof adminInvitationActions;
+  adminInvitations: typeof adminInvitations;
   announcements: typeof announcements;
   appSettings: typeof appSettings;
   auditTrail: typeof auditTrail;
@@ -64,12 +70,14 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   onboardingType: typeof onboardingType;
   parseUserAgent: typeof parseUserAgent;
+  passwordStrength: typeof passwordStrength;
   projects: typeof projects;
   rateLimits: typeof rateLimits;
   securityPolicies: typeof securityPolicies;
   sendAuthEmail: typeof sendAuthEmail;
   sessions: typeof sessions;
   tasks: typeof tasks;
+  tokenHash: typeof tokenHash;
   userProfiles: typeof userProfiles;
   waitlist: typeof waitlist;
   waitlistActions: typeof waitlistActions;

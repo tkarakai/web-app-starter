@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "A jelszavak nem egyeznek",
+      "passwordCompromised": "A megadott jelszó kompromittálódott. Kérjük, válasszon másik jelszót.",
+      "rateLimited": "Túl sok próbálkozás. Kérjük, várjon egy pillanatot, mielőtt újra próbálkozna.",
+      "invalidCredentials": "Érvénytelen e-mail cím vagy jelszó",
       "generic": "Hiba történt"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "Ez a meghívó link érvénytelen.",
       "signupBlocked": "A regisztráció jelenleg csak meghívóval lehetséges.",
       "signupBlockedDescription": "Iratkozzon fel a várólistára a főoldalunkon a hozzáférés igényléséhez.",
-      "goToWaitlist": "Csatlakozás a várólistához"
+      "goToWaitlist": "Csatlakozás a várólistához",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Jelszó-visszaállítás",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "Feladat nem található",
     "FILE_NOT_FOUND": "Fájl nem található a tárhelyen",
     "FILE_TOO_LARGE": "A fájl túl nagy (max. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Feltöltés nem található"
+    "UPLOAD_NOT_FOUND": "Feltöltés nem található",
+    "convex": {
+      "rateLimited": "Túl sok kérés. Kérjük, várjon {seconds} másodpercet.",
+      "notAuthenticated": "A munkamenete lejárt. Kérjük, jelentkezzen be újra.",
+      "connectionLost": "Nem sikerült csatlakozni a szerverhez. Kérjük, ellenőrizze a kapcsolatot.",
+      "serverError": "Valami hiba történt. Kérjük, próbálja újra.",
+      "projectNotFound": "Projekt nem található.",
+      "taskNotFound": "Feladat nem található.",
+      "fileNotFound": "Fájl nem található a tárhelyen.",
+      "fileTooLarge": "A fájl túl nagy (max. 1 MB).",
+      "uploadNotFound": "Feltöltés nem található."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "Úgy tűnik, offline vagy. Az alkalmazás használatához aktív internetkapcsolat szükséges."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Nagyon gyenge",
+      "weak": "Gyenge",
+      "fair": "Elfogadható",
+      "good": "Jó",
+      "strong": "Erős"
+    },
+    "crackTimeLabel": "Becsült feltörési idő: {time}",
+    "minLength": "Legalább {count} karakter szükséges.",
+    "strengthRequirement": "A jelszó nem felel meg az erősségi követelményeknek.",
+    "warnings": {
+      "straightRow": "Az egyenes billentyűsorok könnyen kitalálhatók.",
+      "keyPattern": "A rövid billentyűzetminták könnyen kitalálhatók.",
+      "simpleRepeat": "Az ismétlődő karakterek, mint az \"aaa\", könnyen kitalálhatók.",
+      "extendedRepeat": "Az ismétlődő minták, mint az \"abcabcabc\", könnyen kitalálhatók.",
+      "sequences": "A gyakori karaktersorozatok, mint az \"abc\", könnyen kitalálhatók.",
+      "recentYears": "A közelmúlt évszámai könnyen kitalálhatók.",
+      "dates": "A dátumok könnyen kitalálhatók.",
+      "topTen": "Ez egy rendkívül gyakran használt jelszó.",
+      "topHundred": "Ez egy gyakran használt jelszó.",
+      "common": "Ez egy általánosan használt jelszó.",
+      "similarToCommon": "Ez hasonlít egy általánosan használt jelszóhoz.",
+      "wordByItself": "Az egyedülálló szavak könnyen kitalálhatók.",
+      "namesByThemselves": "Az önálló nevek vagy vezetéknevek könnyen kitalálhatók.",
+      "commonNames": "A gyakori nevek és vezetéknevek könnyen kitalálhatók.",
+      "userInputs": "Ne tartalmazzon személyes vagy oldalhoz kapcsolódó adatokat.",
+      "pwned": "A jelszava adatszivárgás során nyilvánosságra került az interneten."
+    },
+    "suggestions": {
+      "l33t": "Kerülje a kiszámítható betűcseréket, mint a \"@\" az \"a\" helyett.",
+      "reverseWords": "Kerülje a gyakori szavak visszafelé írását.",
+      "allUppercase": "Néhány betűt írjon nagybetűvel, de ne az összeset.",
+      "capitalization": "Ne csak az első betűt írja nagybetűvel.",
+      "dates": "Kerülje az Önhöz kapcsolódó dátumokat és évszámokat.",
+      "recentYears": "Kerülje a közelmúlt évszámait.",
+      "associatedYears": "Kerülje az Önhöz kapcsolódó évszámokat.",
+      "sequences": "Kerülje a gyakori karaktersorozatokat.",
+      "repeated": "Kerülje az ismétlődő szavakat és karaktereket.",
+      "longerKeyboardPattern": "Használjon hosszabb billentyűzetmintákat és változtasson irányt.",
+      "anotherWord": "Adjon hozzá kevésbé gyakori szavakat.",
+      "useWords": "Használjon több szót, de kerülje a gyakori kifejezéseket.",
+      "noNeed": "Erős jelszavakat szimbólumok, számok vagy nagybetűk nélkül is létrehozhat.",
+      "pwned": "Ha ezt a jelszót máshol is használja, változtassa meg."
+    },
+    "timeEstimation": {
+      "ltSecond": "kevesebb mint egy másodperc",
+      "second": "{base} másodperc",
+      "seconds": "{base} másodperc",
+      "minute": "{base} perc",
+      "minutes": "{base} perc",
+      "hour": "{base} óra",
+      "hours": "{base} óra",
+      "day": "{base} nap",
+      "days": "{base} nap",
+      "month": "{base} hónap",
+      "months": "{base} hónap",
+      "year": "{base} év",
+      "years": "{base} év",
+      "centuries": "évszázadok"
+    }
+  },
+  "forbidden": {
+    "title": "Hozzáférés megtagadva",
+    "description": "Fiókja felfüggesztésre került, vagy nincs engedélye ehhez az erőforráshoz való hozzáféréshez. Ha úgy gondolja, hogy ez tévedés, kérjük, lépjen kapcsolatba szervezete rendszergazdájával.",
+    "backToSignIn": "Vissza a bejelentkezéshez"
   }
 }

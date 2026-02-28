@@ -3,12 +3,13 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
+import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
@@ -17,6 +18,7 @@ import { sendAuthEmail } from "./sendAuthEmail";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
+import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 
 /** Truncate a string to at most `max` characters. */
@@ -108,6 +110,55 @@ const protectedAdminPlugin = (
             error: { message: "Cannot modify a protected admin" },
           }),
           { status: 403, headers: { "Content-Type": "application/json" } },
+        ),
+      };
+    }
+  },
+});
+
+// Endpoints that accept a password in the request body.
+const PASSWORD_ENDPOINTS = ["/sign-up/email", "/reset-password", "/change-password"];
+
+// Plugin that enforces password strength server-side on all password-accepting
+// endpoints. Even if the client-side meter didn't load, the server will reject
+// weak passwords before Better Auth processes them.
+const passwordStrengthPlugin = (
+  convexCtx: GenericCtx<DataModel>,
+): BetterAuthPlugin => ({
+  id: "password-strength",
+  async onRequest(request) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+
+    if (!PASSWORD_ENDPOINTS.some((p) => path.endsWith(p))) return;
+
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.clone().json()) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+
+    const password =
+      (body.password as string | undefined) ??
+      (body.newPassword as string | undefined);
+    const email = (body.email as string | undefined) ?? "";
+    if (!password) return;
+
+    // Determine role: admin emails get the stricter threshold
+    const actionCtx = requireActionCtx(convexCtx);
+    const adminEmails = await actionCtx.runQuery(internal.adminEmails.list);
+    const role =
+      email && adminEmails.some((row: { email: string }) => row.email === email)
+        ? "admin"
+        : "user";
+
+    const result = validatePasswordStrength(password, email, role);
+    if (!result.valid) {
+      return {
+        response: new Response(
+          JSON.stringify({ error: { message: result.reason } }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
         ),
       };
     }
@@ -292,8 +343,15 @@ export const createAuthOptions = (
   return {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
+    session: {
+      // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
+      // Admin sessions (4 hours) are enforced at the middleware level.
+      expiresIn: 60 * 60 * 24 * 7,  // 7 days
+      updateAge: 60 * 60,            // 1 hour
+    },
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: 12,
       // requireEmailVerification is kept false here so Better Auth does not
       // block sign-ins at the protocol level. Enforcement is done at the
       // app level (dashboard layout + AuthGuard) so the admin toggle works
@@ -475,11 +533,15 @@ export const createAuthOptions = (
               { key: "onboardingType" },
             );
             const onboardingType = parseOnboardingType(onboardingTypeRaw);
-            const hasInvitation = await actionCtx.runQuery(
+            const hasWaitlistInvitation = await actionCtx.runQuery(
               internal.waitlistTokens.hasValidInvitation,
               { email: user.email },
             );
-            if (!isSignupOnboarding(onboardingType) && !hasInvitation) {
+            const hasAdminInvitation = await actionCtx.runQuery(
+              internal.adminInvitations.hasValidAdminInvitation,
+              { email: user.email },
+            );
+            if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation) {
               throw new Error("SIGNUP_DISABLED");
             }
 
@@ -488,7 +550,7 @@ export const createAuthOptions = (
               internal.adminEmails.list,
             );
             if (adminEmails.some((row: { email: string }) => row.email === user.email)) {
-              return { data: { ...user, role: "admin" } };
+              return { data: { ...user, role: "admin", emailVerified: true } };
             }
             return { data: user };
           },
@@ -512,6 +574,7 @@ export const createAuthOptions = (
     plugins: [
       multiOriginPlugin(),
       protectedAdminPlugin(ctx),
+      passwordStrengthPlugin(ctx),
       admin(),
       twoFactor({
         issuer: getTotpIssuer(),
@@ -548,6 +611,7 @@ export const createAuthOptions = (
         },
       }),
       passkey(passkeyRpId ? { rpID: passkeyRpId } : undefined),
+      haveIBeenPwned(),
       convex({ authConfig }),
     ],
     rateLimit: {
@@ -608,5 +672,60 @@ export const getCurrentUser = query({
     } catch {
       return null;
     }
+  },
+});
+
+/**
+ * Fetch the current user's 2FA backup codes via the authenticated WebSocket
+ * connection. This avoids cross-origin HTTP / httpOnly cookie issues that
+ * affect direct fetches to the Convex site URL.
+ *
+ * We query the Better Auth adapter directly instead of calling
+ * `auth.api.viewBackupCodes()` because the `@convex-dev/better-auth` convex
+ * plugin has a bug where its afterHook matcher accesses `ctx.path.startsWith()`
+ * without optional chaining, crashing when there is no HTTP request context.
+ */
+export const viewBackupCodes = action({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) throw new Error("NOT_AUTHENTICATED");
+
+    const result = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      {
+        model: "twoFactor" as const,
+        where: [
+          {
+            field: "userId",
+            operator: "eq" as const,
+            value: user._id as string,
+          },
+        ],
+        paginationOpts: { cursor: null, numItems: 1 },
+      },
+    );
+
+    const page =
+      (result as { page?: Array<{ backupCodes: string }> }).page ?? [];
+    if (page.length === 0) return [];
+
+    const raw = page[0].backupCodes;
+
+    // Try plain JSON first (freshly generated codes).
+    // Fall back to symmetric decryption (Better Auth encrypts codes after
+    // any backup code is consumed, and some versions encrypt by default).
+    try {
+      const plain = JSON.parse(raw);
+      if (Array.isArray(plain)) return plain as string[];
+    } catch {
+      // not plain JSON — try decryption
+    }
+
+    const secret = process.env.BETTER_AUTH_SECRET;
+    if (!secret) throw new Error("BETTER_AUTH_SECRET not configured");
+
+    const decrypted = await symmetricDecrypt({ key: secret, data: raw });
+    return JSON.parse(decrypted) as string[];
   },
 });

@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Las contraseñas no coinciden",
+      "passwordCompromised": "La contraseña que ingresaste ha sido comprometida. Por favor, elige una contraseña diferente.",
+      "rateLimited": "Demasiados intentos. Por favor, espera un momento antes de intentarlo de nuevo.",
+      "invalidCredentials": "Correo electrónico o contraseña no válidos",
       "generic": "Se produjo un error"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "Este enlace de invitación no es válido.",
       "signupBlocked": "El registro es actualmente solo por invitación.",
       "signupBlockedDescription": "Únase a la lista de espera en nuestra página principal para solicitar acceso.",
-      "goToWaitlist": "Unirse a la lista de espera"
+      "goToWaitlist": "Unirse a la lista de espera",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Recuperación de contraseña",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "Tarea no encontrada",
     "FILE_NOT_FOUND": "Archivo no encontrado en el almacenamiento",
     "FILE_TOO_LARGE": "Archivo demasiado grande (máx. 1MB)",
-    "UPLOAD_NOT_FOUND": "Subida no encontrada"
+    "UPLOAD_NOT_FOUND": "Subida no encontrada",
+    "convex": {
+      "rateLimited": "Demasiadas solicitudes. Espere {seconds} segundos.",
+      "notAuthenticated": "Su sesión ha expirado. Inicie sesión de nuevo.",
+      "connectionLost": "No se puede conectar al servidor. Compruebe su conexión.",
+      "serverError": "Algo salió mal. Inténtelo de nuevo.",
+      "projectNotFound": "Proyecto no encontrado.",
+      "taskNotFound": "Tarea no encontrada.",
+      "fileNotFound": "Archivo no encontrado en el almacenamiento.",
+      "fileTooLarge": "Archivo demasiado grande (máx. 1 MB).",
+      "uploadNotFound": "Subida no encontrada."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "Parece que estás sin conexión. Se necesita una conexión activa para continuar."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Muy débil",
+      "weak": "Débil",
+      "fair": "Aceptable",
+      "good": "Buena",
+      "strong": "Fuerte"
+    },
+    "crackTimeLabel": "Tiempo estimado de descifrado: {time}",
+    "minLength": "Se requieren al menos {count} caracteres.",
+    "strengthRequirement": "La contraseña no cumple los requisitos de seguridad.",
+    "warnings": {
+      "straightRow": "Las filas rectas de teclas en su teclado son fáciles de adivinar.",
+      "keyPattern": "Los patrones cortos de teclado son fáciles de adivinar.",
+      "simpleRepeat": "Los caracteres repetidos como \"aaa\" son fáciles de adivinar.",
+      "extendedRepeat": "Los patrones repetidos como \"abcabcabc\" son fáciles de adivinar.",
+      "sequences": "Las secuencias comunes como \"abc\" son fáciles de adivinar.",
+      "recentYears": "Los años recientes son fáciles de adivinar.",
+      "dates": "Las fechas son fáciles de adivinar.",
+      "topTen": "Esta es una contraseña muy utilizada.",
+      "topHundred": "Esta es una contraseña frecuentemente utilizada.",
+      "common": "Esta es una contraseña de uso común.",
+      "similarToCommon": "Es similar a una contraseña de uso común.",
+      "wordByItself": "Las palabras sueltas son fáciles de adivinar.",
+      "namesByThemselves": "Los nombres o apellidos solos son fáciles de adivinar.",
+      "commonNames": "Los nombres y apellidos comunes son fáciles de adivinar.",
+      "userInputs": "No debe contener datos personales o relacionados con la página.",
+      "pwned": "Su contraseña fue expuesta en una filtración de datos en Internet."
+    },
+    "suggestions": {
+      "l33t": "Evite sustituciones predecibles como \"@\" por \"a\".",
+      "reverseWords": "Evite escribir palabras comunes al revés.",
+      "allUppercase": "Ponga en mayúscula algunas letras, pero no todas.",
+      "capitalization": "Ponga en mayúscula más que solo la primera letra.",
+      "dates": "Evite fechas y años asociados con usted.",
+      "recentYears": "Evite años recientes.",
+      "associatedYears": "Evite años asociados con usted.",
+      "sequences": "Evite secuencias de caracteres comunes.",
+      "repeated": "Evite palabras y caracteres repetidos.",
+      "longerKeyboardPattern": "Use patrones de teclado más largos y cambie la dirección de escritura.",
+      "anotherWord": "Agregue más palabras menos comunes.",
+      "useWords": "Use varias palabras, pero evite frases comunes.",
+      "noNeed": "Puede crear contraseñas seguras sin símbolos, números o mayúsculas.",
+      "pwned": "Si usa esta contraseña en otro sitio, debería cambiarla."
+    },
+    "timeEstimation": {
+      "ltSecond": "menos de un segundo",
+      "second": "{base} segundo",
+      "seconds": "{base} segundos",
+      "minute": "{base} minuto",
+      "minutes": "{base} minutos",
+      "hour": "{base} hora",
+      "hours": "{base} horas",
+      "day": "{base} día",
+      "days": "{base} días",
+      "month": "{base} mes",
+      "months": "{base} meses",
+      "year": "{base} año",
+      "years": "{base} años",
+      "centuries": "siglos"
+    }
+  },
+  "forbidden": {
+    "title": "Acceso denegado",
+    "description": "Su cuenta ha sido suspendida o no tiene permiso para acceder a este recurso. Si cree que se trata de un error, comuníquese con el administrador de su organización.",
+    "backToSignIn": "Volver a iniciar sesión"
   }
 }

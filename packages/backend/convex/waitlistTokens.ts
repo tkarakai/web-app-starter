@@ -6,6 +6,7 @@ import type { AuditStatus } from "./auditTrailConstants";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery } from "./functions";
 import { rateLimit } from "./rateLimits";
+import { sha256Hex } from "./tokenHash";
 
 /** Tokens in "claiming" state older than this are considered stale. */
 const CLAIMING_TTL_MS = 15 * 60_000; // 15 minutes
@@ -17,14 +18,15 @@ const CLAIMING_TTL_MS = 15 * 60_000; // 15 minutes
 export const create = internalMutation({
   args: {
     waitlistEntryId: v.id("waitlistEntries"),
-    token: v.string(),
+    tokenHash: v.string(),
     email: v.string(),
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
+    // The `token` field stores a SHA-256 hash, not the raw token.
     await ctx.db.insert("invitationTokens", {
       waitlistEntryId: args.waitlistEntryId,
-      token: args.token,
+      token: args.tokenHash,
       email: args.email,
       status: "sent",
       expiresAt: args.expiresAt,
@@ -45,9 +47,10 @@ export const create = internalMutation({
 export const validate = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    const tokenHash = sha256Hex(args.token);
     const tokenDoc = await ctx.db
       .query("invitationTokens")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .unique();
 
     if (!tokenDoc) return { valid: false as const, reason: "NOT_FOUND" as const };
@@ -69,10 +72,12 @@ export const validate = query({
 export const beginClaim = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    // Rate limit by token to prevent brute-force
+    const tokenHash = sha256Hex(args.token);
+
+    // Rate limit by hash to prevent brute-force
     await rateLimit(ctx, {
       name: "tokenClaim",
-      key: args.token,
+      key: tokenHash,
       throws: true,
     });
 
@@ -84,7 +89,7 @@ export const beginClaim = mutation({
     try {
       const tokenDoc = await ctx.db
         .query("invitationTokens")
-        .withIndex("by_token", (q) => q.eq("token", args.token))
+        .withIndex("by_token", (q) => q.eq("token", tokenHash))
         .unique();
 
       if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
@@ -135,15 +140,17 @@ export const beginClaim = mutation({
 export const finalizeClaim = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    const tokenHash = sha256Hex(args.token);
+
     await rateLimit(ctx, {
       name: "tokenClaim",
-      key: args.token,
+      key: tokenHash,
       throws: true,
     });
 
     const tokenDoc = await ctx.db
       .query("invitationTokens")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .unique();
 
     if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
@@ -171,15 +178,17 @@ export const finalizeClaim = mutation({
 export const releaseClaim = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    const tokenHash = sha256Hex(args.token);
+
     await rateLimit(ctx, {
       name: "tokenClaim",
-      key: args.token,
+      key: tokenHash,
       throws: true,
     });
 
     const tokenDoc = await ctx.db
       .query("invitationTokens")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .unique();
 
     if (!tokenDoc) return;

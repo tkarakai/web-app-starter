@@ -52,6 +52,7 @@ export const AUDIT_ACTIONS = [
   "admin.admin_mfa_policy_changed",
   "admin.user_email_verification_policy_changed",
   "admin.admin_email_verification_policy_changed",
+  "admin.user_magic_link_policy_changed",
   "admin.user_passkey_policy_changed",
   "admin.admin_passkey_policy_changed",
   "admin.waitlist_setting_changed",
@@ -69,6 +70,17 @@ export const AUDIT_ACTIONS = [
   "announcement.unpublish_noop",
   "admin.session.revoked",
   "admin.session.revoked_all",
+  "admin.invitation.sent",
+  "admin.invitation.revoked",
+  "admin.invitation.deleted",
+
+  // admin.onboarding.*
+  "admin.onboarding.account_created",
+  "admin.onboarding.totp_configured",
+  "admin.onboarding.backup_codes_acknowledged",
+  "admin.onboarding.passkey_registered",
+  "admin.onboarding.passkey_skipped",
+  "admin.onboarding.completed",
 
   // waitlist.*
   "waitlist.joined",

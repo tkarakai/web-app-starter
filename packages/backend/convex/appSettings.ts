@@ -15,6 +15,7 @@ import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
   LEGACY_MFA_REQUIRED_KEY,
   USER_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_MAGIC_LINK_ENABLED_KEY,
   USER_MFA_REQUIRED_KEY,
   USER_PASSKEY_POLICY_KEY,
   isPasskeyPolicy,
@@ -27,6 +28,7 @@ const PUBLIC_KEYS = [
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
   USER_EMAIL_VERIFICATION_REQUIRED_KEY,
   ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_MAGIC_LINK_ENABLED_KEY,
   USER_MFA_REQUIRED_KEY,
   ADMIN_MFA_REQUIRED_KEY,
   USER_PASSKEY_POLICY_KEY,
@@ -40,6 +42,7 @@ const VALID_KEYS = [
   "invitationEmailTemplate",
   LEGACY_MFA_REQUIRED_KEY,
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_MAGIC_LINK_ENABLED_KEY,
   USER_MFA_REQUIRED_KEY,
   ADMIN_MFA_REQUIRED_KEY,
   USER_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -55,6 +58,7 @@ const DEFAULTS: Record<string, unknown> = {
   invitationTokenExpiryDays: 7,
   [LEGACY_MFA_REQUIRED_KEY]: false,
   [LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
+  [USER_MAGIC_LINK_ENABLED_KEY]: false,
   [USER_MFA_REQUIRED_KEY]: false,
   [ADMIN_MFA_REQUIRED_KEY]: false,
   [USER_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
@@ -98,6 +102,12 @@ function validateValue(key: string, value: string): void {
     if (Number.isNaN(num) || num < 1 || num > 365) {
       throw new Error(
         "INVALID_VALUE: invitationTokenExpiryDays must be an integer between 1 and 365"
+      );
+    }
+  } else if (key === USER_MAGIC_LINK_ENABLED_KEY) {
+    if (value !== "true" && value !== "false") {
+      throw new Error(
+        "INVALID_VALUE: userMagicLinkEnabled must be 'true' or 'false'"
       );
     }
   } else if (
@@ -261,6 +271,7 @@ async function getSettingValueWithFallback(
 }
 
 const POLICY_AUDIT_ACTIONS: Partial<Record<string, AuditAction>> = {
+  [USER_MAGIC_LINK_ENABLED_KEY]: "admin.user_magic_link_policy_changed",
   [USER_MFA_REQUIRED_KEY]: "admin.user_mfa_policy_changed",
   [ADMIN_MFA_REQUIRED_KEY]: "admin.admin_mfa_policy_changed",
   [USER_EMAIL_VERIFICATION_REQUIRED_KEY]:

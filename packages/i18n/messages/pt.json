@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "As senhas não coincidem",
+      "passwordCompromised": "A senha que você digitou foi comprometida. Por favor, escolha uma senha diferente.",
+      "rateLimited": "Muitas tentativas. Por favor, aguarde um momento antes de tentar novamente.",
+      "invalidCredentials": "Email ou senha inválidos",
       "generic": "Ocorreu um erro"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "Este link de convite é inválido.",
       "signupBlocked": "O cadastro é atualmente apenas por convite.",
       "signupBlockedDescription": "Entre na lista de espera em nossa página inicial para solicitar acesso.",
-      "goToWaitlist": "Entrar na lista de espera"
+      "goToWaitlist": "Entrar na lista de espera",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Recuperação de senha",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "Tarefa não encontrada",
     "FILE_NOT_FOUND": "Arquivo não encontrado no armazenamento",
     "FILE_TOO_LARGE": "Arquivo muito grande (máx. 1MB)",
-    "UPLOAD_NOT_FOUND": "Envio não encontrado"
+    "UPLOAD_NOT_FOUND": "Envio não encontrado",
+    "convex": {
+      "rateLimited": "Muitas solicitações. Aguarde {seconds} segundos.",
+      "notAuthenticated": "Sua sessão expirou. Faça login novamente.",
+      "connectionLost": "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "serverError": "Algo deu errado. Tente novamente.",
+      "projectNotFound": "Projeto não encontrado.",
+      "taskNotFound": "Tarefa não encontrada.",
+      "fileNotFound": "Arquivo não encontrado no armazenamento.",
+      "fileTooLarge": "Arquivo muito grande (máx. 1 MB).",
+      "uploadNotFound": "Envio não encontrado."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "Parece que você está offline. É necessária uma conexão ativa para continuar."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Muito fraca",
+      "weak": "Fraca",
+      "fair": "Razoável",
+      "good": "Boa",
+      "strong": "Forte"
+    },
+    "crackTimeLabel": "Tempo estimado para quebrar: {time}",
+    "minLength": "São necessários pelo menos {count} caracteres.",
+    "strengthRequirement": "A senha não atende aos requisitos de segurança.",
+    "warnings": {
+      "straightRow": "Sequências retas de teclas são fáceis de adivinhar.",
+      "keyPattern": "Padrões curtos de teclado são fáceis de adivinhar.",
+      "simpleRepeat": "Caracteres repetidos como \"aaa\" são fáceis de adivinhar.",
+      "extendedRepeat": "Padrões repetidos como \"abcabcabc\" são fáceis de adivinhar.",
+      "sequences": "Sequências comuns como \"abc\" são fáceis de adivinhar.",
+      "recentYears": "Anos recentes são fáceis de adivinhar.",
+      "dates": "Datas são fáceis de adivinhar.",
+      "topTen": "Esta é uma senha muito utilizada.",
+      "topHundred": "Esta é uma senha frequentemente utilizada.",
+      "common": "Esta é uma senha de uso comum.",
+      "similarToCommon": "É semelhante a uma senha de uso comum.",
+      "wordByItself": "Palavras isoladas são fáceis de adivinhar.",
+      "namesByThemselves": "Nomes ou sobrenomes isolados são fáceis de adivinhar.",
+      "commonNames": "Nomes e sobrenomes comuns são fáceis de adivinhar.",
+      "userInputs": "Não deve conter dados pessoais ou relacionados à página.",
+      "pwned": "Sua senha foi exposta em um vazamento de dados na Internet."
+    },
+    "suggestions": {
+      "l33t": "Evite substituições previsíveis como \"@\" por \"a\".",
+      "reverseWords": "Evite escrever palavras comuns ao contrário.",
+      "allUppercase": "Coloque algumas letras em maiúscula, mas não todas.",
+      "capitalization": "Coloque em maiúscula mais do que apenas a primeira letra.",
+      "dates": "Evite datas e anos associados a você.",
+      "recentYears": "Evite anos recentes.",
+      "associatedYears": "Evite anos associados a você.",
+      "sequences": "Evite sequências comuns de caracteres.",
+      "repeated": "Evite palavras e caracteres repetidos.",
+      "longerKeyboardPattern": "Use padrões de teclado mais longos e mude a direção de digitação.",
+      "anotherWord": "Adicione mais palavras menos comuns.",
+      "useWords": "Use várias palavras, mas evite frases comuns.",
+      "noNeed": "Você pode criar senhas fortes sem símbolos, números ou maiúsculas.",
+      "pwned": "Se você usa esta senha em outro lugar, deveria alterá-la."
+    },
+    "timeEstimation": {
+      "ltSecond": "menos de um segundo",
+      "second": "{base} segundo",
+      "seconds": "{base} segundos",
+      "minute": "{base} minuto",
+      "minutes": "{base} minutos",
+      "hour": "{base} hora",
+      "hours": "{base} horas",
+      "day": "{base} dia",
+      "days": "{base} dias",
+      "month": "{base} mês",
+      "months": "{base} meses",
+      "year": "{base} ano",
+      "years": "{base} anos",
+      "centuries": "séculos"
+    }
+  },
+  "forbidden": {
+    "title": "Acesso negado",
+    "description": "Sua conta foi suspensa ou você não tem permissão para acessar este recurso. Se você acredita que isso é um erro, entre em contato com o administrador da sua organização.",
+    "backToSignIn": "Voltar para o login"
   }
 }

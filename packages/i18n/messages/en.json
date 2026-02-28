@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Passwords do not match",
+      "passwordCompromised": "The password you entered has been compromised. Please choose a different password.",
+      "rateLimited": "Too many attempts. Please wait a moment before trying again.",
+      "invalidCredentials": "Invalid email or password",
       "generic": "An error occurred"
     },
     "twoFactorVerify": {
@@ -68,6 +71,31 @@
       "backupCodeDescription": "Enter one of your backup codes to sign in.",
       "backupCodePlaceholder": "Enter backup code",
       "useAuthenticator": "Use authenticator app instead"
+    },
+    "multiStep": {
+      "emailStep": {
+        "title": "Welcome back",
+        "description": "Sign in to continue to your dashboard.",
+        "continue": "Continue"
+      },
+      "authStep": {
+        "title": "Sign in",
+        "signingInAs": "Signing in as {email}",
+        "signInWithPassword": "Sign in with password",
+        "signInWithPasskey": "Sign in with passkey",
+        "signInWithMagicLink": "Sign in with magic link",
+        "forgotPassword": "Forgot password?",
+        "or": "or"
+      },
+      "magicLinkStep": {
+        "sent": "Check your inbox",
+        "sentDescription": "We sent a sign-in link to {email}. Click the link to continue.",
+        "resend": "Resend magic link",
+        "resent": "Magic link sent!",
+        "usePassword": "Use password instead",
+        "usePasskey": "Use passkey instead"
+      },
+      "back": "Back"
     },
     "footer": "Secure email + password",
     "working": "Working...",
@@ -147,7 +175,11 @@
       "tokenInvalid": "This invitation link is invalid.",
       "signupBlocked": "Sign-up is currently by invitation only.",
       "signupBlockedDescription": "Join the waitlist on our homepage to request access.",
-      "goToWaitlist": "Join waitlist"
+      "goToWaitlist": "Join waitlist",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     }
   },
   "landing": {
@@ -360,7 +392,18 @@
     "TASK_NOT_FOUND": "Task not found",
     "FILE_NOT_FOUND": "File not found in storage",
     "FILE_TOO_LARGE": "File too large (max 1MB)",
-    "UPLOAD_NOT_FOUND": "Upload not found"
+    "UPLOAD_NOT_FOUND": "Upload not found",
+    "convex": {
+      "rateLimited": "Too many requests. Please wait {seconds} seconds.",
+      "notAuthenticated": "Your session has expired. Please sign in again.",
+      "connectionLost": "Unable to connect to the server. Please check your connection.",
+      "serverError": "Something went wrong. Please try again.",
+      "projectNotFound": "Project not found.",
+      "taskNotFound": "Task not found.",
+      "fileNotFound": "File not found in storage.",
+      "fileTooLarge": "File too large (max 1MB).",
+      "uploadNotFound": "Upload not found."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +440,72 @@
   },
   "offline": {
     "message": "You appear to be offline. An active connection is needed to continue."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Very weak",
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong"
+    },
+    "crackTimeLabel": "Estimated crack time: {time}",
+    "minLength": "Minimum {count} characters required.",
+    "strengthRequirement": "Password does not meet strength requirements.",
+    "warnings": {
+      "straightRow": "Straight rows of keys on your keyboard are easy to guess.",
+      "keyPattern": "Short keyboard patterns are easy to guess.",
+      "simpleRepeat": "Repeated characters like \"aaa\" are easy to guess.",
+      "extendedRepeat": "Repeated character patterns like \"abcabcabc\" are easy to guess.",
+      "sequences": "Common character sequences like \"abc\" are easy to guess.",
+      "recentYears": "Recent years are easy to guess.",
+      "dates": "Dates are easy to guess.",
+      "topTen": "This is a heavily used password.",
+      "topHundred": "This is a frequently used password.",
+      "common": "This is a commonly used password.",
+      "similarToCommon": "This is similar to a commonly used password.",
+      "wordByItself": "Single words are easy to guess.",
+      "namesByThemselves": "Single names or surnames are easy to guess.",
+      "commonNames": "Common names and surnames are easy to guess.",
+      "userInputs": "There should not be any personal or page related data.",
+      "pwned": "Your password was exposed by a data breach on the Internet."
+    },
+    "suggestions": {
+      "l33t": "Avoid predictable letter substitutions like '@' for 'a'.",
+      "reverseWords": "Avoid reversed spellings of common words.",
+      "allUppercase": "Capitalize some, but not all letters.",
+      "capitalization": "Capitalize more than the first letter.",
+      "dates": "Avoid dates and years that are associated with you.",
+      "recentYears": "Avoid recent years.",
+      "associatedYears": "Avoid years that are associated with you.",
+      "sequences": "Avoid common character sequences.",
+      "repeated": "Avoid repeated words and characters.",
+      "longerKeyboardPattern": "Use longer keyboard patterns and change typing direction multiple times.",
+      "anotherWord": "Add more words that are less common.",
+      "useWords": "Use multiple words, but avoid common phrases.",
+      "noNeed": "You can create strong passwords without using symbols, numbers, or uppercase letters.",
+      "pwned": "If you use this password elsewhere, you should change it."
+    },
+    "timeEstimation": {
+      "ltSecond": "less than a second",
+      "second": "{base} second",
+      "seconds": "{base} seconds",
+      "minute": "{base} minute",
+      "minutes": "{base} minutes",
+      "hour": "{base} hour",
+      "hours": "{base} hours",
+      "day": "{base} day",
+      "days": "{base} days",
+      "month": "{base} month",
+      "months": "{base} months",
+      "year": "{base} year",
+      "years": "{base} years",
+      "centuries": "centuries"
+    }
+  },
+  "forbidden": {
+    "title": "Access Denied",
+    "description": "Your account has been suspended or you do not have permission to access this resource. If you believe this is an error, please contact your organization's administrator.",
+    "backToSignIn": "Back to sign in"
   }
 }

@@ -7,7 +7,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient, isAuthRateLimited, isConvexRateLimited } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
@@ -23,11 +23,13 @@ import {
   PasswordInput,
   Skeleton,
 } from "@repo/design-system";
+import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
 
 export function InvitationSignupForm({ token }: { token?: string }) {
   const router = useRouter();
   const t = useTranslations("auth");
   const ti = useTranslations("auth.invitation");
+  const tps = useTranslations("passwordStrength");
 
   // Validate token via Convex query (real-time)
   const tokenValidation = useQuery(
@@ -37,7 +39,6 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
   const beginClaim = useMutation(api.waitlistTokens.beginClaim);
   const finalizeClaim = useMutation(api.waitlistTokens.finalizeClaim);
-  const releaseClaim = useMutation(api.waitlistTokens.releaseClaim);
 
   // Read admin setting so we know whether to gate unverified users after sign-up.
   const emailVerifRequired = useQuery(api.appSettings.getPublic, {
@@ -49,6 +50,46 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Debounced password for server-side strength evaluation
+  const [debouncedPassword, setDebouncedPassword] = React.useState("");
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
+    return () => clearTimeout(timer);
+  }, [password]);
+
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    debouncedPassword && tokenValidation?.valid
+      ? { password: debouncedPassword, email: tokenValidation.email, role: "user" as const }
+      : "skip",
+  );
+
+  // Session conflict detection
+  const [sessionConflict, setSessionConflict] = React.useState<{
+    sessionEmail: string;
+  } | null>(null);
+  const [signingOut, setSigningOut] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!token || !tokenValidation?.valid) return;
+
+    async function checkSession() {
+      try {
+        const session = await authClient.getSession();
+        const userEmail = (session.data?.user as Record<string, unknown>)?.email as string | undefined;
+        if (session.data?.session && userEmail && userEmail !== tokenValidation!.email) {
+          setSessionConflict({ sessionEmail: userEmail });
+        } else {
+          setSessionConflict(null);
+        }
+      } catch {
+        // No session or error checking — not a conflict
+      }
+    }
+
+    checkSession();
+  }, [token, tokenValidation]);
 
   // No token provided
   if (!token) {
@@ -103,6 +144,49 @@ export function InvitationSignupForm({ token }: { token?: string }) {
     );
   }
 
+  // Session conflict: different user already signed in
+  if (sessionConflict) {
+    return (
+      <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {ti("sessionConflictTitle")}
+          </CardTitle>
+          <CardDescription className="text-xl font-semibold leading-tight text-foreground">
+            {ti("sessionConflictDescription", { email: sessionConflict.sessionEmail })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2">
+            <Button
+              className="w-full"
+              disabled={signingOut}
+              onClick={async () => {
+                setSigningOut(true);
+                try {
+                  await authClient.signOut();
+                  window.location.reload();
+                } catch {
+                  setSigningOut(false);
+                }
+              }}
+            >
+              {signingOut ? t("working") : ti("signOutAndContinue")}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={signingOut}
+              onClick={() => router.push("/dashboard")}
+            >
+              {ti("cancel")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -112,13 +196,16 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       return;
     }
 
+    if (!strengthResult?.valid) {
+      setError(tps("strengthRequirement"));
+      return;
+    }
+
     setPending(true);
 
     try {
-      // Step 1: Begin claim (sent → claiming)
-      await beginClaim({ token });
-
-      // Step 2: Create account via Better Auth
+      // Step 1: Create account via Better Auth (before claiming the token,
+      // so that password validation failures like HIBP don't consume the token).
       const result = await authClient.signUp.email({
         name,
         email: tokenValidation.email,
@@ -127,20 +214,25 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       });
 
       if (result.error) {
-        // Release claim on signup failure
-        await releaseClaim({ token });
-        // Use generic message to avoid leaking server error details.
-        // Rate limit errors get a specific message.
-        setError(
-          result.error.status === 429
-            ? t("errors.rateLimited")
-            : t("errors.generic"),
-        );
+        if (isAuthRateLimited(result.error)) {
+          setError(t("errors.rateLimited"));
+        } else if (result.error.message?.toLowerCase().includes("compromised")) {
+          setError(t("errors.passwordCompromised"));
+        } else {
+          setError(t("errors.generic"));
+        }
         return;
       }
 
-      // Step 3: Finalize claim (claiming → claimed)
-      await finalizeClaim({ token });
+      // Step 2: Account created — now claim the token (sent → claiming → claimed).
+      // If claiming fails, the account still exists but the token can be retried.
+      try {
+        await beginClaim({ token });
+        await finalizeClaim({ token });
+      } catch {
+        // Token claim failure is non-fatal — the account was already created.
+        // The token will auto-reset from "claiming" after the TTL expires.
+      }
 
       broadcastAuth();
 
@@ -154,15 +246,8 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       }
 
       await redirectWithUserLocale(router);
-    } catch {
-      // Release claim on any error
-      try {
-        await releaseClaim({ token });
-      } catch {
-        // Ignore release errors
-      }
-      // Use generic message — don't leak internal error details to the client.
-      setError(t("errors.generic"));
+    } catch (err) {
+      setError(isConvexRateLimited(err) ? t("errors.rateLimited") : t("errors.generic"));
     } finally {
       setPending(false);
     }
@@ -208,8 +293,9 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("fields.passwordSignUpPlaceholder")}
               required
-              minLength={8}
+              minLength={12}
             />
+            <PasswordStrengthMeter result={strengthResult} t={tps} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-confirm-password">
@@ -221,7 +307,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder={t("fields.confirmPasswordPlaceholder")}
               required
-              minLength={8}
+              minLength={12}
             />
           </div>
           {error ? (

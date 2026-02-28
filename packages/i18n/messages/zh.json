@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "两次输入的密码不一致",
+      "passwordCompromised": "您输入的密码已被泄露，请选择其他密码。",
+      "rateLimited": "尝试次数过多，请稍后再试。",
+      "invalidCredentials": "邮箱或密码无效",
       "generic": "发生了错误"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "此邀请链接无效。",
       "signupBlocked": "目前仅限邀请注册。",
       "signupBlockedDescription": "请在首页加入候补名单以申请访问权限。",
-      "goToWaitlist": "加入候补名单"
+      "goToWaitlist": "加入候补名单",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "找回密码",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "任务未找到",
     "FILE_NOT_FOUND": "文件未在存储中找到",
     "FILE_TOO_LARGE": "文件过大（最大 1MB）",
-    "UPLOAD_NOT_FOUND": "上传未找到"
+    "UPLOAD_NOT_FOUND": "上传未找到",
+    "convex": {
+      "rateLimited": "请求过多。请等待 {seconds} 秒。",
+      "notAuthenticated": "您的会话已过期。请重新登录。",
+      "connectionLost": "无法连接到服务器。请检查您的网络连接。",
+      "serverError": "出了点问题。请重试。",
+      "projectNotFound": "项目未找到。",
+      "taskNotFound": "任务未找到。",
+      "fileNotFound": "文件未在存储中找到。",
+      "fileTooLarge": "文件过大（最大 1MB）。",
+      "uploadNotFound": "上传未找到。"
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "您似乎处于离线状态。需要有效的网络连接才能继续。"
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "非常弱",
+      "weak": "弱",
+      "fair": "一般",
+      "good": "良好",
+      "strong": "强"
+    },
+    "crackTimeLabel": "预计破解时间：{time}",
+    "minLength": "最少需要 {count} 个字符。",
+    "strengthRequirement": "密码不符合强度要求。",
+    "warnings": {
+      "straightRow": "键盘上连续排列的按键容易被猜到。",
+      "keyPattern": "较短的键盘模式容易被猜到。",
+      "simpleRepeat": "像 \"aaa\" 这样的重复字符容易被猜到。",
+      "extendedRepeat": "像 \"abcabcabc\" 这样的重复字符模式容易被猜到。",
+      "sequences": "像 \"abc\" 这样的常见字符序列容易被猜到。",
+      "recentYears": "近几年的年份容易被猜到。",
+      "dates": "日期容易被猜到。",
+      "topTen": "这是一个被大量使用的密码。",
+      "topHundred": "这是一个被频繁使用的密码。",
+      "common": "这是一个常用密码。",
+      "similarToCommon": "这与常用密码相似。",
+      "wordByItself": "单个单词容易被猜到。",
+      "namesByThemselves": "单独的名字或姓氏容易被猜到。",
+      "commonNames": "常见的名字和姓氏容易被猜到。",
+      "userInputs": "不应包含任何个人信息或页面相关数据。",
+      "pwned": "您的密码已在互联网数据泄露事件中被曝光。"
+    },
+    "suggestions": {
+      "l33t": "避免使用可预测的字母替换，如用 \"@\" 代替 \"a\"。",
+      "reverseWords": "避免使用常见单词的反向拼写。",
+      "allUppercase": "将部分字母大写，而不是全部。",
+      "capitalization": "不要只将首字母大写。",
+      "dates": "避免使用与您相关的日期和年份。",
+      "recentYears": "避免使用近几年的年份。",
+      "associatedYears": "避免使用与您相关的年份。",
+      "sequences": "避免使用常见的字符序列。",
+      "repeated": "避免使用重复的单词和字符。",
+      "longerKeyboardPattern": "使用更长的键盘模式，并多次改变输入方向。",
+      "anotherWord": "添加更多不常见的单词。",
+      "useWords": "使用多个单词，但避免常见短语。",
+      "noNeed": "无需使用符号、数字或大写字母也能创建强密码。",
+      "pwned": "如果您在其他地方也使用了此密码，建议立即更改。"
+    },
+    "timeEstimation": {
+      "ltSecond": "不到一秒",
+      "second": "{base} 秒",
+      "seconds": "{base} 秒",
+      "minute": "{base} 分钟",
+      "minutes": "{base} 分钟",
+      "hour": "{base} 小时",
+      "hours": "{base} 小时",
+      "day": "{base} 天",
+      "days": "{base} 天",
+      "month": "{base} 个月",
+      "months": "{base} 个月",
+      "year": "{base} 年",
+      "years": "{base} 年",
+      "centuries": "数百年"
+    }
+  },
+  "forbidden": {
+    "title": "访问被拒绝",
+    "description": "您的账户已被暂停，或者您没有权限访问此资源。如果您认为这是一个错误，请联系您组织的管理员。",
+    "backToSignIn": "返回登录"
   }
 }

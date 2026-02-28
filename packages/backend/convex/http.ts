@@ -31,6 +31,11 @@ function getAllowedOrigins(): Set<string> {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
   }
+  const adminUrl = process.env.ADMIN_SITE_URL ?? "http://localhost:3002";
+  for (const u of adminUrl.split(",")) {
+    const trimmed = u.trim();
+    if (trimmed) origins.add(trimmed);
+  }
   const landingUrl = process.env.LANDING_URL ?? "http://localhost:3000";
   for (const u of landingUrl.split(",")) {
     const trimmed = u.trim();
@@ -48,7 +53,8 @@ function corsHeaders(request?: Request): Record<string, string> {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
     Vary: "Origin",
   };
 }

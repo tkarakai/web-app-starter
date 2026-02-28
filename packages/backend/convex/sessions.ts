@@ -14,6 +14,11 @@ function getAllowedOrigins(): Set<string> {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
   }
+  const adminUrl = process.env.ADMIN_SITE_URL ?? "http://localhost:3002";
+  for (const u of adminUrl.split(",")) {
+    const trimmed = u.trim();
+    if (trimmed) origins.add(trimmed);
+  }
   return origins;
 }
 
@@ -27,6 +32,7 @@ function corsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
     Vary: "Origin",
   };
 }

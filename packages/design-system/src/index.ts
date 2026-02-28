@@ -9,6 +9,7 @@ export {
 /* ─── Hooks ─── */
 export { useIsMobile } from "./hooks/use-mobile";
 export { useNetworkStatus } from "./hooks/use-network-status";
+export { usePasskeySupport } from "./hooks/use-passkey-support";
 
 /* ─── Actions ─── */
 export { Button, buttonVariants, type ButtonProps } from "./components/actions/button";
@@ -31,6 +32,16 @@ export {
   BreadcrumbEllipsis,
 } from "./components/data-display/breadcrumb";
 export { Progress } from "./components/data-display/progress";
+export {
+  CopyableField,
+  type CopyableFieldProps,
+} from "./components/data-display/copyable-field";
+export {
+  StyledQrCode,
+  type StyledQrCodeProps,
+  type ErrorCorrectionLevel,
+  type ModuleStyle,
+} from "./components/data-display/styled-qr-code";
 export { Separator } from "./components/data-display/separator";
 export { Skeleton } from "./components/data-display/skeleton";
 export {
@@ -58,6 +69,10 @@ export {
 } from "./components/feedback/environment-banner";
 export { EnvironmentBannerWrapper } from "./components/feedback/environment-banner-wrapper";
 export { OfflineBanner, type OfflineBannerProps } from "./components/feedback/offline-banner";
+export {
+  PasskeyUnsupportedAlert,
+  type PasskeyUnsupportedAlertProps,
+} from "./components/feedback/passkey-unsupported-alert";
 export { Toaster, toast } from "sonner";
 export {
   AlertDialog,
@@ -72,6 +87,9 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
 } from "./components/feedback/alert-dialog";
+
+/* ─── Animation ─── */
+export { SlideTransition } from "./components/slide-transition";
 
 /* ─── Form ─── */
 export { Calendar, type CalendarProps } from "./components/form/calendar";
@@ -96,6 +114,11 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 } from "./components/form/select";
+export {
+  OtpInput,
+  type OtpInputHandle,
+  type OtpInputProps,
+} from "./components/form/otp-input";
 export { Switch } from "./components/form/switch";
 export { Textarea, textareaVariants, type TextareaProps } from "./components/form/textarea";
 export {

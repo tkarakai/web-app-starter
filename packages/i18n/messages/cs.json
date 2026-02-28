@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "Hesla se neshodují",
+      "passwordCompromised": "Zadané heslo bylo kompromitováno. Zvolte prosím jiné heslo.",
+      "rateLimited": "Příliš mnoho pokusů. Počkejte prosím chvíli a zkuste to znovu.",
+      "invalidCredentials": "Neplatný e-mail nebo heslo",
       "generic": "Došlo k chybě"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "Tento odkaz pozvánky je neplatný.",
       "signupBlocked": "Registrace je v současné době pouze na pozvánku.",
       "signupBlockedDescription": "Připojte se na čekací listinu na naší hlavní stránce a požádejte o přístup.",
-      "goToWaitlist": "Připojit se na čekací listinu"
+      "goToWaitlist": "Připojit se na čekací listinu",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "Obnovení hesla",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "Úkol nenalezen",
     "FILE_NOT_FOUND": "Soubor nenalezen v úložišti",
     "FILE_TOO_LARGE": "Soubor je příliš velký (max. 1 MB)",
-    "UPLOAD_NOT_FOUND": "Nahrávání nenalezeno"
+    "UPLOAD_NOT_FOUND": "Nahrávání nenalezeno",
+    "convex": {
+      "rateLimited": "Příliš mnoho požadavků. Počkejte prosím {seconds} sekund.",
+      "notAuthenticated": "Vaše relace vypršela. Přihlaste se prosím znovu.",
+      "connectionLost": "Nelze se připojit k serveru. Zkontrolujte prosím připojení.",
+      "serverError": "Něco se pokazilo. Zkuste to prosím znovu.",
+      "projectNotFound": "Projekt nenalezen.",
+      "taskNotFound": "Úkol nenalezen.",
+      "fileNotFound": "Soubor nenalezen v úložišti.",
+      "fileTooLarge": "Soubor je příliš velký (max 1 MB).",
+      "uploadNotFound": "Nahrávání nenalezeno."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "Zdá se, že jste offline. Pro pokračování je potřeba aktivní připojení."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "Velmi slabe",
+      "weak": "Slabe",
+      "fair": "Prijatelne",
+      "good": "Dobre",
+      "strong": "Silne"
+    },
+    "crackTimeLabel": "Odhadovany cas prolomeni: {time}",
+    "minLength": "Vyzadovano minimalne {count} znaku.",
+    "strengthRequirement": "Heslo nesplnuje pozadavky na silu.",
+    "warnings": {
+      "straightRow": "Prime rady klaves na klavesnici se snadno uhodnou.",
+      "keyPattern": "Kratke vzory na klavesnici se snadno uhodnou.",
+      "simpleRepeat": "Opakovane znaky jako \"aaa\" se snadno uhodnou.",
+      "extendedRepeat": "Opakovane vzory znaku jako \"abcabcabc\" se snadno uhodnou.",
+      "sequences": "Bezne sekvence znaku jako \"abc\" se snadno uhodnou.",
+      "recentYears": "Nedavne roky se snadno uhodnou.",
+      "dates": "Data se snadno uhodnou.",
+      "topTen": "Toto je velmi casto pouzivane heslo.",
+      "topHundred": "Toto je casto pouzivane heslo.",
+      "common": "Toto je bezne pouzivane heslo.",
+      "similarToCommon": "Toto je podobne bezne pouzivanemu heslu.",
+      "wordByItself": "Jednotliva slova se snadno uhodnou.",
+      "namesByThemselves": "Jednotliva jmena nebo prijmeni se snadno uhodnou.",
+      "commonNames": "Bezna jmena a prijmeni se snadno uhodnou.",
+      "userInputs": "Heslo by nemelo obsahovat osobni udaje.",
+      "pwned": "Vase heslo bylo odhaleno pri uniku dat na internetu."
+    },
+    "suggestions": {
+      "l33t": "Vyhnete se predvidatelnym zamenam pismen, jako \"@\" za \"a\".",
+      "reverseWords": "Vyhnete se obracenym hlaskovanim beznych slov.",
+      "allUppercase": "Pouzijte velka pismena jen u nekterych, ne u vsech.",
+      "capitalization": "Pouzijte velka pismena i jinde nez na zacatku.",
+      "dates": "Vyhnete se datum a rokum spojenym s vami.",
+      "recentYears": "Vyhnete se nedavnym rokum.",
+      "associatedYears": "Vyhnete se rokum spojenym s vami.",
+      "sequences": "Vyhnete se beznym sekvencim znaku.",
+      "repeated": "Vyhnete se opakovanym slovum a znakum.",
+      "longerKeyboardPattern": "Pouzijte delsi vzory na klavesnici a mente smer psani.",
+      "anotherWord": "Pridejte vice mene obvyklych slov.",
+      "useWords": "Pouzijte vice slov, ale vyhnete se beznym frazim.",
+      "noNeed": "Silna hesla muzete vytvorit i bez symbolu, cislic nebo velkych pismen.",
+      "pwned": "Pokud toto heslo pouzivate jinde, meli byste ho zmenit."
+    },
+    "timeEstimation": {
+      "ltSecond": "mene nez sekunda",
+      "second": "{base} sekunda",
+      "seconds": "{base} sekund",
+      "minute": "{base} minuta",
+      "minutes": "{base} minut",
+      "hour": "{base} hodina",
+      "hours": "{base} hodin",
+      "day": "{base} den",
+      "days": "{base} dnu",
+      "month": "{base} mesic",
+      "months": "{base} mesicu",
+      "year": "{base} rok",
+      "years": "{base} let",
+      "centuries": "staleti"
+    }
+  },
+  "forbidden": {
+    "title": "Přístup odepřen",
+    "description": "Váš účet byl pozastaven nebo nemáte oprávnění k přístupu k tomuto prostředku. Pokud se domníváte, že jde o chybu, kontaktujte prosím administrátora vaší organizace.",
+    "backToSignIn": "Zpět na přihlášení"
   }
 }

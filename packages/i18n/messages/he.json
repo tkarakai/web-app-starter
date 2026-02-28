@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "הסיסמאות אינן תואמות",
+      "passwordCompromised": "הסיסמה שהזנת נחשפה. אנא בחר/י סיסמה אחרת.",
+      "rateLimited": "יותר מדי ניסיונות. אנא המתן/י רגע לפני שתנסה/י שוב.",
+      "invalidCredentials": "כתובת אימייל או סיסמה שגויים",
       "generic": "אירעה שגיאה"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "קישור הזמנה זה אינו תקין.",
       "signupBlocked": "ההרשמה כרגע בהזמנה בלבד.",
       "signupBlockedDescription": "הצטרפו לרשימת ההמתנה בדף הבית שלנו כדי לבקש גישה.",
-      "goToWaitlist": "הצטרפות לרשימת ההמתנה"
+      "goToWaitlist": "הצטרפות לרשימת ההמתנה",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "שחזור סיסמה",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "המשימה לא נמצאה",
     "FILE_NOT_FOUND": "הקובץ לא נמצא באחסון",
     "FILE_TOO_LARGE": "הקובץ גדול מדי (מקסימום 1MB)",
-    "UPLOAD_NOT_FOUND": "ההעלאה לא נמצאה"
+    "UPLOAD_NOT_FOUND": "ההעלאה לא נמצאה",
+    "convex": {
+      "rateLimited": "יותר מדי בקשות. אנא המתן {seconds} שניות.",
+      "notAuthenticated": "פג תוקף ההפעלה שלך. אנא התחבר שוב.",
+      "connectionLost": "לא ניתן להתחבר לשרת. אנא בדוק את החיבור שלך.",
+      "serverError": "משהו השתבש. אנא נסה שוב.",
+      "projectNotFound": "הפרויקט לא נמצא.",
+      "taskNotFound": "המשימה לא נמצאה.",
+      "fileNotFound": "הקובץ לא נמצא באחסון.",
+      "fileTooLarge": "הקובץ גדול מדי (מקסימום 1 מ\"ב).",
+      "uploadNotFound": "ההעלאה לא נמצאה."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "נראה שאינך מחובר לאינטרנט. נדרש חיבור פעיל כדי להמשיך."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "חלשה מאוד",
+      "weak": "חלשה",
+      "fair": "סבירה",
+      "good": "טובה",
+      "strong": "חזקה"
+    },
+    "crackTimeLabel": "זמן פריצה משוער: {time}",
+    "minLength": "נדרשים לפחות {count} תווים.",
+    "strengthRequirement": "הסיסמה אינה עומדת בדרישות החוזק.",
+    "warnings": {
+      "straightRow": "שורות ישרות של מקשים במקלדת קלות לניחוש.",
+      "keyPattern": "דפוסי מקלדת קצרים קלים לניחוש.",
+      "simpleRepeat": "תווים חוזרים כמו \"aaa\" קלים לניחוש.",
+      "extendedRepeat": "דפוסי תווים חוזרים כמו \"abcabcabc\" קלים לניחוש.",
+      "sequences": "רצפי תווים נפוצים כמו \"abc\" קלים לניחוש.",
+      "recentYears": "שנים אחרונות קלות לניחוש.",
+      "dates": "תאריכים קלים לניחוש.",
+      "topTen": "זוהי סיסמה בשימוש נרחב מאוד.",
+      "topHundred": "זוהי סיסמה בשימוש תדיר.",
+      "common": "זוהי סיסמה נפוצה.",
+      "similarToCommon": "זו דומה לסיסמה נפוצה.",
+      "wordByItself": "מילים בודדות קלות לניחוש.",
+      "namesByThemselves": "שמות פרטיים או משפחה בודדים קלים לניחוש.",
+      "commonNames": "שמות פרטיים ומשפחה נפוצים קלים לניחוש.",
+      "userInputs": "אין לכלול נתונים אישיים או הקשורים לדף.",
+      "pwned": "הסיסמה שלך נחשפה בדליפת נתונים באינטרנט."
+    },
+    "suggestions": {
+      "l33t": "הימנע מהחלפות אותיות צפויות כמו \"@\" במקום \"a\".",
+      "reverseWords": "הימנע מאיות הפוך של מילים נפוצות.",
+      "allUppercase": "הפוך חלק מהאותיות לגדולות, אך לא את כולן.",
+      "capitalization": "הפוך יותר מהאות הראשונה לגדולה.",
+      "dates": "הימנע מתאריכים ושנים הקשורים אליך.",
+      "recentYears": "הימנע משנים אחרונות.",
+      "associatedYears": "הימנע משנים הקשורות אליך.",
+      "sequences": "הימנע מרצפי תווים נפוצים.",
+      "repeated": "הימנע ממילים ותווים חוזרים.",
+      "longerKeyboardPattern": "השתמש בדפוסי מקלדת ארוכים יותר ושנה כיוון הקלדה מספר פעמים.",
+      "anotherWord": "הוסף מילים פחות נפוצות.",
+      "useWords": "השתמש במספר מילים, אך הימנע מביטויים נפוצים.",
+      "noNeed": "ניתן ליצור סיסמאות חזקות ללא שימוש בסמלים, מספרים או אותיות גדולות.",
+      "pwned": "אם אתה משתמש בסיסמה זו במקום אחר, כדאי לשנות אותה."
+    },
+    "timeEstimation": {
+      "ltSecond": "פחות משנייה",
+      "second": "{base} שנייה",
+      "seconds": "{base} שניות",
+      "minute": "{base} דקה",
+      "minutes": "{base} דקות",
+      "hour": "{base} שעה",
+      "hours": "{base} שעות",
+      "day": "{base} יום",
+      "days": "{base} ימים",
+      "month": "{base} חודש",
+      "months": "{base} חודשים",
+      "year": "{base} שנה",
+      "years": "{base} שנים",
+      "centuries": "מאות שנים"
+    }
+  },
+  "forbidden": {
+    "title": "הגישה נדחתה",
+    "description": "החשבון שלך הושעה או שאין לך הרשאה לגשת למשאב זה. אם אתה סבור שמדובר בטעות, אנא פנה למנהל הארגון שלך.",
+    "backToSignIn": "חזרה להתחברות"
   }
 }

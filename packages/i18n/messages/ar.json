@@ -56,6 +56,9 @@
     },
     "errors": {
       "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "passwordCompromised": "كلمة المرور التي أدخلتها مخترقة. يرجى اختيار كلمة مرور مختلفة.",
+      "rateLimited": "محاولات كثيرة جدًا. يرجى الانتظار لحظة قبل المحاولة مرة أخرى.",
+      "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
       "generic": "حدث خطأ"
     },
     "twoFactorVerify": {
@@ -91,7 +94,11 @@
       "tokenInvalid": "رابط الدعوة هذا غير صالح.",
       "signupBlocked": "التسجيل متاح حالياً بالدعوة فقط.",
       "signupBlockedDescription": "انضم إلى قائمة الانتظار على صفحتنا الرئيسية لطلب الوصول.",
-      "goToWaitlist": "انضم إلى قائمة الانتظار"
+      "goToWaitlist": "انضم إلى قائمة الانتظار",
+      "sessionConflictTitle": "Different Account Signed In",
+      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
+      "signOutAndContinue": "Sign out and onboard new account",
+      "cancel": "Cancel"
     },
     "forgotPassword": {
       "badge": "استعادة كلمة المرور",
@@ -360,7 +367,18 @@
     "TASK_NOT_FOUND": "المهمة غير موجودة",
     "FILE_NOT_FOUND": "الملف غير موجود في التخزين",
     "FILE_TOO_LARGE": "الملف كبير جداً (الحد الأقصى 1 ميغابايت)",
-    "UPLOAD_NOT_FOUND": "الرفع غير موجود"
+    "UPLOAD_NOT_FOUND": "الرفع غير موجود",
+    "convex": {
+      "rateLimited": "طلبات كثيرة جداً. يرجى الانتظار {seconds} ثانية.",
+      "notAuthenticated": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+      "connectionLost": "تعذر الاتصال بالخادم. يرجى التحقق من اتصالك.",
+      "serverError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+      "projectNotFound": "المشروع غير موجود.",
+      "taskNotFound": "المهمة غير موجودة.",
+      "fileNotFound": "الملف غير موجود في التخزين.",
+      "fileTooLarge": "الملف كبير جداً (الحد الأقصى 1 ميغابايت).",
+      "uploadNotFound": "الرفع غير موجود."
+    }
   },
   "metadata": {
     "title": "Web App Starter",
@@ -397,5 +415,72 @@
   },
   "offline": {
     "message": "يبدو أنك غير متصل بالإنترنت. يلزم وجود اتصال نشط للمتابعة."
+  },
+  "passwordStrength": {
+    "labels": {
+      "veryWeak": "ضعيفة جداً",
+      "weak": "ضعيفة",
+      "fair": "مقبولة",
+      "good": "جيدة",
+      "strong": "قوية"
+    },
+    "crackTimeLabel": "الوقت المقدر للاختراق: {time}",
+    "minLength": "يجب أن تتكون من {count} حرفاً على الأقل.",
+    "strengthRequirement": "كلمة المرور لا تستوفي متطلبات القوة.",
+    "warnings": {
+      "straightRow": "الصفوف المتتالية من المفاتيح على لوحة المفاتيح يسهل تخمينها.",
+      "keyPattern": "أنماط لوحة المفاتيح القصيرة يسهل تخمينها.",
+      "simpleRepeat": "الأحرف المتكررة مثل \"aaa\" يسهل تخمينها.",
+      "extendedRepeat": "أنماط الأحرف المتكررة مثل \"abcabcabc\" يسهل تخمينها.",
+      "sequences": "التسلسلات الشائعة مثل \"abc\" يسهل تخمينها.",
+      "recentYears": "السنوات الأخيرة يسهل تخمينها.",
+      "dates": "التواريخ يسهل تخمينها.",
+      "topTen": "هذه كلمة مرور مستخدمة بكثرة.",
+      "topHundred": "هذه كلمة مرور مستخدمة بشكل متكرر.",
+      "common": "هذه كلمة مرور شائعة الاستخدام.",
+      "similarToCommon": "هذه مشابهة لكلمة مرور شائعة الاستخدام.",
+      "wordByItself": "الكلمات المفردة يسهل تخمينها.",
+      "namesByThemselves": "الأسماء المفردة أو الألقاب يسهل تخمينها.",
+      "commonNames": "الأسماء والألقاب الشائعة يسهل تخمينها.",
+      "userInputs": "يجب ألا تتضمن أي بيانات شخصية أو متعلقة بالصفحة.",
+      "pwned": "تم كشف كلمة المرور الخاصة بك في خرق بيانات على الإنترنت."
+    },
+    "suggestions": {
+      "l33t": "تجنب الاستبدالات المتوقعة للأحرف مثل \"@\" بدلاً من \"a\".",
+      "reverseWords": "تجنب التهجئة المعكوسة للكلمات الشائعة.",
+      "allUppercase": "اجعل بعض الأحرف كبيرة، وليس كلها.",
+      "capitalization": "اجعل أكثر من الحرف الأول كبيراً.",
+      "dates": "تجنب التواريخ والسنوات المرتبطة بك.",
+      "recentYears": "تجنب السنوات الأخيرة.",
+      "associatedYears": "تجنب السنوات المرتبطة بك.",
+      "sequences": "تجنب التسلسلات الشائعة للأحرف.",
+      "repeated": "تجنب الكلمات والأحرف المتكررة.",
+      "longerKeyboardPattern": "استخدم أنماطاً أطول على لوحة المفاتيح وغيّر اتجاه الكتابة عدة مرات.",
+      "anotherWord": "أضف كلمات أقل شيوعاً.",
+      "useWords": "استخدم كلمات متعددة، لكن تجنب العبارات الشائعة.",
+      "noNeed": "يمكنك إنشاء كلمات مرور قوية دون استخدام رموز أو أرقام أو أحرف كبيرة.",
+      "pwned": "إذا كنت تستخدم كلمة المرور هذه في مكان آخر، فيجب عليك تغييرها."
+    },
+    "timeEstimation": {
+      "ltSecond": "أقل من ثانية",
+      "second": "{base} ثانية",
+      "seconds": "{base} ثوانٍ",
+      "minute": "{base} دقيقة",
+      "minutes": "{base} دقائق",
+      "hour": "{base} ساعة",
+      "hours": "{base} ساعات",
+      "day": "{base} يوم",
+      "days": "{base} أيام",
+      "month": "{base} شهر",
+      "months": "{base} أشهر",
+      "year": "{base} سنة",
+      "years": "{base} سنوات",
+      "centuries": "قرون"
+    }
+  },
+  "forbidden": {
+    "title": "تم رفض الوصول",
+    "description": "تم تعليق حسابك أو ليس لديك إذن للوصول إلى هذا المورد. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع مسؤول مؤسستك.",
+    "backToSignIn": "العودة إلى تسجيل الدخول"
   }
 }

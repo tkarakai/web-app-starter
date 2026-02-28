@@ -19,7 +19,7 @@ export default async function SignupWithInvitationPage({
 
   return (
     <main
-      className="flex min-h-screen flex-col"
+      className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
       style={{ background: "var(--glow-cool)" }}
     >
       <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />
