@@ -134,7 +134,7 @@ export function AdminResetPasswordForm({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              minLength={8}
+              minLength={40}
               autoFocus
             />
           </div>
@@ -147,7 +147,7 @@ export function AdminResetPasswordForm({
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
-              minLength={8}
+              minLength={40}
             />
           </div>
           {error ? (

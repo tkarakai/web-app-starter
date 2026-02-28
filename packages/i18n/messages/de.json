@@ -50,7 +50,7 @@
       "emailPlaceholder": "sie@beispiel.de",
       "password": "Passwort",
       "passwordPlaceholder": "Ihr Passwort",
-      "passwordSignUpPlaceholder": "Mindestens 8 Zeichen",
+      "passwordSignUpPlaceholder": "Mindestens 12 Zeichen",
       "confirmPassword": "Passwort bestätigen",
       "confirmPasswordPlaceholder": "Bestätigen Sie Ihr Passwort"
     },
@@ -126,7 +126,7 @@
       "successDescription": "Ihr Passwort wurde erfolgreich zurückgesetzt. Sie können sich jetzt mit Ihrem neuen Passwort anmelden.",
       "signInNow": "Jetzt anmelden",
       "pageHeading": "Fast geschafft. Wählen Sie ein neues Passwort.",
-      "pageDescription": "Wählen Sie ein sicheres Passwort, das Sie noch nicht verwendet haben. Ihr neues Passwort muss mindestens 8 Zeichen lang sein."
+      "pageDescription": "Wählen Sie ein sicheres Passwort, das Sie noch nicht verwendet haben. Ihr neues Passwort muss mindestens 12 Zeichen lang sein."
     },
     "verifyEmail": {
       "badge": "E-Mail-Verifizierung",

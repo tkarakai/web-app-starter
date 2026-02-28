@@ -56,7 +56,7 @@ import {
   SlideTransition,
   usePasskeySupport,
 } from "@repo/design-system";
-import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
 
 const LANDING_URL =
   process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
@@ -92,19 +92,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
 
-  // Debounced password for server-side strength evaluation
-  const [debouncedPassword, setDebouncedPassword] = React.useState("");
-  React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
-    return () => clearTimeout(timer);
-  }, [password]);
-
+  // Throttled password for server-side strength evaluation (at most once per 500ms)
+  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
   const strengthResult = useQuery(
     api.passwordStrength.evaluate,
-    debouncedPassword
-      ? { password: debouncedPassword, email, role: "user" as const }
+    throttledPassword
+      ? { password: throttledPassword, email, role: "user" as const }
       : "skip",
   );
+  React.useEffect(() => {
+    if (strengthResult !== undefined) notifyResolved();
+  }, [strengthResult, notifyResolved]);
 
   // Multi-step sign-in state
   const [step, setStep] = React.useState<SignInStep>(0);
@@ -523,7 +521,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 required
                 minLength={12}
               />
-              <PasswordStrengthMeter result={strengthResult} t={tps} />
+              <PasswordStrengthMeter result={strengthResult} password={password} t={tps} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">{t("fields.confirmPassword")}</Label>

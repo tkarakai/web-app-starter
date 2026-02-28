@@ -14,6 +14,7 @@ import {
 } from "@repo/design-system";
 import {
   PasswordStrengthMeter,
+  useThrottledPasswordCheck,
   type PasswordStrengthTranslateFn,
 } from "@repo/design-system/password-strength";
 
@@ -102,19 +103,17 @@ export function CreateAccountStep({ email, onBeforeSignUp, onComplete, onBack }:
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Debounced password for server-side strength evaluation
-  const [debouncedPassword, setDebouncedPassword] = React.useState("");
-  React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
-    return () => clearTimeout(timer);
-  }, [password]);
-
+  // Throttled password for server-side strength evaluation (at most once per 500ms)
+  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
   const strengthResult = useQuery(
     api.passwordStrength.evaluate,
-    debouncedPassword
-      ? { password: debouncedPassword, email, role: "admin" as const }
+    throttledPassword
+      ? { password: throttledPassword, email, role: "admin" as const }
       : "skip",
   );
+  React.useEffect(() => {
+    if (strengthResult !== undefined) notifyResolved();
+  }, [strengthResult, notifyResolved]);
 
   const passwordsMatch = password === confirmPassword;
   const canSubmit = name.trim() && (strengthResult?.valid ?? false) && passwordsMatch && !loading;
@@ -191,7 +190,7 @@ export function CreateAccountStep({ email, onBeforeSignUp, onComplete, onBack }:
           onChange={(event) => setPassword(event.target.value)}
           required
         />
-        <PasswordStrengthMeter result={strengthResult} t={t} />
+        <PasswordStrengthMeter result={strengthResult} password={password} t={t} />
       </div>
 
       <div className="space-y-2">

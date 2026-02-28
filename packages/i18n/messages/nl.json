@@ -50,7 +50,7 @@
       "emailPlaceholder": "jij@voorbeeld.nl",
       "password": "Wachtwoord",
       "passwordPlaceholder": "Je wachtwoord",
-      "passwordSignUpPlaceholder": "Minimaal 8 tekens",
+      "passwordSignUpPlaceholder": "Minimaal 12 tekens",
       "confirmPassword": "Wachtwoord bevestigen",
       "confirmPasswordPlaceholder": "Bevestig je wachtwoord"
     },
@@ -126,7 +126,7 @@
       "successDescription": "Je wachtwoord is succesvol hersteld. Je kunt nu inloggen met je nieuwe wachtwoord.",
       "signInNow": "Nu inloggen",
       "pageHeading": "Bijna klaar. Kies een nieuw wachtwoord.",
-      "pageDescription": "Kies een sterk wachtwoord dat je nog niet eerder hebt gebruikt. Je nieuwe wachtwoord moet minimaal 8 tekens bevatten."
+      "pageDescription": "Kies een sterk wachtwoord dat je nog niet eerder hebt gebruikt. Je nieuwe wachtwoord moet minimaal 12 tekens bevatten."
     },
     "verifyEmail": {
       "badge": "E-mailverificatie",

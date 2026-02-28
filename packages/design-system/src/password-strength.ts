@@ -10,3 +10,5 @@ export {
   type PasswordStrengthResult,
   type PasswordStrengthTranslateFn,
 } from "./components/password-strength-meter";
+
+export { useThrottledPasswordCheck } from "./hooks/use-throttled-password-check";

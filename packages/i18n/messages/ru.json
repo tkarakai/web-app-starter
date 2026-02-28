@@ -50,7 +50,7 @@
       "emailPlaceholder": "вы@example.com",
       "password": "Пароль",
       "passwordPlaceholder": "Ваш пароль",
-      "passwordSignUpPlaceholder": "Не менее 8 символов",
+      "passwordSignUpPlaceholder": "Не менее 12 символов",
       "confirmPassword": "Подтвердите пароль",
       "confirmPasswordPlaceholder": "Подтвердите ваш пароль"
     },
@@ -126,7 +126,7 @@
       "successDescription": "Ваш пароль был успешно сброшен. Теперь вы можете войти с новым паролем.",
       "signInNow": "Войти сейчас",
       "pageHeading": "Почти готово. Выберите новый пароль.",
-      "pageDescription": "Выберите надёжный пароль, который вы раньше не использовали. Новый пароль должен содержать не менее 8 символов."
+      "pageDescription": "Выберите надёжный пароль, который вы раньше не использовали. Новый пароль должен содержать не менее 12 символов."
     },
     "verifyEmail": {
       "badge": "Подтверждение почты",

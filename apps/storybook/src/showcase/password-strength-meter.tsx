@@ -154,7 +154,7 @@ function StaticDemo({ label, result }: { label: string; result: PasswordStrength
   return (
     <div className="max-w-md space-y-2">
       <Label className="text-sm font-medium">{label}</Label>
-      <PasswordStrengthMeter result={result} t={t} />
+      <PasswordStrengthMeter result={result} password="demo" t={t} />
       <div className="rounded-md border bg-muted/50 p-3 text-xs font-mono space-y-1">
         <p>valid: <span className={result.valid ? "text-green-600" : "text-destructive"}>{String(result.valid)}</span></p>
         <p>score: {result.score}/4</p>
@@ -195,7 +195,7 @@ function InteractiveDemo() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <PasswordStrengthMeter result={mockResult} t={t} />
+        <PasswordStrengthMeter result={mockResult} password={password} t={t} />
       </div>
       <div className="flex items-center gap-2">
         <Label htmlFor="demo-score" className="text-sm whitespace-nowrap">Simulated score:</Label>

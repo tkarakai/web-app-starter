@@ -23,7 +23,7 @@ import {
   PasswordInput,
   Skeleton,
 } from "@repo/design-system";
-import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
 
 export function InvitationSignupForm({ token }: { token?: string }) {
   const router = useRouter();
@@ -51,19 +51,17 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Debounced password for server-side strength evaluation
-  const [debouncedPassword, setDebouncedPassword] = React.useState("");
-  React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPassword(password), 1000);
-    return () => clearTimeout(timer);
-  }, [password]);
-
+  // Throttled password for server-side strength evaluation (at most once per 500ms)
+  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
   const strengthResult = useQuery(
     api.passwordStrength.evaluate,
-    debouncedPassword && tokenValidation?.valid
-      ? { password: debouncedPassword, email: tokenValidation.email, role: "user" as const }
+    throttledPassword && tokenValidation?.valid
+      ? { password: throttledPassword, email: tokenValidation.email, role: "user" as const }
       : "skip",
   );
+  React.useEffect(() => {
+    if (strengthResult !== undefined) notifyResolved();
+  }, [strengthResult, notifyResolved]);
 
   // Session conflict detection
   const [sessionConflict, setSessionConflict] = React.useState<{
@@ -295,7 +293,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               required
               minLength={12}
             />
-            <PasswordStrengthMeter result={strengthResult} t={tps} />
+            <PasswordStrengthMeter result={strengthResult} password={password} t={tps} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-confirm-password">

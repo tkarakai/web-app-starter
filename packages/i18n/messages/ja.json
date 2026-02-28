@@ -50,7 +50,7 @@
       "emailPlaceholder": "you@example.com",
       "password": "パスワード",
       "passwordPlaceholder": "パスワードを入力",
-      "passwordSignUpPlaceholder": "8文字以上",
+      "passwordSignUpPlaceholder": "12文字以上",
       "confirmPassword": "パスワード確認",
       "confirmPasswordPlaceholder": "パスワードを再入力"
     },
@@ -126,7 +126,7 @@
       "successDescription": "パスワードが正常に再設定されました。新しいパスワードでログインできます。",
       "signInNow": "今すぐログイン",
       "pageHeading": "あと少しです。新しいパスワードを設定しましょう。",
-      "pageDescription": "以前使用したことのない強力なパスワードを選択してください。新しいパスワードは8文字以上である必要があります。"
+      "pageDescription": "以前使用したことのない強力なパスワードを選択してください。新しいパスワードは12文字以上である必要があります。"
     },
     "verifyEmail": {
       "badge": "メール認証",

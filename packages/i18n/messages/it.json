@@ -50,7 +50,7 @@
       "emailPlaceholder": "tu@esempio.com",
       "password": "Password",
       "passwordPlaceholder": "La tua password",
-      "passwordSignUpPlaceholder": "Almeno 8 caratteri",
+      "passwordSignUpPlaceholder": "Almeno 12 caratteri",
       "confirmPassword": "Conferma password",
       "confirmPasswordPlaceholder": "Conferma la tua password"
     },
@@ -126,7 +126,7 @@
       "successDescription": "La tua password è stata reimpostata con successo. Ora puoi accedere con la nuova password.",
       "signInNow": "Accedi ora",
       "pageHeading": "Ci siamo quasi. Scegli una nuova password.",
-      "pageDescription": "Scegli una password sicura che non hai mai usato prima. La nuova password deve essere di almeno 8 caratteri."
+      "pageDescription": "Scegli una password sicura che non hai mai usato prima. La nuova password deve essere di almeno 12 caratteri."
     },
     "verifyEmail": {
       "badge": "Verifica e-mail",

@@ -164,7 +164,7 @@ export function ResetPasswordForm({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              minLength={8}
+              minLength={12}
               autoFocus
             />
           </div>
@@ -177,7 +177,7 @@ export function ResetPasswordForm({
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
-              minLength={8}
+              minLength={12}
             />
           </div>
           {error ? (
