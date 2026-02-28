@@ -17,7 +17,7 @@ import {
 type InviteAdminDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onInvite: (emails: string[]) => Promise<void>;
+  onInvite: (email: string) => Promise<void>;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,7 +46,7 @@ export function InviteAdminDialog({
 
     setPending(true);
     try {
-      await onInvite([trimmed]);
+      await onInvite(trimmed);
       onOpenChange(false);
     } catch (err) {
       toast.error(

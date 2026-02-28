@@ -265,8 +265,7 @@ export function AdminsDataTable() {
   // ----- Invite handler -----
 
   const handleInvite = React.useCallback(
-    async (emails: string[]) => {
-      const email = emails[0];
+    async (email: string) => {
       try {
         await inviteMutation({ email });
         toast.success(`Invitation sent to ${email}`);
