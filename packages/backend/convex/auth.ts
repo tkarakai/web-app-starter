@@ -126,7 +126,7 @@ const passwordStrengthPlugin = (
   convexCtx: GenericCtx<DataModel>,
 ): BetterAuthPlugin => ({
   id: "password-strength",
-  async onRequest(request) {
+  async onRequest(request, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/^\/api\/auth/, "");
 
@@ -142,8 +142,54 @@ const passwordStrengthPlugin = (
     const password =
       (body.password as string | undefined) ??
       (body.newPassword as string | undefined);
-    const email = (body.email as string | undefined) ?? "";
+    let email = (body.email as string | undefined) ?? "";
     if (!password) return;
+
+    // For /change-password: resolve email from the authenticated session
+    // (body does not include email, so we must derive it from the session cookie)
+    if (path.endsWith("/change-password") && !email) {
+      try {
+        const cookieHeader = request.headers.get("cookie");
+        if (cookieHeader) {
+          const cookieName = (ctx as { authCookies?: { sessionToken?: { name?: string } } })
+            .authCookies?.sessionToken?.name ?? "better-auth.session_token";
+          const match = cookieHeader
+            .split(";")
+            .map((c) => c.trim())
+            .find((c) => c.startsWith(cookieName + "="));
+          if (match) {
+            const sessionToken = decodeURIComponent(match.slice(cookieName.length + 1));
+            const session = await ctx.internalAdapter.findSession(sessionToken);
+            if (session?.user?.email) {
+              email = session.user.email;
+            }
+          }
+        }
+      } catch {
+        // If session resolution fails, fall through with empty email
+      }
+    }
+
+    // For /reset-password: resolve email from the reset token owner
+    // (body only contains token + newPassword, so we look up the verification record)
+    if (path.endsWith("/reset-password") && !email) {
+      try {
+        const token = body.token as string | undefined;
+        if (token) {
+          const verification = await ctx.internalAdapter.findVerificationValue(
+            `reset-password:${token}`,
+          );
+          if (verification?.value) {
+            const user = await ctx.internalAdapter.findUserById(verification.value);
+            if (user?.email) {
+              email = user.email;
+            }
+          }
+        }
+      } catch {
+        // If token resolution fails, fall through with empty email
+      }
+    }
 
     // Determine role: admin emails get the stricter threshold
     const actionCtx = requireActionCtx(convexCtx);
