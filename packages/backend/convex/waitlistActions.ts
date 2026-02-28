@@ -8,6 +8,7 @@ import {
   DEFAULT_EMAIL_TEMPLATE,
   renderEmailTemplate,
 } from "./emailTemplates";
+import { sha256Hex } from "./tokenHash";
 
 /** Default token expiry in days (can be overridden via appSettings). */
 const DEFAULT_EXPIRY_DAYS = 7;
@@ -38,10 +39,11 @@ export const generateTokenAndSendEmail = internalAction({
     const now = Date.now();
     const expiresAt = now + expiryDays * 24 * 60 * 60 * 1000;
 
-    // Store the token
+    // Store only the SHA-256 hash — the raw token is sent in the email only.
+    const tokenHash = sha256Hex(token);
     await ctx.runMutation(internal.waitlistTokens.create, {
       waitlistEntryId: args.entryId,
-      token,
+      tokenHash,
       email: args.email,
       expiresAt,
     });
