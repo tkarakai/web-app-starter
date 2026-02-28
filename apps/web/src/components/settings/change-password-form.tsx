@@ -15,6 +15,7 @@ import {
   toast,
 } from "@repo/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+import { useAuthUser } from "@/components/auth/auth-guard";
 
 export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");
@@ -22,6 +23,7 @@ export function ChangePasswordForm() {
   const ta = useTranslations("auth");
   const tps = useTranslations("passwordStrength");
 
+  const authUser = useAuthUser();
   const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
@@ -34,7 +36,7 @@ export function ChangePasswordForm() {
   const strengthResult = useQuery(
     api.passwordStrength.evaluate,
     throttledPassword
-      ? { password: throttledPassword, email: "", role: "user" as const }
+      ? { password: throttledPassword, email: authUser?.email ?? "", role: "user" as const }
       : "skip",
   );
   React.useEffect(() => {

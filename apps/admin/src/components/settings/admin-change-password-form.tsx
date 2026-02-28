@@ -17,6 +17,7 @@ import {
   useThrottledPasswordCheck,
   type PasswordStrengthTranslateFn,
 } from "@repo/design-system/password-strength";
+import { useAuthUser } from "@/components/auth/auth-guard";
 
 // Plain-English translation function for PasswordStrengthMeter.
 // The admin app has no i18n, so we provide direct English strings for all
@@ -90,6 +91,7 @@ const t: PasswordStrengthTranslateFn = (key, params) => {
 };
 
 export function AdminChangePasswordForm() {
+  const authUser = useAuthUser();
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -101,7 +103,7 @@ export function AdminChangePasswordForm() {
   const strengthResult = useQuery(
     api.passwordStrength.evaluate,
     throttledPassword
-      ? { password: throttledPassword, email: "", role: "admin" as const }
+      ? { password: throttledPassword, email: authUser?.email ?? "", role: "admin" as const }
       : "skip",
   );
   React.useEffect(() => {
