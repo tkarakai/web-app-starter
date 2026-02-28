@@ -18,7 +18,7 @@ type PreferredMethod = "password" | "passkey" | "magicLink";
 
 function getStoredPreferredMethod(email: string): PreferredMethod | null {
   try {
-    const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+    const stored = window.localStorage.getItem(PREFERRED_METHOD_KEY);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as Record<string, string>;
     const method = parsed[email.trim().toLowerCase()];
@@ -31,10 +31,10 @@ function getStoredPreferredMethod(email: string): PreferredMethod | null {
 
 function setStoredPreferredMethod(email: string, method: PreferredMethod) {
   try {
-    const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+    const stored = window.localStorage.getItem(PREFERRED_METHOD_KEY);
     const parsed = stored ? (JSON.parse(stored) as Record<string, string>) : {};
     parsed[email.trim().toLowerCase()] = method;
-    localStorage.setItem(PREFERRED_METHOD_KEY, JSON.stringify(parsed));
+    window.localStorage.setItem(PREFERRED_METHOD_KEY, JSON.stringify(parsed));
   } catch {
     // best-effort
   }
