@@ -43,15 +43,14 @@ export default async function DashboardLayout({
   }
 
   // Server-side MFA enforcement: if userMfaRequired policy is enabled and
-  // the user hasn't set up 2FA, redirect to setup page (spec §14).
-  // The /setup-2fa route is a placeholder until a later stage creates it.
+  // the user hasn't set up 2FA, redirect to settings security tab.
   if (userRecord.twoFactorEnabled !== true) {
     try {
       const mfaRequired = await fetchAuthQuery(api.appSettings.getPublic, {
         key: "userMfaRequired",
       });
       if (mfaRequired === true) {
-        redirect("/setup-2fa");
+        redirect("/dashboard/settings?tab=security&enforce=mfa");
       }
     } catch {
       // If the query fails, fall through — client-side AuthGuard
