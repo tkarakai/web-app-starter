@@ -90,11 +90,12 @@ const t: PasswordStrengthTranslateFn = (key, params) => {
 
 interface CreateAccountStepProps {
   email: string;
+  onBeforeSignUp?: () => Promise<void>;
   onComplete: (password: string) => Promise<void>;
   onBack: () => void;
 }
 
-export function CreateAccountStep({ email, onComplete, onBack }: CreateAccountStepProps) {
+export function CreateAccountStep({ email, onBeforeSignUp, onComplete, onBack }: CreateAccountStepProps) {
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -125,6 +126,12 @@ export function CreateAccountStep({ email, onComplete, onBack }: CreateAccountSt
     setLoading(true);
 
     try {
+      // Claim the invitation token before signup. This proves token
+      // possession and adds the email to adminEmails for auto-promotion.
+      if (onBeforeSignUp) {
+        await onBeforeSignUp();
+      }
+
       const result = await authClient.signUp.email({
         name: name.trim(),
         email,

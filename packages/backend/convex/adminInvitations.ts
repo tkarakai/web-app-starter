@@ -6,6 +6,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { authComponent } from "./auth";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedMutation } from "./functions";
+import { sha256Hex } from "./tokenHash";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -99,15 +100,9 @@ export const invite = authedMutation({
       });
     }
 
-    // Ensure the email is in adminEmails so the databaseHook
-    // auto-promotes them to admin role on signup.
-    const existingAdmin = await ctx.db
-      .query("adminEmails")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .first();
-    if (!existingAdmin) {
-      await ctx.db.insert("adminEmails", { email });
-    }
+    // NOTE: adminEmails is NOT inserted here — it is added only when the
+    // invitation token is claimed (claimInvitation), proving token possession.
+    // This prevents admin role escalation without the token.
 
     const actorEmail = (ctx.user as Record<string, unknown>).email as string;
     await scheduleAuditEvent(ctx, {
@@ -126,42 +121,6 @@ export const invite = authedMutation({
       internal.adminInvitationActions.generateTokenAndSendEmail,
       { adminInvitationId: invitationId as never, email }
     );
-  },
-});
-
-// ---------------------------------------------------------------------------
-// Admin mutation: revoke admin invitation
-// ---------------------------------------------------------------------------
-
-export const uninvite = authedMutation({
-  args: { entryId: v.id("adminInvitations") },
-  handler: async (ctx, args) => {
-    const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
-
-    const entry = await ctx.db.get(args.entryId);
-    if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status === "claimed" || entry.status === "completed") {
-      throw new Error("ALREADY_CLAIMED");
-    }
-
-    await ctx.db.patch(args.entryId, {
-      status: "invited",
-      invitedAt: undefined,
-      invitationExpiresAt: undefined,
-      token: undefined,
-    });
-
-    const actorEmail = (ctx.user as Record<string, unknown>).email as string;
-    await scheduleAuditEvent(ctx, {
-      actor: actorEmail,
-      authenticatedUserId: ctx.ownerId,
-      sourceDetail: "admin-mutation",
-      action: "admin.invitation.revoked",
-      resource: `admin-invitation:${args.entryId}`,
-      status: "succeeded",
-      meta: JSON.stringify({ inviteeEmail: entry.email }),
-    });
   },
 });
 
@@ -223,18 +182,19 @@ export const createForSeed = internalMutation({
 });
 
 // ---------------------------------------------------------------------------
-// Internal: store token on invitation row (called by action)
+// Internal: store token hash on invitation row (called by action)
 // ---------------------------------------------------------------------------
 
 export const setToken = internalMutation({
   args: {
     adminInvitationId: v.id("adminInvitations"),
-    token: v.string(),
+    tokenHash: v.string(),
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
+    // The `token` field stores a SHA-256 hash, not the raw token.
     await ctx.db.patch(args.adminInvitationId, {
-      token: args.token,
+      token: args.tokenHash,
       invitationExpiresAt: args.expiresAt,
     });
   },
@@ -247,9 +207,10 @@ export const setToken = internalMutation({
 export const validateToken = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    const tokenHash = sha256Hex(args.token);
     const doc = await ctx.db
       .query("adminInvitations")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .unique();
 
     if (!doc) {
@@ -267,15 +228,16 @@ export const validateToken = query({
 });
 
 // ---------------------------------------------------------------------------
-// Public mutation: claim invitation after account creation (Step 0)
+// Public mutation: claim invitation before account creation
 // ---------------------------------------------------------------------------
 
 export const claimInvitation = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    const tokenHash = sha256Hex(args.token);
     const doc = await ctx.db
       .query("adminInvitations")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .unique();
 
     if (!doc) throw new Error("TOKEN_NOT_FOUND");
@@ -291,6 +253,16 @@ export const claimInvitation = mutation({
       claimedAt: Date.now(),
       onboardingStep: 1,
     });
+
+    // Add email to adminEmails so the auth hook auto-promotes to admin on
+    // signup. This only happens after token validation — proving possession.
+    const existingAdmin = await ctx.db
+      .query("adminEmails")
+      .withIndex("by_email", (q) => q.eq("email", doc.email))
+      .first();
+    if (!existingAdmin) {
+      await ctx.db.insert("adminEmails", { email: doc.email });
+    }
   },
 });
 

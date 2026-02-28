@@ -180,32 +180,36 @@ export function AdminOnboardingWizard() {
     init();
   }, [token, tokenResult, onboardingStatus, router]);
 
+  // Pre-signup: claim the invitation token BEFORE creating the account.
+  // This proves token possession and adds the email to adminEmails so the
+  // auth signup hook will auto-promote to admin role.
+  const handleBeforeSignUp = React.useCallback(async () => {
+    if (token) {
+      try {
+        await claimInvitation({ token });
+      } catch (err) {
+        // If already claimed (e.g. retrying after a failed signup), the
+        // adminEmails entry already exists so signup will still promote.
+        if (err instanceof Error && err.message === "ALREADY_CLAIMED") return;
+        throw err;
+      }
+    }
+  }, [token, claimInvitation]);
+
   // Step 0 complete: account created
   const handleAccountCreated = React.useCallback(async (password: string) => {
     passwordRef.current = password;
 
-    try {
-      // Claim the invitation token (makes it non-reusable).
-      // claimInvitation already sets onboardingStep: 1 in the DB, so we don't
-      // need a separate advanceOnboardingStep call here (and it would fail with
-      // NOT_AUTHENTICATED because the auth session hasn't propagated to Convex yet).
-      if (token) {
-        await claimInvitation({ token });
-      }
+    await postAuditEvent({
+      happenedAt: Date.now(),
+      sourceDetail: "admin-onboarding",
+      action: "admin.onboarding.account_created",
+      resource: `admin-invitation:${email}`,
+      status: "succeeded",
+    }).catch(() => {});
 
-      await postAuditEvent({
-        happenedAt: Date.now(),
-        sourceDetail: "admin-onboarding",
-        action: "admin.onboarding.account_created",
-        resource: `admin-invitation:${email}`,
-        status: "succeeded",
-      }).catch(() => {});
-
-      setStep(1);
-    } catch {
-      setError("Failed to claim invitation. Please try again.");
-    }
-  }, [token, email, claimInvitation, postAuditEvent]);
+    setStep(1);
+  }, [email, postAuditEvent]);
 
   // Step 1 complete: TOTP verified
   const handleTotpComplete = React.useCallback(async (codes: string[]) => {
@@ -466,6 +470,7 @@ export function AdminOnboardingWizard() {
           ) : step === 0 ? (
             <CreateAccountStep
               email={email}
+              onBeforeSignUp={handleBeforeSignUp}
               onComplete={handleAccountCreated}
               onBack={() => setShowIntro(true)}
             />

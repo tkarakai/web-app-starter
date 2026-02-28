@@ -36,6 +36,7 @@ import type * as securityPolicies from "../securityPolicies.js";
 import type * as sendAuthEmail from "../sendAuthEmail.js";
 import type * as sessions from "../sessions.js";
 import type * as tasks from "../tasks.js";
+import type * as tokenHash from "../tokenHash.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as waitlist from "../waitlist.js";
 import type * as waitlistActions from "../waitlistActions.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   sendAuthEmail: typeof sendAuthEmail;
   sessions: typeof sessions;
   tasks: typeof tasks;
+  tokenHash: typeof tokenHash;
   userProfiles: typeof userProfiles;
   waitlist: typeof waitlist;
   waitlistActions: typeof waitlistActions;

@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { escapeHtml } from "./emailTemplates";
+import { sha256Hex } from "./tokenHash";
 
 /** Default token expiry in days (can be overridden via appSettings). */
 const DEFAULT_EXPIRY_DAYS = 7;
@@ -34,10 +35,11 @@ export const generateTokenAndSendEmail = internalAction({
     const now = Date.now();
     const expiresAt = now + expiryDays * 24 * 60 * 60 * 1000;
 
-    // Store the token on the adminInvitations row
+    // Store only the SHA-256 hash — the raw token is sent in the email only.
+    const tokenHash = sha256Hex(token);
     await ctx.runMutation(internal.adminInvitations.setToken, {
       adminInvitationId: args.adminInvitationId,
-      token,
+      tokenHash,
       expiresAt,
     });
 
