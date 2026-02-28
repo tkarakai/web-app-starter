@@ -50,7 +50,7 @@
       "emailPlaceholder": "voce@exemplo.com",
       "password": "Senha",
       "passwordPlaceholder": "Sua senha",
-      "passwordSignUpPlaceholder": "Pelo menos 8 caracteres",
+      "passwordSignUpPlaceholder": "Pelo menos 12 caracteres",
       "confirmPassword": "Confirmar senha",
       "confirmPasswordPlaceholder": "Confirme sua senha"
     },
@@ -126,7 +126,7 @@
       "successDescription": "Sua senha foi redefinida com sucesso. Agora você pode entrar com sua nova senha.",
       "signInNow": "Entrar agora",
       "pageHeading": "Quase lá. Escolha uma nova senha.",
-      "pageDescription": "Escolha uma senha forte que você não tenha usado antes. Sua nova senha deve ter pelo menos 8 caracteres."
+      "pageDescription": "Escolha uma senha forte que você não tenha usado antes. Sua nova senha deve ter pelo menos 12 caracteres."
     },
     "verifyEmail": {
       "badge": "Verificação de e-mail",

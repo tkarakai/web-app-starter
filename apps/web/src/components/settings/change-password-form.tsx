@@ -14,7 +14,8 @@ import {
   PasswordInput,
   toast,
 } from "@repo/design-system";
-import { PasswordStrengthMeter } from "@repo/design-system/password-strength";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+import { useAuthUser } from "@/components/auth/auth-guard";
 
 export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");
@@ -22,6 +23,7 @@ export function ChangePasswordForm() {
   const ta = useTranslations("auth");
   const tps = useTranslations("passwordStrength");
 
+  const authUser = useAuthUser();
   const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
@@ -29,19 +31,17 @@ export function ChangePasswordForm() {
   const [revokeOtherSessions, setRevokeOtherSessions] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
-  // Debounced password for server-side strength evaluation
-  const [debouncedPassword, setDebouncedPassword] = React.useState("");
-  React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPassword(newPassword), 1000);
-    return () => clearTimeout(timer);
-  }, [newPassword]);
-
+  // Throttled password for server-side strength evaluation (at most once per 500ms)
+  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(newPassword);
   const strengthResult = useQuery(
     api.passwordStrength.evaluate,
-    debouncedPassword
-      ? { password: debouncedPassword, email: "", role: "user" as const }
+    throttledPassword
+      ? { password: throttledPassword, email: authUser?.email ?? "", role: "user" as const }
       : "skip",
   );
+  React.useEffect(() => {
+    if (strengthResult !== undefined) notifyResolved();
+  }, [strengthResult, notifyResolved]);
   const isNewPasswordValid = strengthResult?.valid ?? false;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,7 +121,7 @@ export function ChangePasswordForm() {
           required
           minLength={12}
         />
-        <PasswordStrengthMeter result={strengthResult} t={tps} />
+        <PasswordStrengthMeter result={strengthResult} password={newPassword} t={tps} />
       </div>
 
       <div className="space-y-2">

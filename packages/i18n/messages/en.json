@@ -50,7 +50,7 @@
       "emailPlaceholder": "you@example.com",
       "password": "Password",
       "passwordPlaceholder": "Your password",
-      "passwordSignUpPlaceholder": "At least 8 characters",
+      "passwordSignUpPlaceholder": "At least 12 characters",
       "confirmPassword": "Confirm password",
       "confirmPasswordPlaceholder": "Confirm your password"
     },
@@ -131,7 +131,7 @@
       "successDescription": "Your password has been reset successfully. You can now sign in with your new password.",
       "signInNow": "Sign in now",
       "pageHeading": "Almost there. Choose a new password.",
-      "pageDescription": "Pick a strong password you haven't used before. Your new password must be at least 8 characters."
+      "pageDescription": "Pick a strong password you haven't used before. Your new password must be at least 12 characters."
     },
     "verifyEmail": {
       "badge": "Email Verification",

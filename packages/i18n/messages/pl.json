@@ -50,7 +50,7 @@
       "emailPlaceholder": "ty@example.com",
       "password": "Hasło",
       "passwordPlaceholder": "Twoje hasło",
-      "passwordSignUpPlaceholder": "Co najmniej 8 znaków",
+      "passwordSignUpPlaceholder": "Co najmniej 12 znaków",
       "confirmPassword": "Potwierdź hasło",
       "confirmPasswordPlaceholder": "Potwierdź swoje hasło"
     },
@@ -126,7 +126,7 @@
       "successDescription": "Twoje hasło zostało pomyślnie zresetowane. Możesz teraz zalogować się nowym hasłem.",
       "signInNow": "Zaloguj się teraz",
       "pageHeading": "Prawie gotowe. Wybierz nowe hasło.",
-      "pageDescription": "Wybierz silne hasło, którego wcześniej nie używałeś. Nowe hasło musi mieć co najmniej 8 znaków."
+      "pageDescription": "Wybierz silne hasło, którego wcześniej nie używałeś. Nowe hasło musi mieć co najmniej 12 znaków."
     },
     "verifyEmail": {
       "badge": "Weryfikacja e-mail",

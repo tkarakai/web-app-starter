@@ -50,7 +50,7 @@
       "emailPlaceholder": "te@pelda.hu",
       "password": "Jelszó",
       "passwordPlaceholder": "Jelszavad",
-      "passwordSignUpPlaceholder": "Legalább 8 karakter",
+      "passwordSignUpPlaceholder": "Legalább 12 karakter",
       "confirmPassword": "Jelszó megerősítése",
       "confirmPasswordPlaceholder": "Jelszó újra"
     },
@@ -126,7 +126,7 @@
       "successDescription": "A jelszavad sikeresen visszaállítva. Most már bejelentkezhetsz az új jelszavaddal.",
       "signInNow": "Bejelentkezés most",
       "pageHeading": "Majdnem kész. Válassz új jelszót.",
-      "pageDescription": "Válassz egy erős jelszót, amelyet korábban nem használtál. Az új jelszónak legalább 8 karakterből kell állnia."
+      "pageDescription": "Válassz egy erős jelszót, amelyet korábban nem használtál. Az új jelszónak legalább 12 karakterből kell állnia."
     },
     "verifyEmail": {
       "badge": "E-mail-megerősítés",

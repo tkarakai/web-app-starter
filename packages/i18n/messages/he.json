@@ -50,7 +50,7 @@
       "emailPlaceholder": "you@example.com",
       "password": "סיסמה",
       "passwordPlaceholder": "הסיסמה שלך",
-      "passwordSignUpPlaceholder": "לפחות 8 תווים",
+      "passwordSignUpPlaceholder": "לפחות 12 תווים",
       "confirmPassword": "אישור סיסמה",
       "confirmPasswordPlaceholder": "אשר את הסיסמה שלך"
     },
@@ -126,7 +126,7 @@
       "successDescription": "הסיסמה שלך אופסה בהצלחה. כעת תוכל להתחבר עם הסיסמה החדשה.",
       "signInNow": "התחבר עכשיו",
       "pageHeading": "כמעט שם. בחר סיסמה חדשה.",
-      "pageDescription": "בחר סיסמה חזקה שלא השתמשת בה בעבר. הסיסמה החדשה חייבת להכיל לפחות 8 תווים."
+      "pageDescription": "בחר סיסמה חזקה שלא השתמשת בה בעבר. הסיסמה החדשה חייבת להכיל לפחות 12 תווים."
     },
     "verifyEmail": {
       "badge": "אימות דוא״ל",

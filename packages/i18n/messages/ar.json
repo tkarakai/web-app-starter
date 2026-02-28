@@ -50,7 +50,7 @@
       "emailPlaceholder": "you@example.com",
       "password": "كلمة المرور",
       "passwordPlaceholder": "كلمة المرور الخاصة بك",
-      "passwordSignUpPlaceholder": "8 أحرف على الأقل",
+      "passwordSignUpPlaceholder": "12 أحرف على الأقل",
       "confirmPassword": "تأكيد كلمة المرور",
       "confirmPasswordPlaceholder": "أكّد كلمة المرور"
     },
@@ -126,7 +126,7 @@
       "successDescription": "تم إعادة تعيين كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.",
       "signInNow": "تسجيل الدخول الآن",
       "pageHeading": "أوشكت على الانتهاء. اختر كلمة مرور جديدة.",
-      "pageDescription": "اختر كلمة مرور قوية لم تستخدمها من قبل. يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل."
+      "pageDescription": "اختر كلمة مرور قوية لم تستخدمها من قبل. يجب أن تتكون كلمة المرور الجديدة من 12 أحرف على الأقل."
     },
     "verifyEmail": {
       "badge": "التحقق من البريد الإلكتروني",

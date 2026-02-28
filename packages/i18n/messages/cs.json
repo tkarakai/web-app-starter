@@ -50,7 +50,7 @@
       "emailPlaceholder": "vy@example.com",
       "password": "Heslo",
       "passwordPlaceholder": "Vaše heslo",
-      "passwordSignUpPlaceholder": "Alespoň 8 znaků",
+      "passwordSignUpPlaceholder": "Alespoň 12 znaků",
       "confirmPassword": "Potvrzení hesla",
       "confirmPasswordPlaceholder": "Potvrďte své heslo"
     },
@@ -126,7 +126,7 @@
       "successDescription": "Vaše heslo bylo úspěšně obnoveno. Nyní se můžete přihlásit s novým heslem.",
       "signInNow": "Přihlásit se",
       "pageHeading": "Skoro hotovo. Zvolte nové heslo.",
-      "pageDescription": "Vyberte si silné heslo, které jste dosud nepoužili. Nové heslo musí mít alespoň 8 znaků."
+      "pageDescription": "Vyberte si silné heslo, které jste dosud nepoužili. Nové heslo musí mít alespoň 12 znaků."
     },
     "verifyEmail": {
       "badge": "Ověření e-mailu",

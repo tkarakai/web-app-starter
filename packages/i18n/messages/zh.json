@@ -50,7 +50,7 @@
       "emailPlaceholder": "you@example.com",
       "password": "密码",
       "passwordPlaceholder": "您的密码",
-      "passwordSignUpPlaceholder": "至少8个字符",
+      "passwordSignUpPlaceholder": "至少12个字符",
       "confirmPassword": "确认密码",
       "confirmPasswordPlaceholder": "确认您的密码"
     },
@@ -126,7 +126,7 @@
       "successDescription": "您的密码已成功重置。现在可以使用新密码登录。",
       "signInNow": "立即登录",
       "pageHeading": "就差一步。设置新密码。",
-      "pageDescription": "请选择一个您之前未使用过的强密码。新密码必须至少为 8 个字符。"
+      "pageDescription": "请选择一个您之前未使用过的强密码。新密码必须至少为 12 个字符。"
     },
     "verifyEmail": {
       "badge": "邮箱验证",
