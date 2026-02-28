@@ -3,12 +3,40 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { api } from "@repo/backend";
 import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
+
+const PREFERRED_METHOD_KEY = "adminSignInPreferredMethod";
+
+type PreferredMethod = "password" | "passkey";
+
+function getStoredPreferredMethod(email: string): PreferredMethod | null {
+  try {
+    const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Record<string, string>;
+    const method = parsed[email.trim().toLowerCase()];
+    if (method === "password" || method === "passkey") return method;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setStoredPreferredMethod(email: string, method: PreferredMethod) {
+  try {
+    const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+    const parsed = stored ? (JSON.parse(stored) as Record<string, string>) : {};
+    parsed[email.trim().toLowerCase()] = method;
+    localStorage.setItem(PREFERRED_METHOD_KEY, JSON.stringify(parsed));
+  } catch {
+    // best-effort
+  }
+}
 import {
   Button,
   Card,
@@ -55,11 +83,15 @@ export function AdminSignInForm() {
   const [backupCode, setBackupCode] = React.useState("");
   const otpRef = React.useRef<OtpInputHandle>(null);
 
-  // Preferred method from server
-  const preferredMethodResult = useQuery(
-    api.signInMethods.getPreferredMethod,
-    email.trim() ? { email: email.trim() } : "skip",
-  );
+  // Preferred method from localStorage
+  const [preferredMethod, setPreferredMethod] = React.useState<PreferredMethod | null>(null);
+  React.useEffect(() => {
+    if (email.trim()) {
+      setPreferredMethod(getStoredPreferredMethod(email));
+    } else {
+      setPreferredMethod(null);
+    }
+  }, [email]);
 
   // Policy settings
   const userMfaRequired = useQuery(api.appSettings.getPublic, {
@@ -75,7 +107,6 @@ export function AdminSignInForm() {
     key: "adminPasskeyPolicy",
   });
 
-  const updatePreferredMethod = useMutation(api.signInMethods.updatePreferredMethod);
 
   const getRolePolicies = React.useCallback((role: unknown) => {
     const isAdmin = role === "admin";
@@ -167,7 +198,7 @@ export function AdminSignInForm() {
         setStep(2);
       } else {
         if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
-        try { await updatePreferredMethod({ method: "password" }); } catch { /* best-effort */ }
+        setStoredPreferredMethod(email, "password");
         broadcastAuth();
         router.push("/dashboard");
       }
@@ -202,7 +233,7 @@ export function AdminSignInForm() {
       }
 
       if (await enforcePostSignInPolicies({ usedPasskey: true })) return;
-      try { await updatePreferredMethod({ method: "passkey" }); } catch { /* best-effort */ }
+      setStoredPreferredMethod(email, "passkey");
       broadcastAuth();
       router.push("/dashboard");
     } catch (err) {
@@ -230,7 +261,7 @@ export function AdminSignInForm() {
           setError(formatAuthError(result.error, "Invalid backup code"));
         } else {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
-          try { await updatePreferredMethod({ method: "password" }); } catch { /* best-effort */ }
+          setStoredPreferredMethod(email, "password");
           broadcastAuth();
           router.push("/dashboard");
         }
@@ -240,7 +271,7 @@ export function AdminSignInForm() {
           setError(formatAuthError(result.error, "Invalid verification code"));
         } else {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
-          try { await updatePreferredMethod({ method: "password" }); } catch { /* best-effort */ }
+          setStoredPreferredMethod(email, "password");
           broadcastAuth();
           router.push("/dashboard");
         }
@@ -266,11 +297,10 @@ export function AdminSignInForm() {
     }
   };
 
-  const preferred = preferredMethodResult?.preferred;
   const effectivePreferred =
-    passkeySupported === false && preferred === "passkey"
+    passkeySupported === false && preferredMethod === "passkey"
       ? "password"
-      : preferred;
+      : preferredMethod;
 
   const stepTitle = [
     "Sign in",

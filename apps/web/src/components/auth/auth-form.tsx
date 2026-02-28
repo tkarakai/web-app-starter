@@ -4,13 +4,41 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited, isConvexRateLimited } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
+
+const PREFERRED_METHOD_KEY = "signInPreferredMethod";
+
+type PreferredMethod = "password" | "passkey" | "magicLink";
+
+function getStoredPreferredMethod(email: string): PreferredMethod | null {
+  try {
+    const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Record<string, string>;
+    const method = parsed[email.trim().toLowerCase()];
+    if (method === "password" || method === "passkey" || method === "magicLink") return method;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setStoredPreferredMethod(email: string, method: PreferredMethod) {
+  try {
+    const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+    const parsed = stored ? (JSON.parse(stored) as Record<string, string>) : {};
+    parsed[email.trim().toLowerCase()] = method;
+    localStorage.setItem(PREFERRED_METHOD_KEY, JSON.stringify(parsed));
+  } catch {
+    // best-effort
+  }
+}
 import {
   Button,
   Card,
@@ -111,12 +139,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     key: "userMagicLinkEnabled",
   });
 
-  // Preferred method (only query when we have an email in sign-in mode)
-  const preferredMethodResult = useQuery(
-    api.signInMethods.getPreferredMethod,
-    !isSignUp && email.trim() ? { email: email.trim() } : "skip",
-  );
-  const updatePreferredMethod = useMutation(api.signInMethods.updatePreferredMethod);
+  // Preferred method from localStorage
+  const [preferredMethod, setPreferredMethod] = React.useState<PreferredMethod | null>(null);
+  React.useEffect(() => {
+    if (!isSignUp && email.trim()) {
+      setPreferredMethod(getStoredPreferredMethod(email));
+    } else {
+      setPreferredMethod(null);
+    }
+  }, [isSignUp, email]);
 
   const getRolePolicies = React.useCallback((role: unknown): RolePolicies => {
     const isAdmin = role === "admin";
@@ -241,7 +272,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         setStep(2);
       } else {
         if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
-        try { await updatePreferredMethod({ method: "password" }); } catch { /* best-effort */ }
+        setStoredPreferredMethod(email, "password");
         broadcastAuth();
         await redirectWithUserLocale(router);
       }
@@ -277,7 +308,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
 
       if (await enforcePostSignInPolicies({ usedPasskey: true })) return;
-      try { await updatePreferredMethod({ method: "passkey" }); } catch { /* best-effort */ }
+      setStoredPreferredMethod(email, "passkey");
       broadcastAuth();
       await redirectWithUserLocale(router);
     } catch (err) {
@@ -340,7 +371,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           setError(t("twoFactorVerify.invalidCode"));
         } else {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
-          try { await updatePreferredMethod({ method: "password" }); } catch { /* best-effort */ }
+          setStoredPreferredMethod(email, "password");
           broadcastAuth();
           await redirectWithUserLocale(router);
         }
@@ -352,7 +383,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           setError(t("twoFactorVerify.invalidCode"));
         } else {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
-          try { await updatePreferredMethod({ method: "password" }); } catch { /* best-effort */ }
+          setStoredPreferredMethod(email, "password");
           broadcastAuth();
           await redirectWithUserLocale(router);
         }
@@ -434,14 +465,13 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     }
   };
 
-  const preferred = preferredMethodResult?.preferred;
   const isMagicLinkAvailable = magicLinkEnabled === true;
   const effectivePreferred =
-    passkeySupported === false && preferred === "passkey"
+    passkeySupported === false && preferredMethod === "passkey"
       ? isMagicLinkAvailable
         ? "magicLink"
         : "password"
-      : preferred;
+      : preferredMethod;
 
   // ── Sign-up form (unchanged) ──
   if (isSignUp) {
