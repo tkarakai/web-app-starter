@@ -794,10 +794,10 @@ set_branch_protection() {
     "required_status_checks": {
         "strict": true,
         "contexts": [
-            "CI Shared / CI Shared Complete",
-            "CI Web / CI Web Complete",
-            "CI Admin / CI Admin Complete",
-            "CI Landing / CI Landing Complete"
+            "CI Shared Complete",
+            "CI Web Complete",
+            "CI Admin Complete",
+            "CI Landing Complete"
         ]
     },
     "enforce_admins": false,
