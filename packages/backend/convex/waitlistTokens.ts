@@ -220,7 +220,7 @@ export const hasValidInvitation = internalQuery({
 
     return tokens.some(
       (t) =>
-        (t.status === "claiming" || t.status === "claimed") &&
+        (t.status === "sent" || t.status === "claiming" || t.status === "claimed") &&
         Date.now() <= t.expiresAt
     );
   },
