@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -20,11 +20,12 @@ import {
 
 export function ForgotPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("auth");
   const tf = useTranslations("auth.forgotPassword");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(searchParams.get("email") ?? "");
   const [emailSent, setEmailSent] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

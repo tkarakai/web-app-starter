@@ -381,7 +381,7 @@ export function AdminSignInForm() {
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
                       <Link
-                        href="/forgot-password"
+                        href={`/forgot-password?email=${encodeURIComponent(email)}`}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Forgot password?
@@ -423,7 +423,7 @@ export function AdminSignInForm() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
                     <Link
-                      href="/forgot-password"
+                      href={`/forgot-password?email=${encodeURIComponent(email)}`}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Forgot password?

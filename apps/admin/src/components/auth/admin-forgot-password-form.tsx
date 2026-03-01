@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { authClient } from "@repo/auth/client";
 import {
@@ -16,9 +17,10 @@ import {
 } from "@repo/design-system";
 
 export function AdminForgotPasswordForm() {
+  const searchParams = useSearchParams();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(searchParams.get("email") ?? "");
   const [emailSent, setEmailSent] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
