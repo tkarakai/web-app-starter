@@ -396,11 +396,47 @@ const EMAIL_VERIFICATION_EXPIRY_SECONDS = positiveInt(
   3600,
 );
 
+/**
+ * Plugin that captures the user ID from a reset-password token before
+ * Better Auth consumes it. The ID is stored via the provided callback
+ * so the top-level hooks.after can mark the email as verified.
+ */
+const emailVerifiedOnResetPlugin = (
+  onUserIdCaptured: (userId: string) => void,
+): BetterAuthPlugin => ({
+  id: "email-verified-on-reset",
+  async onRequest(request, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+    if (!path.endsWith("/reset-password")) return;
+
+    try {
+      const body = (await request.clone().json()) as Record<string, unknown>;
+      const token = body.token as string | undefined;
+      if (token) {
+        const verification = await ctx.internalAdapter.findVerificationValue(
+          `reset-password:${token}`,
+        );
+        if (verification?.value) {
+          onUserIdCaptured(verification.value);
+        }
+      }
+    } catch {
+      // Don't break the reset flow if token lookup fails.
+    }
+  },
+});
+
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
 ) => {
   const { siteUrl, siteUrls } = getSiteUrls();
   const passkeyRpId = getPasskeyRpId();
+
+  // Shared across the plugin's onRequest and the top-level hooks.after within
+  // this single request invocation.  Captured in onRequest (before the token is
+  // consumed) so the after-hook can mark the email as verified.
+  let pendingResetUserId: string | null = null;
 
   return {
     baseURL: siteUrl,
@@ -488,6 +524,9 @@ export const createAuthOptions = (
           context?: {
             returned?: unknown;
             session?: { user?: { email?: unknown } };
+            internalAdapter?: {
+              updateUser: (id: string, data: Record<string, unknown>) => Promise<unknown>;
+            };
           };
         };
 
@@ -520,6 +559,21 @@ export const createAuthOptions = (
           reason: error?.message,
           meta: JSON.stringify({ endpoint: path }),
         });
+
+        // After a successful email-link password reset, mark the email as
+        // verified — completing the reset proves the user controls the address.
+        if (path === "/reset-password" && !error && pendingResetUserId) {
+          const userId = pendingResetUserId;
+          pendingResetUserId = null;
+          try {
+            await middlewareCtx.context?.internalAdapter?.updateUser(userId, {
+              emailVerified: true,
+            });
+          } catch {
+            // Best-effort: don't break the reset response if this fails.
+          }
+        }
+
         return {};
       },
     },
@@ -634,6 +688,7 @@ export const createAuthOptions = (
       },
     },
     plugins: [
+      emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
       multiOriginPlugin(siteUrls),
       protectedAdminPlugin(ctx),
       passwordStrengthPlugin(ctx),
