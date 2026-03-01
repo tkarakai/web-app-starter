@@ -505,7 +505,8 @@
   },
   "forbidden": {
     "title": "Access Denied",
-    "description": "Your account has been suspended or you do not have permission to access this resource. If you believe this is an error, please contact your organization's administrator.",
+    "signedInAs": "You are signed in as {email}.",
+    "description": "You do not have permission to access this resource. If you believe this is an error, please contact your organization's administrator.",
     "backToSignIn": "Back to sign in"
   }
 }

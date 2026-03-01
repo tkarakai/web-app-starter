@@ -480,7 +480,8 @@
   },
   "forbidden": {
     "title": "Toegang geweigerd",
-    "description": "Uw account is opgeschort of u heeft geen toestemming om toegang te krijgen tot deze bron. Als u denkt dat dit een fout is, neem dan contact op met de beheerder van uw organisatie.",
+    "signedInAs": "U bent ingelogd als {email}.",
+    "description": "U heeft geen toestemming om toegang te krijgen tot deze bron. Als u denkt dat dit een fout is, neem dan contact op met de beheerder van uw organisatie.",
     "backToSignIn": "Terug naar inloggen"
   }
 }

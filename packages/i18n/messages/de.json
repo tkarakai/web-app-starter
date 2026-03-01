@@ -480,7 +480,8 @@
   },
   "forbidden": {
     "title": "Zugriff verweigert",
-    "description": "Ihr Konto wurde gesperrt oder Sie haben keine Berechtigung, auf diese Ressource zuzugreifen. Wenn Sie glauben, dass dies ein Fehler ist, wenden Sie sich bitte an den Administrator Ihrer Organisation.",
+    "signedInAs": "Sie sind angemeldet als {email}.",
+    "description": "Sie haben keine Berechtigung, auf diese Ressource zuzugreifen. Wenn Sie glauben, dass dies ein Fehler ist, wenden Sie sich bitte an den Administrator Ihrer Organisation.",
     "backToSignIn": "Zurück zur Anmeldung"
   }
 }
