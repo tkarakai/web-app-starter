@@ -878,6 +878,51 @@ if [ "$START_STORYBOOK" = true ]; then
 fi
 
 # ============================================================
+# SEED DEFAULT CROSS-APP VARS FOR SINGLE-APP MODE
+# ============================================================
+# When only some apps are started, seed default localhost URLs for missing
+# cross-app env vars and Convex env vars so pages don't crash at runtime.
+
+if [ "$NEED_CONVEX" = true ]; then
+    echo ""
+    echo -e "${GREEN}▶ Ensuring cross-app env vars are populated...${NC}"
+
+    # Seed NEXT_PUBLIC_LANDING_URL for web when landing is not started
+    if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
+        if ! grep -q "^NEXT_PUBLIC_LANDING_URL=" "$PROJECT_DIR/apps/web/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "http://localhost:3000"
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL defaulted to http://localhost:3000 for web"
+        else
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL already set for web (preserved)"
+        fi
+    fi
+
+    # Seed NEXT_PUBLIC_WEB_APP_URL for landing when web is not started
+    if [ "$START_LANDING" = true ] && [ "$START_WEB" = false ]; then
+        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/apps/landing/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "http://localhost:3001"
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to http://localhost:3001 for landing"
+        else
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL already set for landing (preserved)"
+        fi
+    fi
+
+    # Seed ADMIN_SITE_URL in Convex when admin is not started
+    if [ "$START_ADMIN" = false ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "http://localhost:3002" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL defaulted to http://localhost:3002 in Convex"
+        fi
+    fi
+
+    # Seed LANDING_URL in Convex when landing is not started
+    if [ "$START_LANDING" = false ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "http://localhost:3000" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to http://localhost:3000 in Convex"
+        fi
+    fi
+fi
+
+# ============================================================
 # UPDATE BETTER AUTH WITH ALL APP URLS
 # ============================================================
 # Better Auth needs to know all the app origins that will authenticate
