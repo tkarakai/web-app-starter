@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useQuery } from "convex/react";
+import { api } from "@repo/backend";
 import { authClient, formatAuthError } from "@repo/auth/client";
 import {
   Button,
@@ -17,6 +19,7 @@ import {
   PasswordInput,
   Separator,
 } from "@repo/design-system";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
 
 function formatResetError(error: { status?: number; message?: string }): string {
   if (error.message?.includes("INVALID_TOKEN") || error.message?.includes("expired")) {
@@ -35,11 +38,25 @@ export function ResetPasswordForm({
   const router = useRouter();
   const t = useTranslations("auth");
   const tr = useTranslations("auth.resetPassword");
+  const tps = useTranslations("passwordStrength");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [success, setSuccess] = React.useState(false);
+
+  // Throttled password for server-side strength evaluation (at most once per 500ms)
+  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    throttledPassword
+      ? { password: throttledPassword, email: "", role: "user" as const }
+      : "skip",
+  );
+  React.useEffect(() => {
+    if (strengthResult !== undefined) notifyResolved();
+  }, [strengthResult, notifyResolved]);
+  const isPasswordValid = strengthResult?.valid ?? false;
 
   // No token — show invalid state
   if (!token) {
@@ -116,6 +133,11 @@ export function ResetPasswordForm({
     event.preventDefault();
     setError(null);
 
+    if (!isPasswordValid) {
+      setError(tps("strengthRequirement"));
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t("errors.passwordMismatch"));
       return;
@@ -167,6 +189,7 @@ export function ResetPasswordForm({
               minLength={12}
               autoFocus
             />
+            <PasswordStrengthMeter result={strengthResult} password={password} t={tps} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm-new-password">{t("fields.confirmPassword")}</Label>
@@ -185,7 +208,7 @@ export function ResetPasswordForm({
               {error}
             </div>
           ) : null}
-          <Button className="w-full" type="submit" disabled={pending}>
+          <Button className="w-full" type="submit" disabled={pending || !isPasswordValid}>
             {pending ? t("working") : tr("cta")}
             <ArrowRight className="h-4 w-4" />
           </Button>
