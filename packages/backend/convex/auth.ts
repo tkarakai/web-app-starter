@@ -676,11 +676,17 @@ export const createAuthOptions = (
       haveIBeenPwned(),
       convex({ authConfig }),
     ],
+    // Use "memory" storage to avoid OCC conflicts on Convex's rateLimit table.
+    // Convex HTTP actions don't share memory across invocations, so this is
+    // effectively a no-op — but that's acceptable because we have two other
+    // rate-limiting layers: edge middleware (per-IP) and convex-helpers
+    // token-bucket limits (per-operation). The customRules below are kept for
+    // documentation and in case Better Auth moves to a compatible storage backend.
     rateLimit: {
       enabled: true,
       window: positiveInt(process.env.AUTH_RATE_LIMIT_WINDOW, 60),
       max: positiveInt(process.env.AUTH_RATE_LIMIT_MAX, 100),
-      storage: "database",
+      storage: "memory",
       customRules: {
         "/sign-in/email": {
           window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_WINDOW, 10),
