@@ -49,9 +49,11 @@ export const generateTokenAndSendEmail = internalAction({
     });
 
     // Build the signup URL
-    const siteUrl = (process.env.SITE_URL ?? "http://localhost:3001")
-      .split(",")[0]
-      .trim();
+    const siteUrlRaw = process.env.SITE_URL;
+    if (!siteUrlRaw) {
+      throw new Error("Missing required environment variable: SITE_URL");
+    }
+    const siteUrl = siteUrlRaw.split(",")[0].trim();
     const signupUrl = `${siteUrl}/signup-with-invitation?token=${token}`;
 
     // Load custom email template (if any), otherwise use default

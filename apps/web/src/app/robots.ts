@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+if (!SITE_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL");
+}
 
 export default function robots(): MetadataRoute.Robots {
   const isProd = process.env.NODE_ENV === "production";

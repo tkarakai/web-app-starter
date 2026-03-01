@@ -24,19 +24,25 @@ authComponent.registerRoutes(http, createAuth);
 // CORS helpers — dynamic origin checking
 // ---------------------------------------------------------------------------
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
 function getAllowedOrigins(): Set<string> {
   const origins = new Set<string>();
-  const siteUrl = process.env.SITE_URL ?? "http://localhost:3001";
+  const siteUrl = requireEnv("SITE_URL");
   for (const u of siteUrl.split(",")) {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
   }
-  const adminUrl = process.env.ADMIN_SITE_URL ?? "http://localhost:3002";
+  const adminUrl = requireEnv("ADMIN_SITE_URL");
   for (const u of adminUrl.split(",")) {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
   }
-  const landingUrl = process.env.LANDING_URL ?? "http://localhost:3000";
+  const landingUrl = requireEnv("LANDING_URL");
   for (const u of landingUrl.split(",")) {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);

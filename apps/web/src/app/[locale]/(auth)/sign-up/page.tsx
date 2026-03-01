@@ -12,9 +12,14 @@ import { SiteHeader } from "@repo/design-patterns";
 import { AuthForm } from "@/components/auth/auth-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
-const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL;
+if (!LANDING_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_LANDING_URL");
+}
+const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+if (!CONVEX_SITE_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
+}
 
 type OnboardingType = "inviteOnly" | "publicWaitlist" | "publicSignup";
 

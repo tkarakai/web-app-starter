@@ -36,8 +36,10 @@ function positiveInt(envVar: string | undefined, defaultValue: number): number {
 
 // Better Auth runs inside Convex, so env vars are set via `convex env set`.
 // SITE_URL can be a single URL or comma-separated list of URLs for multi-app development.
-// Falls back to http://localhost:3001 if not yet set during Convex startup.
-const siteUrlRaw = process.env.SITE_URL || "http://localhost:3001";
+const siteUrlRaw = process.env.SITE_URL;
+if (!siteUrlRaw) {
+  throw new Error("Missing required environment variable: SITE_URL");
+}
 const siteUrls = siteUrlRaw.split(",").map((url) => url.trim()).filter(Boolean);
 const siteUrl = siteUrls[0]; // Primary URL for baseURL
 // Optional override for passkey RP ID. Use a shared parent domain (hostname only)

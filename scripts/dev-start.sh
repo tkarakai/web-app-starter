@@ -836,6 +836,15 @@ if [ "$START_ADMIN" = true ]; then
     else
         APP_URLS="$LAST_APP_URL"
     fi
+
+    # Sync ADMIN_SITE_URL to Convex so CORS and admin invitation links work
+    if [ "$NEED_CONVEX" = true ] && [ -n "$ADMIN_APP_URL" ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "$ADMIN_APP_URL" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL synced to Convex"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Failed to sync ADMIN_SITE_URL to Convex"
+        fi
+    fi
 fi
 
 if [ "$START_LANDING" = true ]; then

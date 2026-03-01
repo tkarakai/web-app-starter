@@ -396,15 +396,24 @@ fi
 # Turbo caching means shared packages only build once.
 # ============================================================
 print_step "Step 6/8: Production Build"
-# Provide placeholder Convex env vars for apps that need them at build time.
-# These mirror the placeholder values in ci-web.yml / ci-admin.yml.
+# Provide placeholder env vars for apps that need them at build time.
+# These mirror the placeholder values in ci-{web,admin,landing}.yml.
 # The actual values are only needed at runtime, not at build time.
 export NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}"
 export NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}"
+export NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-http://localhost:3000}"
+export NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-http://localhost:3001}"
 BUILD_FAILED=false
 for APP in web admin landing storybook; do
+  # Set per-app NEXT_PUBLIC_SITE_URL (each app runs on a different port)
+  case "$APP" in
+    web)     _SITE_URL="http://localhost:3001" ;;
+    admin)   _SITE_URL="http://localhost:3002" ;;
+    landing) _SITE_URL="http://localhost:3000" ;;
+    *)       _SITE_URL="" ;;
+  esac
   step_start
-  if turbo build --filter=@repo/$APP...; then
+  if NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$_SITE_URL}" turbo build --filter=@repo/$APP...; then
     print_success "Build succeeded ($APP)"
     step_end "$APP: Build" "pass"
   else

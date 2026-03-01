@@ -3,7 +3,10 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge, Button } from "@repo/design-system";
 import { SiteHeader } from "@/components/site-header";
 
-const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
+const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL;
+if (!WEB_APP_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_WEB_APP_URL");
+}
 
 type Props = {
   params: Promise<{ locale: string }>;

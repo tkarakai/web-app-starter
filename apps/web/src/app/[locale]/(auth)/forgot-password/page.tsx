@@ -4,7 +4,10 @@ import { SiteHeader } from "@repo/design-patterns";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
+const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL;
+if (!LANDING_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_LANDING_URL");
+}
 
 export default async function ForgotPasswordPage() {
   const t = await getTranslations("auth.forgotPassword");

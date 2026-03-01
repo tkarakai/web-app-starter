@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  const siteUrl = (() => { const v = process.env.NEXT_PUBLIC_SITE_URL; if (!v) throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL"); return v; })();
   const canonicalUrl = `${siteUrl}/${locale}`;
 
   return {
@@ -108,7 +108,7 @@ export default async function LocaleLayout({
   ]);
 
   const pathname = headersList.get("x-pathname") ?? "/";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  const siteUrl = (() => { const v = process.env.NEXT_PUBLIC_SITE_URL; if (!v) throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL"); return v; })();
   const dir = getLocaleDirection(locale);
 
   const font = fontsByLocale[locale] || raleway;
