@@ -134,6 +134,10 @@ jobs:
 
       - name: Build
         run: bunx turbo build --filter=@repo/landing...
+        env:
+          NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
+          NEXT_PUBLIC_WEB_APP_URL: "http://localhost:3001"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
 
       - name: Check bundle size
         run: cd apps/landing && bun run size

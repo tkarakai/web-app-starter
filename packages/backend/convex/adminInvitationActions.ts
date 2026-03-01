@@ -44,9 +44,11 @@ export const generateTokenAndSendEmail = internalAction({
     });
 
     // Build the admin onboarding URL
-    const adminSiteUrl = (
-      process.env.ADMIN_SITE_URL ?? "http://localhost:3002"
-    ).trim();
+    const adminSiteUrlRaw = process.env.ADMIN_SITE_URL;
+    if (!adminSiteUrlRaw) {
+      throw new Error("Missing required environment variable: ADMIN_SITE_URL");
+    }
+    const adminSiteUrl = adminSiteUrlRaw.trim();
     const onboardingUrl = `${adminSiteUrl}/onboarding?token=${token}`;
 
     // Send invitation email via Resend

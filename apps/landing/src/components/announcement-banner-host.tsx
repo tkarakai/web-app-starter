@@ -11,21 +11,10 @@ const ANNOUNCEMENT_REQUEST_TIMEOUT_MS = 8_000;
 
 function getConvexSiteUrlCandidates(): string[] {
   const fromEnv = process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
-  const envCandidates = fromEnv ? [fromEnv] : [];
-
-  if (process.env.NODE_ENV === "production") {
-    return envCandidates;
+  if (!fromEnv) {
+    throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
   }
-
-  return [
-    ...new Set([
-      ...envCandidates,
-      "http://127.0.0.1:3211",
-      "http://localhost:3211",
-      "http://127.0.0.1:3210",
-      "http://localhost:3210",
-    ]),
-  ];
+  return [fromEnv];
 }
 
 type ActiveAnnouncement = {

@@ -6,10 +6,14 @@ import { Button } from "@repo/design-system";
 
 import { WaitlistSection } from "./waitlist-section";
 
-const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
-const WEB_APP_URL =
-  process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
+const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+if (!CONVEX_SITE_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
+}
+const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL;
+if (!WEB_APP_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_WEB_APP_URL");
+}
 
 /** Initial retry delay (ms). */
 const RETRY_BASE = 5_000;

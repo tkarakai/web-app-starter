@@ -35,14 +35,27 @@ function positiveInt(envVar: string | undefined, defaultValue: number): number {
 }
 
 // Better Auth runs inside Convex, so env vars are set via `convex env set`.
-// SITE_URL can be a single URL or comma-separated list of URLs for multi-app development.
-// Falls back to http://localhost:3001 if not yet set during Convex startup.
-const siteUrlRaw = process.env.SITE_URL || "http://localhost:3001";
-const siteUrls = siteUrlRaw.split(",").map((url) => url.trim()).filter(Boolean);
-const siteUrl = siteUrls[0]; // Primary URL for baseURL
-// Optional override for passkey RP ID. Use a shared parent domain (hostname only)
-// when web/admin should both register and use the same passkeys.
-const passkeyRpId = (() => {
+// These helpers read env vars lazily (at runtime) rather than at module scope,
+// because Convex's push/analysis phase loads all modules before env vars are available.
+
+/** Read and validate SITE_URL at runtime.
+ *  During Convex's push/analysis phase, env vars set via `convex env set` are
+ *  not yet available, but `registerRoutes` in http.ts calls `createAuth` at
+ *  module scope to discover routes. We return a placeholder so the push
+ *  succeeds; real request handlers will have the env var populated. */
+function getSiteUrls(): { siteUrl: string; siteUrls: string[] } {
+  const siteUrlRaw = process.env.SITE_URL;
+  if (!siteUrlRaw) {
+    // Placeholder for push/analysis phase — never used for real requests.
+    return { siteUrl: "http://placeholder.invalid", siteUrls: ["http://placeholder.invalid"] };
+  }
+  const siteUrls = siteUrlRaw.split(",").map((url) => url.trim()).filter(Boolean);
+  return { siteUrl: siteUrls[0], siteUrls };
+}
+
+/** Optional override for passkey RP ID. Use a shared parent domain (hostname only)
+ *  when web/admin should both register and use the same passkeys. */
+function getPasskeyRpId(): string | undefined {
   const raw = process.env.PASSKEY_RP_ID?.trim();
   if (!raw) return undefined;
   try {
@@ -50,10 +63,10 @@ const passkeyRpId = (() => {
   } catch {
     return raw;
   }
-})();
+}
 
 // Custom plugin to set trusted origins for all app URLs
-const multiOriginPlugin = (): BetterAuthPlugin => ({
+const multiOriginPlugin = (siteUrls: string[]): BetterAuthPlugin => ({
   id: "multi-origin",
   init() {
     return {
@@ -224,7 +237,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
  *  - Production: "Web App Starter"
  *  - Staging:    "Web App Starter (STAGING)"
  *  - Dev:        "Web App Starter (DEV: branch-name)" */
-function getTotpIssuer(): string {
+function getTotpIssuer(siteUrl: string): string {
   const base = "Web App Starter";
   const isDev = process.env.DEV_SEED_ENABLED === "true";
   const isLocalhost = siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1");
@@ -386,6 +399,9 @@ const EMAIL_VERIFICATION_EXPIRY_SECONDS = positiveInt(
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
 ) => {
+  const { siteUrl, siteUrls } = getSiteUrls();
+  const passkeyRpId = getPasskeyRpId();
+
   return {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
@@ -618,12 +634,12 @@ export const createAuthOptions = (
       },
     },
     plugins: [
-      multiOriginPlugin(),
+      multiOriginPlugin(siteUrls),
       protectedAdminPlugin(ctx),
       passwordStrengthPlugin(ctx),
       admin(),
       twoFactor({
-        issuer: getTotpIssuer(),
+        issuer: getTotpIssuer(siteUrl),
         totpOptions: {
           period: 30,
           digits: 6,

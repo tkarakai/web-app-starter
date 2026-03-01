@@ -37,6 +37,11 @@ const fontsByLocale: Record<string, { variable: string }> = {
   he: heebo,
 };
 
+if (!process.env.NEXT_PUBLIC_SITE_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL");
+}
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+
 type Props = {
   params: Promise<{ locale: string }>;
 };
@@ -45,8 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
-  const canonicalUrl = `${siteUrl}/${locale}`;
+  const canonicalUrl = `${SITE_URL}/${locale}`;
 
   return {
     title: {
@@ -54,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       default: t("title"),
     },
     description: t("description"),
-    metadataBase: new URL(siteUrl),
+    metadataBase: new URL(SITE_URL),
     icons: {
       icon: [
         { url: "/icon.svg", type: "image/svg+xml" },
@@ -108,7 +112,6 @@ export default async function LocaleLayout({
   ]);
 
   const pathname = headersList.get("x-pathname") ?? "/";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
   const dir = getLocaleDirection(locale);
 
   const font = fontsByLocale[locale] || raleway;
@@ -116,7 +119,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir} className={font.variable} suppressHydrationWarning>
       <head>
-        <HreflangLinks locale={locale} pathname={pathname} siteUrl={siteUrl} />
+        <HreflangLinks locale={locale} pathname={pathname} siteUrl={SITE_URL} />
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>

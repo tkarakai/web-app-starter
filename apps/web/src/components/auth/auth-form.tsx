@@ -58,8 +58,10 @@ import {
 } from "@repo/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
 
-const LANDING_URL =
-  process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
+const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL;
+if (!LANDING_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_LANDING_URL");
+}
 
 type AuthMode = "sign-in" | "sign-up";
 type PasskeyPolicy = "disabled" | "optional" | "required";
