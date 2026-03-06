@@ -21,6 +21,88 @@ import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 
+// ---------------------------------------------------------------------------
+// Auth endpoint rate limiting via convex-helpers (persistent, OCC-safe).
+// Better Auth's built-in rate limiting uses either "memory" (no-op in Convex
+// HTTP actions) or "database" (causes OCC conflicts). This mapping lets a
+// custom onRequest plugin enforce equivalent limits via convex-helpers'
+// token-bucket implementation, which handles concurrent writes correctly.
+// ---------------------------------------------------------------------------
+
+type RateLimitKeySource = "ip" | "email";
+
+const AUTH_RATE_LIMIT_MAP: Record<string, { name: string; keyFrom: RateLimitKeySource }> = {
+  "/sign-in/email": { name: "authSignIn", keyFrom: "email" },
+  "/sign-up/email": { name: "authSignUp", keyFrom: "ip" },
+  "/request-password-reset": { name: "authPasswordResetRequest", keyFrom: "ip" },
+  "/reset-password": { name: "authPasswordReset", keyFrom: "ip" },
+  "/send-verification-email": { name: "authVerificationEmail", keyFrom: "ip" },
+  "/email-otp/send-verification-otp": { name: "authEmailOtp", keyFrom: "ip" },
+  "/magic-link/send-magic-link": { name: "authMagicLink", keyFrom: "ip" },
+};
+
+function extractIp(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+/**
+ * Better Auth plugin that enforces persistent, OCC-safe rate limits via
+ * convex-helpers' token-bucket system. Replaces Better Auth's built-in
+ * rate limiting which cannot work reliably in Convex HTTP actions.
+ */
+const convexRateLimitPlugin = (
+  convexCtx: GenericCtx<DataModel>,
+): BetterAuthPlugin => ({
+  id: "convex-rate-limit",
+  async onRequest(request) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+    const config = AUTH_RATE_LIMIT_MAP[path];
+    if (!config) return;
+
+    let key: string;
+    if (config.keyFrom === "email") {
+      try {
+        const body = (await request.clone().json()) as Record<string, unknown>;
+        const email = (body.email as string | undefined)?.trim().toLowerCase();
+        key = email || extractIp(request);
+      } catch {
+        key = extractIp(request);
+      }
+    } else {
+      key = extractIp(request);
+    }
+
+    const actionCtx = requireActionCtx(convexCtx);
+    const result = await actionCtx.runMutation(
+      internal.rateLimits.consumeAuthRateLimit,
+      { name: config.name, key },
+    );
+
+    if (!result.ok) {
+      const retryAfter = Math.ceil(((result.retryAt ?? Date.now() + 1000) - Date.now()) / 1000);
+      return {
+        response: new Response(
+          JSON.stringify({
+            error: { message: "Too many requests. Please try again later." },
+          }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": String(retryAfter),
+            },
+          },
+        ),
+      };
+    }
+  },
+});
+
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
   if (value === undefined) return undefined;
@@ -688,6 +770,7 @@ export const createAuthOptions = (
       },
     },
     plugins: [
+      convexRateLimitPlugin(ctx),
       emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
       multiOriginPlugin(siteUrls),
       protectedAdminPlugin(ctx),
@@ -731,50 +814,13 @@ export const createAuthOptions = (
       haveIBeenPwned(),
       convex({ authConfig }),
     ],
-    // Use "memory" storage to avoid OCC conflicts on Convex's rateLimit table.
-    // Convex HTTP actions don't share memory across invocations, so this is
-    // effectively a no-op — but that's acceptable because we have two other
-    // rate-limiting layers: edge middleware (per-IP) and convex-helpers
-    // token-bucket limits (per-operation). The customRules below are kept for
-    // documentation and in case Better Auth moves to a compatible storage backend.
-    rateLimit: {
-      enabled: true,
-      window: positiveInt(process.env.AUTH_RATE_LIMIT_WINDOW, 60),
-      max: positiveInt(process.env.AUTH_RATE_LIMIT_MAX, 100),
-      storage: "memory",
-      customRules: {
-        "/sign-in/email": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_WINDOW, 10),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_MAX, 3),
-        },
-        "/sign-up/email": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX, 5),
-        },
-        "/request-password-reset": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_MAX, 3),
-        },
-        "/reset-password": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_MAX, 5),
-        },
-        "/send-verification-email": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_VERIFY_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_VERIFY_MAX, 3),
-        },
-        "/email-otp/send-verification-otp": {
-          window: 60,
-          max: 3,
-        },
-        "/magic-link/send-magic-link": {
-          window: 60,
-          max: 3,
-        },
-        // Session checks must not be rate limited — real-time polling depends on them.
-        "/get-session": false,
-      },
-    },
+    // Better Auth's built-in rate limiting is disabled because neither storage
+    // option works reliably in Convex HTTP actions:
+    //   - "database" causes OCC conflicts under concurrent requests
+    //   - "memory" is a no-op (state doesn't persist between invocations)
+    // Instead, the convexRateLimitPlugin above enforces equivalent per-endpoint
+    // limits via convex-helpers' token-bucket system, which is OCC-safe.
+    rateLimit: { enabled: false },
     advanced: {
       ipAddress: {
         ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
