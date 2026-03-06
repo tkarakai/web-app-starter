@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 import { authClient } from "@repo/auth/client";
 import {
@@ -16,11 +15,20 @@ import {
   Label,
 } from "@repo/design-system";
 
+function getAndClearPrefillEmail(): string {
+  try {
+    const value = sessionStorage.getItem("forgot-password-email");
+    if (value) sessionStorage.removeItem("forgot-password-email");
+    return value ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function AdminForgotPasswordForm() {
-  const searchParams = useSearchParams();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [email, setEmail] = React.useState(searchParams.get("email") ?? "");
+  const [email, setEmail] = React.useState(getAndClearPrefillEmail);
   const [emailSent, setEmailSent] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
