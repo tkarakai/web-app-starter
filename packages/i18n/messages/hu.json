@@ -480,7 +480,8 @@
   },
   "forbidden": {
     "title": "Hozzáférés megtagadva",
-    "description": "Fiókja felfüggesztésre került, vagy nincs engedélye ehhez az erőforráshoz való hozzáféréshez. Ha úgy gondolja, hogy ez tévedés, kérjük, lépjen kapcsolatba szervezete rendszergazdájával.",
+    "signedInAs": "Bejelentkezve mint {email}.",
+    "description": "Nincs engedélye ehhez az erőforráshoz való hozzáféréshez. Ha úgy gondolja, hogy ez tévedés, kérjük, lépjen kapcsolatba szervezete rendszergazdájával.",
     "backToSignIn": "Vissza a bejelentkezéshez"
   }
 }

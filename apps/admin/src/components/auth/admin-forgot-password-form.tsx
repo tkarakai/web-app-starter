@@ -15,10 +15,20 @@ import {
   Label,
 } from "@repo/design-system";
 
+function getAndClearPrefillEmail(): string {
+  try {
+    const value = window.sessionStorage.getItem("forgot-password-email");
+    if (value) window.sessionStorage.removeItem("forgot-password-email");
+    return value ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function AdminForgotPasswordForm() {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(getAndClearPrefillEmail);
   const [emailSent, setEmailSent] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

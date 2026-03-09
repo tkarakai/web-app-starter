@@ -480,7 +480,8 @@
   },
   "forbidden": {
     "title": "Accès refusé",
-    "description": "Votre compte a été suspendu ou vous n'avez pas la permission d'accéder à cette ressource. Si vous pensez qu'il s'agit d'une erreur, veuillez contacter l'administrateur de votre organisation.",
+    "signedInAs": "Vous êtes connecté en tant que {email}.",
+    "description": "Vous n'avez pas la permission d'accéder à cette ressource. Si vous pensez qu'il s'agit d'une erreur, veuillez contacter l'administrateur de votre organisation.",
     "backToSignIn": "Retour à la connexion"
   }
 }

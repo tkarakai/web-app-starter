@@ -159,50 +159,62 @@ for p in $raw_pids; do
 done
 
 if [ ${#PIDS[@]} -eq 0 ]; then
-    echo -e "${GREEN}  No matching processes found. Nothing to do.${NC}"
+    echo -e "${GREEN}  No matching processes found.${NC}"
     echo ""
-    exit 0
+else
+    echo -e "${YELLOW}  Found ${#PIDS[@]} process(es):${NC}"
+    echo ""
+    printf "  ${DIM}%6s  %-16s  %s${NC}\n" "PID" "COMMAND" "ARGS"
+    printf "  ${DIM}%6s  %-16s  %s${NC}\n" "──────" "────────────────" "────────────────────────────"
+    for pid in "${PIDS[@]}"; do
+        format_process "$pid"
+    done
+    echo ""
+
+    echo -ne "${RED}  Kill all ${#PIDS[@]} process(es) and clean up caches? [y/N] ${NC}"
+    read -r answer
+    echo ""
+
+    if [[ ! "$answer" =~ ^[yY]$ ]]; then
+        echo -e "${YELLOW}  Aborted.${NC}"
+        echo ""
+        exit 0
+    fi
+
+    # Kill — graceful first, then force
+    killed=0
+    for pid in "${PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+            killed=$((killed + 1))
+        fi
+    done
+
+    sleep 1
+
+    forced=0
+    for pid in "${PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            kill -9 "$pid" 2>/dev/null || true
+            forced=$((forced + 1))
+        fi
+    done
+
+    force_msg=""
+    if [ "$forced" -gt 0 ]; then
+        force_msg=" ($forced force-killed)"
+    fi
+    echo -e "${GREEN}  Killed $killed process(es)${NC}${DIM}$force_msg${NC}"
+    echo ""
+
+    sleep 1
+
+    open_after=$(get_open_files)
+    echo -e "${YELLOW}  Open files (node/convex/bun):${NC} before=$open_before → after=$open_after"
+    echo ""
 fi
 
-echo -e "${YELLOW}  Found ${#PIDS[@]} process(es):${NC}"
-echo ""
-printf "  ${DIM}%6s  %-16s  %s${NC}\n" "PID" "COMMAND" "ARGS"
-printf "  ${DIM}%6s  %-16s  %s${NC}\n" "──────" "────────────────" "────────────────────────────"
-for pid in "${PIDS[@]}"; do
-    format_process "$pid"
-done
-echo ""
-
-echo -ne "${RED}  Kill all ${#PIDS[@]} process(es)? [y/N] ${NC}"
-read -r answer
-echo ""
-
-if [[ ! "$answer" =~ ^[yY]$ ]]; then
-    echo -e "${YELLOW}  Aborted.${NC}"
-    echo ""
-    exit 0
-fi
-
-# Kill — graceful first, then force
-killed=0
-for pid in "${PIDS[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then
-        kill "$pid" 2>/dev/null || true
-        killed=$((killed + 1))
-    fi
-done
-
-sleep 1
-
-forced=0
-for pid in "${PIDS[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then
-        kill -9 "$pid" 2>/dev/null || true
-        forced=$((forced + 1))
-    fi
-done
-
-# Clean up .dev-pids and log files across all worktrees
+# ── Clean up .dev-pids and log files across all worktrees ─────────────────────
 if command -v git &>/dev/null; then
     while IFS= read -r wt_line; do
         local_wt=$(echo "$wt_line" | awk '{print $1}')
@@ -216,17 +228,115 @@ if command -v git &>/dev/null; then
     done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null || true)
 fi
 
-force_msg=""
-if [ "$forced" -gt 0 ]; then
-    force_msg=" ($forced force-killed)"
+# ── Clean build caches (.next, .turbo) across all worktrees ───────────────────
+echo -e "${YELLOW}  Cleaning build caches (.next, .turbo)...${NC}"
+cache_cleaned=0
+if command -v git &>/dev/null; then
+    while IFS= read -r wt_line; do
+        wt_dir=$(echo "$wt_line" | awk '{print $1}')
+        for cache_dir in \
+            "$wt_dir/apps/web/.next" \
+            "$wt_dir/apps/admin/.next" \
+            "$wt_dir/apps/landing/.next" \
+            "$wt_dir/apps/storybook/.next" \
+            "$wt_dir/.turbo"; do
+            if [ -d "$cache_dir" ]; then
+                rm -rf "$cache_dir"
+                cache_cleaned=$((cache_cleaned + 1))
+            fi
+        done
+    done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null || true)
 fi
-echo -e "${GREEN}  Killed $killed process(es)${NC}${DIM}$force_msg${NC}"
+if [ "$cache_cleaned" -gt 0 ]; then
+    echo -e "${GREEN}  ✔ Removed $cache_cleaned cache director(ies)${NC}"
+else
+    echo -e "${GREEN}  ✔ No build caches found${NC}"
+fi
 echo ""
 
-sleep 1
+# ── Clean stale Convex state directories ──────────────────────────────────────
+CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
+if [ -d "$CONVEX_STATE_DIR" ]; then
+    echo -e "${YELLOW}  Cleaning stale Convex state...${NC}"
 
-open_after=$(get_open_files)
-echo -e "${YELLOW}  Open files (node/convex/bun):${NC} before=$open_before → after=$open_after"
+    # Collect deployment names referenced by any worktree
+    ACTIVE_DEPLOYMENTS=" "
+    if command -v git &>/dev/null; then
+        while IFS= read -r wt_line; do
+            wt_dir=$(echo "$wt_line" | awk '{print $1}')
+            for env_file in "$wt_dir/packages/backend/.env.local" "$wt_dir/.env.local"; do
+                if [ -f "$env_file" ]; then
+                    dep=$(grep "^CONVEX_DEPLOYMENT=" "$env_file" 2>/dev/null | sed 's/CONVEX_DEPLOYMENT=//' | sed 's/ #.*//' | sed 's/anonymous://')
+                    if [ -n "$dep" ]; then
+                        ACTIVE_DEPLOYMENTS="$ACTIVE_DEPLOYMENTS$dep "
+                        break
+                    fi
+                fi
+            done
+        done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null || true)
+    fi
+
+    stale_count=0
+    stale_size=0
+    for state_dir in "$CONVEX_STATE_DIR"/*/; do
+        [ -d "$state_dir" ] || continue
+        dir_name=$(basename "$state_dir")
+        [ "$dir_name" = "." ] || [ "$dir_name" = ".." ] && continue
+        case "$ACTIVE_DEPLOYMENTS" in
+            *" $dir_name "*)
+                # Active — leave it alone
+                ;;
+            *)
+                # Stale — calculate size then remove
+                dir_size=$(du -sk "$state_dir" 2>/dev/null | awk '{print $1}')
+                stale_size=$((stale_size + ${dir_size:-0}))
+                rm -rf "$state_dir"
+                stale_count=$((stale_count + 1))
+                ;;
+        esac
+    done
+
+    if [ "$stale_count" -gt 0 ]; then
+        if [ "$stale_size" -ge 1048576 ]; then
+            human_size="$((stale_size / 1048576)) GB"
+        elif [ "$stale_size" -ge 1024 ]; then
+            human_size="$((stale_size / 1024)) MB"
+        else
+            human_size="${stale_size} KB"
+        fi
+        echo -e "${GREEN}  ✔ Removed $stale_count stale Convex state director(ies) ($human_size freed)${NC}"
+    else
+        echo -e "${GREEN}  ✔ No stale Convex state found${NC}"
+    fi
+    echo ""
+fi
+
+# ── Clean node_modules across all worktrees ───────────────────────────────────
+echo -e "${YELLOW}  Cleaning node_modules across all worktrees...${NC}"
+nm_cleaned=0
+if command -v git &>/dev/null; then
+    while IFS= read -r wt_line; do
+        wt_dir=$(echo "$wt_line" | awk '{print $1}')
+        if [ -d "$wt_dir/node_modules" ]; then
+            rm -rf "$wt_dir/node_modules"
+            nm_cleaned=$((nm_cleaned + 1))
+        fi
+        # App-level and package-level node_modules (from hoisting issues)
+        for sub_nm in "$wt_dir"/apps/*/node_modules "$wt_dir"/packages/*/node_modules; do
+            if [ -d "$sub_nm" ]; then
+                rm -rf "$sub_nm"
+                nm_cleaned=$((nm_cleaned + 1))
+            fi
+        done
+    done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null || true)
+fi
+if [ "$nm_cleaned" -gt 0 ]; then
+    echo -e "${GREEN}  ✔ Removed $nm_cleaned node_modules director(ies)${NC}"
+else
+    echo -e "${GREEN}  ✔ No node_modules found${NC}"
+fi
 echo ""
-echo -e "${GREEN}  Done. Run ${BOLD}bun run dev${NC}${GREEN} to restart.${NC}"
+
+# ── Done ──────────────────────────────────────────────────────────────────────
+echo -e "${GREEN}  Done. Run ${BOLD}bun install && bun run dev${NC}${GREEN} to restart.${NC}"
 echo ""

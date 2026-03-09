@@ -704,7 +704,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                        onClick={() => router.push("/forgot-password")}
+                        onClick={() => {
+                          window.sessionStorage.setItem("forgot-password-email", email);
+                          router.push("/forgot-password");
+                        }}
                       >
                         {t("multiStep.authStep.forgotPassword")}
                       </button>
@@ -762,7 +765,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 onPasswordSubmit={handlePasswordSignIn}
                 onPasskeySignIn={handlePasskeySignIn}
                 onBack={goBack}
-                onForgotPassword={() => router.push("/forgot-password")}
+                onForgotPassword={() => {
+                  window.sessionStorage.setItem("forgot-password-email", email);
+                  router.push("/forgot-password");
+                }}
                 t={t}
               />
             ) : (
@@ -774,7 +780,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                     <button
                       type="button"
                       className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-                      onClick={() => router.push("/forgot-password")}
+                      onClick={() => {
+                          window.sessionStorage.setItem("forgot-password-email", email);
+                          router.push("/forgot-password");
+                        }}
                     >
                       {t("multiStep.authStep.forgotPassword")}
                     </button>

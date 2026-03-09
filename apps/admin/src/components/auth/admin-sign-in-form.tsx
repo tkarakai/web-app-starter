@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -380,12 +379,16 @@ export function AdminSignInForm() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <Link
-                        href="/forgot-password"
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                        onClick={() => {
+                          window.sessionStorage.setItem("forgot-password-email", email);
+                          router.push("/forgot-password");
+                        }}
                       >
                         Forgot password?
-                      </Link>
+                      </button>
                     </div>
                     <PasswordInput
                       id="password"
@@ -422,12 +425,16 @@ export function AdminSignInForm() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <Link
-                      href="/forgot-password"
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                      onClick={() => {
+                        window.sessionStorage.setItem("forgot-password-email", email);
+                        router.push("/forgot-password");
+                      }}
                     >
                       Forgot password?
-                    </Link>
+                    </button>
                   </div>
                   <PasswordInput
                     id="password"

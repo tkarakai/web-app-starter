@@ -390,7 +390,39 @@ terminate_pid_with_timeout() {
     wait "$pid" 2>/dev/null || true
 }
 
-ORPHAN_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
+# Check if a PID is tracked by any worktree's .dev-pids file.
+# Returns 0 if tracked (leave it alone), 1 if orphaned.
+is_tracked_by_any_worktree() {
+    local check_pid="$1"
+    if ! command -v git &>/dev/null; then
+        return 1
+    fi
+    while IFS= read -r wt_line; do
+        local wt_dir
+        wt_dir=$(echo "$wt_line" | awk '{print $1}')
+        if [ -f "$wt_dir/.dev-pids" ]; then
+            while IFS= read -r line; do
+                local tracked_pid
+                tracked_pid=$(echo "$line" | cut -d':' -f2)
+                if [ "$tracked_pid" = "$check_pid" ]; then
+                    return 0
+                fi
+            done < "$wt_dir/.dev-pids"
+        fi
+    done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null)
+    return 1
+}
+
+# Filter Convex orphans: only flag processes not tracked by ANY worktree
+ALL_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
+ORPHAN_CONVEX=""
+for pid in $ALL_CONVEX; do
+    if ! is_tracked_by_any_worktree "$pid"; then
+        ORPHAN_CONVEX="$ORPHAN_CONVEX $pid"
+    fi
+done
+ORPHAN_CONVEX=$(echo "$ORPHAN_CONVEX" | xargs)
+
 ORPHAN_NEXT=$(pgrep -f "next dev" 2>/dev/null | while read pid; do
     # Only match Next.js processes rooted in this project
     ps -p "$pid" -o args= 2>/dev/null | grep -q "$PROJECT_DIR" && echo "$pid"
@@ -421,6 +453,41 @@ if [ -n "$ORPHAN_CONVEX" ] || [ -n "$ORPHAN_NEXT" ]; then
             kill_orphans "$ORPHAN_NEXT" "next dev"
             echo ""
         fi
+    fi
+fi
+
+# ============================================================
+# WARN IF OTHER WORKTREES HAVE RUNNING DEV PROCESSES
+# ============================================================
+if [ "$NON_INTERACTIVE" = false ] && command -v git &>/dev/null; then
+    OTHER_WT_WARNINGS=""
+    while IFS= read -r wt_line; do
+        wt_dir=$(echo "$wt_line" | awk '{print $1}')
+        # Skip this worktree
+        [ "$wt_dir" = "$PROJECT_DIR" ] && continue
+        if [ -f "$wt_dir/.dev-pids" ]; then
+            wt_procs=""
+            has_running=false
+            while IFS= read -r line; do
+                name=$(echo "$line" | cut -d':' -f1)
+                pid=$(echo "$line" | cut -d':' -f2)
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    wt_procs="$wt_procs    $name (PID $pid)\n"
+                    has_running=true
+                fi
+            done < "$wt_dir/.dev-pids"
+            if [ "$has_running" = true ]; then
+                OTHER_WT_WARNINGS="$OTHER_WT_WARNINGS  $wt_dir\n$wt_procs"
+            fi
+        fi
+    done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null)
+
+    if [ -n "$OTHER_WT_WARNINGS" ]; then
+        echo -e "${YELLOW}⚠ Another worktree already has dev processes running:${NC}"
+        echo -e "$OTHER_WT_WARNINGS"
+        echo -e "  Running dev servers in multiple worktrees simultaneously consumes"
+        echo -e "  significant resources. Consider using ${BLUE}--app=web${NC} for this worktree."
+        echo ""
     fi
 fi
 
