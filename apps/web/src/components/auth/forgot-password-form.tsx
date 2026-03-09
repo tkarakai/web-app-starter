@@ -20,8 +20,8 @@ import {
 
 function getAndClearPrefillEmail(): string {
   try {
-    const value = sessionStorage.getItem("forgot-password-email");
-    if (value) sessionStorage.removeItem("forgot-password-email");
+    const value = window.sessionStorage.getItem("forgot-password-email");
+    if (value) window.sessionStorage.removeItem("forgot-password-email");
     return value ?? "";
   } catch {
     return "";

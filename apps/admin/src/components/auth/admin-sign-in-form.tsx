@@ -383,7 +383,7 @@ export function AdminSignInForm() {
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                         onClick={() => {
-                          sessionStorage.setItem("forgot-password-email", email);
+                          window.sessionStorage.setItem("forgot-password-email", email);
                           router.push("/forgot-password");
                         }}
                       >
@@ -429,7 +429,7 @@ export function AdminSignInForm() {
                       type="button"
                       className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                       onClick={() => {
-                        sessionStorage.setItem("forgot-password-email", email);
+                        window.sessionStorage.setItem("forgot-password-email", email);
                         router.push("/forgot-password");
                       }}
                     >

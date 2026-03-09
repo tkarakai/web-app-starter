@@ -705,7 +705,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                         onClick={() => {
-                          sessionStorage.setItem("forgot-password-email", email);
+                          window.sessionStorage.setItem("forgot-password-email", email);
                           router.push("/forgot-password");
                         }}
                       >
@@ -766,7 +766,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 onPasskeySignIn={handlePasskeySignIn}
                 onBack={goBack}
                 onForgotPassword={() => {
-                  sessionStorage.setItem("forgot-password-email", email);
+                  window.sessionStorage.setItem("forgot-password-email", email);
                   router.push("/forgot-password");
                 }}
                 t={t}
@@ -781,7 +781,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                       type="button"
                       className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                       onClick={() => {
-                          sessionStorage.setItem("forgot-password-email", email);
+                          window.sessionStorage.setItem("forgot-password-email", email);
                           router.push("/forgot-password");
                         }}
                     >
