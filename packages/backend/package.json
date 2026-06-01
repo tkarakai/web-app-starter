@@ -16,7 +16,7 @@
     "@zxcvbn-ts/language-en": "^3.0.2",
     "@convex-dev/better-auth": "0.10.10",
     "@repo/i18n": "workspace:*",
-    "better-auth": "1.4.12",
+    "better-auth": "1.6.2",
     "convex": "1.31.7",
     "convex-helpers": "^0.1.111",
     "resend": "^4.0.0"
@@ -25,6 +25,6 @@
     "@types/node": "^25.2.3",
     "convex-test": "^0.0.41",
     "typescript": "5.9.3",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.8"
   }
 }
