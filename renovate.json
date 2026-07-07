@@ -5,17 +5,24 @@
     ":dependencyDashboard",
     ":semanticCommits",
     "group:monorepos",
-    "group:recommended"
+    "group:recommended",
+    "helpers:pinGitHubActionDigests"
   ],
   "timezone": "Europe/Budapest",
+  "configMigration": true,
   "minimumReleaseAge": "10 days",
   "internalChecksFilter": "strict",
   "rangeStrategy": "replace",
+  "automergeStrategy": "squash",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 0,
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 5am on monday"]
+    "schedule": ["on monday"]
   },
   "packageRules": [
     {
@@ -31,23 +38,7 @@
       "groupName": "dev dependencies (non-major)"
     },
     {
-      "description": "Sensitive frameworks: isolate majors for manual review only",
-      "matchPackageNames": [
-        "next",
-        "react",
-        "react-dom",
-        "convex",
-        "@convex-dev/better-auth",
-        "better-auth",
-        "@better-auth/passkey",
-        "tailwindcss",
-        "@tailwindcss/postcss"
-      ],
-      "matchUpdateTypes": ["major"],
-      "automerge": false
-    },
-    {
-      "description": "No major version ever auto-merges",
+      "description": "No major ever auto-merges. Majors arrive as separate PRs by default; treat next/react/convex/better-auth/tailwind majors with extra care — see docs/dependency-updates.md",
       "matchUpdateTypes": ["major"],
       "automerge": false
     }
