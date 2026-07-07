@@ -184,6 +184,32 @@ convex_startup_failure_line() {
     tr -d '\r' < "$log_file" 2>/dev/null | grep -a -E -i -m1 'Schema validation failed|SchemaDefinitionError|TypeScript typecheck.*failed|Collecting TypeScript errors|error TS[0-9]{4}|Unable to start push to|Error fetching POST|\\[ERROR\\]' || true
 }
 
+# Detect the interactive "upgrade the local backend?" prompt. Convex emits this
+# when the on-disk anonymous deployment predates the installed convex version.
+# Because we redirect Convex's output to a log file (no TTY), the CLI can't read
+# the y/n answer and dies with "Cannot prompt for input in non-interactive
+# terminals". Returns 0 (true) when that situation is detected.
+convex_needs_backend_upgrade() {
+    local log_file="$1"
+    tr -d '\r' < "$log_file" 2>/dev/null | grep -a -q -i -E 'using an older version of the Convex backend|Cannot prompt for input in non-interactive terminals'
+}
+
+# Print step-by-step recovery instructions for the backend upgrade prompt.
+print_convex_upgrade_fix() {
+    echo -e "${YELLOW}  Convex needs to upgrade the local (anonymous) backend before it can start.${NC}"
+    echo -e "${YELLOW}  This requires an interactive 'y' confirmation that this script can't provide,${NC}"
+    echo -e "${YELLOW}  because it captures Convex output to a log file (no interactive terminal).${NC}"
+    echo ""
+    echo -e "${GREEN}  To fix it, run the upgrade once yourself in a normal terminal:${NC}"
+    echo ""
+    echo -e "    ${GREEN}cd packages/backend && CONVEX_AGENT_MODE=anonymous npx convex dev${NC}"
+    echo ""
+    echo -e "${YELLOW}  When it asks \"Upgrade now?\", answer ${GREEN}y${YELLOW}. Wait for${NC}"
+    echo -e "${YELLOW}  \"Convex functions ready\", then press ${GREEN}Ctrl-C${YELLOW} to stop it.${NC}"
+    echo ""
+    echo -e "${GREEN}  Then re-run:${NC} ${GREEN}bun run dev${NC}"
+}
+
 # Get ports from Convex config
 get_convex_ports() {
     local deployment_name="$1"
@@ -561,6 +587,13 @@ if [ "$NEED_CONVEX" = true ]; then
             fi
             printf "\n"
             echo -e "${RED}✖ Convex process exited${NC}"
+            if convex_needs_backend_upgrade "$PROJECT_DIR/.convex-dev.log"; then
+                echo ""
+                print_convex_upgrade_fix
+                echo ""
+                rm -f "$PID_FILE"
+                exit 1
+            fi
             echo -e "${RED}  Log output:${NC}"
             cat "$PROJECT_DIR/.convex-dev.log"
             echo ""
