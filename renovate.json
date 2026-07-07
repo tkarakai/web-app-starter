@@ -1,0 +1,55 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "group:monorepos",
+    "group:recommended"
+  ],
+  "timezone": "Europe/Budapest",
+  "minimumReleaseAge": "10 days",
+  "internalChecksFilter": "strict",
+  "rangeStrategy": "replace",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Auto-merge non-major updates once CI is green",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group low-risk dev tooling into a single PR",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev dependencies (non-major)"
+    },
+    {
+      "description": "Sensitive frameworks: isolate majors for manual review only",
+      "matchPackageNames": [
+        "next",
+        "react",
+        "react-dom",
+        "convex",
+        "@convex-dev/better-auth",
+        "better-auth",
+        "@better-auth/passkey",
+        "tailwindcss",
+        "@tailwindcss/postcss"
+      ],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "No major version ever auto-merges",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ]
+}
