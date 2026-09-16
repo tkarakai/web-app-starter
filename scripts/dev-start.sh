@@ -119,6 +119,14 @@ else
 fi
 
 # ============================================================
+# SHARED ASSETS
+# ============================================================
+# `bun run dev` gets these via its predev hook, but Playwright's webServer
+# invokes this script directly — so without this, CI serves a site with no
+# icon.svg or favicon.ico and any "no console errors" test fails on 404s.
+"$SCRIPT_DIR/copy-shared-assets.sh"
+
+# ============================================================
 # ENSURE BRANCH TRACKING (push protection)
 # ============================================================
 if [ "$NON_INTERACTIVE" = false ]; then
