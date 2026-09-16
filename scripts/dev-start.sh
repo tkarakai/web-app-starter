@@ -929,10 +929,28 @@ start_next_app() {
         update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
     fi
 
-    # Sync SITE_URL to Convex if this is the web app
-    if [ "$app_name" = "web" ] && [ "$NEED_CONVEX" = true ] && [ -n "$next_port" ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "http://localhost:$next_port" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex"
+    # Sync this app's origin into Convex's SITE_URL.
+    #
+    # SITE_URL is a comma-separated list; the backend splits it and uses every
+    # entry as a trusted origin (see getSiteUrls() in convex/auth.ts). This used
+    # to run for the web app only, so starting landing on its own left its
+    # origin untrusted and every browser call to the Convex HTTP router failed
+    # CORS -- which is exactly how it failed the moment E2E first ran in CI.
+    if [ "$NEED_CONVEX" = true ] && [ -n "$next_port" ]; then
+        local app_origin="http://localhost:$next_port"
+        local existing_site_url
+        existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
+
+        local merged_site_url="$app_origin"
+        if [ -n "$existing_site_url" ] && [ "$existing_site_url" != "$app_origin" ]; then
+            case ",$existing_site_url," in
+                *",$app_origin,"*) merged_site_url="$existing_site_url" ;;
+                *) merged_site_url="$app_origin,$existing_site_url" ;;
+            esac
+        fi
+
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$merged_site_url" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex ($merged_site_url)"
         else
             echo -e "  ${YELLOW}⚠${NC} Failed to sync SITE_URL to Convex"
         fi

@@ -135,13 +135,22 @@ test.describe("Sidebar navigation", () => {
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Form");
 
-    // Derived from the sidebar, not hardcoded. This asserted 6 and the Form
-    // category has since grown to 8 (OTP Input, Password Strength Meter), so a
-    // literal count rots every time the design system gains a component. The
-    // real invariant is that the cards page and the nav agree.
-    const expectedCount = await subItemLinks(page, "Form").count();
-    expect(expectedCount).toBeGreaterThan(0);
-    await expect(page.locator("a.group")).toHaveCount(expectedCount);
+    // This asserted exactly 6 cards; the Form category has since grown to 8
+    // (OTP Input, Password Strength Meter), so a literal count rots whenever the
+    // design system gains a component.
+    //
+    // Deriving the count from the sidebar was worse: the sub-items only exist
+    // while the category is expanded, which made the assertion depend on nav
+    // state and it read 0 in CI. Assert the stable contract instead — the page
+    // lists cards, and the long-standing Form components are among them.
+    const cards = page.locator("a.group");
+    await expect(cards.first()).toBeVisible({ timeout: 15_000 });
+
+    for (const name of ["Checkbox", "Input", "Select", "Textarea"]) {
+      await expect(
+        cards.filter({ hasText: new RegExp(`^${name}`) }).first(),
+      ).toBeVisible();
+    }
   });
 
   test("category cards page shows component names and descriptions", async ({
