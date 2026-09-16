@@ -145,6 +145,11 @@ The following are already configured on this repo (via `gh api` / Settings):
 3. **Required status checks on `main`** — the `*-complete` summary jobs from `ci-shared`, `ci-web`,
    `ci-admin`, and `ci-landing`, with "require branches to be up to date" (enforced by both the
    legacy branch protection and the `rule01` ruleset — redundant but harmless).
+
+   `CI Landing Static Complete` and `CI Storybook Complete` exist as jobs but are **not** required
+   yet — they were excluded back when they could not pass, and both are reliable now. Automerge is
+   only as strong as this list, so a storybook or landing-static regression cannot currently block
+   an automerged PR. Tracked as step 9 item 1 in `docs/claude/auth-e2e-and-upgrade-plan.md`.
 4. The **`RENOVATE_TOKEN`** secret exists (above).
 
 ## Validating a config change
