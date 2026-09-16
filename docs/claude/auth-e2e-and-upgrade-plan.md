@@ -3,15 +3,15 @@
 **Status as of 2026-09-16.** Written as a handoff: it assumes no prior conversation
 context. Read it end to end before picking up any item below.
 
-**Steps 1–7 are done. Start at step 8.**
+**Steps 1–8 are done or in review. Start at step 9.**
 
 | Step | State |
 |---|---|
 | 1–5b | merged — PRs #81, #82 |
 | 6 — flip `SKIP_E2E` | done; it is `false`, and E2E now runs in CI on all five apps |
 | 7 — better-auth upgrade | PR **#83**, green and mergeable; merge it if it is still open |
-| **8 — Renovate** | **next up.** Code work an agent can do, plus one secret only the owner can create |
-| 9 — follow-ups | unstarted; sized and ordered below |
+| 8 — Renovate | PR **#84** open; `RENOVATE_TOKEN` is set. Run the verification dispatch *after* merge |
+| **9 — follow-ups** | **next up**; sized and ordered below. Item 1 also gates how much automerge is worth |
 
 `apps/web` is **105 passed, 0 failed, 0 skipped** on the upgraded auth stack, with nothing
 quarantined. E2E is green across web, admin, landing, landing-static and storybook.
@@ -391,13 +391,14 @@ behind, exactly as §1 predicted.
 
 Close dependabot **#77** as superseded.
 
-### Step 8 — Land Renovate *(was TODO 6)* — **NEXT UP**
+### Step 8 — Land Renovate *(was TODO 6)* — **PR #84 open**
 
 Independent of everything above. Two parts: a code change an agent can do, and one secret
 only the repo owner can create.
 
-**State:** fully implemented on branch `025-renovate-dependency-automation`, tip `3d363ff`
-("fix(renovate): harden config after security review"). Never merged, no open PR. It adds
+**State: PR #84** — rebased onto current `main`, auth-stack grouping rule added,
+`RENOVATE_TOKEN` created 2026-09-16. Originally stranded on branch
+`025-renovate-dependency-automation` (tip `3d363ff`). It adds
 `renovate.json`, `.github/workflows/renovate.yml`, `docs/dependency-updates.md`, a
 `CLAUDE.md` pointer, and pins GitHub Action digests across the `ci-*` workflows.
 
@@ -472,7 +473,16 @@ so automerge-on-green would merge against a gate that never ran.
 
    It is a **secret**, not a variable — do not put it next to `SKIP_E2E`.
 
-9. Verify with a manual run before trusting the schedule:
+9. **Merge the Renovate PR before verifying.** `workflow_dispatch` can only reach a
+   workflow that exists on the **default branch**, so while `renovate.yml` is unmerged you
+   get:
+
+   ```
+   HTTP 404: workflow renovate.yml not found on the default branch
+   ```
+
+   That means the code has not landed, not that the token is wrong. The secret can be
+   created at any time; only this check depends on the merge. Once it is on `main`:
 
    ```bash
    gh workflow run renovate.yml --repo tkarakai/web-app-starter -f logLevel=debug
