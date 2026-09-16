@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { fillStable } from "./helpers/auth";
+
 /**
  * Authentication Flow E2E Tests
  *
@@ -19,8 +21,8 @@ test.describe("Sign-In Flow", () => {
     await page.goto("/en/sign-in");
     await page.waitForLoadState("networkidle");
 
-    await page.fill("#email", "nonexistent@example.com");
-    await page.fill("#password", "wrongpassword123");
+    await fillStable(page, "#email", "nonexistent@example.com");
+    await fillStable(page, "#password", "wrongpassword123");
     await page.click('button[type="submit"]');
 
     // Wait for the error message to appear
@@ -89,10 +91,10 @@ test.describe("Sign-Up Flow", () => {
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 
-    await page.fill("#name", "Test User");
-    await page.fill("#email", `${TEST_EMAIL_PREFIX}-mismatch@example.com`);
-    await page.fill("#password", "password123");
-    await page.fill("#confirm-password", "differentpassword");
+    await fillStable(page, "#name", "Test User");
+    await fillStable(page, "#email", `${TEST_EMAIL_PREFIX}-mismatch@example.com`);
+    await fillStable(page, "#password", "password123");
+    await fillStable(page, "#confirm-password", "differentpassword");
     await page.click('button[type="submit"]');
 
     // Should show client-side password mismatch error

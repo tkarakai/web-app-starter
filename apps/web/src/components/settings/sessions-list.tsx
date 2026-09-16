@@ -139,7 +139,11 @@ export function SessionsList() {
     let status: AuditStatus = "succeeded";
 
     try {
-      await authClient.revokeSessions();
+      // revokeSessions() kills EVERY session including this one, which signs the
+      // user out of the device they are sitting at. The control is "sign out all
+      // others" (and audits as session:all-others), so it must spare the current
+      // session.
+      await authClient.revokeOtherSessions();
       await fetchSessions();
     } catch {
       status = "failed.unknown";

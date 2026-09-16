@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { fillStable } from "./helpers/auth";
+
 /**
  * Forgot Password Flow E2E Tests
  *
@@ -44,7 +46,7 @@ test.describe("Forgot Password Page", () => {
       });
     });
 
-    await page.fill("#forgot-email", "test@example.com");
+    await fillStable(page, "#forgot-email", "test@example.com");
     await page.click('button[type="submit"]');
 
     // Should show the email-sent confirmation screen
@@ -68,7 +70,7 @@ test.describe("Forgot Password Page", () => {
       });
     });
 
-    await page.fill("#forgot-email", "nonexistent@example.com");
+    await fillStable(page, "#forgot-email", "nonexistent@example.com");
     await page.click('button[type="submit"]');
 
     // Should still show success (email sent screen) — no email enumeration
@@ -94,7 +96,7 @@ test.describe("Forgot Password Page", () => {
       });
     });
 
-    await page.fill("#forgot-email", "ratelimited@example.com");
+    await fillStable(page, "#forgot-email", "ratelimited@example.com");
     await page.click('button[type="submit"]');
 
     // Should show a user-friendly rate limit message
@@ -120,7 +122,7 @@ test.describe("Forgot Password Page", () => {
       });
     });
 
-    await page.fill("#forgot-email", "pending@example.com");
+    await fillStable(page, "#forgot-email", "pending@example.com");
     await page.click('button[type="submit"]');
 
     const submitButton = page.locator('button[type="submit"]');

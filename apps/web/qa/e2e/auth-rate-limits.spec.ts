@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { fillStable } from "./helpers/auth";
+
 /**
  * Auth Rate Limit E2E Tests
  *
@@ -27,8 +29,8 @@ test.describe("Sign-In Rate Limiting", () => {
       });
     });
 
-    await page.fill("#email", "ratelimit-test@example.com");
-    await page.fill("#password", "wrongpassword");
+    await fillStable(page, "#email", "ratelimit-test@example.com");
+    await fillStable(page, "#password", "wrongpassword");
     await page.click('button[type="submit"]');
 
     // The UI should show the user-friendly rate limit message
@@ -48,8 +50,8 @@ test.describe("Sign-In Rate Limiting", () => {
     // Even if rate limited, the message should be user-friendly
     // and not expose server details.
     for (let i = 0; i < 5; i++) {
-      await page.fill("#email", "ratelimit-internal@example.com");
-      await page.fill("#password", "wrong");
+      await fillStable(page, "#email", "ratelimit-internal@example.com");
+      await fillStable(page, "#password", "wrong");
       await page.click('button[type="submit"]');
       await page.waitForTimeout(300);
     }
@@ -73,8 +75,8 @@ test.describe("Sign-In Form Security", () => {
     await page.goto("/en/sign-in");
     await page.waitForLoadState("networkidle");
 
-    await page.fill("#email", "pending-test@example.com");
-    await page.fill("#password", "somepassword123");
+    await fillStable(page, "#email", "pending-test@example.com");
+    await fillStable(page, "#password", "somepassword123");
 
     // Intercept the auth request to delay it
     await page.route("**/api/auth/**", async (route) => {
@@ -94,8 +96,8 @@ test.describe("Sign-In Form Security", () => {
     await expect(page.locator("#email")).toBeVisible();
 
     // First attempt: trigger an error
-    await page.fill("#email", "error-clear@example.com");
-    await page.fill("#password", "wrong");
+    await fillStable(page, "#email", "error-clear@example.com");
+    await fillStable(page, "#password", "wrong");
     await page.click('button[type="submit"]');
 
     const errorBox = page.locator(".rounded-md.border.bg-muted");
@@ -109,7 +111,7 @@ test.describe("Sign-In Form Security", () => {
     });
 
     // Second attempt: error should be cleared during submission
-    await page.fill("#password", "anotherpassword");
+    await fillStable(page, "#password", "anotherpassword");
     await page.click('button[type="submit"]');
 
     // While the request is pending, the old error should be hidden

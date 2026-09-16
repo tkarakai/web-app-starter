@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { fillStable } from "./helpers/auth";
+
 /**
  * Email Verification Flow E2E Tests
  *
@@ -115,8 +117,8 @@ test.describe("Reset Password Page", () => {
     await page.goto("/en/reset-password?token=test-token-123");
     await page.waitForLoadState("networkidle");
 
-    await page.fill("#new-password", "newpassword123");
-    await page.fill("#confirm-new-password", "differentpassword");
+    await fillStable(page, "#new-password", "newpassword123");
+    await fillStable(page, "#confirm-new-password", "differentpassword");
     await page.click('button[type="submit"]');
 
     // Should show password mismatch error
@@ -136,8 +138,8 @@ test.describe("Reset Password Page", () => {
       });
     });
 
-    await page.fill("#new-password", "newpassword123");
-    await page.fill("#confirm-new-password", "newpassword123");
+    await fillStable(page, "#new-password", "newpassword123");
+    await fillStable(page, "#confirm-new-password", "newpassword123");
     await page.click('button[type="submit"]');
 
     const errorBox = page.locator(".rounded-md.border.bg-muted");
@@ -173,8 +175,8 @@ test.describe("Reset Password Page", () => {
       });
     });
 
-    await page.fill("#new-password", "newsecurepassword123");
-    await page.fill("#confirm-new-password", "newsecurepassword123");
+    await fillStable(page, "#new-password", "newsecurepassword123");
+    await fillStable(page, "#confirm-new-password", "newsecurepassword123");
     await page.click('button[type="submit"]');
 
     // Should show success state with a "Sign in" button
@@ -196,8 +198,8 @@ test.describe("Reset Password Page", () => {
       });
     });
 
-    await page.fill("#new-password", "newsecurepassword123");
-    await page.fill("#confirm-new-password", "newsecurepassword123");
+    await fillStable(page, "#new-password", "newsecurepassword123");
+    await fillStable(page, "#confirm-new-password", "newsecurepassword123");
     await page.click('button[type="submit"]');
 
     const submitButton = page.locator('button[type="submit"]');
