@@ -258,16 +258,41 @@ update_app_env_urls() {
 }
 
 # Check if esbuild binary is functional (Convex uses it to bundle functions)
+# Map the host to esbuild's platform package name. Hardcoding darwin-arm64 here
+# made the pre-flight check pass on every developer Mac and fail on every Linux
+# CI runner, which is why no E2E job ever got past webServer startup.
+esbuild_platform() {
+    local os arch
+    os=$(uname -s)
+    arch=$(uname -m)
+
+    case "$os" in
+        Darwin) os="darwin" ;;
+        Linux)  os="linux" ;;
+        *)      os="unknown" ;;
+    esac
+
+    case "$arch" in
+        arm64|aarch64) arch="arm64" ;;
+        x86_64|amd64)  arch="x64" ;;
+        *)             arch="unknown" ;;
+    esac
+
+    echo "${os}-${arch}"
+}
+
 check_esbuild() {
     local esbuild_bin=""
+    local platform
+    platform=$(esbuild_platform)
 
     # 1. Direct platform binary (classic node_modules layout)
-    if [ -x "$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild" ]; then
-        esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild"
-    # 2. Bun's deduped layout: node_modules/.bun/@esbuild+darwin-arm64@*/...
+    if [ -x "$PROJECT_DIR/node_modules/@esbuild/$platform/bin/esbuild" ]; then
+        esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/$platform/bin/esbuild"
+    # 2. Bun's deduped layout: node_modules/.bun/@esbuild+<platform>@*/...
     else
         local bun_esbuild
-        bun_esbuild=$(ls "$PROJECT_DIR"/node_modules/.bun/@esbuild+darwin-arm64@*/node_modules/@esbuild/darwin-arm64/bin/esbuild 2>/dev/null | head -1)
+        bun_esbuild=$(ls "$PROJECT_DIR"/node_modules/.bun/@esbuild+"$platform"@*/node_modules/@esbuild/"$platform"/bin/esbuild 2>/dev/null | head -1)
         if [ -x "$bun_esbuild" ]; then
             esbuild_bin="$bun_esbuild"
         fi
