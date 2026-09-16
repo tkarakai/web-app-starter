@@ -59,6 +59,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "../../scripts/dev-start.sh --ci --app=web",
+    // Playwright defaults webServer stdout to "ignore". When the script fails to
+    // boot in CI that leaves "Process from config.webServer was not able to
+    // start. Exit code: 1" and nothing else — no way to tell what broke.
+    stdout: "pipe",
+    stderr: "pipe",
     url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3001"),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
