@@ -3,11 +3,10 @@
 **Status as of 2026-09-15.** Written as a handoff: it assumes no prior conversation
 context. Read it end to end before picking up any item below.
 
-**Steps 1–5b are done** (one PR). The `apps/web` E2E suite is green for the first time:
-**102 passed, 2 skipped, 0 failed.** Step 6 is now unblocked and is a repo-settings change
-only the owner can make. Step 7 is the follow-up PR, and it is a bug fix rather than
-housekeeping — backup-code sign-in returns HTTP 500 today, which is what the two remaining
-quarantined tests pin down.
+**Steps 1–7 are done.** `SKIP_E2E` is `false` and E2E runs in CI for the first time, on
+all five apps. The `apps/web` suite is **105 passed, 0 failed, 0 skipped** on the upgraded
+auth stack, with nothing quarantined. What remains is step 8 (Renovate) and step 9
+(smaller follow-ups).
 
 The through-line: **the `better-auth` stack needs upgrading, and it cannot be done
 safely until the auth flows have real test coverage.** Everything here either builds
@@ -79,7 +78,7 @@ Lives in `apps/web/qa/e2e/`:
 - `helpers/fixtures.ts` — `createDisposableUser()`.
 - `auth-session.spec.ts` — 6 running.
 - `auth-password.spec.ts` — 7 running.
-- `auth-two-factor.spec.ts` — 4 running, 2 quarantined (adapter, see step 4).
+- `auth-two-factor.spec.ts` — 6 running (the 2 adapter-blocked ones unblocked by step 7).
 - `auth-passkey.spec.ts` — 4 running.
 
 Whole-suite status: **102 passed, 2 skipped, 0 failed** in 5.3 minutes at `--workers=1`.
@@ -305,7 +304,7 @@ exists: the sign-up XSS test now exercises forgot-password, the only other unaut
 form that echoes input back. `email-verification.spec.ts`'s sign-up test now asserts the
 absence of a self-service path instead of the presence of a form.
 
-### Step 6 — Flip `SKIP_E2E` *(was TODO 1)*
+### Step 6 — DONE: `SKIP_E2E` flipped *(was TODO 1)*
 
 **The repo variable `SKIP_E2E` is set to `true`.** Every E2E job in every workflow is
 gated on `vars.SKIP_E2E != 'true'`, so **no E2E test has ever run in CI** — not the ones
@@ -327,23 +326,50 @@ gh api repos/tkarakai/web-app-starter/actions/variables/SKIP_E2E   # inspect
 
 That first run will be the first real validation these specs have ever had.
 
-### Step 7 — The better-auth migration *(was TODO 5)*
+### Step 7 — DONE: the better-auth migration *(was TODO 5)*
 
-Only after steps 4 and 6 give coverage that actually runs. One PR moving all three
-packages together to the set in §1.
+**Backup-code sign-in works.** Both quarantined tests pass, and the whole `apps/web`
+suite is **105 passed, 0 failed, 0 skipped** (was 102 passed + 2 skipped on the old
+stack). Typecheck is green across all 6 packages.
 
-**This is now a bug fix, not housekeeping.** Step 4 established that backup-code sign-in
-returns HTTP 500 on `0.10.10` because the adapter rejects Better Auth's two-condition
-where clause. Backup codes are the documented recovery path for a lost authenticator, so
-today a user who enrols in 2FA and loses their device cannot get back in.
+The set that landed — newer than the one originally scoped, because all three can sit on
+the same minor:
 
-**Acceptance criteria:** un-quarantine the two `test.fixme` cases in
-`auth-two-factor.spec.ts` ("accepts a backup code at the challenge and burns it",
-"regenerating backup codes invalidates the previous set"). If they pass, the adapter
-upgrade genuinely fixed recovery; if they still 500, the upgrade did not deliver the one
-thing that most justifies it. Then `next` → 16.3.3 and `vitest` 3→5 as separate
-PRs — neither is coupled to the auth stack, and vitest 5 is a two-major jump needing its
-own migration.
+| Package | From | To |
+|---|---|---|
+| `@convex-dev/better-auth` | 0.10.10 | **0.12.5** (peer `better-auth >=1.6.11 <1.7.0`) |
+| `better-auth` | 1.4.12 | **1.6.33** |
+| `@better-auth/passkey` | 1.4.12 / ^1.4.18 | **1.6.33** (peer `^1.6.33`) |
+
+`@better-auth/passkey@1.7.x` exists but requires `better-auth ^1.7.5`, outside the
+adapter's range — so passkey stays on 1.6 until the adapter widens.
+
+**The nested-copy problem from §1 is gone.** Adapter 0.12.5 nests `better-auth@1.6.33`,
+the same version the workspace resolves, so there is no longer a second divergent copy of
+the auth library.
+
+**What actually had to change, beyond the version numbers:**
+
+1. **`packages/backend/convex/betterAuth/schema.ts` was stale.** better-auth 1.6 added
+   three fields to the `twoFactor` table — `verified`, `failedVerificationCount` and
+   `lockedUntil`. Convex validators reject unknown fields, so `/two-factor/enable`
+   returned **500 `ArgumentValidationError`** and 2FA enrolment broke outright. Each field
+   surfaced one at a time, one request deeper into the flow.
+
+   The file's header says to regenerate with `@better-auth/cli`, but **that package has no
+   1.6 release** (latest is `1.5.0-beta.13`), and adapter 0.12.5's own bundled schema
+   carries `verified` but neither of the other two. So the fields are hand-added and
+   marked as such — regenerating blindly would drop them.
+
+2. **`packages/auth/src/provider.tsx` needs a cast.** The adapter declares
+   `AuthClient` as `ReturnType<typeof createAuthClient<BetterAuthClientPlugin & { plugins }>>`,
+   an instantiation that collapses `useSession().data` to `never`. No client built with
+   real plugin inference can satisfy it. Documented at the call site; revisit when the
+   adapter's types widen.
+
+Notably, the `$ERROR_CODES` and `viewBackupCodes` errors that dependabot's PRs produced
+never appeared — they were artefacts of bumping `better-auth` while leaving the adapter
+behind, exactly as §1 predicted.
 
 Close dependabot **#77** as superseded.
 
