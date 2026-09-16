@@ -3,6 +3,15 @@ import { test, expect } from "@playwright/test";
 import { fillStable } from "./helpers/auth";
 
 /**
+ * The reset form's submit button is gated on a password *strength* check
+ * (`reset-password-form.tsx`: `disabled={pending || !isPasswordValid}`), so a
+ * weak password leaves it disabled and any click waits out the test timeout.
+ * The minimum is 12 characters, not 8.
+ */
+const STRONG_PASSWORD = "Xq7!vTn3Mk9wRp2Z";
+const OTHER_STRONG_PASSWORD = "Bd4#hLm8Yt6kQs1W";
+
+/**
  * Email Verification Flow E2E Tests
  *
  * Verify the verify-email page loads and handles different states:
@@ -109,17 +118,17 @@ test.describe("Reset Password Page", () => {
     await expect(confirmInput).toHaveAttribute("type", "password");
 
     // Both should have minLength=8
-    await expect(passwordInput).toHaveAttribute("minLength", "8");
-    await expect(confirmInput).toHaveAttribute("minLength", "8");
+    await expect(passwordInput).toHaveAttribute("minLength", "12");
+    await expect(confirmInput).toHaveAttribute("minLength", "12");
   });
 
   test("shows error on password mismatch", async ({ page }) => {
     await page.goto("/en/reset-password?token=test-token-123");
     await page.waitForLoadState("networkidle");
 
-    await fillStable(page, "#new-password", "newpassword123");
-    await fillStable(page, "#confirm-new-password", "differentpassword");
-    await page.click('button[type="submit"]');
+    await fillStable(page, "#new-password", STRONG_PASSWORD);
+    await fillStable(page, "#confirm-new-password", OTHER_STRONG_PASSWORD);
+    await page.locator('form:has(#new-password) button[type="submit"]').click();
 
     // Should show password mismatch error
     const errorBox = page.locator(".rounded-md.border.bg-muted");
@@ -138,9 +147,9 @@ test.describe("Reset Password Page", () => {
       });
     });
 
-    await fillStable(page, "#new-password", "newpassword123");
-    await fillStable(page, "#confirm-new-password", "newpassword123");
-    await page.click('button[type="submit"]');
+    await fillStable(page, "#new-password", STRONG_PASSWORD);
+    await fillStable(page, "#confirm-new-password", STRONG_PASSWORD);
+    await page.locator('form:has(#new-password) button[type="submit"]').click();
 
     const errorBox = page.locator(".rounded-md.border.bg-muted");
     await expect(errorBox).toBeVisible({ timeout: 10000 });
@@ -175,9 +184,9 @@ test.describe("Reset Password Page", () => {
       });
     });
 
-    await fillStable(page, "#new-password", "newsecurepassword123");
-    await fillStable(page, "#confirm-new-password", "newsecurepassword123");
-    await page.click('button[type="submit"]');
+    await fillStable(page, "#new-password", STRONG_PASSWORD);
+    await fillStable(page, "#confirm-new-password", STRONG_PASSWORD);
+    await page.locator('form:has(#new-password) button[type="submit"]').click();
 
     // Should show success state with a "Sign in" button
     await page.waitForTimeout(1000);
@@ -198,26 +207,32 @@ test.describe("Reset Password Page", () => {
       });
     });
 
-    await fillStable(page, "#new-password", "newsecurepassword123");
-    await fillStable(page, "#confirm-new-password", "newsecurepassword123");
-    await page.click('button[type="submit"]');
+    await fillStable(page, "#new-password", STRONG_PASSWORD);
+    await fillStable(page, "#confirm-new-password", STRONG_PASSWORD);
+    await page.locator('form:has(#new-password) button[type="submit"]').click();
 
-    const submitButton = page.locator('button[type="submit"]');
+    const submitButton = page.locator('form:has(#new-password) button[type="submit"]');
     await expect(submitButton).toBeDisabled();
   });
 });
 
 test.describe("Sign-Up with Email Verification", () => {
-  test("sign-up form exists and works (email verification enabled)", async ({
+  /**
+   * This asserted a self-service sign-up form. Under the default
+   * `onboardingType` of `inviteOnly` that form does not render at all, so there
+   * is no sign-up path here to verify an email for. Coverage of the gate itself
+   * lives in `auth-flow.spec.ts`; the invitation flow is what would need a
+   * dedicated test, and it needs an admin-issued invitation to exercise.
+   */
+  test("does not expose an unverified self-service sign-up path", async ({
     page,
   }) => {
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 
-    // Standard sign-up form fields should be present
-    await expect(page.locator("#name")).toBeVisible();
-    await expect(page.locator("#email")).toBeVisible();
-    await expect(page.locator("#password")).toBeVisible();
-    await expect(page.locator("#confirm-password")).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toHaveCount(0);
+    await expect(page.getByText(/invitation only/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });

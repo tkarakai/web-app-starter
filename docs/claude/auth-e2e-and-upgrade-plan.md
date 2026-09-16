@@ -3,10 +3,11 @@
 **Status as of 2026-09-15.** Written as a handoff: it assumes no prior conversation
 context. Read it end to end before picking up any item below.
 
-**Steps 1–5 are done** (one PR). **Step 6 is blocked by step 5b**, a 34-failure backlog
-this work uncovered: those specs target a sign-in form that no longer exists, and they
-predate this PR. Step 7 is the follow-up PR, and it is now a bug fix — backup-code
-sign-in returns HTTP 500 today. Two tests remain quarantined on that adapter limit.
+**Steps 1–5b are done** (one PR). The `apps/web` E2E suite is green for the first time:
+**102 passed, 2 skipped, 0 failed.** Step 6 is now unblocked and is a repo-settings change
+only the owner can make. Step 7 is the follow-up PR, and it is a bug fix rather than
+housekeeping — backup-code sign-in returns HTTP 500 today, which is what the two remaining
+quarantined tests pin down.
 
 The through-line: **the `better-auth` stack needs upgrading, and it cannot be done
 safely until the auth flows have real test coverage.** Everything here either builds
@@ -80,6 +81,8 @@ Lives in `apps/web/qa/e2e/`:
 - `auth-password.spec.ts` — 7 running.
 - `auth-two-factor.spec.ts` — 4 running, 2 quarantined (adapter, see step 4).
 - `auth-passkey.spec.ts` — 4 running.
+
+Whole-suite status: **102 passed, 2 skipped, 0 failed** in 5.3 minutes at `--workers=1`.
 
 Run them:
 
@@ -258,55 +261,43 @@ auth specs fail locally.
 executed in CI. The 4-way split is sized from local timings, not observed CI timings;
 expect to tune the shard count after the first green run.
 
-### Step 5b — BLOCKER: 34 pre-existing failures, from a UI redesign *(new)*
+### Step 5b — DONE: 34 pre-existing failures, from a UI redesign *(new)*
 
-**This is what actually blocks step 6, and nothing in the original plan anticipated it.**
+**The full `apps/web` suite is now green: 102 passed, 2 skipped, 0 failed, 5.3 minutes**
+(`--workers=1`). Before: 69 passed, 34 failed, 11 minutes — the failures were each burning
+a 30s timeout, which is most of the difference.
 
-Measured on a full serial run of `apps/web` (`--workers=1`): **69 passed, 34 failed, 2
-skipped, 11 minutes.** The same 34 fail on unmodified `main` — verified by stashing every
-change in this PR and re-running the seven affected specs: **identical failure sets, zero
-regressions, zero fixes.** So they are not caused by this work, and the plan's guess that
-these specs were "passing vacuously" was wrong. They are not passing at all.
+These 34 were **not** caused by the rest of this work. Verified by stashing every change
+and re-running the seven affected specs on clean `main`: identical failure sets, zero
+regressions. And the plan's guess that they were "passing vacuously" was wrong — they were
+failing outright, and had been since a UI redesign, invisible because `SKIP_E2E` has been
+`true` since 2026-02-09.
 
-Root cause, and it is a single one for nearly all of them: **the sign-in form is now
-multi-step.** `auth-form.tsx` drives a `SignInStep` state machine (0 → 3); `#password`
-does not exist in the DOM until the email step is submitted, and the standalone `#name`
-sign-up field is gone. These specs still do:
+Not one root cause but several, each a spec frozen against a UI that moved on:
 
-```ts
-await page.goto("/en/sign-in");
-await fillStable(page, "#email", ...);
-await fillStable(page, "#password", ...);   // element never appears
-```
-
-They were written against a single-step form that no longer exists, and have been broken
-since that redesign — invisible the whole time, because `SKIP_E2E` has been `true` since
-**2026-02-09** and nothing else runs them.
-
-| Spec | Failing |
+| Cause | Fix |
 |---|---|
-| `session-management.spec.ts` | 9 |
-| `xss-protection.spec.ts` | 7 |
-| `email-verification.spec.ts` | 6 |
-| `auth-flow.spec.ts` | 6 |
-| `auth-rate-limits.spec.ts` | 4 |
-| `session-lifecycle.spec.ts` | 3 |
-| `forgot-password.spec.ts` | 2 |
+| Sign-in is now a **two-step** form; `#password` does not exist until the email step is submitted | `submitEmailStep()` before touching `#password` |
+| Sign-up is **invitation-gated** (`onboardingType: inviteOnly`); `/en/sign-up` renders no inputs at all | rewritten to assert the gate — a stranger must not be able to self-register |
+| Reset-password `minLength` is **12**, not 8, and submit is disabled until a **strength** check passes | strength-passing fixture password; corrected the attribute |
+| Session tests authenticated with a **fabricated cookie** — enough for the proxy, not for the dashboard layout's server-side validation, so they asserted against the sign-in page | real `signIn()` via a disposable user |
+| `__Secure-` prefixed cookie without `secure: true` | Chrome rejects the whole `addCookies` call |
+| CSP test appended a script via `page.evaluate` and expected it to be blocked | under `'strict-dynamic'` that is *supposed* to run; now asserts the policy (nonce present, no `'unsafe-inline'`) |
+| Assertions greping `page.content()` / serialized HTML for payload substrings | scoped to visible text, or asserted structurally — `"description"` contains `"script"` |
 
-Most are mechanical to repair — insert `submitEmailStep(page, email)` between the email
-and password fills, which is exactly what `helpers/auth.ts` already exists to do. A
-minority need real thought rather than a find-and-replace, because the behaviour they
-assert no longer exists in that shape: "sign-in form has required email and password
-fields" has no single screen to check any more, and sign-up is invitation-only now
-(`invitation-signup-form.tsx`), so "sign-up form has all required fields" needs redefining
-before it can be rewritten.
+**Two of these "test failures" were product bugs.** A stale test is not automatically a
+wrong test:
 
-`xss-protection.spec.ts` still holds 8 raw `page.fill` calls. They were deliberately left
-unconverted: they fail on the missing `#password`, so converting them now would be churn
-against a spec that has to be rewritten anyway. Convert them as part of that rewrite.
+- **`listSessions()` failures were silent.** It resolves with `{ data, error }` rather than
+  throwing, and the code checked only `result.data`. On an API failure the page sat in its
+  loading skeleton forever with no message. Fixed in both copies of the sessions UI.
+- The sign-up page offers **no route back to sign-in** — only "Join waitlist". Left as-is
+  and recorded in the test, since changing navigation is a product call.
 
-**Do not flip `SKIP_E2E` until this is done** — CI would go red immediately, on `main`, for
-reasons that have nothing to do with the change that triggered it.
+Some tests were retargeted rather than repaired, because what they asserted no longer
+exists: the sign-up XSS test now exercises forgot-password, the only other unauthenticated
+form that echoes input back. `email-verification.spec.ts`'s sign-up test now asserts the
+absence of a self-service path instead of the presence of a form.
 
 ### Step 6 — Flip `SKIP_E2E` *(was TODO 1)*
 
@@ -315,16 +306,20 @@ gated on `vars.SKIP_E2E != 'true'`, so **no E2E test has ever run in CI** — no
 added recently, not the pre-existing ones. Until this flips, the entire suite is
 local-only and protects nothing.
 
-It was set for CI time/cost. Step 5 makes it affordable; **step 5b is what makes it
-safe**, and it is not done. Flipping today turns `main` red with 34 failures inherited
-from a UI redesign.
+It was set for CI time/cost. Step 5 made it affordable and step 5b made it safe, and both
+are done — **this is now unblocked.** The full suite is green locally at `--workers=1`,
+which is the configuration each CI shard runs.
+
+The one thing still unverified is the sharded run itself: no E2E job has ever executed on
+a real runner, so the 4-way split is sized from local timings (5.3 min serial on a fast
+laptop; GitHub runners are slower, which is why the split is deliberately generous).
+Expect to tune the shard count after the first green run.
 
 ```bash
 gh api repos/tkarakai/web-app-starter/actions/variables/SKIP_E2E   # inspect
 ```
 
-That first green run would be the first real validation these specs have ever had —
-which is precisely why 34 of them are currently red.
+That first run will be the first real validation these specs have ever had.
 
 ### Step 7 — The better-auth migration *(was TODO 5)*
 
