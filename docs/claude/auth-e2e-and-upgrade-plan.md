@@ -3,14 +3,14 @@
 **Status as of 2026-09-16.** Written as a handoff: it assumes no prior conversation
 context. Read it end to end before picking up any item below.
 
-**Steps 1–8 are done or in review. Start at step 9.**
+**Steps 1–8 are merged. Start at step 9.**
 
 | Step | State |
 |---|---|
 | 1–5b | merged — PRs #81, #82 |
 | 6 — flip `SKIP_E2E` | done; it is `false`, and E2E now runs in CI on all five apps |
-| 7 — better-auth upgrade | PR **#83**, green and mergeable; merge it if it is still open |
-| 8 — Renovate | PR **#84** open; `RENOVATE_TOKEN` is set. Run the verification dispatch *after* merge |
+| 7 — better-auth upgrade | merged — PR #83 |
+| 8 — Renovate | merged — PR #84. `RENOVATE_TOKEN` is set and `renovate.yml` is on `main`. **The verification dispatch has not been run yet** — see step 8 item 9 |
 | **9 — follow-ups** | **next up**; sized and ordered below. Item 1 also gates how much automerge is worth |
 
 `apps/web` is **105 passed, 0 failed, 0 skipped** on the upgraded auth stack, with nothing
@@ -391,14 +391,20 @@ behind, exactly as §1 predicted.
 
 Close dependabot **#77** as superseded.
 
-### Step 8 — Land Renovate *(was TODO 6)* — **PR #84 open**
+### Step 8 — DONE: Renovate landed *(was TODO 6)*
 
 Independent of everything above. Two parts: a code change an agent can do, and one secret
 only the repo owner can create.
 
-**State: PR #84** — rebased onto current `main`, auth-stack grouping rule added,
-`RENOVATE_TOKEN` created 2026-09-16. Originally stranded on branch
-`025-renovate-dependency-automation` (tip `3d363ff`). It adds
+**Merged in PR #84** (2026-09-16): rebased onto `main`, auth-stack grouping rule added,
+`RENOVATE_TOKEN` created. Originally stranded on branch
+`025-renovate-dependency-automation` (tip `3d363ff`).
+
+**One thing is still outstanding:** nobody has run the verification dispatch (item 9
+below). Until someone does, it is unknown whether the token is scoped correctly — the
+first scheduled run is Monday/Thursday 06:00 UTC, and a 401/403 there fails quietly.
+
+It adds
 `renovate.json`, `.github/workflows/renovate.yml`, `docs/dependency-updates.md`, a
 `CLAUDE.md` pointer, and pins GitHub Action digests across the `ci-*` workflows.
 
