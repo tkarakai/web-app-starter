@@ -135,9 +135,13 @@ test.describe("Sidebar navigation", () => {
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Form");
 
-    // Should show 6 component cards (Checkbox, Input, Radio Group, Select, Switch, Textarea)
-    const cards = page.locator("a.group");
-    await expect(cards).toHaveCount(6);
+    // Derived from the sidebar, not hardcoded. This asserted 6 and the Form
+    // category has since grown to 8 (OTP Input, Password Strength Meter), so a
+    // literal count rots every time the design system gains a component. The
+    // real invariant is that the cards page and the nav agree.
+    const expectedCount = await subItemLinks(page, "Form").count();
+    expect(expectedCount).toBeGreaterThan(0);
+    await expect(page.locator("a.group")).toHaveCount(expectedCount);
   });
 
   test("category cards page shows component names and descriptions", async ({
@@ -245,14 +249,16 @@ test.describe("Sidebar navigation", () => {
       "true",
     );
 
-    // "Select" sub-item should be active
+    // Exact text: `hasText` is a substring match, and "Input" also matches
+    // "OTP Input", which made this a strict-mode violation once that component
+    // was added.
     const selectItem = subItemLinks(page, "Form").filter({
-      hasText: "Select",
+      hasText: /^Select$/,
     });
     await expect(selectItem).toHaveAttribute("data-active", "true");
 
     // Other sub-items should not be active
-    const inputItem = subItemLinks(page, "Form").filter({ hasText: "Input" });
+    const inputItem = subItemLinks(page, "Form").filter({ hasText: /^Input$/ });
     await expect(inputItem).not.toHaveAttribute("data-active", "true");
   });
 
