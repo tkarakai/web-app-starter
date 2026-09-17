@@ -306,7 +306,10 @@ export function AdminTwoFactorSection() {
             Manual setup key
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2 space-y-2">
-            <div className="rounded-md border bg-muted p-3 text-xs font-mono break-all">
+            <div
+              data-slot="totp-secret"
+              className="rounded-md border bg-muted p-3 text-xs font-mono break-all"
+            >
               {secretKey || totpUri}
             </div>
             <Button
@@ -428,7 +431,10 @@ export function AdminTwoFactorSection() {
       <p className="text-xs text-muted-foreground">
         Save these backup codes in a secure place. Each code can be used once.
       </p>
-      <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted p-4">
+      <div
+        data-slot="backup-codes"
+        className="grid grid-cols-2 gap-2 rounded-md border bg-muted p-4"
+      >
         {backupCodes.map((backupCode) => (
           <code key={backupCode} className="text-sm font-mono">
             {backupCode}
