@@ -52,12 +52,15 @@ Push to main → cd-staging.yml (one unified workflow)
   └─ Smoke tests + git tag
   │
   ▼
-Deploy Production (manual trigger + approval gate)
-  ├─ Verify this SHA was deployed to staging
-  ├─ Build apps with production env vars (same SHA)
-  ├─ Checksum + SLSA attest each artifact
+Deploy Production (manual trigger)
+  ├─ Verify confirmation string, staging tag, and ci/gate-passed
+  ├─ Resolve the cd-staging run that built this SHA
+  ├─ Build landing only (static export — cannot be promoted)
+  ├─ Checksum + SLSA attest landing
   ├─ Deploy Convex to production
-  ├─ Deploy 3 apps to Vercel (--prebuilt --prod)
+  ├─ Promote web + admin: same artifact bytes staging deployed
+  │    (checksum + build-manifest SHA verified before deploy)
+  ├─ Deploy landing to Vercel (--prebuilt --prod)
   └─ Health checks + git tag
 ```
 
@@ -66,7 +69,7 @@ Deploy Production (manual trigger + approval gate)
 | Workflow | File | Trigger | Purpose |
 |---|---|---|---|
 | Deploy Staging | `cd-staging.yml` | Push to `main` | Unified CI + selective build/deploy to staging |
-| Deploy Production | `cd-production.yml` | Manual (`workflow_dispatch`) | Deploy to production with approval gate |
+| Deploy Production | `cd-production.yml` | Manual (`workflow_dispatch`) | Promote the staging build of a SHA to production |
 | Rollback | `cd-rollback.yml` | Manual (`workflow_dispatch`) | Rollback any environment to a previous SHA |
 
 ## Composite Actions
@@ -104,12 +107,28 @@ gh workflow run cd-production.yml \
 ```
 
 The workflow:
-1. **Validates** the confirmation string and verifies the SHA was deployed to staging
-2. **Builds** all 3 apps with production environment variables
-3. **Attests** artifacts
-4. **Deploys Convex** to production (requires approval from the `production` GitHub Environment)
-5. **Deploys** all 3 apps to Vercel with `--prod` flag
-6. **Health checks** + creates annotated git tag `deploy/production/<timestamp>/<sha>`
+1. **Validates** the confirmation string, that the SHA carries a `deploy/staging/*` tag, and that
+   `ci/gate-passed` is green for it
+2. **Resolves** the `cd-staging` run that produced this SHA's `web-<sha>` and `admin-<sha>` artifacts
+3. **Builds** landing only — it is a static export and cannot be promoted (see
+   [Promotion](#promotion-build-once-deploy-twice))
+4. **Attests** the landing artifact. web and admin were attested by the staging run that built them
+5. **Deploys Convex** to production
+6. **Promotes** web and admin — downloads the staging artifacts and deploys them unchanged, after
+   verifying each tarball's checksum and that its build manifest records the requested SHA — and
+   deploys landing, all with `--prod`
+7. **Health checks** + creates annotated git tag `deploy/production/<timestamp>/<sha>`
+
+> **No human approval is enforced.** The `production` GitHub Environment has a branch policy but
+> **no required reviewers**, so a `workflow_dispatch` with the right confirmation string deploys
+> straight through. The gates are the confirmation string, the staging tag and the CI gate — all
+> automated. Add required reviewers to the `production` environment if a human sign-off is wanted.
+
+> **Change detection interacts with promotion.** `cd-staging` builds only the apps whose files
+> changed, so a push-triggered staging run may not contain a `web-<sha>` or `admin-<sha>` artifact.
+> `cd-production` then fails with an explicit message rather than promoting a different SHA's bytes.
+> Re-run `cd-staging` for that SHA with `force_deploy=true` to produce a complete set. Artifacts
+> also expire after 90 days.
 
 ### Rollback
 
@@ -160,9 +179,30 @@ To find the latest production deployment:
 git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 ```
 
-## Per-Environment Builds
+## Promotion (build once, deploy twice)
 
-`NEXT_PUBLIC_*` variables are baked into the JS bundle at build time by Next.js. A single artifact cannot serve both staging and production. The pipeline builds separate environment-specific artifacts from the **same commit SHA**, verified by the CI gate.
+Next.js inlines `NEXT_PUBLIC_*` into the JS bundle at build time, so an artifact built with one
+environment's configuration is pinned to it. **web and admin avoid this**: they read
+`CONVEX_URL`, `CONVEX_SITE_URL`, `LANDING_URL` and `APP_ENVIRONMENT` unprefixed at request time,
+and derive their own origin from the request `Host` header. Their artifacts carry no environment
+identity, so `cd-production` deploys the exact bytes that were tested on staging rather than
+rebuilding them.
+
+Two things keep that property honest:
+
+- `scripts/check-env-leak.sh` runs during every build and scans the output for the *values* of the
+  environment-identity variables. Anything inlined is reported, so a missed variable is a build
+  signal rather than a production incident.
+- `deploy-vercel` verifies the promoted tarball's checksum and that its build manifest records the
+  SHA being deployed, so promoting the wrong run's artifact fails before it reaches production.
+
+**landing and landing-static are excluded.** Both set `output: "export"`, so they have no server at
+runtime and cannot read runtime configuration at all — they keep `NEXT_PUBLIC_*` and are rebuilt per
+environment. Rebuilding a static marketing page is cheap; the apps where a stale-build-against-live-backend
+mismatch actually matters are the two that promote.
+
+For the full rationale, the measurements behind it and the remaining work, see
+[claude/build-once-promote-plan.md](./claude/build-once-promote-plan.md).
 
 ## Vercel Project Architecture
 

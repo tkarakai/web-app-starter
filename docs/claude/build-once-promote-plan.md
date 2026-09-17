@@ -3,7 +3,9 @@
 **Status as of 2026-09-17.** Written as a handoff: it assumes no prior conversation
 context. Read the first three sections before picking up any phase below.
 
-**Phases 1 and 2 are done and verified. Phase 3 is blocked on Vercel access. Start at Phase 3.**
+**Phases 1–4 are done. Start at Phase 5 — but read
+[Production projects do not exist](#production-vercel-projects-do-not-exist) first: the promote
+path cannot be exercised until those exist.**
 
 The central question — *is build-once/promote possible with this stack at all?* — is
 answered **yes**, and proven end to end: see
@@ -14,9 +16,9 @@ answered **yes**, and proven end to end: see
 | 0 — spike | done; cross-project prebuilt deploy proven to work (see [Phase 0](#phase-0--the-spike-done)) |
 | **1 — leak guard** | **done**; `scripts/check-env-leak.sh`, wired into `build-app` in `--warn` mode |
 | **2 — web + admin made promotable** | **done**; artifact carries no environment identity, and a build made with one Convex URL provably serves another at runtime. Full E2E green on both apps |
-| **3 — Vercel env migration** | **blocked** — needs dashboard/CLI access this session did not have. Exact commands in [Phase 3](#phase-3--vercel-env-migration-blocked) |
-| 4 — promote in the pipeline | not started; depends on Phase 3 |
-| 5 — close out | not started; depends on Phase 4 |
+| **3 — Vercel env migration** | **done for staging**, verified: `app1-web-staging` and `app1-admin-staging` carry `CONVEX_URL`, `CONVEX_SITE_URL`, `APP_ENVIRONMENT` (+ `LANDING_URL` on web) alongside the legacy names. **Production projects still do not exist** |
+| **4 — promote in the pipeline** | **done**; `cd-production` promotes web + admin instead of rebuilding. Untested end to end — no production projects to deploy into |
+| 5 — close out | not started; depends on a real promote run |
 
 Scope: **web and admin only.** `landing` and `landing-static` keep `NEXT_PUBLIC_*` and
 keep being rebuilt per environment. That is forced, not a compromise — see
@@ -228,10 +230,11 @@ The app-level value is now `APP_ORIGIN`, and only the Playwright configs consume
 URL to point tests at. `SITE_URL` again means exactly one thing: Convex's trusted-origin
 list.
 
-## Phase 3 — Vercel env migration (blocked)
+## Phase 3 — Vercel env migration (done for staging)
 
-**Why it is blocked:** this session's tooling refused Vercel environment-variable writes
-(secret-store writes). Nothing else stands in the way.
+Verified on 2026-09-17: `app1-web-staging` and `app1-admin-staging` both carry the new
+unprefixed names alongside the legacy `NEXT_PUBLIC_*` ones. The same still needs doing on the
+production projects, once they exist.
 
 The migration is deliberately dual-name so there is no flag day: add the new names
 *alongside* the existing `NEXT_PUBLIC_*` ones, deploy Phase 2 code, then delete the old
@@ -275,34 +278,59 @@ through `CONVEX_DEPLOY_KEY` in GitHub secrets (locally, `convex deployments` rep
 an anonymous dev deployment), and the production domains are not recorded anywhere in the
 repo. Guessing either would be worse than leaving it.
 
-Resolve this before Phase 4: either the projects exist elsewhere and the secrets are
-correct, or they need creating with Root Directory `apps/<app>` and Framework Preset
-Next.js (per `docs/deployment-architecture.md`), after which the secrets need updating.
+Still true as of 2026-09-17: `vercel project ls` shows only the three `*-staging` projects and
+the unrelated `cpa-prep`. This is now the single thing standing between the pipeline and a
+working promote. The projects need creating with Root Directory `apps/<app>` and Framework
+Preset Next.js (per `docs/deployment-architecture.md`), the four unprefixed variables setting
+on each per Phase 3, and the `VERCEL_PROJECT_ID_*` secrets updating to the new IDs.
 
-## Phase 4 — promote in the pipeline (not started)
+## Phase 4 — promote in the pipeline (done)
 
-1. `build-app`: drop `environment` from the artifact name (`web-<sha>`, not
-   `web-production-<sha>`). Also exclude `.next/cache` from the tarball — the spike's
-   artifact was **340 MB**, most of it build cache that `vercel deploy --prebuilt` never
-   reads. This matters more once Phase 4 downloads these across workflows.
-2. `deploy-vercel`: add a `run-id` input for cross-workflow artifact download.
-   `cd-production.yml` already has the `actions: read` permission.
-3. `cd-production.yml`: replace the `build-web` and `build-admin` jobs with one that
-   resolves the `cd-staging` run for the input SHA and downloads its artifacts, then deploy
-   against the production project IDs. **Keep `build-landing`** — landing is still built
-   per environment.
-4. `cd-rollback.yml` references artifact names and needs the same rename.
+- `build-app` names artifacts `<app>-<sha>` with no environment segment, and excludes
+  `.next/cache` from the tarball. The spike's artifact was **340 MB**, nearly all build
+  cache that `vercel deploy --prebuilt` never reads — which mattered once these started
+  crossing workflows.
+- `deploy-vercel` gained `run-id` + `github-token` (cross-workflow download; empty values
+  fall back to the current run, so one step serves both paths) and `expected-sha`, which
+  checks the artifact's build manifest. A promoted artifact is deployed without being
+  rebuilt, so its manifest is the only evidence of what it contains — trusting the artifact
+  *name* would be enough to deploy the wrong run's bytes.
+- `cd-production.yml` replaces `build-web`/`build-admin` with `resolve-staging-build`, which
+  finds the `cd-staging` run holding both `web-<sha>` and `admin-<sha>`. `build-landing`
+  stays. `attest` now covers landing only: web and admin were attested by the staging run
+  that actually built those bytes.
+- `cd-rollback.yml` picked up the artifact rename. Note it still *rebuilds* from the target
+  SHA rather than promoting — worth revisiting, but out of scope here.
+
+**Change detection interacts with promotion.** `cd-staging` builds only the apps whose files
+changed, so a push-triggered run for a SHA may hold no `web-<sha>` artifact. Promoting a
+different SHA's artifact would silently ship untested bytes, so `resolve-staging-build` fails
+with an actionable message instead: re-run `cd-staging` for that SHA with `force_deploy=true`.
+Artifacts also expire after 90 days, which the same check catches.
 
 ## Phase 5 — close out (not started)
 
-- Flip `check-env-leak.sh` from `--warn` to blocking for web and admin.
+- **Exercise a real promote** once production projects exist: deploy a SHA to staging, run
+  `cd-production` for it, and confirm web/admin serve production config from the staging bytes.
+  Nothing below should land before that.
+- Flip `check-env-leak.sh` from `--warn` to blocking for web and admin. Expect it to still
+  report one leak until the legacy names are deleted: with `NEXT_PUBLIC_CONVEX_URL` present at
+  build time, the Convex SDK inlines it as its internal default. Nothing reads that default any
+  more (see [the adapter defect](#the-convex-adapter-defect-fixed)), so it is harmless — but it
+  is why the guard cannot be made blocking before the cleanup below.
 - Delete the legacy `NEXT_PUBLIC_*` values from the web and admin Vercel projects. Until
   this happens the Convex SDK's internal fallback keeps inlining `NEXT_PUBLIC_CONVEX_URL`
   into server chunks — harmless, since nothing reads it, but the guard will report it.
-- Update `docs/deployment-architecture.md`: the "Per-Environment Builds" section states
-  that a single artifact cannot serve both environments, which stops being true for web and
-  admin.
-- Update `docs/deployment-runbook.md` with the promote flow.
+- ~~Update `docs/deployment-architecture.md`~~ — done in Phase 4: "Per-Environment Builds"
+  is now "Promotion (build once, deploy twice)", the flow diagram reflects promoting rather
+  than rebuilding, and the inaccurate "requires approval from the `production` GitHub
+  Environment" claim is corrected (there are no required reviewers — see below).
+- Update `docs/deployment-runbook.md` with the promote flow and the
+  `force_deploy=true` workaround for change-detection gaps.
+- **Decide whether production should require human approval.** The `production` GitHub
+  Environment has a branch policy but no required reviewers, so `cd-production` runs
+  straight through on the confirmation string alone. That is a deliberate-looking gate that
+  is not actually enforced; either add reviewers or stop describing it as an approval gate.
 - Fix `CLAUDE.md`, which still describes `landing` as "Dynamic landing page — i18n, SSR".
   It has been a static export since PR #42.
 - `scripts/infra-setup-staging.sh` still provisions only `NEXT_PUBLIC_*` names.

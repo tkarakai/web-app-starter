@@ -221,40 +221,40 @@ jobs:
         if: needs.changes.outputs.web == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: web-production-${{ github.sha }}
-          path: artifacts/web-production-${{ github.sha }}
+          name: web-${{ github.sha }}
+          path: artifacts/web-${{ github.sha }}
 
       - name: Download admin artifact
         if: needs.changes.outputs.admin == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: admin-production-${{ github.sha }}
-          path: artifacts/admin-production-${{ github.sha }}
+          name: admin-${{ github.sha }}
+          path: artifacts/admin-${{ github.sha }}
 
       - name: Download landing artifact
         if: needs.changes.outputs.landing == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: landing-production-${{ github.sha }}
-          path: artifacts/landing-production-${{ github.sha }}
+          name: landing-${{ github.sha }}
+          path: artifacts/landing-${{ github.sha }}
 
       - name: Attest web artifact
         if: needs.changes.outputs.web == 'true'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/web-production-${{ github.sha }}/web-production.tar.gz
+          subject-path: artifacts/web-${{ github.sha }}/web.tar.gz
 
       - name: Attest admin artifact
         if: needs.changes.outputs.admin == 'true'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/admin-production-${{ github.sha }}/admin-production.tar.gz
+          subject-path: artifacts/admin-${{ github.sha }}/admin.tar.gz
 
       - name: Attest landing artifact
         if: needs.changes.outputs.landing == 'true'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/landing-production-${{ github.sha }}/landing-production.tar.gz
+          subject-path: artifacts/landing-${{ github.sha }}/landing.tar.gz
 
   # ─── Deploy Convex backend (if changed) ────────────────────────
   deploy-convex:
@@ -296,9 +296,9 @@ jobs:
         with:
           app: web
           environment: production
-          artifact-name: web-production-${{ github.sha }}
-          tarball: web-production.tar.gz
-          checksum-file: web-production.tar.gz.sha256
+          artifact-name: web-${{ github.sha }}
+          tarball: web.tar.gz
+          checksum-file: web.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
@@ -324,9 +324,9 @@ jobs:
         with:
           app: admin
           environment: production
-          artifact-name: admin-production-${{ github.sha }}
-          tarball: admin-production.tar.gz
-          checksum-file: admin-production.tar.gz.sha256
+          artifact-name: admin-${{ github.sha }}
+          tarball: admin.tar.gz
+          checksum-file: admin.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
@@ -352,9 +352,9 @@ jobs:
         with:
           app: landing
           environment: production
-          artifact-name: landing-production-${{ github.sha }}
-          tarball: landing-production.tar.gz
-          checksum-file: landing-production.tar.gz.sha256
+          artifact-name: landing-${{ github.sha }}
+          tarball: landing.tar.gz
+          checksum-file: landing.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
