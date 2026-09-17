@@ -11,7 +11,7 @@ context. Read it end to end before picking up any item below.
 | 6 — flip `SKIP_E2E` | done; it is `false`, and E2E now runs in CI on all five apps |
 | 7 — better-auth upgrade | merged — PR #83 |
 | 8 — Renovate | merged — PR #84. `RENOVATE_TOKEN` created, then corrected on 2026-09-16 to add `Commit statuses: Read and write` after the first dispatch aborted on a 403 |
-| **9 — follow-ups** | items **1 and 2 done** (required checks; sessions-UI dedup). Items 2b–5 open — see step 9 |
+| **9 — follow-ups** | items **1, 2, 2b, 2c done** (required checks; sessions-UI dedup; admin adapter bump #96; admin backup-codes fix #95). Items 3–5 open — see step 9 |
 
 `apps/web` is **104 passed, 0 failed, 0 skipped** on the upgraded auth stack, with nothing
 quarantined. (An earlier revision of this doc said 105. That was wrong — the run behind it
@@ -385,11 +385,10 @@ resolves that hook from adapter **0.10.10** with its nested `better-auth@1.4.12`
 web app resolves the same import from 0.12.5. Typecheck and E2E are green either way, which
 is exactly why it went unnoticed.
 
-**Fix: bump `apps/admin/package.json` to `0.12.5` to match, then `bun install` and re-run
-the admin suite.** Renovate independently found this and planned it as part of
-`renovate/auth-stack` (`0.10.10 → 0.12.5`). Not done here because it is a dependency change
-that wants its own PR and its own test run. Until it lands, "the auth stack is on 1.6.33"
-is true of three workspaces out of four.
+**Fixed in PR #96** (step 9 item 2b, 2026-09-16): `apps/admin/package.json` is on `0.12.5`,
+the nested `better-auth@1.4.12` is gone, and the auth stack is on 1.6.33 in all four
+workspaces. Renovate had independently found this and planned it as part of
+`renovate/auth-stack`.
 
 The lesson for the next upgrade: check **every** workspace that depends on the package,
 not just the ones the change obviously touches. `grep -rn '"<package>"' */*/package.json`
@@ -682,23 +681,58 @@ deliberately left alone — de-duplicating across apps means promoting the compo
 `@repo/design-system`, which is a bigger change than this item. It still needs the same
 fixes applied by hand.
 
-**2b. Bump `apps/admin` to `@convex-dev/better-auth` 0.12.5** *(dependency change, own PR)*
+**2b. DONE — `apps/admin` bumped to `@convex-dev/better-auth` 0.12.5** *(PR #96, 2026-09-16)*
 
-Step 7 missed it — see step 7 for the lockfile evidence. Admin has **its own 2FA UI**
-(`admin-two-factor-section.tsx`, `admin-totp-setup.tsx`, `admin-sign-in-form.tsx`), so this
-is not cosmetic. Needs its own test run; admin's 10 E2E specs pass today on the old adapter,
-so a regression there is the signal to watch.
+Dependency-only; no source changes were needed. Step 7's `provider.tsx` cast and the three
+hand-added fields in `packages/backend/convex/betterAuth/schema.ts` were already on `main`
+and cover admin too, because both apps share `@repo/auth` and `@repo/backend`.
 
-**2c. `apps/admin` has the step 1 backup-codes bug, unfixed** *(user-facing)*
+The lockfile is now fully deduplicated. `@convex-dev/better-auth@0.10.10`, its nested
+`better-auth@1.4.12` and its nested `@better-auth/passkey@1.4.9` are gone, and because every
+workspace is on one version the three per-workspace overrides (`@repo/auth/…`,
+`@repo/backend/…`, `@repo/web/…`) collapsed into a single hoisted entry. The tree carries
+exactly one `@convex-dev/better-auth@0.12.5` and one `better-auth@1.6.33`.
 
-`admin-two-factor-section.tsx` calls `authClient.twoFactor.enable({ password })` and then
-reads `backupCodes` off the **`verifyTotp`** response — the exact pattern fixed for web in
-step 1. `verifyTotp` does not return them; `enable` does. So an admin who enrols in 2FA gets
-**zero recovery codes**, and admins are the highest-privilege accounts in the system.
+One incidental resolution change: hoisted `type-fest` moved 4.41.0 → 5.9.0 (0.12.5 wants
+`^5.0.0`, 0.10.10 wanted `^4.39.1`). Nothing in the repo depends on it directly.
 
-Nothing catches it: admin's E2E specs cover smoke, sessions and MFA policy, not 2FA
-enrolment. Fix mirrors `apps/web/src/components/settings/two-factor-section.tsx`, and the
-fix should come with a test.
+**2c. DONE — the admin backup-codes bug, and a second bug behind it** *(PR #95, 2026-09-16)*
+
+`admin-two-factor-section.tsx` carried the step 1 defect verbatim: it read `totpURI` off the
+`/two-factor/enable` response, discarded the `backupCodes` next to it, and then had
+`handleVerify` read `backupCodes` off the `verifyTotp` response — which never carries them —
+and store `[]` unconditionally.
+
+**Verifying that against a real backend turned up a second, independent defect that would
+have lost the codes anyway.** From the CI network trace ([run 35165417142](https://github.com/tkarakai/web-app-starter/actions/runs/35165417142)),
+1.9s after `POST /two-factor/verify-totp` returns 200 the client requests `/sign-in`,
+`proxy.ts` sees a still-valid session cookie on an auth route and 307s it to `/dashboard`.
+Three times. Enrolment navigated off the settings page before the backup-codes panel could
+render at all.
+
+The cause was `apps/admin/src/components/auth/auth-guard.tsx`:
+
+```ts
+const sessionLost = !session.isPending && session.data === null;
+if (convexLost || sessionLost) router.replace("/sign-in");
+```
+
+`authClient.useSession()` reports `{ isPending: false, data: null }` for a beat while Better
+Auth swaps in the token `verifyTotp` issued. That branch had no "was authenticated" guard and
+no debounce, so a routine token rotation read as a sign-out. **`apps/web`'s `AuthGuard` was
+already fixed this way** — session signal dropped, Convex subscription authoritative,
+debounced 3s, with "2FA enable/disable" named in the comment. The admin copy is a third
+un-deduplicated copy that never got the fix, the same shape of problem as the sessions UI in
+item 2. Server-side enforcement is untouched.
+
+The two remaining `setBackupCodes` call sites were audited and are correct:
+`generateBackupCodes` does return codes, and `handleViewBackupCodes`' direct `fetch` of
+`/api/two-factor/backup-codes` hits a real Convex HTTP route (`sessions.ts:viewBackupCodesHandler`)
+that reads the session cookie. Web routes the same call through a Convex action instead; both
+paths work, so this is not a third copy to reconcile.
+
+Coverage: new `apps/admin/qa/e2e/admin-two-factor.spec.ts`, plus TOTP helpers and an
+`openSecurityTab` ported into `apps/admin/qa/e2e/helpers/auth.ts`. **Admin is now 11 passed.**
 
 **3. Audit-trail gaps** from `docs/audit-trail-event-inventory.md`
 
@@ -791,6 +825,12 @@ with the "Save" button, and the pencil wins on DOM order. Use `{ exact: true }`.
 Security tab *and* the `/dashboard/settings/sessions` route — so "the route renders the
 second" was misleading. `apps/admin/src/components/settings/admin-sessions-list.tsx` is
 still a separate third copy and still needs fixes applied by hand.
+
+**`AuthGuard` is duplicated the same way, and the admin copy was also stale.** Fixed
+2026-09-16 (step 9 item 2c): admin's redirected to `/sign-in` on a transient
+`authClient.useSession()` null, which `proxy.ts` then bounced to `/dashboard`. When you fix
+something in `apps/web/src/components/auth/`, check `apps/admin/src/components/auth/` for
+the same file.
 
 **Auth emails go to the Convex server console** when `RESEND_API_KEY` is unset, and
 `dev-start.sh` redirects that to `.convex-dev.log`. `waitForAuthEmail()` scrapes it.
