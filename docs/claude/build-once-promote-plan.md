@@ -3,13 +3,14 @@
 **Status as of 2026-09-17.** Written as a handoff: it assumes no prior conversation
 context. Read the first three sections before picking up any phase below.
 
-**Phases 1 and 2 are done. Phase 3 is blocked on Vercel dashboard access. Start at Phase 3.**
+**Phase 1 is done and green. Phase 2 is blocked on an upstream dependency — read
+[The Convex adapter blocker](#the-convex-adapter-blocker) before touching anything else.**
 
 | Phase | State |
 |---|---|
 | 0 — spike | done; cross-project prebuilt deploy proven to work (see [Phase 0](#phase-0--the-spike-done)) |
 | **1 — leak guard** | **done**; `scripts/check-env-leak.sh`, wired into `build-app` in `--warn` mode |
-| **2 — web + admin made promotable** | **done**; verified against real staging builds, zero environment values in either artifact |
+| **2 — web + admin made promotable** | **BLOCKED — see [The Convex adapter blocker](#the-convex-adapter-blocker)**. The artifact is clean, but auth breaks at runtime. E2E is red on PR #102 |
 | **3 — Vercel env migration** | **blocked** — needs dashboard/CLI access this session did not have. Exact commands in [Phase 3](#phase-3--vercel-env-migration-blocked) |
 | 4 — promote in the pipeline | not started; depends on Phase 3 |
 | 5 — close out | not started; depends on Phase 4 |
@@ -140,6 +141,53 @@ files** in either artifact.
 **`SITE_URL` is now test-harness config, not app config.** `dev-start.sh` writes it
 unprefixed for web and admin, and only the Playwright configs read it, as the base URL to
 point tests at. The apps themselves no longer read it at all.
+
+## The Convex adapter blocker
+
+**Removing `NEXT_PUBLIC_CONVEX_URL` breaks server-side auth**, even though
+`@repo/auth/server` passes `convexUrl` explicitly to `convexBetterAuthNextJs()`.
+
+Symptom: `/dashboard` renders, but `fetchAuthQuery(api.auth.getCurrentUser)` in
+`apps/admin/src/app/(dashboard)/layout.tsx` throws, so the guard redirects to
+`/api/auth/clear-session` and every authenticated page bounces to `/sign-in?session_cleared=1`.
+Both web and admin are affected.
+
+Proven by bisection, not inference:
+
+| state | `admin-sessions.spec.ts` |
+|---|---|
+| `origin/main` | 2 passed, 1 flaky-pass (31s) |
+| this branch | **2 failed**, 1 passed (1.9m) |
+| this branch + `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` added back to `apps/admin/.env.local` | **3 passed (22s)** |
+
+The mechanism is visible in the compiled output. The Convex SDK's default URL is a
+**build-time literal**, not a runtime lookup:
+
+```js
+let r = e ?? "http://127.0.0.1:3210";
+... throw Error("Environment variable NEXT_PUBLIC_CONVEX_URL is not set.")
+```
+
+`e` is the explicitly passed URL. Some call path inside the adapter — `getToken()` works,
+so it is one of the query helpers — does **not** forward the `convexUrl` we configured, and
+falls through to that inlined default. Because the default is baked at build time, setting
+`NEXT_PUBLIC_CONVEX_URL` as a *runtime* variable on the Vercel project cannot rescue it.
+
+So the two outcomes are currently exclusive: keep `NEXT_PUBLIC_CONVEX_URL` at build time and
+the artifact stays pinned to one environment, or drop it and auth breaks. Resolving this
+means finding the adapter call path that drops the URL — likely a small upstream fix or a
+constructor option — and is a prerequisite for Phase 2. See
+`docs/claude/auth-e2e-and-upgrade-plan.md` for the adapter's upgrade history.
+
+## A second, unrelated defect in this branch
+
+`SITE_URL` was a poor choice of name: Convex **already** uses `SITE_URL`
+(`packages/backend/convex/auth.ts:129`) for a *comma-separated list of trusted origins*,
+and `dev-start.sh` syncs it with `convex env set SITE_URL`. The Next apps now write a
+single origin under the same name into `apps/<app>/.env.local`. Nothing reads both today,
+so this did not cause the E2E failure, but the collision should be resolved before Phase 2
+lands — `APP_ORIGIN` or `E2E_BASE_URL` would be unambiguous, and only the Playwright
+configs consume it.
 
 ## Phase 3 — Vercel env migration (blocked)
 
