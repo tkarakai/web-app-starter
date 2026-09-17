@@ -13,7 +13,8 @@ import {
   OfflineBanner,
   PublicConfigProvider,
 } from "@repo/design-system";
-import { readPublicConfigFromEnv, getRequestOrigin } from "@repo/design-system/server";
+import { readPublicConfigFromEnv } from "@repo/design-system/server";
+import { getRequestOrigin } from "@/lib/request-origin";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";

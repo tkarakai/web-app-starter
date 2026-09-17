@@ -108,10 +108,22 @@ Two details:
 it into the RSC payload, so client components receive real runtime values from an
 environment-agnostic build. No `<script>` injection and no CSP nonce handling needed.
 
-**The server helpers live at `@repo/design-system/server`, not in the main barrel.** They
-import `next/headers`. Exporting them from `src/index.ts` broke the build immediately —
-any client component importing from `@repo/design-system` dragged `next/headers` into the
-browser bundle. Keep that separation.
+**`readPublicConfigFromEnv` lives at `@repo/design-system/server`, not in the main
+barrel.** Exporting server-side configuration reading from `src/index.ts` means any client
+component importing from `@repo/design-system` pulls it in. Keep that separation.
+
+**`getRequestOrigin` lives in `apps/web/src/lib/`, not in the design system.**
+`@repo/design-system` imports nothing from `next` anywhere else and declares no `next`
+peer dependency, so a `next/headers` import there resolved locally through hoisting but
+failed in CI with `TS2307: Cannot find module 'next/headers'`. Only web needs the helper;
+keeping the design system framework-agnostic was the right fix rather than adding the peer
+dependency.
+
+**Turborepo strips undeclared environment variables.** `NEXT_PUBLIC_*` is passed
+through to tasks by default; the unprefixed names are not. Until they were added to
+`turbo.json`, `turbo build` succeeded for each app run standalone but failed under turbo
+with a module-evaluation throw from `@repo/auth`, because the variables never reached the
+task. Any further runtime variable must be added to `turbo.json` as well as to Vercel.
 
 **A non-obvious fix that mattered.** `apps/web/src/app/actions.ts` called
 `fetchQuery(api.userProfiles.getLocale, {})` with no URL. `convex/nextjs` falls back to

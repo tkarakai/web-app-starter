@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getRequestOrigin } from "@repo/design-system/server";
+import { getRequestOrigin } from "@/lib/request-origin";
 
 // Dynamic so the origin comes from the request rather than being baked in at
 // build time — that is what lets one artifact serve any environment.
