@@ -3,14 +3,17 @@
 **Status as of 2026-09-17.** Written as a handoff: it assumes no prior conversation
 context. Read the first three sections before picking up any phase below.
 
-**Phase 1 is done and green. Phase 2 is blocked on an upstream dependency — read
-[The Convex adapter blocker](#the-convex-adapter-blocker) before touching anything else.**
+**Phases 1 and 2 are done and verified. Phase 3 is blocked on Vercel access. Start at Phase 3.**
+
+The central question — *is build-once/promote possible with this stack at all?* — is
+answered **yes**, and proven end to end: see
+[Proof that promotion works](#proof-that-promotion-works).
 
 | Phase | State |
 |---|---|
 | 0 — spike | done; cross-project prebuilt deploy proven to work (see [Phase 0](#phase-0--the-spike-done)) |
 | **1 — leak guard** | **done**; `scripts/check-env-leak.sh`, wired into `build-app` in `--warn` mode |
-| **2 — web + admin made promotable** | **BLOCKED — see [The Convex adapter blocker](#the-convex-adapter-blocker)**. The artifact is clean, but auth breaks at runtime. E2E is red on PR #102 |
+| **2 — web + admin made promotable** | **done**; artifact carries no environment identity, and a build made with one Convex URL provably serves another at runtime. Full E2E green on both apps |
 | **3 — Vercel env migration** | **blocked** — needs dashboard/CLI access this session did not have. Exact commands in [Phase 3](#phase-3--vercel-env-migration-blocked) |
 | 4 — promote in the pipeline | not started; depends on Phase 3 |
 | 5 — close out | not started; depends on Phase 4 |
@@ -49,7 +52,7 @@ The distinction the whole plan rests on:
 |---|---|
 | `NEXT_PUBLIC_GIT_SHA` | `CONVEX_URL` |
 | `NEXT_PUBLIC_GIT_BRANCH` | `CONVEX_SITE_URL` |
-| `NEXT_PUBLIC_DEPLOY_TIMESTAMP` | `SITE_URL` (now eliminated — see below) |
+| `NEXT_PUBLIC_DEPLOY_TIMESTAMP` | `SITE_URL` (eliminated — see below) |
 | `NEXT_PUBLIC_BUILD_ID` | `LANDING_URL` |
 | `NEXT_PUBLIC_APP_NAME` | `WEB_APP_URL` |
 | | `APP_ENVIRONMENT` |
@@ -60,6 +63,8 @@ and it keeps its `NEXT_PUBLIC_` prefix. The right column is what blocks promotio
 `SITE_URL` was removed from web and admin entirely rather than converted: `robots.ts`,
 `sitemap.ts` and the layouts now derive the origin from the request `Host` header via
 `getRequestOrigin()`. One fewer variable to configure and keep in sync per environment.
+Do not reintroduce the name — it belongs to Convex; see
+[the collision](#a-second-defect-also-fixed-the-site_url-name-collision).
 
 ---
 
@@ -138,13 +143,13 @@ legacy `NEXT_PUBLIC_*` names removed from the pulled env (simulating the Phase 5
 state). The guard passes for both, and a direct scan for each staging value finds **0
 files** in either artifact.
 
-**`SITE_URL` is now test-harness config, not app config.** `dev-start.sh` writes it
-unprefixed for web and admin, and only the Playwright configs read it, as the base URL to
-point tests at. The apps themselves no longer read it at all.
+**`APP_ORIGIN` is test-harness config, not app config.** `dev-start.sh` writes it for web
+and admin, and only the Playwright configs read it, as the base URL to point tests at. The
+apps themselves derive their origin from the request and read no such variable.
 
-## The Convex adapter blocker
+## The Convex adapter defect (fixed)
 
-**Removing `NEXT_PUBLIC_CONVEX_URL` breaks server-side auth**, even though
+**Removing `NEXT_PUBLIC_CONVEX_URL` broke server-side auth**, even though
 `@repo/auth/server` passes `convexUrl` explicitly to `convexBetterAuthNextJs()`.
 
 Symptom: `/dashboard` renders, but `fetchAuthQuery(api.auth.getCurrentUser)` in
@@ -168,26 +173,60 @@ let r = e ?? "http://127.0.0.1:3210";
 ... throw Error("Environment variable NEXT_PUBLIC_CONVEX_URL is not set.")
 ```
 
-`e` is the explicitly passed URL. Some call path inside the adapter — `getToken()` works,
-so it is one of the query helpers — does **not** forward the `convexUrl` we configured, and
-falls through to that inlined default. Because the default is baked at build time, setting
-`NEXT_PUBLIC_CONVEX_URL` as a *runtime* variable on the Vercel project cannot rescue it.
+`e` is the explicitly passed URL. The culprit is one line in
+`@convex-dev/better-auth@0.12.5`, `dist/nextjs/index.js`:
 
-So the two outcomes are currently exclusive: keep `NEXT_PUBLIC_CONVEX_URL` at build time and
-the artifact stays pinned to one environment, or drop it and auth breaks. Resolving this
-means finding the adapter call path that drops the URL — likely a small upstream fix or a
-constructor option — and is a prerequisite for Phase 2. See
-`docs/claude/auth-e2e-and-upgrade-plan.md` for the adapter's upgrade history.
+```js
+const getArgsAndOptions = (args, token) => {
+    return [args[0], { token }];   // no `url`
+};
+```
 
-## A second, unrelated defect in this branch
+`convexBetterAuthNextJs` accepts `convexUrl` but only uses it when fetching tokens. Its
+`fetchAuthQuery` / `preloadAuthQuery` / `fetchAuthMutation` / `fetchAuthAction` call
+`convex/nextjs` with `{ token }` alone, so `NextjsOptions.url` falls back to its documented
+default of `process.env.NEXT_PUBLIC_CONVEX_URL`. `getToken()` and `isAuthenticated()` were
+unaffected because they use the explicitly passed `convexSiteUrl`.
 
-`SITE_URL` was a poor choice of name: Convex **already** uses `SITE_URL`
+**The fix is entirely on our side.** `NextjsOptions.url` is a supported option, and the
+adapter package contains no `NEXT_PUBLIC` references of its own. `packages/auth/src/server.ts`
+now re-exports `handler`, `getToken` and `isAuthenticated` from the adapter unchanged, and
+implements the four data helpers itself as thin wrappers that pass
+`{ token, url: process.env.CONVEX_URL }`. The adapter's own `callWithToken` retry path was
+inert here — it only retries when `opts.jwtCache.enabled` is set, which this project does
+not configure — so nothing was lost. Drop the wrappers if a future version forwards
+`convexUrl` to its query helpers.
+
+## Proof that promotion works
+
+Not inferred from the artifact being clean — measured on a running server.
+`apps/admin` was built with one Convex URL and started with a different one:
+
+| | value |
+|---|---|
+| `CONVEX_URL` at build | `https://build-time-only.convex.cloud` |
+| `CONVEX_URL` at runtime | `https://runtime-value-wins.convex.cloud` |
+| served by `/sign-in` | **`runtime-value-wins.convex.cloud`** |
+| build-time value in the served page | **absent** |
+
+The build-time value appears nowhere in the served output (only in a `.js.map`, which is
+not served). Combined with the guard passing against a real staging build, that is the
+property build-once/promote requires.
+
+Test evidence: `apps/admin` 11/11 passed; `apps/web` 103 passed with 1 flaky-pass
+(`auth-rate-limits.spec.ts` — flaky on `origin/main` too).
+
+## A second defect, also fixed: the `SITE_URL` name collision
+
+`SITE_URL` was a poor choice of name. Convex **already** uses it
 (`packages/backend/convex/auth.ts:129`) for a *comma-separated list of trusted origins*,
-and `dev-start.sh` syncs it with `convex env set SITE_URL`. The Next apps now write a
-single origin under the same name into `apps/<app>/.env.local`. Nothing reads both today,
-so this did not cause the E2E failure, but the collision should be resolved before Phase 2
-lands — `APP_ORIGIN` or `E2E_BASE_URL` would be unambiguous, and only the Playwright
-configs consume it.
+which `dev-start.sh` and `infra-setup-staging.sh` set via `convex env set SITE_URL`. Writing
+a single app origin under the same name into `apps/<app>/.env.local` was ambiguous even
+though nothing read both.
+
+The app-level value is now `APP_ORIGIN`, and only the Playwright configs consume it, as the
+URL to point tests at. `SITE_URL` again means exactly one thing: Convex's trusted-origin
+list.
 
 ## Phase 3 — Vercel env migration (blocked)
 

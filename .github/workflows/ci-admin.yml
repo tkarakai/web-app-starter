@@ -143,7 +143,7 @@ jobs:
         env:
           CONVEX_URL: "https://placeholder.convex.cloud"
           CONVEX_SITE_URL: "https://placeholder.convex.site"
-          SITE_URL: "http://localhost:3002"
+          APP_ORIGIN: "http://localhost:3002"
 
       - name: Check bundle size
         run: cd apps/admin && bun run size

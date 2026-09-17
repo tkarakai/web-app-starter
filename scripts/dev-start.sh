@@ -835,13 +835,17 @@ start_next_app() {
     local next_port=$(echo "$next_url" | grep -o '[0-9]*$')
 
     # Record this app's origin.
-    # web and admin derive their own origin from the request Host header, so the
-    # value is written unprefixed and is consumed only by the Playwright config
-    # as a test target. landing still inlines NEXT_PUBLIC_SITE_URL at build time.
+    #
+    # web and admin derive their own origin from the request Host header, so this
+    # is written as APP_ORIGIN and consumed only by the Playwright config, as the
+    # URL to point tests at. It is deliberately NOT called SITE_URL: that name
+    # already belongs to Convex, where it holds a comma-separated list of trusted
+    # origins (see the sync below and getSiteUrls() in convex/auth.ts).
+    # landing still inlines NEXT_PUBLIC_SITE_URL at build time.
     if [ -n "$next_port" ]; then
         case "$app_name" in
             web|admin)
-                update_env_var "$app_dir/.env.local" "SITE_URL" "http://localhost:$next_port"
+                update_env_var "$app_dir/.env.local" "APP_ORIGIN" "http://localhost:$next_port"
                 ;;
             *)
                 update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
