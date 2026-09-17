@@ -130,8 +130,12 @@ runs:
         # The serverless functions in .vercel/output reference files in
         # apps/<app>/.next/ via .nft.json trace files — both are needed
         # for vercel deploy --prebuilt to succeed.
+        # cache/ is build cache and dev/ is `next dev` output; neither is read by
+        # `vercel deploy --prebuilt`. dev/ never exists on a fresh CI checkout, but
+        # excluding it keeps a local run of this action honest about artifact size.
         tar -czf "${TARBALL}" \
           --exclude="apps/${{ inputs.app }}/.next/cache" \
+          --exclude="apps/${{ inputs.app }}/.next/dev" \
           .vercel/output "apps/${{ inputs.app }}/.next"
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 

@@ -287,9 +287,14 @@ on each per Phase 3, and the `VERCEL_PROJECT_ID_*` secrets updating to the new I
 ## Phase 4 — promote in the pipeline (done)
 
 - `build-app` names artifacts `<app>-<sha>` with no environment segment, and excludes
-  `.next/cache` from the tarball. The spike's artifact was **340 MB**, nearly all build
-  cache that `vercel deploy --prebuilt` never reads — which mattered once these started
-  crossing workflows.
+  `.next/cache` and `.next/dev` from the tarball.
+
+  > An earlier revision of this doc said the artifact was **340 MB, nearly all build
+  > cache**. That was wrong: the bulk was `.next/dev`, stale `next dev` output on the
+  > machine doing the measuring, which never exists on a fresh CI checkout. Measured
+  > properly, a CI-equivalent `apps/web` artifact is **5.0 MB**. The exclusions are still
+  > correct — CI does produce `.next/cache` during the build — just not for the reason
+  > originally given.
 - `deploy-vercel` gained `run-id` + `github-token` (cross-workflow download; empty values
   fall back to the current run, so one step serves both paths) and `expected-sha`, which
   checks the artifact's build manifest. A promoted artifact is deployed without being
@@ -307,6 +312,33 @@ changed, so a push-triggered run for a SHA may hold no `web-<sha>` artifact. Pro
 different SHA's artifact would silently ship untested bytes, so `resolve-staging-build` fails
 with an actionable message instead: re-run `cd-staging` for that SHA with `force_deploy=true`.
 Artifacts also expire after 90 days, which the same check catches.
+
+## Pre-merge verification of the staging path
+
+Merging to `main` triggers `cd-staging` automatically, so the staging path is the one that
+carries real risk. What was checked before merging, without running the workflow:
+
+| Check | Result |
+|---|---|
+| `build-app` output names vs the names `cd-staging` passes to `deploy-vercel` | match exactly (`web-<sha>`, `web.tar.gz`, `web.tar.gz.sha256`) |
+| `deploy-vercel`'s new empty-string `run-id` / `github-token` defaults | harmless — `download-artifact`'s cross-run path is guarded by `if (inputs.token)`, so an empty token takes the current-run path and `runID` (`parseInt("")` → `NaN`) is never read |
+| Artifact completeness with `.next/cache` excluded | `robots.txt.func`, `sitemap.xml.func`, `[locale].func`, `_middleware.func` all present |
+| `vercel deploy --prebuilt` of that artifact | deploys and aliases successfully; static chunks serve 200; middleware runs (CSP headers present) |
+| `actionlint` | 34 findings on the branch, 34 on `main` — no new ones |
+
+The deployed test artifact returns **500** on `/en` when the target project has no environment
+variables. That is the intended behaviour, not a regression: `readPublicConfigFromEnv()` throws
+on a missing `CONVEX_URL` so a misconfigured deployment fails loudly on the first request. Before
+this work the same artifact would have returned 200 — while silently talking to whichever Convex
+deployment built it, which is the bug being fixed.
+
+`/robots.txt` returning 404 is pre-existing: the live `app1-web-staging` deployment on `main`
+returns 404 for it too. The i18n middleware 307s it to `/en/robots.txt`.
+
+**What this does not prove.** `cd-staging` itself has not run. Change detection, the CI gate,
+artifact upload/download inside a real run, and the Convex deploy step are all unexercised. The
+workflow is only dispatchable on the branch it lives on, so a genuine end-to-end test means
+either dispatching `cd-staging` from this branch or merging and watching the first run.
 
 ## Phase 5 — close out (not started)
 
