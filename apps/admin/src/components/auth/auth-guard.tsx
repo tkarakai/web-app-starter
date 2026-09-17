@@ -38,16 +38,27 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
     }
   }, [user]);
 
-  // Redirect to sign-in when the session is invalidated (e.g. signed out in another tab).
-  // Two signals: Convex real-time subscription (user becomes null) or Better Auth session.
+  // Redirect to sign-in when the session is invalidated (e.g. signed out in another
+  // tab). The Convex real-time subscription is the authoritative signal; a debounce
+  // prevents false redirects during transient session refreshes (2FA enable/disable,
+  // password change) where the query briefly returns null while the new session token
+  // propagates.
+  //
+  // `authClient.useSession()` is deliberately NOT a trigger. It reports
+  // `{ isPending: false, data: null }` for a beat after `verifyTotp` swaps the session
+  // token, which bounced the admin to /sign-in — and `proxy.ts`, seeing a cookie that
+  // is still valid, bounced them on to /dashboard. Enrolment therefore navigated away
+  // from the settings page before the backup codes were ever rendered. This mirrors
+  // apps/web/src/components/auth/auth-guard.tsx, which was already fixed this way.
   React.useEffect(() => {
-    const convexLost = wasAuthenticated && user === null;
-    const sessionLost = !session.isPending && session.data === null;
+    if (!(wasAuthenticated && user === null)) return;
 
-    if (convexLost || sessionLost) {
+    const timeout = setTimeout(() => {
       router.replace("/sign-in");
-    }
-  }, [wasAuthenticated, user, session.isPending, session.data, router]);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [wasAuthenticated, user, router]);
 
   const authUser: AuthUser = {
     id: session.data?.user?.id ?? undefined,
