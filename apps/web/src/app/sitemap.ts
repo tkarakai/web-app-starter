@@ -1,23 +1,26 @@
 import type { MetadataRoute } from "next";
 import { locales } from "@repo/i18n";
+import { getRequestOrigin } from "@repo/design-system/server";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
-if (!SITE_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL");
-}
+// Dynamic so the origin comes from the request rather than being baked in at
+// build time — that is what lets one artifact serve any environment.
+// See docs/claude/build-once-promote-plan.md
+export const dynamic = "force-dynamic";
 
-function generateAlternates(pathname: string) {
+function generateAlternates(siteUrl: string, pathname: string) {
   return {
     languages: Object.fromEntries(
       locales.map((locale) => [
         locale,
-        `${SITE_URL}/${locale}${pathname === "/" ? "" : pathname}`,
+        `${siteUrl}/${locale}${pathname === "/" ? "" : pathname}`,
       ])
     ),
   };
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const siteUrl = await getRequestOrigin();
+
   const routes = [
     { path: "/sign-in", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/sign-up", priority: 0.7, changeFrequency: "monthly" as const },
@@ -30,11 +33,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return routes.flatMap(({ path, priority, changeFrequency }) =>
     locales.map((locale) => ({
-      url: `${SITE_URL}/${locale}${path}`,
+      url: `${siteUrl}/${locale}${path}`,
       lastModified: new Date(),
       changeFrequency,
       priority,
-      alternates: generateAlternates(path),
+      alternates: generateAlternates(siteUrl, path),
     }))
   );
 }

@@ -12,13 +12,13 @@ import { SiteHeader } from "@repo/design-patterns";
 import { AuthForm } from "@/components/auth/auth-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL;
+const LANDING_URL = process.env.LANDING_URL;
 if (!LANDING_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_LANDING_URL");
+  throw new Error("Missing required environment variable: LANDING_URL");
 }
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+const CONVEX_SITE_URL = process.env.CONVEX_SITE_URL;
 if (!CONVEX_SITE_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
+  throw new Error("Missing required environment variable: CONVEX_SITE_URL");
 }
 
 type OnboardingType = "inviteOnly" | "publicWaitlist" | "publicSignup";

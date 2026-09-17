@@ -5,9 +5,9 @@ import { SiteHeader } from "@repo/design-patterns";
 import { VerifyEmailForm } from "@/components/auth/verify-email-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL;
+const LANDING_URL = process.env.LANDING_URL;
 if (!LANDING_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_LANDING_URL");
+  throw new Error("Missing required environment variable: LANDING_URL");
 }
 
 export default async function VerifyEmailPage() {

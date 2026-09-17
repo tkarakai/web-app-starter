@@ -7,7 +7,13 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 
-import { Toaster, EnvironmentBannerWrapper, OfflineBanner } from "@repo/design-system";
+import {
+  Toaster,
+  EnvironmentBannerWrapper,
+  OfflineBanner,
+  PublicConfigProvider,
+} from "@repo/design-system";
+import { readPublicConfigFromEnv, getRequestOrigin } from "@repo/design-system/server";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
@@ -37,20 +43,18 @@ const fontsByLocale: Record<string, { variable: string }> = {
   he: heebo,
 };
 
-if (!process.env.NEXT_PUBLIC_SITE_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL");
-}
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
-
 type Props = {
   params: Promise<{ locale: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "metadata" });
+  const [t, siteUrl] = await Promise.all([
+    getTranslations({ locale, namespace: "metadata" }),
+    getRequestOrigin(),
+  ]);
 
-  const canonicalUrl = `${SITE_URL}/${locale}`;
+  const canonicalUrl = `${siteUrl}/${locale}`;
 
   return {
     title: {
@@ -58,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       default: t("title"),
     },
     description: t("description"),
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(siteUrl),
     icons: {
       icon: [
         { url: "/icon.svg", type: "image/svg+xml" },
@@ -103,13 +107,18 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const [token, nonce, messages, headersList, tOffline] = await Promise.all([
+  const [token, nonce, messages, headersList, tOffline, siteUrl] = await Promise.all([
     getToken(),
     headers().then((h) => h.get("x-nonce") ?? undefined),
     getMessages(),
     headers(),
     getTranslations({ locale, namespace: "offline" }),
+    getRequestOrigin(),
   ]);
+
+  // Read at request time, not build time, so one artifact can serve any
+  // environment. See docs/claude/build-once-promote-plan.md
+  const publicConfig = readPublicConfigFromEnv({ landingUrl: true });
 
   const pathname = headersList.get("x-pathname") ?? "/";
   const dir = getLocaleDirection(locale);
@@ -119,18 +128,20 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir} className={font.variable} suppressHydrationWarning>
       <head>
-        <HreflangLinks locale={locale} pathname={pathname} siteUrl={SITE_URL} />
+        <HreflangLinks locale={locale} pathname={pathname} siteUrl={siteUrl} />
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <EnvironmentBannerWrapper appName="web" />
           <OfflineBanner label={tOffline("message")} />
           <NextIntlClientProvider messages={messages}>
-            <ConvexClientProvider initialToken={token}>
-              <ConvexErrorToast />
-              <AnnouncementBannerHost hideOnDashboard fixed />
-              {children}
-            </ConvexClientProvider>
+            <PublicConfigProvider value={publicConfig}>
+              <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
+                <ConvexErrorToast />
+                <AnnouncementBannerHost hideOnDashboard fixed />
+                {children}
+              </ConvexClientProvider>
+            </PublicConfigProvider>
             <Toaster richColors closeButton position="bottom-right" />
           </NextIntlClientProvider>
         </ThemeProvider>
