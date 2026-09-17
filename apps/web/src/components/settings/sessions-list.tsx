@@ -56,8 +56,10 @@ function DeviceIcon({ device }: { device: string }) {
   }
 }
 
+/** Normalize IPv6 loopback and IPv4-mapped IPv6 addresses for display. */
 function normalizeIp(ip: string): string {
   if (ip === "::1") return "127.0.0.1";
+  // Strip ::ffff: prefix from IPv4-mapped IPv6 addresses
   const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
   if (mapped) return mapped[1];
   return ip;
@@ -78,6 +80,13 @@ function formatRelativeTime(date: Date): string {
   return date.toLocaleDateString();
 }
 
+/**
+ * The single session-list implementation. Rendered by two call sites: the
+ * Security settings tab (`security-section.tsx`) and the standalone
+ * /dashboard/settings/sessions page (`sessions-client.tsx`, which supplies only
+ * the page chrome). Do not fork it again — it was duplicated once and every fix
+ * then had to be made twice.
+ */
 export function SessionsList() {
   const ts = useTranslations("dashboard.sessions");
   const tc = useTranslations("common");
@@ -170,96 +179,99 @@ export function SessionsList() {
   const otherSessions = sessions?.filter((s) => s.token !== currentSessionToken) ?? [];
   const currentSession = sessions?.find((s) => s.token === currentSessionToken);
 
-  if (error) {
-    return (
-      <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
-        {error}
-      </div>
-    );
-  }
-
-  if (sessions === null) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        {[1, 2, 3].map((i) => (
-          <Card key={i} className="border-border/40">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Skeleton className="h-10 w-10 rounded-lg" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      {/* Current session */}
-      {currentSession ? (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            {ts("currentSession")}
-          </h3>
-          <SessionCard session={currentSession} isCurrent ts={ts} />
+      {/* Shown above the list rather than instead of it: a failed revoke leaves the
+          already-loaded sessions on screen, and a failed load shows the message
+          instead of an endless skeleton. */}
+      {error ? (
+        <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+          {error}
         </div>
       ) : null}
 
-      {/* Other sessions */}
-      {otherSessions.length > 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              {ts("otherSessions")}
-            </h3>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" disabled={revokingAll}>
-                  <LogOut className="h-3.5 w-3.5" />
-                  {revokingAll ? tc("loading") : ts("revokeAll")}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{ts("revokeAllTitle")}</AlertDialogTitle>
-                  <AlertDialogDescription>{ts("revokeAllDescription")}</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleRevokeAll}>
-                    {ts("revokeAllConfirm")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {otherSessions.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                isCurrent={false}
-                revoking={revoking === session.token}
-                onRevoke={() => handleRevoke(session.token)}
-                ts={ts}
-              />
-            ))}
-          </div>
+      {sessions === null ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-border/40">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      ) : null}
+      ) : (
+        <>
+          {/* Current session */}
+          {currentSession ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {ts("currentSession")}
+              </h3>
+              <SessionCard session={currentSession} isCurrent ts={ts} />
+            </div>
+          ) : null}
 
-      {/* No other sessions */}
-      {otherSessions.length === 0 && currentSession ? (
-        <div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
-          <p className="text-sm text-muted-foreground">{ts("noOtherSessions")}</p>
-        </div>
-      ) : null}
+          {/* Other sessions */}
+          {otherSessions.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {ts("otherSessions")}
+                </h3>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={revokingAll}>
+                      <LogOut className="h-3.5 w-3.5" />
+                      {revokingAll ? tc("loading") : ts("revokeAll")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{ts("revokeAllTitle")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {ts("revokeAllDescription")}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRevokeAll}>
+                        {ts("revokeAllConfirm")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {otherSessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    isCurrent={false}
+                    revoking={revoking === session.token}
+                    onRevoke={() => handleRevoke(session.token)}
+                    ts={ts}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* No other sessions */}
+          {otherSessions.length === 0 && currentSession ? (
+            <div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
+              <p className="text-sm text-muted-foreground">{ts("noOtherSessions")}</p>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
