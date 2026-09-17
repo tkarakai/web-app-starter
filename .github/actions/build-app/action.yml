@@ -109,6 +109,14 @@ runs:
         vercel build ${BUILD_FLAGS} \
           --token="$VERCEL_TOKEN"
 
+    # Reports environment values that Next.js inlined at build time. These pin
+    # the artifact to the environment it was built for and block promotion.
+    # Warn-only while the migration is in progress — see
+    # docs/claude/build-once-promote-plan.md
+    - name: Check artifact is promotable
+      shell: bash
+      run: ./scripts/check-env-leak.sh "${{ inputs.app }}" --warn
+
     - name: Package artifact
       shell: bash
       run: |
