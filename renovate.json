@@ -49,8 +49,8 @@
       "automerge": false
     },
     {
-      "description": "@better-auth/passkey 1.7.x requires better-auth ^1.7.5, which violates @convex-dev/better-auth's peer range of >=1.6.11 <1.7.0, so the auth-stack group would propose an unsatisfiable set. REMOVE once the adapter allows better-auth 1.7 — check with `bun info @convex-dev/better-auth@latest peerDependencies`.",
-      "matchPackageNames": ["@better-auth/passkey"],
+      "description": "Cap the whole peer-bound auth stack below 1.7. @convex-dev/better-auth@0.12.5 declares peer better-auth '>=1.6.11 <1.7.0', and @better-auth/passkey 1.7.x additionally requires better-auth ^1.7.5. Capping only @better-auth/passkey is NOT enough: the 2026-09-16 verification dispatch planned better-auth 1.6.33 -> 1.7.3 inside renovate/auth-stack, which no version of the adapter can satisfy, so the group would have opened a PR that cannot install. REMOVE once the adapter widens — check with `bun info @convex-dev/better-auth@latest peerDependencies`.",
+      "matchPackageNames": ["better-auth", "@better-auth/**"],
       "allowedVersions": "<1.7.0"
     }
   ]

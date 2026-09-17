@@ -100,7 +100,17 @@ could never complete.
    - Pull requests: **Read and write**
    - Workflows: **Read and write**
    - Issues: **Read and write** (for the Dependency Dashboard)
+   - Commit statuses: **Read and write** (for the `renovate/stability-days` hold)
    - Dependabot alerts: **Read-only** (for the security-fix fast path / `vulnerabilityAlerts`)
+
+   > **Commit statuses is not optional, and omitting it fails quietly.** Renovate publishes
+   > the `minimumReleaseAge` hold as a commit status. Without the permission,
+   > `POST /repos/:owner/:repo/statuses/:sha` returns `403 Resource not accessible by
+   > personal access token`; Renovate turns that into a `repository-changed` result and
+   > **aborts the repository run while the workflow step still exits 0**. The 2026-09-16
+   > verification dispatch got through 4 of 34 branches before stopping, never pushed
+   > `renovate/auth-stack`, and never created the Dependency Dashboard — on a green run.
+   > The only expected 403 is `GET /user/emails`, which fine-grained PATs cannot read.
 4. **Expiration:** set a finite expiry (e.g. 90 days) and note the date — see *Rotation* below.
 5. Generate and copy the token.
 
@@ -143,13 +153,16 @@ The following are already configured on this repo (via `gh api` / Settings):
    could never merge anyway; squash/rebase only. `renovate.json` sets
    `automergeStrategy: "squash"` to match.
 3. **Required status checks on `main`** — the `*-complete` summary jobs from `ci-shared`, `ci-web`,
-   `ci-admin`, and `ci-landing`, with "require branches to be up to date" (enforced by both the
-   legacy branch protection and the `rule01` ruleset — redundant but harmless).
+   `ci-admin`, `ci-landing`, `ci-landing-static` and `ci-storybook`, with "require branches to be
+   up to date" (enforced by both the legacy branch protection and the `rule01` ruleset — the two
+   are independent copies, so a change to one is not a change to the other).
 
-   `CI Landing Static Complete` and `CI Storybook Complete` exist as jobs but are **not** required
-   yet — they were excluded back when they could not pass, and both are reliable now. Automerge is
-   only as strong as this list, so a storybook or landing-static regression cannot currently block
-   an automerged PR. Tracked as step 9 item 1 in `docs/claude/auth-e2e-and-upgrade-plan.md`.
+   `CI Landing Static Complete` and `CI Storybook Complete` were **added on 2026-09-16**, so all
+   six `*-complete` jobs are now required and a regression in any of the five apps can block an
+   automerge. The list lives in **two** places — classic branch protection *and* ruleset `rule01`
+   (id `12113493`) — and both must be updated; see step 9 item 1 in
+   `docs/claude/auth-e2e-and-upgrade-plan.md` for the commands and the `PUT`-replaces-everything
+   caveat on the ruleset.
 4. The **`RENOVATE_TOKEN`** secret exists (above).
 
 ## Validating a config change
