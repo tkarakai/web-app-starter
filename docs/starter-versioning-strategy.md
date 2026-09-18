@@ -1,6 +1,8 @@
 # Propagating starter updates to business apps
 
-Status: proposal, 2026-09-18. No decision taken yet.
+Status: proposal, 2026-09-18. **Phase 0 is implemented** — see `VERSIONING.md`,
+`UPGRADING.md`, `CHANGELOG.md` and `scripts/release.sh`. Phases 1–3 remain a
+proposal with no decision taken.
 
 ## The problem
 

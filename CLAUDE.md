@@ -169,7 +169,9 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
-| Working on how starter releases reach downstream business apps, versioning, or upgrade tooling | `docs/starter-versioning-strategy.md` — **proposal, no decision taken** |
+| Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
+| Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md` and `CHANGELOG.md` |
+| Working on how starter releases reach downstream business apps long-term (tiers, registry, Convex Components) | `docs/starter-versioning-strategy.md` — **proposal; Phase 0 implemented, Phases 1–3 not decided** |
 
 ## Resources
 
