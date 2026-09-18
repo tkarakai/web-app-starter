@@ -50,6 +50,24 @@ Status as of 2026-09-15.
 
 ## Next
 
+### Distributing the starter to business apps
+
+Business projects currently clone and diverge, so security and feature work here
+never reaches them. A tiered proposal — versioned dependencies for platform code,
+a component registry for UI, scaffold-once for app shells — is written up in
+[`starter-versioning-strategy.md`](./starter-versioning-strategy.md). No decision
+taken yet.
+
+- [ ] Decide on Phase 0 (semver, tags, `UPGRADING.md`, upstream-remote workflow).
+      Cheap, needs no refactor, and is strictly better than today.
+- [ ] Phase 1 seam work, valuable under any propagation model:
+  - [ ] Brand config — `Web App Starter` is a string literal in 29 files
+        (including all 15 locale files); every business app edits all 29 on day one.
+  - [ ] Split `packages/backend/convex/schema.ts` into platform and app tables,
+        using the spread pattern the file already uses for `rateLimitTables`.
+  - [ ] Namespace i18n platform strings so downstream key additions stop
+        conflicting across 15 locale files.
+
 ### Auth
 
 The identity anchor is always the email address in Better Auth; every account needs one,
