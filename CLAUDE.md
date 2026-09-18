@@ -169,6 +169,7 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
+| Working on how starter releases reach downstream business apps, versioning, or upgrade tooling | `docs/starter-versioning-strategy.md` — **proposal, no decision taken** |
 
 ## Resources
 
