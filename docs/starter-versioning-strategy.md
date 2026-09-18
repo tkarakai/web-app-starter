@@ -18,6 +18,9 @@ this repo and right for other parts.
 This document argues for a third option: **stratify the repo by change profile
 and give each stratum its own propagation mechanism.**
 
+Jargon used below — *seam*, *fork in anger*, *vendoring*, *codemod*, *eject* and
+the rest — is defined in the [Glossary](#glossary) at the end.
+
 ## What this repo actually is
 
 Measured on `main` at `4b8c546`:
@@ -94,13 +97,41 @@ universally acknowledged to degrade.
 - *Makerkit*: same upstream-remote workflow, but leans on a Turborepo layout —
   `packages/features`, `packages/ui` — so downstream work happens in app code
   while core packages stay untouched. Structure is doing the real work, not git.
-- *fullstackhero*: most sophisticated of the three. Tagged releases merged by tag
+- *TurboStarter*: closest structural peer to us — Turborepo monorepo, shared
+  `auth` / `billing` / `db` / `api` packages. Same upstream-remote workflow, but
+  **explicitly advises merge over rebase** ("when prompted the first time, please
+  opt for merging instead of rebasing"), which directly contradicts supastarter.
+  Names exactly one conflict hotspot, the lockfile, with the right remedy — accept
+  either side, never hand-edit, regenerate with `pnpm i` — and prescribes `lint` +
+  `typecheck` as the post-merge health check. Notably it gives *no* guidance on
+  where downstream should put its own code, which is the gap Makerkit and
+  fullstackhero fill.
+- *fullstackhero*: most sophisticated of these. Tagged releases merged by tag
   (`git merge v10.1.0`), a changelog with explicit action-required items, and
   architectural rules: create your own `Modules.{YourName}` that upstream never
   touches, don't edit high-traffic shared `BuildingBlocks`, use extension points
   rather than editing shipped modules. Their framing is the right one — *"taking
   upstream fixes is a git workflow, not a package bump"* — precisely because they
   distribute source you own rather than packages.
+
+**"Lifetime updates" as a licensing promise, not a mechanism.** *ShipFast* sells
+lifetime updates, but the delivery mechanism is continued access to the repo —
+there is no merge tooling, no versioning, no upgrade guide. It is the pure
+fork-and-diverge endpoint, and it works for its audience: solo founders shipping
+one small app quickly, where the boilerplate is scaffolding you outgrow rather
+than a foundation you keep standing on. It is the clearest example of a model we
+should *not* copy, because our situation inverts every one of its assumptions.
+
+**The official Next.js SaaS Starter argues our case rather than against it.**
+Vercel's starter (Next + Postgres + Stripe + shadcn) is deliberately minimal and
+has no update story at all — it is a demonstration of current patterns, not a
+maintained platform. That is not an oversight. Vercel's answer to "how do
+framework updates reach the thousands of apps scaffolded from our template" is
+`@next/codemod` — the *dependency* layer, with codemods for breaking changes.
+The template is disposable precisely because everything durable lives in a
+versioned package. This is the tiering proposed below, already validated at the
+largest scale in this ecosystem: nobody tries to merge upstream into a
+`create-next-app` project, and nobody needs to.
 
 **Registry / vendoring** is shadcn's answer, and it has evolved well past
 copy-paste. shadcn CLI 3.0 added **namespaced registries**: `components.json` maps
@@ -125,6 +156,13 @@ breaking changes are acceptable if you ship the migration *as code*.
 No one does all four. The kits that do only upstream-merge do so because they're
 small. We are not small, which is exactly why we should borrow from the framework
 end of the spectrum rather than the boilerplate end.
+
+**On merge vs. rebase**, where supastarter and TurboStarter disagree: take
+TurboStarter's side. Rebasing replays every downstream commit on top of new
+upstream code, so a project with 300 commits of its own can hit the same conflict
+300 times, and it rewrites history that downstream teams have already pushed and
+branched from. A merge resolves each conflict once and leaves everyone's
+checkouts valid. fullstackhero merges by tag for the same reason.
 
 ## Proposal: three tiers, three mechanisms
 
@@ -208,10 +246,18 @@ effort:
 **Phase 0 — works today, no refactor.** Tag and semver the repo, write
 `UPGRADING.md` and a CHANGELOG with action-required sections, document the
 `upstream` remote workflow, and tell existing business apps to add the remote now.
-This is the supastarter/Makerkit/fullstackhero baseline. It is not the end state,
-but it's strictly better than today and costs days, not weeks. Do it first —
-everything after it is an improvement on a working process rather than a
-prerequisite.
+This is the supastarter/Makerkit/TurboStarter/fullstackhero baseline. It is not
+the end state, but it's strictly better than today and costs days, not weeks. Do
+it first — everything after it is an improvement on a working process rather than
+a prerequisite.
+
+Borrow the specifics rather than inventing them. Merge by tag, never rebase (see
+above). Name `bun.lock` as a known conflict hotspot with "accept either side,
+never hand-edit, re-run `bun install`" as the remedy, exactly as TurboStarter
+does. Prescribe `bun run ci:quick` as the post-merge health check — we already
+have it, which is more than most kits can say. Write the action-required notes for
+coding agents as well as humans, since `CLAUDE.md` and `.claude/commands/` mean
+downstream agents will be doing a share of the merging.
 
 **Phase 1 — cut the seams.** The three defects above, in this order:
 
@@ -270,6 +316,71 @@ Commit to Phase 1 next, because the three seam defects are pure debt: they cost 
 on every propagation attempt under *any* model, including the one we use today.
 Decide on Phase 2 once there are three or more business apps on the rail.
 
+## Glossary
+
+Terms used above that are jargon rather than plain English.
+
+**Seam** — a place in the codebase deliberately designed so two parties can change
+things independently without editing the same file. A config value read from one
+place is a seam; the same string hardcoded in 29 files is not. "The seams are
+welded shut" means the split points exist conceptually but there is no mechanism
+to separate along them, so any change forces both parties into the same file.
+
+**Conflict surface** — the set of files that both upstream and downstream are
+likely to edit, and therefore the files that will produce merge conflicts. Our
+i18n message files are a large conflict surface: 15 files that upstream adds keys
+to and every business app also adds keys to.
+
+**Fork in anger** — when a team hits a constraint in a shared dependency they
+can't work around and can't get changed fast enough, so they copy the source into
+their own repo and stop taking updates entirely. It's usually permanent and
+usually invisible until much later. The point of a documented **eject path** is
+that teams who need out take a supported exit instead, which keeps them reachable
+for the remaining tiers.
+
+**Eject** — a supported way to stop consuming a managed package and take
+ownership of its source, without leaving the ecosystem. `create-react-app eject`
+is the familiar example.
+
+**Vendoring** — copying a dependency's source code into your own repo so you own
+and can edit it, rather than installing it as a package. shadcn/ui is vendoring by
+design: `shadcn add button` writes the component into your tree and it's yours.
+
+**Scaffold** — generate a project's starting files once from a template, with no
+ongoing link to the template. `create-next-app` scaffolds.
+
+**Upstream remote** — a second git remote in a downstream repo pointing at the
+original starter, so `git pull upstream main` can bring its changes in. The
+standard mechanism for every kit surveyed above.
+
+**Codemod** — a script that mechanically rewrites source code to migrate it
+across a breaking change, usually by parsing to an AST rather than regex. Angular
+ships these as migration schematics run by `ng update`; Next.js ships
+`@next/codemod`. The principle: if you break an API, ship the migration as code,
+not as a paragraph in a changelog.
+
+**Drift** — accumulated divergence between a downstream project and upstream. The
+thing that makes each successive merge more expensive than the last.
+
+**Diff site / rn-diff-purge style** — React Native's approach: generate a pristine
+project at version A and at version B, diff the two, and publish the result with
+per-file commentary. It merges nothing; it just tells a human precisely what
+changed in the parts that can't be merged automatically.
+
+**Canary app** — a consumer application kept inside the upstream repo that uses
+the published packages the way a real downstream project would, so upstream CI
+catches downstream breakage before a release ships.
+
+**Semver / LTS / breaking-change budget** — semantic versioning (major.minor.patch,
+where major means "this will break you"); a long-term-support window committing to
+patch older majors for some period; and an explicit limit on how often we're
+willing to spend a major, since every one costs every downstream team.
+
+**Tier 1 / 2 / 3, Consumed / Vendored / Forked** — our own coinage, not industry
+terms. They name how a business app *relates* to each part of the starter: code it
+installs and never opens, code it copies and owns, and code it takes once and
+rewrites.
+
 ## Sources
 
 - [supastarter — Update the codebase](https://supastarter.dev/docs/nextjs/codebase/update)
@@ -281,3 +392,6 @@ Decide on Phase 2 once there are three or more business apps on the rail.
 - [Angular — Schematics and `ng update`](https://angular.dev/tools/cli/schematics)
 - [Rails — Upgrading Ruby on Rails](https://guides.rubyonrails.org/upgrading_ruby_on_rails.html)
 - [GitHub Actions — Reusing workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows)
+- [TurboStarter — Updating codebase](https://www.turbostarter.dev/docs/web/installation/update)
+- [ShipFast](https://shipfa.st/)
+- [Vercel — Next.js SaaS Starter template](https://vercel.com/templates/next.js/next-js-saas-starter)
