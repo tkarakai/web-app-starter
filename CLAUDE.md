@@ -170,6 +170,10 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
 | Working on the deploy pipeline, `NEXT_PUBLIC_*` variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–2 done, start at phase 3** |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
+| Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
+| Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.py` |
+| Writing a codemod to ship with a breaking release | `scripts/codemods/README.md` |
+| Working on how starter releases reach downstream business apps long-term (tiers, registry, Convex Components) | `docs/starter-versioning-strategy.md` — **proposal; Phase 0 implemented, Phases 1–3 not decided** |
 
 ## Resources
 
