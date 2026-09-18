@@ -85,10 +85,18 @@ TODAY="$(date +%Y-%m-%d)"
 REPO_URL="$(git remote get-url origin 2>/dev/null | sed -e 's#git@github.com:#https://github.com/#' -e 's#\.git$##')"
 REPO_URL="${REPO_URL:-https://github.com/tkarakai/web-app-starter}"
 
-# package.json version
-tmp="$(mktemp)"
-sed -E "0,/\"version\": \"[^\"]+\"/s//\"version\": \"$VERSION\"/" package.json > "$tmp"
-mv "$tmp" package.json
+# package.json version.
+# python3, not sed: BSD sed silently no-ops on the GNU `0,/re/` address, so the
+# bump appeared to succeed while leaving the version untouched.
+VERSION="$VERSION" python3 -c '
+import json, os, re
+version = os.environ["VERSION"]
+src = open("package.json").read()
+new, n = re.subn(r"\"version\":\s*\"[^\"]*\"", f"\"version\": \"{version}\"", src, count=1)
+assert n == 1, "package.json has no version field"
+assert json.loads(new)["version"] == version, "rewrite produced the wrong version"
+open("package.json", "w").write(new)
+'
 
 # promote Unreleased -> [VERSION] - DATE, and add a fresh empty Unreleased
 tmp="$(mktemp)"
@@ -105,6 +113,8 @@ mv "$tmp" CHANGELOG.md
 tmp="$(mktemp)"
 grep -v '^\[Unreleased\]:' CHANGELOG.md | grep -v "^\[$VERSION\]:" > "$tmp"
 {
+  # keep the link definitions as their own block
+  [[ -n "$(tail -n1 "$tmp")" ]] && echo "" || true
   echo "[Unreleased]: $REPO_URL/compare/$TAG...HEAD"
   if [[ -n "$LATEST" ]]; then
     echo "[$VERSION]: $REPO_URL/compare/$LATEST...$TAG"
