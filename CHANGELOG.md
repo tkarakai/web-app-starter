@@ -13,6 +13,8 @@ section. A release without one is a promise that merging the tag and running
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-18
+
 ### Added
 
 - `scripts/resolve-i18n-conflicts.py` — resolves conflicted
@@ -78,5 +80,7 @@ version number attached to it and a documented way to take future ones.
 Done when `cat .starter-version` prints `STARTER_VERSION=v1.0.0` and
 `git tag -l 'v*'` lists the starter's tags.
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v1.0.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/tkarakai/web-app-starter/compare/v1.0.0...v1.1.0
