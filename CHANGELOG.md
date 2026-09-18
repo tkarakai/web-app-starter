@@ -13,6 +13,23 @@ section. A release without one is a promise that merging the tag and running
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/resolve-i18n-conflicts.py` — resolves conflicted
+  `packages/i18n/messages/*.json` by merging parsed objects key by key. Locale files
+  conflict in all 15 at once on any key addition, and the intuitive "keep both sides"
+  resolution produces invalid JSON there.
+- `scripts/codemods/README.md` — the contract every shipped codemod meets
+  (idempotent, `--check`, runs from the repo root, explains its own breaking change).
+
+### Changed
+
+- `UPGRADING.md`: corrected the i18n and branding resolutions, added
+  `packages/backend/convex/_generated/` and the root `package.json` version as
+  hotspots, separated merge-time from deploy-time verification, and recorded what a
+  real three-release upgrade actually cost. All of it from validating the guide
+  against a business app rather than reasoning about it.
+
 ## [1.0.0] - 2026-09-18
 
 First tagged release. This is the baseline: the starter as it exists today, with a

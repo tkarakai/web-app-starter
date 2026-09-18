@@ -43,6 +43,11 @@ Each action-required item states, in this order:
 2. **What to do**, as a concrete command or a file-and-line edit.
 3. **How to tell you are done** — the check that goes from red to green.
 
+Where the change is mechanical, the action-required item invokes a **codemod** shipped
+in the same release under `scripts/codemods/` — see that directory's `README.md` for
+the contract. Describing a rename and asking every downstream team to perform it is
+not a migration path.
+
 Items are written to be executable by a coding agent as well as a human: downstream
 repos carry `CLAUDE.md` and `.claude/commands/`, so a share of the merging will be
 done by agents. That means no "see the docs for details", no "adjust as needed" —
