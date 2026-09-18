@@ -82,7 +82,9 @@ fi
 # --- apply -----------------------------------------------------------------
 
 TODAY="$(date +%Y-%m-%d)"
-REPO_URL="$(git remote get-url origin 2>/dev/null | sed -e 's#git@github.com:#https://github.com/#' -e 's#\.git$##')"
+# `|| true`: under `set -o pipefail` a missing `origin` fails the whole pipeline,
+# which would abort the release instead of falling through to the default below.
+REPO_URL="$(git remote get-url origin 2>/dev/null | sed -e 's#git@github.com:#https://github.com/#' -e 's#\.git$##' || true)"
 REPO_URL="${REPO_URL:-https://github.com/tkarakai/web-app-starter}"
 
 # package.json version.
