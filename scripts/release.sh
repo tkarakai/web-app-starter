@@ -4,14 +4,25 @@
 #
 # Usage: ./scripts/release.sh 1.2.0
 #        ./scripts/release.sh 1.2.0 --dry-run
-#        ./scripts/release.sh 1.2.0 --allow-branch   # tag from a non-main branch
+#        ./scripts/release.sh 1.2.0 --allow-branch        # tag from a non-main branch
+#        ./scripts/release.sh 1.2.0 --allow-unpublished   # tag off unpushed history
 #
 # Enforces the policy in VERSIONING.md:
 #   - clean working tree
 #   - on main (unless --allow-branch)
+#   - HEAD is already on origin/main (unless --allow-unpublished)
 #   - version strictly greater than the latest existing tag
 #   - CHANGELOG.md has an "## [Unreleased]" section with content to promote,
 #     including an "### Action required" section for every major
+#
+# On the published-history check: a release tag has to name a commit that is
+# reachable from origin/main, because UPGRADING.md tells business apps to
+# `git merge <tag>`. Tag a PR branch instead and the squash-merge leaves the tag
+# pointing at commits that never land in main — a downstream merge then pulls that
+# whole branch in as a parallel history. This has happened once; hence the check.
+#
+# A checkout with no `origin/main` (a throwaway clone used to rehearse an upgrade)
+# skips the check automatically, which is the right place to cut practice tags.
 #
 # The push is deliberately NOT automated. Run it yourself when you are ready:
 #   git push origin main --follow-tags
@@ -21,18 +32,20 @@ set -euo pipefail
 VERSION="${1:-}"
 DRY_RUN=false
 ALLOW_BRANCH=false
+ALLOW_UNPUBLISHED=false
 
 for arg in "${@:2}"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
     --allow-branch) ALLOW_BRANCH=true ;;
+    --allow-unpublished) ALLOW_UNPUBLISHED=true ;;
     *) echo "Unknown flag: $arg" >&2; exit 1 ;;
   esac
 done
 
 die() { echo "release: $*" >&2; exit 1; }
 
-[[ -n "$VERSION" ]] || die "usage: ./scripts/release.sh <version> [--dry-run] [--allow-branch]"
+[[ -n "$VERSION" ]] || die "usage: ./scripts/release.sh <version> [--dry-run] [--allow-branch] [--allow-unpublished]"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must be MAJOR.MINOR.PATCH, got '$VERSION'"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -50,6 +63,24 @@ if [[ "$BRANCH" != "main" && "$ALLOW_BRANCH" == false ]]; then
 fi
 
 git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && die "tag $TAG already exists"
+
+# HEAD must already be part of origin/main, so the tag survives a squash merge.
+if git rev-parse -q --verify refs/remotes/origin/main >/dev/null; then
+  git fetch -q origin main 2>/dev/null || echo "release: could not fetch origin/main, using the local copy" >&2
+  if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+    if [[ "$ALLOW_UNPUBLISHED" == false ]]; then
+      die "HEAD ($(git rev-parse --short HEAD)) is not reachable from origin/main.
+       A tag here would not survive a squash merge: business apps merge tags, and
+       the tagged commits would never reach main. Land the work on main first, then
+       cut the tag from an up-to-date main.
+       To rehearse a release, use a throwaway clone with no origin (override here:
+       --allow-unpublished)"
+    fi
+    echo "release: WARNING HEAD is not on origin/main; tagging anyway (--allow-unpublished)" >&2
+  fi
+else
+  echo "release: no origin/main — treating this as a throwaway checkout" >&2
+fi
 
 LATEST="$(git tag -l 'v*' --sort=-v:refname | head -n1)"
 if [[ -n "$LATEST" ]]; then
