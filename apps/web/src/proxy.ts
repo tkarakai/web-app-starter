@@ -120,13 +120,13 @@ export function proxy(request: NextRequest) {
     ? (() => {
         const origins: string[] = [];
         try {
-          const url = new URL(process.env.NEXT_PUBLIC_CONVEX_URL ?? "");
+          const url = new URL(process.env.CONVEX_URL ?? "");
           origins.push(url.origin, `ws://${url.host}`);
         } catch {
           // Invalid URL — skip
         }
         try {
-          const siteUrl = new URL(process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "");
+          const siteUrl = new URL(process.env.CONVEX_SITE_URL ?? "");
           if (!origins.includes(siteUrl.origin)) {
             origins.push(siteUrl.origin);
           }

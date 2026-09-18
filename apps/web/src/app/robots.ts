@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
+import { getRequestOrigin } from "@/lib/request-origin";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
-if (!SITE_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL");
-}
+// Dynamic so the origin comes from the request rather than being baked in at
+// build time — that is what lets one artifact serve any environment.
+// See docs/claude/build-once-promote-plan.md
+export const dynamic = "force-dynamic";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
   const isProd = process.env.NODE_ENV === "production";
+  const siteUrl = await getRequestOrigin();
 
   return {
     rules: [
@@ -16,6 +18,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: isProd ? ["/*/dashboard"] : ["/"],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${siteUrl}/sitemap.xml`,
   };
 }

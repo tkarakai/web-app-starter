@@ -68,6 +68,11 @@ export {
   type Environment,
 } from "./components/feedback/environment-banner";
 export { EnvironmentBannerWrapper } from "./components/feedback/environment-banner-wrapper";
+export {
+  PublicConfigProvider,
+  usePublicConfig,
+  type PublicConfig,
+} from "./components/config/public-config";
 export { OfflineBanner, type OfflineBannerProps } from "./components/feedback/offline-banner";
 export {
   PasskeyUnsupportedAlert,

@@ -141,10 +141,10 @@ jobs:
       - name: Build
         run: bunx turbo build --filter=@repo/web...
         env:
-          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
-          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
-          NEXT_PUBLIC_SITE_URL: "http://localhost:3001"
-          NEXT_PUBLIC_LANDING_URL: "http://localhost:3000"
+          CONVEX_URL: "https://placeholder.convex.cloud"
+          CONVEX_SITE_URL: "https://placeholder.convex.site"
+          APP_ORIGIN: "http://localhost:3001"
+          LANDING_URL: "http://localhost:3000"
 
       - name: Check bundle size
         run: cd apps/web && bun run size
