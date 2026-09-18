@@ -30,6 +30,13 @@ section. A release without one is a promise that merging the tag and running
   real three-release upgrade actually cost. All of it from validating the guide
   against a business app rather than reasoning about it.
 
+### Fixed
+
+- `scripts/release.sh` left `package.json` at its old version while reporting
+  success: BSD sed silently no-ops on the GNU-only `0,/re/` address.
+- `scripts/release.sh` aborted under `set -o pipefail` in a checkout with no
+  `origin` remote, instead of falling back to the default repository URL.
+
 ## [1.0.0] - 2026-09-18
 
 First tagged release. This is the baseline: the starter as it exists today, with a
