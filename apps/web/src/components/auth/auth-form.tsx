@@ -55,13 +55,9 @@ import {
   Separator,
   SlideTransition,
   usePasskeySupport,
+  usePublicConfig,
 } from "@repo/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
-
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL;
-if (!LANDING_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_LANDING_URL");
-}
 
 type AuthMode = "sign-in" | "sign-up";
 type PasskeyPolicy = "disabled" | "optional" | "required";
@@ -84,6 +80,7 @@ function toBoolean(value: unknown, defaultValue: boolean): boolean {
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const { supported: passkeySupported } = usePasskeySupport();
+  const { landingUrl } = usePublicConfig();
   const locale = useLocale();
   const t = useTranslations("auth");
   const tps = useTranslations("passwordStrength");
@@ -563,7 +560,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
               {t("legal.prefix")}{" "}
               <a
-                href={`${LANDING_URL}/${locale}/terms`}
+                href={`${landingUrl}/${locale}/terms`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-2 hover:text-foreground"
@@ -572,7 +569,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               </a>{" "}
               {t("legal.and")}{" "}
               <a
-                href={`${LANDING_URL}/${locale}/privacy`}
+                href={`${landingUrl}/${locale}/privacy`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-2 hover:text-foreground"
@@ -657,7 +654,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
                 {t("legal.prefix")}{" "}
                 <a
-                  href={`${LANDING_URL}/${locale}/terms`}
+                  href={`${landingUrl}/${locale}/terms`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:text-foreground"
@@ -666,7 +663,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 </a>{" "}
                 {t("legal.and")}{" "}
                 <a
-                  href={`${LANDING_URL}/${locale}/privacy`}
+                  href={`${landingUrl}/${locale}/privacy`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:text-foreground"

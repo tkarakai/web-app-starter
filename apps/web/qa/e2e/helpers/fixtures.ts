@@ -51,10 +51,10 @@ function getEnvValue(name: string): string | undefined {
 }
 
 function convexSiteUrl(): string {
-  const url = getEnvValue("NEXT_PUBLIC_CONVEX_SITE_URL");
+  const url = getEnvValue("CONVEX_SITE_URL");
   if (!url) {
     throw new Error(
-      "NEXT_PUBLIC_CONVEX_SITE_URL is not set. E2E fixtures call the Convex HTTP " +
+      "CONVEX_SITE_URL is not set. E2E fixtures call the Convex HTTP " +
         "router directly; run `bun run dev` (or dev-start.sh) so the URL is written " +
         "to .env.local.",
     );

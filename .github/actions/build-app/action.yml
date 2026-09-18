@@ -36,9 +36,12 @@ runs:
       id: meta
       shell: bash
       run: |
-        ARTIFACT_NAME="${{ inputs.app }}-${{ inputs.environment }}-${{ github.sha }}"
-        TARBALL="${{ inputs.app }}-${{ inputs.environment }}.tar.gz"
-        CHECKSUM="${{ inputs.app }}-${{ inputs.environment }}.tar.gz.sha256"
+        # No environment in the name: web and admin artifacts are
+        # environment-agnostic and get promoted as-is.
+        # See docs/claude/build-once-promote-plan.md
+        ARTIFACT_NAME="${{ inputs.app }}-${{ github.sha }}"
+        TARBALL="${{ inputs.app }}.tar.gz"
+        CHECKSUM="${{ inputs.app }}.tar.gz.sha256"
         TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         echo "artifact-name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
         echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
@@ -109,6 +112,14 @@ runs:
         vercel build ${BUILD_FLAGS} \
           --token="$VERCEL_TOKEN"
 
+    # Reports environment values that Next.js inlined at build time. These pin
+    # the artifact to the environment it was built for and block promotion.
+    # Warn-only while the migration is in progress — see
+    # docs/claude/build-once-promote-plan.md
+    - name: Check artifact is promotable
+      shell: bash
+      run: ./scripts/check-env-leak.sh "${{ inputs.app }}" --warn
+
     - name: Package artifact
       shell: bash
       run: |
@@ -119,10 +130,16 @@ runs:
         # The serverless functions in .vercel/output reference files in
         # apps/<app>/.next/ via .nft.json trace files — both are needed
         # for vercel deploy --prebuilt to succeed.
-        tar -czf "${TARBALL}" .vercel/output "apps/${{ inputs.app }}/.next"
+        # cache/ is build cache and dev/ is `next dev` output; neither is read by
+        # `vercel deploy --prebuilt`. dev/ never exists on a fresh CI checkout, but
+        # excluding it keeps a local run of this action honest about artifact size.
+        tar -czf "${TARBALL}" \
+          --exclude="apps/${{ inputs.app }}/.next/cache" \
+          --exclude="apps/${{ inputs.app }}/.next/dev" \
+          .vercel/output "apps/${{ inputs.app }}/.next"
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
-        echo "### Build Artifact: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Build Artifact: ${{ inputs.app }} (built with ${{ inputs.environment }} config)" >> "$GITHUB_STEP_SUMMARY"
         echo '```' >> "$GITHUB_STEP_SUMMARY"
         cat "${CHECKSUM}" >> "$GITHUB_STEP_SUMMARY"
         echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -130,7 +147,7 @@ runs:
     - name: Generate build manifest
       shell: bash
       run: |
-        MANIFEST="${{ inputs.app }}-${{ inputs.environment }}-manifest.json"
+        MANIFEST="${{ inputs.app }}-manifest.json"
         CHECKSUM=$(awk '{print $1}' "${{ steps.meta.outputs.checksum-file }}")
         TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -163,6 +180,6 @@ runs:
         path: |
           ${{ steps.meta.outputs.tarball }}
           ${{ steps.meta.outputs.checksum-file }}
-          ${{ inputs.app }}-${{ inputs.environment }}-manifest.json
+          ${{ inputs.app }}-manifest.json
         retention-days: 90
         if-no-files-found: error

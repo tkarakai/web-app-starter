@@ -14,7 +14,16 @@ export async function getAuthUserLocaleAction(): Promise<string | null> {
   try {
     // Fetch the user's profile locale from Convex.
     // The session is automatically included in the server context via cookies.
-    const locale = await fetchQuery(api.userProfiles.getLocale, {});
+    //
+    // The URL is passed explicitly. Left implicit, convex/nextjs falls back to
+    // process.env.NEXT_PUBLIC_CONVEX_URL, which Next.js inlines at build time —
+    // that would pin the artifact to one environment.
+    // See docs/claude/build-once-promote-plan.md
+    const locale = await fetchQuery(
+      api.userProfiles.getLocale,
+      {},
+      { url: process.env.CONVEX_URL }
+    );
     return locale;
   } catch {
     // On any error (not authenticated, network issue, etc.), return null
