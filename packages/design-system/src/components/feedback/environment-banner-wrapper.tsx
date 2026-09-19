@@ -15,7 +15,7 @@ export function EnvironmentBannerWrapper({
 }: {
   appName: string;
 }) {
-  const environment = process.env.NEXT_PUBLIC_APP_ENVIRONMENT as
+  const environment = process.env.APP_ENVIRONMENT as
     | "development"
     | "staging"
     | "production"

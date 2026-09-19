@@ -252,10 +252,17 @@ get_convex_urls_from_backend_env() {
 }
 
 # Update Convex URLs in an app's .env.local
+#
+# web and admin read these unprefixed at request time so their build artifacts
+# stay environment-agnostic and can be promoted between environments. landing is
+# a static export (output: "export") with no server at runtime, so it still needs
+# the NEXT_PUBLIC_* form inlined at build time.
+# See docs/claude/build-once-promote-plan.md
 update_app_env_urls() {
     local env_file="$1"
     local cloud_port="$2"
     local site_port="$3"
+    local style="${4:-runtime}"   # runtime | inlined
 
     local cloud_url="http://127.0.0.1:$cloud_port"
     local site_url="http://127.0.0.1:$site_port"
@@ -263,8 +270,13 @@ update_app_env_urls() {
     # Ensure file exists
     touch "$env_file"
 
-    update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_URL" "$cloud_url"
-    update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
+    if [ "$style" = "inlined" ]; then
+        update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_URL" "$cloud_url"
+        update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
+    else
+        update_env_var "$env_file" "CONVEX_URL" "$cloud_url"
+        update_env_var "$env_file" "CONVEX_SITE_URL" "$site_url"
+    fi
 }
 
 # Check if esbuild binary is functional (Convex uses it to bundle functions)
@@ -644,7 +656,7 @@ if [ "$NEED_CONVEX" = true ]; then
             update_app_env_urls "$PROJECT_DIR/apps/admin/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
         if [ "$START_LANDING" = true ]; then
-            update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+            update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
         fi
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
@@ -822,9 +834,23 @@ start_next_app() {
 
     local next_port=$(echo "$next_url" | grep -o '[0-9]*$')
 
-    # Update NEXT_PUBLIC_SITE_URL for this app
+    # Record this app's origin.
+    #
+    # web and admin derive their own origin from the request Host header, so this
+    # is written as APP_ORIGIN and consumed only by the Playwright config, as the
+    # URL to point tests at. It is deliberately NOT called SITE_URL: that name
+    # already belongs to Convex, where it holds a comma-separated list of trusted
+    # origins (see the sync below and getSiteUrls() in convex/auth.ts).
+    # landing still inlines NEXT_PUBLIC_SITE_URL at build time.
     if [ -n "$next_port" ]; then
-        update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
+        case "$app_name" in
+            web|admin)
+                update_env_var "$app_dir/.env.local" "APP_ORIGIN" "http://localhost:$next_port"
+                ;;
+            *)
+                update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
+                ;;
+        esac
     fi
 
     # Sync this app's origin into Convex's SITE_URL.
@@ -917,8 +943,8 @@ if [ "$START_LANDING" = true ]; then
 
     # Set the landing URL in the web app so auth pages can link back
     if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LANDING_APP_URL"
-        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LANDING_APP_URL for web"
+        update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "$LANDING_APP_URL"
+        echo -e "  ${GREEN}✔${NC} LANDING_URL set to $LANDING_APP_URL for web"
     fi
 fi
 
@@ -936,13 +962,13 @@ if [ "$NEED_CONVEX" = true ]; then
     echo ""
     echo -e "${GREEN}▶ Ensuring cross-app env vars are populated...${NC}"
 
-    # Seed NEXT_PUBLIC_LANDING_URL for web when landing is not started
+    # Seed LANDING_URL for web when landing is not started
     if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
-        if ! grep -q "^NEXT_PUBLIC_LANDING_URL=" "$PROJECT_DIR/apps/web/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "http://localhost:3000"
-            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL defaulted to http://localhost:3000 for web"
+        if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/apps/web/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "http://localhost:3000"
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to http://localhost:3000 for web"
         else
-            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL already set for web (preserved)"
+            echo -e "  ${GREEN}✔${NC} LANDING_URL already set for web (preserved)"
         fi
     fi
 

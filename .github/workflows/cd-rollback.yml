@@ -194,9 +194,9 @@ jobs:
         with:
           app: web
           environment: ${{ needs.validate.outputs.vercel-env }}
-          artifact-name: web-${{ needs.validate.outputs.vercel-env }}-${{ inputs.target_sha }}
-          tarball: web-${{ needs.validate.outputs.vercel-env }}.tar.gz
-          checksum-file: web-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
+          artifact-name: web-${{ inputs.target_sha }}
+          tarball: web.tar.gz
+          checksum-file: web.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-web }}
@@ -220,9 +220,9 @@ jobs:
         with:
           app: admin
           environment: ${{ needs.validate.outputs.vercel-env }}
-          artifact-name: admin-${{ needs.validate.outputs.vercel-env }}-${{ inputs.target_sha }}
-          tarball: admin-${{ needs.validate.outputs.vercel-env }}.tar.gz
-          checksum-file: admin-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
+          artifact-name: admin-${{ inputs.target_sha }}
+          tarball: admin.tar.gz
+          checksum-file: admin.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-admin }}
@@ -246,9 +246,9 @@ jobs:
         with:
           app: landing
           environment: ${{ needs.validate.outputs.vercel-env }}
-          artifact-name: landing-${{ needs.validate.outputs.vercel-env }}-${{ inputs.target_sha }}
-          tarball: landing-${{ needs.validate.outputs.vercel-env }}.tar.gz
-          checksum-file: landing-${{ needs.validate.outputs.vercel-env }}.tar.gz.sha256
+          artifact-name: landing-${{ inputs.target_sha }}
+          tarball: landing.tar.gz
+          checksum-file: landing.tar.gz.sha256
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-landing }}

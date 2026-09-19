@@ -4,12 +4,32 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "out/**"],
-      "env": ["EDGE_RATE_LIMIT_WINDOW", "EDGE_RATE_LIMIT_MAX", "EDGE_RATE_LIMIT_MAP_MAX_SIZE"]
+      "env": [
+        "EDGE_RATE_LIMIT_WINDOW",
+        "EDGE_RATE_LIMIT_MAX",
+        "EDGE_RATE_LIMIT_MAP_MAX_SIZE",
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "WEB_APP_URL",
+        "APP_ENVIRONMENT"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["EDGE_RATE_LIMIT_WINDOW", "EDGE_RATE_LIMIT_MAX", "EDGE_RATE_LIMIT_MAP_MAX_SIZE"]
+      "env": [
+        "EDGE_RATE_LIMIT_WINDOW",
+        "EDGE_RATE_LIMIT_MAX",
+        "EDGE_RATE_LIMIT_MAP_MAX_SIZE",
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "WEB_APP_URL",
+        "APP_ENVIRONMENT"
+      ]
     },
     "lint": {
       "dependsOn": ["^build"]
@@ -18,19 +38,23 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": ["CONVEX_URL", "CONVEX_SITE_URL", "APP_ORIGIN", "LANDING_URL", "APP_ENVIRONMENT"]
     },
     "test:unit": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": ["CONVEX_URL", "CONVEX_SITE_URL", "APP_ORIGIN", "LANDING_URL", "APP_ENVIRONMENT"]
     },
     "test:convex": {},
     "test:coverage": {
       "dependsOn": ["^build"],
-      "outputs": ["qa/coverage/**"]
+      "outputs": ["qa/coverage/**"],
+      "env": ["CONVEX_URL", "CONVEX_SITE_URL", "APP_ORIGIN", "LANDING_URL", "APP_ENVIRONMENT"]
     },
     "test:e2e": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "env": ["CONVEX_URL", "CONVEX_SITE_URL", "APP_ORIGIN", "LANDING_URL", "APP_ENVIRONMENT"]
     }
   }
 }

@@ -22,12 +22,8 @@ import {
   PasswordInput,
   Separator,
   toast,
+  usePublicConfig,
 } from "@repo/design-system";
-
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
-if (!CONVEX_SITE_URL) {
-  throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
-}
 
 type Step =
   | "idle"
@@ -39,6 +35,7 @@ type Step =
   | "password-regenerate";
 
 export function AdminTwoFactorSection() {
+  const { convexSiteUrl } = usePublicConfig();
   const [step, setStep] = React.useState<Step>("idle");
   const [enabled, setEnabled] = React.useState(false);
   const [password, setPassword] = React.useState("");
@@ -146,7 +143,7 @@ export function AdminTwoFactorSection() {
   const handleViewBackupCodes = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${CONVEX_SITE_URL}/api/two-factor/backup-codes`, {
+      const response = await fetch(`${convexSiteUrl}/api/two-factor/backup-codes`, {
         credentials: "include",
       });
       if (!response.ok) {

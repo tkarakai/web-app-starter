@@ -4,6 +4,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./server": "./src/server.ts",
     "./build-utils": "./src/lib/get-git-branch.ts",
     "./styles/globals.css": "./tokens/index.css",
     "./password-strength": "./src/password-strength.ts",
