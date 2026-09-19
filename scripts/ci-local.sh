@@ -399,13 +399,21 @@ print_step "Step 6/8: Production Build"
 # Provide placeholder env vars for apps that need them at build time.
 # These mirror the placeholder values in ci-{web,admin,landing}.yml.
 # The actual values are only needed at runtime, not at build time.
+#
+# Two forms are exported because the apps differ: web and admin read runtime
+# (unprefixed) names so their artifacts stay promotable, while landing and
+# landing-static are static exports that must inline NEXT_PUBLIC_* at build time.
+# See docs/claude/build-once-promote-plan.md
+export CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}"
+export CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}"
+export LANDING_URL="${LANDING_URL:-http://localhost:3000}"
 export NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}"
 export NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}"
 export NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-http://localhost:3000}"
 export NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-http://localhost:3001}"
 BUILD_FAILED=false
 for APP in web admin landing storybook; do
-  # Set per-app NEXT_PUBLIC_SITE_URL (each app runs on a different port)
+  # Set per-app site URL (each app runs on a different port)
   case "$APP" in
     web)     _SITE_URL="http://localhost:3001" ;;
     admin)   _SITE_URL="http://localhost:3002" ;;
@@ -413,7 +421,7 @@ for APP in web admin landing storybook; do
     *)       _SITE_URL="" ;;
   esac
   step_start
-  if NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$_SITE_URL}" turbo build --filter=@repo/$APP...; then
+  if SITE_URL="${SITE_URL:-$_SITE_URL}" NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$_SITE_URL}" turbo build --filter=@repo/$APP...; then
     print_success "Build succeeded ($APP)"
     step_end "$APP: Build" "pass"
   else

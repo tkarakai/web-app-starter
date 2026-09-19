@@ -1,17 +1,23 @@
 "use client";
 
-import type { PropsWithChildren } from "react";
+import { useState, type PropsWithChildren } from "react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import type { AuthClient } from "@convex-dev/better-auth/react";
 import { authClient } from "./client";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 export function ConvexClientProvider({
   children,
   initialToken,
-}: PropsWithChildren<{ initialToken?: string | null }>) {
+  convexUrl,
+}: PropsWithChildren<{ initialToken?: string | null; convexUrl: string }>) {
+  // Created lazily from a prop rather than from NEXT_PUBLIC_CONVEX_URL at module
+  // scope: a NEXT_PUBLIC_* read is inlined into the client bundle at build time,
+  // which pins the artifact to one environment. The root layout reads CONVEX_URL
+  // at request time and passes it down instead.
+  // See docs/claude/build-once-promote-plan.md
+  const [convex] = useState(() => new ConvexReactClient(convexUrl));
+
   return (
     <ConvexBetterAuthProvider
       client={convex}

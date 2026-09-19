@@ -26,6 +26,24 @@ inputs:
   vercel-project-id:
     description: "Vercel project ID for this app"
     required: true
+  run-id:
+    description: >-
+      Workflow run to download the artifact from. Omit to use the current run.
+      Set this to promote an artifact built by an earlier workflow (the staging
+      deploy) instead of rebuilding it.
+    required: false
+    default: ""
+  github-token:
+    description: "Token used to download an artifact from another workflow run. Required with run-id."
+    required: false
+    default: ""
+  expected-sha:
+    description: >-
+      Commit SHA the artifact must have been built from. When set, the build
+      manifest is checked against it — this is what catches promoting the wrong
+      run's artifact.
+    required: false
+    default: ""
 
 outputs:
   deployment-url:
@@ -40,6 +58,38 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: deploy-artifacts
+        # Empty values fall back to the current run, so the same step serves both
+        # the build-and-deploy and the promote paths.
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.github-token }}
+
+    # A promoted artifact is deployed without being rebuilt, so the only evidence
+    # of what it contains is its manifest. Verify it before it reaches the
+    # environment rather than trusting the artifact name.
+    - name: Verify artifact provenance
+      if: inputs.expected-sha != ''
+      shell: bash
+      working-directory: deploy-artifacts
+      run: |
+        MANIFEST="${{ inputs.app }}-manifest.json"
+        if [ ! -f "$MANIFEST" ]; then
+          echo "::error::${MANIFEST} missing from artifact ${{ inputs.artifact-name }}"
+          exit 1
+        fi
+
+        BUILT_SHA=$(jq -r '.git_sha' "$MANIFEST")
+        if [ "$BUILT_SHA" != "${{ inputs.expected-sha }}" ]; then
+          echo "::error::Artifact was built from ${BUILT_SHA}, expected ${{ inputs.expected-sha }}"
+          exit 1
+        fi
+
+        echo "Artifact provenance verified: built from ${BUILT_SHA}"
+        {
+          echo "### Promoted artifact: ${{ inputs.app }}"
+          echo '```'
+          jq -r '"commit:   \(.git_sha)\nbuilt:    \(.timestamp)\nbuild run: \(.workflow_run)\nchecksum: \(.artifact_checksum)"' "$MANIFEST"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Verify checksum
       shell: bash
