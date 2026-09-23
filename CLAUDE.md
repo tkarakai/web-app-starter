@@ -134,14 +134,46 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 
 ## Environment Variables
 
-Required variables (see `.env.example`):
+Required variables (see each app's `.env.example`). **The names differ per app, deliberately.**
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `CONVEX_DEPLOYMENT` | Convex deployment identifier | Yes |
-| `NEXT_PUBLIC_CONVEX_URL` | Convex API URL (dynamically assigned port) | Yes |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex site URL (dynamically assigned port) | Yes |
-| `NEXT_PUBLIC_SITE_URL` | App URL (e.g., `http://localhost:3001` for web) | Yes |
+`web` and `admin` read their configuration **unprefixed, at request time**, so one build can be
+promoted between environments. A `NEXT_PUBLIC_*` read would be inlined into the bundle at build
+time and pin the artifact to whichever environment built it.
+
+| Variable | Description | Apps |
+|----------|-------------|------|
+| `CONVEX_DEPLOYMENT` | Convex deployment identifier | all |
+| `CONVEX_URL` | Convex API URL (dynamically assigned port) | web, admin |
+| `CONVEX_SITE_URL` | Convex HTTP actions URL (dynamically assigned port) | web, admin |
+| `LANDING_URL` | Marketing site URL, for cross-app links | web |
+
+`landing` and `landing-static` are static exports (`output: "export"`), so they have no server at
+runtime and **must** inline their configuration at build time:
+
+| Variable | Description | Apps |
+|----------|-------------|------|
+| `NEXT_PUBLIC_SITE_URL` | This app's public URL | landing, landing-static |
+| `NEXT_PUBLIC_WEB_APP_URL` | Web app URL, for cross-app links | landing, landing-static |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex HTTP actions URL | landing |
+
+Build-identity variables keep the `NEXT_PUBLIC_` prefix in every app — they describe the build, not
+the environment, so they are identical across a promote and inlining them is correct:
+`NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_GIT_BRANCH`, `NEXT_PUBLIC_DEPLOY_TIMESTAMP`,
+`NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_APP_NAME`.
+
+> **Why the dev environment banner lists `NEXT_PUBLIC_CONVEX_URL` and friends.**
+> `EnvironmentBannerWrapper` enumerates *every* `NEXT_PUBLIC_*` variable present in `process.env`,
+> and the legacy names are still set on the Vercel projects during the dual-name migration. Nothing
+> in `web` or `admin` reads them any more — they are displayed because they exist, not because they
+> are used. Deleting them is phase 5 of `docs/claude/build-once-promote-plan.md`.
+
+> **`SITE_URL` is Convex's, not the apps'.** It holds a comma-separated list of trusted origins
+> (`packages/backend/convex/auth.ts`), set via `convex env set`. `web` and `admin` derive their own
+> origin from the request `Host` header and read no site-URL variable. `dev-start.sh` writes
+> `APP_ORIGIN` for them, which only the Playwright configs consume as a test target.
+
+Adding a new runtime variable means adding it in **three** places: the app's `.env.example`, the
+`env` list in `turbo.json` (Turborepo strips undeclared variables), and the Vercel project.
 
 > **Note**: `bun run dev` auto-manages `.env.local` with the correct ports. You rarely need to edit these manually for local development.
 
@@ -168,7 +200,7 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on auth E2E tests, upgrading better-auth / the Convex auth adapter, Renovate / dependency automation, or E2E in CI | `docs/claude/auth-e2e-and-upgrade-plan.md` — **active work tracker; steps 1–8 merged, start at step 9** |
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
-| Working on the deploy pipeline, `NEXT_PUBLIC_*` variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–2 done, start at phase 3** |
+| Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 done, start at phase 5** |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
 | Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.py` |
