@@ -176,7 +176,12 @@ test("domain selection shows actual aliases and preserves the selected hostname"
   ], undefined, answers(["1"]), text => messages.push(text));
   expect(domain).toBe("web.example.com");
   expect(messages[0]).toContain('Which hostname should ops track for the "web" app in STAGING?');
-  expect(messages.filter(line => line.includes("web.example.com"))).toHaveLength(1);
+  expect(messages.slice(1)).toEqual([
+    "  1. web.example.com",
+    "  2. old.vercel.app",
+    "  3. Enter another hostname",
+    "  4. Track all domains (different deployments will be reported as domains-diverge)",
+  ]);
 });
 test("tracking all aliases remains an explicit choice and existing hostnames are defaults", async () => {
   const aliases = [{ alias: "web.example.com", deploymentId: "d1" }, { alias: "old.vercel.app", deploymentId: "d2" }];
