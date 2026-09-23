@@ -417,3 +417,7 @@ CONVEX_DEPLOYMENT=prod:<deployment>
 CONVEX_URL=https://<deployment>.convex.cloud
 CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
+
+### Operations CLI
+
+Start with `bun run ops setup` for guided GitHub/Vercel login and team/project selection; existing `gh` and `vercel` sessions are reused without tokens in ops config. Inspect builds, deployment history, live environment state, and active GitHub jobs with `bun run ops`. Dispatch and watch staging, production, and rollback workflows with explicit SHAs. See the [operations CLI guide](docs/ops-cli.md) for setup and the end-to-end walkthrough.

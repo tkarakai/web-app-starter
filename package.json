@@ -42,7 +42,10 @@
     "ci:act:offline": "./scripts/ci-local-act.sh -o",
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
     "ensure-env": "./scripts/ensure-app-env.sh",
-    "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v"
+    "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v",
+    "ops": "bun packages/ops/src/cli.ts",
+    "test:ops": "bun test packages/ops/tests",
+    "typecheck:ops": "bun run --cwd packages/ops typecheck"
   },
   "overrides": {
     "react": "19.2.8",

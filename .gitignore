@@ -56,3 +56,9 @@ logs/security/
 # Python development-process regression tests
 __pycache__/
 .vercel
+
+# Operator-specific project mappings
+ops.config.json
+
+# Trusted CI workflow tooling checkout
+.ops-workflow/

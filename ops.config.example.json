@@ -1,0 +1,43 @@
+{
+  "repository": "tkarakai/web-app-starter",
+  "workflowRef": "main",
+  "teamId": "team_REPLACE_ME",
+  "apps": {
+    "web": {
+      "projects": {
+        "staging": {
+          "id": "prj_REPLACE_ME",
+          "domain": "web-staging.example.com"
+        },
+        "production": {
+          "id": "prj_REPLACE_ME",
+          "domain": "web.example.com"
+        }
+      }
+    },
+    "admin": {
+      "projects": {
+        "staging": {
+          "id": "prj_REPLACE_ME",
+          "domain": "admin-staging.example.com"
+        },
+        "production": {
+          "id": "prj_REPLACE_ME",
+          "domain": "admin.example.com"
+        }
+      }
+    },
+    "landing": {
+      "projects": {
+        "staging": {
+          "id": "prj_REPLACE_ME",
+          "domain": "landing-staging.example.com"
+        },
+        "production": {
+          "id": "prj_REPLACE_ME",
+          "domain": "example.com"
+        }
+      }
+    }
+  }
+}
