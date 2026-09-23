@@ -38,6 +38,10 @@ apps/*/public/favicon.ico
 .infra-setup-staging-record-*
 .infra-setup-staging-log-*
 
+# Local Backpass files
+.backpass/
+.backpassrc.json
+
 # Auto Claude data directory
 .auto-claude/
 
