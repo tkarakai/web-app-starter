@@ -173,7 +173,10 @@ the environment, so they are identical across a promote and inlining them is cor
 > `APP_ORIGIN` for them, which only the Playwright configs consume as a test target.
 
 Adding a new runtime variable means adding it in **three** places: the app's `.env.example`, the
-`env` list in `turbo.json` (Turborepo strips undeclared variables), and the Vercel project.
+Vercel project, and `turbo.json` — in `passThroughEnv` if the app reads it at request time (web,
+admin), or in `env` if it is inlined at build time (landing, landing-static). Putting a runtime
+variable in `env` makes the build hash environment-specific and silently breaks artifact reuse;
+see [deployment-architecture.md](docs/deployment-architecture.md#artifacts-are-content-addressed).
 
 > **Note**: `bun run dev` auto-manages `.env.local` with the correct ports. You rarely need to edit these manually for local development.
 
@@ -200,7 +203,7 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on auth E2E tests, upgrading better-auth / the Convex auth adapter, Renovate / dependency automation, or E2E in CI | `docs/claude/auth-e2e-and-upgrade-plan.md` — **active work tracker; steps 1–8 merged, start at step 9** |
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
-| Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 done, start at phase 5** |
+| Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 and 6 done, start at phase 5** |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
 | Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.py` |

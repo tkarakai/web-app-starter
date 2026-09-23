@@ -565,6 +565,11 @@ Once the staging workflow completes and the admin account is bootstrapped, run t
 
 ### Step 4: Promote to Production
 
+Any SHA that reached staging can be deployed. Artifacts are content-addressed, so the
+pipeline resolves each app's artifact from the tree at that commit — you do not need to find
+a commit that "has a build". See
+[Artifacts are content-addressed](./deployment-architecture.md#artifacts-are-content-addressed).
+
 ```bash
 # Find the staging deployment SHA
 git fetch --tags
@@ -577,11 +582,10 @@ gh workflow run cd-production.yml \
   -f confirm=deploy-production
 ```
 
-**Approve the deployment** in the GitHub Actions UI:
-1. Go to Actions > "Deploy Production" > the pending run
-2. Click "Review deployments"
-3. Select the `production` environment
-4. Click "Approve and deploy"
+> **There is no human approval step.** The `production` GitHub Environment has a branch
+> policy but **no required reviewers**, so the run proceeds straight through. The gates are
+> the confirmation string, the staging tag and the CI gate — all automated. Add required
+> reviewers to the `production` environment if you want a sign-off.
 
 **Monitor:**
 
