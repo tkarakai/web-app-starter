@@ -85,16 +85,42 @@ backport is a rewrite.
 
 ## What gets tagged
 
-Only `main`, and only after CI is green on it. Cutting a release is:
+Only `main`, and only after CI is green on it and **the work has actually landed
+there**. Cutting a release is:
 
 ```bash
+git checkout main && git pull
 ./scripts/release.sh 1.2.0        # verifies, updates version + CHANGELOG, tags
 git push origin main --follow-tags
 ```
 
 `scripts/release.sh` refuses to tag when the working tree is dirty, when you are not
-on `main`, when the version does not move forward, or when `CHANGELOG.md` has no
-entry for the version being cut. Those refusals are the policy above, enforced.
+on `main`, when `HEAD` is not yet reachable from `origin/main`, when the version does
+not move forward, or when `CHANGELOG.md` has nothing under `## [Unreleased]` to
+promote. Those refusals are the policy above, enforced.
+
+### Never tag a PR branch
+
+This repo squash-merges. A tag cut on a feature branch names commits that the squash
+never puts on `main`, so the tag survives the merge pointing at an orphaned parallel
+history — and `git merge <tag>` in a business app then drags that whole branch in
+alongside the commit that actually landed. The tag looks fine in `git tag -l`; the
+damage only shows up downstream, which is the worst possible place to find it.
+
+This is not hypothetical: it happened on the very first release, and the
+`origin/main` reachability check in `release.sh` exists because of it.
+
+**To rehearse a release or an upgrade, use a throwaway clone**, which has no `origin`
+and is where practice tags belong:
+
+```bash
+git clone . /tmp/starter-rehearsal && cd /tmp/starter-rehearsal
+git remote remove origin
+./scripts/release.sh 1.2.0        # skips the reachability check automatically
+```
+
+Never create a `v*` tag in a working checkout that shares an object store with other
+worktrees — a `git push --follow-tags` from any of them will publish it.
 
 ## Pre-1.0 history
 
