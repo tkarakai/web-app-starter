@@ -239,10 +239,17 @@ Shared design patterns and utilities.
 2. Set your local `.env.local` to the cloud values:
 
 ```env
+# apps/web and apps/admin — read unprefixed at request time, so one build can be
+# promoted between environments. Neither needs a site-URL variable: both derive
+# their origin from the request Host header.
 CONVEX_DEPLOYMENT=dev:<your-deployment>
-NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
+CONVEX_URL=https://<deployment>.convex.cloud
+CONVEX_SITE_URL=https://<deployment>.convex.site
+
+# apps/landing and apps/landing-static are static exports, so they must inline
+# their configuration at build time and keep the NEXT_PUBLIC_ prefix.
 NEXT_PUBLIC_SITE_URL=https://your-app-domain.com
+NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
 
 3. Configure Convex env vars for that deployment:
@@ -343,9 +350,9 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 
 ### Environment differences
 
-- Local env uses `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`.
+- Local env uses `CONVEX_URL` and `CONVEX_SITE_URL` (web/admin) or their `NEXT_PUBLIC_` counterparts (landing, landing-static) pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`.
 - Cloud env uses `https://<deployment>.convex.cloud` (API) and `https://<deployment>.convex.site` (site proxy).
-- `NEXT_PUBLIC_SITE_URL` and the Convex `SITE_URL` env var should match your app URL for each environment.
+- `NEXT_PUBLIC_SITE_URL` (landing apps only) and the Convex `SITE_URL` env var should match your app URL for each environment. `web` and `admin` need neither — they derive their origin from the request `Host` header.
 
 ## Convex workflow primer
 
@@ -374,7 +381,7 @@ Use this mental model to avoid surprises when switching between local and cloud.
 
 ### Mental model
 
-- `NEXT_PUBLIC_CONVEX_URL` = where your app sends requests.
+- `CONVEX_URL` (`NEXT_PUBLIC_CONVEX_URL` in the landing apps) = where your app sends requests.
 - `bun run dev` (local) / `bunx convex deploy` (cloud) = how local code is pushed to that backend.
 
 ## Environment conventions
@@ -389,27 +396,24 @@ This repo does not enforce a naming scheme, but the following conventions are cl
 
 ```env
 CONVEX_DEPLOYMENT=anonymous:<deployment-name>
-NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:<cloud-port>
-NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:<site-port>
-NEXT_PUBLIC_SITE_URL=http://localhost:3001
+CONVEX_URL=http://127.0.0.1:<cloud-port>
+CONVEX_SITE_URL=http://127.0.0.1:<site-port>
 ```
 
-Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment.
+Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment. These examples are for `apps/web` and `apps/admin`, which read the unprefixed names at request time and need no site-URL variable. `apps/landing` and `apps/landing-static` are static exports and use the `NEXT_PUBLIC_` forms instead.
 
 ### Example: hybrid (local app + cloud Convex)
 
 ```env
 CONVEX_DEPLOYMENT=dev:<deployment>
-NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
-NEXT_PUBLIC_SITE_URL=http://localhost:3001
+CONVEX_URL=https://<deployment>.convex.cloud
+CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
 
 ### Example: fully cloud
 
 ```env
 CONVEX_DEPLOYMENT=prod:<deployment>
-NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
-NEXT_PUBLIC_SITE_URL=https://app.example.com
+CONVEX_URL=https://<deployment>.convex.cloud
+CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
