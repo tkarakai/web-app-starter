@@ -44,6 +44,9 @@ interface EnvironmentBannerProps
     VariantProps<typeof environmentBannerVariants> {
   environment: Environment
   gitSha?: string
+  /** Commit currently deployed. Differs from `gitSha` when a content-addressed
+   * artifact was reused because the app's inputs did not change. */
+  deployedCommit?: string
   gitBranch?: string
   deployedAt?: string
   appName?: string
@@ -173,6 +176,7 @@ function Pipe() {
 function EnvironmentBanner({
   environment,
   gitSha,
+  deployedCommit,
   gitBranch,
   deployedAt,
   appName,
@@ -212,6 +216,9 @@ function EnvironmentBanner({
 
   const label = environment === "staging" ? "STAGING" : "DEV"
   const shortSha = gitSha?.slice(0, 7)
+  // Only worth showing when the artifact was built from a different commit.
+  const shortDeployed =
+    deployedCommit && deployedCommit !== gitSha ? deployedCommit.slice(0, 7) : undefined
 
   const envVarEntries = envVars
     ? Object.entries(envVars).sort(([a], [b]) => a.localeCompare(b))
@@ -240,7 +247,10 @@ function EnvironmentBanner({
     appName ? { key: "app", val: appName } : null,
     gitBranch ? { key: "branch", val: gitBranch } : null,
     shortSha
-      ? { key: "commit", val: shortSha, copyVal: gitSha }
+      ? { key: shortDeployed ? "built from" : "commit", val: shortSha, copyVal: gitSha }
+      : null,
+    shortDeployed
+      ? { key: "deployed at", val: shortDeployed, copyVal: deployedCommit }
       : null,
     deployedAt
       ? { key: "deployed", val: formatRelativeTime(deployedAt) }

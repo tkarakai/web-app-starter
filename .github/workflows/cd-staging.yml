@@ -161,6 +161,13 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: ./.github/actions/setup-bun
@@ -172,12 +179,20 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-admin:
     name: Build Admin (Staging)
     needs: changes
     if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: ./.github/actions/setup-bun
@@ -189,12 +204,20 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-landing:
     name: Build Landing (Staging)
     needs: changes
     if: needs.changes.outputs.landing == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: ./.github/actions/setup-bun
@@ -206,55 +229,61 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ─── Attest build provenance (only for built artifacts) ────────
+  # ─── Attest build provenance (only for artifacts this run built) ──
+  #
+  # A reused artifact was attested by the run that produced it; re-attesting the
+  # same bytes here would add a second, misleading provenance record.
   attest:
     name: Attest Build Provenance
     needs: [changes, build-web, build-admin, build-landing]
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      (needs.changes.outputs.web == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.landing == 'true')
+      (needs.build-web.outputs.reused == 'false' ||
+       needs.build-admin.outputs.reused == 'false' ||
+       needs.build-landing.outputs.reused == 'false')
     runs-on: ubuntu-latest
     steps:
       - name: Download web artifact
-        if: needs.changes.outputs.web == 'true'
+        if: needs.build-web.outputs.reused == 'false'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: web-${{ github.sha }}
-          path: artifacts/web-${{ github.sha }}
+          name: ${{ needs.build-web.outputs.artifact-name }}
+          path: artifacts/web
 
       - name: Download admin artifact
-        if: needs.changes.outputs.admin == 'true'
+        if: needs.build-admin.outputs.reused == 'false'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: admin-${{ github.sha }}
-          path: artifacts/admin-${{ github.sha }}
+          name: ${{ needs.build-admin.outputs.artifact-name }}
+          path: artifacts/admin
 
       - name: Download landing artifact
-        if: needs.changes.outputs.landing == 'true'
+        if: needs.build-landing.outputs.reused == 'false'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: landing-${{ github.sha }}
-          path: artifacts/landing-${{ github.sha }}
+          name: ${{ needs.build-landing.outputs.artifact-name }}
+          path: artifacts/landing
 
       - name: Attest web artifact
-        if: needs.changes.outputs.web == 'true'
+        if: needs.build-web.outputs.reused == 'false'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/web-${{ github.sha }}/web.tar.gz
+          subject-path: artifacts/web/web.tar.gz
 
       - name: Attest admin artifact
-        if: needs.changes.outputs.admin == 'true'
+        if: needs.build-admin.outputs.reused == 'false'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/admin-${{ github.sha }}/admin.tar.gz
+          subject-path: artifacts/admin/admin.tar.gz
 
       - name: Attest landing artifact
-        if: needs.changes.outputs.landing == 'true'
+        if: needs.build-landing.outputs.reused == 'false'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/landing-${{ github.sha }}/landing.tar.gz
+          subject-path: artifacts/landing/landing.tar.gz
 
   # ─── Deploy Convex backend (if changed) ────────────────────────
   deploy-convex:
@@ -296,9 +325,13 @@ jobs:
         with:
           app: web
           environment: production
-          artifact-name: web-${{ github.sha }}
-          tarball: web.tar.gz
-          checksum-file: web.tar.gz.sha256
+          artifact-name: ${{ needs.build-web.outputs.artifact-name }}
+          tarball: ${{ needs.build-web.outputs.tarball }}
+          checksum-file: ${{ needs.build-web.outputs.checksum-file }}
+          run-id: ${{ needs.build-web.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ github.sha }}
+          expected-hash: ${{ needs.build-web.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
@@ -324,9 +357,13 @@ jobs:
         with:
           app: admin
           environment: production
-          artifact-name: admin-${{ github.sha }}
-          tarball: admin.tar.gz
-          checksum-file: admin.tar.gz.sha256
+          artifact-name: ${{ needs.build-admin.outputs.artifact-name }}
+          tarball: ${{ needs.build-admin.outputs.tarball }}
+          checksum-file: ${{ needs.build-admin.outputs.checksum-file }}
+          run-id: ${{ needs.build-admin.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ github.sha }}
+          expected-hash: ${{ needs.build-admin.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
@@ -352,9 +389,13 @@ jobs:
         with:
           app: landing
           environment: production
-          artifact-name: landing-${{ github.sha }}
-          tarball: landing.tar.gz
-          checksum-file: landing.tar.gz.sha256
+          artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
+          tarball: ${{ needs.build-landing.outputs.tarball }}
+          checksum-file: ${{ needs.build-landing.outputs.checksum-file }}
+          run-id: ${{ needs.build-landing.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ github.sha }}
+          expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}

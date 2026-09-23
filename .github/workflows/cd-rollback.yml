@@ -108,52 +108,76 @@ jobs:
 
   # ─── Rebuild and redeploy ────────────────────────────────────────
   build-web:
-    name: Build Web (Rollback)
+    name: Resolve Web Artifact (Rollback)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/build-app
+        id: build
         with:
           app: web
           environment: ${{ needs.validate.outputs.vercel-env }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-web }}
 
   build-admin:
-    name: Build Admin (Rollback)
+    name: Resolve Admin Artifact (Rollback)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/build-app
+        id: build
         with:
           app: admin
           environment: ${{ needs.validate.outputs.vercel-env }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-admin }}
 
   build-landing:
-    name: Build Landing (Rollback)
+    name: Resolve Landing Artifact (Rollback)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/build-app
+        id: build
         with:
           app: landing
           environment: ${{ needs.validate.outputs.vercel-env }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-landing }}
@@ -177,7 +201,7 @@ jobs:
   # ─── Deploy apps ─────────────────────────────────────────────────
   deploy-web:
     name: Deploy Web (Rollback)
-    needs: [validate, deploy-convex]
+    needs: [validate, build-web, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -194,16 +218,20 @@ jobs:
         with:
           app: web
           environment: ${{ needs.validate.outputs.vercel-env }}
-          artifact-name: web-${{ inputs.target_sha }}
-          tarball: web.tar.gz
-          checksum-file: web.tar.gz.sha256
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: ${{ needs.build-web.outputs.artifact-name }}
+          tarball: ${{ needs.build-web.outputs.tarball }}
+          checksum-file: ${{ needs.build-web.outputs.checksum-file }}
+          run-id: ${{ needs.build-web.outputs.run-id }}
+          deployed-commit: ${{ inputs.target_sha }}
+          expected-hash: ${{ needs.build-web.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-web }}
 
   deploy-admin:
     name: Deploy Admin (Rollback)
-    needs: [validate, deploy-convex]
+    needs: [validate, build-admin, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -220,16 +248,20 @@ jobs:
         with:
           app: admin
           environment: ${{ needs.validate.outputs.vercel-env }}
-          artifact-name: admin-${{ inputs.target_sha }}
-          tarball: admin.tar.gz
-          checksum-file: admin.tar.gz.sha256
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: ${{ needs.build-admin.outputs.artifact-name }}
+          tarball: ${{ needs.build-admin.outputs.tarball }}
+          checksum-file: ${{ needs.build-admin.outputs.checksum-file }}
+          run-id: ${{ needs.build-admin.outputs.run-id }}
+          deployed-commit: ${{ inputs.target_sha }}
+          expected-hash: ${{ needs.build-admin.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-admin }}
 
   deploy-landing:
     name: Deploy Landing (Rollback)
-    needs: [validate, deploy-convex]
+    needs: [validate, build-landing, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -246,9 +278,13 @@ jobs:
         with:
           app: landing
           environment: ${{ needs.validate.outputs.vercel-env }}
-          artifact-name: landing-${{ inputs.target_sha }}
-          tarball: landing.tar.gz
-          checksum-file: landing.tar.gz.sha256
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
+          tarball: ${{ needs.build-landing.outputs.tarball }}
+          checksum-file: ${{ needs.build-landing.outputs.checksum-file }}
+          run-id: ${{ needs.build-landing.outputs.run-id }}
+          deployed-commit: ${{ inputs.target_sha }}
+          expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ needs.validate.outputs.project-id-landing }}
