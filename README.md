@@ -384,6 +384,17 @@ Use this mental model to avoid surprises when switching between local and cloud.
 - `CONVEX_URL` (`NEXT_PUBLIC_CONVEX_URL` in the landing apps) = where your app sends requests.
 - `bun run dev` (local) / `bunx convex deploy` (cloud) = how local code is pushed to that backend.
 
+## Operations overview
+
+```bash
+bun run ops                    # read-only GitHub + Vercel evidence
+bun run ops history --app web   # builds and staging/production chronology
+bun run ops candidates         # full SHAs, production gates and available uploads
+```
+
+See [Operations CLI](docs/operations-cli.md) for Python/GitHub CLI prerequisites,
+authentication, Vercel project mapping and evidence limitations. It never deploys.
+
 ## Environment conventions
 
 This repo does not enforce a naming scheme, but the following conventions are clear and common:

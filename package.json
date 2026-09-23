@@ -41,6 +41,8 @@
     "ci:act:quick": "./scripts/ci-local-act.sh -q",
     "ci:act:offline": "./scripts/ci-local-act.sh -o",
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
+    "ops": "python3 -m scripts.ops.cli",
+    "test:ops": "python3 -m unittest discover -s scripts/tests -p 'test_ops*.py' -v",
     "ensure-env": "./scripts/ensure-app-env.sh",
     "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v"
   },

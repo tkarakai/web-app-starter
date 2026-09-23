@@ -1,0 +1,52 @@
+{
+  "repo": "example/starter",
+  "gathered_at": "2026-09-23T22:00:00Z",
+  "coverage": [],
+  "tags": [
+    {"name": "deploy/staging/2026-09-20T12-05-00Z/abcdef0123451111111111111111111111111111", "sha": "abcdef0123451111111111111111111111111111", "time": "2026-09-20T12:05:00Z", "run_id": 10},
+    {"name": "deploy/production/2026-09-21T13-05-00Z/abcdef0123451111111111111111111111111111", "sha": "abcdef0123451111111111111111111111111111", "time": "2026-09-21T13:05:00Z", "run_id": 20},
+    {"name": "deploy/staging/2026-09-22T12-05-00Z/abcdef0123452222222222222222222222222222", "sha": "abcdef0123452222222222222222222222222222", "time": "2026-09-22T12:05:00Z", "run_id": 30},
+    {"name": "v1.2.0", "sha": "abcdef0123451111111111111111111111111111", "time": "", "run_id": null}
+  ],
+  "runs": [
+    {"id": 30, "path": ".github/workflows/cd-staging.yml", "event": "push", "head_sha": "abcdef0123452222222222222222222222222222", "created_at": "2026-09-22T12:00:00Z", "updated_at": "2026-09-22T12:05:00Z", "conclusion": "success", "run_attempt": 2},
+    {"id": 10, "path": ".github/workflows/cd-staging.yml", "event": "push", "head_sha": "abcdef0123451111111111111111111111111111", "created_at": "2026-09-20T12:00:00Z", "updated_at": "2026-09-20T12:05:00Z", "conclusion": "success"},
+    {"id": 20, "path": ".github/workflows/cd-production.yml", "event": "workflow_dispatch", "head_sha": "abcdef0123452222222222222222222222222222", "created_at": "2026-09-21T13:00:00Z", "updated_at": "2026-09-21T13:05:00Z", "conclusion": "success"},
+    {"id": 40, "path": ".github/workflows/cd-production.yml", "event": "workflow_dispatch", "head_sha": "abcdef0123452222222222222222222222222222", "created_at": "2026-09-23T13:00:00Z", "updated_at": "2026-09-23T13:05:00Z", "conclusion": "failure"}
+  ],
+  "jobs": [
+    {"id": 101, "run_id": 10, "name": "Build Web (Staging)", "conclusion": "success", "started_at": "2026-09-20T12:01:00Z", "completed_at": "2026-09-20T12:02:00Z", "html_url": "https://github.com/example/starter/actions/runs/10/job/101"},
+    {"id": 102, "run_id": 10, "name": "Deploy Web (Staging)", "conclusion": "success", "started_at": "2026-09-20T12:03:00Z", "completed_at": "2026-09-20T12:04:00Z", "html_url": "https://github.com/example/starter/actions/runs/10/job/102"},
+    {"id": 201, "run_id": 20, "name": "Resolve Web Artifact (Production)", "conclusion": "success", "started_at": "2026-09-21T13:01:00Z", "completed_at": "2026-09-21T13:02:00Z"},
+    {"id": 202, "run_id": 20, "name": "Deploy Web (Production)", "conclusion": "success", "started_at": "2026-09-21T13:03:00Z", "completed_at": "2026-09-21T13:04:00Z"},
+    {"id": 302, "run_id": 30, "name": "Deploy Admin (Staging)", "conclusion": "skipped", "started_at": "2026-09-22T12:03:00Z"},
+    {"id": 402, "run_id": 40, "name": "Deploy Web (Production)", "conclusion": "failure", "started_at": "2026-09-23T13:03:00Z"}
+  ],
+  "artifacts": [
+    {"id": 1, "name": "web-1234567890abcdef", "created_at": "2026-09-20T12:02:00Z", "expires_at": "2026-12-20T12:02:00Z", "expired": false, "workflow_run": {"id": 10, "head_sha": "abcdef0123451111111111111111111111111111"}},
+    {"id": 2, "name": "admin-1234567890abcdef", "created_at": "2026-09-20T12:02:01Z", "expires_at": "2026-09-21T12:02:00Z", "expired": false, "workflow_run": {"id": 10, "head_sha": "abcdef0123451111111111111111111111111111"}},
+    {"id": 3, "name": "landing-9999999999999999", "created_at": "2026-09-21T13:02:00Z", "expires_at": "2026-12-20T12:02:00Z", "expired": false, "workflow_run": {"id": 20, "head_sha": "abcdef0123452222222222222222222222222222"}},
+    {"id": 4, "name": "web-fedcba0987654321", "created_at": "2026-09-23T13:02:00Z", "expires_at": "2026-12-20T12:02:00Z", "expired": false, "workflow_run": {"id": 40, "head_sha": "abcdef0123452222222222222222222222222222"}},
+    {"id": 5, "name": "playwright-report-web", "created_at": "2026-09-23T13:02:00Z", "expired": false, "workflow_run": {"id": 30}},
+    {"id": 6, "name": "web-build", "created_at": "2026-09-23T13:02:00Z", "expired": false, "workflow_run": {"id": 30}}
+  ],
+  "deployments": [
+    {"id": 501, "sha": "abcdef0123452222222222222222222222222222", "environment": "production", "created_at": "2026-09-21T13:03:00Z", "statuses": [
+      {"id": 2, "state": "success", "created_at": "2026-09-21T13:04:00Z", "log_url": "https://github.com/example/starter/actions/runs/20/job/202", "environment_url": "https://web-prod.example.vercel.app"},
+      {"id": 3, "state": "inactive", "created_at": "2026-09-22T13:04:00Z", "environment_url": ""},
+      {"id": 1, "state": "in_progress", "created_at": "2026-09-21T13:03:01Z"}
+    ]},
+    {"id": 502, "sha": "abcdef0123452222222222222222222222222222", "environment": "production", "created_at": "2026-09-23T13:03:00Z", "statuses": [
+      {"id": 4, "state": "failure", "created_at": "2026-09-23T13:04:00Z", "log_url": "https://github.com/example/starter/actions/runs/40/job/402"}
+    ]}
+  ],
+  "vercel": [
+    {"app": "web", "environment": "staging", "project": "prj_staging", "current": true, "deployment": {"uid": "dpl_staging", "created": 1790168400000, "state": "READY", "target": "production", "url": "web-stage.example.vercel.app", "meta": {"githubCommitSha": "abcdef0123452222222222222222222222222222"}}},
+    {"app": "web", "environment": "production", "project": "prj_prod", "current": true, "deployment": {"uid": "dpl_prod", "created": 1789995780000, "state": "READY", "target": "production", "url": "web-prod.example.vercel.app", "meta": {"githubCommitSha": "abcdef0123451111111111111111111111111111"}}},
+    {"app": "web", "environment": "production", "project": "prj_prod", "current": false, "deployment": {"uid": "dpl_failed", "created": 1790168580000, "state": "ERROR", "target": "production", "url": "web-failed.example.vercel.app", "meta": {}}}
+  ],
+  "gates": {
+    "abcdef0123451111111111111111111111111111": {"state": "success", "target_url": "https://github.com/example/starter/actions/runs/10"},
+    "abcdef0123452222222222222222222222222222": {"state": "failure", "target_url": "https://github.com/example/starter/actions/runs/30"}
+  }
+}

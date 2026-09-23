@@ -18,6 +18,9 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
+- `bun run ops` — read-only GitHub/Vercel build and deployment overview, history,
+  and evidence-based production candidate views. Optional setup and evidence limits
+  are documented in `docs/operations-cli.md`; no deployment contract changes.
 - `VERSIONING.md` — semver as it applies to a starter, the breaking-change budget
   (at most two majors a year), and the LTS window (previous major gets security
   fixes for six months).
@@ -44,6 +47,12 @@ merging that tag would pull an orphaned parallel history. A checkout with no
 is where practice tags belong.
 
 ### Action required
+
+**Optional, operations CLI adopters:** install Python 3.10+ and GitHub CLI, authenticate
+`gh`, and supply Vercel project IDs plus `VERCEL_TOKEN` as described in
+`docs/operations-cli.md`. Check `bun run ops --config ops-projects.json`: configured
+sources should appear without authentication/project-mapping warnings. Existing
+builds and deployments need no changes.
 
 **Every existing business app**, once:
 

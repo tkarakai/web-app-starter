@@ -4,6 +4,10 @@ Step-by-step procedures for deploying, operating, and rolling back the monorepo.
 
 For pipeline architecture, failure modes, and migration examples, see [deployment-architecture.md](./deployment-architecture.md).
 
+For a read-only overview before taking action, use `bun run ops`, `bun run ops history`,
+or `bun run ops candidates`. See [operations-cli.md](./operations-cli.md) for authentication,
+project mapping, candidate gate meanings and artifact/deployment evidence limitations.
+
 **How the pipeline works:** Push to `main` triggers automatic staging deployment (CI, build changed apps, deploy). After manual QA, promote to production via manual trigger. Six Vercel projects (3 staging, 3 production), two Convex projects (staging, production). Nothing reaches production without passing through staging first.
 
 ---
