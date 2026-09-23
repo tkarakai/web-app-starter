@@ -15,10 +15,19 @@ and `.github/workflows/cd-production.yml` after reviewing the evidence.
 
 ## Install and authenticate
 
-Run from the repository root. Requires **Python 3.10+**, Git and the authenticated
-[GitHub CLI](https://cli.github.com/) (`gh` on PATH). There are no Python packages,
-additional Bun dependencies, global CLI installs or build steps. Bun is just the
-project-native command shortcut; `python3 -m scripts.ops.cli` works without Bun.
+Run from the repository root. Requires **Node.js 20+**, Bun, Git and the authenticated
+[GitHub CLI](https://cli.github.com/) (`gh` on PATH). The CLI and tests are strict
+TypeScript compiled with the repository's TypeScript compiler and executed by **Node**,
+not Bun or Python. There are no additional runtime dependencies or global CLI installs.
+
+```bash
+bun install --frozen-lockfile
+bun run ops --help
+```
+
+`bun run ops` compiles into ignored `scripts/ops/dist/`, then starts Node. To compile
+once and invoke without the Bun wrapper: `bun run build:ops`, then
+`node scripts/ops/dist/cli.js history`. No Python is needed for this CLI.
 
 Use `gh auth login` once, or inject `GH_TOKEN` / `GITHUB_TOKEN` through your usual
 secret manager. The CLI delegates authentication to `gh api`, as the deployment
@@ -213,13 +222,17 @@ appear in JSON; text always warns about bounded/incomplete evidence. Increasing
 
 Exit codes: **0** = requested sources read (possibly bounded); **2** = useful report
 but at least one unavailable/partial source, including unmapped/disabled Vercel;
-**1** = local configuration/runtime error (argument errors use argparse's **2**).
+**1** = local configuration/runtime error (argument errors also use **2**).
 Capture output even on exit 2. GitHub failures do not suppress Vercel, and vice versa.
 No account-backed tests or remote writes are needed to validate the CLI:
 
 ```bash
-bun run test:ops
-bun run test:dev-scripts                 # includes ops in existing shared CI job
+bun run test:ops                         # strict compilation + node --test
+bun run typecheck:ops                    # strict TypeScript check without emitting
+bun run lint:ops                         # repository ESLint rules
 ```
 
-Implementation: `scripts/ops/`; deterministic fixtures: `scripts/tests/fixtures/`.
+Shared CI (`ci-shared.yml`) runs the CLI lint and Node tests in its lint/typecheck job.
+Implementation and Node tests: `scripts/ops/*.ts`; deterministic provider fixture:
+`scripts/tests/fixtures/ops-evidence.json`. Existing Python development-script tests
+remain separate; they are not required to run the operations CLI.

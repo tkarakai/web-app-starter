@@ -392,7 +392,7 @@ bun run ops history --app web   # builds and staging/production chronology
 bun run ops candidates         # full SHAs, production gates and available uploads
 ```
 
-See [Operations CLI](docs/operations-cli.md) for Python/GitHub CLI prerequisites,
+See [Operations CLI](docs/operations-cli.md) for Node/Bun/GitHub CLI prerequisites,
 authentication, Vercel project mapping and evidence limitations. It never deploys.
 
 ## Environment conventions

@@ -48,7 +48,8 @@ is where practice tags belong.
 
 ### Action required
 
-**Optional, operations CLI adopters:** install Python 3.10+ and GitHub CLI, authenticate
+**Optional, operations CLI adopters:** use Node.js 20+, run `bun install --frozen-lockfile`,
+install GitHub CLI, authenticate
 `gh`, and supply Vercel project IDs plus `VERCEL_TOKEN` as described in
 `docs/operations-cli.md`. Check `bun run ops --config ops-projects.json`: configured
 sources should appear without authentication/project-mapping warnings. Existing

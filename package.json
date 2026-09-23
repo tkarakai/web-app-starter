@@ -41,8 +41,11 @@
     "ci:act:quick": "./scripts/ci-local-act.sh -q",
     "ci:act:offline": "./scripts/ci-local-act.sh -o",
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
-    "ops": "python3 -m scripts.ops.cli",
-    "test:ops": "python3 -m unittest discover -s scripts/tests -p 'test_ops*.py' -v",
+    "ops": "bun run build:ops && node scripts/ops/dist/cli.js",
+    "build:ops": "tsc --project scripts/ops/tsconfig.json",
+    "typecheck:ops": "tsc --project scripts/ops/tsconfig.json --noEmit",
+    "lint:ops": "eslint scripts/ops/*.ts",
+    "test:ops": "bun run build:ops && node --test scripts/ops/dist/ops.test.js",
     "ensure-env": "./scripts/ensure-app-env.sh",
     "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v"
   },
@@ -54,6 +57,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "25.0.8",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "eslint": "9.39.2",

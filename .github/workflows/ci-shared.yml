@@ -73,6 +73,11 @@ jobs:
       - name: Test development process isolation
         run: bun run test:dev-scripts
 
+      - name: Validate operations CLI (TypeScript on Node)
+        run: |
+          bun run lint:ops
+          bun run test:ops
+
       - name: Run TypeScript check
         run: bunx turbo typecheck
 
