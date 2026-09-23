@@ -138,6 +138,11 @@ SHAs plus application. Use `--json` or candidates to copy a full SHA; `--sha` re
 prefixes. An exact SHA filter omits records whose actual SHA could not be established;
 inspect unfiltered history to see those unknown records.
 
+GitHub run/job identity links are parsed, not substring-matched: they must have the
+exact `https://github.com` origin, the configured repository, and a complete Actions
+run/job route. Deployment-to-job joins also verify that the job belongs to that run.
+Tag annotations with invalid or conflicting run links cannot establish a run/commit join.
+
 ## Candidate classification — what it does and does not mean
 
 | Classification | Evidence |

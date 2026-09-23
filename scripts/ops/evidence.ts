@@ -1,5 +1,6 @@
 /** Pure reconciliation. Unknown is preferable to joining on a short SHA or time. */
 import { fullSha } from "./types.js";
+import { githubActionLink } from "./urls.js";
 import type { Candidate, Evidence, Job, Kind, Snapshot } from "./types.js";
 
 export function utc(value: string | number | null | undefined): string {
@@ -282,14 +283,16 @@ export function reconcile(snapshot: Snapshot, apps: string[]): Evidence[] {
     const status = statuses[0];
     const url =
       statuses.map((s) => safeUrl(s.environment_url)).find(Boolean) ?? "";
-    const log = statuses.map((s) => safeUrl(s.log_url)).find(Boolean) ?? "";
-    const relative = log.startsWith(`${base}/actions/runs/`)
-      ? log.slice(base.length)
-      : "";
-    const match = /^\/actions\/runs\/(\d+)\/job\/(\d+)$/.exec(relative);
-    const runId = match ? Number(match[1]) : 0;
-    let app = jobApp(match ? jobs.get(Number(match[2])) : undefined);
-    let sha = targets.get(runId) ?? null;
+    const link = statuses
+      .map((s) => githubActionLink(s.log_url, snapshot.repo))
+      .find((link) => link?.kind === "job");
+    const log = link?.url ?? "";
+    const linkedJob = link?.targetId ? jobs.get(link.targetId) : undefined;
+    // A well-formed URL must also identify a job that belongs to that run.
+    const verifiedJob =
+      linkedJob?.run_id === link?.runId ? linkedJob : undefined;
+    let app = jobApp(verifiedJob);
+    let sha = verifiedJob ? (targets.get(verifiedJob.run_id) ?? null) : null;
     const peers = events.filter(
       (e) =>
         e.kind === "vercel" &&

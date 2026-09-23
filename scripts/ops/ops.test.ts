@@ -11,6 +11,7 @@ import {
 import { resolve } from "node:path";
 import { main, options } from "./cli.js";
 import { loadConfig, ROOT } from "./config.js";
+import { annotationRunId, githubActionLink } from "./urls.js";
 import { candidates, reconcile, safeUrl, utc } from "./evidence.js";
 import {
   candidateTable,
@@ -516,10 +517,21 @@ test("terminal controls and sensitive URL components removed", () => {
 });
 test("history and candidate tables expose links and evidence limits", () => {
   assert.match(history(events(), 10), /Prebuilt uploads \(not deployments\)/);
-  assert.ok(
-    history(events(), 10).includes(
-      "https://github.com/example/starter/actions/runs/10/artifacts/1",
-    ),
+  const artifact = find("artifact:1");
+  const parsed = new URL(artifact.url);
+  assert.equal(parsed.origin, "https://github.com");
+  assert.equal(parsed.pathname, "/example/starter/actions/runs/10/artifacts/1");
+  assert.deepEqual(githubActionLink(artifact.url, "example/starter"), {
+    url: artifact.url,
+    kind: "artifact",
+    runId: 10,
+    targetId: 1,
+  });
+  assert.equal(
+    history(events(), 10)
+      .split("\n")
+      .find((line) => line.startsWith("  artifact:1: ")),
+    `  artifact:1: ${artifact.url}`,
   );
   const text = candidateTable(candidates(fixture, events(), APPS, 10));
   for (const value of [
@@ -530,6 +542,103 @@ test("history and candidate tables expose links and evidence limits", () => {
   ])
     assert.ok(text.includes(value));
   assert.match(coverageText([]), /Not a complete audit/);
+});
+test("GitHub Actions links require exact parsed origin and complete repository path", () => {
+  const valid = githubActionLink(
+    "https://github.com/example/starter/actions/runs/20/job/202?token=hidden#section",
+    "example/starter",
+  );
+  assert.deepEqual(valid, {
+    url: "https://github.com/example/starter/actions/runs/20/job/202",
+    kind: "job",
+    runId: 20,
+    targetId: 202,
+  });
+  for (const host of [
+    "github.com.attacker.test",
+    "attacker-github.com",
+    "attacker.test",
+  ]) {
+    assert.equal(
+      githubActionLink(
+        `https://${host}/example/starter/actions/runs/20/job/202`,
+        "example/starter",
+      ),
+      null,
+    );
+  }
+  for (const url of [
+    "https://attacker.test/https://github.com/example/starter/actions/runs/20/job/202",
+    "https://attacker.test/?url=https://github.com/example/starter/actions/runs/20/job/202",
+    "https://github.com@example.test/example/starter/actions/runs/20/job/202",
+    "https://user:secret@github.com/example/starter/actions/runs/20/job/202",
+    "http://github.com/example/starter/actions/runs/20/job/202",
+    "https://github.com:444/example/starter/actions/runs/20/job/202",
+    "https://github.com/other/starter/actions/runs/20/job/202",
+    "https://github.com/example/starter-extra/actions/runs/20/job/202",
+    "https://github.com/example/starter/actions/runs/20/job/202.attacker.test",
+    "https://github.com/example/starter/actions/runs/20/job/202/extra",
+    "https://github.com/example/starter/actions/runs/9007199254740993",
+  ])
+    assert.equal(githubActionLink(url, "example/starter"), null, url);
+});
+test("annotation identity requires a complete valid run URL and rejects ambiguous claims", () => {
+  assert.equal(
+    annotationRunId(
+      "Deployment complete\nWorkflow run: https://github.com/example/starter/actions/runs/20\n",
+      "example/starter",
+    ),
+    20,
+  );
+  for (const value of [
+    "Workflow run: https://github.com.attacker.test/example/starter/actions/runs/20",
+    "Workflow run: https://attacker-github.com/example/starter/actions/runs/20",
+    "Workflow run: https://attacker.test/https://github.com/example/starter/actions/runs/20",
+    "Workflow run: https://github.com/example/starter/actions/runs/20.attacker.test",
+    "Workflow run: https://github.com/example/starter/actions/runs/20/job/202",
+    "Workflow run: https://github.com/example/starter/actions/runs/20\nWorkflow run: https://github.com/example/starter/actions/runs/30",
+  ])
+    assert.equal(annotationRunId(value, "example/starter"), null);
+});
+test("collector does not attribute tags to runs through attacker-controlled URLs", async () => {
+  for (const url of [
+    "https://github.com.attacker.test/example/starter/actions/runs/20",
+    "https://attacker-github.com/example/starter/actions/runs/20",
+    "https://github.com/example/starter/actions/runs/20.attacker.test",
+  ]) {
+    const ref = {
+      ref: `refs/tags/deploy/production/2026-09-20T12-05-00Z/${A}`,
+      object: { type: "tag", sha: B },
+    };
+    const collector = new Collector(config(), 10, 3, async (path) =>
+      path.includes("matching-refs")
+        ? [ref]
+        : {
+            object: { type: "commit", sha: A },
+            message: `Workflow run: ${url}`,
+          },
+    );
+    const tag = (await collector.tags("deploy/"))[0];
+    assert.equal(tag.sha, A); // The tag's resolved commit remains valid evidence.
+    assert.equal(tag.run_id, null); // But the URL cannot authorize a run/commit join.
+  }
+});
+test("deployment attribution ignores prefix/suffix hosts and jobs belonging to another run", () => {
+  for (const url of [
+    "https://github.com.attacker.test/example/starter/actions/runs/20/job/202",
+    "https://attacker-github.com/example/starter/actions/runs/20/job/202",
+    "https://attacker.test/https://github.com/example/starter/actions/runs/20/job/202",
+    "https://github.com/example/starter/actions/runs/20/job/202.extra",
+    "https://github.com/example/starter/actions/runs/20/job/101",
+  ]) {
+    const s = snapshot();
+    s.vercel = [];
+    for (const status of s.deployments[0].statuses) status.log_url = url;
+    const dep = find("github-deployment:501", s);
+    assert.equal(dep.sha, null, url);
+    assert.equal(dep.app, null, url);
+    assert.equal(dep.context_sha, B);
+  }
 });
 test("CLI rejects mutations, short SHAs and invalid bounds", () => {
   for (const args of [

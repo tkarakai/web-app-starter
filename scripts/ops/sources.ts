@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { ENVIRONMENTS, ROOT, WORKFLOWS } from "./config.js";
 import { errorMessage, fullSha, object } from "./types.js";
+import { annotationRunId } from "./urls.js";
 import type {
   Artifact,
   Config,
@@ -260,14 +261,11 @@ export class Collector {
         );
         return null;
       }
-      const match = new RegExp(
-        `Workflow run: https://github\\.com/${escape(this.config.repo)}/actions/runs/(\\d+)\\b`,
-      ).exec(message);
       return {
         name,
         sha: target,
         time: tagTime(ref.ref),
-        run_id: match ? Number(match[1]) : null,
+        run_id: annotationRunId(message, this.config.repo),
       };
     });
     return tags.filter((tag): tag is Tag => tag !== null);
