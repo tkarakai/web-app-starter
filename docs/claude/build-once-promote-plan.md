@@ -3,7 +3,7 @@
 **Status as of 2026-09-17.** Written as a handoff: it assumes no prior conversation
 context. Read the first three sections before picking up any phase below.
 
-**Phases 1–4 are done. Start at Phase 5 — but read
+**Phases 1–4 and 6 are done. Start at Phase 5 — but read
 [Production projects do not exist](#production-vercel-projects-do-not-exist) first: the promote
 path cannot be exercised until those exist.**
 
@@ -19,6 +19,7 @@ answered **yes**, and proven end to end: see
 | **3 — Vercel env migration** | **done for staging**, verified: `app1-web-staging` and `app1-admin-staging` carry `CONVEX_URL`, `CONVEX_SITE_URL`, `APP_ENVIRONMENT` (+ `LANDING_URL` on web) alongside the legacy names. **Production projects still do not exist** |
 | **4 — promote in the pipeline** | **done**; `cd-production` promotes web + admin instead of rebuilding. Untested end to end — no production projects to deploy into |
 | 5 — close out | not started; depends on a real promote run |
+| **6 — content-addressed artifacts** | **done**; artifacts are named by Turborepo's build-input hash, so an unchanged app is never rebuilt and every commit resolves. See [deployment-architecture.md](../deployment-architecture.md#artifacts-are-content-addressed) |
 
 Scope: **web and admin only.** `landing` and `landing-static` keep `NEXT_PUBLIC_*` and
 keep being rebuilt per environment. That is forced, not a compromise — see
@@ -339,6 +340,63 @@ returns 404 for it too. The i18n middleware 307s it to `/en/robots.txt`.
 artifact upload/download inside a real run, and the Convex deploy step are all unexercised. The
 workflow is only dispatchable on the branch it lives on, so a genuine end-to-end test means
 either dispatching `cd-staging` from this branch or merging and watching the first run.
+
+## Phase 6 — content-addressed artifacts (done)
+
+Phase 4 left a real hole: `cd-staging` builds only the apps whose files changed, so a
+commit touching only `apps/web/**` produced a `deploy/staging` tag but no `admin-<sha>`
+artifact — and `cd-production` required both. The runbook's "take the newest staging tag"
+would hand you a SHA that could not be promoted. Building everything unconditionally would
+have fixed it at the cost of the thing this whole effort exists to avoid.
+
+The fix was to stop keying artifacts by commit. An artifact is a function of *that app's
+inputs*, not of the repo's history, so it is named by Turborepo's hash of those inputs and
+looked up repo-wide. Reuse then needs no bookkeeping: identical inputs produce an identical
+name. Every commit resolves, because the hash comes from the tree at that commit.
+
+The mechanism is documented in
+[deployment-architecture.md](../deployment-architecture.md#artifacts-are-content-addressed).
+What is worth not rediscovering are the two traps, both of which silently destroy reuse:
+
+**1. Turborepo hashes declared env var *values*.** With the runtime variables in `env`, the
+same source produced different hashes per environment, so production would never find
+staging's artifact:
+
+| env at build | web hash |
+|---|---|
+| staging values | `49c0e79e82ae01d8` |
+| production values | `9099174289c3dee7` |
+
+They belong in `passThroughEnv` — available to the task, excluded from the hash. With that,
+all environments hash identically.
+
+**2. Framework inference folds every `NEXT_PUBLIC_*` into the hash.** Turborepo infers
+`nextjs` and auto-hashes those variables, which includes `NEXT_PUBLIC_GIT_SHA` — so the hash
+moved on every commit and nothing was ever reused:
+
+| | web hash |
+|---|---|
+| `GIT_SHA=aaa` | `92719641215039d5` |
+| `GIT_SHA=bbb` | `e7677e6d44420101` |
+| either, with `--framework-inference=false` | `0f0a86db85489206` |
+
+The hash is therefore always computed with `--framework-inference=false`, and each app
+declares what it hashes explicitly.
+
+**Verified properties** (measured, not assumed):
+
+| Scenario | web | admin | landing |
+|---|---|---|---|
+| staging vs production env | same hash ✅ | same hash ✅ | differs ✅ (correct — inlined config) |
+| change `apps/web/src/**` | changes | unchanged → reused | unchanged → reused |
+| add `README.md` / `AGENTS.md` | unchanged → reused | unchanged → reused | unchanged → reused |
+
+The `!**/*.md` and `!qa/**` exclusions in `inputs` are what make the third row work; without
+them the `AGENTS.md` that `next dev` generates inside `apps/web` would invalidate the build.
+
+**Still true after this phase:** landing and landing-static are built once per environment,
+because their config is inlined. Content addressing still saves them a rebuild when nothing
+changed within an environment.
 
 ## Phase 5 — close out (not started)
 

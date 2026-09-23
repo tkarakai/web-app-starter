@@ -37,11 +37,18 @@ inputs:
     description: "Token used to download an artifact from another workflow run. Required with run-id."
     required: false
     default: ""
-  expected-sha:
+  deployed-commit:
     description: >-
-      Commit SHA the artifact must have been built from. When set, the build
-      manifest is checked against it — this is what catches promoting the wrong
-      run's artifact.
+      Commit being deployed. Set as a run-time variable so the app can report it
+      alongside the commit its artifact was built from — for a reused artifact
+      those differ, which is the point of content-addressing.
+    required: false
+    default: ""
+  expected-hash:
+    description: >-
+      Build-input hash the artifact must carry. When set, the build manifest is
+      checked against it. Artifacts are content-addressed, so this — not the
+      commit SHA — is what identifies the right bytes.
     required: false
     default: ""
 
@@ -67,7 +74,7 @@ runs:
     # of what it contains is its manifest. Verify it before it reaches the
     # environment rather than trusting the artifact name.
     - name: Verify artifact provenance
-      if: inputs.expected-sha != ''
+      if: inputs.expected-hash != ''
       shell: bash
       working-directory: deploy-artifacts
       run: |
@@ -77,17 +84,20 @@ runs:
           exit 1
         fi
 
-        BUILT_SHA=$(jq -r '.git_sha' "$MANIFEST")
-        if [ "$BUILT_SHA" != "${{ inputs.expected-sha }}" ]; then
-          echo "::error::Artifact was built from ${BUILT_SHA}, expected ${{ inputs.expected-sha }}"
+        BUILT_HASH=$(jq -r '.input_hash' "$MANIFEST")
+        if [ "$BUILT_HASH" != "${{ inputs.expected-hash }}" ]; then
+          echo "::error::Artifact carries input hash ${BUILT_HASH}, expected ${{ inputs.expected-hash }}"
           exit 1
         fi
 
-        echo "Artifact provenance verified: built from ${BUILT_SHA}"
+        # The commit recorded here is the one that BUILT these bytes, which is
+        # deliberately not always the commit being deployed: if an app's inputs
+        # did not change, its artifact is reused across commits.
+        echo "Artifact verified: input hash ${BUILT_HASH}, built from commit $(jq -r '.git_sha' "$MANIFEST")"
         {
           echo "### Promoted artifact: ${{ inputs.app }}"
           echo '```'
-          jq -r '"commit:   \(.git_sha)\nbuilt:    \(.timestamp)\nbuild run: \(.workflow_run)\nchecksum: \(.artifact_checksum)"' "$MANIFEST"
+          jq -r '"input hash: \(.input_hash)\nbuilt from: \(.git_sha)\nbuilt at:   \(.timestamp)\nbuild run:  \(.workflow_run)\nchecksum:   \(.artifact_checksum)"' "$MANIFEST"
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
 
@@ -110,7 +120,7 @@ runs:
 
     - name: Install Vercel CLI
       shell: bash
-      run: bun add -g vercel@latest
+      run: bun add -g vercel@59.26.0
 
     - name: Create Vercel project link
       shell: bash
@@ -131,6 +141,12 @@ runs:
 
         if [ "${{ inputs.environment }}" = "production" ]; then
           DEPLOY_FLAGS="${DEPLOY_FLAGS} --prod"
+        fi
+
+        # Run-time only: it must not reach the build, or it would be inlined and
+        # make the artifact commit-specific again.
+        if [ -n "${{ inputs.deployed-commit }}" ]; then
+          DEPLOY_FLAGS="${DEPLOY_FLAGS} --env DEPLOYED_COMMIT=${{ inputs.deployed-commit }}"
         fi
 
         echo "::group::Debug: deploy directory contents"

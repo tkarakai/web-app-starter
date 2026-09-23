@@ -85,84 +85,78 @@ jobs:
             }
             console.log('CI gate verified');
 
-  # ─── Locate the staging build to promote ─────────────────────────
+  # ─── Resolve each app's artifact by its build-input hash ─────────
   #
-  # web and admin are NOT rebuilt here. Their artifacts carry no environment
-  # identity, so production deploys the exact bytes that were tested on staging.
+  # Artifacts are content-addressed, so this resolves rather than rebuilds:
+  # web and admin hash identically on staging and production, so their staging
+  # artifacts are found and reused — production deploys the bytes staging tested.
+  # landing and landing-static hash their inlined, environment-specific config,
+  # so they legitimately miss here and are built for production.
+  # A miss also covers an artifact that has aged past the 90-day retention.
   # See docs/claude/build-once-promote-plan.md
-  resolve-staging-build:
-    name: Resolve Staging Build
+  build-web:
+    name: Resolve Web Artifact (Production)
     needs: validate
     runs-on: ubuntu-latest
     outputs:
-      run-id: ${{ steps.find.outputs.run-id }}
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
-      - name: Find the staging run that built this SHA
-        id: find
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          script: |
-            const sha = '${{ inputs.git_sha }}';
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const required = [`web-${sha}`, `admin-${sha}`];
+          ref: ${{ inputs.git_sha }}
+      - uses: ./.github/actions/setup-bun
+      - uses: ./.github/actions/build-app
+        id: build
+        with:
+          app: web
+          environment: production
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            const runs = await github.paginate(
-              github.rest.actions.listWorkflowRuns,
-              { owner, repo, workflow_id: 'cd-staging.yml', head_sha: sha, per_page: 100 },
-            );
-            const candidates = runs
-              .filter((run) => run.conclusion === 'success')
-              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            if (candidates.length === 0) {
-              core.setFailed(
-                `No successful cd-staging run found for ${sha}. ` +
-                `Production promotes the artifact staging built; deploy this SHA to staging first.`
-              );
-              return;
-            }
-
-            for (const run of candidates) {
-              const { data } = await github.rest.actions.listWorkflowRunArtifacts({
-                owner, repo, run_id: run.id, per_page: 100,
-              });
-              const names = data.artifacts.filter((a) => !a.expired).map((a) => a.name);
-              const missing = required.filter((name) => !names.includes(name));
-
-              if (missing.length === 0) {
-                core.setOutput('run-id', String(run.id));
-                core.summary.addHeading('Promoting staging build', 3);
-                core.summary.addRaw(
-                  `Run [${run.id}](${run.html_url}) — ${required.join(', ')}`
-                );
-                await core.summary.write();
-                console.log(`Promoting artifacts from staging run ${run.id}`);
-                return;
-              }
-              console.log(`Run ${run.id} is missing: ${missing.join(', ')}`);
-            }
-
-            // cd-staging only builds the apps whose files changed, so a push-triggered
-            // run for this SHA may legitimately have no web/admin artifact. Promoting a
-            // different SHA's artifact would silently deploy untested bytes, so fail
-            // instead and let the operator produce a complete set.
-            core.setFailed(
-              `Found ${candidates.length} successful cd-staging run(s) for ${sha}, but none ` +
-              `contain both ${required.join(' and ')} (change detection skips unchanged apps, ` +
-              `and artifacts expire after 90 days). Re-run cd-staging for this SHA with ` +
-              `force_deploy=true, then retry.`
-            );
-
-  # ─── Build landing for production ────────────────────────────────
-  #
-  # landing is a static export (output: "export"), so it has no server at runtime
-  # and cannot read runtime configuration. Its artifact is environment-specific
-  # and must be rebuilt per environment.
-  build-landing:
-    name: Build Landing (Production)
+  build-admin:
+    name: Resolve Admin Artifact (Production)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha }}
+      - uses: ./.github/actions/setup-bun
+      - uses: ./.github/actions/build-app
+        id: build
+        with:
+          app: admin
+          environment: production
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-landing:
+    name: Resolve Landing Artifact (Production)
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -176,32 +170,37 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ─── Attest build provenance ─────────────────────────────────────
-  #
-  # Only landing is attested here — it is the only artifact this workflow builds.
-  # The promoted web and admin artifacts were attested by the staging run that
-  # produced them, which is the run that actually built those bytes.
+  # ─── Attest provenance for anything actually built here ──────────
   attest:
     name: Attest Build Provenance
-    needs: build-landing
+    needs: [build-web, build-admin, build-landing]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      (needs.build-web.outputs.reused == 'false' ||
+       needs.build-admin.outputs.reused == 'false' ||
+       needs.build-landing.outputs.reused == 'false')
     runs-on: ubuntu-latest
     steps:
       - name: Download landing artifact
+        if: needs.build-landing.outputs.reused == 'false'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: landing-${{ inputs.git_sha }}
-          path: artifacts/landing-${{ inputs.git_sha }}
+          name: ${{ needs.build-landing.outputs.artifact-name }}
+          path: artifacts/landing
 
       - name: Attest landing artifact
+        if: needs.build-landing.outputs.reused == 'false'
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: artifacts/landing-${{ inputs.git_sha }}/landing.tar.gz
+          subject-path: artifacts/landing/landing.tar.gz
 
   # ─── Deploy Convex backend (before frontend) ────────────────────
   deploy-convex:
     name: Deploy Convex (Production)
-    needs: [resolve-staging-build, build-landing]
+    needs: [build-web, build-admin, build-landing]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -214,10 +213,9 @@ jobs:
           deploy-key: ${{ secrets.CONVEX_DEPLOY_KEY }}
           environment: production
 
-  # ─── Promote web and admin, deploy landing ───────────────────────
   deploy-web:
     name: Deploy Web (Production)
-    needs: [resolve-staging-build, deploy-convex]
+    needs: [build-web, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -234,19 +232,20 @@ jobs:
         with:
           app: web
           environment: production
-          artifact-name: web-${{ inputs.git_sha }}
-          tarball: web.tar.gz
-          checksum-file: web.tar.gz.sha256
-          run-id: ${{ needs.resolve-staging-build.outputs.run-id }}
+          artifact-name: ${{ needs.build-web.outputs.artifact-name }}
+          tarball: ${{ needs.build-web.outputs.tarball }}
+          checksum-file: ${{ needs.build-web.outputs.checksum-file }}
+          run-id: ${{ needs.build-web.outputs.run-id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          expected-sha: ${{ inputs.git_sha }}
+          deployed-commit: ${{ inputs.git_sha }}
+          expected-hash: ${{ needs.build-web.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
 
   deploy-admin:
     name: Deploy Admin (Production)
-    needs: [resolve-staging-build, deploy-convex]
+    needs: [build-admin, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -263,19 +262,20 @@ jobs:
         with:
           app: admin
           environment: production
-          artifact-name: admin-${{ inputs.git_sha }}
-          tarball: admin.tar.gz
-          checksum-file: admin.tar.gz.sha256
-          run-id: ${{ needs.resolve-staging-build.outputs.run-id }}
+          artifact-name: ${{ needs.build-admin.outputs.artifact-name }}
+          tarball: ${{ needs.build-admin.outputs.tarball }}
+          checksum-file: ${{ needs.build-admin.outputs.checksum-file }}
+          run-id: ${{ needs.build-admin.outputs.run-id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          expected-sha: ${{ inputs.git_sha }}
+          deployed-commit: ${{ inputs.git_sha }}
+          expected-hash: ${{ needs.build-admin.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
 
   deploy-landing:
     name: Deploy Landing (Production)
-    needs: deploy-convex
+    needs: [build-landing, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -292,9 +292,13 @@ jobs:
         with:
           app: landing
           environment: production
-          artifact-name: landing-${{ inputs.git_sha }}
-          tarball: landing.tar.gz
-          checksum-file: landing.tar.gz.sha256
+          artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
+          tarball: ${{ needs.build-landing.outputs.tarball }}
+          checksum-file: ${{ needs.build-landing.outputs.checksum-file }}
+          run-id: ${{ needs.build-landing.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ inputs.git_sha }}
+          expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
