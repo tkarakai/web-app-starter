@@ -70,8 +70,8 @@ Make sure that you have "Production" designation selected for the project (even 
 
 | Value | Where to find it | Staging | Production |
 |-------|-------------------|---------|------------|
-| Deployment URL → `NEXT_PUBLIC_CONVEX_URL` | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
-| HTTP Actions URL → `NEXT_PUBLIC_CONVEX_SITE_URL` | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
+| Deployment URL → `CONVEX_URL` (web/admin), `NEXT_PUBLIC_CONVEX_URL` (landing) | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
+| HTTP Actions URL → `CONVEX_SITE_URL` (web/admin), `NEXT_PUBLIC_CONVEX_SITE_URL` (landing) | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
 
 **Generate deploy keys** for each project:
 
@@ -245,39 +245,49 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 
 Set environment variables for each Vercel project. Use the Convex URLs recorded in step 2a. Since each Vercel project serves a single environment, all variables use the **Production** scope only.
 
+> **The names differ between the app and the landing projects, deliberately.** `web` and `admin`
+> read their configuration **unprefixed at request time**, which is what lets one build be promoted
+> from staging to production. A `NEXT_PUBLIC_*` name would be inlined into the bundle at build time
+> and pin the artifact to the environment that built it. Do not add `NEXT_PUBLIC_CONVEX_URL` (or the
+> other prefixed names) to a web or admin project — nothing reads them, and their presence is what
+> the leak guard reports. See [claude/build-once-promote-plan.md](./claude/build-once-promote-plan.md).
+>
+> Neither app needs a site-URL variable at all: both derive their origin from the request `Host`
+> header. (`SITE_URL` is Convex's own variable, a comma-separated trusted-origin list — unrelated.)
+
 **my-app-web (production):**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://web.yourdomain.com` |
-| `NEXT_PUBLIC_LANDING_URL` | `https://yourdomain.com` |
+| `CONVEX_URL` | Production Convex URL |
+| `CONVEX_SITE_URL` | Production Convex Site URL |
+| `LANDING_URL` | `https://yourdomain.com` |
+| `APP_ENVIRONMENT` | `production` |
 
 **my-app-web-staging:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://my-app-web-staging.vercel.app` |
-| `NEXT_PUBLIC_LANDING_URL` | `https://my-app-landing-staging.vercel.app` |
+| `CONVEX_URL` | Staging Convex URL |
+| `CONVEX_SITE_URL` | Staging Convex Site URL |
+| `LANDING_URL` | `https://my-app-landing-staging.vercel.app` |
+| `APP_ENVIRONMENT` | `staging` |
 
 **my-app-admin (production):**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://admin.yourdomain.com` |
+| `CONVEX_URL` | Production Convex URL |
+| `CONVEX_SITE_URL` | Production Convex Site URL |
+| `APP_ENVIRONMENT` | `production` |
 
 **my-app-admin-staging:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://my-app-admin-staging.vercel.app` |
+| `CONVEX_URL` | Staging Convex URL |
+| `CONVEX_SITE_URL` | Staging Convex Site URL |
+| `APP_ENVIRONMENT` | `staging` |
 
 **my-app-landing (production)** — connects to Convex via HTTP actions for the waitlist API:
 
@@ -297,7 +307,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 
 Set these in each project's Settings → Environment Variables using the **Production** scope.
 
-> **Cross-app linking:** The apps link to each other at runtime — the landing page has "Get Started" / "Sign In" buttons pointing to the web app (`NEXT_PUBLIC_WEB_APP_URL`), and the web app has Terms/Privacy and back-to-landing links pointing to the landing page (`NEXT_PUBLIC_LANDING_URL`). These are non-secret config values baked into the JS bundle at build time. Set them once per Vercel project and they'll be pulled automatically during CI/CD builds via `vercel pull`. In local dev, `dev-start.sh` sets them automatically.
+> **Cross-app linking:** The apps link to each other — the landing page has "Get Started" / "Sign In" buttons pointing to the web app (`NEXT_PUBLIC_WEB_APP_URL`), and the web app has Terms/Privacy and back-to-landing links pointing to the landing page (`LANDING_URL`). Both are non-secret config values. The landing page is a static export, so its value is baked into the JS bundle at build time; the web app reads `LANDING_URL` at request time and passes it to client components through the public-config provider, which is what keeps its artifact promotable. Set them once per Vercel project and they'll be pulled automatically during CI/CD builds via `vercel pull`. In local dev, `dev-start.sh` sets them automatically.
 
 ### 2e. GitHub Configuration
 
