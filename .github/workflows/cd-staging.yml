@@ -1,20 +1,34 @@
 name: Deploy Staging
 
+run-name: "Deploy staging ${{ inputs.git_sha || github.sha }} [ops:${{ inputs.request_id || github.run_id }}]"
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
     inputs:
+      request_id:
+        description: Correlation ID supplied by the ops CLI
+        type: string
+        required: false
+      git_sha:
+        description: Full source SHA to test and deploy (defaults to workflow SHA)
+        type: string
+        required: false
       force_deploy:
         description: 'Deploy all apps regardless of change detection'
         required: false
         type: boolean
         default: true
 
+env:
+  OPS_SELECTED_SHA: ${{ inputs.git_sha || github.sha }}
+
 permissions:
   contents: write
   actions: read
+  deployments: write
   statuses: write
   id-token: write
   attestations: write
@@ -24,18 +38,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-source:
+    name: Validate Source SHA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an immutable full commit SHA
+        shell: bash
+        run: |
+          if [[ ! "$OPS_SELECTED_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "::error::git_sha must be a full 40-character commit SHA."
+            exit 1
+          fi
+
   # ─── CI Phase (reusable workflows, parallel) ───────────────────
   ci-shared:
+    needs: validate-source
     uses: ./.github/workflows/ci-shared.yml
+    with:
+      git_sha: ${{ inputs.git_sha }}
 
   ci-web:
+    needs: validate-source
     uses: ./.github/workflows/ci-web.yml
+    with:
+      git_sha: ${{ inputs.git_sha }}
 
   ci-admin:
+    needs: validate-source
     uses: ./.github/workflows/ci-admin.yml
+    with:
+      git_sha: ${{ inputs.git_sha }}
 
   ci-landing:
+    needs: validate-source
     uses: ./.github/workflows/ci-landing.yml
+    with:
+      git_sha: ${{ inputs.git_sha }}
 
   # ─── CI Gate ────────────────────────────────────────────────────
   ci-gate:
@@ -45,6 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Evaluate CI and set commit status
+        env:
+          SELECTED_SHA: ${{ inputs.git_sha || github.sha }}
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -62,7 +102,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.sha,
+              sha: process.env.SELECTED_SHA,
               state: allPassed ? 'success' : 'failure',
               context: 'ci/gate-passed',
               description: allPassed
@@ -88,6 +128,8 @@ jobs:
       any_app: ${{ steps.eval.outputs.any_app }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Detect file changes
         uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
@@ -129,7 +171,7 @@ jobs:
       - name: Evaluate changes
         id: eval
         run: |
-          FORCE="${{ inputs.force_deploy }}"
+          FORCE="${{ inputs.force_deploy || inputs.git_sha != '' }}"
 
           if [[ "$FORCE" == "true" ]]; then
             echo "Force deploy requested — deploying all apps"
@@ -167,11 +209,22 @@ jobs:
       checksum-file: ${{ steps.build.outputs.checksum-file }}
       input-hash: ${{ steps.build.outputs.input-hash }}
       run-id: ${{ steps.build.outputs.run-id }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
       reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: web
@@ -192,11 +245,22 @@ jobs:
       checksum-file: ${{ steps.build.outputs.checksum-file }}
       input-hash: ${{ steps.build.outputs.input-hash }}
       run-id: ${{ steps.build.outputs.run-id }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
       reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: admin
@@ -217,11 +281,22 @@ jobs:
       checksum-file: ${{ steps.build.outputs.checksum-file }}
       input-hash: ${{ steps.build.outputs.input-hash }}
       run-id: ${{ steps.build.outputs.run-id }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
       reused: ${{ steps.build.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: landing
@@ -297,8 +372,17 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-convex
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-convex
         with:
           deploy-key: ${{ secrets.CONVEX_DEPLOY_KEY }}
           environment: staging
@@ -314,13 +398,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: web
@@ -330,7 +425,9 @@ jobs:
           checksum-file: ${{ needs.build-web.outputs.checksum-file }}
           run-id: ${{ needs.build-web.outputs.run-id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          deployed-commit: ${{ github.sha }}
+          deployed-commit: ${{ inputs.git_sha || github.sha }}
+          logical-environment: staging
+          request-id: ${{ inputs.request_id }}
           expected-hash: ${{ needs.build-web.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -346,13 +443,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: admin
@@ -362,7 +470,9 @@ jobs:
           checksum-file: ${{ needs.build-admin.outputs.checksum-file }}
           run-id: ${{ needs.build-admin.outputs.run-id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          deployed-commit: ${{ github.sha }}
+          deployed-commit: ${{ inputs.git_sha || github.sha }}
+          logical-environment: staging
+          request-id: ${{ inputs.request_id }}
           expected-hash: ${{ needs.build-admin.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -378,13 +488,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: landing
@@ -394,7 +515,9 @@ jobs:
           checksum-file: ${{ needs.build-landing.outputs.checksum-file }}
           run-id: ${{ needs.build-landing.outputs.run-id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          deployed-commit: ${{ github.sha }}
+          deployed-commit: ${{ inputs.git_sha || github.sha }}
+          logical-environment: staging
+          request-id: ${{ inputs.request_id }}
           expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -402,6 +525,8 @@ jobs:
 
   # ─── Smoke tests (only for deployed apps) ──────────────────────
   smoke-test:
+    outputs:
+      health: ${{ steps.health.outcome }}
     name: Smoke Tests
     needs: [changes, deploy-web, deploy-admin, deploy-landing]
     if: >-
@@ -411,6 +536,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Health check deployed apps
+        id: health
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -446,7 +572,7 @@ jobs:
                 if (response.ok) {
                   results.push(`✅ ${app.name}: ${response.status} (${app.url})`);
                 } else {
-                  results.push(`⚠️ ${app.name}: ${response.status} (${app.url})`);
+                  results.push(`❌ ${app.name}: ${response.status} (${app.url})`);
                 }
               } catch (error) {
                 results.push(`❌ ${app.name}: ${error.message}`);
@@ -468,7 +594,7 @@ jobs:
   # ─── Record deployment ─────────────────────────────────────────
   record:
     name: Record Staging Deployment
-    needs: [changes, smoke-test, deploy-convex]
+    needs: [changes, smoke-test, deploy-convex, deploy-web, deploy-admin, deploy-landing, attest]
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -476,6 +602,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Create deployment tag
         run: |
@@ -483,9 +611,33 @@ jobs:
           git config user.name "${{ github.actor }}"
 
           TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-          TAG="deploy/staging/${TIMESTAMP}/${{ github.sha }}"
-          git tag -a "${TAG}" "${{ github.sha }}" \
+          TAG="deploy/staging/${TIMESTAMP}/${OPS_SELECTED_SHA}"
+          git tag -a "${TAG}" "${OPS_SELECTED_SHA}" \
             -m "Staging deployment at ${TIMESTAMP}" \
             -m "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git push origin "${TAG}"
           echo "Tagged: ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+
+  ops-record:
+    name: Record Ops Outcomes
+    if: always()
+    needs: [build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, changes, smoke-test, record]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github
+      - name: Persist app outcomes
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          OPS_NEEDS: ${{ toJSON(needs) }}
+          OPS_ENVIRONMENT: staging
+          OPS_SHA: ${{ inputs.git_sha || github.sha }}
+          OPS_OPERATION: deploy
+          OPS_REQUEST_ID: ${{ inputs.request_id }}
+          OPS_HEALTH_JOB: smoke-test
+        with:
+          script: |
+            const record = require('./.github/scripts/record-ops.cjs');
+            await record({ github, context, core });

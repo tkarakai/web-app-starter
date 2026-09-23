@@ -44,6 +44,13 @@ inputs:
       those differ, which is the point of content-addressing.
     required: false
     default: ""
+  logical-environment:
+    description: Ops environment (staging or production); independent of Vercel target
+    required: true
+  request-id:
+    description: Ops dispatch correlation ID
+    required: false
+    default: ""
   expected-hash:
     description: >-
       Build-input hash the artifact must carry. When set, the build manifest is
@@ -53,6 +60,12 @@ inputs:
     default: ""
 
 outputs:
+  built-sha:
+    description: Actual source SHA from the verified build manifest
+    value: ${{ steps.provenance.outputs.built-sha }}
+  checksum:
+    description: SHA256 of the deployed tarball
+    value: ${{ steps.provenance.outputs.checksum }}
   deployment-url:
     description: "URL of the Vercel deployment"
     value: ${{ steps.deploy.outputs.url }}
@@ -74,6 +87,7 @@ runs:
     # of what it contains is its manifest. Verify it before it reaches the
     # environment rather than trusting the artifact name.
     - name: Verify artifact provenance
+      id: provenance
       if: inputs.expected-hash != ''
       shell: bash
       working-directory: deploy-artifacts
@@ -84,6 +98,9 @@ runs:
           exit 1
         fi
 
+        jq -e '(.git_sha | test("^[a-f0-9]{40}$")) and (.artifact_checksum | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
+        echo "built-sha=$(jq -r '.git_sha' "$MANIFEST")" >> "$GITHUB_OUTPUT"
+        echo "checksum=$(jq -r '.artifact_checksum' "$MANIFEST")" >> "$GITHUB_OUTPUT"
         BUILT_HASH=$(jq -r '.input_hash' "$MANIFEST")
         if [ "$BUILT_HASH" != "${{ inputs.expected-hash }}" ]; then
           echo "::error::Artifact carries input hash ${BUILT_HASH}, expected ${{ inputs.expected-hash }}"
@@ -107,6 +124,12 @@ runs:
       run: |
         echo "Verifying checksum for ${{ inputs.tarball }}..."
         sha256sum -c "${{ inputs.checksum-file }}"
+        ACTUAL=$(sha256sum "${{ inputs.tarball }}" | awk '{print $1}')
+        EXPECTED=$(jq -r '.artifact_checksum' "${{ inputs.app }}-manifest.json")
+        if [ "$ACTUAL" != "$EXPECTED" ]; then
+          echo "::error::Tarball checksum does not match the build manifest"
+          exit 1
+        fi
         echo "Checksum verified successfully"
 
     - name: Extract artifact into workspace root
@@ -136,17 +159,30 @@ runs:
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        OPS_DEPLOY_SHA: ${{ inputs.deployed-commit }}
+        OPS_REQUEST_ID: ${{ inputs.request-id }}
       run: |
-        DEPLOY_FLAGS="--prebuilt --token=${VERCEL_TOKEN}"
+        DEPLOY_FLAGS=(--prebuilt --token="$VERCEL_TOKEN"
+          --meta "opsRepository=${{ github.repository }}"
+          --meta "opsApp=${{ inputs.app }}"
+          --meta "opsEnvironment=${{ inputs.logical-environment }}"
+          --meta "opsSelectedSha=${OPS_DEPLOY_SHA}"
+          --meta "opsBuiltSha=${{ steps.provenance.outputs.built-sha }}"
+          --meta "opsInputHash=${{ inputs.expected-hash }}"
+          --meta "opsArtifactName=${{ inputs.artifact-name }}"
+          --meta "opsBuildRunId=${{ inputs.run-id }}"
+          --meta "opsRunId=${{ github.run_id }}"
+          --meta "opsRunAttempt=${{ github.run_attempt }}"
+          --meta "opsRequestId=${OPS_REQUEST_ID}")
 
         if [ "${{ inputs.environment }}" = "production" ]; then
-          DEPLOY_FLAGS="${DEPLOY_FLAGS} --prod"
+          DEPLOY_FLAGS+=(--prod)
         fi
 
         # Run-time only: it must not reach the build, or it would be inlined and
         # make the artifact commit-specific again.
-        if [ -n "${{ inputs.deployed-commit }}" ]; then
-          DEPLOY_FLAGS="${DEPLOY_FLAGS} --env DEPLOYED_COMMIT=${{ inputs.deployed-commit }}"
+        if [ -n "${OPS_DEPLOY_SHA}" ]; then
+          DEPLOY_FLAGS+=(--env "DEPLOYED_COMMIT=${OPS_DEPLOY_SHA}")
         fi
 
         echo "::group::Debug: deploy directory contents"
@@ -163,7 +199,7 @@ runs:
 
         # Disable -e so we can capture the error output before exiting
         set +e
-        DEPLOY_OUTPUT=$(vercel deploy ${DEPLOY_FLAGS} 2>&1)
+        DEPLOY_OUTPUT=$(vercel deploy "${DEPLOY_FLAGS[@]}")
         DEPLOY_EXIT=$?
         set -e
 
@@ -173,9 +209,12 @@ runs:
           exit $DEPLOY_EXIT
         fi
 
-        # Vercel prints info messages after the URL, so tail -1 grabs the
-        # wrong line. Extract the actual https:// deployment URL instead.
-        DEPLOYMENT_URL=$(echo "${DEPLOY_OUTPUT}" | grep -oE 'https://[^ ]+\.vercel\.app[^ ]*' | head -1)
+        # Vercel writes the deployment URL to stdout and progress/errors to stderr.
+        DEPLOYMENT_URL=$(printf '%s' "$DEPLOY_OUTPUT" | tr -d '\r\n')
+        if [[ ! "$DEPLOYMENT_URL" =~ ^https://[a-zA-Z0-9.-]+\.vercel\.app/?$ ]]; then
+          echo "::error::Unexpected Vercel deployment output: $DEPLOY_OUTPUT"
+          exit 1
+        fi
         if [ -z "${DEPLOYMENT_URL}" ]; then
           echo "::error::Could not extract deployment URL from Vercel output:"
           echo "${DEPLOY_OUTPUT}"

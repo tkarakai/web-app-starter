@@ -1,8 +1,14 @@
 name: Rollback Deployment
 
+run-name: "Rollback ${{ inputs.target_sha }} [ops:${{ inputs.request_id || github.run_id }}]"
+
 on:
   workflow_dispatch:
     inputs:
+      request_id:
+        description: Correlation ID supplied by the ops CLI
+        type: string
+        required: false
       environment:
         description: "Target environment"
         required: true
@@ -19,9 +25,13 @@ on:
         required: true
         type: string
 
+env:
+  OPS_SELECTED_SHA: ${{ inputs.target_sha }}
+
 permissions:
   contents: write
   actions: read
+  deployments: write
   id-token: write
   attestations: write
 
@@ -50,7 +60,8 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
-            const sha = '${{ inputs.target_sha }}';
+            const sha = process.env.OPS_SELECTED_SHA;
+            if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error("A full 40-character target SHA is required.");
             const env = '${{ inputs.environment }}';
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -60,20 +71,20 @@ jobs:
             const tagPrefix = `tags/deploy/${env}/`;
 
             try {
-              const { data: tags } = await github.rest.git.listMatchingRefs({
+              const tags = await github.paginate(github.rest.git.listMatchingRefs, {
                 owner,
                 repo,
                 ref: tagPrefix,
               });
 
-              const found = tags.find(tag => tag.ref.includes(sha));
+              const found = tags.find(tag => tag.ref.endsWith(`/${sha}`));
               if (!found) {
-                core.warning(`No ${env} deployment tag found for SHA ${sha}. Proceeding with rebuild.`);
+                core.setFailed(`No ${env} deployment tag found for SHA ${sha}.`);
               } else {
                 console.log(`Found deployment tag: ${found.ref}`);
               }
             } catch (error) {
-              core.warning(`Could not verify deployment tag: ${error.message}`);
+              core.setFailed(`Could not verify deployment tag: ${error.message}`);
             }
 
       - name: Set Vercel environment
@@ -117,12 +128,22 @@ jobs:
       checksum-file: ${{ steps.build.outputs.checksum-file }}
       input-hash: ${{ steps.build.outputs.input-hash }}
       run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: web
@@ -142,12 +163,22 @@ jobs:
       checksum-file: ${{ steps.build.outputs.checksum-file }}
       input-hash: ${{ steps.build.outputs.input-hash }}
       run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: admin
@@ -167,12 +198,22 @@ jobs:
       checksum-file: ${{ steps.build.outputs.checksum-file }}
       input-hash: ${{ steps.build.outputs.input-hash }}
       run-id: ${{ steps.build.outputs.run-id }}
+      reused: ${{ steps.build.outputs.reused }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: landing
@@ -192,8 +233,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-convex
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-convex
         with:
           deploy-key: ${{ secrets.CONVEX_DEPLOY_KEY }}
           environment: ${{ inputs.environment }}
@@ -205,6 +253,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: ${{ inputs.environment }}
       url: ${{ steps.deploy.outputs.deployment-url }}
@@ -212,8 +262,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: web
@@ -224,6 +281,8 @@ jobs:
           checksum-file: ${{ needs.build-web.outputs.checksum-file }}
           run-id: ${{ needs.build-web.outputs.run-id }}
           deployed-commit: ${{ inputs.target_sha }}
+          logical-environment: ${{ inputs.environment }}
+          request-id: ${{ inputs.request_id }}
           expected-hash: ${{ needs.build-web.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -235,6 +294,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: ${{ inputs.environment }}
       url: ${{ steps.deploy.outputs.deployment-url }}
@@ -242,8 +303,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: admin
@@ -254,6 +322,8 @@ jobs:
           checksum-file: ${{ needs.build-admin.outputs.checksum-file }}
           run-id: ${{ needs.build-admin.outputs.run-id }}
           deployed-commit: ${{ inputs.target_sha }}
+          logical-environment: ${{ inputs.environment }}
+          request-id: ${{ inputs.request_id }}
           expected-hash: ${{ needs.build-admin.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -265,6 +335,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: ${{ inputs.environment }}
       url: ${{ steps.deploy.outputs.deployment-url }}
@@ -272,8 +344,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.target_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+      - name: Checkout workflow tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: landing
@@ -284,6 +363,8 @@ jobs:
           checksum-file: ${{ needs.build-landing.outputs.checksum-file }}
           run-id: ${{ needs.build-landing.outputs.run-id }}
           deployed-commit: ${{ inputs.target_sha }}
+          logical-environment: ${{ inputs.environment }}
+          request-id: ${{ inputs.request_id }}
           expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -291,6 +372,8 @@ jobs:
 
   # ─── Post-rollback ───────────────────────────────────────────────
   post-rollback:
+    outputs:
+      health: ${{ steps.health.outcome }}
     name: Post-Rollback Verification
     needs: [deploy-web, deploy-admin, deploy-landing]
     runs-on: ubuntu-latest
@@ -300,6 +383,7 @@ jobs:
           ref: ${{ inputs.target_sha }}
 
       - name: Health check all apps
+        id: health
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -324,7 +408,7 @@ jobs:
                 if (response.ok) {
                   results.push(`✅ ${app.name}: ${response.status} (${app.url})`);
                 } else {
-                  results.push(`⚠️ ${app.name}: ${response.status} (${app.url})`);
+                  results.push(`❌ ${app.name}: ${response.status} (${app.url})`);
                 }
               } catch (error) {
                 results.push(`❌ ${app.name}: ${error.message}`);
@@ -337,6 +421,8 @@ jobs:
             core.summary.addHeading('Rollback Health Checks', 3);
             core.summary.addCodeBlock(summary);
             await core.summary.write();
+            const failed = results.filter(r => r.startsWith('❌'));
+            if (failed.length) core.setFailed(`${failed.length} rollback health check(s) failed`);
 
       - name: Create rollback tag
         run: |
@@ -344,13 +430,37 @@ jobs:
           git config user.name "${{ github.actor }}"
 
           TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-          TAG="deploy/${{ inputs.environment }}/rollback/${TIMESTAMP}/${{ inputs.target_sha }}"
-          git tag -a "${TAG}" "${{ inputs.target_sha }}" \
-            -m "Rollback ${{ inputs.environment }} to ${{ inputs.target_sha }}" \
+          TAG="deploy/${{ inputs.environment }}/rollback/${TIMESTAMP}/${OPS_SELECTED_SHA}"
+          git tag -a "${TAG}" "${OPS_SELECTED_SHA}" \
+            -m "Rollback ${{ inputs.environment }} to ${OPS_SELECTED_SHA}" \
             -m "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git push origin "${TAG}"
 
           echo "### Rollback Complete" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Environment:** ${{ inputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Rolled back to:** ${{ inputs.target_sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Rolled back to:** ${OPS_SELECTED_SHA}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+
+  ops-record:
+    name: Record Ops Outcomes
+    if: always()
+    needs: [build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, validate, post-rollback]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github
+      - name: Persist app outcomes
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          OPS_NEEDS: ${{ toJSON(needs) }}
+          OPS_ENVIRONMENT: ${{ inputs.environment }}
+          OPS_SHA: ${{ inputs.target_sha }}
+          OPS_OPERATION: rollback
+          OPS_REQUEST_ID: ${{ inputs.request_id }}
+          OPS_HEALTH_JOB: post-rollback
+        with:
+          script: |
+            const record = require('./.github/scripts/record-ops.cjs');
+            await record({ github, context, core });

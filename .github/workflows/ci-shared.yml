@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
+    inputs:
+      git_sha:
+        description: Source commit to test
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ci-shared-${{ github.ref }}
@@ -26,8 +32,8 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.act-all.outputs.backend || steps.filter.outputs.backend }}
-      root: ${{ steps.act-all.outputs.root || steps.filter.outputs.root }}
+      backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
+      root: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.root || steps.filter.outputs.root }}
     steps:
       # In act (local CI), git worktrees use a .git file pointing to the main
       # repo which doesn't exist inside the container. Skip change detection
@@ -43,6 +49,8 @@ jobs:
       - name: Checkout
         if: ${{ !env.ACT }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
@@ -68,10 +76,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Test development process isolation
         run: bun run test:dev-scripts
+
+      - name: Test ops CLI
+        if: hashFiles('packages/ops/package.json') != ''
+        run: bun run test:ops
 
       - name: Run TypeScript check
         run: bunx turbo typecheck
@@ -89,6 +103,8 @@ jobs:
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.root == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Run Convex tests
