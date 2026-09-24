@@ -47,7 +47,6 @@
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
     "ensure-env": "./scripts/ensure-app-env.sh",
     "test:dev-scripts": "./scripts/node-ts.sh --test scripts/tests/*.test.ts",
-    "resolve-i18n-conflicts": "./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts",
     "typecheck:dev-scripts": "tsc -p scripts/tsconfig.json",
     "test:starter-upgrade": "./scripts/node-ts.sh --test scripts/starter-upgrade/*.test.ts",
     "test:starter-rehearsal": "./scripts/node-ts.sh scripts/starter-upgrade/rehearse.ts",

@@ -276,7 +276,7 @@ objects. Expect all 15 to conflict at once whenever either side adds a key.
 sides".**
 
 ```bash
-bun run resolve-i18n-conflicts
+./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts
 ```
 
 It reads the three merge stages from git, merges the *parsed objects* key by key,
@@ -391,7 +391,7 @@ If you are an agent performing this upgrade, the procedure is:
 3. `git merge <tag>` on a fresh branch. Never rebase. Never merge `upstream/main`.
 4. For each conflicted file, check it against [Known conflict hotspots](#known-conflict-hotspots)
    and apply the prescribed resolution. Do not invent a resolution for a file that is
-   on the list. In particular: **run `bun run resolve-i18n-conflicts` for locale
+   on the list. In particular: **run `./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts` for locale
    files rather than editing them**, and regenerate `bun.lock` rather than merging it.
 5. For files not on the list, consult an app's ownership manifest first if it has
    one. Consumed starter code must match the declared release; editable UI
