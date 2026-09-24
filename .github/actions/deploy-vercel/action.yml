@@ -183,8 +183,13 @@ runs:
           --meta "opsArtifactName=${{ inputs.artifact-name }}"
           --meta "opsBuildRunId=${{ inputs.run-id }}"
           --meta "opsRunId=${{ github.run_id }}"
-          --meta "opsRunAttempt=${{ github.run_attempt }}"
-          --meta "opsRequestId=${OPS_REQUEST_ID}")
+          --meta "opsRunAttempt=${{ github.run_attempt }}")
+
+        # Push-triggered and manual runs may have no ops request ID. Vercel
+        # rejects empty metadata values, so only attach it when supplied.
+        if [ -n "$OPS_REQUEST_ID" ]; then
+          DEPLOY_FLAGS+=(--meta "opsRequestId=${OPS_REQUEST_ID}")
+        fi
 
         if [ "${{ inputs.environment }}" = "production" ]; then
           DEPLOY_FLAGS+=(--prod)

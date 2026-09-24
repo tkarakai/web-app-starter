@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -81,6 +81,50 @@ test("artifact provenance always verifies the app and current hash contract", as
       if (Object.keys(overrides).length) expect(code).not.toBe(0);
       else expect(code).toBe(0);
     }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+test.each([
+  ["push-triggered", ""],
+  ["ops-triggered", "fixture-request-42"],
+])("%s deployments send valid Vercel metadata and preserve deployment identity", async (_trigger, requestId) => {
+  const a = await action("deploy-vercel"), step = a.runs.steps.find(s => s.id === "deploy")!;
+  const values: Record<string, string> = {
+    "github.repository": "team/repo", "inputs.app": "web", "inputs.logical-environment": "staging",
+    "steps.provenance.outputs.built-sha": old, "inputs.expected-hash": "c".repeat(16),
+    "inputs.artifact-name": `web-${"c".repeat(16)}`, "inputs.run-id": "40",
+    "github.run_id": "42", "github.run_attempt": "2", "inputs.environment": "production",
+  };
+  const script = step.run!.replace(/\$\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => {
+    if (!(key in values)) throw new Error(`Missing expression fixture: ${key}`);
+    return values[key];
+  });
+  const dir = await mkdtemp(resolve(tmpdir(), "ops-deploy-metadata-"));
+  try {
+    await mkdir(resolve(dir, ".vercel/output"), { recursive: true });
+    await writeFile(resolve(dir, ".vercel/project.json"), "{}");
+    await writeFile(resolve(dir, "vercel"), `#!/bin/sh
+printf '%s\\n' "$@" > "$DEPLOY_ARGS_FILE"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--meta" ] && [ -z "\${2#*=}" ]; then
+    echo "Vercel rejects empty metadata: $2" >&2
+    exit 23
+  fi
+  shift
+done
+printf '%s\\n' 'https://web-fixture.vercel.app'
+`, { mode: 0o755 });
+    const proc = spawn(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], {
+      cwd: dir, env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, VERCEL_TOKEN: "fixture-credential",
+        OPS_DEPLOY_SHA: sha, OPS_REQUEST_ID: requestId, DEPLOY_ARGS_FILE: resolve(dir, "args"),
+        GITHUB_OUTPUT: resolve(dir, "output"), GITHUB_STEP_SUMMARY: resolve(dir, "summary") }, stdout: "pipe", stderr: "pipe",
+    });
+    const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+    expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
+    const args = (await readFile(resolve(dir, "args"), "utf8")).trim().split("\n");
+    for (const value of ["--prebuilt", "--prod", "opsEnvironment=staging", `opsSelectedSha=${sha}`, `opsBuiltSha=${old}`,
+      "opsBuildRunId=40", "opsRunId=42", "opsRunAttempt=2", `DEPLOYED_COMMIT=${sha}`]) expect(args).toContain(value);
+    expect(args.filter(arg => arg.startsWith("opsRequestId="))).toEqual(requestId ? [`opsRequestId=${requestId}`] : []);
+    expect(await readFile(resolve(dir, "output"), "utf8")).toBe("url=https://web-fixture.vercel.app\n");
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 test("artifact lookup API failures stop the build instead of becoming cache misses", async () => {
