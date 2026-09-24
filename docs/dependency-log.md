@@ -22,7 +22,7 @@ Upgrades the repo is ready for, blocked on a change outside it. Re-checked on ev
 
 ### 2026-09-24
 
-- **Adopted: `typescript` 5.9.3 → 6.0.3**, #TBD, ticket #135. Tier A.
+- **Adopted: `typescript` 5.9.3 → 6.0.3**, #143, ticket #135. Tier A.
   Usage: codebase-wide typechecks/builds plus two compiler-API starter-upgrade scripts. Breaking
   changes that hit us: deprecated `baseUrl`, ambient `types` now defaulting to `[]`, and the
   existing TypeScript ESLint stack's `<6.0.0` peer range. Tests added first: none; this is build-only
