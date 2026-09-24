@@ -38,7 +38,11 @@ Defined in `renovate.json` → `packageRules`:
 
 - **Patch / minor / pin / digest** → **auto-merged** (squash, matching the linear-history rule on
   `main`) once all required CI checks pass (`platformAutomerge`).
-- **Dev dependencies** (non-major) → grouped into a single "dev dependencies (non-major)" PR.
+- **Dev dependencies** (non-major) → grouped into a single "dev dependencies (non-major)" PR,
+  except `convex-test`, which moves with `convex` in the "convex monorepo" group. The harness
+  must remain compatible with the root SDK override. Check the resolved packages' peer
+  requirements in `bun.lock` when updating this group; advancing the harness alone can
+  break backend tests.
 - **Major versions** → **never auto-merged**; each arrives as its own PR for a human to review.
   Treat majors of the sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
   `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`) with
@@ -164,6 +168,33 @@ The following are already configured on this repo (via `gh api` / Settings):
    `docs/claude/auth-e2e-and-upgrade-plan.md` for the commands and the `PUT`-replaces-everything
    caveat on the ruleset.
 4. The **`RENOVATE_TOKEN`** secret exists (above).
+
+## Diagnosing a stalled queue
+
+The dashboard is persistent: retain it after catch-up. Its **Open** section is a snapshot of
+Renovate's last run, not a live PR query. Check current PR heads, checks, merge conflicts and
+`auto_merge` state on GitHub; an eligible non-major PR can still have automerge manually disabled.
+Strict branch protection also requires current-base validation, not just an older green head.
+The five-PR concurrent limit holds further updates until slots open; **Pending Status Checks**
+usually includes the release-age hold. Do not bypass both controls by selecting every checkbox.
+**PR Edited (Blocked)** means Renovate detected human commits and stopped updating the branch.
+Do not select its restart checkbox: it discards those commits. Repair additively on an isolated
+branch (or use a replacement with explicit provenance), preserving the original history.
+
+A successful workflow alone is not proof Renovate completed: inspect the repository result in
+its logs. In particular, the Bun-manager warning **"Could not re-extract the packageFile after
+updating it"** can occur *after* successful lockfile generation. It means the post-artifact
+release-age check could not re-extract the resolved dependency, not that `package.json` is
+necessarily malformed. The upstream investigation is
+[renovatebot/renovate](https://github.com/renovatebot/renovate/pull/45278) (closed without merging).
+Do not silence this warning by disabling the cooldown or assume a frozen install proves release
+age: inspect the generated lockfile and registry publication dates for affected updates, and
+track the upstream limitation until a released fix is verified. For a manual repair, regenerate
+from the preserved pre-update lockfile with `bun install --minimum-release-age=864000` (10 days),
+then run `bun install --frozen-lockfile` and inspect publication dates of newly resolved versions.
+The age flag does not retroactively reject young versions already recorded in a lockfile.
+This is separate from intentional lockfile maintenance, which already requires manual approval
+because it refreshes transitives.
 
 ## Validating a config change
 
