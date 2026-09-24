@@ -23,7 +23,7 @@ does not accept the new version yet, that is a **hold** instead (a `HOLD:` rule 
 
 ### Process
 
-1. **Decide and record.** The `deps-major` skill opens an issue titled `migrate: <package> <from> → <to>` containing the
+1. **Decide and record.** The `deps-major` skill opens a ticket titled `deps: <package> <from> → <to>` containing the
    Renovate PR or dashboard item, the upstream migration guide, the failure evidence, and what is
    affected: which apps and packages, and which user-visible behavior. The decision (*now*, *hold* with a `HOLD:` rule linking the
    issue, or *never*) follows the `deps-major` skill, and is recorded in `dependency-log.md`.

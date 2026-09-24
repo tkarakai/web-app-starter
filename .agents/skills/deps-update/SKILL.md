@@ -113,7 +113,7 @@ only the read-only steps of `deps-major`. Then present, in this order:
 
 1. **Report**: status tables, for information.
 2. **Plan**: a numbered list of the actions the run phase will take, e.g. "rebase and merge #131
-   (all non-major)", "trial size-limit 13 (tier A)". Mark each action that depends on a
+   (all non-major)", "work ticket #135 typescript 6 (tier A, codebase-wide, alone)". Mark each action that depends on a
    decision. If there is nothing to do and nothing to decide, say so and stop. There is no green
    light question.
 3. **Decisions needed**, in the format above.
@@ -136,8 +136,8 @@ Otherwise carry out steps 3–7 with the user's decisions.
 
 1. **See what is in flight.** List open non-Renovate PRs (`gh pr list --search "-head:renovate/"`)
    so the report can say which feature work may land during the run. Do not ask anyone to stop.
-   List open `migrate:` issues (`gh issue list --label dependencies --search "migrate: in:title"`):
-   each is unfinished `deps-major` work to continue, or to leave for another agent.
+   List open tickets (`gh issue list --label dependencies --state open`) with their status labels:
+   each is `deps-major` work to continue, or waiting on the user or a hold.
 2. **Refresh** (run phase only). `gh workflow run renovate.yml`. Wait with
    `gh run watch $(gh run list --workflow=renovate.yml --limit 1 --json databaseId --jq '.[0].databaseId')`,
    then run `bun run renovate:status` and require `repositoryResult: "done"`.
@@ -152,12 +152,23 @@ Otherwise carry out steps 3–7 with the user's decisions.
      If one member of a group breaks, hold that member and let the rest merge.
    - `security` label: it merges after twelve hours like any other green PR. If the fix is only
      in a new major, `deps-major`.
-4. **Majors.** For each *Pending Approval* item, run `deps-major`. To adopt, tick its box in
-   the dashboard issue body, dispatch Renovate, and handle the new PR like any other; when the
-   verdict needs code, the work happens on a `deps/` branch instead. A migration too large to
-   finish in this run stays in its `migrate:` issue; report it, and say it can be worked in
-   parallel with `/deps-major #<issue>`. Never tick "Create all
-   pending approval PRs at once".
+4. **Majors, one ticket each.** Every *Pending Approval* major gets a ticket (`deps-major`
+   *Tickets*); open the missing ones. Do not tick dashboard boxes: `deps-major` bumps on a `deps/`
+   branch. Never tick "Create all pending approval PRs at once". Work the open tickets that are not
+   `deps:held`, `deps:rejected` or `deps:awaiting-user`, one `deps-major` run per ticket:
+   - **Codebase-wide first, alone**: `typescript`, the runtime baseline (Node, Bun,
+     `@types/node`), `react`/`react-dom`/`next`, and lint tooling (`eslint` and its plugins).
+     One at a time, each merged before the next starts.
+   - **Then the rest in parallel** when the harness has subagents: at most three at once, each
+     in its own worktree, each running `deps-major` on its one ticket. Without subagents, one
+     after another.
+   - **Merge one at a time yourself.** Subagents only open PRs. After each merge, bring the next
+     `deps/` branch up to date: merge `main` into it (a new commit, never a force-push; on a `bun.lock`
+     conflict take `main`'s copy), run `bun install --minimum-release-age=864000` to regenerate
+     `bun.lock`, push, and wait for CI.
+   - **`deps:awaiting-user`** tickets become decisions in the close-out.
+   A ticket too large for this run stays open with its progress; say it can be worked later or
+   in parallel with `/deps-major #<ticket>`.
 5. **Lockfile refresh.** Renovate's lockfile maintenance is off, because it ignores the release
    age for transitive dependencies. If the last `chore(deps): refresh lockfile` commit on `main`
    is more than seven days old, refresh it yourself on `deps/lockfile-<date>`: delete `bun.lock`,

@@ -51,8 +51,10 @@ Defined in `renovate.json` → `packageRules`:
   adopts or rejects it. It merges dev tooling and runtime libraries itself. Majors of the
   sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
   `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`),
-  the runtime baseline, and any security-relevant behaviour change need the user's yes. Each
-  decision is recorded in [`dependency-log.md`](dependency-log.md). `convex` and `convex-test` majors travel together in the "convex monorepo" group.
+  the runtime baseline, and any security-relevant behaviour change need the user's yes. Every major gets a
+  ticket (a `dependencies` issue with a `deps:*` status label), worked by one `deps-major` run;
+  independent tickets run in parallel, merged one at a time. Each decision is recorded in
+  [`dependency-log.md`](dependency-log.md). `convex` and `convex-test` majors travel together in the "convex monorepo" group.
 - **Holds** → a major that cannot work yet (an upstream peer range, our runtime floor) is capped
   with `allowedVersions` in a rule whose `description` starts with `HOLD:` and states the
   evidence and the **REMOVE when** condition. Holds are decisions: add or remove them in a
