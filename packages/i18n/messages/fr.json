@@ -212,6 +212,12 @@
         "rateLimited": "Trop de requêtes. Veuillez patienter un instant et réessayer.",
         "generic": "Une erreur est survenue. Veuillez réessayer."
       }
+    },
+    "fallback": {
+      "title": "L'inscription est temporairement indisponible",
+      "description": "Nos services sont momentanément injoignables ; nous réessayons en arrière-plan. Vous pouvez toujours vous connecter à un compte existant.",
+      "bookDemo": "Réserver une démo",
+      "contact": "Nous contacter"
     }
   },
   "dashboard": {
