@@ -73,7 +73,8 @@ constantly, pause feature merges and drain the dependency queue in one supervise
 (`.agents/skills/renovate-window/SKILL.md`, usable by any agent; `/renovate-window` in Claude Code). It dispatches Renovate, gets each
 automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, and stops for a
 human on majors and lockfile maintenance. The Monday/Thursday cron stays as a safety net that keeps
-the dashboard current. Security PRs (`security` label) are not deferred to a window.
+the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
+Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to a window.
 
 ### Handling each PR state
 
