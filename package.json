@@ -43,7 +43,7 @@
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
     "ensure-env": "./scripts/ensure-app-env.sh",
     "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v",
-    "test:foundation": "python3 -m unittest discover -s scripts/tests -p 'test_foundation_upgrade.py' -v",
+    "test:foundation": "python3 -m unittest discover -s scripts/foundation -p 'test_*.py' -v",
     "test:foundation-canary": "python3 scripts/foundation/rehearse.py",
     "foundation": "python3 scripts/foundation/upgrade.py",
     "ops": "bun packages/ops/src/cli.ts",

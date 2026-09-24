@@ -45,11 +45,11 @@ pushes, opens/merges a PR, deploys, or changes any approval policy. Producing
 evidence is not release or deployment permission.
 
 In this first rail, the release catalogue carries the target, supported
-baselines, file hashes and required action IDs (the migration/codemod hook);
-verification commands are fixed in the tool; canary evidence is the
-`foundation-canary-evidence` CI artifact. Affected layers and security urgency
-are stated in the release's `CHANGELOG.md` entry and are **not yet**
-machine-readable catalogue fields. This slice does not choose the operations UI,
+baselines, file hashes, required action IDs (the migration/codemod hook),
+`affectedLayers` and `securityUrgency`. `discover` reports the layers and urgency
+of each available target, and every plan carries them. Verification commands are
+fixed in the tool; canary evidence is the `foundation-canary-evidence` CI
+artifact. This slice does not choose the operations UI,
 execution model or orchestration, and adds no deployment/promotion commands or
 hooks.
 
@@ -87,6 +87,8 @@ not a CVE claim, and not evidence of a deployed schema migration.
 `apps/demo/foundation.json` is a versioned JSON manifest. Ownership uses exact
 files or trailing-slash directory prefixes; the most-specific match wins.
 Unknown files fail planning instead of silently becoming replaceable.
+Only `.DS_Store` (OS metadata) is skipped; any other unclassified file, including
+a local `.env.local`, blocks planning until it is classified or removed.
 
 | Ownership | Demo example | Upgrade behavior |
 |---|---|---|
@@ -116,7 +118,7 @@ All JSON contracts carry `schemaVersion: 1`. Unknown versions are rejected.
 | File / object | Meaning |
 |---|---|
 | `foundation.json` | App-selected rail and exhaustive ownership map. No deployment configuration. |
-| `foundation/releases/catalogue.json` | Trusted local release discovery: latest target, exact supported `from` baselines, required action IDs, per-file SHA-256. |
+| `foundation/releases/catalogue.json` | Trusted local release discovery: latest target, exact supported `from` baselines, required action IDs, affected layers (a fixed set of foundation packages), security urgency (`none`, `low`, `high`, `critical`), per-file SHA-256. |
 | `foundation/releases/<version>/...` | Immutable source payloads. Old fixtures must not be regenerated to make new code pass. A test pins the current target to upstream source and the demo snapshot. |
 | plan JSON | Deterministic ID, catalogue/tool/lock/source digests, baseline/target, before/after hashes, required actions and verification argv. Editing or replaying a stale plan is rejected. |
 | `foundation.lock.json` | Installed release and content hashes. `baseline` means enrolled, **not verified**. `pending` means copied but not complete. `verified` references an applied plan and evidence digest. |
@@ -169,7 +171,7 @@ visual/drag coverage and deployed auth/database behavior are outside this slice.
 The full report, plan, baseline logs and completion evidence are retained as the
 `foundation-canary-evidence` CI artifact. Local output is in
 `.ci-local-artifacts/foundation-canary/report.json`. Fast failure tests live in
-`scripts/tests/test_foundation_upgrade.py`; they mock command exits only to test
+`scripts/foundation/test_foundation_upgrade.py`; they mock command exits only to test
 failure-state handling. The separate end-to-end rehearsal never mocks verification.
 
 ## Joining this rail in a business app
@@ -244,7 +246,7 @@ is no claim that ejected source still receives automatic fixes.
 | Backend boundaries | No backend in this consumer; existing schemas/migrations untouched | Separate backend canary with real schema/migration evidence before Convex extraction |
 | i18n | Existing resolver/merge rail retained | Namespacing and customized-locale rehearsal; no namespace migration shipped here |
 | Registry/packages | Pinned offline source bundles prove a delivery contract | Publishing credentials, registry semantics, dependency provenance, Renovate delivery, broader LTS testing |
-| Operations journey | Plan, lock and evidence have versioned machine-readable shapes | Machine-readable affected layers and security urgency in the catalogue; operator UX/execution and integration with the separate operations work, only after contracts mature |
+| Operations journey | Plan, lock and evidence have versioned machine-readable shapes | Operator UX/execution and integration with the separate operations work, only after contracts mature |
 
 This is not completion of strategy Phases 1–3. It is executable evidence for one
 boundary and one upgrade path, with explicit limitations instead of a promise

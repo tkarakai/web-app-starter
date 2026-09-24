@@ -97,6 +97,32 @@ class FoundationUpgradeTests(unittest.TestCase):
                 self.change_catalogue(lambda release: release.update(actions=value))
                 self.assertBlocked("action|Action", self.plan)
 
+    def test_release_metadata_reaches_discovery_and_plan(self):
+        details = {"affectedLayers": ["design-system"], "securityUrgency": "none"}
+        self.assertEqual(u.discover(self.app, self.releases)["targetDetails"], {"1.0.1": details})
+        approved = self.plan()
+        self.assertEqual({key: approved[key] for key in details}, details)
+
+    def test_missing_or_unknown_release_metadata_is_refused(self):
+        for field, value, message in [
+            ("affectedLayers", None, "affected layers"), ("affectedLayers", [], "affected layers"),
+            ("affectedLayers", ["operations"], "affected layers"),
+            ("affectedLayers", ["design-system", "design-system"], "affected layers"),
+            ("securityUrgency", None, "security urgency"), ("securityUrgency", "urgent", "security urgency"),
+        ]:
+            with self.subTest(field=field, value=value):
+                shutil.copy2(ROOT / "foundation/releases/catalogue.json", self.releases / "catalogue.json")
+                self.change_catalogue(lambda release: release.update({field: value}))
+                self.assertBlocked(message, self.plan)
+
+    def test_os_metadata_is_neither_source_nor_consumed_drift(self):
+        approved = self.plan()
+        (self.app / ".DS_Store").write_bytes(b"finder")
+        (self.app / "src/foundation/.DS_Store").write_bytes(b"finder")
+        self.assertEqual(approved, self.plan())
+        (self.app / ".env.local").write_text("SECRET=1\n")
+        self.assertBlocked("Unclassified path: .env.local", self.plan)
+
     def test_modified_plan_cannot_remove_checks_or_add_write_destinations(self):
         for field, value in [("actions", []), ("verification", []),
                              ("changes", [{"path": "src/business/dispatch.ts"}])]:

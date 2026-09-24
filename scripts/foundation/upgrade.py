@@ -28,6 +28,10 @@ CHECKS = {
     "build": ["bun", "run", "build", "--webpack"],
 }
 OWNERS = {"consumed", "vendored", "application", "generated"}
+LAYERS = {"design-system", "design-patterns", "auth", "backend", "i18n", "edge-rate-limit"}
+URGENCY = ["none", "low", "high", "critical"]
+# Operating-system metadata only; never application source.
+JUNK = {".DS_Store"}
 # These alone are omitted from source fingerprints. Ownership labels do NOT
 # grant permission to hide source under a user-defined generated rule.
 GENERATED = ["node_modules/", ".next/", "out/", ".turbo/", ".foundation/", "next-env.d.ts", "tsconfig.tsbuildinfo"]
@@ -134,7 +138,7 @@ def source_files(app: Path) -> dict[str, str]:
                 safe_path(app, path)
         for name in files:
             path = (parent / name).relative_to(app).as_posix()
-            if path == LOCK or any(matches(path, rule) for rule in GENERATED):
+            if name in JUNK or path == LOCK or any(matches(path, rule) for rule in GENERATED):
                 continue
             file = safe_path(app, path)
             owner = owner_of(value, path)
@@ -150,7 +154,7 @@ def installed(app: Path) -> dict[str, str]:
     for path in root.rglob("*"):
         relative = path.relative_to(app).as_posix()
         safe_path(app, relative)
-        if path.is_file():
+        if path.is_file() and path.name not in JUNK:
             files[relative] = digest(path.read_bytes())
     return files
 
@@ -170,6 +174,11 @@ def catalogue(releases: Path) -> dict:
                 all(isinstance(action, str) for action in release["actions"]),
                 "Missing action/migration declaration")
         require(len(set(release["actions"])) == len(release["actions"]), "Duplicate action")
+        layers = release.get("affectedLayers")
+        require(isinstance(layers, list) and bool(layers) and len(set(layers)) == len(layers) and
+                all(isinstance(layer, str) and layer in LAYERS for layer in layers),
+                "Missing or unknown affected layers")
+        require(release.get("securityUrgency") in URGENCY, "Missing or unknown security urgency")
         require(all(action in ACTIONS for action in release["actions"]), "Unsupported action; upgrade the tooling")
         if release["from"]:
             require(bool(release["actions"]), "Missing action evidence requirement")
@@ -197,7 +206,10 @@ def discover(app: Path, releases: Path) -> dict:
     lock = baseline(app, catalog)
     targets = [version for version, release in catalog["releases"].items() if lock["release"] in release["from"]]
     return {"schemaVersion": SCHEMA, "rail": RAIL, "current": lock["release"],
-            "availableTargets": targets, "latest": catalog["latest"]}
+            "availableTargets": targets, "latest": catalog["latest"],
+            "targetDetails": {version: {key: catalog["releases"][version][key]
+                                        for key in ("affectedLayers", "securityUrgency")}
+                              for version in targets}}
 
 
 def plan(app: Path, releases: Path, target: str) -> dict:
@@ -211,6 +223,7 @@ def plan(app: Path, releases: Path, target: str) -> dict:
         require(owner_of(value, path) == "consumed", f"Unsafe overwrite of {path}")
     result = {
         "schemaVersion": SCHEMA, "rail": RAIL, "from": lock["release"], "to": target,
+        "affectedLayers": release["affectedLayers"], "securityUrgency": release["securityUrgency"],
         "catalogueDigest": fingerprint(catalog), "sourceDigest": fingerprint(source_files(app)),
         "toolDigest": digest(Path(__file__).read_bytes()),
         "lockDigest": fingerprint(lock),

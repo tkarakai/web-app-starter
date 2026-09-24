@@ -12,8 +12,9 @@ checks, not signatures. Do not mutate old payloads to make a regression pass.
   checks component state, CSS, cookies and normal width behavior. No schema or
   deployed migration is involved.
 
-`catalogue.json` declares exact supported transitions, SHA-256 payload hashes and
-required action IDs. The tooling has a fixed write/command allowlist, independent
+`catalogue.json` declares exact supported transitions, SHA-256 payload hashes,
+required action IDs, affected layers and security urgency (both releases: the
+`design-system` layer, urgency `none`). The tooling has a fixed write/command allowlist, independent
 of that declaration. New actions or writable modules require an explicit reviewed
 contract extension and negative tests, not just a catalogue edit.
 
