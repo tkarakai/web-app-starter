@@ -212,6 +212,12 @@
         "rateLimited": "Muitas solicitações. Aguarde um momento e tente novamente.",
         "generic": "Algo deu errado. Tente novamente."
       }
+    },
+    "fallback": {
+      "title": "O cadastro está temporariamente indisponível",
+      "description": "Não conseguimos acessar nossos serviços agora e continuaremos tentando em segundo plano. Você ainda pode entrar em uma conta existente.",
+      "bookDemo": "Agendar uma demonstração",
+      "contact": "Fale conosco"
     }
   },
   "dashboard": {

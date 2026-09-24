@@ -237,6 +237,12 @@
         "rateLimited": "Too many requests. Please wait a moment and try again.",
         "generic": "Something went wrong. Please try again."
       }
+    },
+    "fallback": {
+      "title": "Sign-up is temporarily unavailable",
+      "description": "We can't reach our services right now and will keep retrying in the background. You can still sign in to an existing account.",
+      "bookDemo": "Book a demo",
+      "contact": "Contact us"
     }
   },
   "dashboard": {

@@ -18,6 +18,9 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
+- Landing: when the backend is unreachable, the hero shows a "Sign-up is temporarily unavailable"
+  card with a Sign in button instead of rendering nothing. Optional `NEXT_PUBLIC_BOOK_DEMO_URL` and
+  `NEXT_PUBLIC_CONTACT_URL` add Book a demo / Contact us buttons. New `landing.fallback.*` keys in all 15 locales.
 - Runtime baseline: Node 24 (Active LTS) is declared in `.node-version` and `engines.node: "24.x"`,
   with `@types/node` 24 in every workspace. `bun run check:runtime-baseline` (CI) keeps Node and
   Bun versions consistent. Process: `docs/dependency-migrations.md`.

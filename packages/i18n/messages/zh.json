@@ -212,6 +212,12 @@
         "rateLimited": "请求过于频繁。请稍等片刻后重试。",
         "generic": "出了点问题。请重试。"
       }
+    },
+    "fallback": {
+      "title": "注册暂时不可用",
+      "description": "目前无法连接到我们的服务，我们会在后台持续重试。你仍然可以登录现有账户。",
+      "bookDemo": "预约演示",
+      "contact": "联系我们"
     }
   },
   "dashboard": {

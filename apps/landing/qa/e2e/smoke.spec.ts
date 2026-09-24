@@ -53,3 +53,16 @@ test.describe("Footer", () => {
   });
 });
 
+test.describe("Backend unreachable", () => {
+  test("shows the fallback card with a sign-in link", async ({ page }) => {
+    await page.route("**/api/waitlist/**", (route) => route.abort());
+    await page.goto("/");
+
+    await expect(
+      page.getByText("Sign-up is temporarily unavailable"),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Sign in" }).first(),
+    ).toHaveAttribute("href", /\/sign-in$/);
+  });
+});

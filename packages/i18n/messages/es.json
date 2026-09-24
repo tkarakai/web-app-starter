@@ -212,6 +212,12 @@
         "rateLimited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
         "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
       }
+    },
+    "fallback": {
+      "title": "El registro no está disponible temporalmente",
+      "description": "No podemos conectar con nuestros servicios en este momento y seguiremos intentándolo en segundo plano. Aún puedes iniciar sesión en una cuenta existente.",
+      "bookDemo": "Reservar una demo",
+      "contact": "Contáctanos"
     }
   },
   "dashboard": {
