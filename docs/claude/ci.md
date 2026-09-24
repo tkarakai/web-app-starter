@@ -18,10 +18,11 @@ The `bun run ci` command runs these checks in order (all via `turbo`):
 4. **Vitest component tests with coverage** (`turbo test:coverage`)
 5. **Coverage summary display** + artifact saving
 6. **Convex backend tests** (`turbo test:convex`)
-7. **Production build** (`turbo build`)
-8. **Bundle size check** (all apps with `.size-limit.json`)
-9. **Storybook build** (`turbo build --filter=@repo/storybook...`)
-10. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
+7. **Foundation upgrade canary** (`bun run test:foundation` + `bun run test:foundation-canary`)
+8. **Production build** (`turbo build`)
+9. **Bundle size check** (all apps with `.size-limit.json`)
+10. **Storybook build** (`turbo build --filter=@repo/storybook...`)
+11. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
