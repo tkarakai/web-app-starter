@@ -48,7 +48,7 @@
     "ensure-env": "./scripts/ensure-app-env.sh",
     "test:dev-scripts": "./scripts/node-ts.sh --test scripts/tests/*.test.ts",
     "typecheck:dev-scripts": "tsc -p scripts/tsconfig.json",
-    "lint:dev-scripts": "eslint scripts/dev-processes.ts scripts/resolve-i18n-conflicts.ts scripts/tests --max-warnings 0",
+    "lint:dev-scripts": "eslint scripts/dev-processes.ts scripts/resolve-i18n-conflicts.ts scripts/staging-log.ts scripts/tests --max-warnings 0",
     "test:starter-upgrade": "./scripts/node-ts.sh --test scripts/starter-upgrade/*.test.ts",
     "test:starter-rehearsal": "./scripts/node-ts.sh scripts/starter-upgrade/rehearse.ts",
     "starter-upgrade": "./scripts/node-ts.sh scripts/starter-upgrade/upgrade.ts",

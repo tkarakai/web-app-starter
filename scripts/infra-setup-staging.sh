@@ -104,8 +104,6 @@ ask_input() {
     fi
 
     read -r value
-    # Append user input to log file (the chunk-based perl pipeline flushes
-    # the no-newline prompt before we get here, so ordering is correct)
     [ -n "${LOG_FILE:-}" ] && echo "$value" >> "$LOG_FILE"
     value="${value:-$default}"
     # Trim whitespace
@@ -1073,27 +1071,7 @@ print_final_summary() {
 # ============================================================
 
 main() {
-    # Capture all console output to the log file (plain ASCII) while still
-    # showing colored/Unicode output on screen. tee writes to both:
-    #   - stdout (terminal, with colors and Unicode symbols)
-    #   - process substitution (perl converts to plain ASCII, writes to log file)
-    #
-    # The perl process uses chunk-based sysread (not line-based -pe) so that
-    # no-newline prompts like "  GitHub repo: " get flushed to the log file
-    # immediately. This ensures direct >> writes for user input appear after
-    # the prompt, not before it. Raw byte matching for UTF-8 sequences.
-    exec > >(tee >(perl -e '
-        $| = 1;
-        while (sysread(STDIN, $buf, 4096)) {
-            $buf =~ s/\e\[[0-9;]*m//g;
-            $buf =~ s/\xe2\x84\xb9/[i]/g;
-            $buf =~ s/\xe2\x9c\x93/[ok]/g;
-            $buf =~ s/\xe2\x9c\x97/[FAIL]/g;
-            $buf =~ s/\xe2\x9a\xa0/[!]/g;
-            $buf =~ s/\xe2\x94\x81/=/g;
-            print $buf;
-        }
-    ' >> "$LOG_FILE")) 2>&1
+    exec > >(tee >("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/staging-log.ts" >> "$LOG_FILE")) 2>&1
 
     echo ""
     echo -e "${BOLD}  Staging Infrastructure Setup${NC}"
