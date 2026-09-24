@@ -81,6 +81,13 @@ is where practice tags belong.
 
 ### Action required
 
+**TypeScript 6:** downstream apps that copied the starter's TypeScript setup must bump all
+`typescript` declarations to `6.0.3`. Remove deprecated `baseUrl` settings; path aliases no longer
+need it, but their targets must be explicitly relative (for example, `"@/*": ["./src/*"]`). Add
+explicit ambient `types` where needed, including `"types": ["node"]` for Convex code that uses
+`process.env`. Update the TypeScript ESLint stack to a release that supports TypeScript 6. Done
+when `bun install --minimum-release-age=864000` and `bun run ci:quick` pass.
+
 **Package adoption is optional.** Existing web/admin/backend consumers continue
 using merge-by-tag; no database migration or operations change is introduced.
 Demo-derived apps must preserve their dashboard, editable UI and branding when
