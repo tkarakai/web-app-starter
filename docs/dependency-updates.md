@@ -22,7 +22,7 @@ the repo and we control exactly when it runs; the price is owning the `RENOVATE_
 
 | | |
 |---|---|
-| **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC, as a safety net; dependency work is drained in [Renovate windows](#renovate-windows). Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
+| **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC, as a safety net; dependency work is drained with the [`update-deps` skill](#draining-the-queue). Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
 | **Manual run** | GitHub → **Actions → Renovate → Run workflow** (`workflow_dispatch`). Pick `debug` log level to troubleshoot. |
 | **Cooldown** | `minimumReleaseAge: "10 days"` + `internalChecksFilter: "strict"` — a new release is held until it has been public for 10 days. Younger releases show as *pending* on the dashboard rather than as open PRs. |
 | **Security fixes** | The cooldown is **bypassed for known-vulnerable dependencies**: `vulnerabilityAlerts` (GitHub security alerts) and `osvVulnerabilityAlerts` (OSV database) open fix PRs immediately, labeled `security`. |
@@ -44,8 +44,8 @@ Defined in `renovate.json` → `packageRules`:
   would otherwise leave every other open PR behind until the next run). The auth stack is the one
   exception: it keeps its own never-automerged group.
 - **Major versions** → **never auto-merged**, and **no PR opens until approved** on the dashboard
-  (`dependencyDashboardApproval`; they wait under *Pending Approval*). Approve them during a
-  [Renovate window](#renovate-windows), after reading the changelog / migration guide. Treat majors
+  (`dependencyDashboardApproval`; they wait under *Pending Approval*). Approve them while
+  [draining the queue](#draining-the-queue), after reading the changelog / migration guide. Treat majors
   of the sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
   `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`)
   with extra care. `convex` and `convex-test` majors travel together in the "convex monorepo" group.
@@ -53,7 +53,7 @@ Defined in `renovate.json` → `packageRules`:
   with `allowedVersions` in a rule whose `description` starts with `HOLD:` and states the
   evidence and the **REMOVE when** condition. Holds are decisions: add or remove them in a
   reviewed PR, never by closing a bot PR silently. Held versions do not appear on the dashboard,
-  so each Renovate window re-checks the REMOVE conditions.
+  so each `update-deps` run re-checks the REMOVE conditions.
 - **Lockfile maintenance** (weekly transitive-dependency refresh, Mondays) → deliberately **not**
   auto-merged: it pulls transitive deps to their latest versions, which **sidesteps the 10-day
   cooldown**, so a human approves it.
@@ -65,16 +65,17 @@ Defined in `renovate.json` → `packageRules`:
 > on next/react/convex/tailwind), and one PR will digest-pin every workflow. Expect a wave of PRs,
 > after which it stays quiet.
 
-## Renovate windows
+## Draining the queue
 
 Renovate and coding agents both merge to `main`, and `main` requires PRs to be up to date, so
-every merge from one side leaves the other side's PRs behind. Instead of running Renovate
-constantly, pause feature merges and drain the dependency queue in one supervised window with the `renovate-window` skill
-(`.agents/skills/renovate-window/SKILL.md`, usable by any agent; `/renovate-window` in Claude Code). It dispatches Renovate, gets each
+every merge from one side leaves the other side's PRs behind. Drain the dependency queue in one
+supervised run with the `update-deps` skill (`.agents/skills/update-deps/SKILL.md`, usable by any
+agent; `/update-deps` in Claude Code). Feature merges are not paused: a merge during the run only
+leaves Renovate PRs behind, and the skill re-requests their rebase. It dispatches Renovate, gets each
 automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, and stops for a
 human on majors and lockfile maintenance. The Monday/Thursday cron stays as a safety net that keeps
 the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
-Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to a window.
+Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to an `update-deps` run.
 
 ### Handling each PR state
 

@@ -1,4 +1,4 @@
-// One-shot, read-only snapshot for the renovate-window skill: last Renovate run, open Renovate PRs,
+// One-shot, read-only snapshot for the update-deps skill: last Renovate run, open Renovate PRs,
 // Dependency Dashboard sections, and every HOLD: rule with the registry facts its REMOVE condition needs.
 // Usage: ./scripts/node-ts.sh scripts/renovate-status.ts   (needs an authenticated `gh`)
 import { execFileSync } from "node:child_process";

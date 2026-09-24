@@ -7,7 +7,7 @@ version bump. This document covers the two kinds that are not:
 2. **Runtime-baseline changes**: moving a runtime or platform everything else depends on, such as
    Node or Bun.
 
-Both are normally found and started in a Renovate window (`renovate-window` skill). An agent may
+Both are normally found and started in an `update-deps` run (`update-deps` skill). An agent may
 do the work. A human approves the start and merges the result.
 
 ## Migrations
