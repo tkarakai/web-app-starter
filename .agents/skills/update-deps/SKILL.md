@@ -1,6 +1,6 @@
 ---
 name: update-deps
-description: Bring main up to date with dependency updates. Drains the Renovate queue, triages failing Renovate PRs, and asks the user to decide on majors, lockfile maintenance and holds. Always shows a read-only plan first and acts only after the user says go. Use when the user asks to update dependencies, process Renovate PRs, the Dependency Dashboard, or pending majors.
+description: Use to update dependencies, process Renovate PRs, the Dependency Dashboard, or pending majors.
 ---
 
 # Update dependencies
@@ -16,6 +16,12 @@ Sources of truth:
 
 **No merge freeze.** Other agents and people keep merging while this runs; nothing is paused or
 locked. A feature merge only leaves Renovate PRs `BEHIND`, which the drain loop already handles.
+
+**Announce before acting.** Your first output is text, never a tool call. Say in one or two
+lines what you are about to do and whether it changes anything, e.g. "Planning a dependency
+update. Read-only: I'll read the Renovate queue, the dashboard and the holds; nothing changes
+until you say go." Before each later step, and before every action that writes (dispatching
+Renovate, ticking a box, re-running a job, opening a PR), say in one line what it is and why.
 
 **Plan first, then go.** Every invocation starts as a dry run: the read-only plan phase below.
 Show the plan, ask the decisions, and end with one **go** question. Act only after the user says
