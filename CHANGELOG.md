@@ -18,15 +18,18 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
-- Waitlist: optional **Your role**, **Company** and **What do you plan to build?** fields on the landing
-  form, shown as Role and Company / Use case columns in admin. Stored in the entry's `meta`; the backend
-  validates them only when present, so existing clients keep working. New `landing.waitlist.*` keys in all 15 locales.
+- Licensing: `LICENSE` (evaluation licence: free to evaluate, commercial licence required for
+  production), `COMMERCIAL-LICENSE.md` (Starter / Pro / Team tiers) and `TERMS-OF-SALE.md`.
+  **Downstream apps:** these files arrive with the merge and are your copy of the licence terms; keep them.
 - Runtime baseline: Node 24 (Active LTS) is declared in `.node-version` and `engines.node: "24.x"`,
   with `@types/node` 24 in every workspace. `bun run check:runtime-baseline` (CI) keeps Node and
   Bun versions consistent. Process: `docs/dependency-migrations.md`.
 - The existing standalone demo now includes Northstar Dispatch branding and
   interactive freight behavior. It also tests starter upgrades on a copy; its
   dashboard and editable UI remain application-owned.
+- Waitlist: optional **Your role**, **Company** and **What do you plan to build?** fields on the landing
+  form, shown as Role and Company / Use case columns in admin. Stored in the entry's `meta`; the backend
+  validates them only when present, so existing clients keep working. New `landing.waitlist.*` keys in all 15 locales.
 - Versioned `@repo/starter-sidebar-policy`, consumed through immutable local
   package artifacts. Demo-owned release fixtures live under `apps/demo/qa/fixtures/`.
   This does not publish a registry package or change operations.
