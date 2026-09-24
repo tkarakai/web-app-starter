@@ -15,11 +15,15 @@ enrollment, discovery, planning, actions and executable completion evidence.
 `bun run test:foundation-canary` rehearses it without live services. This does not
 replace the merge-by-tag process for other foundation areas or `.starter-version`.
 
-Keep release evidence, application upgrades and deployment separate: foundation
-maintainers publish the change and compatibility evidence; a business app takes
-it in its own **explicit upgrade PR**, preserving its customization and passing
-its own checks; only **after that PR lands** may the operations plane deploy or
-promote that revision under the existing approvals. This tooling neither merges
+Keep three planes separate. The **foundation release plane** publishes an
+immutable release with its affected layers, security urgency, migrations,
+codemods, verification commands and canary evidence. The **business-app upgrade
+plane** takes it in the app's own **explicit upgrade PR**, preserving
+application-owned code and passing the app's own checks. The **operations plane**
+shows available releases, lagging apps, security urgency and upgrade readiness,
+and only **after that PR lands** deploys the resulting commit through the normal
+staging and production paths. The operations tool never rewrites application
+source or runs hidden migrations during deployment. This tooling neither merges
 nor deploys, and does not define the operator journey.
 
 ---

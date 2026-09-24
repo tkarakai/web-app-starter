@@ -17,25 +17,41 @@ and its summary fails if this check fails.
 
 ## Three separate planes
 
-1. **Foundation release plane.** Maintainers produce immutable release payloads,
-   supported baseline transitions, required-action declarations and executable
-   compatibility evidence. A foundation release says *what changed and how an
-   application proves compatibility*. It does not authorize changing a business
-   app or deploying it.
+1. **Foundation release plane.** Maintainers publish an **immutable release**
+   that states: the **affected layers**, its **security urgency**, required
+   **migrations** and **codemods**, the **verification commands** an application
+   must pass, and the **canary evidence** that a customized app (this demo) took
+   it cleanly. A foundation release says *what changed, how urgent it is and how
+   an application proves compatibility*. It does not change a business app or
+   deploy anything.
 2. **Business-app upgrade plane.** Each business app takes a release in an
-   **explicit upgrade PR**. Its plan names the exact baseline, target, protected
-   source fingerprint, actions and verification commands. Its tests prove both
-   the foundation fix and its own branding/domain behavior. The app's normal
-   review/merge controls decide whether that PR lands. An upstream green check
-   alone is not proof that a customized downstream app is ready.
-3. **Operations/deployment plane.** Only **after the business-app upgrade lands**
-   can the existing operations/deployment process build, deploy or promote that
-   app revision, under its normal approvals. Upgrade evidence may later become
-   input to an operations journey. This slice does not choose its UI, execution
-   model or orchestration, and adds no deployment/promotion commands or hooks.
+   **explicit code-change upgrade PR** that preserves application-owned code.
+   Its plan names the exact baseline, target, protected source fingerprint,
+   actions and verification commands. Its tests prove both the foundation fix and
+   its own branding/domain behavior. The app's normal review/merge controls decide
+   whether that PR lands. An upstream green check alone is not proof that a
+   customized downstream app is ready.
+3. **Operations plane.** The operations tool **shows** available releases,
+   lagging applications, security urgency and upgrade readiness, consuming and
+   presenting the release metadata and upgrade evidence above. Only **after the
+   business-app upgrade PR lands** does it deploy the resulting application
+   commit through the normal **staging and production** paths, under their normal
+   approvals.
 
-Neither `apply` nor `verify` commits, pushes, opens/merges a PR, deploys, or changes
-any approval policy. Producing evidence is not release or deployment permission.
+The operations tool **must not** rewrite application source or perform hidden
+migrations during deployment: every source change and migration reaches an app
+through its reviewed upgrade PR. Likewise, neither `apply` nor `verify` commits,
+pushes, opens/merges a PR, deploys, or changes any approval policy. Producing
+evidence is not release or deployment permission.
+
+In this first rail, the release catalogue carries the target, supported
+baselines, file hashes and required action IDs (the migration/codemod hook);
+verification commands are fixed in the tool; canary evidence is the
+`foundation-canary-evidence` CI artifact. Affected layers and security urgency
+are stated in the release's `CHANGELOG.md` entry and are **not yet**
+machine-readable catalogue fields. This slice does not choose the operations UI,
+execution model or orchestration, and adds no deployment/promotion commands or
+hooks.
 
 ## Why this is the demo, not a toy replacement
 
@@ -228,7 +244,7 @@ is no claim that ejected source still receives automatic fixes.
 | Backend boundaries | No backend in this consumer; existing schemas/migrations untouched | Separate backend canary with real schema/migration evidence before Convex extraction |
 | i18n | Existing resolver/merge rail retained | Namespacing and customized-locale rehearsal; no namespace migration shipped here |
 | Registry/packages | Pinned offline source bundles prove a delivery contract | Publishing credentials, registry semantics, dependency provenance, Renovate delivery, broader LTS testing |
-| Operations journey | Plan, lock and evidence have versioned machine-readable shapes | Operator UX/execution and integration with the separate operations work, only after contracts mature |
+| Operations journey | Plan, lock and evidence have versioned machine-readable shapes | Machine-readable affected layers and security urgency in the catalogue; operator UX/execution and integration with the separate operations work, only after contracts mature |
 
 This is not completion of strategy Phases 1–3. It is executable evidence for one
 boundary and one upgrade path, with explicit limitations instead of a promise

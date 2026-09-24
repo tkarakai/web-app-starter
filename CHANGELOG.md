@@ -28,8 +28,12 @@ number attached to it and a documented, validated way to take future ones.
   completion are refused. CI Shared requires the real demo's red-to-green upgrade
   rehearsal with interaction tests, typecheck and production build.
 - `docs/foundation-canary.md` — enrollment, upgrade PR procedure, limits and the
-  separation of foundation release evidence, business-app upgrades and subsequent
-  operations-plane deployment. Existing merge/deploy approvals remain unchanged.
+  three planes: immutable foundation releases (affected layers, security urgency,
+  migrations, codemods, verification commands, canary evidence), explicit
+  business-app upgrade PRs that preserve application-owned code, and an operations
+  plane that presents readiness and deploys only the merged app commit through
+  normal staging and production, never rewriting source or running hidden
+  migrations. Existing merge/deploy approvals remain unchanged.
 - `VERSIONING.md` — semver as it applies to a starter, the breaking-change budget
   (at most two majors a year), and the LTS window (previous major gets security
   fixes for six months).
@@ -60,6 +64,8 @@ is where practice tags belong.
 - Shared/demo sidebar sizing now returns its 16rem default for non-finite resize
   calculations instead of allowing invalid CSS/state/cookies. Ordinary sizing and
   snapping behavior is preserved; editable visual components share a pure policy.
+  Affected layers: design-system sidebar policy and the demo's consumed
+  `sidebar-width-snapshot` (1.0.0 -> 1.0.1). Security urgency: none (stability fix).
 - Demo builds no longer overwrite app-owned branding with copied starter icons or
   require a Google Fonts request. Other apps keep their existing asset behavior.
 

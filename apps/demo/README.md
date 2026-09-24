@@ -26,6 +26,9 @@ not live services, publishing credentials or Google Fonts.
 
 See [the contract and enrollment guide](../../docs/foundation-canary.md) for
 planning, actions, evidence, failure recovery, limitations and remaining phases.
-Foundation release evidence feeds an explicit **business-app upgrade PR**; only
-after it lands may the **operations plane** deploy that app revision. This rail
-neither deploys nor changes any approval layer.
+A foundation release (affected layers, security urgency, migrations, codemods,
+verification commands, canary evidence) feeds an explicit **business-app upgrade
+PR** that preserves app-owned code; only after it lands may the **operations
+plane** deploy that commit through normal staging and production. Operations never
+rewrites app source or runs hidden migrations. This rail neither deploys nor
+changes any approval layer.

@@ -8,10 +8,14 @@ It proves a real sidebar stability fix reaches a customized business app without
 replacing its editable UI, branding or dispatch rules. It is not a registry,
 published dependency architecture, or completion of Phases 1–3.
 
-Keep three planes separate: the foundation produces release/compatibility
-evidence; each business app takes it through an explicit, verified upgrade PR;
-only after that PR lands does the operations plane deploy/promote the app under
-its normal controls. Operator execution and integration are deferred.
+Keep three planes separate: the foundation publishes an immutable release with
+affected layers, security urgency, migrations, codemods, verification commands
+and canary evidence; each business app takes it through an explicit, verified
+upgrade PR that preserves application-owned code; the operations plane shows
+available releases, lagging apps, security urgency and readiness, and only after
+that PR lands deploys the resulting commit through normal staging and production.
+Operations never rewrites app source or runs hidden migrations during deployment.
+Operator execution and integration are deferred.
 
 ## The problem
 
