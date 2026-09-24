@@ -17,6 +17,11 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@repo/design-system";
 
 const SUPERPOWERS = [
@@ -41,6 +46,9 @@ const EXCITEMENT_LEVELS = [
   "just-browsing",
   "friend-made-me",
 ] as const;
+
+/** Optional profile fields; must match VALID_ROLES in packages/backend/convex/waitlist.ts. */
+const ROLES = ["founder", "engineering", "product", "design", "agency", "other"] as const;
 
 function MultiSelectDropdown({
   id,
@@ -111,6 +119,9 @@ export function WaitlistForm() {
   const [email, setEmail] = React.useState("");
   const [superpowers, setSuperpowers] = React.useState<string[]>([]);
   const [excitement, setExcitement] = React.useState<string[]>([]);
+  const [role, setRole] = React.useState("");
+  const [company, setCompany] = React.useState("");
+  const [useCase, setUseCase] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -138,7 +149,13 @@ export function WaitlistForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          meta: JSON.stringify({ superpowers, excitement }),
+          meta: JSON.stringify({
+            superpowers,
+            excitement,
+            ...(role && { role }),
+            ...(company.trim() && { company: company.trim() }),
+            ...(useCase.trim() && { useCase: useCase.trim() }),
+          }),
         }),
       });
 
@@ -216,6 +233,41 @@ export function WaitlistForm() {
             translationPrefix="excitement"
             t={t}
           />
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-role">{t("roleLabel")}</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger id="waitlist-role">
+                <SelectValue placeholder={t("rolePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(`roles.${option}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-company">{t("companyLabel")}</Label>
+            <Input
+              id="waitlist-company"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder={t("companyPlaceholder")}
+              maxLength={120}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-use-case">{t("useCaseLabel")}</Label>
+            <Input
+              id="waitlist-use-case"
+              value={useCase}
+              onChange={(e) => setUseCase(e.target.value)}
+              placeholder={t("useCasePlaceholder")}
+              maxLength={500}
+            />
+          </div>
           {error ? (
             <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
               {error}
