@@ -18,11 +18,11 @@
   "prHourlyLimit": 0,
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
-    "labels": ["security"]
+    "labels": ["security"],
+    "minimumReleaseAge": "12 hours"
   },
   "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["on monday"]
+    "enabled": false
   },
   "packageRules": [
     {
@@ -45,7 +45,7 @@
       "matchUpdateTypes": ["major"]
     },
     {
-      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). Approve during an update-deps run (docs/dependency-updates.md#draining-the-queue), after reading the changelog/migration guide. Treat next/react/convex/better-auth/tailwind majors with extra care — see docs/dependency-updates.md",
+      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). The update-deps agent approves it after an assess-upgrade assessment; tier C (next/react/convex/auth stack/tailwind/runtime baseline) and security-relevant behaviour changes need the user. See .agents/skills/assess-upgrade/SKILL.md",
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "dependencyDashboardApproval": true

@@ -8,6 +8,7 @@ ecosystem has already vetted (not yanked, not a fresh supply-chain surprise).
 - Config: [`renovate.json`](../renovate.json)
 - Workflow: [`.github/workflows/renovate.yml`](../.github/workflows/renovate.yml)
 - Current catch-up and compatibility holds: [`dependency-catchup.md`](dependency-catchup.md)
+- Every decision, and what awaits a vendor-side change: [`dependency-log.md`](dependency-log.md)
 
 ## "Self-hosted" — what that means (and doesn't)
 
@@ -25,7 +26,7 @@ the repo and we control exactly when it runs; the price is owning the `RENOVATE_
 | **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC, as a safety net; dependency work is drained with the [`update-deps` skill](#draining-the-queue). Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
 | **Manual run** | GitHub → **Actions → Renovate → Run workflow** (`workflow_dispatch`). Pick `debug` log level to troubleshoot. |
 | **Cooldown** | `minimumReleaseAge: "10 days"` + `internalChecksFilter: "strict"` — a new release is held until it has been public for 10 days. Younger releases show as *pending* on the dashboard rather than as open PRs. |
-| **Security fixes** | The cooldown is **bypassed for known-vulnerable dependencies**: `vulnerabilityAlerts` (GitHub security alerts) and `osvVulnerabilityAlerts` (OSV database) open fix PRs immediately, labeled `security`. |
+| **Security fixes** | The cooldown is **shortened to 12 hours for known-vulnerable dependencies**: `vulnerabilityAlerts` (GitHub security alerts) and `osvVulnerabilityAlerts` (OSV database) open fix PRs labeled `security` once the fixed release is 12 hours old. A fix exploited in the wild that our code reaches can be adopted sooner, by the user only. |
 | **Progress** | Renovate maintains a **"Dependency Dashboard"** issue listing pending, open, and held updates. Start there. |
 | **Lockfile** | Renovate updates `bun.lock` itself (the image bundles Bun and reads `packageManager: bun@…` from the root `package.json`). It also updates the root `overrides` pins. |
 
@@ -44,19 +45,23 @@ Defined in `renovate.json` → `packageRules`:
   would otherwise leave every other open PR behind until the next run). The auth stack is the one
   exception: it keeps its own never-automerged group.
 - **Major versions** → **never auto-merged**, and **no PR opens until approved** on the dashboard
-  (`dependencyDashboardApproval`; they wait under *Pending Approval*). Approve them while
-  [draining the queue](#draining-the-queue), after reading the changelog / migration guide. Treat majors
-  of the sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
-  `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`)
-  with extra care. `convex` and `convex-test` majors travel together in the "convex monorepo" group.
+  (`dependencyDashboardApproval`; they wait under *Pending Approval*). While [draining the queue](#draining-the-queue),
+  the agent assesses each one with the `assess-upgrade` skill (`.agents/skills/assess-upgrade/`):
+  it reads every release note, adds user-visible behaviour tests first, trials the upgrade, and
+  adopts or rejects it. It merges dev tooling and runtime libraries itself. Majors of the
+  sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
+  `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`),
+  the runtime baseline, and any security-relevant behaviour change need the user's yes. Each
+  decision is recorded in [`dependency-log.md`](dependency-log.md). `convex` and `convex-test` majors travel together in the "convex monorepo" group.
 - **Holds** → a major that cannot work yet (an upstream peer range, our runtime floor) is capped
   with `allowedVersions` in a rule whose `description` starts with `HOLD:` and states the
   evidence and the **REMOVE when** condition. Holds are decisions: add or remove them in a
   reviewed PR, never by closing a bot PR silently. Held versions do not appear on the dashboard,
   so each `update-deps` run re-checks the REMOVE conditions.
-- **Lockfile maintenance** (weekly transitive-dependency refresh, Mondays) → deliberately **not**
-  auto-merged: it pulls transitive deps to their latest versions, which **sidesteps the 10-day
-  cooldown**, so a human approves it.
+- **Lockfile maintenance** → **off in Renovate**, because it pulls transitive deps to their latest
+  versions and **sidesteps the 10-day cooldown**. Instead, `update-deps` regenerates `bun.lock`
+  weekly with `bun install --minimum-release-age=864000`, so transitive deps respect the same age,
+  and merges it when CI is green.
 - **GitHub Actions** → Renovate pins all `uses:` references to **commit SHAs**
   (`helpers:pinGitHubActionDigests`) and keeps the pins updated. Tags like `@v4` are mutable and a
   compromised action repo could repoint them; digests can't be swapped.
@@ -73,9 +78,9 @@ supervised run with the `update-deps` skill (`.agents/skills/update-deps/SKILL.m
 agent; `/update-deps` in Claude Code). It always starts with a read-only plan and your decisions,
 and acts only after you give the green light. Feature merges are not paused: a merge during the
 run only leaves Renovate PRs behind, and the skill re-requests their rebase. It dispatches Renovate, gets each
-automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, and stops for a
-human on majors and lockfile maintenance. The Monday/Thursday cron stays as a safety net that keeps
-the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
+automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, assesses majors with
+`assess-upgrade`, refreshes the lockfile, and stops for a human only where those rules say so.
+The Monday/Thursday cron stays as a safety net that keeps the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
 Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to an `update-deps` run.
 
 ### Handling each PR state
@@ -225,8 +230,8 @@ track the upstream limitation until a released fix is verified. For a manual rep
 from the preserved pre-update lockfile with `bun install --minimum-release-age=864000` (10 days),
 then run `bun install --frozen-lockfile` and inspect publication dates of newly resolved versions.
 The age flag does not retroactively reject young versions already recorded in a lockfile.
-This is separate from intentional lockfile maintenance, which already requires manual approval
-because it refreshes transitives.
+This is separate from the weekly lockfile refresh by `update-deps`, which applies the same age
+filter to transitive dependencies.
 
 ## Validating a config change
 
