@@ -70,9 +70,9 @@ Defined in `renovate.json` → `packageRules`:
 Renovate and coding agents both merge to `main`, and `main` requires PRs to be up to date, so
 every merge from one side leaves the other side's PRs behind. Drain the dependency queue in one
 supervised run with the `update-deps` skill (`.agents/skills/update-deps/SKILL.md`, usable by any
-agent; `/update-deps` in Claude Code). It always starts with a read-only plan and your decisions, and
-acts only after you say go. Feature merges are not paused: a merge during the run only
-leaves Renovate PRs behind, and the skill re-requests their rebase. It dispatches Renovate, gets each
+agent; `/update-deps` in Claude Code). It always starts with a read-only plan and your decisions,
+and acts only after you give the green light. Feature merges are not paused: a merge during the
+run only leaves Renovate PRs behind, and the skill re-requests their rebase. It dispatches Renovate, gets each
 automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, and stops for a
 human on majors and lockfile maintenance. The Monday/Thursday cron stays as a safety net that keeps
 the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
