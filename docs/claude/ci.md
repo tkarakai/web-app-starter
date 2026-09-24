@@ -20,16 +20,13 @@ starter upgrade checks use the root scripts):
 5. **Coverage summary display** + artifact saving
 6. **Convex backend tests** (`turbo test:convex`)
 7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
-8. **Production build** (`turbo build`)
+8. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
 9. **Bundle size check** (all apps with `.size-limit.json`)
-10. **Storybook build** (`turbo build --filter=@repo/storybook...`)
-11. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
+10. **Playwright E2E tests** (reuses running development servers or starts them through each app's Playwright configuration)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
-
-> **Note**: E2E tests require the dev environment (`bun run dev`) to be running. The CI script checks that servers are reachable before running Playwright tests and prints a clear error if they are not.
 
 > **Note**: Security checks (CodeQL, dependency audit, secrets scan), Lighthouse audits, and CI gate are only run in GitHub Actions CI, not locally.
 
@@ -97,7 +94,13 @@ The `ci-local-act.sh` script uses **Docker volumes** to persist downloaded artif
 | `act-toolcache` | `/opt/act-toolcache` | Node.js installations |
 
 **First run (online):** Downloads and caches everything to Docker volumes
-**Subsequent runs:** Uses cached artifacts from volumes (fast, works offline)
+**Subsequent runs:** Uses cached artifacts from volumes. After a required tool
+version changes, run online again to populate that version before using offline mode.
+
+For Node, `.github/actions/setup-bun/find-node.sh` checks the requested major
+version and runner architecture in `RUNNER_TOOL_CACHE`. A cache miss falls back
+to `actions/setup-node`, including under act. An older cached major does not meet
+the new request. `scripts/tests/setup-node-cache.test.ts` covers this selection.
 
 ### Usage
 

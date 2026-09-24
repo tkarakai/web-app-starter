@@ -19,17 +19,23 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 
 ## Stack
 
-- [Next.js](https://nextjs.org/docs) 16.1.5
-- [React](https://react.dev) 19.2.3
-- TypeScript 5.9.3
-- Bun 1.3.6
-- [Turborepo](https://turbo.build/repo/docs) 2.5+
-- [Tailwind CSS](https://tailwindcss.com/docs/installation/framework-guides/nextjs) 4.1.18
+- [Next.js](https://nextjs.org/docs)
+- [React](https://react.dev)
+- TypeScript
+- Bun
+- [Turborepo](https://turbo.build/repo/docs)
+- [Tailwind CSS](https://tailwindcss.com/docs/installation/framework-guides/nextjs)
 - [shadcn/ui](https://ui.shadcn.com/docs/installation/next) components (in `@repo/design-system`)
-- [Convex](https://docs.convex.dev/home) 1.31.7
-- [Better Auth](https://better-auth.com/docs/integrations/next) 1.4.12 ([Convex integration](https://better-auth.com/docs/integrations/convex))
+- [Convex](https://docs.convex.dev/home)
+- [Better Auth](https://better-auth.com/docs/integrations/next) ([Convex integration](https://better-auth.com/docs/integrations/convex))
+
+Versions are defined in the root and workspace `package.json` files and resolved
+in `bun.lock`; root overrides take precedence over workspace version ranges.
 
 ## Quick start
+
+Install the Node and Bun versions specified by `engines` and `packageManager` in
+[package.json](package.json) before running these commands.
 
 1. Install dependencies:
 
