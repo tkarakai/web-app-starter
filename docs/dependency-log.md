@@ -1,7 +1,7 @@
 # Dependency log
 
 Every dependency decision, newest first: what changed, what did not, and why. Written by the
-`update-deps` and `assess-upgrade` skills (`.agents/skills/`); policy is in
+`deps-update` and `deps-major` skills (`.agents/skills/`); policy is in
 [`dependency-updates.md`](dependency-updates.md) and
 [`dependency-migrations.md`](dependency-migrations.md).
 
@@ -12,7 +12,7 @@ Every dependency decision, newest first: what changed, what did not, and why. Wr
 ## Awaiting external preconditions
 
 Upgrades the repo is ready for, blocked on a change outside it. Re-checked on every
-`update-deps` run.
+`deps-update` run.
 
 | Upgrade | Precondition | Who | Since |
 |---|---|---|---|
@@ -28,12 +28,12 @@ Upgrades the repo is ready for, blocked on a change outside it. Re-checked on ev
   (needs Vite 8).
 - **Trial rejected: `@tanstack/react-table` 8 → 9.2.4.** Admin typecheck failed: `useReactTable`,
   `getCoreRowModel` and `getSortedRowModel` were removed, and `Table`/`ColumnDef` need extra
-  generics. Reverted. Revisit as a migration of the users, waitlist, admins and audit-trail
+  generics. Reverted. Revisit as a migration (#136) of the users, waitlist, admins and audit-trail
   tables, with sorting, paging and selection tests written first.
 - **Trial rejected: `@zxcvbn-ts/*` 3 → 4.** Core 4.2.0 no longer exports `zxcvbn` or
   `zxcvbnOptions` (factory API instead), so types and execution failed. Reverted. The new common
   word list also changes password scores: a security-relevant behaviour change, so the user
-  decides.
+  decides (#137).
 
 ## Decision entry template
 

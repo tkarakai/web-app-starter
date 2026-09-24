@@ -1,5 +1,5 @@
 ---
-name: update-deps
+name: deps-update
 description: Use to update dependencies, process Renovate PRs, the Dependency Dashboard, or pending majors.
 ---
 
@@ -15,7 +15,7 @@ Sources of truth:
   runtime-baseline playbook.
 - `docs/dependency-log.md`: every dependency decision, and what is *Awaiting external
   preconditions*.
-- The `assess-upgrade` skill: how to decide on a major, a migration, or a security fix that needs
+- The `deps-major` skill: how to decide on a major, a migration, or a security fix that needs
   a major, and who may merge it. Load it only when such an item is in the queue.
 
 **No merge freeze.** Other agents and people keep merging while this runs; nothing is paused or
@@ -31,12 +31,12 @@ and why.
 **Plan first, then the green light.** Every invocation starts as a dry run: the read-only plan
 phase below. Show the plan, ask the decisions, and end with one **green light** question. Act
 only after the user gives the green light. If the user already gave it in the same message
-(e.g. `/update-deps green light`), still show the plan and ask the decisions, but skip the green
+(e.g. `/deps-update green light`), still show the plan and ask the decisions, but skip the green
 light question.
 
 **Hard rules.** Never push commits to a `renovate/*` branch. Never use GitHub's *Update branch*.
 Never tick a dashboard box under *PR Edited (Blocked)* or *Pending Status Checks*. Merge a major
-only as its `assess-upgrade` verdict allows; anything that verdict sends to the user needs their
+only as its `deps-major` verdict allows; anything that verdict sends to the user needs their
 explicit yes in this session. Never force-push. Never bypass the release age: ten days, or twelve
 hours for a security fix.
 
@@ -66,7 +66,7 @@ zsh, which does not word-split unquoted variables.
 
 ## Asking the user for decisions
 
-The user decides what `assess-upgrade` sends to them (tier C, security-relevant behaviour
+The user decides what `deps-major` sends to them (tier C, security-relevant behaviour
 changes, large or security-sensitive migrations), an exploited security fix before its twelve
 hours, and vendor-side changes *Awaiting external preconditions*. Everything else, decide
 yourself and report it. Make every request easy to see and quick to answer:
@@ -100,7 +100,7 @@ Default options per kind:
 
 | Kind | Options |
 |---|---|
-| Upgrade sent to the user by `assess-upgrade` | Adopt · Hold · Defer · Never (close with reason) |
+| Upgrade sent to the user by `deps-major` | Adopt · Hold · Defer · Never (close with reason) |
 | Exploited security fix inside its twelve hours | Adopt now · Wait for twelve hours |
 | Awaiting external precondition | Done, continue · Remind me next run |
 
@@ -109,7 +109,7 @@ Default options per kind:
 Dispatch nothing and edit no PR, issue or file. Work from the last Renovate run: run
 `bun run renovate:status`, say when that run finished, and require `repositoryResult: "done"`.
 Work through steps 1 and 3–6 below and say what you *would* do for each item; for majors, run
-only the read-only steps of `assess-upgrade`. Then present, in this order:
+only the read-only steps of `deps-major`. Then present, in this order:
 
 1. **Report**: status tables, for information.
 2. **Plan**: a numbered list of the actions the run phase will take, e.g. "rebase and merge #131
@@ -136,6 +136,8 @@ Otherwise carry out steps 3–7 with the user's decisions.
 
 1. **See what is in flight.** List open non-Renovate PRs (`gh pr list --search "-head:renovate/"`)
    so the report can say which feature work may land during the run. Do not ask anyone to stop.
+   List open `migrate:` issues (`gh issue list --label dependencies --search "migrate: in:title"`):
+   each is unfinished `deps-major` work to continue, or to leave for another agent.
 2. **Refresh** (run phase only). `gh workflow run renovate.yml`. Wait with
    `gh run watch $(gh run list --workflow=renovate.yml --limit 1 --json databaseId --jq '.[0].databaseId')`,
    then run `bun run renovate:status` and require `repositoryResult: "done"`.
@@ -146,13 +148,15 @@ Otherwise carry out steps 3–7 with the user's decisions.
      `gh pr checks <n> --watch`, and wait for the merge. A feature merge can push it `BEHIND`
      again; repeat.
    - Red: read the failed logs (`gh run view <id> --log-failed`) and classify the failure.
-     Flaky: re-run the failed jobs once. Needs code, or cannot work yet: `assess-upgrade`.
+     Flaky: re-run the failed jobs once. Needs code, or cannot work yet: `deps-major`.
      If one member of a group breaks, hold that member and let the rest merge.
    - `security` label: it merges after twelve hours like any other green PR. If the fix is only
-     in a new major, `assess-upgrade`.
-4. **Majors.** For each *Pending Approval* item, run `assess-upgrade`. To adopt, tick its box in
+     in a new major, `deps-major`.
+4. **Majors.** For each *Pending Approval* item, run `deps-major`. To adopt, tick its box in
    the dashboard issue body, dispatch Renovate, and handle the new PR like any other; when the
-   verdict needs code, the work happens on a `deps/` branch instead. Never tick "Create all
+   verdict needs code, the work happens on a `deps/` branch instead. A migration too large to
+   finish in this run stays in its `migrate:` issue; report it, and say it can be worked in
+   parallel with `/deps-major #<issue>`. Never tick "Create all
    pending approval PRs at once".
 5. **Lockfile refresh.** Renovate's lockfile maintenance is off, because it ignores the release
    age for transitive dependencies. If the last `chore(deps): refresh lockfile` commit on `main`
@@ -160,12 +164,12 @@ Otherwise carry out steps 3–7 with the user's decisions.
    run `bun install --minimum-release-age=864000`, then `bun install --frozen-lockfile`, open the
    PR, and merge it when CI is green.
 6. **Re-check holds and preconditions.** Evaluate each hold's REMOVE condition against the `holds`
-   facts in the snapshot; a hold that can lift goes to `assess-upgrade`, and the lift is part of
+   facts in the snapshot; a hold that can lift goes to `deps-major`, and the lift is part of
    that upgrade's PR. Validate any `renovate.json` edit with
    `npx --yes --package renovate renovate-config-validator renovate.json`. Re-check every item
    *Awaiting external preconditions* in `docs/dependency-log.md` and ask about each one.
 7. **Close out.** Record the run in `docs/dependency-log.md`: one line per merged Renovate PR,
-   plus any holds added or lifted. Upgrades assessed by `assess-upgrade` carry their own entry.
+   plus any holds added or lifted. Upgrades assessed by `deps-major` carry their own entry.
    Open that as a docs-only PR and merge it when CI is green. Dispatch one last Renovate run so
    the dashboard is current. Report the merged PRs, the PRs left open and why, and the holds
    re-checked. Then list any decisions still waiting, in the format above.
