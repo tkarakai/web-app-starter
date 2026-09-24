@@ -45,7 +45,7 @@
       "matchUpdateTypes": ["major"]
     },
     {
-      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). Approve during a Renovate window, after reading the changelog/migration guide. Treat next/react/convex/better-auth/tailwind majors with extra care — see docs/dependency-updates.md",
+      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). Approve during an update-deps run (docs/dependency-updates.md#draining-the-queue), after reading the changelog/migration guide. Treat next/react/convex/better-auth/tailwind majors with extra care — see docs/dependency-updates.md",
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "dependencyDashboardApproval": true
