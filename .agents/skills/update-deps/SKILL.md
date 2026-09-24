@@ -20,13 +20,15 @@ locked. A feature merge only leaves Renovate PRs `BEHIND`, which the drain loop 
 **Announce before acting.** Your first output is text, never a tool call. Say in one or two
 lines what you are about to do and whether it changes anything, e.g. "Planning a dependency
 update. Read-only: I'll read the Renovate queue, the dashboard and the holds; nothing changes
-until you say go." Before each later step, and before every action that writes (dispatching
-Renovate, ticking a box, re-running a job, opening a PR), say in one line what it is and why.
+until you give the green light." Before each later step, and before every action that writes
+(dispatching Renovate, ticking a box, re-running a job, opening a PR), say in one line what it is
+and why.
 
-**Plan first, then go.** Every invocation starts as a dry run: the read-only plan phase below.
-Show the plan, ask the decisions, and end with one **go** question. Act only after the user says
-go. If the user asked to run for real in the same message (e.g. `/update-deps go`), still show
-the plan and ask the decisions, but skip the go question.
+**Plan first, then the green light.** Every invocation starts as a dry run: the read-only plan
+phase below. Show the plan, ask the decisions, and end with one **green light** question. Act
+only after the user gives the green light. If the user already gave it in the same message
+(e.g. `/update-deps green light`), still show the plan and ask the decisions, but skip the green
+light question.
 
 **Hard rules.** Never push commits to a `renovate/*` branch. Never use GitHub's *Update branch*.
 Never tick a dashboard box under *PR Edited (Blocked)* or *Pending Status Checks*. Never merge a
@@ -87,7 +89,7 @@ every such request easy to see and quick to answer:
      A. Approve: tick the dashboard box, PR opens next run (Recommended)
      B. Defer
 
-  Run this plan now? Reply like "go 1A 2A", "go all recommended", or "not now".
+  Run this plan now? Reply like "green light 1A 2A", "green light, all recommended", or "not now".
   ```
 
 Default options per kind:
@@ -104,24 +106,25 @@ Default options per kind:
 
 Dispatch nothing and edit no PR, issue or file. Work from the last Renovate run: run
 `bun run renovate:status`, say when that run finished, and require `repositoryResult: "done"`.
-Go through steps 1 and 3–5 below and say what you *would* do for each item. Then present, in
+Work through steps 1 and 3–5 below and say what you *would* do for each item. Then present, in
 this order:
 
 1. **Report**: status tables, for information.
 2. **Plan**: a numbered list of the actions the run phase will take, e.g. "rebase and merge #131
    (all non-major)", "tick the size-limit 13 approval box". Mark each action that depends on a
-   decision. If there is nothing to do and nothing to decide, say so and stop. There is no go
-   question.
+   decision. If there is nothing to do and nothing to decide, say so and stop. There is no green
+   light question.
 3. **Decisions needed**, in the format above.
-4. **Go**, asked last: *Run this plan now?* Options: **Go** (Recommended) · **Not now**. The go
-   covers the plan as adjusted by the decision answers. In the same structured call as the
-   decisions when it fits (four questions per call), otherwise its own call. In the text
-   fallback, ask the user to reply `go` together with their answers, e.g. "go 1A 2B".
+4. **Green light**, asked last: *Run this plan now?* Options: **Green light** (Recommended) ·
+   **Not now**. The green light covers the plan as adjusted by the decision answers. Ask it in
+   the same structured call as the decisions when it fits (four questions per call), otherwise
+   in its own call. In the text fallback, ask the user to reply "green light" together with
+   their answers, e.g. "green light 1A 2B".
 
 "Not now" ends the skill with nothing changed. The answers stay in the conversation as the plan
-for a later go.
+for a later green light.
 
-## Run phase (after go)
+## Run phase (after the green light)
 
 Refresh first (step 2). If the new snapshot differs from the plan, e.g. new PRs or new
 *Pending Approval* items, show the difference and ask again before acting on anything new.
