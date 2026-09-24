@@ -8,7 +8,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
 - **Six Next.js apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo.
-- **Shared packages**: UI (`@repo/design-system`), auth (`@repo/auth`), backend (`@repo/backend`), i18n (`@repo/i18n`), edge rate limiting (`@repo/edge-rate-limit`), design patterns (`@repo/design-patterns`).
+- **Shared packages** for UI, auth, backend, i18n, rate limiting and starter sidebar policy; see [Shared packages](#shared-packages).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
 - Tailwind v4 + shadcn/ui styling with a bold, modern interface.
@@ -166,6 +166,7 @@ These values persist in the local Convex backend between sessions.
 │   │   ├── messages/          # Translation files (15 languages)
 │   │   └── src/               # i18n config and utilities
 │   ├── edge-rate-limit/       # Shared edge rate limiting (@repo/edge-rate-limit)
+│   ├── starter-sidebar-policy/ # Versioned sidebar sizing policy
 │   └── design-patterns/       # Design patterns (@repo/design-patterns)
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
@@ -177,7 +178,7 @@ These values persist in the local Convex backend between sessions.
 │   ├── ensure-local-deps.sh   # Dependency setup
 │   └── ensure-branch-tracking.sh # Git utility
 ├── .github/workflows/
-│   ├── ci-shared.yml          # Shared CI: lint, typecheck, backend tests
+│   ├── ci-shared.yml          # Shared CI (see docs/claude/ci.md)
 │   ├── ci-web.yml             # Web app CI: test, build, E2E
 │   ├── ci-admin.yml           # Admin app CI: test, build, E2E
 │   ├── ci-landing.yml         # Landing app CI: test, build, E2E
@@ -230,6 +231,12 @@ Shared edge rate limiter used by web, admin, and landing app proxies. Provides p
 ### `@repo/design-patterns` — Design Patterns
 
 Shared design patterns and utilities.
+
+### `@repo/starter-sidebar-policy` — Sidebar Sizing
+
+Shared sizing policy used by the design system and the standalone demo. See the
+[package guide](packages/starter-sidebar-policy/README.md) for consumption and
+release instructions, and [the demo guide](apps/demo/README.md) to run the app.
 
 ## Run against cloud Convex + Better Auth
 

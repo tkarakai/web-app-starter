@@ -280,10 +280,12 @@ sides".**
 ```
 
 It reads the three merge stages from git, merges the *parsed objects* key by key,
-writes the result and `git add`s it. Additions from both sides are kept, a key only
-one side changed takes that side's value, and a key both sides changed to different
-values is left for you with its exact path printed. `--check` reports without
-writing.
+writes the result and `git add`s it. Additions from both sides are kept, and a key
+only one side changed takes that side's value. For conflicting values, it stages
+your value, prints the exact key path and exits with status 1. Review each reported
+key before committing; the staged file no longer appears as an unmerged file.
+`--check` reports without writing or staging. Run through the wrapper directly so
+an unresolved root `package.json` does not prevent the resolver from starting.
 
 **Why not "keep both sides" here.** It is the right instinct and it produces a file
 that is not JSON. The closing brace of a namespace is usually *shared context* that
@@ -311,18 +313,20 @@ bun run typecheck
 Keys are type-checked against `en.json`, so a dropped key in another locale fails
 there rather than at runtime.
 
-### `CLAUDE.md`, `.claude/commands/`, `README.md`
+### `AGENTS.md`, `CLAUDE.md`, `.claude/commands/`, `README.md`
 
 Your app rewrote these and the starter keeps editing them.
 
 **Resolution: keep yours, then read the starter's diff for anything worth adopting:**
 
 ```bash
-git diff HEAD...v1.1.0 -- CLAUDE.md
+git diff HEAD...v1.1.0 -- AGENTS.md CLAUDE.md
 ```
 
-The starter's conventions sections (commands, directory structure, warnings) are
-usually worth porting; its project overview is not.
+The starter's conventions now live in `AGENTS.md`; `CLAUDE.md` imports that file.
+Review the commands and warnings for useful changes while preserving your app's
+guidance. Do not replace a customized `CLAUDE.md` with the import until its durable
+instructions have been retained in your app's `AGENTS.md`.
 
 ### `packages/backend/convex/_generated/`
 

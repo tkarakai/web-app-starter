@@ -6,7 +6,7 @@ This document provides project-specific guidance for AI agents working on this c
 
 This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
 - **Six Next.js 16 apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo
-- **Six shared packages**: `@repo/design-system`, `@repo/auth`, `@repo/backend`, `@repo/i18n`, `@repo/edge-rate-limit`, `@repo/design-patterns`
+- **Shared packages**: see [README.md](README.md#shared-packages) for their roles.
 - **Convex** as the backend (database, file storage, API functions)
 - **Better Auth** wired to Convex for authentication
 - **React 19** with Server Components (App Router)

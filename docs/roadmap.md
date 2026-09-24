@@ -52,8 +52,8 @@ Status as of 2026-09-15.
 
 ### Distributing the starter to business apps
 
-Business projects currently clone and diverge, so security and feature work here
-never reaches them. A proposal that matches the update method to the kind of code —
+Business projects clone and diverge; the merge-by-tag workflow now lets them adopt
+starter fixes through reviewed upgrades. A proposal that matches the update method to the kind of code —
 versioned packages for platform code, a component registry for editable UI, and
 copy-once app shells — is written up in
 [`starter-versioning-strategy.md`](./starter-versioning-strategy.md). Phase 0 is done;

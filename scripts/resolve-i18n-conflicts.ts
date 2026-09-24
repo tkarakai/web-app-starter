@@ -29,9 +29,8 @@
  *     ./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts --check    # report, change nothing
  *     ./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts packages/i18n/messages/en.json
  *
- * Resolved files are written and `git add`-ed. Files with a real disagreement are
- * left conflicted, and the exact key paths are printed. Exit code is 0 when every
- * file was resolved, 1 when any file still needs a human.
+ * See UPGRADING.md, "packages/i18n/messages/*.json", for staging, disagreement
+ * handling and exit-status semantics. Review reported keys even after staging.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

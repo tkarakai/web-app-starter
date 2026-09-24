@@ -1,6 +1,6 @@
 # CI Guide
 
-> Detailed guide for AI agents. See `CLAUDE.md` for the quick reference.
+> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
 
 ## Local CI (Pre-Push Checks)
 
@@ -11,7 +11,8 @@ bun run ci                   # Full CI check (runs everything)
 bun run ci:quick             # Skip E2E tests for faster feedback
 ```
 
-The `bun run ci` command runs these checks in order (all via `turbo`):
+The `bun run ci` command runs these checks in order (workspace checks use `turbo`;
+starter upgrade checks use the root scripts):
 1. **TypeScript check** (`turbo typecheck`)
 2. **ESLint** (`turbo lint`)
 3. **Bun unit tests** (`turbo test`)
