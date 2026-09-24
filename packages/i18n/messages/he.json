@@ -211,6 +211,20 @@
         "invalidEmail": "אנא הזינו כתובת אימייל תקינה.",
         "rateLimited": "יותר מדי בקשות. אנא המתינו רגע ונסו שוב.",
         "generic": "משהו השתבש. אנא נסו שוב."
+      },
+      "roleLabel": "התפקיד שלך (אופציונלי)",
+      "rolePlaceholder": "בחרו תפקיד",
+      "companyLabel": "חברה (אופציונלי)",
+      "companyPlaceholder": "חברת דוגמה בע״מ",
+      "useCaseLabel": "מה אתם מתכננים לבנות? (אופציונלי)",
+      "useCasePlaceholder": "פורטל לקוחות, כלי פנימי…",
+      "roles": {
+        "founder": "מייסד/ת",
+        "engineering": "הנדסה",
+        "product": "מוצר",
+        "design": "עיצוב",
+        "agency": "סוכנות",
+        "other": "אחר"
       }
     }
   },

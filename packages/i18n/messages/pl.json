@@ -211,6 +211,20 @@
         "invalidEmail": "Podaj prawidłowy adres e-mail.",
         "rateLimited": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
         "generic": "Coś poszło nie tak. Spróbuj ponownie."
+      },
+      "roleLabel": "Twoja rola (opcjonalnie)",
+      "rolePlaceholder": "Wybierz swoją rolę",
+      "companyLabel": "Firma (opcjonalnie)",
+      "companyPlaceholder": "Acme sp. z o.o.",
+      "useCaseLabel": "Co planujesz zbudować? (opcjonalnie)",
+      "useCasePlaceholder": "Portal klienta, narzędzie wewnętrzne…",
+      "roles": {
+        "founder": "Założyciel",
+        "engineering": "Inżynieria",
+        "product": "Produkt",
+        "design": "Projektowanie",
+        "agency": "Agencja",
+        "other": "Inne"
       }
     }
   },

@@ -236,6 +236,20 @@
         "invalidEmail": "Please enter a valid email address.",
         "rateLimited": "Too many requests. Please wait a moment and try again.",
         "generic": "Something went wrong. Please try again."
+      },
+      "roleLabel": "Your role (optional)",
+      "rolePlaceholder": "Select your role",
+      "companyLabel": "Company (optional)",
+      "companyPlaceholder": "Acme Inc.",
+      "useCaseLabel": "What do you plan to build? (optional)",
+      "useCasePlaceholder": "A customer portal, internal tool…",
+      "roles": {
+        "founder": "Founder",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Agency",
+        "other": "Other"
       }
     }
   },

@@ -211,6 +211,20 @@
         "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
         "rateLimited": "Trop de requêtes. Veuillez patienter un instant et réessayer.",
         "generic": "Une erreur est survenue. Veuillez réessayer."
+      },
+      "roleLabel": "Votre rôle (facultatif)",
+      "rolePlaceholder": "Choisissez votre rôle",
+      "companyLabel": "Entreprise (facultatif)",
+      "companyPlaceholder": "Acme SAS",
+      "useCaseLabel": "Que comptez-vous créer ? (facultatif)",
+      "useCasePlaceholder": "Un portail client, un outil interne…",
+      "roles": {
+        "founder": "Fondateur·rice",
+        "engineering": "Ingénierie",
+        "product": "Produit",
+        "design": "Design",
+        "agency": "Agence",
+        "other": "Autre"
       }
     }
   },

@@ -211,6 +211,20 @@
         "invalidEmail": "Zadejte prosím platnou e-mailovou adresu.",
         "rateLimited": "Příliš mnoho požadavků. Počkejte chvíli a zkuste to znovu.",
         "generic": "Něco se pokazilo. Zkuste to prosím znovu."
+      },
+      "roleLabel": "Vaše role (nepovinné)",
+      "rolePlaceholder": "Vyberte svou roli",
+      "companyLabel": "Společnost (nepovinné)",
+      "companyPlaceholder": "Acme s.r.o.",
+      "useCaseLabel": "Co plánujete vytvořit? (nepovinné)",
+      "useCasePlaceholder": "Zákaznický portál, interní nástroj…",
+      "roles": {
+        "founder": "Zakladatel",
+        "engineering": "Vývoj",
+        "product": "Produkt",
+        "design": "Design",
+        "agency": "Agentura",
+        "other": "Jiné"
       }
     }
   },

@@ -211,6 +211,20 @@
         "invalidEmail": "Kérjük, adjon meg egy érvényes e-mail-címet.",
         "rateLimited": "Túl sok kérés. Kérjük, várjon egy pillanatot, és próbálja újra.",
         "generic": "Valami hiba történt. Kérjük, próbálja újra."
+      },
+      "roleLabel": "Szerepköre (nem kötelező)",
+      "rolePlaceholder": "Válassza ki a szerepkörét",
+      "companyLabel": "Cég (nem kötelező)",
+      "companyPlaceholder": "Acme Kft.",
+      "useCaseLabel": "Mit tervez építeni? (nem kötelező)",
+      "useCasePlaceholder": "Ügyfélportált, belső eszközt…",
+      "roles": {
+        "founder": "Alapító",
+        "engineering": "Fejlesztés",
+        "product": "Termék",
+        "design": "Design",
+        "agency": "Ügynökség",
+        "other": "Egyéb"
       }
     }
   },

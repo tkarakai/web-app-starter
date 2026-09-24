@@ -211,6 +211,20 @@
         "invalidEmail": "请输入有效的电子邮箱地址。",
         "rateLimited": "请求过于频繁。请稍等片刻后重试。",
         "generic": "出了点问题。请重试。"
+      },
+      "roleLabel": "你的角色（可选）",
+      "rolePlaceholder": "选择你的角色",
+      "companyLabel": "公司（可选）",
+      "companyPlaceholder": "示例科技有限公司",
+      "useCaseLabel": "你打算构建什么？（可选）",
+      "useCasePlaceholder": "客户门户、内部工具……",
+      "roles": {
+        "founder": "创始人",
+        "engineering": "工程",
+        "product": "产品",
+        "design": "设计",
+        "agency": "代理机构",
+        "other": "其他"
       }
     }
   },

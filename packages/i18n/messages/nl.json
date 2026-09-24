@@ -211,6 +211,20 @@
         "invalidEmail": "Voer een geldig e-mailadres in.",
         "rateLimited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
         "generic": "Er is iets misgegaan. Probeer het opnieuw."
+      },
+      "roleLabel": "Je rol (optioneel)",
+      "rolePlaceholder": "Kies je rol",
+      "companyLabel": "Bedrijf (optioneel)",
+      "companyPlaceholder": "Acme B.V.",
+      "useCaseLabel": "Wat wil je bouwen? (optioneel)",
+      "useCasePlaceholder": "Een klantportaal, een interne tool…",
+      "roles": {
+        "founder": "Oprichter",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Bureau",
+        "other": "Anders"
       }
     }
   },
