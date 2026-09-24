@@ -501,9 +501,16 @@ The `invite` mutation:
 4. Writes audit event: `admin.invitation.sent` with `meta: { inviteeEmail }`
 5. Schedules an `internalAction` (`adminInvitationActions.generateTokenAndSendEmail`) which:
    - Generates a 32-byte crypto-random token (64 hex chars)
-   - Stores the token + expiry (default 7 days, configurable via `invitationTokenExpiryDays` in `appSettings`) on the invitation row
-   - Builds onboarding URL: `{ADMIN_SITE_URL}/onboarding?token={token}` (env var, default `http://localhost:3002`)
+   - Stores only the token's SHA-256 hash + expiry (default 7 days, configurable via `invitationTokenExpiryDays` in `appSettings`) on the invitation row
+   - Builds onboarding URL: `{ADMIN_SITE_URL}/onboarding?token={token}` (`ADMIN_SITE_URL` is required)
    - Sends an HTML email via Resend (or logs the URL to console in dev when no `RESEND_API_KEY` is set)
+
+Authentication emails (`sendAuthEmail`) and both admin and user invitation actions
+throw when Resend returns an API or transport error. For invitations, the email
+request occurs after the invite mutation and token storage have committed: its failure
+does not roll them back. An invitation row or `admin.invitation.sent` audit event
+therefore does not confirm delivery. Local fake-transport regression coverage lives
+in `packages/backend/convex/emailTransport.test.ts`; it does not verify inbox delivery.
 
 ### 9.2 Accepting an Admin Invitation
 
@@ -519,7 +526,7 @@ The auth hook (`user.create.before` in `auth.ts`) checks both `hasValidInvitatio
 
 ### 9.4 User Invitations (comparison)
 
-User invitations are sent from **Manage > Onboarding** (Users tab) and allow **multiple email addresses**. The invitation link points to `web-app/sign-up?token=<invitation-token>` and is only valid for the web app. User invitations follow the user sign-up flow (§7).
+User invitations are sent from **Manage > Onboarding** (Users tab) and allow **multiple email addresses**. The invitation link points to `/signup-with-invitation?token=<invitation-token>` on the first origin in `SITE_URL` and is only valid for the web app. User invitations follow the user sign-up flow (§7).
 
 
 ## 10. Admin App — Manage Section
@@ -737,11 +744,8 @@ Key functions on this table:
 
 ### 15.2 Token Generation
 
-Tokens are generated in an `internalAction` (`adminInvitationActions.generateTokenAndSendEmail`) following the same pattern as waitlist token generation:
-- 32 bytes from `crypto.getRandomValues` → 64 hex characters
-- Stored on the invitation row via `internal.adminInvitations.setToken`
-- Expiry defaults to 7 days (configurable via `invitationTokenExpiryDays` in `appSettings`)
-- Email sent via Resend (falls back to console.log in dev when `RESEND_API_KEY` is not set)
+See [§9.1 Sending Invitations](#91-sending-invitations) for token generation,
+hash storage, expiry, and email failure behavior.
 
 
 ## 16. Security Checklist

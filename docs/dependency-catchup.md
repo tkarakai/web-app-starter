@@ -55,6 +55,8 @@ The auth stack is not an uncapped update candidate: latest adapter 0.12.5 still 
 
 ## Verification and remaining gates
 
+The checks below record earlier local evidence, not final-head validation.
+
 - Used Bun 1.4.2 locally and `bun install --minimum-release-age=864000`; frozen install passes.
 - Registry publication audit of all **21** newly resolved versions relative to the merged
   Convex/dev main: every version is at least ten days old; none has an unknown date.
@@ -80,12 +82,14 @@ The auth stack is not an uncapped update candidate: latest adapter 0.12.5 still 
   Installer/download responses were controlled test doubles, not hosted runner evidence.
 - Executed the real authentication sender and both Convex invitation actions with
   Resend 6.28.0 against a loopback HTTP fake transport. Six regression checks initially
-  failed because callers ignored SDK error results. Callers now throw on those errors;
+  failed because callers ignored SDK error results. The resulting failure contract is
+  documented in [Sending Invitations](authentication-and-onboarding.md#91-sending-invitations);
   all 13 focused checks pass, covering request construction, invitation links/token
   hashes, API rejection, and disconnected transport.
 - This is **simulated transport evidence, not actual email delivery**. No external
   emails, credentials, or production services were used. Real email delivery remains
-  unverified and requires a subsequent Test decision.
+  unverified. The subsequent Test round reported an inconclusive verdict; its
+  validation finding was declined, so these checks do not establish live validation.
 - Hosted Actions execution and artifact transfer remain unverified locally. Per the
   sequencing exception, the outer pipeline must verify them through real PR CI after
   publication; this does not waive CI. The migration, cooldown, and lock-maintenance

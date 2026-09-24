@@ -102,6 +102,13 @@ version and runner architecture in `RUNNER_TOOL_CACHE`. A cache miss falls back
 to `actions/setup-node`, including under act. An older cached major does not meet
 the new request. `scripts/tests/setup-node-cache.test.ts` covers this selection.
 
+For Bun under act, `.github/actions/setup-bun/setup-bun-act.sh` reuses a cached
+binary only when its reported version exactly matches the requested version.
+A missing or stale binary triggers installation; download failure or a mismatched
+installed version fails setup before publishing its directory to `GITHUB_PATH`.
+See `scripts/tests/setup-bun-cache.test.ts` for regression coverage. After a Bun
+upgrade, populate the matching binary online before returning to offline mode.
+
 ### Usage
 
 ```bash
@@ -118,33 +125,11 @@ The offline flag (`-o`) adds:
 
 ### Pattern for Adding New Tools
 
-When introducing a new tool that downloads from the internet, create a **composite action** in `.github/actions/<tool-name>/action.yml`:
-
-```yaml
-name: 'Setup ToolName'
-runs:
-  using: 'composite'
-  steps:
-    # Standard GitHub Actions (uses official setup action)
-    - name: Setup ToolName
-      if: ${{ !env.ACT }}
-      uses: vendor/setup-toolname@v1
-      with:
-        version: "1.2.3"
-
-    # act offline mode (checks cache first, downloads if needed)
-    - name: Setup ToolName (act)
-      if: ${{ env.ACT }}
-      shell: bash
-      run: |
-        TOOL_DIR="/path/to/cache"
-        if [ -x "$TOOL_DIR/bin/tool" ]; then
-          echo "Tool already installed"
-        else
-          curl -fsSL https://example.com/install.sh | bash
-        fi
-        echo "$TOOL_DIR/bin" >> $GITHUB_PATH
-```
+When introducing a tool that downloads from the internet, create a composite action
+in `.github/actions/<tool-name>/action.yml`. Use
+[setup-bun](../../.github/actions/setup-bun/action.yml) and its
+[act helper](../../.github/actions/setup-bun/setup-bun-act.sh) as the reference for
+version-aware cache reuse, installation failure handling, and path publication.
 
 Then use it in any workflow job:
 ```yaml
@@ -156,15 +141,15 @@ steps:
 1. Use composite actions to avoid duplicating setup across workflows
 2. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup steps
 3. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
-4. Check if the tool exists before downloading
+4. Reuse a cached tool only when it satisfies the requested version
 5. Install to a path that's mounted as a Docker volume
-6. Add the tool to `$GITHUB_PATH`
+6. Verify successful installation and the requested version before adding the tool to `$GITHUB_PATH`
 
 ### Currently Cached Tools
 
 | Tool | Cache Location | Setup Pattern |
 |------|----------------|---------------|
-| Bun | `/root/.bun/bin/bun` | Custom script checks existence |
+| Bun | `/root/.bun/bin/bun` | See exact-version selection under “How It Works” above |
 | Node.js | `/opt/act-toolcache/node/` | `setup-node` respects `RUNNER_TOOL_CACHE` |
 | Playwright | `/root/.cache/ms-playwright/` | Volume persists browser binaries |
 | npm packages | `/root/.bun/install/cache/` | Bun's package cache |
