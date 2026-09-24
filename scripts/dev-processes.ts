@@ -6,10 +6,10 @@
  * kill global "orphans". The legacy .dev-pids file remains for launcher/status
  * compatibility; .dev-processes.json supplies the process start identities.
  *
- * Usage: node scripts/dev-processes.ts [--root DIR] track NAME PID
- *                                      [--root DIR] running NAME|* PID
- *                                      [--root DIR] stop [--name NAME]
- *                                      [--root DIR] list
+ * Usage: scripts/node-ts.sh scripts/dev-processes.ts [--root DIR] track NAME PID
+ *                                                      [--root DIR] running NAME|* PID
+ *                                                      [--root DIR] stop [--name NAME]
+ *                                                      [--root DIR] list
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

@@ -16,7 +16,7 @@ fi
 
 for checkout in "${WORKTREES[@]}"; do
     echo "Verified services in $checkout:"
-    node "$SCRIPT_DIR/dev-processes.ts" --root "$checkout" list
+    "$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/dev-processes.ts" --root "$checkout" list
 done
 if [ "${1:-}" != "--yes" ]; then
     if [ ! -t 0 ]; then
@@ -27,6 +27,6 @@ if [ "${1:-}" != "--yes" ]; then
     [[ "$answer" =~ ^[Yy]$ ]] || exit 0
 fi
 for checkout in "${WORKTREES[@]}"; do
-    node "$SCRIPT_DIR/dev-processes.ts" --root "$checkout" stop
+    "$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/dev-processes.ts" --root "$checkout" stop
 done
 echo "Verified services stopped. Databases, dependencies and build caches preserved."

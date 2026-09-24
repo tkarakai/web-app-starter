@@ -25,9 +25,9 @@
  *
  * Usage
  * -----
- *     node scripts/resolve-i18n-conflicts.ts            # every conflicted message file
- *     node scripts/resolve-i18n-conflicts.ts --check    # report, change nothing
- *     node scripts/resolve-i18n-conflicts.ts packages/i18n/messages/en.json
+ *     bun run resolve-i18n-conflicts                   # every conflicted message file
+ *     bun run resolve-i18n-conflicts --check           # report, change nothing
+ *     bun run resolve-i18n-conflicts packages/i18n/messages/en.json
  *
  * Resolved files are written and `git add`-ed. Files with a real disagreement are
  * left conflicted, and the exact key paths are printed. Exit code is 0 when every

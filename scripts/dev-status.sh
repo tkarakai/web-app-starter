@@ -66,7 +66,7 @@ get_pid() {
 # Check if a PID is alive
 is_running() {
     local pid="$1"
-    [ -n "$pid" ] && node "$SCRIPT_DIR/dev-processes.ts" running "*" "$pid"
+    [ -n "$pid" ] && "$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/dev-processes.ts" running "*" "$pid"
 }
 
 # ============================================================

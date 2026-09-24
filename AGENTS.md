@@ -105,7 +105,7 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 - **Use bare `bun test`** - Always use `bun run test` (with `run`). Bare `bun test` picks up all test files and fails
 - **Edit `packages/backend/convex/_generated/`** - These files are auto-generated
 - **Use `npm` or `yarn`** - Use Bun for package management.
-- **Introduce Python or other scripting languages** - Project-owned scripts use TypeScript running on Node; shell wrappers are allowed. Nothing else.
+- **Introduce Python or other scripting languages** - Project-owned scripts use TypeScript running on Node (start them with `scripts/node-ts.sh`, which needs Node 22.6+); shell wrappers are allowed. Nothing else.
 - **Use `turbo dev`** - Use `bun run dev` (which calls `dev-start.sh`) for proper port and Convex management
 - **Skip TypeScript types** - Strict mode catches bugs early
 - **Test Server Components with Vitest** - Use Playwright E2E instead

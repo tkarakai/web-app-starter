@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "bun@1.3.6",
+  "engines": {
+    "node": ">=22.6"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -43,12 +46,13 @@
     "ci:act:offline": "./scripts/ci-local-act.sh -o",
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
     "ensure-env": "./scripts/ensure-app-env.sh",
-    "test:dev-scripts": "node --test scripts/tests/*.test.ts",
+    "test:dev-scripts": "./scripts/node-ts.sh --test scripts/tests/*.test.ts",
+    "resolve-i18n-conflicts": "./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts",
     "typecheck:dev-scripts": "tsc -p scripts/tsconfig.json",
-    "test:starter-upgrade": "node --test scripts/starter-upgrade/*.test.ts",
-    "test:starter-rehearsal": "node scripts/starter-upgrade/rehearse.ts",
-    "starter-upgrade": "node scripts/starter-upgrade/upgrade.ts",
-    "check:starter-ownership": "node scripts/starter-upgrade/check-ownership.ts",
+    "test:starter-upgrade": "./scripts/node-ts.sh --test scripts/starter-upgrade/*.test.ts",
+    "test:starter-rehearsal": "./scripts/node-ts.sh scripts/starter-upgrade/rehearse.ts",
+    "starter-upgrade": "./scripts/node-ts.sh scripts/starter-upgrade/upgrade.ts",
+    "check:starter-ownership": "./scripts/node-ts.sh scripts/starter-upgrade/check-ownership.ts",
     "typecheck:starter-upgrade": "tsc -p scripts/starter-upgrade/tsconfig.json",
     "lint:starter-upgrade": "eslint scripts/starter-upgrade --max-warnings 0",
     "ops": "bun packages/ops/src/cli.ts",

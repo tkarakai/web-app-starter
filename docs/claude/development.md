@@ -26,7 +26,7 @@ bun run dev:stop
 
 ### Development process isolation
 
-The launcher requires Node.js (it runs `scripts/dev-processes.ts`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+The launcher requires Node.js 22.6 or newer (it runs `scripts/dev-processes.ts` through `scripts/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
 
 - `bun run dev:stop` stops verified services in this checkout.
 - `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.

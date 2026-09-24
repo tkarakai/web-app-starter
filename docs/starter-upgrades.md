@@ -25,7 +25,8 @@ bun run test:starter-upgrade
 bun run test:starter-rehearsal
 ```
 
-The scripts run on Node 24 and are written in TypeScript. Bun remains the package
+The scripts are written in TypeScript and run through `scripts/node-ts.sh`, which
+needs Node 22.6 or newer (CI uses Node 24). Bun remains the package
 manager and launches the existing app test/build scripts.
 
 ## Ownership: who may change each file?

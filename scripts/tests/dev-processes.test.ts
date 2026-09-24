@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import * as manager from "../dev-processes.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const INSTALLED = ["package.json", "dev-processes.ts", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
