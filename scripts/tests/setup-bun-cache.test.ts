@@ -54,10 +54,11 @@ for (const cached of [undefined, "1.3.6"]) {
   });
 }
 
-test("act rejects download failure and a stale installer result without publishing a path", (t) => {
-  for (const [version, fails] of [["1.3.6", false], ["1.4.2", true]] as const) {
+for (const [version, fails] of [["1.3.6", false], ["1.4.2", true]] as const) {
+  test(`act rejects ${fails ? "download failure" : "a wrong-version installer"} without publishing a path`, (t) => {
     const f = fixture(t, "1.3.6", version, fails);
     assert.notEqual(f.result.status, 0);
+    assert.equal(f.calls, "download\n");
     assert.equal(f.paths, "");
-  }
-});
+  });
+}

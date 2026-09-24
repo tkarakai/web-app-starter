@@ -71,3 +71,22 @@ The auth stack is not an uncapped update candidate: latest adapter 0.12.5 still 
   Hosted runners are used; act must use an image supporting Node 24. Refresh offline action caches.
 - No production/CD workflow was dispatched. Final no-mistakes review, live behavior/E2E,
   security workflows and final-head forge CI remain publication gates, not claimed local evidence.
+
+### Focused Test follow-up
+
+- Executed the real `setup-bun-act.sh` in worktree-local isolated fixtures with a
+  failing download and a wrong-version installer. Both exited unsuccessfully after
+  attempting the download and left `GITHUB_PATH` empty (two focused tests passed).
+  Installer/download responses were controlled test doubles, not hosted runner evidence.
+- Executed the real authentication sender and both Convex invitation actions with
+  Resend 6.28.0 against a loopback HTTP fake transport. Six regression checks initially
+  failed because callers ignored SDK error results. Callers now throw on those errors;
+  all 13 focused checks pass, covering request construction, invitation links/token
+  hashes, API rejection, and disconnected transport.
+- This is **simulated transport evidence, not actual email delivery**. No external
+  emails, credentials, or production services were used. Real email delivery remains
+  unverified and requires a subsequent Test decision.
+- Hosted Actions execution and artifact transfer remain unverified locally. Per the
+  sequencing exception, the outer pipeline must verify them through real PR CI after
+  publication; this does not waive CI. The migration, cooldown, and lock-maintenance
+  obligations above remain outstanding.

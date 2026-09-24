@@ -90,12 +90,13 @@ export const generateTokenAndSendEmail = internalAction({
     const resend = new Resend(apiKey);
     const emailFrom = process.env.EMAIL_FROM ?? "noreply@example.com";
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: emailFrom,
       to: args.email,
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
     });
+    if (error) throw new Error(error.message);
   },
 });
