@@ -38,6 +38,11 @@
       "groupName": "dev dependencies (non-major)"
     },
     {
+      "description": "Keep the Convex SDK and its test harness together: convex-test 0.0.57 requires convex ^1.43.0. This rule follows the dev-tooling group so the harness cannot advance alone.",
+      "matchPackageNames": ["convex", "convex-test"],
+      "groupName": "convex monorepo"
+    },
+    {
       "description": "No major ever auto-merges. Majors arrive as separate PRs by default; treat next/react/convex/better-auth/tailwind majors with extra care — see docs/dependency-updates.md",
       "matchUpdateTypes": ["major"],
       "automerge": false
