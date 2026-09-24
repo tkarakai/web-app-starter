@@ -62,9 +62,14 @@
       "allowedVersions": "<1.7.0"
     },
     {
-      "description": "HOLD: Node types must not describe a newer runtime than the one we run on (CI and tooling use Node 24, engines floor is 22.6). REMOVE when the runtime moves to Node 26 (LTS from Oct 2026) in CI, Vercel and engines.",
+      "description": "Runtime baseline: Node moves as one change across .node-version, engines, CI and @types/node (docs/dependency-migrations.md#runtime-baseline). Renovate reads .node-version and proposes the next major once it is LTS; like every major it waits for dashboard approval.",
+      "matchDepNames": ["node"],
+      "groupName": "node runtime baseline"
+    },
+    {
+      "description": "HOLD: @types/node must match the runtime baseline major in .node-version (24). check:runtime-baseline enforces it. Lift to the next major only in the baseline playbook PR that moves .node-version.",
       "matchPackageNames": ["@types/node"],
-      "allowedVersions": "<26"
+      "allowedVersions": "<25"
     },
     {
       "description": "HOLD: 6.x requires Vite 8; PR #125 failed with ERR_PACKAGE_PATH_NOT_EXPORTED vite/internal. REMOVE together with a Vite 8 migration of the vitest configs.",
@@ -80,11 +85,6 @@
       "description": "HOLD: @typescript-eslint/parser 8.x requires TypeScript <6.1.0. REMOVE when `bun info @typescript-eslint/parser@latest peerDependencies` accepts TypeScript 7.",
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<7"
-    },
-    {
-      "description": "HOLD: size-limit 13 requires Node ^22.18 || ^24 || >=26, narrower than engines >=22.6. REMOVE after raising the engines floor.",
-      "matchPackageNames": ["size-limit", "@size-limit/**"],
-      "allowedVersions": "<13"
     }
   ]
 }

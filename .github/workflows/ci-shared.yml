@@ -80,6 +80,9 @@ jobs:
           ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
+      - name: Check runtime baseline (Node/Bun versions agree)
+        run: bun run check:runtime-baseline
+
       - name: Check development scripts and process isolation
         run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
 
