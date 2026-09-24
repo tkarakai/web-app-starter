@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Escolha seus superpoderes",
       "excitementLabel": "Qual o seu nível de empolgação?",
       "excitementPlaceholder": "Conte-nos como você se sente",
+      "roleLabel": "Sua função (opcional)",
+      "rolePlaceholder": "Selecione sua função",
+      "companyLabel": "Empresa (opcional)",
+      "companyPlaceholder": "Acme Ltda.",
+      "useCaseLabel": "O que você pretende construir? (opcional)",
+      "useCasePlaceholder": "Um portal de clientes, uma ferramenta interna…",
+      "roles": {
+        "founder": "Fundador(a)",
+        "engineering": "Engenharia",
+        "product": "Produto",
+        "design": "Design",
+        "agency": "Agência",
+        "other": "Outro"
+      },
       "selectedCount": "{count} selecionado(s)",
       "submit": "Entrar na lista",
       "submitting": "Registrando...",
@@ -211,20 +225,6 @@
         "invalidEmail": "Por favor, insira um endereço de e-mail válido.",
         "rateLimited": "Muitas solicitações. Aguarde um momento e tente novamente.",
         "generic": "Algo deu errado. Tente novamente."
-      },
-      "roleLabel": "Sua função (opcional)",
-      "rolePlaceholder": "Selecione sua função",
-      "companyLabel": "Empresa (opcional)",
-      "companyPlaceholder": "Acme Ltda.",
-      "useCaseLabel": "O que você pretende construir? (opcional)",
-      "useCasePlaceholder": "Um portal de clientes, uma ferramenta interna…",
-      "roles": {
-        "founder": "Fundador(a)",
-        "engineering": "Engenharia",
-        "product": "Produto",
-        "design": "Design",
-        "agency": "Agência",
-        "other": "Outro"
       }
     }
   },

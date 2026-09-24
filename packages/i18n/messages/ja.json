@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "超能力を選んでね",
       "excitementLabel": "どのくらいワクワクしてる？",
       "excitementPlaceholder": "気持ちを教えてください",
+      "roleLabel": "役割（任意）",
+      "rolePlaceholder": "役割を選択",
+      "companyLabel": "会社名（任意）",
+      "companyPlaceholder": "株式会社サンプル",
+      "useCaseLabel": "何を作る予定ですか？（任意）",
+      "useCasePlaceholder": "顧客ポータル、社内ツールなど",
+      "roles": {
+        "founder": "創業者",
+        "engineering": "エンジニアリング",
+        "product": "プロダクト",
+        "design": "デザイン",
+        "agency": "エージェンシー",
+        "other": "その他"
+      },
       "selectedCount": "{count}件選択中",
       "submit": "ウェイトリストに参加",
       "submitting": "登録中...",
@@ -211,20 +225,6 @@
         "invalidEmail": "有効なメールアドレスを入力してください。",
         "rateLimited": "リクエストが多すぎます。しばらく待ってからもう一度お試しください。",
         "generic": "エラーが発生しました。もう一度お試しください。"
-      },
-      "roleLabel": "役割（任意）",
-      "rolePlaceholder": "役割を選択",
-      "companyLabel": "会社名（任意）",
-      "companyPlaceholder": "株式会社サンプル",
-      "useCaseLabel": "何を作る予定ですか？（任意）",
-      "useCasePlaceholder": "顧客ポータル、社内ツールなど",
-      "roles": {
-        "founder": "創業者",
-        "engineering": "エンジニアリング",
-        "product": "プロダクト",
-        "design": "デザイン",
-        "agency": "エージェンシー",
-        "other": "その他"
       }
     }
   },
