@@ -7,6 +7,7 @@ ecosystem has already vetted (not yanked, not a fresh supply-chain surprise).
 
 - Config: [`renovate.json`](../renovate.json)
 - Workflow: [`.github/workflows/renovate.yml`](../.github/workflows/renovate.yml)
+- Current catch-up and compatibility holds: [`dependency-catchup.md`](dependency-catchup.md)
 
 ## "Self-hosted" — what that means (and doesn't)
 
