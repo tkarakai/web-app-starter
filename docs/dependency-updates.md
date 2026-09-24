@@ -69,8 +69,8 @@ Defined in `renovate.json` → `packageRules`:
 
 Renovate and coding agents both merge to `main`, and `main` requires PRs to be up to date, so
 every merge from one side leaves the other side's PRs behind. Instead of running Renovate
-constantly, pause feature merges and drain the dependency queue in one supervised window:
-`/renovate-window` (`.claude/commands/renovate-window.md`). It dispatches Renovate, gets each
+constantly, pause feature merges and drain the dependency queue in one supervised window with the `renovate-window` skill
+(`.agents/skills/renovate-window/SKILL.md`, usable by any agent; `/renovate-window` in Claude Code). It dispatches Renovate, gets each
 automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, and stops for a
 human on majors and lockfile maintenance. The Monday/Thursday cron stays as a safety net that keeps
 the dashboard current. Security PRs (`security` label) are not deferred to a window.
@@ -83,7 +83,7 @@ the dashboard current. Security PRs (`security` label) are not deferred to a win
 | Green, armed, up to date | GitHub merges it; nothing to do. |
 | Conflicting (`DIRTY`) | Renovate rebases its own branches on the next run. |
 | Red, flaky | Re-run the failed jobs. |
-| Red, needs code changes | Do the migration on your own branch (e.g. `deps/<name>`), then close the bot PR with a link. Do not push to `renovate/*`. |
+| Red, needs code changes | Migrate per [`dependency-migrations.md`](dependency-migrations.md) on a `deps/<name>` branch, then close the bot PR with a link. Do not push to `renovate/*`. |
 | Red, cannot work yet | Add a `HOLD:` rule with the evidence; Renovate autocloses the PR on its next run. |
 | *PR Edited (Blocked)* on the dashboard | Human commits exist; do not tick its checkbox (it discards them). Close or finish the PR by hand. |
 

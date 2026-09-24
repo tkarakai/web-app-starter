@@ -206,7 +206,8 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
 | Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 and 6 done, start at phase 5** |
-| Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md`; drain the queue with `/renovate-window` |
+| Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md`; drain the queue with the `renovate-window` skill (`.agents/skills/`) |
+| Migrating a dependency major, or changing the Node/Bun runtime baseline | `docs/dependency-migrations.md`; `bun run check:runtime-baseline` |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
 | Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.ts` |
 | Working on starter package upgrades or demo ownership | `docs/starter-upgrades.md`; run `check:starter-ownership`, `test:starter-upgrade` and `test:starter-rehearsal` via `bun run`. Do not hand-edit consumed packages or claim unsupported vendoring. |
