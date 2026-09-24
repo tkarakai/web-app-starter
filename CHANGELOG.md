@@ -18,6 +18,10 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
+- Admin → Configure → Integrations shows live provider status instead of "Not yet implemented":
+  Resend reports connected / not connected from `RESEND_API_KEY` and `EMAIL_FROM`; providers with
+  no adapter yet (Mailgun, Postmark, Twilio, Sentry, Datadog, New Relic, Grafana) are labelled
+  "Not available" with the variables they would need. Backend: `integrations.getStatus` (admin only).
 - Runtime baseline: Node 24 (Active LTS) is declared in `.node-version` and `engines.node: "24.x"`,
   with `@types/node` 24 in every workspace. `bun run check:runtime-baseline` (CI) keeps Node and
   Bun versions consistent. Process: `docs/dependency-migrations.md`.

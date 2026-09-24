@@ -1,4 +1,4 @@
-import { IntegrationProviderCard } from "@/components/configure/integration-provider-card";
+import { IntegrationsDashboard } from "@/components/configure/integrations-dashboard";
 
 export default function IntegrationsPage() {
   return (
@@ -10,32 +10,7 @@ export default function IntegrationsPage() {
         </p>
       </div>
 
-      <div className="max-w-2xl space-y-6">
-        <IntegrationProviderCard
-          title="Email Provider"
-          description="Choose the provider used for transactional and authentication emails."
-          tabs={[
-            { value: "resend", label: "Resend" },
-            { value: "mailgun", label: "Mailgun" },
-            { value: "postmark", label: "Postmark" },
-          ]}
-        />
-        <IntegrationProviderCard
-          title="SMS Provider"
-          description="Choose the provider used for SMS-based messaging."
-          tabs={[{ value: "twilio", label: "Twilio" }]}
-        />
-        <IntegrationProviderCard
-          title="Observability"
-          description="Configure error monitoring, telemetry, and logging providers."
-          tabs={[
-            { value: "sentry", label: "Sentry" },
-            { value: "datadog", label: "Datadog" },
-            { value: "new-relic", label: "New Relic" },
-            { value: "grafana", label: "Grafana" },
-          ]}
-        />
-      </div>
+      <IntegrationsDashboard />
     </div>
   );
 }
