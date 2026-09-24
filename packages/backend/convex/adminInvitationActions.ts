@@ -70,13 +70,14 @@ export const generateTokenAndSendEmail = internalAction({
     const safeUrl = escapeHtml(onboardingUrl);
     const safeExpiry = escapeHtml(String(expiryDays));
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: emailFrom,
       to: args.email,
       subject: "You've been invited as an administrator",
       html: buildAdminInviteHtml(safeUrl, safeExpiry),
       text: buildAdminInviteText(onboardingUrl, String(expiryDays)),
     });
+    if (error) throw new Error(error.message);
   },
 });
 
