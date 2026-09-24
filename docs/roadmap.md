@@ -52,15 +52,16 @@ Status as of 2026-09-15.
 
 ### Distributing the starter to business apps
 
-Business projects currently clone and diverge, so security and feature work here
-never reaches them. A tiered proposal — versioned dependencies for platform code,
-a component registry for UI, scaffold-once for app shells — is written up in
-[`starter-versioning-strategy.md`](./starter-versioning-strategy.md). No decision
-taken yet.
+Business projects clone and diverge; the merge-by-tag workflow now lets them adopt
+starter fixes through reviewed upgrades. A proposal that matches the update method to the kind of code —
+versioned packages for platform code, a component registry for editable UI, and
+copy-once app shells — is written up in
+[`starter-versioning-strategy.md`](./starter-versioning-strategy.md). Phase 0 is done;
+no decision has been taken on the later phases.
 
-- [ ] Decide on Phase 0 (semver, tags, `UPGRADING.md`, upstream-remote workflow).
-      Cheap, needs no refactor, and is strictly better than today.
-- [ ] Phase 1 seam work, valuable under any propagation model:
+- [x] Phase 0 (semver, tags, `UPGRADING.md`, upstream-remote workflow).
+- [ ] Phase 1: separate the files that both the starter and every app edit. Useful
+      under any update method:
   - [ ] Brand config — `Web App Starter` is a string literal in 29 files
         (including all 15 locale files); every business app edits all 29 on day one.
   - [ ] Split `packages/backend/convex/schema.ts` into platform and app tables,

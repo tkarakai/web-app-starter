@@ -6,35 +6,25 @@ inputs:
     description: "Bun version to install"
     default: "1.3.6"
   node-version:
-    description: "Node.js version"
-    default: "20"
+    description: "Node.js version (project TypeScript scripts need 22.6+)"
+    default: "24"
 
 runs:
   using: "composite"
   steps:
+    - name: Find cached Node (act)
+      id: node-cache
+      if: ${{ env.ACT }}
+      shell: bash
+      env:
+        NODE_VERSION: ${{ inputs.node-version }}
+      run: bash "${{ github.action_path }}/find-node.sh"
+
     - name: Setup Node
-      if: ${{ !env.ACT }}
+      if: ${{ steps.node-cache.outputs.found != 'true' }}
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: ${{ inputs.node-version }}
-
-    # In act, parallel jobs race on cloning actions/setup-node to the host cache,
-    # causing intermittent failures. Use the toolcache volume directly instead.
-    - name: Setup Node (act)
-      if: ${{ env.ACT }}
-      shell: bash
-      run: |
-        NODE_DIR=$(find /opt/act-toolcache/node/${{ inputs.node-version }}* -maxdepth 0 -type d 2>/dev/null | sort -V | tail -1)
-        if [ -n "$NODE_DIR" ] && [ -x "$NODE_DIR/arm64/bin/node" ]; then
-          echo "Node found at $NODE_DIR/arm64/bin/node ($(${NODE_DIR}/arm64/bin/node --version))"
-          echo "$NODE_DIR/arm64/bin" >> $GITHUB_PATH
-        elif [ -n "$NODE_DIR" ] && [ -x "$NODE_DIR/x64/bin/node" ]; then
-          echo "Node found at $NODE_DIR/x64/bin/node ($(${NODE_DIR}/x64/bin/node --version))"
-          echo "$NODE_DIR/x64/bin" >> $GITHUB_PATH
-        else
-          echo "::warning::Node ${{ inputs.node-version }} not found in toolcache, using actions/setup-node"
-          echo "Available: $(ls /opt/act-toolcache/node/ 2>/dev/null || echo 'none')"
-        fi
 
     - name: Setup Bun
       if: ${{ !env.ACT }}

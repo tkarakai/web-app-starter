@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "package": "@repo/starter-sidebar-policy",
+  "ownership": {
+    "src/": "application",
+    "starter-packages/sidebar-policy/": "consumed",
+    "public/": "application",
+    "qa/": "application",
+    "README.md": "application",
+    "package.json": "application",
+    "next.config.ts": "application",
+    "postcss.config.mjs": "application",
+    "tsconfig.json": "application",
+    "vitest.config.ts": "application",
+    "starter-upgrade.json": "application",
+    "starter-upgrade.lock.json": "generated",
+    "node_modules/": "generated",
+    ".next/": "generated",
+    "out/": "generated",
+    ".turbo/": "generated",
+    ".starter-upgrade/": "generated",
+    "next-env.d.ts": "generated",
+    "tsconfig.tsbuildinfo": "generated"
+  }
+}

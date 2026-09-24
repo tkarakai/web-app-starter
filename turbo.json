@@ -111,6 +111,9 @@
         "APP_ENVIRONMENT"
       ]
     },
+    "@repo/starter-sidebar-policy#build": {
+      "outputs": ["dist/**"]
+    },
     "@repo/landing#build": {
       "dependsOn": [
         "^build"

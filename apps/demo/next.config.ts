@@ -6,6 +6,8 @@ const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Keep dev startup from adding unclassified files to the upgrade consumer.
+  agentRules: false,
   outputFileTracingRoot: monorepoRoot,
   turbopack: {
     root: monorepoRoot,

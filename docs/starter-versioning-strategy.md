@@ -1,29 +1,93 @@
-# Propagating starter updates to business apps
+# Delivering starter updates to business apps
 
-Status: proposal, 2026-09-18. **Phase 0 is implemented** — see `VERSIONING.md`,
-`UPGRADING.md`, `CHANGELOG.md` and `scripts/release.sh`. Phases 1–3 remain a
-proposal with no decision taken.
+Status, 2026-09-23: **Phase 0 is implemented** (`VERSIONING.md`, `UPGRADING.md`,
+`CHANGELOG.md`, `scripts/release.sh`), and one versioned package is upgraded end
+to end in the demo app. Phases 1–3 below are a proposal; no decision has been taken.
 
-## The problem
+The first part of this document describes what works today. The second part,
+[Long-term plan](#long-term-plan), explains the problem, what other starters do,
+and the proposed direction.
 
-Business projects clone this repo and start there. From the first commit they are
-disconnected: a security fix, an auth hardening, or a new capability landed here
-reaches them only if somebody notices and hand-ports it. As the number of
-downstream projects grows, that cost grows linearly and the projects drift apart
-in ways that make later porting harder still.
+## Current support
 
-The instinct is to treat this as a binary — freely-forked template (the shadcn
-way) versus versioned dependency (the framework way). That framing is what makes
-the question feel unanswerable, because both answers are wrong for *parts* of
-this repo and right for other parts.
+Most business apps receive starter changes by merging a reviewed git release tag.
+[`VERSIONING.md`](../VERSIONING.md), [`CHANGELOG.md`](../CHANGELOG.md) and
+[`UPGRADING.md`](../UPGRADING.md) define that process.
 
-This document argues for a third option: **stratify the repo by change profile
-and give each stratum its own propagation mechanism.**
+One package-based example is implemented: `@repo/starter-sidebar-policy`.
+The standalone demo consumes a versioned local package artifact. Its additional
+upgrade test starts with a historical package, reproduces a regression, upgrades
+and verifies the app without replacing its custom UI or business behavior.
+See [the executable contract](starter-upgrades.md).
 
-Jargon used below — *seam*, *fork in anger*, *vendoring*, *codemod*, *eject* and
-the rest — is defined in the [Glossary](#glossary) at the end.
+This is not registry publishing or repository-wide ownership isolation. No
+backend, schema, locale or operations migration is implied by the example.
 
-## What this repo actually is
+## Separate three responsibilities
+
+1. **Starter maintainers release an update.** They define versions, affected areas,
+   urgency, required actions and verification, then retain rehearsal evidence.
+2. **Application teams adopt it in an upgrade PR.** They preserve application-owned
+   code, carry out required actions and verify their own behavior.
+3. **Operations deploys the resulting application commit.** Operations can present
+   available releases, applications behind them, urgency and readiness. It must
+   not rewrite source or run hidden migrations during deployment.
+
+[UPGRADING.md](../UPGRADING.md#three-separate-responsibilities) explains the owner,
+inputs, outputs, boundaries and an end-to-end example for each responsibility.
+The operations implementation is separate and unchanged by this work.
+
+## Choose ownership by how code is maintained
+
+| Category | Intended update mechanism | Present status |
+|---|---|---|
+| Consumed starter package | Change a versioned dependency; use public exports rather than edit its files | Demonstrated and checked for the sidebar policy only, using immutable local artifacts |
+| Application-owned | Application team owns its source; starter notes or reviewed transformations can help adopt API changes | Demo business rules, UI, branding, configuration and tests |
+| Generated | Recreate with the owning build/code-generation tool | Explicit fixed demo output list; not a way to hide source |
+| Intentionally vendored starter code | Copy selected components with recorded origin, then compare and review later updates | Unsupported pending an explicit registry/copy contract; no current demo path claims this category |
+
+A copy with historical starter/shadcn origins is not automatically supported
+vendoring. The demo's editable visual components are application-owned. A managed
+package cannot be made editable by silently relabeling it; that would discard its
+update guarantees. [Transition preconditions](starter-upgrades.md#copying-a-package-into-editable-code)
+explain what a future supported copy process must record and test.
+
+## Existing areas that still mix ownership
+
+- `packages/backend/convex/schema.ts` contains both shared tables and the example
+  `projects`, `tasks` and `uploads` tables. It is not a replaceable package boundary
+  for applications adding their own domain data.
+- `packages/i18n/messages/` combines shared and business/example content. Updating
+  shared text must preserve application keys and translations.
+- `packages/design-system` and `packages/design-patterns` contain components that
+  applications may need to customize. They are candidates for an editable-copy
+  contract, not proof that such a contract already exists.
+- Branding and infrastructure configuration still require application-specific
+  merge review outside the demo's isolated policy upgrade.
+
+`scripts/starter-upgrade/ownership.json` identifies these legacy mixed areas. The
+checker verifies the new package and demo; it deliberately does not certify the
+rest based on directory names alone. Other workspace packages remain outside the
+implemented upgrade contract too.
+
+## Long-term plan
+
+### The problem
+
+Business projects clone this repo and then diverge. Before the
+[current upgrade process](#current-support), a security fix, auth hardening, or
+new feature reached them only if somebody noticed and copied it over by hand.
+Merge-by-tag now supports reviewed updates, but each application still has to
+reconcile starter changes with its customizations. As the number of business
+projects grows, so does that maintenance work.
+
+The usual framing is a choice between two options: a template you copy and own
+(the shadcn approach) or a versioned dependency you install (the framework
+approach). Both are wrong for *some* parts of this repo and right for others. This
+plan proposes a third option: **group the code by how it changes, and give each
+group its own update method.**
+
+### What this repo contains
 
 Measured on `main` at `4b8c546`:
 
@@ -39,351 +103,327 @@ Measured on `main` at `4b8c546`:
 | `apps/demo`, `landing`, `landing-static` | 82 | 4,585 |
 | `packages/auth`, `i18n`, `edge-rate-limit`, `design-patterns` | 38 | 848 |
 
-~64,000 lines across 6 apps and 6 packages. For comparison, the SaaS kits that
-get away with pure fork-and-merge (supastarter, Makerkit, fullstackhero) ship a
-fraction of this and concentrate it in a single app. **The scale is the reason
-the standard answer doesn't fit us**, and also the reason a better answer pays
-for itself here when it wouldn't for them.
+That is about 64,000 lines across 6 apps and 6 packages. The SaaS starters that
+rely only on "fork and merge" (supastarter, Makerkit, fullstackhero) are much
+smaller and mostly a single app. **Our size is why their approach is not enough
+for us**, and also why a better approach is worth the effort here.
 
-Three structural facts decide what is possible:
+Three facts decide what is possible:
 
-**1. The demo domain is thin and already isolated.** Only six files reference
+**1. The example domain is small and already separate.** Only six files use
 `api.projects` / `api.tasks`, all under `apps/web/src/components/projects/` and
-`dashboard-client.tsx`. The `projects` / `tasks` / `uploads` tables are three of
-eleven in `schema.ts`. Everything else — `userProfiles`, `adminEmails`,
-`appSettings`, `waitlistEntries`, `invitationTokens`, `adminInvitations`,
-`announcements`, `auditTrail` — is platform, not example. `auditTrailConstants.ts`
-has no references to the demo tables at all.
+`dashboard-client.tsx`. The `projects`, `tasks` and `uploads` tables are three of
+eleven in `schema.ts`. The rest (`userProfiles`, `adminEmails`, `appSettings`,
+`waitlistEntries`, `invitationTokens`, `adminInvitations`, `announcements`,
+`auditTrail`) is shared platform code. So a business app throws away very little
+and wants to keep receiving about 90% of the repo.
 
-The thing a business app throws away is small. The thing it wants to keep
-receiving is ~90% of the repo. That asymmetry is the whole case for investing in
-propagation.
+**2. We already use a Convex Component.** `packages/backend/convex/convex.config.ts`
+calls `app.use(betterAuth)`, and `betterAuth/` has its own `schema.ts` and
+`_generated/`. A Convex Component owns its tables and functions, Convex enforces
+that separation, and upgrading a component does not rewrite the host app's tables.
+The backend is normally the hardest part to distribute, and the mechanism for it is
+already in use.
 
-**2. We already ship a Convex Component.** `packages/backend/convex/convex.config.ts`
-does `app.use(betterAuth)`, and `betterAuth/` carries its own `schema.ts` and
-`_generated/`. Convex Components are the platform's own modularity primitive:
-a component owns its tables and function namespace, the isolation is enforced by
-Convex rather than by convention, and upgrading a component's version does not
-silently rewrite the host app's tables. This is the unlock. The backend is
-normally the hardest layer to distribute, and we already have the mechanism in
-the building.
+**3. Three shared files make every upgrade conflict.** Each of these is edited by
+both the starter and every business app, so each one causes merge conflicts on
+every upgrade:
 
-**3. The seams that would make this cheap are currently welded shut.** Three
-specific defects, each a guaranteed merge conflict on every future upgrade:
+- **The product name is typed out in 29 files**: `apps/admin` sign-in,
+  forgot-password, reset-password, onboarding, `layout.tsx`, `admin-sidebar.tsx`,
+  landing footers, `packages/backend/convex/auth.ts`, e2e specs, and all 15 locale
+  files. Every business app changes all 29 on day one.
+- **One `schema.ts` holds both platform and app tables** (179 lines, 11 tables). A
+  business app adding tables edits the same file we edit. The file already combines
+  table groups with object spread (`...rateLimitTables`, `migrationsTable`), so
+  splitting it is straightforward; we just don't do it for our own tables yet.
+- **i18n is 7,330 lines across 15 locales with no separation.** App text and
+  platform text are in the same JSON objects, so a key added by the app conflicts
+  with a key added by the starter, in all 15 files at once.
 
-- **Branding is a string literal in 29 files** — `apps/admin` sign-in, forgot-password,
-  reset-password, onboarding, `layout.tsx`, `admin-sidebar.tsx`, landing footers,
-  `packages/backend/convex/auth.ts`, e2e specs, and all 15 locale files. Every
-  business app edits all 29 on day one, so all 29 conflict forever.
-- **One `schema.ts` holds platform and app tables together** (179 lines, 11 tables).
-  A business app adding its own tables edits the same file we edit. Note that the
-  file *already* composes via spread (`...rateLimitTables`, `migrationsTable`), so
-  the seam is available — it just isn't used for our own tables.
-- **i18n is 7,330 lines across 15 locales in a flat shared namespace.** App strings
-  and platform strings land in the same JSON objects. Adding a translation key
-  downstream conflicts with any upstream key addition, in all 15 files at once.
+None of these are hard to fix. They should be fixed before any other update
+method, because an update method that still produces these conflicts does not
+solve the problem.
 
-None of these are hard to fix. All three must be fixed before any propagation
-mechanism works, because a mechanism that delivers conflicts isn't propagation.
+### How other starters handle updates
 
-## How the industry solves it
-
-**Fork + upstream remote** is the near-universal answer among SaaS kits, and it's
-universally acknowledged to degrade.
+**Adding the starter as a git remote and merging it** is what almost every SaaS
+starter recommends, and all of them say it gets harder over time.
 
 - *supastarter*: `git remote add upstream …` then `git pull upstream main
-  --allow-unrelated-histories --rebase`. Their docs state plainly that "with every
-  change you make to your application, it will become harder to update your code
-  base, because you are essentially rebasing your code on top of the latest
-  supastarter code."
-- *Makerkit*: same upstream-remote workflow, but leans on a Turborepo layout —
-  `packages/features`, `packages/ui` — so downstream work happens in app code
-  while core packages stay untouched. Structure is doing the real work, not git.
-- *TurboStarter*: closest structural peer to us — Turborepo monorepo, shared
-  `auth` / `billing` / `db` / `api` packages. Same upstream-remote workflow, but
-  **explicitly advises merge over rebase** ("when prompted the first time, please
-  opt for merging instead of rebasing"), which directly contradicts supastarter.
-  Names exactly one conflict hotspot, the lockfile, with the right remedy — accept
-  either side, never hand-edit, regenerate with `pnpm i` — and prescribes `lint` +
-  `typecheck` as the post-merge health check. Notably it gives *no* guidance on
-  where downstream should put its own code, which is the gap Makerkit and
-  fullstackhero fill.
-- *fullstackhero*: most sophisticated of these. Tagged releases merged by tag
-  (`git merge v10.1.0`), a changelog with explicit action-required items, and
-  architectural rules: create your own `Modules.{YourName}` that upstream never
-  touches, don't edit high-traffic shared `BuildingBlocks`, use extension points
-  rather than editing shipped modules. Their framing is the right one — *"taking
-  upstream fixes is a git workflow, not a package bump"* — precisely because they
-  distribute source you own rather than packages.
+  --allow-unrelated-histories --rebase`. Their docs say that "with every change you
+  make to your application, it will become harder to update your code base."
+- *Makerkit*: the same git workflow, plus a Turborepo layout (`packages/features`,
+  `packages/ui`) so app work happens in app code and the core packages stay
+  untouched. The folder structure does most of the work, not git.
+- *TurboStarter*: the closest match to us (Turborepo, shared `auth` / `billing` /
+  `db` / `api` packages). It **recommends merge over rebase**, unlike supastarter.
+  It names the lockfile as the one known conflict, with the right fix (take either
+  side, never edit it by hand, reinstall), and runs `lint` + `typecheck` after the
+  merge. It does not say where business code should live.
+- *fullstackhero*: the most complete. Releases are merged by tag
+  (`git merge v10.1.0`), the changelog lists required actions, and there are clear
+  rules: put your code in your own `Modules.{YourName}`, don't edit the shared
+  `BuildingBlocks`, and use extension points instead of editing shipped modules.
+  Their summary fits us: *"taking upstream fixes is a git workflow, not a package
+  bump"*, because they ship source you own rather than packages.
 
-**"Lifetime updates" as a licensing promise, not a mechanism.** *ShipFast* sells
-lifetime updates, but the delivery mechanism is continued access to the repo —
-there is no merge tooling, no versioning, no upgrade guide. It is the pure
-fork-and-diverge endpoint, and it works for its audience: solo founders shipping
-one small app quickly, where the boilerplate is scaffolding you outgrow rather
-than a foundation you keep standing on. It is the clearest example of a model we
-should *not* copy, because our situation inverts every one of its assumptions.
+**"Lifetime updates" as a license term.** *ShipFast* sells lifetime updates, but
+that only means continued access to the repo: no merge tooling, no versions, no
+upgrade guide. It suits solo founders building one small app, where the starter is
+a starting point you leave behind. Our situation is the opposite on every point.
 
-**The official Next.js SaaS Starter argues our case rather than against it.**
-Vercel's starter (Next + Postgres + Stripe + shadcn) is deliberately minimal and
-has no update story at all — it is a demonstration of current patterns, not a
-maintained platform. That is not an oversight. Vercel's answer to "how do
-framework updates reach the thousands of apps scaffolded from our template" is
-`@next/codemod` — the *dependency* layer, with codemods for breaking changes.
-The template is disposable precisely because everything durable lives in a
-versioned package. This is the tiering proposed below, already validated at the
-largest scale in this ecosystem: nobody tries to merge upstream into a
-`create-next-app` project, and nobody needs to.
+**The official Next.js SaaS Starter** (Next + Postgres + Stripe + shadcn) has no
+update process at all. It shows current patterns and is meant to be thrown away.
+Vercel delivers framework updates through versioned packages and `@next/codemod`
+instead. Everything that must stay up to date lives in a package, so nobody needs
+to merge the template. That is the same split proposed below.
 
-**Registry / vendoring** is shadcn's answer, and it has evolved well past
-copy-paste. shadcn CLI 3.0 added **namespaced registries**: `components.json` maps
-`"@acme": "https://acme.com/r/{name}.json"` with optional auth headers and private
-hosting, and the system is deliberately decentralized — any server returning JSON
-over HTTP is a registry. So the "shadcn way" now explicitly supports a company
-serving its own components privately. Worth noting for the user's own question:
-shadcn's answer to *"how do I run this at organization scale"* was to build a
-distribution mechanism, not to tell people to keep copy-pasting.
+**Copying components from a registry** is shadcn's approach. shadcn CLI 3.0 added
+**namespaced registries**: `components.json` maps `"@acme": "https://acme.com/r/{name}.json"`,
+with optional auth headers and private hosting. Any server that returns the right
+JSON is a registry, so a company can serve its own components privately.
 
-**Diff-based upgrade** is React Native's answer via the Upgrade Helper: generate a
-pristine project at version A and version B, diff them, and publish the diff with
-per-file commentary and progress tracking. It doesn't merge anything — it tells a
-human exactly what changed in the un-mergeable parts. This is the only good answer
-for scaffolded code that every project rewrites.
+**Publishing a diff between versions** is React Native's approach (the Upgrade
+Helper): generate a clean project at version A and version B, diff them, and
+publish the diff with notes per file. It merges nothing; it shows a person exactly
+what changed in files that every project rewrites.
 
-**Codemods** are the framework answer. Angular's `ng update` runs migration
-schematics that rewrite code via the TypeScript AST on version bump; Rails'
-`app:update` regenerates config and shows you the diff interactively. The lesson:
-breaking changes are acceptable if you ship the migration *as code*.
+**Codemods** are the framework approach. Angular's `ng update` runs migrations that
+rewrite code through the TypeScript AST; Rails' `app:update` regenerates config and
+shows the diff. Breaking changes are acceptable when the migration ships as code.
 
-No one does all four. The kits that do only upstream-merge do so because they're
-small. We are not small, which is exactly why we should borrow from the framework
-end of the spectrum rather than the boilerplate end.
+No starter does all four. The ones that only merge are small. We are not, so we
+should borrow from the framework approaches as well.
 
-**On merge vs. rebase**, where supastarter and TurboStarter disagree: take
-TurboStarter's side. Rebasing replays every downstream commit on top of new
-upstream code, so a project with 300 commits of its own can hit the same conflict
-300 times, and it rewrites history that downstream teams have already pushed and
-branched from. A merge resolves each conflict once and leaves everyone's
-checkouts valid. fullstackhero merges by tag for the same reason.
+**Merge or rebase?** Merge. Rebasing replays every business-app commit on top of
+the new starter code, so an app with 300 commits of its own can hit the same
+conflict many times, and it rewrites history that the team has already pushed. A
+merge resolves each conflict once and keeps everyone's checkouts valid.
 
-## Proposal: three tiers, three mechanisms
+### Proposal: match the update method to the kind of code
 
-Classify every part of the repo on two axes — how often *we* change it, and how
-often a *business app* needs to change it. Those two answers pick the mechanism.
+Ask two questions of each part of the repo: how often do *we* change it, and how
+often does a *business app* need to change it? The answers pick the update method.
+These are the same ownership categories used in
+[Choose ownership by how code is maintained](#choose-ownership-by-how-code-is-maintained).
 
-### Tier 1 — Consumed. Versioned dependencies, never edited downstream.
+#### Consumed starter packages: versioned dependencies, never edited by the app
 
-Business apps take these as semver dependencies and never open the files.
-Renovate already runs in this repo; downstream it becomes the delivery channel.
-Security fixes propagate as a PR that CI validates, with no merge conflict
-possible because nobody downstream has touched the code.
+Business apps install these as versioned dependencies and never edit the files.
+Renovate already runs in this repo; in a business app it opens the upgrade PRs.
+A security fix arrives as a PR that CI checks, and it cannot conflict because the
+app never changed the code.
 
-Candidates, all already app-agnostic:
+Candidates, all already independent of any app:
 
-- `@repo/edge-rate-limit` (157 lines, zero app coupling — the easiest first win)
-- `@repo/auth` (264 lines, pure wiring)
-- `@repo/i18n` runtime (config, request, navigation — not the message files)
-- Backend platform as **Convex Components**: `auditTrail*`, `securityPolicies`,
+- `@repo/edge-rate-limit` (157 lines, no app dependencies; the easiest first step)
+- `@repo/auth` (264 lines, configuration only)
+- `@repo/i18n` runtime (config, request, navigation; not the message files)
+- Backend platform code as **Convex Components**: `auditTrail*`, `securityPolicies`,
   `rateLimits`, `tokenHash`, `passwordStrength`, `parseUserAgent`,
   `adminInvitations`, `waitlist*`, `announcements`, `appSettings`
 - CI as **reusable workflows**. GitHub Actions supports
-  `uses: org/web-app-starter/.github/workflows/ci-shared.yml@v2` natively. 3,037
-  lines of workflow stop being copied entirely — downstream keeps a ten-line
-  caller. This is the highest value-per-hour item in the whole proposal.
-- `scripts/` (4,016 lines) as a published CLI — `starter dev`, `starter ci`
+  `uses: org/web-app-starter/.github/workflows/ci-shared.yml@v2`. The 3,037 lines of
+  workflow would no longer be copied; a business app keeps a ten-line caller. This
+  gives the most value for the least work.
+- `scripts/` (4,016 lines) as a published CLI: `starter dev`, `starter ci`
 
-This tier is where the security argument is won. A CVE fix in rate limiting or
-token hashing becomes a version bump that Renovate opens automatically in every
-business app, rather than an email asking people to please port a patch.
+This group matters most for security: a fix in rate limiting or token hashing
+becomes a version bump that Renovate proposes in every business app.
 
-### Tier 2 — Vendored. Registry pull, downstream owns the files.
+`@repo/starter-sidebar-policy` is the first package handled this way; see
+[Current support](#current-support).
+
+#### Editable copies: copied from a registry, then owned by the app
 
 The 42 design-system components and `@repo/design-patterns`. Business apps
-*must* restyle these; forcing them into a dependency guarantees a fork in anger.
-But copy-once-and-forget loses accessibility and behaviour fixes.
+*must* restyle these. If they were locked in a dependency, teams would copy the
+source anyway and stop taking updates. But copying once and never updating loses
+accessibility and behavior fixes.
 
-Serve them from a private shadcn-compatible registry under a `@starter`
-namespace. Downstream runs `shadcn add @starter/sidebar` to take a component and
-`starter diff sidebar` to see what changed upstream since they took it. Per
-component, per decision, no repo-wide merge. This is the shadcn model applied
-where it genuinely fits — and notably it's the model shadcn themselves built for
-exactly this organizational situation.
+Serve them from a private shadcn-compatible registry under a `@starter` namespace.
+A business app runs `shadcn add @starter/sidebar` to take a component and
+`starter diff sidebar` to see what changed since. The decision is made per
+component, with no repo-wide merge. This category is not supported yet; see
+[Design editable component copying](#design-editable-component-copying).
 
-### Tier 3 — Forked. Scaffolded once, never synced.
+#### Application-owned starting code: copied once, never synced
 
-App shells (`apps/web` dashboard, `apps/admin` pages, landing content), the demo
-domain (`projects`/`tasks`/`uploads`), and copy. Every business app rewrites
-these. Pretending otherwise produces conflicts in files nobody wants merged.
+App shells (`apps/web` dashboard, `apps/admin` pages, landing content), the example
+domain (`projects` / `tasks` / `uploads`), and text. Every business app rewrites
+these, so merging them only creates conflicts nobody wants.
 
-Propagate by *information*, not by merge:
+Share changes as information instead of merges:
 
-- A generated diff site, rn-diff-purge style: scaffold a pristine app at v1.4 and
-  v1.5, publish the diff with commentary. Downstream reads it and decides.
+- A published diff between versions, as React Native does: create a clean app at
+  v1.4 and v1.5 and publish the diff with notes. The team reads it and decides.
 - **Codemods shipped with breaking releases.** When an auth interface changes,
-  ship the transform, don't just document it.
-- `UPGRADING.md` with an action-required section per release, in fullstackhero's
-  style.
+  ship the code that updates callers, not just a description.
+- `UPGRADING.md` and a changelog with an **Action required** section per release,
+  as fullstackhero does.
 
-### Tier 0 — The rail everything runs on
+#### Shared release process for all three
 
-- **Semver the repo.** Today every package is `private`, `version: 0.0.0`. Tag
-  releases, keep a real CHANGELOG, define an LTS window and a breaking-change
-  budget.
-- **`starter.config.ts`** in each business app, recording which version of each
-  tier it's on — so `starter doctor` can report drift and CI can warn when a
-  project falls more than N minors behind on a security-bearing package.
-- **`create-business-app` CLI** that scaffolds Tier 3, wires Tier 1 deps, and sets
-  the brand config — replacing "clone and start deleting."
-- **A canary app in this repo** that consumes the tiers the way a business app
-  does, so upstream CI catches downstream breakage before release.
-- **An eject path for every Tier 1 package.** Teams that can't eject will fork in
-  anger and you lose them permanently. Making ejection legitimate and documented
-  keeps far more projects on the rail than forbidding it would.
+- **Version the repo.** Tag releases, keep a real changelog, define how long an
+  older major gets security fixes and how many majors we allow per year. Done in
+  Phase 0; see `VERSIONING.md`.
+- **A per-app record of starter versions**, so a `starter doctor` command can
+  report how far behind an app is and CI can warn when a security-relevant package
+  falls too far behind. The demo's `starter-upgrade.json` and lock file are a first
+  version of this for one package.
+- **A `create-business-app` CLI** that creates the app-owned code, adds the
+  package dependencies and sets the product name, instead of "clone and start
+  deleting."
+- **An app in this repo that uses the starter the way a business app does**, so
+  starter CI catches business-app breakage before a release. `apps/demo` now does
+  this for the sidebar policy package, in addition to being the demo app.
+- **A supported way to stop using a package** ("eject") for every consumed
+  package. Teams that cannot leave a package will copy its source and stop taking
+  any updates. A documented exit keeps them on the other update methods.
 
-## Sequencing
+### Order of work
 
-The tiers are the destination, not the first move. Ordered by value per unit of
-effort:
+These groups are the goal, not the first step. In order of value for effort:
 
-**Phase 0 — works today, no refactor.** Tag and semver the repo, write
-`UPGRADING.md` and a CHANGELOG with action-required sections, document the
-`upstream` remote workflow, and tell existing business apps to add the remote now.
-This is the supastarter/Makerkit/TurboStarter/fullstackhero baseline. It is not
-the end state, but it's strictly better than today and costs days, not weeks. Do
-it first — everything after it is an improvement on a working process rather than
-a prerequisite.
+**Phase 0: works today, no refactor. Done.** Version and tag the repo, write
+`UPGRADING.md` and a changelog with **Action required** sections, document the git
+remote workflow, and ask existing business apps to add the remote. This matches
+supastarter, Makerkit, TurboStarter and fullstackhero, costs days rather than
+weeks, and is better than no process.
 
-Borrow the specifics rather than inventing them. Merge by tag, never rebase (see
-above). Name `bun.lock` as a known conflict hotspot with "accept either side,
-never hand-edit, re-run `bun install`" as the remedy, exactly as TurboStarter
-does. Prescribe `bun run ci:quick` as the post-merge health check — we already
-have it, which is more than most kits can say. Write the action-required notes for
-coding agents as well as humans, since `CLAUDE.md` and `.claude/commands/` mean
-downstream agents will be doing a share of the merging.
+We copied their specifics rather than inventing new ones: merge by tag, never
+rebase; treat `bun.lock` as a known conflict (take either side, never edit it by
+hand, run `bun install`); run `bun run ci:quick` after the merge. The
+**Action required** notes are written for coding agents as well as people, because
+`CLAUDE.md` and `.claude/commands/` mean agents do some of the merging.
 
-**Phase 1 — cut the seams.** The three defects above, in this order:
+**Phase 1: separate the shared files.** The three problems above, in this order:
 
-1. Brand config — one `starter.config.ts`, all 29 literals read from it. Unblocks
-   scaffolding and removes the single largest permanent conflict surface.
-2. Schema composition — split `schema.ts` into `platformTables` and `appTables`,
-   using the spread pattern the file already demonstrates. Prerequisite for the
-   Convex Component work.
-3. i18n namespacing — reserve a `starter.*` key namespace for platform strings,
-   leave the rest to the app; split message files along that line.
+1. **Product name in one place.** One `starter.config.ts`; all 29 files read the
+   name from it. This removes the largest source of conflicts.
+2. **Split the schema.** Divide `schema.ts` into `platformTables` and `appTables`
+   using the spread pattern the file already uses. Needed before the Convex
+   Component work.
+3. **Separate i18n keys.** Reserve a `starter.*` key prefix for platform text,
+   leave the rest to the app, and split the message files along that line.
 
-Also in this phase: mark ownership explicitly. fullstackhero's "don't edit
-BuildingBlocks, create your own modules" rule works, and it's cheap to state.
-`CLAUDE.md` is the natural place, which also means coding agents downstream
-respect the boundary.
+Each change needs a customized app and regression tests that prove the app's data
+and edits survive. The current schema and locale structure cannot prove that yet.
 
-**Phase 2 — Tier 1 extraction.** Reusable CI workflows first (biggest win,
-lowest risk, no code moves). Then `@repo/edge-rate-limit` to GitHub Packages as a
-proof of the publishing pipeline. Then the backend platform as Convex Components,
-which is the large one and wants the schema split done first.
+Also in this phase: write down who owns what. fullstackhero's rule ("don't edit the
+shared modules, create your own") is cheap to state. `AGENTS.md` is the natural
+place, so coding agents in business apps follow it too.
+[`docs/starter-upgrades.md`](starter-upgrades.md) now does this for the demo.
 
-**Phase 3 — Tier 2 registry and Tier 3 tooling.** The component registry, the
-diff site, the codemod harness, `starter doctor`.
+**Phase 2: publish consumed packages.** Reusable CI workflows first (largest gain,
+lowest risk, no code moves). Then `@repo/edge-rate-limit` to GitHub Packages to
+prove the publishing process. Then the backend platform as Convex Components,
+which is the biggest piece and needs the schema split first.
 
-Phases 0 and 1 deliver most of the risk reduction. Phases 2 and 3 are what make
-it scale past a handful of business apps, and can wait until there are enough
-downstream projects to justify them.
+For each candidate package, define its public exports, dependencies, version
+policy, supported starting versions and required upgrade tests before adding it to
+the upgrade commands. Decide registry access and publishing separately from the
+local package test. Use Convex Components or reusable workflows only where they
+really separate the code, not just rename a directory.
 
-## Honest trade-offs
+**Phase 3: editable-copy registry and tooling for app-owned code.** The component
+registry, the published diff, the codemod tooling and `starter doctor`.
 
-**This adds maintenance burden here to remove it downstream.** Publishing
-packages means release discipline, deprecation policy, and supporting more than
-one version at a time. That's a real ongoing cost and it lands on this team. It's
-only worth paying if there will be several business apps; for one or two, Phase 0
-alone is the right stopping point.
+Phases 0 and 1 remove most of the risk. Phases 2 and 3 are needed once there are
+more than a handful of business apps.
 
-**Versioned dependencies constrain business apps**, and some will find the
-constraint wrong for their case. That's what the eject path is for. Treat
-ejection as a supported outcome rather than a failure.
+#### Design editable component copying
 
-**Tier boundaries will be wrong at first** and will move. The brand-config and
-schema-split work is valuable regardless of where the boundaries finally land,
-which is another reason to do Phase 1 before Phase 2.
+Before any component is supported as an editable copy, specify: the registry/copy
+format, license and dependency contents, the origin version and hash, where the
+editable copy goes, the commands that compare it with newer versions, and who is
+responsible for security updates. Moving a component from a consumed package to an
+editable copy must be a reviewed change that removes the package dependency for
+that component, updates the ownership records and invalidates the old package
+verification results. Do not label anything as a supported editable copy before
+this works end to end.
 
-**The AI-agent angle is genuinely ours to exploit.** This repo already carries
-`CLAUDE.md` and `.claude/commands/`. Upgrade notes written for agents, and
-codemods shipped as skills, make Tier 3 propagation far cheaper than the
-human-reads-a-diff model the industry currently has. Worth treating as a
-first-class part of the design rather than a nice-to-have.
+#### Operations view of upgrade status
 
-## Recommendation
+Once the upgrade commands are stable, operations may read their output to show
+available releases, urgency, each app's version and whether it is ready to
+upgrade. Operations deploys the approved app commit through the existing staging
+and production process; it never combines source changes with deployment.
+Operator commands and approvals are outside this work.
 
-Adopt the three-tier model as the target architecture. Start with Phase 0 this
-quarter — it's cheap, it's strictly better than the status quo, and it buys time.
-Commit to Phase 1 next, because the three seam defects are pure debt: they cost us
-on every propagation attempt under *any* model, including the one we use today.
-Decide on Phase 2 once there are three or more business apps on the rail.
+### How to measure progress
 
-## Glossary
+For each additional package or copy process, require: a real customized app that
+uses it, an unchangeable historical starting version, a reproduced failure, a
+successful upgrade, proof that required actions ran, and tests that reject writes
+to files the upgrade must not touch. Passing a typecheck or resolving merge
+conflicts is not enough.
 
-Terms used above that are jargon rather than plain English.
+The demo meets these checks for the sidebar policy. Run:
 
-**Seam** — a place in the codebase deliberately designed so two parties can change
-things independently without editing the same file. A config value read from one
-place is a seam; the same string hardcoded in 29 files is not. "The seams are
-welded shut" means the split points exist conceptually but there is no mechanism
-to separate along them, so any change forces both parties into the same file.
+```bash
+bun run check:starter-ownership
+bun run test:starter-upgrade
+bun run test:starter-rehearsal
+```
 
-**Conflict surface** — the set of files that both upstream and downstream are
-likely to edit, and therefore the files that will produce merge conflicts. Our
-i18n message files are a large conflict surface: 15 files that upstream adds keys
-to and every business app also adds keys to.
+### Trade-offs
 
-**Fork in anger** — when a team hits a constraint in a shared dependency they
-can't work around and can't get changed fast enough, so they copy the source into
-their own repo and stop taking updates entirely. It's usually permanent and
-usually invisible until much later. The point of a documented **eject path** is
-that teams who need out take a supported exit instead, which keeps them reachable
-for the remaining tiers.
+**This moves work from business apps to this team.** Publishing packages means
+release discipline, a deprecation policy, and supporting more than one version at
+a time. That cost is only worth it if there are several business apps; for one or
+two, Phase 0 alone is the right place to stop.
 
-**Eject** — a supported way to stop consuming a managed package and take
-ownership of its source, without leaving the ecosystem. `create-react-app eject`
-is the familiar example.
+**Versioned dependencies limit business apps**, and some will find the limit wrong
+for their case. That is what the supported exit is for. Leaving a package is an
+accepted outcome, not a failure.
 
-**Vendoring** — copying a dependency's source code into your own repo so you own
-and can edit it, rather than installing it as a package. shadcn/ui is vendoring by
-design: `shadcn add button` writes the component into your tree and it's yours.
+**The group boundaries will be wrong at first** and will change. The product-name
+and schema work is useful wherever the boundaries end up, which is another reason
+to do Phase 1 before Phase 2.
 
-**Scaffold** — generate a project's starting files once from a template, with no
-ongoing link to the template. `create-next-app` scaffolds.
+**Coding agents make app-owned updates cheaper.** This repo already has
+`AGENTS.md` and `.claude/commands/`. Upgrade notes written for agents, and
+codemods shipped as agent commands, make it much cheaper to apply changes to code
+each app owns than a person reading a diff. Treat this as part of the design.
 
-**Upstream remote** — a second git remote in a downstream repo pointing at the
-original starter, so `git pull upstream main` can bring its changes in. The
-standard mechanism for every kit surveyed above.
+### Recommendation
 
-**Codemod** — a script that mechanically rewrites source code to migrate it
-across a breaking change, usually by parsing to an AST rather than regex. Angular
-ships these as migration schematics run by `ng update`; Next.js ships
-`@next/codemod`. The principle: if you break an API, ship the migration as code,
-not as a paragraph in a changelog.
+Adopt the three groups as the target. Phase 0 is done. Do Phase 1 next: the three
+shared files cause conflicts under *every* update method, including the one we use
+today. Decide on Phase 2 once three or more business apps use the starter.
 
-**Drift** — accumulated divergence between a downstream project and upstream. The
-thing that makes each successive merge more expensive than the last.
+### Glossary
 
-**Diff site / rn-diff-purge style** — React Native's approach: generate a pristine
-project at version A and at version B, diff the two, and publish the result with
-per-file commentary. It merges nothing; it just tells a human precisely what
-changed in the parts that can't be merged automatically.
+**Consumed starter package**: code a business app installs as a versioned
+dependency and never edits. Updates arrive as version bumps.
 
-**Canary app** — a consumer application kept inside the upstream repo that uses
-the published packages the way a real downstream project would, so upstream CI
-catches downstream breakage before a release ships.
+**Editable copy** (also called *vendored* code): starter code copied into a
+business app, which then owns and edits it. shadcn/ui works this way:
+`shadcn add button` writes the component into your repo.
 
-**Semver / LTS / breaking-change budget** — semantic versioning (major.minor.patch,
-where major means "this will break you"); a long-term-support window committing to
-patch older majors for some period; and an explicit limit on how often we're
-willing to spend a major, since every one costs every downstream team.
+**Application-owned code**: code a business app writes or rewrites itself. The
+starter only sends information about changes (notes, diffs, codemods).
 
-**Tier 1 / 2 / 3, Consumed / Vendored / Forked** — our own coinage, not industry
-terms. They name how a business app *relates* to each part of the starter: code it
-installs and never opens, code it copies and owns, and code it takes once and
-rewrites.
+**Git remote workflow**: adding the starter as a second git remote (`upstream`) in
+a business app so its release tags can be fetched and merged.
 
-## Sources
+**Codemod**: a script that rewrites source code to follow a breaking change,
+usually by parsing it rather than with text search. Angular runs these in
+`ng update`; Next.js ships `@next/codemod`.
+
+**Drift**: the growing difference between a business app and the starter, which
+makes each later merge harder.
+
+**Eject**: a supported way to stop using a consumed package and take its source
+into your app. `create-react-app eject` is the familiar example.
+
+**Semver**: `major.minor.patch` version numbers, where a new major means "this may
+break your app". See `VERSIONING.md` for the security-fix window and the limit on
+majors per year.
+
+### Sources
 
 - [supastarter — Update the codebase](https://supastarter.dev/docs/nextjs/codebase/update)
 - [Makerkit — Updating your Next.js Supabase Turbo Starter Kit](https://makerkit.dev/docs/next-supabase-turbo/installation/updating-codebase)

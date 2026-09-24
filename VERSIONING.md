@@ -10,8 +10,16 @@ and [`CHANGELOG.md`](./CHANGELOG.md) for what changed in each one.
 ## Semver, applied to a starter
 
 We publish **git tags**, `vMAJOR.MINOR.PATCH`, on `main`. The repo is the unit of
-versioning — individual workspace packages stay `private` and are not separately
-versioned until Phase 2 of [`docs/starter-versioning-strategy.md`](./docs/starter-versioning-strategy.md).
+versioning for merge-by-tag upgrades; `.starter-version` records that baseline.
+Most workspace packages remain private and unversioned independently.
+
+One explicit exception is `@repo/starter-sidebar-policy`, versioned independently
+at `1.0.1` for the [demo package upgrade](./docs/starter-upgrades.md). The immutable
+local package fixtures `1.0.0` and `1.0.1` identify package content and a supported
+upgrade transition, not published registry releases or starter git tags. They do
+not start a new starter LTS window. Add a new package version for changed artifact
+bytes; do not rewrite historical fixtures. Registry publishing and broader
+package extraction remain follow-up work.
 
 Because we distribute source you own rather than a package you install, the usual
 semver definitions need one adjustment: *"breaking"* means **breaking to a business
@@ -127,4 +135,4 @@ worktrees — a `git push --follow-tags` from any of them will publish it.
 Tags start at `v1.0.0`. Everything before it is untagged history, and the starter
 made no propagation promises then. Business apps created before `v1.0.0` should
 follow the "adding the upstream remote to an existing app" section of
-[`UPGRADING.md`](./UPGRADING.md) to get onto the rail.
+[`UPGRADING.md`](./UPGRADING.md) to establish a known starter baseline.

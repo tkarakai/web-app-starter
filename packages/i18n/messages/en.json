@@ -421,7 +421,7 @@
       "whatIncludedText": "The starter kit ships with a landing page, a fully authenticated web application, an admin dashboard, and a component storybook. Each app shares a unified design system built on Radix UI primitives with Tailwind CSS.",
       "openSource": "Open Source",
       "openSourceText": "This project is open source and designed to be forked and customised.",
-      "intro": "Web App Starter is a full-stack foundation for building modern web applications. It combines Next.js for the frontend, Convex for the backend, and Better Auth for secure authentication — all wired together and ready to ship."
+      "intro": "Web App Starter is a full-stack starter for building modern web applications. It combines Next.js for the frontend, Convex for the backend, and Better Auth for secure authentication — all wired together and ready to ship."
     },
     "privacy": {
       "title": "Privacy Policy",

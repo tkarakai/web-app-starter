@@ -1,29 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { business } from "@/business/dispatch";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Demo App",
-  description: "Static demo app with sidebar layout.",
+  title: business.name,
+  description: business.description,
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "32x32" },
-    ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    icon: [{ url: "/northstar.svg", type: "image/svg+xml" }],
   },
 };
 
@@ -33,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

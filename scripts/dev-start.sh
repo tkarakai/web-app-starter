@@ -12,7 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
-PROCESS_HELPER="$SCRIPT_DIR/dev-processes.py"
+PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
+NODE_TS="$SCRIPT_DIR/node-ts.sh"
 
 # ============================================================
 # PARSE ARGUMENTS
@@ -99,7 +100,7 @@ fi
 echo -e "${BLUE}  Starting Development Environment...${NC}"
 
 cd "$PROJECT_DIR"
-command -v python3 >/dev/null || { echo "Python 3 is required for checkout-owned process management." >&2; exit 1; }
+"$NODE_TS" -e "" || exit 1
 
 # In CI mode, show environment info
 if [ "$NON_INTERACTIVE" = true ]; then
@@ -376,7 +377,7 @@ if [ -f "$PID_FILE" ]; then
     while IFS= read -r line; do
         name=$(echo "$line" | cut -d':' -f1)
         pid=$(echo "$line" | cut -d':' -f2)
-        if [ -n "$pid" ] && python3 "$PROCESS_HELPER" running "$name" "$pid"; then
+        if [ -n "$pid" ] && "$NODE_TS" "$PROCESS_HELPER" running "$name" "$pid"; then
             RUNNING_PIDS="$RUNNING_PIDS  $name: $pid\n"
             HAS_RUNNING_PROCESSES=true
         elif [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
@@ -419,7 +420,7 @@ fi
 # Convex backend is never an orphan just because it isn't in our PID file.
 terminate_pid_with_timeout() {
     local pid="$1"
-    python3 "$PROCESS_HELPER" stop --name convex
+    "$NODE_TS" "$PROCESS_HELPER" stop --name convex
     wait "$pid" 2>/dev/null || true
 }
 
@@ -511,7 +512,7 @@ if [ "$NEED_CONVEX" = true ]; then
         (cd "$CONVEX_DIR" && CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
     fi
-    python3 "$PROCESS_HELPER" track convex "$CONVEX_PID"
+    "$NODE_TS" "$PROCESS_HELPER" track convex "$CONVEX_PID"
     echo "convex:$CONVEX_PID" > "$PID_FILE"
 
     MAX_WAIT=30
@@ -783,7 +784,7 @@ start_next_app() {
 
     (cd "$app_dir" && bunx next dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
     local next_pid=$!
-    python3 "$PROCESS_HELPER" track "next-${app_name}" "$next_pid"
+    "$NODE_TS" "$PROCESS_HELPER" track "next-${app_name}" "$next_pid"
     echo "next-${app_name}:$next_pid" >> "$PID_FILE"
 
     local max_wait=60

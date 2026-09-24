@@ -1,10 +1,10 @@
 # Shared Assets
 
-This directory contains shared assets that are used across all applications in the monorepo.
+This directory contains the starter's shared branding assets.
 
 ## App Icon
 
-The brand icon assets used across all applications. The SVG is the single source of truth.
+The SVG is the single source of truth for the shared brand icon assets.
 
 | File | Format | Size | Purpose |
 |------|--------|------|---------|
@@ -15,7 +15,7 @@ The brand icon assets used across all applications. The SVG is the single source
 ### How It Works
 
 1. **Source:** Assets are stored here in `packages/design-system/assets/`
-2. **Distribution:** During build (and before dev), assets are automatically copied to each app's `public/` directory via `scripts/copy-shared-assets.sh`
+2. **Distribution:** During build (and before dev), `scripts/copy-shared-assets.sh` copies assets to the `public/` directories selected by its `APPS` list. The demo is excluded to preserve its application-owned branding.
 3. **Usage:** Apps reference them in their Next.js metadata configuration
 
 ### Updating the Icon
@@ -53,13 +53,12 @@ The script skips copying files that are already up to date.
 
 ### Where It's Used
 
-All app layout files reference these icons:
+These app layout files reference the shared icons:
 - `apps/web/src/app/[locale]/layout.tsx`
 - `apps/admin/src/app/layout.tsx`
 - `apps/landing/src/app/[locale]/layout.tsx`
 - `apps/landing-static/src/app/[locale]/layout.tsx`
 - `apps/storybook/src/app/layout.tsx`
-- `apps/demo/src/app/layout.tsx`
 
 ### Showcase
 
