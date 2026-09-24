@@ -112,6 +112,10 @@ const STATUS_BADGE: Record<
 interface WaitlistMeta {
   superpowers?: string[];
   excitement?: string[];
+  role?: string;
+  company?: string;
+  useCase?: string;
+  budgetTimeline?: string;
 }
 
 function parseMeta(meta: string): WaitlistMeta {
@@ -143,6 +147,22 @@ const EXCITEMENT_LABELS: Record<string, string> = {
   "cautiously-optimistic": "Cautiously optimistic",
   "just-browsing": "Just browsing",
   "friend-made-me": "Friend made me",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  founder: "Founder",
+  engineering: "Engineering",
+  product: "Product",
+  design: "Design",
+  agency: "Agency",
+  other: "Other",
+};
+
+const BUDGET_TIMELINE_LABELS: Record<string, string> = {
+  "this-month": "This month",
+  "this-quarter": "This quarter",
+  "this-year": "This year",
+  exploring: "Exploring",
 };
 
 function ActionsCell({ entry }: { entry: WaitlistEntry }) {
@@ -316,6 +336,67 @@ export function createColumns(
                 {EXCITEMENT_LABELS[e] ?? e}
               </Badge>
             ))}
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "qualification",
+      header: "Qualification",
+      accessorFn: (row) => {
+        const meta = parseMeta(row.meta);
+        return `${meta.role ?? ""} ${meta.budgetTimeline ?? ""}`.trim();
+      },
+      cell: ({ row }) => {
+        const meta = parseMeta(row.original.meta);
+        const role = meta.role ? ROLE_LABELS[meta.role] ?? meta.role : undefined;
+        const budgetTimeline = meta.budgetTimeline
+          ? BUDGET_TIMELINE_LABELS[meta.budgetTimeline] ?? meta.budgetTimeline
+          : undefined;
+
+        if (!role && !budgetTimeline) {
+          return <span className="text-muted-foreground">&mdash;</span>;
+        }
+
+        return (
+          <div className="flex flex-wrap gap-1">
+            {role ? (
+              <Badge variant="outline" className="text-xs">
+                {role}
+              </Badge>
+            ) : null}
+            {budgetTimeline ? (
+              <Badge variant="secondary" className="text-xs">
+                {budgetTimeline}
+              </Badge>
+            ) : null}
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "company",
+      header: "Company / Use Case",
+      accessorFn: (row) => {
+        const meta = parseMeta(row.meta);
+        return `${meta.company ?? ""} ${meta.useCase ?? ""}`.trim();
+      },
+      cell: ({ row }) => {
+        const meta = parseMeta(row.original.meta);
+        if (!meta.company && !meta.useCase) {
+          return <span className="text-muted-foreground">&mdash;</span>;
+        }
+
+        return (
+          <div className="space-y-1 text-xs">
+            {meta.company ? (
+              <p className="font-medium text-foreground">{meta.company}</p>
+            ) : null}
+            {meta.useCase ? (
+              <p className="line-clamp-2 text-muted-foreground">{meta.useCase}</p>
+            ) : null}
           </div>
         );
       },

@@ -21,9 +21,23 @@ import {
   parsePasskeyPolicy,
 } from "./securityPolicies";
 
+const COMMERCE_PRICE_KEYS = [
+  "starterPriceCents",
+  "proPriceCents",
+  "teamPriceCents",
+] as const;
+
+function isCommercePriceKey(key: string): key is (typeof COMMERCE_PRICE_KEYS)[number] {
+  return (COMMERCE_PRICE_KEYS as readonly string[]).includes(key);
+}
+
 /** Keys that unauthenticated callers may read via getPublic. */
 const PUBLIC_KEYS = [
   "onboardingType",
+  "commerceEnabled",
+  "billingProvider",
+  ...COMMERCE_PRICE_KEYS,
+  "supportEmail",
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
   USER_EMAIL_VERIFICATION_REQUIRED_KEY,
   ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -47,6 +61,10 @@ const VALID_KEYS = [
   USER_PASSKEY_POLICY_KEY,
   ADMIN_PASSKEY_POLICY_KEY,
   "emailVerificationTemplate",
+  "commerceEnabled",
+  "billingProvider",
+  ...COMMERCE_PRICE_KEYS,
+  "supportEmail",
 ] as const;
 
 /** Default values returned when a key has never been set. */
@@ -61,6 +79,12 @@ const DEFAULTS: Record<string, unknown> = {
   [ADMIN_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
   [USER_PASSKEY_POLICY_KEY]: "optional",
   [ADMIN_PASSKEY_POLICY_KEY]: "optional",
+  commerceEnabled: false,
+  billingProvider: "none",
+  starterPriceCents: 19900,
+  proPriceCents: 39900,
+  teamPriceCents: 79900,
+  supportEmail: "support@example.com",
 };
 
 function getDefault(key: string): unknown {
@@ -78,6 +102,16 @@ function parseSettingValue(key: string, value: string): unknown {
     } catch {
       return parsePasskeyPolicy(value);
     }
+  }
+  if (key === "billingProvider" || key === "supportEmail") {
+    return value;
+  }
+  if (key === "commerceEnabled") {
+    return value === "true";
+  }
+  if (isCommercePriceKey(key)) {
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? getDefault(key) : parsed;
   }
   return JSON.parse(value);
 }
@@ -125,6 +159,29 @@ function validateValue(key: string, value: string): void {
       throw new Error(
         "INVALID_VALUE: passkey policy must be one of 'disabled', 'optional', or 'required'"
       );
+    }
+  } else if (key === "billingProvider") {
+    if (value !== "none" && value !== "lemonsqueezy") {
+      throw new Error(
+        "INVALID_VALUE: billingProvider must be 'none' or 'lemonsqueezy'"
+      );
+    }
+  } else if (key === "commerceEnabled") {
+    if (value !== "true" && value !== "false") {
+      throw new Error(
+        "INVALID_VALUE: commerceEnabled must be 'true' or 'false'"
+      );
+    }
+  } else if (isCommercePriceKey(key)) {
+    const num = parseInt(value, 10);
+    if (Number.isNaN(num) || num < 100 || num > 1_000_000) {
+      throw new Error(
+        `INVALID_VALUE: ${key} must be an integer between 100 and 1000000`
+      );
+    }
+  } else if (key === "supportEmail") {
+    if (value.length > 255 || !value.includes("@")) {
+      throw new Error("INVALID_VALUE: supportEmail must be a valid email");
     }
   } else if (key === "emailVerificationTemplate") {
     if (value.length > MAX_TEMPLATE_SIZE) {

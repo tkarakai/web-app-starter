@@ -53,6 +53,38 @@ function corsHeaders(request?: Request): Record<string, string> {
   };
 }
 
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
+async function sha256Hex(payload: string): Promise<string> {
+  const encoded = new TextEncoder().encode(payload);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/waitlist/status — check onboarding mode
 // ---------------------------------------------------------------------------
@@ -188,6 +220,86 @@ http.route({
   method: "OPTIONS",
   handler: httpAction(async (_ctx, request) => {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Commerce endpoints
+// ---------------------------------------------------------------------------
+
+http.route({
+  path: "/api/commerce/plans",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const plans = await ctx.runQuery(internal.commerce.getPlansInternal, {});
+
+    return new Response(JSON.stringify({ plans }), {
+      status: 200,
+      headers: corsHeaders(request),
+    });
+  }),
+});
+
+http.route({
+  path: "/api/commerce/plans",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }),
+});
+
+http.route({
+  path: "/api/commerce/webhooks/lemonsqueezy",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const webhookSecret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return new Response(JSON.stringify({ error: "WEBHOOK_NOT_CONFIGURED" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const signatureHeader =
+      request.headers.get("x-signature") ?? request.headers.get("X-Signature");
+    if (!signatureHeader) {
+      return new Response(JSON.stringify({ error: "MISSING_SIGNATURE" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const payload = await request.text();
+    const expectedSignature = await hmacSha256Hex(webhookSecret, payload);
+    if (!constantTimeEquals(expectedSignature, signatureHeader.toLowerCase())) {
+      return new Response(JSON.stringify({ error: "INVALID_SIGNATURE" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const payloadHash = await sha256Hex(payload);
+
+    try {
+      const result = await ctx.runMutation(
+        internal.commerceWebhooks.processLemonSqueezyEvent,
+        { payload, payloadHash },
+      );
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : "WEBHOOK_PROCESSING_FAILED",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
   }),
 });
 

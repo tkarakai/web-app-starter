@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@repo/design-system";
+import { Button, Card, CardContent, CardDescription, CardTitle } from "@repo/design-system";
 
 import { WaitlistSection } from "./waitlist-section";
 
@@ -10,6 +10,12 @@ const CONVEX_SITE_URL =
   process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
 const WEB_APP_URL =
   process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
+const BOOK_DEMO_URL =
+  process.env.NEXT_PUBLIC_BOOK_DEMO_URL ??
+  "https://cal.com";
+const CONTACT_URL =
+  process.env.NEXT_PUBLIC_CONTACT_URL ??
+  "mailto:sales@example.com";
 
 /** Initial retry delay (ms). */
 const RETRY_BASE = 5_000;
@@ -112,7 +118,31 @@ export function HeroCta() {
 
   // Convex unreachable — hide everything; polling will restore UI automatically
   if (status === "unreachable") {
-    return null;
+    return (
+      <Card className="w-full max-w-xl border-border/70 bg-card/85 shadow-xl shadow-primary/10">
+        <CardContent className="space-y-4 p-6 text-left">
+          <div className="space-y-1">
+            <CardTitle className="text-base">{t("fallback.title")}</CardTitle>
+            <CardDescription>
+              {t("fallback.description")}
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <a href={BOOK_DEMO_URL} target="_blank" rel="noreferrer">
+                {t("fallback.bookDemo")}
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={CONTACT_URL}>{t("fallback.contact")}</a>
+            </Button>
+            <Button variant="ghost" asChild>
+              <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (status === "waitlist") {

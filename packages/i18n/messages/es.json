@@ -160,7 +160,10 @@
     "footer": {
       "about": "Acerca de",
       "privacyPolicy": "Política de privacidad",
-      "termsOfService": "Términos de servicio"
+      "termsOfService": "Términos de servicio",
+      "pricing": "Pricing",
+      "services": "Services",
+      "demo": "Demo"
     },
     "waitlist": {
       "title": "Unirse a la lista de espera",
@@ -204,6 +207,48 @@
         "invalidEmail": "Por favor, introduzca una dirección de correo electrónico válida.",
         "rateLimited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
         "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
+      },
+      "roleLabel": "Your role",
+      "rolePlaceholder": "Select your role",
+      "companyLabel": "Company (optional)",
+      "companyPlaceholder": "Acme Inc.",
+      "useCaseLabel": "Primary use case",
+      "useCasePlaceholder": "What are you planning to build?",
+      "budgetTimelineLabel": "Budget timeline",
+      "budgetTimelinePlaceholder": "Select a budget timeline",
+      "roleOptions": {
+        "founder": "Founder",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Agency",
+        "other": "Other"
+      },
+      "budgetTimelineOptions": {
+        "this-month": "Budget approved this month",
+        "this-quarter": "Budget expected this quarter",
+        "this-year": "Planning this year",
+        "exploring": "Exploring options"
+      }
+    },
+    "fallback": {
+      "title": "Platform warm-up in progress",
+      "description": "We could not reach onboarding services right now. You can still book a demo, contact us, or sign in to an existing account.",
+      "bookDemo": "Book demo",
+      "contact": "Contact"
+    },
+    "pages": {
+      "pricing": {
+        "title": "Pricing",
+        "description": "Choose a commercial license tier for your launch plan and delivery model."
+      },
+      "services": {
+        "title": "Services",
+        "description": "Productized implementation packages built directly on this starter codebase."
+      },
+      "demo": {
+        "title": "Demo",
+        "description": "Explore the web app, admin app, and design system before you purchase."
       }
     }
   },

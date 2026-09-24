@@ -69,6 +69,78 @@ export default defineSchema(
     updatedBy: v.optional(v.string()),
   }).index("by_key", ["key"]),
 
+  // --- Commerce ---
+
+  commerceCustomers: defineTable({
+    email: v.string(),
+    provider: v.literal("lemonsqueezy"),
+    providerCustomerId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_provider_customer", ["provider", "providerCustomerId"]),
+
+  commerceOrders: defineTable({
+    providerOrderId: v.string(),
+    provider: v.literal("lemonsqueezy"),
+    providerEventId: v.optional(v.string()),
+    email: v.string(),
+    planId: v.union(
+      v.literal("starter"),
+      v.literal("pro"),
+      v.literal("team"),
+    ),
+    amountCents: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("paid"),
+      v.literal("refunded"),
+      v.literal("chargeback"),
+    ),
+    rawPayload: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_order", ["provider", "providerOrderId"])
+    .index("by_email", ["email"])
+    .index("by_provider_event", ["provider", "providerEventId"]),
+
+  licenses: defineTable({
+    key: v.string(),
+    email: v.string(),
+    planId: v.union(
+      v.literal("starter"),
+      v.literal("pro"),
+      v.literal("team"),
+    ),
+    entitlements: v.array(
+      v.union(
+        v.literal("core_starter"),
+        v.literal("core_pro"),
+        v.literal("addons_billing"),
+        v.literal("priority_support"),
+      ),
+    ),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    orderId: v.optional(v.id("commerceOrders")),
+    issuedAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_email", ["email"])
+    .index("by_order", ["orderId"]),
+
+  commerceWebhookEvents: defineTable({
+    provider: v.literal("lemonsqueezy"),
+    eventId: v.string(),
+    eventName: v.string(),
+    processedAt: v.number(),
+    payloadHash: v.string(),
+  }).index("by_provider_event", ["provider", "eventId"]),
+
   // --- Waitlist ---
 
   waitlistEntries: defineTable({

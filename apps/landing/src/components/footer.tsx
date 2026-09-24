@@ -15,6 +15,24 @@ export function Footer() {
         <p>&copy; {new Date().getFullYear()} Web App Starter</p>
         <nav className="flex gap-6">
           <Link
+            href="/pricing"
+            className="transition-colors hover:text-foreground"
+          >
+            {t("pricing")}
+          </Link>
+          <Link
+            href="/services"
+            className="transition-colors hover:text-foreground"
+          >
+            {t("services")}
+          </Link>
+          <Link
+            href="/demo"
+            className="transition-colors hover:text-foreground"
+          >
+            {t("demo")}
+          </Link>
+          <Link
             href="/about"
             className="transition-colors hover:text-foreground"
           >

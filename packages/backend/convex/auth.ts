@@ -17,7 +17,12 @@ import { sendAuthEmail } from "./sendAuthEmail";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
-import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
+import {
+  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  USER_EMAIL_VERIFICATION_REQUIRED_KEY,
+  getEmailVerificationRequiredKey,
+  getPolicyScopeFromRole,
+} from "./securityPolicies";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -280,6 +285,27 @@ function mapEndpointErrorToStatus(
   return "failed.unknown";
 }
 
+async function isEmailVerificationRequiredForUser(
+  actionCtx: ReturnType<typeof requireActionCtx>,
+  role: unknown,
+): Promise<boolean> {
+  const scope = getPolicyScopeFromRole(role);
+  const scopedKey = getEmailVerificationRequiredKey(scope);
+  const scopedSetting = await actionCtx.runQuery(internal.appSettings.getInternal, {
+    key: scopedKey,
+  });
+
+  if (typeof scopedSetting === "boolean") {
+    return scopedSetting;
+  }
+
+  const legacySetting = await actionCtx.runQuery(internal.appSettings.getInternal, {
+    key: LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
+  });
+
+  return typeof legacySetting === "boolean" ? legacySetting : true;
+}
+
 /** Email verification token lifetime in seconds (BetterAuth default: 3600 = 1 hour). */
 const EMAIL_VERIFICATION_EXPIRY_SECONDS = positiveInt(
   process.env.AUTH_EMAIL_VERIFICATION_EXPIRY,
@@ -406,6 +432,30 @@ export const createAuthOptions = (
     databaseHooks: {
       session: {
         create: {
+          before: async (session) => {
+            const actionCtx = requireActionCtx(ctx);
+            const s = session as Record<string, unknown>;
+            const userId = s.userId as string;
+            const user = await authComponent.getAnyUserById(ctx, userId);
+
+            if (!user) {
+              throw new Error("NOT_AUTHENTICATED");
+            }
+
+            const required = await isEmailVerificationRequiredForUser(
+              actionCtx,
+              (user as Record<string, unknown>).role,
+            );
+
+            if (
+              required &&
+              (user as Record<string, unknown>).emailVerified !== true
+            ) {
+              throw new Error("EMAIL_NOT_VERIFIED");
+            }
+
+            return { data: session };
+          },
           after: async (session) => {
             const actionCtx = requireActionCtx(ctx);
             const s = session as Record<string, unknown>;

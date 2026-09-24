@@ -43,6 +43,24 @@ const VALID_EXCITEMENT = [
   "friend-made-me",
 ] as const;
 
+/** Valid role values used for lead qualification metadata. */
+const VALID_ROLES = [
+  "founder",
+  "engineering",
+  "product",
+  "design",
+  "agency",
+  "other",
+] as const;
+
+/** Valid budget timeline values used for lead qualification metadata. */
+const VALID_BUDGET_TIMELINES = [
+  "this-month",
+  "this-quarter",
+  "this-year",
+  "exploring",
+] as const;
+
 /** Validate and parse the JSON meta string. Throws on invalid input. */
 function validateMeta(meta: string): void {
   let parsed: Record<string, unknown>;
@@ -68,6 +86,41 @@ function validateMeta(meta: string): void {
     if (!(VALID_EXCITEMENT as readonly string[]).includes(e as string)) {
       throw new Error("INVALID_META: invalid excitement value");
     }
+  }
+
+  if (typeof parsed.role !== "string" || parsed.role.trim().length === 0) {
+    throw new Error("INVALID_META: role is required");
+  }
+  if (!(VALID_ROLES as readonly string[]).includes(parsed.role)) {
+    throw new Error("INVALID_META: invalid role value");
+  }
+
+  if (parsed.company !== undefined) {
+    if (typeof parsed.company !== "string") {
+      throw new Error("INVALID_META: company must be a string");
+    }
+    if (parsed.company.length > 120) {
+      throw new Error("INVALID_META: company is too long");
+    }
+  }
+
+  if (typeof parsed.useCase !== "string" || parsed.useCase.trim().length === 0) {
+    throw new Error("INVALID_META: useCase is required");
+  }
+  if (parsed.useCase.length > 500) {
+    throw new Error("INVALID_META: useCase is too long");
+  }
+
+  if (
+    typeof parsed.budgetTimeline !== "string" ||
+    parsed.budgetTimeline.trim().length === 0
+  ) {
+    throw new Error("INVALID_META: budgetTimeline is required");
+  }
+  if (
+    !(VALID_BUDGET_TIMELINES as readonly string[]).includes(parsed.budgetTimeline)
+  ) {
+    throw new Error("INVALID_META: invalid budgetTimeline value");
   }
 }
 

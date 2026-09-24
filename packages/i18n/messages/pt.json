@@ -160,7 +160,10 @@
     "footer": {
       "about": "Sobre",
       "privacyPolicy": "Política de privacidade",
-      "termsOfService": "Termos de serviço"
+      "termsOfService": "Termos de serviço",
+      "pricing": "Pricing",
+      "services": "Services",
+      "demo": "Demo"
     },
     "waitlist": {
       "title": "Entrar na lista de espera",
@@ -204,6 +207,48 @@
         "invalidEmail": "Por favor, insira um endereço de e-mail válido.",
         "rateLimited": "Muitas solicitações. Aguarde um momento e tente novamente.",
         "generic": "Algo deu errado. Tente novamente."
+      },
+      "roleLabel": "Your role",
+      "rolePlaceholder": "Select your role",
+      "companyLabel": "Company (optional)",
+      "companyPlaceholder": "Acme Inc.",
+      "useCaseLabel": "Primary use case",
+      "useCasePlaceholder": "What are you planning to build?",
+      "budgetTimelineLabel": "Budget timeline",
+      "budgetTimelinePlaceholder": "Select a budget timeline",
+      "roleOptions": {
+        "founder": "Founder",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Agency",
+        "other": "Other"
+      },
+      "budgetTimelineOptions": {
+        "this-month": "Budget approved this month",
+        "this-quarter": "Budget expected this quarter",
+        "this-year": "Planning this year",
+        "exploring": "Exploring options"
+      }
+    },
+    "fallback": {
+      "title": "Platform warm-up in progress",
+      "description": "We could not reach onboarding services right now. You can still book a demo, contact us, or sign in to an existing account.",
+      "bookDemo": "Book demo",
+      "contact": "Contact"
+    },
+    "pages": {
+      "pricing": {
+        "title": "Pricing",
+        "description": "Choose a commercial license tier for your launch plan and delivery model."
+      },
+      "services": {
+        "title": "Services",
+        "description": "Productized implementation packages built directly on this starter codebase."
+      },
+      "demo": {
+        "title": "Demo",
+        "description": "Explore the web app, admin app, and design system before you purchase."
       }
     }
   },

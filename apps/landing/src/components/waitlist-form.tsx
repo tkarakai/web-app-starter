@@ -42,6 +42,22 @@ const EXCITEMENT_LEVELS = [
   "friend-made-me",
 ] as const;
 
+const ROLE_OPTIONS = [
+  "founder",
+  "engineering",
+  "product",
+  "design",
+  "agency",
+  "other",
+] as const;
+
+const BUDGET_TIMELINE_OPTIONS = [
+  "this-month",
+  "this-quarter",
+  "this-year",
+  "exploring",
+] as const;
+
 function MultiSelectDropdown({
   id,
   label,
@@ -109,6 +125,10 @@ export function WaitlistForm() {
   const [email, setEmail] = React.useState("");
   const [superpowers, setSuperpowers] = React.useState<string[]>([]);
   const [excitement, setExcitement] = React.useState<string[]>([]);
+  const [role, setRole] = React.useState<string>("");
+  const [company, setCompany] = React.useState<string>("");
+  const [useCase, setUseCase] = React.useState<string>("");
+  const [budgetTimeline, setBudgetTimeline] = React.useState<string>("");
   const [pending, setPending] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -136,7 +156,14 @@ export function WaitlistForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          meta: JSON.stringify({ superpowers, excitement }),
+          meta: JSON.stringify({
+            superpowers,
+            excitement,
+            role,
+            company: company.trim(),
+            useCase: useCase.trim(),
+            budgetTimeline,
+          }),
         }),
       });
 
@@ -214,6 +241,61 @@ export function WaitlistForm() {
             translationPrefix="excitement"
             t={t}
           />
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-role">{t("roleLabel")}</Label>
+            <select
+              id="waitlist-role"
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              required
+            >
+              <option value="">{t("rolePlaceholder")}</option>
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {t(`roleOptions.${option}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-company">{t("companyLabel")}</Label>
+            <Input
+              id="waitlist-company"
+              type="text"
+              value={company}
+              onChange={(event) => setCompany(event.target.value)}
+              placeholder={t("companyPlaceholder")}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-use-case">{t("useCaseLabel")}</Label>
+            <Input
+              id="waitlist-use-case"
+              type="text"
+              value={useCase}
+              onChange={(event) => setUseCase(event.target.value)}
+              placeholder={t("useCasePlaceholder")}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="waitlist-budget-timeline">{t("budgetTimelineLabel")}</Label>
+            <select
+              id="waitlist-budget-timeline"
+              value={budgetTimeline}
+              onChange={(event) => setBudgetTimeline(event.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              required
+            >
+              <option value="">{t("budgetTimelinePlaceholder")}</option>
+              {BUDGET_TIMELINE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {t(`budgetTimelineOptions.${option}`)}
+                </option>
+              ))}
+            </select>
+          </div>
           {error ? (
             <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
               {error}
@@ -222,7 +304,14 @@ export function WaitlistForm() {
           <Button
             type="submit"
             className="w-full"
-            disabled={pending || superpowers.length === 0 || excitement.length === 0}
+            disabled={
+              pending ||
+              superpowers.length === 0 ||
+              excitement.length === 0 ||
+              !role ||
+              !useCase.trim() ||
+              !budgetTimeline
+            }
           >
             {pending ? t("submitting") : t("submit")}
           </Button>

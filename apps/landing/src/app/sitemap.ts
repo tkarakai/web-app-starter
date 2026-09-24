@@ -19,6 +19,9 @@ function generateAlternates(pathname: string) {
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
     { path: "/", priority: 1.0, changeFrequency: "weekly" as const },
+    { path: "/pricing", priority: 0.9, changeFrequency: "weekly" as const },
+    { path: "/services", priority: 0.8, changeFrequency: "monthly" as const },
+    { path: "/demo", priority: 0.8, changeFrequency: "monthly" as const },
     { path: "/about", priority: 0.8, changeFrequency: "monthly" as const },
     { path: "/privacy", priority: 0.5, changeFrequency: "monthly" as const },
     { path: "/terms", priority: 0.5, changeFrequency: "monthly" as const },
