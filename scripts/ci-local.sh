@@ -4,7 +4,7 @@
 #  IMPORTANT: Keep this script in sync with the GitHub Actions CI workflows!
 #
 #  This script mirrors what runs in .github/workflows/:
-#    - ci-shared.yml     (lint, typecheck, backend tests, foundation canary)
+#    - ci-shared.yml     (lint, typecheck, backend tests, starter upgrade rehearsal)
 #    - ci-web.yml        (web: tests, coverage, build, bundle size, E2E)
 #    - ci-admin.yml      (admin: tests, coverage, build, bundle size, E2E)
 #    - ci-landing.yml    (landing: tests, coverage, build, bundle size, E2E)
@@ -23,7 +23,7 @@
 #   3. Bun unit tests (per app: web, admin, landing)
 #   4. Component tests + coverage (per app: web, admin, landing)
 #   5. Convex backend tests (backend)
-#   6. Foundation upgrade canary (contract tests + real demo rehearsal)
+#   6. Starter package ownership and upgrade tests + real demo rehearsal
 #   7. Production build (per app: web, admin, landing, storybook)
 #   8. Bundle size check (per app: apps with .size-limit.json)
 #   9. E2E tests (per app: web, admin, landing, storybook) — skip with --skip-e2e
@@ -391,16 +391,16 @@ else
 fi
 
 # ============================================================
-# Phase 6: Foundation Upgrade Canary (mirrors ci-shared.yml → foundation-canary job)
+# Phase 6: Starter Upgrade Rehearsal (mirrors ci-shared.yml → starter-upgrade job)
 # ============================================================
-print_step "Step 6/9: Foundation Upgrade Canary"
+print_step "Step 6/9: Starter Upgrade Rehearsal"
 step_start
-if bun run test:foundation && bun run test:foundation-canary; then
-  print_success "Foundation upgrade canary passed"
-  step_end "demo: Foundation canary" "pass"
+if bun run typecheck:starter-upgrade && bun run lint:starter-upgrade && bun run check:starter-ownership && bun run check:starter-docs && bun run test:starter-upgrade && bun run test:starter-rehearsal; then
+  print_success "Starter upgrade rehearsal passed"
+  step_end "demo: Starter upgrade rehearsal" "pass"
 else
-  print_error "Foundation upgrade canary failed"
-  step_end "demo: Foundation canary" "fail"
+  print_error "Starter upgrade rehearsal failed"
+  step_end "demo: Starter upgrade rehearsal" "fail"
   exit 1
 fi
 

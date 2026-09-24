@@ -68,7 +68,7 @@
   }
 
   body {
-    /* Local font stack keeps the canary build independent of Google Fonts. */
+    /* Local fonts let the demo build without a Google Fonts request. */
     font-family: "Avenir Next", "Trebuchet MS", sans-serif;
     @apply bg-background text-foreground antialiased;
   }

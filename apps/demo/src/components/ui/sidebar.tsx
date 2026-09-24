@@ -7,7 +7,7 @@ import { PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { SIDEBAR_WIDTH_DEFAULT_REM, clampSidebarWidth, snapSidebarWidth } from "@/foundation/sidebar-width"
+import { SIDEBAR_WIDTH_DEFAULT_REM, clampSidebarWidth, snapSidebarWidth } from "@repo/starter-sidebar-policy"
 import {
   Sheet,
   SheetContent,

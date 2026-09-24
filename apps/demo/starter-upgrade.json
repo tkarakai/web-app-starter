@@ -1,12 +1,9 @@
 {
   "schemaVersion": 1,
-  "rail": "sidebar-width-snapshot",
+  "package": "@repo/starter-sidebar-policy",
   "ownership": {
     "src/": "application",
-    "src/components/ui/": "vendored",
-    "src/hooks/use-mobile.ts": "vendored",
-    "src/lib/utils.ts": "vendored",
-    "src/foundation/": "consumed",
+    "starter-packages/sidebar-policy/": "consumed",
     "public/": "application",
     "qa/": "application",
     "README.md": "application",
@@ -15,13 +12,13 @@
     "postcss.config.mjs": "application",
     "tsconfig.json": "application",
     "vitest.config.ts": "application",
-    "foundation.json": "application",
-    "foundation.lock.json": "generated",
+    "starter-upgrade.json": "application",
+    "starter-upgrade.lock.json": "generated",
     "node_modules/": "generated",
     ".next/": "generated",
     "out/": "generated",
     ".turbo/": "generated",
-    ".foundation/": "generated",
+    ".starter-upgrade/": "generated",
     "next-env.d.ts": "generated",
     "tsconfig.tsbuildinfo": "generated"
   }

@@ -1,4 +1,4 @@
-// Downstream-owned: foundation releases must never replace these business rules.
+// Application-owned: starter releases must never replace these business rules.
 export const business = {
   name: "Northstar Dispatch",
   description: "Regional freight, ready for the next mile.",

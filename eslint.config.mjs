@@ -9,6 +9,10 @@ export default [
   {
     ignores: [
       "node_modules/**",
+      ".ci-local-artifacts/**",
+      "apps/demo/starter-packages/**",
+      "apps/demo/qa/fixtures/starter-releases/**",
+      "packages/starter-sidebar-policy/dist/**",
       "**/node_modules/**",
       "**/.next/**",
       "**/.turbo/**",

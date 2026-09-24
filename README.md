@@ -2,7 +2,7 @@
 
 [![CI Gate](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml)
 
-A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend foundation. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
+A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend starter. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
 
 ## What this starter gives you
 
@@ -150,7 +150,7 @@ These values persist in the local Convex backend between sessions.
 │   │   └── src/
 │   ├── storybook/             # Component storybook (@repo/storybook, port 3003)
 │   │   └── src/
-│   └── demo/                  # Customized downstream upgrade canary (no backend)
+│   └── demo/                  # Standalone UI/dispatch demo; also tests starter upgrades
 │       └── src/
 ├── packages/
 │   ├── backend/               # Convex backend (@repo/backend)

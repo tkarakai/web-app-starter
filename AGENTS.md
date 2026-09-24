@@ -64,7 +64,7 @@ apps/
   landing/          Dynamic landing page (@repo/landing, port 3000) — i18n, SSR
   landing-static/   Static landing page (@repo/landing-static, port 3004) — fully static export, client-side i18n
   storybook/        Component storybook (@repo/storybook, port 3003) — src/ (showcase) + qa/ (e2e)
-  demo/             Customized downstream canary — static pages, no backend (docs/foundation-canary.md)
+  demo/             Standalone UI/dispatch demo, also used for starter upgrade tests (docs/starter-upgrades.md)
 packages/
   backend/          Convex backend (@repo/backend) — convex/ (schema, functions, _generated/ DO NOT EDIT)
   auth/             Authentication (@repo/auth) — src/ (client.ts, server.ts, provider.tsx)
@@ -104,7 +104,8 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 
 - **Use bare `bun test`** - Always use `bun run test` (with `run`). Bare `bun test` picks up all test files and fails
 - **Edit `packages/backend/convex/_generated/`** - These files are auto-generated
-- **Use `npm` or `yarn`** - This project uses Bun exclusively
+- **Use `npm` or `yarn`** - Use Bun for package management.
+- **Introduce Python or other scripting languages** - Project-owned scripts use TypeScript running on Node; shell wrappers are allowed. Existing legacy scripts are not a precedent for new scripts.
 - **Use `turbo dev`** - Use `bun run dev` (which calls `dev-start.sh`) for proper port and Convex management
 - **Skip TypeScript types** - Strict mode catches bugs early
 - **Test Server Components with Vitest** - Use Playwright E2E instead
@@ -207,9 +208,9 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
 | Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.py` |
-| Working on the demo canary, ownership manifests or source-snapshot upgrades | `docs/foundation-canary.md`; verify with `bun run test:foundation` and `bun run test:foundation-canary`. Do not hand-edit consumed snapshots or broaden their write allowlist. |
+| Working on starter package upgrades or demo ownership | `docs/starter-upgrades.md`; run `check:starter-ownership`, `test:starter-upgrade` and `test:starter-rehearsal` via `bun run`. Do not hand-edit consumed packages or claim unsupported vendoring. |
 | Writing a codemod to ship with a breaking release | `scripts/codemods/README.md` |
-| Working on how starter releases reach downstream business apps long-term (tiers, registry, Convex Components) | `docs/starter-versioning-strategy.md` — **Phase 0 tooling + narrow demo canary implemented; broader Phases 1–3 remain proposals** |
+| Working on how starter releases reach downstream business apps long-term (tiers, registry, Convex Components) | `docs/starter-versioning-strategy.md` — **Merge-by-tag and one local package upgrade are implemented; broader isolation/distribution remains follow-up** |
 
 ## Resources
 

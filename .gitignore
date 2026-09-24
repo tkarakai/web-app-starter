@@ -30,8 +30,13 @@ apps/*/public/favicon.ico
 **/qa/test-results/
 **/qa/e2e/__screenshots__/
 
-# Local foundation upgrade plans/logs (CI retains evidence as artifacts)
-apps/*/.foundation/
+# Local starter upgrade plans/logs (CI retains evidence as artifacts)
+apps/*/.starter-upgrade/
+packages/starter-sidebar-policy/dist/
+
+# Built package bytes are intentional, immutable inputs to the demo and its tests.
+!apps/demo/starter-packages/sidebar-policy/dist/
+!apps/demo/qa/fixtures/starter-releases/*/starter-packages/sidebar-policy/dist/
 
 # Local CI artifacts
 .act-artifacts/

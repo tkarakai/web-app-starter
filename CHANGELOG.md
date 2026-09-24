@@ -18,22 +18,23 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
-- Executable downstream-upgrade canary in the existing `apps/demo`, with app-owned
-  Northstar Dispatch branding, freight-priority behavior, editable UI and a consumed
-  immutable sidebar-policy snapshot. This is an offline source-bundle rail, not
-  package publishing or operations integration.
-- Versioned ownership/lock/catalogue/plan/evidence contracts and
-  `scripts/foundation/upgrade.py` (`discover`, `plan`, `apply`, `verify`, `audit`).
-  Unsafe writes, unsupported baselines, drift, missing actions and unverifiable
-  completion are refused. CI Shared requires the real demo's red-to-green upgrade
-  rehearsal with interaction tests, typecheck and production build.
-- `docs/foundation-canary.md` — enrollment, upgrade PR procedure, limits and the
-  three planes: immutable foundation releases (affected layers, security urgency,
-  migrations, codemods, verification commands, canary evidence), explicit
-  business-app upgrade PRs that preserve application-owned code, and an operations
-  plane that presents readiness and deploys only the merged app commit through
-  normal staging and production, never rewriting source or running hidden
-  migrations. Existing merge/deploy approvals remain unchanged.
+- The existing standalone demo now includes Northstar Dispatch branding and
+  interactive freight behavior. It also tests starter upgrades on a copy; its
+  dashboard and editable UI remain application-owned.
+- Versioned `@repo/starter-sidebar-policy`, consumed through immutable local
+  package artifacts. Demo-owned release fixtures live under `apps/demo/qa/fixtures/`.
+  This does not publish a registry package or change operations.
+- TypeScript/Node upgrade commands in `scripts/starter-upgrade/upgrade.ts`:
+  `discover`, `plan`, `apply`, `verify`, `audit`. Unsupported baselines, local
+  package edits, unsafe writes, missing actions and invalid evidence are rejected.
+- Deterministic author/package/export/consumer ownership checks and a real demo
+  rehearsal that reproduces a sidebar failure, upgrades, then runs interaction
+  tests, typecheck and a production build. CI retains the evidence.
+- `docs/starter-upgrades.md` explains ownership and current limitations.
+  `UPGRADING.md` separately teaches starter releases, application upgrade PRs
+  and operations deployment. Existing mixed packages are not claimed as isolated;
+  starter vendoring remains unsupported pending a copy contract. Operations
+  never rewrites source or performs hidden migrations during deployment.
 - `VERSIONING.md` — semver as it applies to a starter, the breaking-change budget
   (at most two majors a year), and the LTS window (previous major gets security
   fixes for six months).
@@ -64,21 +65,21 @@ is where practice tags belong.
 - Shared/demo sidebar sizing now returns its 16rem default for non-finite resize
   calculations instead of allowing invalid CSS/state/cookies. Ordinary sizing and
   snapping behavior is preserved; editable visual components share a pure policy.
-  Affected layers: design-system sidebar policy and the demo's consumed
-  `sidebar-width-snapshot` (1.0.0 -> 1.0.1). Security urgency: none (stability fix).
+  Affected areas: design-system sidebar sizing and the demo's consumed
+  `@repo/starter-sidebar-policy` (1.0.0 -> 1.0.1). Security urgency: none.
 - Demo builds no longer overwrite app-owned branding with copied starter icons or
   require a Google Fonts request. Other apps keep their existing asset behavior.
 
 ### Action required
 
-**Canary adoption is optional.** Existing web/admin/backend consumers stay on the
-merge-by-tag rail; no database migration or operations change is introduced.
-Demo-derived apps should preserve their own dashboard and branding when merging
-scaffold changes. To opt into the narrow managed snapshot rail, follow
-[`docs/foundation-canary.md`](./docs/foundation-canary.md#joining-this-rail-in-a-business-app)
-and keep the action/business verification scripts, manifest and locked snapshot
-together. Done when `bun run test:foundation` and `bun run test:foundation-canary`
-pass. The fixture versions are not published starter tags.
+**Package adoption is optional.** Existing web/admin/backend consumers continue
+using merge-by-tag; no database migration or operations change is introduced.
+Demo-derived apps must preserve their dashboard, editable UI and branding when
+merging these changes. Follow [the package upgrade guide](./docs/starter-upgrades.md)
+only when adopting this explicit ownership/dependency contract. Keep the manifest,
+package artifact, lock and required tests together. Done when
+`bun run check:starter-ownership`, `bun run test:starter-upgrade` and
+`bun run test:starter-rehearsal` pass. Local fixture versions are not starter tags.
 
 **Every existing business app**, once:
 

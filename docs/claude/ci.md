@@ -18,7 +18,7 @@ The `bun run ci` command runs these checks in order (all via `turbo`):
 4. **Vitest component tests with coverage** (`turbo test:coverage`)
 5. **Coverage summary display** + artifact saving
 6. **Convex backend tests** (`turbo test:convex`)
-7. **Foundation upgrade canary** (`bun run test:foundation` + `bun run test:foundation-canary`)
+7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run check:starter-docs`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
 8. **Production build** (`turbo build`)
 9. **Bundle size check** (all apps with `.size-limit.json`)
 10. **Storybook build** (`turbo build --filter=@repo/storybook...`)
@@ -59,7 +59,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ```
 
 **CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:
-1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required offline foundation upgrade canary (`bun run test:foundation` + `bun run test:foundation-canary`; see `docs/foundation-canary.md`)
+1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required starter ownership checks and demo upgrade rehearsal (see `docs/starter-upgrades.md`)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)

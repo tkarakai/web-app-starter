@@ -9,10 +9,11 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
-    "test:foundation": "vitest run qa/tests/foundation.test.tsx",
+    "test:starter-policy": "vitest run qa/tests/starter-policy.test.tsx",
     "test:business": "vitest run qa/tests/business.test.tsx"
   },
   "dependencies": {
+    "@repo/starter-sidebar-policy": "file:./starter-packages/sidebar-policy",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.7",
     "@radix-ui/react-dialog": "^1.1.15",

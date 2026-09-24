@@ -16,7 +16,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// App-owned navigation and identity; foundation releases never replace this file.
+// App-owned navigation and identity; starter releases never replace this file.
 const data = {
   user: {
     name: "Morgan Chen",
