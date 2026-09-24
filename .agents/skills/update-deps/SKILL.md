@@ -1,6 +1,6 @@
 ---
 name: update-deps
-description: Bring main up to date with dependency updates. Drains the Renovate queue, triages failing Renovate PRs, and asks the user to decide on majors, lockfile maintenance and holds. Use when the user asks to update dependencies, process Renovate PRs, the Dependency Dashboard, or pending majors. Supports a dry run.
+description: Bring main up to date with dependency updates. Drains the Renovate queue, triages failing Renovate PRs, and asks the user to decide on majors, lockfile maintenance and holds. Always shows a read-only plan first and acts only after the user says go. Use when the user asks to update dependencies, process Renovate PRs, the Dependency Dashboard, or pending majors.
 ---
 
 # Update dependencies
@@ -17,9 +17,10 @@ Sources of truth:
 **No merge freeze.** Other agents and people keep merging while this runs; nothing is paused or
 locked. A feature merge only leaves Renovate PRs `BEHIND`, which the drain loop already handles.
 
-**Dry run.** If the user asks for a dry run, do steps 2–5 read-only. Dispatch nothing, edit no PR
-or issue, and report what you would do for each item. Still present the decisions (see below);
-the answers become the plan for the real run and are not acted on.
+**Plan first, then go.** Every invocation starts as a dry run: the read-only plan phase below.
+Show the plan, ask the decisions, and end with one **go** question. Act only after the user says
+go. If the user asked to run for real in the same message (e.g. `/update-deps go`), still show
+the plan and ask the decisions, but skip the go question.
 
 **Hard rules.** Never push commits to a `renovate/*` branch. Never use GitHub's *Update branch*.
 Never tick a dashboard box under *PR Edited (Blocked)* or *Pending Status Checks*. Never merge a
@@ -80,7 +81,7 @@ every such request easy to see and quick to answer:
      A. Approve: tick the dashboard box, PR opens next run (Recommended)
      B. Defer
 
-  Reply like "1A 2A", or "all recommended".
+  Run this plan now? Reply like "go 1A 2A", "go all recommended", or "not now".
   ```
 
 Default options per kind:
@@ -93,11 +94,38 @@ Default options per kind:
 | Red PR that cannot work yet | Add `HOLD:` rule · Leave open |
 | Hold whose REMOVE condition is met | Open lift PR · Keep |
 
+## Plan phase (read-only, always)
+
+Dispatch nothing and edit no PR, issue or file. Work from the last Renovate run: run
+`bun run renovate:status`, say when that run finished, and require `repositoryResult: "done"`.
+Go through steps 1 and 3–5 below and say what you *would* do for each item. Then present, in
+this order:
+
+1. **Report**: status tables, for information.
+2. **Plan**: a numbered list of the actions the run phase will take, e.g. "rebase and merge #131
+   (all non-major)", "tick the size-limit 13 approval box". Mark each action that depends on a
+   decision. If there is nothing to do and nothing to decide, say so and stop. There is no go
+   question.
+3. **Decisions needed**, in the format above.
+4. **Go**, asked last: *Run this plan now?* Options: **Go** (Recommended) · **Not now**. The go
+   covers the plan as adjusted by the decision answers. In the same structured call as the
+   decisions when it fits (four questions per call), otherwise its own call. In the text
+   fallback, ask the user to reply `go` together with their answers, e.g. "go 1A 2B".
+
+"Not now" ends the skill with nothing changed. The answers stay in the conversation as the plan
+for a later go.
+
+## Run phase (after go)
+
+Refresh first (step 2). If the new snapshot differs from the plan, e.g. new PRs or new
+*Pending Approval* items, show the difference and ask again before acting on anything new.
+Otherwise carry out steps 3–6 with the user's decisions.
+
 ## Steps
 
 1. **See what is in flight.** List open non-Renovate PRs (`gh pr list --search "-head:renovate/"`)
    so the report can say which feature work may land during the run. Do not ask anyone to stop.
-2. **Refresh.** `gh workflow run renovate.yml`. Wait with
+2. **Refresh** (run phase only). `gh workflow run renovate.yml`. Wait with
    `gh run watch $(gh run list --workflow=renovate.yml --limit 1 --json databaseId --jq '.[0].databaseId')`,
    then run `bun run renovate:status` and require `repositoryResult: "done"`.
 3. **Drain loop.** Repeat until no automerge-eligible Renovate PR is open. Handle one PR at a time,
