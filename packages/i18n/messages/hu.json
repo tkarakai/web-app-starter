@@ -226,6 +226,12 @@
         "rateLimited": "Túl sok kérés. Kérjük, várjon egy pillanatot, és próbálja újra.",
         "generic": "Valami hiba történt. Kérjük, próbálja újra."
       }
+    },
+    "fallback": {
+      "title": "A regisztráció átmenetileg nem érhető el",
+      "description": "Szolgáltatásaink jelenleg nem érhetők el, a háttérben újrapróbálkozunk. Meglévő fiókjába továbbra is bejelentkezhet.",
+      "bookDemo": "Bemutató foglalása",
+      "contact": "Kapcsolat"
     }
   },
   "dashboard": {

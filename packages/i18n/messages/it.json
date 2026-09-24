@@ -226,6 +226,12 @@
         "rateLimited": "Troppe richieste. Attendi un momento e riprova.",
         "generic": "Qualcosa è andato storto. Riprova."
       }
+    },
+    "fallback": {
+      "title": "La registrazione è temporaneamente non disponibile",
+      "description": "Al momento non riusciamo a raggiungere i nostri servizi e continueremo a riprovare in background. Puoi comunque accedere a un account esistente.",
+      "bookDemo": "Prenota una demo",
+      "contact": "Contattaci"
     }
   },
   "dashboard": {

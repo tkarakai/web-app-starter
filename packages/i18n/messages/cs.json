@@ -226,6 +226,12 @@
         "rateLimited": "Příliš mnoho požadavků. Počkejte chvíli a zkuste to znovu.",
         "generic": "Něco se pokazilo. Zkuste to prosím znovu."
       }
+    },
+    "fallback": {
+      "title": "Registrace je dočasně nedostupná",
+      "description": "Momentálně se nemůžeme spojit s našimi službami a budeme to na pozadí zkoušet znovu. Do existujícího účtu se přihlásit můžete.",
+      "bookDemo": "Domluvit ukázku",
+      "contact": "Kontaktujte nás"
     }
   },
   "dashboard": {

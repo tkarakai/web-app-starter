@@ -226,6 +226,12 @@
         "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
         "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
       }
+    },
+    "fallback": {
+      "title": "Registrierung vorübergehend nicht verfügbar",
+      "description": "Unsere Dienste sind gerade nicht erreichbar. Wir versuchen es im Hintergrund weiter. Sie können sich weiterhin bei einem bestehenden Konto anmelden.",
+      "bookDemo": "Demo buchen",
+      "contact": "Kontakt"
     }
   },
   "dashboard": {

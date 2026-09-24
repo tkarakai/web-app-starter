@@ -26,6 +26,7 @@ import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
+import type * as integrations from "../integrations.js";
 import type * as meta from "../meta.js";
 import type * as migrations from "../migrations.js";
 import type * as onboardingType from "../onboardingType.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   functions: typeof functions;
   http: typeof http;
+  integrations: typeof integrations;
   meta: typeof meta;
   migrations: typeof migrations;
   onboardingType: typeof onboardingType;
