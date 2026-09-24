@@ -122,7 +122,7 @@ for (const decision of ["yes", "no", "cancel"] as const) {
       ask: async question => { questions.push(question); return decision === "no" ? "n" : ""; },
     };
     try {
-      const options = parseOptions(["teams", "--config", path]);
+      const options = parseOptions(["status", "--config", path]);
       const proceed = await offerSetup(options, () => {}, ui, async received => {
         setups++;
         expect(received).toBe(options);
@@ -130,7 +130,7 @@ for (const decision of ["yes", "no", "cancel"] as const) {
         return { saved: decision === "yes" };
       });
       expect(questions).toHaveLength(1);
-      expect(questions[0]).toContain("continue with ops teams");
+      expect(questions[0]).toContain("continue with ops status");
       expect(messages[0]).toContain(path);
       expect(setups).toBe(decision === "no" ? 0 : 1);
       expect(proceed).toBe(decision !== "cancel");
@@ -138,6 +138,12 @@ for (const decision of ["yes", "no", "cancel"] as const) {
     } finally { await rm(dir, { recursive: true, force: true }); }
   });
 }
+test("GitHub investigation and discovery do not prompt for unrelated project setup", async () => {
+  for (const args of [["diagnose", "42"], ["history"], ["logs", "42"], ["teams"], ["auth", "status"], ["watch", "42"]]) {
+    const ui: SetupUI = { interactive: () => true, tell: () => { throw new Error("Unexpected setup prompt"); }, ask: async () => { throw new Error("Unexpected setup question"); } };
+    expect(await offerSetup(parseOptions(args), () => {}, ui)).toBe(true);
+  }
+});
 test("existing configs, help, explicit setup, JSON and noninteractive commands never offer setup", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ops-onboarding-tests-"));
   const path = join(dir, "existing.json");

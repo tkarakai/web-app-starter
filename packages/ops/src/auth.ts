@@ -2,14 +2,14 @@ import { execFile, spawn } from "node:child_process";
 import { HttpApi, type Fetcher } from "./api";
 import { githubToken } from "./config";
 import { OpsError, redact } from "./errors";
-import type { Api, Result } from "./types";
+import type { Api, Result, PageReport } from "./types";
 
 export type Provider = "github" | "vercel";
 export type Log = (message: string) => void;
 export interface CommandResult { stdout: string; stderr: string; exitCode: number }
-export type Runner = (file: string, args: string[]) => Promise<CommandResult>;
-export const runCaptured: Runner = (file, args) => new Promise((resolve, reject) => {
-  const child = execFile(file, args, { timeout: 30_000, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, NO_COLOR: "1" } }, (error, stdout, stderr) => {
+export type Runner = (file: string, args: string[], signal?: globalThis.AbortSignal) => Promise<CommandResult>;
+export const runCaptured: Runner = (file, args, signal) => new Promise((resolve, reject) => {
+  const child = execFile(file, args, { signal, timeout: 30_000, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, NO_COLOR: "1" } }, (error, stdout, stderr) => {
     if (error && typeof error.code !== "number") {
       reject(new OpsError(error.code === "ENOENT" ? "CLI_MISSING" : "CLI_PROCESS",
         `Could not run ${file}: ${redact(error.message)}`,
@@ -21,9 +21,9 @@ export const runCaptured: Runner = (file, args) => new Promise((resolve, reject)
 });
 
 export function vercelSessionFetcher(run: Runner = runCaptured, log: Log = () => {}): Fetcher {
-  async function request(url: URL, scope?: string): Promise<Response> {
+  async function request(url: URL, scope?: string, signal?: globalThis.AbortSignal): Promise<Response> {
     const path = url.pathname + url.search;
-    const result = await run("vercel", ["api", path, "--method", "GET", "--raw", "--include", "--non-interactive", ...(scope ? ["--scope", scope] : [])]);
+    const result = await run("vercel", ["api", path, "--method", "GET", "--raw", "--include", "--non-interactive", ...(scope ? ["--scope", scope] : [])], signal);
     // --include is a stable HTTP status/header block on stdout, even on CLI versions
     // that return nonzero for HTTP failures. Never parse human tables as API data.
     const match = result.stdout.match(/^HTTP (\d{3})[^\r\n]*\r?\n([\s\S]*?)\r?\n\r?\n([\s\S]*)$/);
@@ -60,21 +60,21 @@ export function vercelSessionFetcher(run: Runner = runCaptured, log: Log = () =>
         "Run bun run ops setup, or bun run ops teams and bun run ops projects --team ID_OR_SLUG. Set teamId in ops.config.json for status queries. The Vercel CLI does not support a personal-account scope.", 2, { provider: "vercel", missing: "teamId" });
     }
     // Older CLIs overwrite query teamId with their selected team. --scope pins it.
-    return request(url, scope);
+    return request(url, scope, init?.signal ?? undefined);
   };
 }
-export function vercelApi(log: Log = () => {}): Api {
+export function vercelApi(log: Log = () => {}, signal?: globalThis.AbortSignal): Api {
   return process.env.VERCEL_TOKEN
-    ? new HttpApi("vercel", process.env.VERCEL_TOKEN, log)
-    : new HttpApi("vercel", "", log, vercelSessionFetcher(runCaptured, log));
+    ? new HttpApi("vercel", process.env.VERCEL_TOKEN, log, undefined, undefined, signal)
+    : new HttpApi("vercel", "", log, vercelSessionFetcher(runCaptured, log), undefined, signal);
 }
-export function githubApi(log: Log = () => {}): Api {
+export function githubApi(log: Log = () => {}, signal?: globalThis.AbortSignal): Api {
   let client: Promise<Api> | undefined;
-  const getClient = () => client ??= githubToken().then(token => new HttpApi("github", token, log));
+  const getClient = () => client ??= githubToken().then(token => new HttpApi("github", token, log, undefined, undefined, signal));
   return {
     get: async <T>(path: string) => (await getClient()).get<T>(path),
     post: async <T>(path: string, body: unknown) => (await getClient()).post<T>(path, body),
-    pages: async <T>(path: string, key?: string, limit?: number) => (await getClient()).pages<T>(path, key, limit),
+    pages: async <T>(path: string, key?: string, limit?: number, report?: PageReport) => (await getClient()).pages<T>(path, key, limit, report),
   };
 }
 export function authSource(provider: Provider): string {

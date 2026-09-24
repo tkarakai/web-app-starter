@@ -52,6 +52,37 @@ interface Action { runs: { steps: Step[] } }
 async function action(name: string): Promise<Action> {
   return YAML.parse(await readFile(new URL(`../../../.github/actions/${name}/action.yml`, import.meta.url), "utf8")) as Action;
 }
+test("deployment rejects incomplete or obsolete artifact identity before downloading", async () => {
+  const a = await action("deploy-vercel");
+  const step = a.runs.steps[0];
+  expect(step.name).toBe("Validate deployment artifact identity");
+  const valid = { ARTIFACT_APP: "web", ARTIFACT_HASH: "c".repeat(16), ARTIFACT_NAME: `web-${"c".repeat(16)}`,
+    ARTIFACT_RUN_ID: "42", DEPLOY_SELECTED_SHA: sha, ARTIFACT_TARBALL: "web.tar.gz", ARTIFACT_CHECKSUM_FILE: "web.tar.gz.sha256" };
+  for (const overrides of [{}, { ARTIFACT_HASH: "" }, { ARTIFACT_NAME: `web-${sha}` }, { ARTIFACT_NAME: `web-production-${sha}` },
+    { ARTIFACT_RUN_ID: "" }, { DEPLOY_SELECTED_SHA: "" }, { ARTIFACT_TARBALL: "admin.tar.gz" }]) {
+    const proc = spawn(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", step.run!], {
+      env: { ...process.env, ...valid, ...overrides }, stdout: "pipe", stderr: "pipe",
+    });
+    expect(await proc.exited).toBe(Object.keys(overrides).length ? 1 : 0);
+  }
+});
+test("artifact provenance always verifies the app and current hash contract", async () => {
+  const a = await action("deploy-vercel"), step = a.runs.steps.find(s => s.id === "provenance")!;
+  expect(step.if).toBeUndefined();
+  const hash = "c".repeat(16), dir = await mkdtemp(resolve(tmpdir(), "ops-manifest-"));
+  const script = step.run!.replaceAll("${{ inputs.app }}", "web").replaceAll("${{ inputs.artifact-name }}", `web-${hash}`).replaceAll("${{ inputs.expected-hash }}", hash);
+  try {
+    for (const overrides of [{}, { app: "admin" }, { input_hash: null }, { input_hash: sha }, { input_hash: "d".repeat(16) }]) {
+      await writeFile(resolve(dir, "web-manifest.json"), JSON.stringify({ app: "web", input_hash: hash, git_sha: sha, artifact_checksum: "e".repeat(64), ...overrides }));
+      const proc = spawn(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], {
+        cwd: dir, env: { ...process.env, GITHUB_OUTPUT: resolve(dir, "output"), GITHUB_STEP_SUMMARY: resolve(dir, "summary") }, stdout: "pipe", stderr: "pipe",
+      });
+      const code = await proc.exited;
+      if (Object.keys(overrides).length) expect(code).not.toBe(0);
+      else expect(code).toBe(0);
+    }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
 test("artifact lookup API failures stop the build instead of becoming cache misses", async () => {
   const a = await action("build-app");
   const script = a.runs.steps.find(s => s.id === "resolve")!.run!.replace(/\$\{\{[^}]+\}\}/g, "fixture");
@@ -61,6 +92,43 @@ test("artifact lookup API failures stop the build instead of becoming cache miss
     const proc = spawn(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], { env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_OUTPUT: resolve(dir, "output") }, stdout: "pipe", stderr: "pipe" });
     expect(await proc.exited).toBe(23); expect(await new Response(proc.stderr).text()).toContain("permission denied");
     expect(await new Response(proc.stdout).text()).not.toContain("building it");
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+test("artifact lookup uses standalone jq with slurp and reuses the newest unexpired package", async () => {
+  const a = await action("build-app");
+  const script = a.runs.steps.find(s => s.id === "resolve")!.run!.replace(/\$\{\{[^}]+\}\}/g, "fixture");
+  const dir = await mkdtemp(resolve(tmpdir(), "ops-artifact-lookup-"));
+  try {
+    await writeFile(resolve(dir, "gh"), `#!/bin/sh
+case "$*" in *--jq*|*--template*) echo 'slurp cannot be combined with jq' >&2; exit 23;; esac
+printf '%s' '[{"artifacts":[{"id":1,"expired":false,"created_at":"2026-09-20","workflow_run":{"id":40}}]},{"artifacts":[{"id":2,"expired":false,"created_at":"2026-09-21","workflow_run":{"id":41}},{"id":3,"expired":true,"created_at":"2026-09-22","workflow_run":{"id":42}}]}]'
+`, { mode: 0o755 });
+    const proc = spawn(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], { env: {
+      ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_OUTPUT: resolve(dir, "output"), GITHUB_STEP_SUMMARY: resolve(dir, "summary"),
+    }, stdout: "pipe", stderr: "pipe" });
+    expect(await proc.exited).toBe(0);
+    const output = await readFile(resolve(dir, "output"), "utf8");
+    expect(output).toContain("artifact-id=2"); expect(output).toContain("run-id=41"); expect(output).toContain("found=true");
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+test.each([
+  ["empty search", '[{"artifacts":[]}]'],
+  ["only expired artifacts", '[{"artifacts":[{"id":3,"expired":true,"created_at":"2026-09-22","workflow_run":{"id":42}}]}]'],
+])("artifact lookup builds on %s", async (_name, response) => {
+  const a = await action("build-app");
+  const script = a.runs.steps.find(s => s.id === "resolve")!.run!.replace(/\$\{\{[^}]+\}\}/g, "fixture");
+  const dir = await mkdtemp(resolve(tmpdir(), "ops-artifact-miss-"));
+  try {
+    await writeFile(resolve(dir, "gh"), `#!/bin/sh
+case "$*" in *--jq*|*--template*) echo 'slurp cannot be combined with jq' >&2; exit 23;; esac
+printf '%s' "$ARTIFACT_RESPONSE"
+`, { mode: 0o755 });
+    const proc = spawn(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script], { env: {
+      ...process.env, PATH: `${dir}:${process.env.PATH}`, ARTIFACT_RESPONSE: response, GITHUB_OUTPUT: resolve(dir, "output"),
+    }, stdout: "pipe", stderr: "pipe" });
+    expect(await proc.exited).toBe(0);
+    expect(await readFile(resolve(dir, "output"), "utf8")).toBe("found=false\nrun-id=fixture\n");
+    expect(await new Response(proc.stdout).text()).toContain("No artifact named fixture — building it.");
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 test("hash resolution reads target configuration before looking up reusable bytes", async () => {
@@ -76,6 +144,8 @@ test("every deployment workflow records failures using workflow-version tooling"
     for (const app of ["web", "admin", "landing"]) {
       const steps = workflow.jobs[`deploy-${app}`].steps!;
       expect(steps.some(s => s.uses === "./.ops-workflow/.github/actions/deploy-vercel")).toBe(true);
+      const deploy = steps.find(s => s.uses === "./.ops-workflow/.github/actions/deploy-vercel")!;
+      for (const input of ["expected-hash", "run-id", "deployed-commit", "github-token"]) expect(deploy.with?.[input]).toBeTruthy();
       expect(steps.find(s => s.name === "Checkout workflow tooling")?.with?.ref).toBe("${{ github.workflow_sha }}");
     }
   }
@@ -90,6 +160,24 @@ test("health remains successful when a later tag write fails", async () => {
   const needs = JSON.parse(process.env.OPS_NEEDS!); needs["smoke-test"] = { result: "failure", outputs: { health: "success" } };
   process.env.OPS_NEEDS = JSON.stringify(needs); await recordOps(f.args);
   expect(f.records[0]).toMatchObject({ payload: { result: "success", health: "success" } });
+});
+
+test("production and rollback workflow gates resolve annotated tags and reject mismatched targets", async () => {
+  for (const kind of ["production", "rollback"]) {
+    const workflow = YAML.parse(await readFile(new URL(`../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: { validate: { steps: Step[] } } };
+    const step = workflow.jobs.validate.steps.find(s => typeof s.with?.script === "string" && s.with.script.includes("listMatchingRefs"))!;
+    const script = String(step.with!.script).replaceAll("${{ inputs.environment }}", "production");
+    const execute = new Function("github", "context", "core", `return (async () => { ${script} })()`);
+    process.env.OPS_SELECTED_SHA = sha;
+    for (const target of [sha, old]) {
+      const failures: string[] = [];
+      const github = { paginate: async () => [{ ref: `refs/tags/deploy/staging/${sha}`, object: { type: "tag", sha: "tag-object" } }], rest: { git: {
+        listMatchingRefs: () => {}, getTag: async () => ({ data: { object: { type: "commit", sha: target } } }),
+      } } };
+      await execute(github, { repo: { owner: "team", repo: "repo" } }, { setFailed: (message: string) => failures.push(message) });
+      expect(failures.length).toBe(target === sha ? 0 : 1);
+    }
+  }
 });
 test("real Turbo hashes reuse web across environments but separate static landing builds", async () => {
   const a = await action("build-app");

@@ -45,11 +45,14 @@ export function validateConfig(value: unknown): Config {
   if (typeof c.workflowRef !== "string" || !c.workflowRef) usage("workflowRef must name the branch containing the deployment workflows.");
   if (c.teamId !== undefined && typeof c.teamId !== "string") usage("teamId must be a string.");
   if (!c.apps || typeof c.apps !== "object" || !Object.keys(c.apps).length) usage("apps must contain at least one app.");
+  const mapped = new Set<string>();
   for (const [name, app] of Object.entries(c.apps)) {
     if (!/^[a-z][a-z0-9-]*$/.test(name) || !app || !app.projects || typeof app.projects !== "object") usage(`Invalid app configuration: ${name}.`);
     for (const [env, project] of Object.entries(app.projects)) {
       if (!["staging", "production"].includes(env)) usage(`Invalid environment for ${name}/${env}.`);
       if (project === null) continue;
+      if (project && mapped.has(project.id)) usage("A Vercel project may only be mapped to one app/environment pair.");
+      if (project) mapped.add(project.id);
       if (!project || typeof project.id !== "string" || !project.id) usage(`Invalid project for ${name}/${env}.`);
       if (project.domain != null && (typeof project.domain !== "string" || !/^[a-zA-Z0-9.-]+$/.test(project.domain))) usage(`domain for ${name}/${env} must be a hostname without https:// or a path.`);
     }

@@ -2,24 +2,30 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { account, authStatus, githubApi, login, projects, requireInteractive, resolveTeam, teams, vercelApi, type Provider } from "./auth";
 import { offerSetup, setup } from "./setup";
-import { command, loadConfig } from "./config";
+import { loadConfig } from "./config";
 import { errorInfo, OpsError, redact, registerSecret } from "./errors";
 import { parseOptions, type Options } from "./options";
 import { envelope, render, safeCell } from "./output";
 import { OpsService } from "./service";
-import type { Result } from "./types";
+import { execute, verificationExit } from "./operations";
+import { startConsole } from "./console-runtime";
 
 const HELP = `ops — deployment visibility and workflow control
 
-  ops [status] [--env staging|production] [--app web] [--watch]
+  ops                                Guided operations console (interactive terminal)
+  ops console                        Open the guided console explicitly
+  ops status [--env staging|production] [--app web] [--watch]
   ops history [--env staging|production] [--since ISO_DATE]
   ops builds [--app web]
-  ops candidates [--to production]
+  ops candidates [--to staging|production]
   ops inspect SHA [--to production]
   ops diff production SHA             Compare each live app with a commit
   ops diff SHA SHA                    Compare two commits
   ops runs [--active] [--watch]         Workflows, active jobs and steps
   ops watch RUN_ID                    Follow jobs until the run completes
+  ops diagnose RUN_ID [--attempt N]   Investigate failures and recorded effects
+  ops verify --run RUN_ID [--env ENV] Verify workflow success + intended serving state
+  ops watch --request REQUEST_ID      Resume an accepted/uncertain dispatch
   ops logs RUN_ID                     Fetch completed failed-job logs
   ops deploy SHA --to staging|production [--dry-run | --yes] [--watch]
   ops rollback SHA --to staging|production [--dry-run | --yes] [--watch]
@@ -39,12 +45,15 @@ Options:
   --interval N     Watch polling seconds, 1–60 (default 10)
   --timeout N      Watch timeout seconds, 1–86400 (default 1800)
   --ref BRANCH     Workflow code branch for dispatch (default config.workflowRef)
+  --until serving  Continue watch beyond workflow success to verify serving identity
+  --attempt N      Pin watch, diagnosis, logs or verification to an attempt
+  --all-commits Include all recent commits in candidates --to staging
   --yes            Explicitly authorize dispatch; never inferred from --json
 
 Auth: gh auth login and vercel login sessions; no credentials in ops config.
       GH_TOKEN / GITHUB_TOKEN and VERCEL_TOKEN override sessions for CI.
 Exit: 0 success; 1 provider/unexpected error; 2 usage/config/gate failure;
-      3 partial results; 4 workflow failed; 5 watch timed out; 130 interrupted.
+      3 partial results; 4 workflow failed; 5 watch timed out; 6 not serving yet; 130 interrupted.
 Read commands do not mutate deployments. Writes are never automatically retried.
 `;
 const controller = new globalThis.AbortController();
@@ -62,47 +71,20 @@ async function pause(o: Options, deadline: number) {
 async function watch(service: OpsService, id: number, o: Options, deadline: number): Promise<void> {
   for (;;) {
     interrupted();
-    const data = await service.runDetails(id);
+    service.errors = []; service.warnings = []; service.coverage = [];
+    const data = await service.runDetails(id, o.attempt);
+    o = { ...o, attempt: Number(data.attempt) };
     render("watch", data, o.json, service.errors, service.warnings);
     if (data.status === "completed") {
       if (data.conclusion !== "success") throw new OpsError("WORKFLOW_FAILED", `Workflow ${id} completed with ${data.conclusion}.`, `Run ops logs ${id} or open ${data.url}.`, 4, { runId: id, conclusion: data.conclusion, url: data.url });
-      return;
+      if (o.until !== "serving") return;
+      const verification = await service.verify(id, o);
+      render("verify", { ...verification, coverage: service.coverage }, o.json, service.errors, service.warnings);
+      if (service.errors.length || verification.outcome === "incomplete") { process.exitCode = 3; return; }
+      if (verification.outcome === "serving") return;
+      if (verification.outcome === "workflow-failed") { process.exitCode = 4; return; }
     }
     await pause(o, deadline);
-  }
-}
-async function execute(service: OpsService, o: Options): Promise<Result> {
-  switch (o.command) {
-    case "status": return service.status(o);
-    case "history": return service.history(o);
-    case "builds": return service.builds(o);
-    case "candidates": return service.candidates(o);
-    case "inspect": return service.inspect(o.args[0], o);
-    case "diff": return service.diff(o.args[0], o.args[1], o);
-    case "runs": return service.runs(o);
-    case "projects": return service.projects();
-    case "deploy": case "rollback": return service.dispatch(o.args[0], o);
-    case "logs": {
-      const run = await service.run(Number(o.args[0]));
-      if (run.status !== "completed") throw new OpsError("LOGS_NOT_READY", "GitHub downloadable job logs are not complete while the run is active.", `Use ops watch ${run.id} for live step status, or open ${run.html_url}.`, 2);
-      const logs = await command("gh", ["run", "view", String(run.id), "--repo", service.config.repository, "--log-failed"]);
-      return { run: run.id, url: run.html_url, logs: redact(logs), note: logs ? "Completed failed-job logs." : "No failed-job logs were returned." };
-    }
-    case "doctor": {
-      const checks = await Promise.allSettled([
-        service.gh.get<{ full_name: string }>(service.root),
-        service.projects(),
-      ]);
-      const rows = checks.map((r, i) => {
-        if (r.status === "rejected") service.errors.push(r.reason);
-        return { provider: i ? "vercel" : "github", result: r.status === "fulfilled" ? "accessible" : "failed" };
-      });
-      const missing = Object.entries(service.config.apps).flatMap(([app, c]) => ["staging", "production"].filter(env => c.projects[env as "staging" | "production"] === undefined).map(env => `${app}/${env}`));
-      const skipped = Object.entries(service.config.apps).flatMap(([app, c]) => ["staging", "production"].filter(env => c.projects[env as "staging" | "production"] === null).map(env => `${app}/${env}`));
-      if (missing.length) service.errors.push(service.projectConfigurationError(missing));
-      return { rows, repository: service.config.repository, workflowRef: service.config.workflowRef, missingProjectMappings: missing, skippedProjectMappings: skipped };
-    }
-    default: throw new Error(`Unhandled command ${o.command}`);
   }
 }
 export async function main(argv: string[]) {
@@ -114,6 +96,9 @@ export async function main(argv: string[]) {
     if (o.command === "help") { if (o.json) render("help", { usage: HELP }, true); else console.log(HELP); return; }
     const log = (message: string) => console.error(`${o.debug ? "[debug]" : "[retry]"} ${safeCell(message)}`);
     const requestLog = (message: string) => { if (o.debug || message.includes("retry ")) log(message); };
+    if ((argv.length === 0 && process.stdin.isTTY && process.stdout.isTTY) || o.command === "console") {
+      requireInteractive(o.json); await startConsole(o); return;
+    }
     if (!await offerSetup(o, requestLog)) return;
     if (o.command === "setup") { render("setup", await setup(o, requestLog), o.json); return; }
     if (o.command === "auth") {
@@ -142,18 +127,31 @@ export async function main(argv: string[]) {
     if (o.app && !config.apps[o.app]) throw new OpsError("USAGE", `Unknown app ${o.app}.`, `Configured apps: ${Object.keys(config.apps).join(", ")}.`, 2);
     const service = new OpsService(config, githubApi(requestLog), vercelApi(requestLog), o.config);
     const deadline = Date.now() + o.timeout * 1000;
-    if (o.command === "watch") { await watch(service, Number(o.args[0]), o, deadline); return; }
+    if (o.command === "watch") {
+      let id = Number(o.args[0]);
+      if (o.request) {
+        for (;;) {
+          const run = await service.requestRun(o.request);
+          service.requireEvidence();
+          if (run) { id = run.id; break; }
+          await pause(o, deadline);
+        }
+      }
+      await watch(service, id, o, deadline); return;
+    }
     for (;;) {
       interrupted();
-      service.errors = []; service.warnings = [];
+      service.errors = []; service.warnings = []; service.coverage = [];
       const data = await execute(service, o);
-      render(o.command, data, o.json, service.errors, service.warnings);
+      render(o.command, { ...data, coverage: service.coverage }, o.json, service.errors, service.warnings);
       if (service.errors.length) { process.exitCode = 3; return; }
+      if (o.command === "verify") { process.exitCode = verificationExit(data); return; }
       if (["deploy", "rollback"].includes(o.command)) {
         if (o.watch && data.dispatched) {
           for (;;) {
             const run = await service.findDispatchedRun(String(data.workflow), String(data.requestId));
-            if (run) { await watch(service, run.id, o, deadline); return; }
+            service.requireEvidence();
+            if (run) { await watch(service, run.id, { ...o, expectedSha: String(data.sha), env: String(data.environment), attempt: run.run_attempt }, deadline); return; }
             await pause(o, deadline);
           }
         }

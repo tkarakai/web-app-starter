@@ -332,8 +332,20 @@
       "bin": {
         "ops": "src/cli.ts",
       },
+      "dependencies": {
+        "@repo/paper-roll": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "^1.3.6",
+        "typescript": "5.9.3",
+      },
+    },
+    "packages/paper-roll": {
+      "name": "@repo/paper-roll",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.3.6",
+        "@types/node": "^25.2.3",
         "typescript": "5.9.3",
       },
     },
@@ -820,6 +832,8 @@
     "@repo/landing-static": ["@repo/landing-static@workspace:apps/landing-static"],
 
     "@repo/ops": ["@repo/ops@workspace:packages/ops"],
+
+    "@repo/paper-roll": ["@repo/paper-roll@workspace:packages/paper-roll"],
 
     "@repo/storybook": ["@repo/storybook@workspace:apps/storybook"],
 
@@ -2202,6 +2216,8 @@
     "@repo/design-system/lucide-react": ["lucide-react@0.562.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw=="],
 
     "@repo/i18n/@types/react": ["@types/react@19.2.8", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-3MbSL37jEchWZz2p2mjntRZtPt837ij10ApxKfgmXCTuHWagYg7iA5bqPw6C8BMPfwidlvfPI/fxOc42HLhcyg=="],
+
+    "@repo/paper-roll/@types/node": ["@types/node@25.2.3", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ=="],
 
     "@repo/storybook/lucide-react": ["lucide-react@0.562.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw=="],
 

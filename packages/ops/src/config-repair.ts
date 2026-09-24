@@ -42,6 +42,7 @@ export function inspectConfig(text: string): { draft: Config; issues: string[] }
   }
   const recovered: Config["apps"] = {};
   let tracked = false;
+  const seenProjects = new Set<string>();
   for (const [name, value] of Object.entries(apps)) {
     if (!/^[a-z][a-z0-9-]*$/.test(name)) { issues.push("An app has an invalid name and cannot be retained."); continue; }
     const mappings = object(object(value)?.projects);
@@ -54,6 +55,8 @@ export function inspectConfig(text: string): { draft: Config; issues: string[] }
       if (source === null) { app.projects[env] = null; continue; }
       const project = object(source);
       if (!project || !nonempty(project.id)) { issues.push(`${name}/${env}: select a Vercel project or explicitly skip tracking.`); continue; }
+      if (seenProjects.has(project.id)) { issues.push(`${name}/${env}: project is already assigned elsewhere; select a different project or skip.`); continue; }
+      seenProjects.add(project.id);
       tracked = true;
       app.projects[env] = { id: project.id };
       if (project.domain === null || hostname(project.domain)) app.projects[env]!.domain = project.domain;
