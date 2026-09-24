@@ -98,8 +98,8 @@ runs:
                | jq -r --arg id "@repo/${{ inputs.app }}#build" \
                    '.tasks[] | select(.taskId == $id) | .hash')
 
-        if [ -z "$HASH" ] || [ "$HASH" = "null" ]; then
-          echo "::error::Could not compute a build hash for @repo/${{ inputs.app }}"
+        if [[ ! "$HASH" =~ ^[a-f0-9]{16}$ ]]; then
+          echo "::error::Expected a 16-character hexadecimal build-input hash for @repo/${{ inputs.app }}"
           exit 1
         fi
 
@@ -124,8 +124,9 @@ runs:
 
         # Repo-wide lookup by exact name — the artifact may come from any earlier
         # run, in any workflow.
+        # gh rejects --slurp with --jq; filter the collected pages with standalone jq.
         FOUND=$(gh api --paginate --slurp "repos/${{ github.repository }}/actions/artifacts?name=${NAME}&per_page=100" \
-                  --jq '[.[].artifacts[] | select(.expired == false)] | sort_by(.created_at) | last')
+                  | jq -c '[.[].artifacts[] | select(.expired == false)] | sort_by(.created_at) | last')
 
         if [ -n "$FOUND" ] && [ "$FOUND" != "null" ]; then
           RUN_ID=$(jq -r '.workflow_run.id' <<< "$FOUND")

@@ -35,6 +35,8 @@ export const terminalSetupUI: SetupUI = {
 // Return false when the operator starts setup but cancels saving, so the original
 // command (especially a deployment) is not unexpectedly resumed after cancellation.
 export async function offerSetup(o: Options, log: Log, ui: SetupUI = terminalSetupUI, runSetup = setup): Promise<boolean> {
+  if (o.command === "watch" && !o.until) return true;
+  if (["runs", "logs", "history", "builds", "candidates", "diagnose", "auth", "teams", "projects"].includes(o.command)) return true;
   if (o.json || !ui.interactive() || ["help", "setup"].includes(o.command)) return true;
   const path = o.config ?? "ops.config.json";
   let issues: string[] | undefined;
@@ -107,6 +109,7 @@ export async function configureProjects(config: Config, teamList: Team[], getPro
   next.teamId = teamId;
   next.apps = {};
   tell("Next, choose which Vercel project hosts each app in staging and production. You will make one selection for each app and environment.");
+  const used = new Set<string>();
   let step = 0;
   const total = Object.keys(config.apps).length * 2;
   for (const [app, settings] of Object.entries(config.apps)) {
@@ -115,9 +118,16 @@ export async function configureProjects(config: Config, teamList: Team[], getPro
       const old = !config.teamId || config.teamId === teamId ? settings.projects[env] : undefined;
       const existing = old ? available.findIndex(p => p.id === old.id) : -1;
       const target = `the "${app}" app in ${env.toUpperCase()}`;
-      const index = await choose(`\n[${++step}/${total}] Which Vercel project hosts ${target}?`, [...available.map(p => `${p.name} — ${p.id}`), `Skip — set up ${app} in ${env} later`], ask, tell, existing >= 0 ? existing : old === null ? available.length : undefined, select);
+      ++step;
+      let index: number;
+      for (;;) {
+        index = await choose(`\n[${step}/${total}] Which Vercel project hosts ${target}?`, [...available.map(p => `${p.name} — ${p.id}${used.has(p.id) ? " (already assigned)" : ""}`), `Skip — set up ${app} in ${env} later`], ask, tell, existing >= 0 && !used.has(available[existing].id) ? existing : old === null ? available.length : undefined, select);
+        if (!available[index] || !used.has(available[index].id)) break;
+        tell("That project is already assigned to another app/environment. Choose a different project or Skip.");
+      }
       const project = available[index];
       if (!project) { next.apps[app].projects[env] = null; tell(`Skipped ${app} in ${env}; ops will list it as not tracked. You can configure it later with ops setup.`); continue; }
+      used.add(project.id);
       tell(`Selected: ${app} in ${env} → ${safeCell(project.name)}.`);
       const priorDomain = old?.id === project.id ? old.domain : undefined;
       const domain = await chooseDomain(target, await getAliases(project.id, teamId), priorDomain, ask, tell, select);

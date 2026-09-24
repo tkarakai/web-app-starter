@@ -78,6 +78,17 @@ jobs:
               });
 
               const found = tags.find(tag => tag.ref.endsWith(`/${sha}`));
+              // A tag's name is only a claim: resolve annotated tags to the commit.
+              if (found) {
+                let object = found.object;
+                for (let depth = 0; object?.type === 'tag' && depth < 5; depth++) {
+                  const detail = await github.rest.git.getTag({ owner, repo, tag_sha: object.sha });
+                  object = detail.data.object;
+                }
+                if (object?.type !== 'commit' || object.sha !== sha) {
+                  throw new Error('Deployment tag target does not match its SHA suffix.');
+                }
+              }
               if (!found) {
                 core.setFailed(`No ${env} deployment tag found for SHA ${sha}.`);
               } else {

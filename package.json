@@ -44,7 +44,7 @@
     "ensure-env": "./scripts/ensure-app-env.sh",
     "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v",
     "ops": "bun packages/ops/src/cli.ts",
-    "test:ops": "bun test packages/ops/tests",
+    "test:ops": "bun test packages/ops/tests packages/paper-roll/tests",
     "typecheck:ops": "bun run --cwd packages/ops typecheck"
   },
   "overrides": {

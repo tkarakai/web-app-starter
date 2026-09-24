@@ -9,5 +9,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
   },
-  "devDependencies": { "@types/bun": "^1.3.6", "typescript": "5.9.3" }
+  "devDependencies": { "@types/bun": "^1.3.6", "typescript": "5.9.3" },
+  "dependencies": { "@repo/paper-roll": "workspace:*" }
 }

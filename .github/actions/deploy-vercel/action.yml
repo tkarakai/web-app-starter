@@ -27,23 +27,17 @@ inputs:
     description: "Vercel project ID for this app"
     required: true
   run-id:
-    description: >-
-      Workflow run to download the artifact from. Omit to use the current run.
-      Set this to promote an artifact built by an earlier workflow (the staging
-      deploy) instead of rebuilding it.
-    required: false
-    default: ""
+    description: Workflow run that uploaded the resolved artifact
+    required: true
   github-token:
-    description: "Token used to download an artifact from another workflow run. Required with run-id."
-    required: false
-    default: ""
+    description: Token used to download the resolved artifact
+    required: true
   deployed-commit:
     description: >-
       Commit being deployed. Set as a run-time variable so the app can report it
       alongside the commit its artifact was built from — for a reused artifact
       those differ, which is the point of content-addressing.
-    required: false
-    default: ""
+    required: true
   logical-environment:
     description: Ops environment (staging or production); independent of Vercel target
     required: true
@@ -53,11 +47,8 @@ inputs:
     default: ""
   expected-hash:
     description: >-
-      Build-input hash the artifact must carry. When set, the build manifest is
-      checked against it. Artifacts are content-addressed, so this — not the
-      commit SHA — is what identifies the right bytes.
-    required: false
-    default: ""
+      Build-input hash the artifact name and manifest must carry.
+    required: true
 
 outputs:
   built-sha:
@@ -73,13 +64,33 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Validate deployment artifact identity
+      shell: bash
+      env:
+        ARTIFACT_APP: ${{ inputs.app }}
+        ARTIFACT_HASH: ${{ inputs.expected-hash }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        ARTIFACT_RUN_ID: ${{ inputs.run-id }}
+        ARTIFACT_TARBALL: ${{ inputs.tarball }}
+        ARTIFACT_CHECKSUM_FILE: ${{ inputs.checksum-file }}
+        DEPLOY_SELECTED_SHA: ${{ inputs.deployed-commit }}
+      run: |
+        if [[ ! "$ARTIFACT_APP" =~ ^(web|admin|landing)$ ||
+              ! "$ARTIFACT_HASH" =~ ^[a-f0-9]{16}$ ||
+              "$ARTIFACT_NAME" != "$ARTIFACT_APP-$ARTIFACT_HASH" ||
+              ! "$ARTIFACT_RUN_ID" =~ ^[1-9][0-9]*$ ||
+              ! "$DEPLOY_SELECTED_SHA" =~ ^[a-f0-9]{40}$ ||
+              "$ARTIFACT_TARBALL" != "$ARTIFACT_APP.tar.gz" ||
+              "$ARTIFACT_CHECKSUM_FILE" != "$ARTIFACT_APP.tar.gz.sha256" ]]; then
+          echo "::error::Deployment requires a hash-named app package, its source run, and a full selected commit SHA."
+          exit 1
+        fi
+
     - name: Download artifact
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       with:
         name: ${{ inputs.artifact-name }}
         path: deploy-artifacts
-        # Empty values fall back to the current run, so the same step serves both
-        # the build-and-deploy and the promote paths.
         run-id: ${{ inputs.run-id }}
         github-token: ${{ inputs.github-token }}
 
@@ -88,7 +99,6 @@ runs:
     # environment rather than trusting the artifact name.
     - name: Verify artifact provenance
       id: provenance
-      if: inputs.expected-hash != ''
       shell: bash
       working-directory: deploy-artifacts
       run: |
@@ -98,7 +108,8 @@ runs:
           exit 1
         fi
 
-        jq -e '(.git_sha | test("^[a-f0-9]{40}$")) and (.artifact_checksum | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
+        jq -e --arg app "${{ inputs.app }}" \
+          '(.app == $app) and (.input_hash | test("^[a-f0-9]{16}$")) and (.git_sha | test("^[a-f0-9]{40}$")) and (.artifact_checksum | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
         echo "built-sha=$(jq -r '.git_sha' "$MANIFEST")" >> "$GITHUB_OUTPUT"
         echo "checksum=$(jq -r '.artifact_checksum' "$MANIFEST")" >> "$GITHUB_OUTPUT"
         BUILT_HASH=$(jq -r '.input_hash' "$MANIFEST")
@@ -181,9 +192,7 @@ runs:
 
         # Run-time only: it must not reach the build, or it would be inlined and
         # make the artifact commit-specific again.
-        if [ -n "${OPS_DEPLOY_SHA}" ]; then
-          DEPLOY_FLAGS+=(--env "DEPLOYED_COMMIT=${OPS_DEPLOY_SHA}")
-        fi
+        DEPLOY_FLAGS+=(--env "DEPLOYED_COMMIT=${OPS_DEPLOY_SHA}")
 
         echo "::group::Debug: deploy directory contents"
         ls -la .vercel/
