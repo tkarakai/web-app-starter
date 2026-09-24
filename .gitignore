@@ -61,8 +61,6 @@ packages/starter-sidebar-policy/dist/
 .security-key
 logs/security/
 
-# Python development-process regression tests
-__pycache__/
 .vercel
 
 # Operator-specific project mappings

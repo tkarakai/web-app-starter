@@ -243,12 +243,14 @@ look identical in the conflict markers:
 - **The starter only changed wording** (`"… Administration"` → `"… Admin Console"`)
   — keep *yours*. Their copy is not better than your copy; it is just theirs.
 
-When a fix changes code around a branded string, follow its **Action required**
-notes and run the release's regression check. Inspect the merged expression as
-well as the branding; compilation alone does not prove the fix survived.
+When a release's fix lands on a branded line, its **Action required** section says
+so and gives you a `grep` command that shows whether your merge kept the fix. Run
+that command. It is the only reliable way to tell the two cases apart, because a
+merge that drops the fix still compiles and still passes CI.
 
-Centralizing branding configuration remains planned work. Until it is implemented,
-review these files explicitly rather than assuming branding is already isolated.
+Moving the name into one configuration value is planned work (Phase 1 in
+[the versioning strategy](./docs/starter-versioning-strategy.md#order-of-work)).
+Until then, review these files one by one; branding is not isolated yet.
 
 ### `packages/backend/convex/schema.ts`
 
@@ -274,7 +276,7 @@ objects. Expect all 15 to conflict at once whenever either side adds a key.
 sides".**
 
 ```bash
-./scripts/resolve-i18n-conflicts.py
+node scripts/resolve-i18n-conflicts.ts
 ```
 
 It reads the three merge stages from git, merges the *parsed objects* key by key,
@@ -389,7 +391,7 @@ If you are an agent performing this upgrade, the procedure is:
 3. `git merge <tag>` on a fresh branch. Never rebase. Never merge `upstream/main`.
 4. For each conflicted file, check it against [Known conflict hotspots](#known-conflict-hotspots)
    and apply the prescribed resolution. Do not invent a resolution for a file that is
-   on the list. In particular: **run `./scripts/resolve-i18n-conflicts.py` for locale
+   on the list. In particular: **run `node scripts/resolve-i18n-conflicts.ts` for locale
    files rather than editing them**, and regenerate `bun.lock` rather than merging it.
 5. For files not on the list, consult an app's ownership manifest first if it has
    one. Consumed starter code must match the declared release; editable UI
@@ -421,25 +423,59 @@ cannot be completed, stop and say which and why.
 
 ## What a real upgrade looked like
 
-The reproducible example uses the actual demo dashboard, not a minimal test app.
-Run it with `bun run test:starter-rehearsal`. It copies the demo and starts from
-sidebar-policy package `1.0.0`; these are local package test versions, not starter
-git release tags.
+Two kinds of upgrade have been tried end to end. Most starter changes reach an app
+the first way (merging a git tag). Only the sidebar policy uses the second way (a
+versioned package).
 
-| Step | What happens | Observable result |
+### Merging starter tags into a customized app
+
+**What was tested.** A test business app was created from `v1.0.0` and customized
+the way a real app would be: its own name in all 29 branding files, its own Convex
+tables and functions, its own i18n keys in all 15 locales, and its own `CLAUDE.md`.
+Three practice releases were then merged into it, one at a time, following this
+guide.
+
+| Release | What the release changed | Files in conflict | Extra work after the merge | `bun run ci:quick` |
+|---------|--------------------------|-------------------|----------------------------|---------------------|
+| `v1.0.1` (patch) | Security fix in `@repo/edge-rate-limit` | 0 | None | Passed |
+| `v1.1.0` (minor) | Auth hardening, a new platform table, new locale keys | 18 | Ran the locale resolver for 15 files; resolved 3 by hand, all listed in [Known conflict hotspots](#known-conflict-hotspots) | Passed |
+| `v2.0.0` (major) | Renamed a context property; schema migration | 0 | Ran the release's codemod, then the migration at deploy time | Passed |
+
+**What we learned from it:**
+
+- **The number of conflicts does not tell you the risk.** `v1.1.0` had 18 conflicts,
+  and each one had a documented resolution. `v2.0.0` merged with no conflicts at
+  all, but the build broke until the codemod ran. Always do the **Action required**
+  steps, even when `git merge` reports nothing.
+- **Locale files cannot be merged by hand at this volume.** All 15 conflicted at
+  once, and the obvious fix ("keep both sides") produced files that were not valid
+  JSON. That is why `scripts/resolve-i18n-conflicts.ts` exists.
+- **One conflict looked like branding but contained a security fix.** The starter
+  had wrapped the product name in a sanitising function. Keeping the app's side of
+  that line removed the fix, and the code still compiled and passed CI. Only the
+  release's `grep` check found it (see [Branding strings](#branding-strings)).
+
+### Upgrading a versioned starter package in the demo app
+
+**What was tested.** The real demo dashboard (`apps/demo`), with its own branding,
+freight rules and editable UI, is copied and started from sidebar-policy package
+`1.0.0`. It is then upgraded to `1.0.1`. Run it yourself with
+`bun run test:starter-rehearsal`. These are local package versions, not starter git
+tags.
+
+| Step | What happens | What you can check |
 |---|---|---|
-| Establish the baseline | Install historical package `1.0.0` in the app copy | Dispatch tests and typecheck pass. Two sidebar tests fail on invalid width input. |
-| Discover and plan | Select the declared `1.0.1` upgrade | The plan lists package file hashes, affected area, urgency and required checks. |
-| Apply | Replace only the known package payload | Lock status is `pending`; no success is claimed yet. |
-| Verify | Run the sidebar regression action, business tests, types and production build | All pass; the invalid resize now uses the existing 16rem default. |
-| Audit and compare | Check retained logs/output hashes and compare application source | Dashboard build exists; editable UI, business rules, tests, configuration and branding are unchanged. |
+| Start from the old version | Install package `1.0.0` in the copy | Dispatch tests and typecheck pass. Two sidebar tests fail on an invalid width. |
+| Find and plan the upgrade | Select the declared `1.0.1` release | The plan lists the package file hashes, affected area, urgency and required checks. |
+| Apply | Replace only the package files | The lock file says `pending`; the upgrade is not reported as done yet. |
+| Verify | Run the sidebar regression check, business tests, typecheck and production build | All pass; an invalid width now falls back to the 16rem default. |
+| Audit and compare | Recheck the saved logs and output hashes, and compare app source | The dashboard builds; editable UI, business rules, tests, configuration and branding are unchanged. |
 
-Evidence is written to `.ci-local-artifacts/starter-upgrade/report.json`, with
-command logs and the built dashboard retained beside it. CI uploads this evidence.
-A missing action, source change, local package edit or stale build prevents the
-upgrade from being reported as verified.
+The results are written to `.ci-local-artifacts/starter-upgrade/report.json`, with
+the command logs and the built dashboard next to it. CI uploads these files. A
+skipped required check, a changed source file, a locally edited package or an
+outdated build stops the upgrade from being reported as verified.
 
-This is the supported package workflow: prepare a release, review an application
-change, then verify it against that application's behavior. It neither merges an
-application PR nor deploys. Backend/schema/i18n upgrades still require the manual
-release-specific work described earlier; this example does not claim to test them.
+This example covers one package only. It does not merge a PR or deploy anything,
+and it does not test backend, schema or i18n changes. Those still use the
+merge-by-tag steps above.

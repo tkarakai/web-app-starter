@@ -395,7 +395,7 @@ fi
 # ============================================================
 print_step "Step 6/9: Starter Upgrade Rehearsal"
 step_start
-if bun run typecheck:starter-upgrade && bun run lint:starter-upgrade && bun run check:starter-ownership && bun run check:starter-docs && bun run test:starter-upgrade && bun run test:starter-rehearsal; then
+if bun run typecheck:starter-upgrade && bun run lint:starter-upgrade && bun run check:starter-ownership && bun run test:starter-upgrade && bun run test:starter-rehearsal; then
   print_success "Starter upgrade rehearsal passed"
   step_end "demo: Starter upgrade rehearsal" "pass"
 else

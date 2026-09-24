@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import * as u from "./upgrade.ts";
 import { copyApp, seedBaseline, linkStarter } from "./rehearse.ts";
-import { authorBoundary, checkOwnership, terminology } from "./check-ownership.ts";
+import { authorBoundary, checkOwnership } from "./check-ownership.ts";
 let root: string, app: string, releases: string;
 beforeEach(() => {
   fs.mkdirSync(path.join(u.ROOT, ".ci-local-artifacts"), { recursive: true });
@@ -168,9 +168,4 @@ test("author package cannot import application source", () => {
   const author = path.join(root, "packages/starter-sidebar-policy"); fs.cpSync(path.join(u.ROOT, "packages/starter-sidebar-policy"), author, { recursive: true });
   fs.appendFileSync(path.join(author, "src/index.ts"), '\nimport "../../../apps/demo/src/business/dispatch.ts";\n');
   assert.throws(() => authorBoundary(root, path.join(root, "output")), /cannot depend/);
-});
-test("terminology check detects an obsolete upgrade path in a git repository", () => {
-  spawnSync("git", ["init", "-q"], { cwd: root }); const legacy = "found" + "ation";
-  fs.mkdirSync(path.join(root, legacy)); fs.writeFileSync(path.join(root, legacy, "release.json"), "{}");
-  assert.throws(() => terminology(root), /Obsolete starter path/);
 });

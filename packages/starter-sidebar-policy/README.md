@@ -12,9 +12,11 @@ bun run check:starter-ownership
 The demo consumes the built immutable local package in its own
 `starter-packages/sidebar-policy/`, not this authoring workspace. Its public
 export map permits only `@repo/starter-sidebar-policy`, not internal file imports.
-The legacy design-system helper retains the same sizing fix but is outside this
-new package-consumption contract; the broader design system is not certified as
-an isolated, replaceable package by this example.
+Inside the starter, `@repo/design-system` imports this package through its
+workspace dependency, so web and admin use the same code the demo receives. The
+root `postinstall` script builds `dist/` so that import works without a separate
+build step. The rest of the design system is not certified as an isolated,
+replaceable package by this example.
 
 For a new release, change TypeScript source here, bump this package's version,
 build, and add a new artifact under the demo's release fixtures with its hashes,

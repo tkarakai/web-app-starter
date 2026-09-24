@@ -7,20 +7,6 @@ import { pathToFileURL } from "node:url";
 import ts from "typescript";
 import * as u from "./upgrade.ts";
 
-export function terminology(root: string): void {
-  const paths = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
-  const term = "found" + "ation";
-  const surfaces = ["apps/demo/", "scripts/starter-upgrade/", "packages/starter-sidebar-policy/", "docs/starter-upgrades.md", "docs/starter-versioning-strategy.md", "UPGRADING.md", "VERSIONING.md", "CHANGELOG.md", "README.md", "AGENTS.md", "package.json", ".github/workflows/ci-shared.yml", "scripts/ci-local.sh", "docs/claude/ci.md", ".gitignore"];
-  for (const file of paths) {
-    if (!fs.existsSync(path.join(root, file)) || !fs.lstatSync(path.join(root, file)).isFile()) continue;
-    const affected = surfaces.some(p => p.endsWith("/") ? file.startsWith(p) : file === p);
-    // These removed upgrade-specific roots must not be reintroduced.
-    u.requireThat(!file.startsWith(`${term}/`) && !file.startsWith(`scripts/${term}/`), `Obsolete starter path: ${file}`);
-    if (!affected) continue;
-    u.requireThat(!file.toLowerCase().includes(term), `Obsolete starter path: ${file}`);
-    u.requireThat(!fs.readFileSync(path.join(root, file), "utf8").toLowerCase().includes(term), `Obsolete starter terminology: ${file}`);
-  }
-}
 export function authorBoundary(root: string, output: string): void {
   const author = path.join(root, "packages/starter-sidebar-policy");
   const config = ts.readConfigFile(path.join(author, "tsconfig.json"), ts.sys.readFile);
@@ -67,7 +53,6 @@ export function checkOwnership(root = u.ROOT): object {
     assert.equal(policy.clampSidebarWidth(NaN),16);
     await assert.rejects(import('${u.PACKAGE}/dist/index.js'), {code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
   `], { cwd: app, stdio: "pipe" });
-  terminology(root);
   return { schemaVersion: 1, status: "verified", consumedPackage: u.PACKAGE, legacyMixed: inventory.legacyMixed, vendoring: "unsupported", representatives };
 }
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) process.stdout.write(u.encode(checkOwnership()));

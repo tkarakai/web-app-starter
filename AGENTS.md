@@ -105,7 +105,7 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 - **Use bare `bun test`** - Always use `bun run test` (with `run`). Bare `bun test` picks up all test files and fails
 - **Edit `packages/backend/convex/_generated/`** - These files are auto-generated
 - **Use `npm` or `yarn`** - Use Bun for package management.
-- **Introduce Python or other scripting languages** - Project-owned scripts use TypeScript running on Node; shell wrappers are allowed. Existing legacy scripts are not a precedent for new scripts.
+- **Introduce Python or other scripting languages** - Project-owned scripts use TypeScript running on Node; shell wrappers are allowed. Nothing else.
 - **Use `turbo dev`** - Use `bun run dev` (which calls `dev-start.sh`) for proper port and Convex management
 - **Skip TypeScript types** - Strict mode catches bugs early
 - **Test Server Components with Vitest** - Use Playwright E2E instead
@@ -207,10 +207,10 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 and 6 done, start at phase 5** |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md` |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |
-| Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.py` |
+| Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.ts` |
 | Working on starter package upgrades or demo ownership | `docs/starter-upgrades.md`; run `check:starter-ownership`, `test:starter-upgrade` and `test:starter-rehearsal` via `bun run`. Do not hand-edit consumed packages or claim unsupported vendoring. |
 | Writing a codemod to ship with a breaking release | `scripts/codemods/README.md` |
-| Working on how starter releases reach downstream business apps long-term (tiers, registry, Convex Components) | `docs/starter-versioning-strategy.md` — **Merge-by-tag and one local package upgrade are implemented; broader isolation/distribution remains follow-up** |
+| Working on how starter releases reach downstream business apps long-term (consumed packages, editable-copy registry, Convex Components) | `docs/starter-versioning-strategy.md` — **Merge-by-tag and one local package upgrade are implemented; broader isolation/distribution remains follow-up** |
 
 ## Resources
 

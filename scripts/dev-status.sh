@@ -66,7 +66,7 @@ get_pid() {
 # Check if a PID is alive
 is_running() {
     local pid="$1"
-    [ -n "$pid" ] && python3 "$SCRIPT_DIR/dev-processes.py" running "*" "$pid"
+    [ -n "$pid" ] && node "$SCRIPT_DIR/dev-processes.ts" running "*" "$pid"
 }
 
 # ============================================================

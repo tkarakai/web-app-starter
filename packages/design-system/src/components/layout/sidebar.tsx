@@ -4,10 +4,10 @@ import * as React from "react";
 import { Slot as SlotPrimitive } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
+import { SIDEBAR_WIDTH_DEFAULT_REM, clampSidebarWidth, snapSidebarWidth } from "@repo/starter-sidebar-policy";
 
 import { useIsMobile } from "../../hooks/use-mobile";
 import { cn } from "../../lib/utils";
-import { SIDEBAR_WIDTH_DEFAULT_REM, clampSidebarWidth, snapSidebarWidth } from "../../lib/sidebar-width";
 import {
   Sheet,
   SheetContent,

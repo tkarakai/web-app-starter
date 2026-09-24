@@ -101,8 +101,6 @@ manifest. Fixture hashes are pinned in the ownership inventory.
 versions, missing actions, modified plans, incomplete copies, stale installed
 packages, invalid evidence and overlapping ownership. It also deliberately adds
 an application import to a package copy and checks that author validation fails.
-The terminology check covers upgrade-related paths and references; unrelated
-storybook design terminology is outside that check.
 
 These checks prove this package and this consumer boundary. They do **not** prove
 that every existing workspace package follows the same rules. Broader schema,

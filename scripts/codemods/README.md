@@ -9,7 +9,7 @@ description of a rename and applying it by hand across a codebase we cannot see.
 
 ## Naming
 
-`v<major>-<short-slug>.py`, e.g. `v2-authed-ctx-user-id.py`. The major in the name
+`v<major>-<short-slug>.ts`, e.g. `v2-authed-ctx-user-id.ts`. The major in the name
 says which release's `### Action required` section invokes it. Codemods are kept
 after their release — an app upgrading from v1 to v4 runs v2's and v3's on the way.
 
@@ -24,7 +24,7 @@ Every codemod must:
 - **Support `--check`**, which reports what it would change, writes nothing, and
   exits non-zero if there is anything to do. That is what CI calls.
 - **Print every file it touches, with a count.** A silent codemod is not auditable.
-- **Explain, in its module docstring, why the breaking change happened.** The person
+- **Explain, in its top-of-file comment, why the breaking change happened.** The person
   running it is not the person who decided it, and often is an agent.
 
 ## Scope discipline
@@ -42,6 +42,7 @@ therefore the case that most justifies shipping a codemod.
 
 ## Language
 
-Python 3, as here, unless the transform genuinely needs a TypeScript AST — `python3`
-is already a build dependency (`bun run test:dev-scripts`) and needs no install step
-in a downstream repo that has not run `bun install` yet after the merge.
+TypeScript, run with `node` (for example `node scripts/codemods/v2-authed-ctx-user-id.ts`).
+Use only Node built-in modules unless the transform genuinely needs a TypeScript
+AST, so the codemod runs in a downstream repo that has not run `bun install` yet
+after the merge. Shell is fine for a thin wrapper; no other language.

@@ -119,16 +119,18 @@ REPO_URL="$(git remote get-url origin 2>/dev/null | sed -e 's#git@github.com:#ht
 REPO_URL="${REPO_URL:-https://github.com/tkarakai/web-app-starter}"
 
 # package.json version.
-# python3, not sed: BSD sed silently no-ops on the GNU `0,/re/` address, so the
+# node, not sed: BSD sed silently no-ops on the GNU `0,/re/` address, so the
 # bump appeared to succeed while leaving the version untouched.
-VERSION="$VERSION" python3 -c '
-import json, os, re
-version = os.environ["VERSION"]
-src = open("package.json").read()
-new, n = re.subn(r"\"version\":\s*\"[^\"]*\"", f"\"version\": \"{version}\"", src, count=1)
-assert n == 1, "package.json has no version field"
-assert json.loads(new)["version"] == version, "rewrite produced the wrong version"
-open("package.json", "w").write(new)
+VERSION="$VERSION" node -e '
+const fs = require("node:fs");
+const assert = require("node:assert");
+const version = process.env.VERSION;
+const src = fs.readFileSync("package.json", "utf8");
+const pattern = /"version":\s*"[^"]*"/;
+assert(pattern.test(src), "package.json has no version field");
+const next = src.replace(pattern, `"version": "${version}"`);
+assert.equal(JSON.parse(next).version, version, "rewrite produced the wrong version");
+fs.writeFileSync("package.json", next);
 '
 
 # promote Unreleased -> [VERSION] - DATE, and add a fresh empty Unreleased

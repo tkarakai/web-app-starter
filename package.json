@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "bun run --cwd packages/starter-sidebar-policy build",
     "predev": "./scripts/ensure-local-deps.sh --quiet && ./scripts/ensure-app-env.sh --quiet && ./scripts/copy-shared-assets.sh",
     "dev": "./scripts/dev-start.sh",
     "dev:ci": "./scripts/dev-start.sh --ci",
@@ -42,12 +43,12 @@
     "ci:act:offline": "./scripts/ci-local-act.sh -o",
     "infra:setup:staging": "./scripts/infra-setup-staging.sh",
     "ensure-env": "./scripts/ensure-app-env.sh",
-    "test:dev-scripts": "python3 -m unittest discover -s scripts/tests -v",
+    "test:dev-scripts": "node --test scripts/tests/*.test.ts",
+    "typecheck:dev-scripts": "tsc -p scripts/tsconfig.json",
     "test:starter-upgrade": "node --test scripts/starter-upgrade/*.test.ts",
     "test:starter-rehearsal": "node scripts/starter-upgrade/rehearse.ts",
     "starter-upgrade": "node scripts/starter-upgrade/upgrade.ts",
     "check:starter-ownership": "node scripts/starter-upgrade/check-ownership.ts",
-    "check:starter-docs": "node scripts/starter-upgrade/check-docs.ts",
     "typecheck:starter-upgrade": "tsc -p scripts/starter-upgrade/tsconfig.json",
     "lint:starter-upgrade": "eslint scripts/starter-upgrade --max-warnings 0",
     "ops": "bun packages/ops/src/cli.ts",

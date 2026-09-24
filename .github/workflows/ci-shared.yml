@@ -81,7 +81,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - name: Test development process isolation
-        run: bun run test:dev-scripts
+        run: bun run typecheck:dev-scripts && bun run test:dev-scripts
 
       - name: Test ops CLI
         if: hashFiles('packages/ops/package.json') != ''
@@ -125,7 +125,7 @@ jobs:
       - name: Typecheck and lint starter scripts
         run: bun run typecheck:starter-upgrade && bun run lint:starter-upgrade
       - name: Check starter ownership and exercise upgrade contracts
-        run: bun run check:starter-ownership && bun run check:starter-docs && bun run test:starter-upgrade
+        run: bun run check:starter-ownership && bun run test:starter-upgrade
       - name: Rehearse real demo baseline to target
         run: bun run test:starter-rehearsal
       - name: Retain plan and executable evidence

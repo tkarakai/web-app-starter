@@ -18,7 +18,7 @@ Follow `UPGRADING.md` — it is the source of truth, this command is the short f
 3. Create a branch `chore/starter-<target>` and `git merge <tag>`.
    Never rebase. Never merge `upstream/main`.
 4. Resolve conflicts using the "Known conflict hotspots" table in `UPGRADING.md`:
-   - locale files: run `./scripts/resolve-i18n-conflicts.py`. Do not hand-edit them
+   - locale files: run `node scripts/resolve-i18n-conflicts.ts`. Do not hand-edit them
      and do not keep both sides — that produces invalid JSON.
    - `bun.lock`: take either side, then `bun install`. Never hand-edit.
    - `schema.ts`: keep both sides.

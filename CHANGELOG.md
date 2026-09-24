@@ -44,10 +44,13 @@ number attached to it and a documented, validated way to take future ones.
 - `CHANGELOG.md` — this file.
 - `scripts/release.sh` — cuts a release: verifies the tree, bumps `package.json`,
   promotes the `Unreleased` section, and tags.
-- `scripts/resolve-i18n-conflicts.py` — resolves conflicted
+- `scripts/resolve-i18n-conflicts.ts` — resolves conflicted
   `packages/i18n/messages/*.json` by merging parsed objects key by key. Locale files
   conflict in all 15 at once on any key addition, and the intuitive "keep both sides"
   resolution produces invalid JSON there.
+- The development launcher and the locale resolver are TypeScript on Node
+  (`scripts/dev-processes.ts`, `scripts/resolve-i18n-conflicts.ts`). Python is no
+  longer required.
 - `scripts/codemods/README.md` — the contract every shipped codemod meets
   (idempotent, `--check`, runs from the repo root, explains its own breaking change).
 - `.claude/commands/upgrade-starter.md` — the upgrade procedure as a slash command,

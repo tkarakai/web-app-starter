@@ -18,7 +18,7 @@ The `bun run ci` command runs these checks in order (all via `turbo`):
 4. **Vitest component tests with coverage** (`turbo test:coverage`)
 5. **Coverage summary display** + artifact saving
 6. **Convex backend tests** (`turbo test:convex`)
-7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run check:starter-docs`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
+7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
 8. **Production build** (`turbo build`)
 9. **Bundle size check** (all apps with `.size-limit.json`)
 10. **Storybook build** (`turbo build --filter=@repo/storybook...`)
