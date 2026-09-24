@@ -98,7 +98,8 @@ test("migration step failures are distinguished from backend deployment failures
 });
 test("partial pagination retains earlier records with explicit coverage", async () => {
   const coverage: Coverage[] = [], errors: unknown[] = [];
-  const api = new HttpApi("github", "test", () => {}, async input => new URL(String(input)).searchParams.get("page") === "1"
+  // The fake transport needs no credential; registering "test" would redact other tests' paths.
+  const api = new HttpApi("github", "", () => {}, async input => new URL(String(input)).searchParams.get("page") === "1"
     ? Response.json(Array.from({ length: 100 }, (_, id) => ({ id }))) : Response.json({ message: "denied" }, { status: 403 }));
   const result = await api.pages("/items", undefined, 200, (c, e) => { coverage.push(c); if (e) errors.push(e); });
   expect(result).toHaveLength(100); expect(coverage[0].state).toBe("partial"); expect(errors).toHaveLength(1);
@@ -106,7 +107,7 @@ test("partial pagination retains earlier records with explicit coverage", async 
 });
 test("repeated GitHub pages stop and report partial coverage", async () => {
   const coverage: Coverage[] = [];
-  const api = new HttpApi("github", "test", () => {}, async () => Response.json(Array.from({ length: 100 }, (_, id) => ({ id }))));
+  const api = new HttpApi("github", "", () => {}, async () => Response.json(Array.from({ length: 100 }, (_, id) => ({ id }))));
   expect(await api.pages("/items", undefined, 300, c => coverage.push(c))).toHaveLength(100);
   expect(coverage[0].state).toBe("partial");
 });
