@@ -21,9 +21,10 @@ export function parseDashboard(body: string): Record<string, string[]> {
       else sections[current] = [];
       continue;
     }
-    const item = line.match(/^\s*- (?:\[[ x]\] )?(.+)$/);
+    // Items look like " - [ ] <!-- approve-branch=... -->title": capture the title after the marker.
+    const item = line.match(/^\s*- (?:\[[ x]\] )?(?:<!-- [\w=./()-]+ -->)?(.+)$/);
     if (current && item) {
-      const text = item[1].replace(/<!--.*?-->/g, "").trim();
+      const text = item[1].trim();
       if (text && !text.includes("at once**")) sections[current].push(text);
     }
   }
@@ -41,8 +42,11 @@ export function parseHolds(config: { packageRules?: PackageRule[] }): Hold[] {
     }));
 }
 
+const packageName = /^(?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/;
+
 async function registry(name: string): Promise<RegistryFacts | { error: string }> {
-  const response = await fetch(`https://registry.npmjs.org/${name.replace("/", "%2F")}`);
+  if (!packageName.test(name)) return { error: "not a valid npm package name" };
+  const response = await fetch(new URL(encodeURIComponent(name), "https://registry.npmjs.org/"));
   if (!response.ok) return { error: `registry ${response.status}` };
   const doc = (await response.json()) as {
     "dist-tags": { latest: string };
