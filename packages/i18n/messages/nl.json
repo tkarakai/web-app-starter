@@ -212,6 +212,12 @@
         "rateLimited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
         "generic": "Er is iets misgegaan. Probeer het opnieuw."
       }
+    },
+    "fallback": {
+      "title": "Registreren is tijdelijk niet beschikbaar",
+      "description": "We kunnen onze diensten op dit moment niet bereiken en blijven het op de achtergrond proberen. Je kunt nog steeds inloggen op een bestaand account.",
+      "bookDemo": "Demo boeken",
+      "contact": "Contact opnemen"
     }
   },
   "dashboard": {

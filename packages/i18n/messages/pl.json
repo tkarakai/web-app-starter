@@ -212,6 +212,12 @@
         "rateLimited": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
         "generic": "Coś poszło nie tak. Spróbuj ponownie."
       }
+    },
+    "fallback": {
+      "title": "Rejestracja jest tymczasowo niedostępna",
+      "description": "Nie możemy teraz połączyć się z naszymi usługami i będziemy ponawiać próby w tle. Nadal możesz zalogować się na istniejące konto.",
+      "bookDemo": "Umów prezentację",
+      "contact": "Kontakt"
     }
   },
   "dashboard": {

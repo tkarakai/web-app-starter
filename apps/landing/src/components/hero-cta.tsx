@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@repo/design-system";
+import { Button, Card, CardContent, CardDescription, CardTitle } from "@repo/design-system";
 
 import { WaitlistSection } from "./waitlist-section";
 
@@ -14,6 +14,9 @@ const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL;
 if (!WEB_APP_URL) {
   throw new Error("Missing required environment variable: NEXT_PUBLIC_WEB_APP_URL");
 }
+/** Optional links offered while the backend is unreachable; hidden when unset. */
+const BOOK_DEMO_URL = process.env.NEXT_PUBLIC_BOOK_DEMO_URL;
+const CONTACT_URL = process.env.NEXT_PUBLIC_CONTACT_URL;
 
 /** Initial retry delay (ms). */
 const RETRY_BASE = 5_000;
@@ -28,7 +31,8 @@ type Status = "loading" | "unreachable" | "waitlist" | "signup" | "closed";
  * Client component that checks onboarding mode on mount and renders one of:
  * waitlist form, sign-up + sign-in, or sign-in only.
  *
- * When Convex is unreachable, hides all interactive elements and retries
+ * When Convex is unreachable, shows a fallback card (sign in, plus optional
+ * book-demo and contact links) instead of onboarding, and retries
  * with exponential backoff (capped at 60 s, max 10 attempts). Retries
  * pause while the tab is hidden and resume when it becomes visible.
  */
@@ -114,9 +118,35 @@ export function HeroCta() {
     );
   }
 
-  // Convex unreachable — hide everything; polling will restore UI automatically
+  // Convex unreachable — offer what still works; polling restores the UI automatically
   if (status === "unreachable") {
-    return null;
+    return (
+      <Card className="w-full max-w-xl border-border/70 bg-card/85 shadow-xl shadow-primary/10">
+        <CardContent className="space-y-4 p-6 text-left">
+          <div className="space-y-1">
+            <CardTitle className="text-base">{t("fallback.title")}</CardTitle>
+            <CardDescription>{t("fallback.description")}</CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {BOOK_DEMO_URL ? (
+              <Button asChild>
+                <a href={BOOK_DEMO_URL} target="_blank" rel="noreferrer">
+                  {t("fallback.bookDemo")}
+                </a>
+              </Button>
+            ) : null}
+            {CONTACT_URL ? (
+              <Button variant="outline" asChild>
+                <a href={CONTACT_URL}>{t("fallback.contact")}</a>
+              </Button>
+            ) : null}
+            <Button variant={BOOK_DEMO_URL || CONTACT_URL ? "ghost" : "default"} asChild>
+              <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (status === "waitlist") {
