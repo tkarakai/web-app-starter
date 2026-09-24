@@ -5,8 +5,10 @@ import { Button } from "@repo/design-system";
 
 import { WaitlistForm } from "./waitlist-form";
 
-const WEB_APP_URL =
-  process.env.NEXT_PUBLIC_WEB_APP_URL ?? "http://localhost:3001";
+const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL;
+if (!WEB_APP_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_WEB_APP_URL");
+}
 
 export function WaitlistSection() {
   const t = useTranslations("landing.waitlist");

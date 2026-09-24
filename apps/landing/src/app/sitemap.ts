@@ -3,7 +3,10 @@ import { locales } from "@repo/i18n";
 
 export const dynamic = "force-static";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+if (!SITE_URL) {
+  throw new Error("Missing required environment variable: NEXT_PUBLIC_SITE_URL");
+}
 
 function generateAlternates(pathname: string) {
   return {

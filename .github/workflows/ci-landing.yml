@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
+    inputs:
+      git_sha:
+        description: Source commit to test
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ci-landing-${{ github.ref }}
@@ -20,7 +26,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
+      should_run: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
     steps:
       - name: Run all jobs in act
         if: ${{ env.ACT }}
@@ -31,11 +37,13 @@ jobs:
 
       - name: Checkout
         if: ${{ !env.ACT }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -45,7 +53,7 @@ jobs:
               - 'packages/design-system/**'
             root:
               - 'package.json'
-              - 'bun.lockb'
+              - 'bun.lock'
               - 'turbo.json'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
@@ -73,7 +81,9 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Run Bun tests
@@ -105,7 +115,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
@@ -129,11 +139,17 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Build
         run: bunx turbo build --filter=@repo/landing...
+        env:
+          NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
+          NEXT_PUBLIC_WEB_APP_URL: "http://localhost:3001"
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
 
       - name: Check bundle size
         run: cd apps/landing && bun run size
@@ -148,9 +164,13 @@ jobs:
     if: vars.SKIP_E2E != 'true' && needs.changes.outputs.should_run == 'true' && github.event.pull_request.draft == false
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-playwright
+        with:
+          working-directory: apps/landing
 
       - name: Run Playwright tests
         run: cd apps/landing && bunx playwright test --project=chromium
@@ -164,7 +184,7 @@ jobs:
           cat .next-landing.log 2>/dev/null || echo "No Next.js log found"
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
@@ -173,7 +193,7 @@ jobs:
           retention-days: 7
 
       - name: Upload visual snapshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:

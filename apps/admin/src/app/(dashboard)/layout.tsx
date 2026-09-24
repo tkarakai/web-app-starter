@@ -32,6 +32,20 @@ export default async function DashboardLayout({
     redirect("/api/auth/clear-session");
   }
 
+  // Banned admins cannot access the dashboard (spec §14)
+  if ((user as Record<string, unknown>).banned === true) {
+    redirect("/forbidden");
+  }
+
+  // Stage 6: Invited admins must complete onboarding before accessing the dashboard.
+  // This checks the invitation status, NOT twoFactorEnabled — ensuring ALL onboarding
+  // steps are enforced (TOTP, backup codes, passkey decision).
+  // Stage 7 will handle forced enrollment for existing admins without invitations.
+  const onboardingStatus = await fetchAuthQuery(api.adminInvitations.getMyOnboardingStatus);
+  if (onboardingStatus && !onboardingStatus.completed) {
+    redirect("/onboarding");
+  }
+
   return (
     <AuthGuard preloadedUser={preloadedUser}>
       <AdminShellLayout>{children}</AdminShellLayout>

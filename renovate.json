@@ -1,0 +1,90 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "group:monorepos",
+    "group:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Europe/Budapest",
+  "configMigration": true,
+  "minimumReleaseAge": "10 days",
+  "internalChecksFilter": "strict",
+  "rangeStrategy": "replace",
+  "automergeStrategy": "squash",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "minimumReleaseAge": "12 hours"
+  },
+  "lockFileMaintenance": {
+    "enabled": false
+  },
+  "packageRules": [
+    {
+      "description": "Auto-merge non-major updates once CI is green",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Batch every non-major update into one PR per cycle so automerge PRs do not compete for the up-to-date requirement on main. The auth-stack rule below still pulls its packages out (never automerged).",
+      "matchPackageNames": ["*"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-non-major"
+    },
+    {
+      "description": "Keep the Convex SDK and its test harness together on majors: convex-test requires a matching convex range. Non-major bumps of both already travel in the all-non-major group.",
+      "matchPackageNames": ["convex", "convex-test"],
+      "groupName": "convex monorepo",
+      "matchUpdateTypes": ["major"]
+    },
+    {
+      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). The deps-update agent approves it after an deps-major assessment; tier C (next/react/convex/auth stack/tailwind/runtime baseline) and security-relevant behaviour changes need the user. See .agents/skills/deps-major/SKILL.md",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "The auth stack moves together. @convex-dev/better-auth pins its own nested copy of better-auth, so bumping better-auth alone upgrades nothing the adapter actually runs, and it breaks the build — dependabot PRs #74 and #77 both failed exactly this way. Never automerged: the 1.4 -> 1.6 move also needed convex/betterAuth/schema.ts reconciled by hand. See docs/claude/auth-e2e-and-upgrade-plan.md step 7.",
+      "matchPackageNames": ["better-auth", "@better-auth/**", "@convex-dev/better-auth"],
+      "groupName": "auth stack",
+      "automerge": false
+    },
+    {
+      "description": "Cap the whole peer-bound auth stack below 1.7. @convex-dev/better-auth@0.12.5 declares peer better-auth '>=1.6.11 <1.7.0', and @better-auth/passkey 1.7.x additionally requires better-auth ^1.7.5. Capping only @better-auth/passkey is NOT enough: the 2026-09-16 verification dispatch planned better-auth 1.6.33 -> 1.7.3 inside renovate/auth-stack, which no version of the adapter can satisfy, so the group would have opened a PR that cannot install. REMOVE once the adapter widens — check with `bun info @convex-dev/better-auth@latest peerDependencies`.",
+      "matchPackageNames": ["better-auth", "@better-auth/**"],
+      "allowedVersions": "<1.7.0"
+    },
+    {
+      "description": "Runtime baseline: Node moves as one change across .node-version, engines, CI and @types/node (docs/dependency-migrations.md#runtime-baseline). Renovate reads .node-version and proposes the next major once it is LTS; like every major it waits for dashboard approval.",
+      "matchDepNames": ["node"],
+      "groupName": "node runtime baseline"
+    },
+    {
+      "description": "HOLD: @types/node must match the runtime baseline major in .node-version (24). check:runtime-baseline enforces it. Lift to the next major only in the baseline playbook PR that moves .node-version.",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<25"
+    },
+    {
+      "description": "HOLD: 6.x requires Vite 8; PR #125 failed with ERR_PACKAGE_PATH_NOT_EXPORTED vite/internal. REMOVE together with a Vite 8 migration of the vitest configs.",
+      "matchPackageNames": ["@vitejs/plugin-react"],
+      "allowedVersions": "<6"
+    },
+    {
+      "description": "HOLD: eslint-plugin-react 7.37.x only supports ESLint ^9.7. REMOVE when `bun info eslint-plugin-react@latest peerDependencies` accepts ESLint 10.",
+      "matchPackageNames": ["eslint"],
+      "allowedVersions": "<10"
+    },
+    {
+      "description": "HOLD: @typescript-eslint/parser 8.x requires TypeScript <6.1.0. REMOVE when `bun info @typescript-eslint/parser@latest peerDependencies` accepts TypeScript 7.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    }
+  ]
+}

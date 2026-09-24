@@ -63,13 +63,14 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
   const resend = new Resend(apiKey);
   const emailFrom = process.env.EMAIL_FROM ?? "noreply@example.com";
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: emailFrom,
     to,
     subject,
     html,
     text,
   });
+  if (error) throw new Error(error.message);
 }
 
 // ---------------------------------------------------------------------------

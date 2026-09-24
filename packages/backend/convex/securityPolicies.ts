@@ -17,6 +17,8 @@ export const ADMIN_MFA_REQUIRED_KEY = "adminMfaRequired";
 export const USER_PASSKEY_POLICY_KEY = "userPasskeyPolicy";
 export const ADMIN_PASSKEY_POLICY_KEY = "adminPasskeyPolicy";
 
+export const USER_MAGIC_LINK_ENABLED_KEY = "userMagicLinkEnabled";
+
 export const LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY = "emailVerificationRequired";
 export const LEGACY_MFA_REQUIRED_KEY = "emailMfaRequired";
 

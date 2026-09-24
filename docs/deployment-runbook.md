@@ -70,8 +70,8 @@ Make sure that you have "Production" designation selected for the project (even 
 
 | Value | Where to find it | Staging | Production |
 |-------|-------------------|---------|------------|
-| Deployment URL → `NEXT_PUBLIC_CONVEX_URL` | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
-| HTTP Actions URL → `NEXT_PUBLIC_CONVEX_SITE_URL` | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
+| Deployment URL → `CONVEX_URL` (web/admin), `NEXT_PUBLIC_CONVEX_URL` (landing) | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
+| HTTP Actions URL → `CONVEX_SITE_URL` (web/admin), `NEXT_PUBLIC_CONVEX_SITE_URL` (landing) | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
 
 **Generate deploy keys** for each project:
 
@@ -171,7 +171,7 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 
 Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
 
-In this repo, the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
+In this repo, the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
 
 **Option A — Convex Dashboard (recommended for one-time setup):**
 
@@ -180,6 +180,7 @@ For each Convex project, go to **Deployment Settings → Environment Variables**
 | Variable | Staging project value | Production project value |
 |----------|-----------------------|--------------------------|
 | `SITE_URL` | `https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app` | `https://your-production-web.vercel.app,https://your-production-admin.vercel.app` |
+| `ADMIN_SITE_URL` | `https://your-staging-admin.vercel.app` | `https://admin.yourdomain.com` |
 | `PASSKEY_RP_ID` *(optional)* | `staging.yourdomain.com` | `yourdomain.com` |
 | `LANDING_URL` | `https://your-staging-landing.vercel.app` | `https://yourdomain.com` |
 | `BETTER_AUTH_SECRET` | *(generate — see below)* | *(generate — see below)* |
@@ -203,6 +204,9 @@ CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex env set SITE_URL "https://your-staging-web.vercel.app,https://your-staging-admin.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
+  bunx convex env set ADMIN_SITE_URL "https://your-staging-admin.vercel.app"
+
+CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex env set PASSKEY_RP_ID "staging.yourdomain.com"
 
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
@@ -217,6 +221,9 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set SITE_URL "https://your-production-web.vercel.app,https://your-production-admin.vercel.app"
 
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set ADMIN_SITE_URL "https://admin.yourdomain.com"
+
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set PASSKEY_RP_ID "yourdomain.com"
 
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
@@ -228,6 +235,8 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 
 > **How `SITE_URL` works:** The auth config in `packages/backend/convex/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
 >
+> **How `ADMIN_SITE_URL` works:** The HTTP router in `packages/backend/convex/http.ts` and session management in `sessions.ts` use `ADMIN_SITE_URL` for CORS allowed-origins on admin-specific endpoints. The admin invitation system in `adminInvitationActions.ts` uses it to construct invitation email links.
+>
 > **How `PASSKEY_RP_ID` works:** Passkeys use a single relying party ID (RP ID). If web/admin must both use passkeys, set `PASSKEY_RP_ID` to a shared parent domain (for example `staging.example.com` for `web.staging.example.com` and `admin.staging.example.com`). With default `*.vercel.app` hostnames, this shared RP setup is generally not viable; use custom domains.
 >
 > **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Without it, the landing app's cross-origin requests to Convex would be blocked.
@@ -236,39 +245,49 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 
 Set environment variables for each Vercel project. Use the Convex URLs recorded in step 2a. Since each Vercel project serves a single environment, all variables use the **Production** scope only.
 
+> **The names differ between the app and the landing projects, deliberately.** `web` and `admin`
+> read their configuration **unprefixed at request time**, which is what lets one build be promoted
+> from staging to production. A `NEXT_PUBLIC_*` name would be inlined into the bundle at build time
+> and pin the artifact to the environment that built it. Do not add `NEXT_PUBLIC_CONVEX_URL` (or the
+> other prefixed names) to a web or admin project — nothing reads them, and their presence is what
+> the leak guard reports. See [claude/build-once-promote-plan.md](./claude/build-once-promote-plan.md).
+>
+> Neither app needs a site-URL variable at all: both derive their origin from the request `Host`
+> header. (`SITE_URL` is Convex's own variable, a comma-separated trusted-origin list — unrelated.)
+
 **my-app-web (production):**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://web.yourdomain.com` |
-| `NEXT_PUBLIC_LANDING_URL` | `https://yourdomain.com` |
+| `CONVEX_URL` | Production Convex URL |
+| `CONVEX_SITE_URL` | Production Convex Site URL |
+| `LANDING_URL` | `https://yourdomain.com` |
+| `APP_ENVIRONMENT` | `production` |
 
 **my-app-web-staging:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://my-app-web-staging.vercel.app` |
-| `NEXT_PUBLIC_LANDING_URL` | `https://my-app-landing-staging.vercel.app` |
+| `CONVEX_URL` | Staging Convex URL |
+| `CONVEX_SITE_URL` | Staging Convex Site URL |
+| `LANDING_URL` | `https://my-app-landing-staging.vercel.app` |
+| `APP_ENVIRONMENT` | `staging` |
 
 **my-app-admin (production):**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://admin.yourdomain.com` |
+| `CONVEX_URL` | Production Convex URL |
+| `CONVEX_SITE_URL` | Production Convex Site URL |
+| `APP_ENVIRONMENT` | `production` |
 
 **my-app-admin-staging:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | Staging Convex URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex Site URL |
-| `NEXT_PUBLIC_SITE_URL` | `https://my-app-admin-staging.vercel.app` |
+| `CONVEX_URL` | Staging Convex URL |
+| `CONVEX_SITE_URL` | Staging Convex Site URL |
+| `APP_ENVIRONMENT` | `staging` |
 
 **my-app-landing (production)** — connects to Convex via HTTP actions for the waitlist API:
 
@@ -288,7 +307,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 
 Set these in each project's Settings → Environment Variables using the **Production** scope.
 
-> **Cross-app linking:** The apps link to each other at runtime — the landing page has "Get Started" / "Sign In" buttons pointing to the web app (`NEXT_PUBLIC_WEB_APP_URL`), and the web app has Terms/Privacy and back-to-landing links pointing to the landing page (`NEXT_PUBLIC_LANDING_URL`). These are non-secret config values baked into the JS bundle at build time. Set them once per Vercel project and they'll be pulled automatically during CI/CD builds via `vercel pull`. In local dev, `dev-start.sh` sets them automatically.
+> **Cross-app linking:** The apps link to each other — the landing page has "Get Started" / "Sign In" buttons pointing to the web app (`NEXT_PUBLIC_WEB_APP_URL`), and the web app has Terms/Privacy and back-to-landing links pointing to the landing page (`LANDING_URL`). Both are non-secret config values. The landing page is a static export, so its value is baked into the JS bundle at build time; the web app reads `LANDING_URL` at request time and passes it to client components through the public-config provider, which is what keeps its artifact promotable. Set them once per Vercel project and they'll be pulled automatically during CI/CD builds via `vercel pull`. In local dev, `dev-start.sh` sets them automatically.
 
 ### 2e. GitHub Configuration
 
@@ -380,6 +399,9 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set SITE_URL "https://app.yourdomain.com,https://admin.yourdomain.com"
 
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
+  bunx convex env set ADMIN_SITE_URL "https://admin.yourdomain.com"
+
+CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set LANDING_URL "https://yourdomain.com"
 ```
 
@@ -406,7 +428,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Vercel Root Directory set to `apps/<app>` on all 6 projects (step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
-- [ ] Convex environment variables set: `SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)
+- [ ] Convex environment variables set: `SITE_URL`, `ADMIN_SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)
 - [ ] `BETTER_AUTH_SECRET` is unique per project (staging ≠ production)
 - [ ] Vercel environment variables set (Production scope) on all 6 projects (step 2d)
 - [ ] GitHub `staging` environment created (step 2e)
@@ -421,7 +443,7 @@ Run through this checklist before the first deployment or any major infrastructu
 # Verify Convex env vars (run for each project using its deploy key)
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' bunx convex env list
 CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' bunx convex env list
-# Each should show: SITE_URL, LANDING_URL, BETTER_AUTH_SECRET (and PASSKEY_RP_ID if used)
+# Each should show: SITE_URL, ADMIN_SITE_URL, LANDING_URL, BETTER_AUTH_SECRET (and PASSKEY_RP_ID if used)
 
 # Verify GitHub secrets are set (no way to read values, but check they exist)
 gh secret list
@@ -543,6 +565,11 @@ Once the staging workflow completes and the admin account is bootstrapped, run t
 
 ### Step 4: Promote to Production
 
+Any SHA that reached staging can be deployed. Artifacts are content-addressed, so the
+pipeline resolves each app's artifact from the tree at that commit — you do not need to find
+a commit that "has a build". See
+[Artifacts are content-addressed](./deployment-architecture.md#artifacts-are-content-addressed).
+
 ```bash
 # Find the staging deployment SHA
 git fetch --tags
@@ -555,11 +582,10 @@ gh workflow run cd-production.yml \
   -f confirm=deploy-production
 ```
 
-**Approve the deployment** in the GitHub Actions UI:
-1. Go to Actions > "Deploy Production" > the pending run
-2. Click "Review deployments"
-3. Select the `production` environment
-4. Click "Approve and deploy"
+> **There is no human approval step.** The `production` GitHub Environment has a branch
+> policy but **no required reviewers**, so the run proceeds straight through. The gates are
+> the confirmation string, the staging tag and the CI gate — all automated. Add required
+> reviewers to the `production` environment if you want a sign-off.
 
 **Monitor:**
 

@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
+    inputs:
+      git_sha:
+        description: Source commit to test
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ci-web-${{ github.ref }}
@@ -20,7 +26,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
+      should_run: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
     steps:
       - name: Run all jobs in act
         if: ${{ env.ACT }}
@@ -31,11 +37,13 @@ jobs:
 
       - name: Checkout
         if: ${{ !env.ACT }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -49,7 +57,7 @@ jobs:
               - 'packages/auth/**'
             root:
               - 'package.json'
-              - 'bun.lockb'
+              - 'bun.lock'
               - 'turbo.json'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
@@ -79,7 +87,9 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Run Bun tests
@@ -111,7 +121,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
@@ -135,14 +145,18 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Build
         run: bunx turbo build --filter=@repo/web...
         env:
-          NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud"
-          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+          CONVEX_URL: "https://placeholder.convex.cloud"
+          CONVEX_SITE_URL: "https://placeholder.convex.site"
+          APP_ORIGIN: "http://localhost:3001"
+          LANDING_URL: "http://localhost:3000"
 
       - name: Check bundle size
         run: cd apps/web && bun run size
@@ -151,18 +165,45 @@ jobs:
   # E2E TESTS
   # ============================================================
   e2e:
-    name: E2E Tests
+    name: E2E Tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
     needs: [changes, build]
     if: vars.SKIP_E2E != 'true' && needs.changes.outputs.should_run == 'true' && github.event.pull_request.draft == false
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-playwright
+        with:
+          working-directory: apps/web
 
+      # `convex dev` in anonymous mode downloads its local backend binary from
+      # GitHub releases UNAUTHENTICATED. Four shards booting at once hit
+      # "403 API rate limit exceeded" and the webServer never starts. Cache the
+      # binary so at most the first run downloads it.
+      - name: Cache Convex local backend
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.convex
+          key: ${{ runner.os }}-convex-backend-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-convex-backend-
+
+      # Each shard boots its own Convex backend via the Playwright webServer,
+      # so auth rate-limit counters stay per-shard and workers stay at 1.
       - name: Run Playwright tests
-        run: cd apps/web && bunx playwright test --project=chromium
+        run: |
+          # Stagger the shards: if the cache missed, this keeps four concurrent
+          # Convex backend downloads from hitting GitHub's unauthenticated limit
+          # at the same instant.
+          sleep $(( (${{ matrix.shard }} - 1) * 20 ))
+          cd apps/web && bunx playwright test --project=chromium --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           CI: true
 
@@ -176,20 +217,20 @@ jobs:
           cat .next-web.log 2>/dev/null || echo "No Next.js log found"
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
-          name: playwright-report-web
-          path: apps/web/qa/playwright-report/
+          name: blob-report-web-${{ matrix.shard }}
+          path: apps/web/blob-report/
           retention-days: 7
 
       - name: Upload visual snapshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
-          name: visual-snapshots-web
+          name: visual-snapshots-web-${{ matrix.shard }}
           path: apps/web/qa/e2e/__screenshots__/
           retention-days: 7
           if-no-files-found: ignore
@@ -197,10 +238,47 @@ jobs:
       - name: Save job outputs (act)
         if: ${{ always() && env.ACT }}
         run: |
-          JOB_DIR="/act-artifacts/web/e2e"
+          JOB_DIR="/act-artifacts/web/e2e/shard-${{ matrix.shard }}"
           mkdir -p "$JOB_DIR/artifacts"
           [ -d "apps/web/qa/playwright-report" ] && cp -r "apps/web/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-web" 2>/dev/null || true
           [ -d "apps/web/qa/e2e/__screenshots__" ] && cp -r "apps/web/qa/e2e/__screenshots__" "$JOB_DIR/artifacts/visual-snapshots-web" 2>/dev/null || true
+
+  # ============================================================
+  # MERGE SHARDED E2E REPORTS
+  # ============================================================
+  e2e-report:
+    name: Merge E2E Reports
+    runs-on: ubuntu-latest
+    needs: [changes, e2e]
+    # NOTE: the `env` context is not available in a job-level `if` — using it
+    # here makes GitHub reject the entire workflow file at parse time.
+    if: ${{ always() && needs.e2e.result != 'skipped' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+
+      - name: Download blob reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: apps/web/all-blob-reports
+          pattern: blob-report-web-*
+          merge-multiple: true
+
+      - name: Merge into HTML report
+        run: cd apps/web && bunx playwright merge-reports --reporter=html ./all-blob-reports
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: qa/playwright-report
+
+      - name: Upload merged report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        continue-on-error: true
+        with:
+          name: playwright-report-web
+          path: apps/web/qa/playwright-report/
+          retention-days: 7
 
   # ============================================================
   # SUMMARY

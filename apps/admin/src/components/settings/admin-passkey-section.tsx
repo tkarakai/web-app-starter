@@ -12,8 +12,10 @@ import {
   Button,
   Input,
   Label,
+  PasskeyUnsupportedAlert,
   Separator,
   toast,
+  usePasskeySupport,
 } from "@repo/design-system";
 
 type PasskeyPolicy = "disabled" | "optional" | "required";
@@ -34,6 +36,7 @@ function getRecordId(record: PasskeyRecord, index: number): string {
 }
 
 export function AdminPasskeySection() {
+  const { supported: passkeySupported } = usePasskeySupport();
   const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
     key: "userPasskeyPolicy",
@@ -216,22 +219,26 @@ export function AdminPasskeySection() {
       </div>
 
       {policy !== "disabled" ? (
-        <div className="space-y-2">
-          <Label htmlFor="admin-passkey-name">New passkey label (optional)</Label>
-          <div className="flex gap-2">
-            <Input
-              id="admin-passkey-name"
-              value={newName}
-              onChange={(event) => setNewName(event.target.value)}
-              placeholder="Work Laptop"
-              className="max-w-sm"
-            />
-            <Button type="button" onClick={addPasskey} disabled={adding}>
-              <Plus className="h-4 w-4" />
-              {adding ? "Adding..." : "Add passkey"}
-            </Button>
+        passkeySupported === false ? (
+          <PasskeyUnsupportedAlert />
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="admin-passkey-name">New passkey label (optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="admin-passkey-name"
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                placeholder="Work Laptop"
+                className="max-w-sm"
+              />
+              <Button type="button" onClick={addPasskey} disabled={adding}>
+                <Plus className="h-4 w-4" />
+                {adding ? "Adding..." : "Add passkey"}
+              </Button>
+            </div>
           </div>
-        </div>
+        )
       ) : null}
 
       <Separator />

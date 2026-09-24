@@ -2,13 +2,13 @@
 
 [![CI Gate](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml)
 
-A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend foundation. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
+A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend starter. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
 
 ## What this starter gives you
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
 - **Six Next.js apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo.
-- **Shared packages**: UI (`@repo/design-system`), auth (`@repo/auth`), backend (`@repo/backend`), i18n (`@repo/i18n`), edge rate limiting (`@repo/edge-rate-limit`), design patterns (`@repo/design-patterns`).
+- **Shared packages** for UI, auth, backend, i18n, rate limiting and starter sidebar policy; see [Shared packages](#shared-packages).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
 - Tailwind v4 + shadcn/ui styling with a bold, modern interface.
@@ -19,17 +19,23 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 
 ## Stack
 
-- [Next.js](https://nextjs.org/docs) 16.1.5
-- [React](https://react.dev) 19.2.3
-- TypeScript 5.9.3
-- Bun 1.3.6
-- [Turborepo](https://turbo.build/repo/docs) 2.5+
-- [Tailwind CSS](https://tailwindcss.com/docs/installation/framework-guides/nextjs) 4.1.18
+- [Next.js](https://nextjs.org/docs)
+- [React](https://react.dev)
+- TypeScript
+- Bun
+- [Turborepo](https://turbo.build/repo/docs)
+- [Tailwind CSS](https://tailwindcss.com/docs/installation/framework-guides/nextjs)
 - [shadcn/ui](https://ui.shadcn.com/docs/installation/next) components (in `@repo/design-system`)
-- [Convex](https://docs.convex.dev/home) 1.31.7
-- [Better Auth](https://better-auth.com/docs/integrations/next) 1.4.12 ([Convex integration](https://better-auth.com/docs/integrations/convex))
+- [Convex](https://docs.convex.dev/home)
+- [Better Auth](https://better-auth.com/docs/integrations/next) ([Convex integration](https://better-auth.com/docs/integrations/convex))
+
+Versions are defined in the root and workspace `package.json` files and resolved
+in `bun.lock`; root overrides take precedence over workspace version ranges.
 
 ## Quick start
+
+Install the Node and Bun versions specified by `engines` and `packageManager` in
+[package.json](package.json) before running these commands.
 
 1. Install dependencies:
 
@@ -47,8 +53,8 @@ This starts Convex and the core apps (web, admin, landing, storybook) in local a
 
 | Account | Email | Password | Role |
 |---------|-------|----------|------|
-| Admin | `admin@admin.com` | `adminadmin` | admin |
-| User | `user@user.com` | `useruser` | user |
+| Admin | `admin@admin.com` | email pasted x 3 | admin |
+| User | `user@user.com` | email pasted x 3 | user |
 
 These are created automatically via `devSeed` and persist across restarts. Subsequent runs skip seeding.
 
@@ -87,7 +93,19 @@ bun run dev:status
 bun run dev:nuke-all
 ```
 
-This finds and kills all node/next/convex processes related to this repo across all worktrees and branches. It shows the matching processes and asks for confirmation before killing, and reports open file descriptor counts before and after.
+This lists verified development services across this repository’s worktrees and asks for confirmation before stopping them. It leaves unrelated servers and all saved databases alone.
+
+### Development process isolation
+
+The launcher requires Node.js 22.6 or newer (it runs `scripts/dev-processes.ts` through `scripts/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+
+- `bun run dev:stop` stops verified services in this checkout.
+- `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.
+- `bun run dev:nuke-all` explicitly stops verified services across this Git repository's worktrees, with confirmation (`--yes` for non-interactive use). It preserves databases, dependencies and build caches.
+- Existing servers started before this change have no identity record. Stop them from their original terminals once, then restart with the updated launcher. Unknown or stale PIDs are never adopted automatically.
+- Legacy PID cleanup uses one open file descriptor and rejects symlinks, hardlinks and non-files. Stopping all services leaves `.dev-pids` empty rather than deleting a path that another process may have replaced.
+
+Keep separate deployments and API/HTTP ports for separate applications. A different deployment's process name does not indicate a conflict. Run the isolation regression tests with `bun run test:dev-scripts`; they use disposable processes and temporary checkouts.
 
 ### Branch and worktree isolation
 
@@ -139,7 +157,7 @@ These values persist in the local Convex backend between sessions.
 │   │   └── src/
 │   ├── storybook/             # Component storybook (@repo/storybook, port 3003)
 │   │   └── src/
-│   └── demo/                  # Standalone UI style demo
+│   └── demo/                  # Standalone UI/dispatch demo; also tests starter upgrades
 │       └── src/
 ├── packages/
 │   ├── backend/               # Convex backend (@repo/backend)
@@ -155,6 +173,7 @@ These values persist in the local Convex backend between sessions.
 │   │   ├── messages/          # Translation files (15 languages)
 │   │   └── src/               # i18n config and utilities
 │   ├── edge-rate-limit/       # Shared edge rate limiting (@repo/edge-rate-limit)
+│   ├── starter-sidebar-policy/ # Versioned sidebar sizing policy
 │   └── design-patterns/       # Design patterns (@repo/design-patterns)
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
@@ -166,7 +185,7 @@ These values persist in the local Convex backend between sessions.
 │   ├── ensure-local-deps.sh   # Dependency setup
 │   └── ensure-branch-tracking.sh # Git utility
 ├── .github/workflows/
-│   ├── ci-shared.yml          # Shared CI: lint, typecheck, backend tests
+│   ├── ci-shared.yml          # Shared CI (see docs/claude/ci.md)
 │   ├── ci-web.yml             # Web app CI: test, build, E2E
 │   ├── ci-admin.yml           # Admin app CI: test, build, E2E
 │   ├── ci-landing.yml         # Landing app CI: test, build, E2E
@@ -220,6 +239,12 @@ Shared edge rate limiter used by web, admin, and landing app proxies. Provides p
 
 Shared design patterns and utilities.
 
+### `@repo/starter-sidebar-policy` — Sidebar Sizing
+
+Shared sizing policy used by the design system and the standalone demo. See the
+[package guide](packages/starter-sidebar-policy/README.md) for consumption and
+release instructions, and [the demo guide](apps/demo/README.md) to run the app.
+
 ## Run against cloud Convex + Better Auth
 
 1. Create a Convex project in the Convex dashboard and grab the deployment URLs:
@@ -228,10 +253,17 @@ Shared design patterns and utilities.
 2. Set your local `.env.local` to the cloud values:
 
 ```env
+# apps/web and apps/admin — read unprefixed at request time, so one build can be
+# promoted between environments. Neither needs a site-URL variable: both derive
+# their origin from the request Host header.
 CONVEX_DEPLOYMENT=dev:<your-deployment>
-NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
+CONVEX_URL=https://<deployment>.convex.cloud
+CONVEX_SITE_URL=https://<deployment>.convex.site
+
+# apps/landing and apps/landing-static are static exports, so they must inline
+# their configuration at build time and keep the NEXT_PUBLIC_ prefix.
 NEXT_PUBLIC_SITE_URL=https://your-app-domain.com
+NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
 
 3. Configure Convex env vars for that deployment:
@@ -332,9 +364,9 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 
 ### Environment differences
 
-- Local env uses `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`.
+- Local env uses `CONVEX_URL` and `CONVEX_SITE_URL` (web/admin) or their `NEXT_PUBLIC_` counterparts (landing, landing-static) pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`.
 - Cloud env uses `https://<deployment>.convex.cloud` (API) and `https://<deployment>.convex.site` (site proxy).
-- `NEXT_PUBLIC_SITE_URL` and the Convex `SITE_URL` env var should match your app URL for each environment.
+- `NEXT_PUBLIC_SITE_URL` (landing apps only) and the Convex `SITE_URL` env var should match your app URL for each environment. `web` and `admin` need neither — they derive their origin from the request `Host` header.
 
 ## Convex workflow primer
 
@@ -363,7 +395,7 @@ Use this mental model to avoid surprises when switching between local and cloud.
 
 ### Mental model
 
-- `NEXT_PUBLIC_CONVEX_URL` = where your app sends requests.
+- `CONVEX_URL` (`NEXT_PUBLIC_CONVEX_URL` in the landing apps) = where your app sends requests.
 - `bun run dev` (local) / `bunx convex deploy` (cloud) = how local code is pushed to that backend.
 
 ## Environment conventions
@@ -378,27 +410,28 @@ This repo does not enforce a naming scheme, but the following conventions are cl
 
 ```env
 CONVEX_DEPLOYMENT=anonymous:<deployment-name>
-NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:<cloud-port>
-NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:<site-port>
-NEXT_PUBLIC_SITE_URL=http://localhost:3001
+CONVEX_URL=http://127.0.0.1:<cloud-port>
+CONVEX_SITE_URL=http://127.0.0.1:<site-port>
 ```
 
-Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment.
+Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment. These examples are for `apps/web` and `apps/admin`, which read the unprefixed names at request time and need no site-URL variable. `apps/landing` and `apps/landing-static` are static exports and use the `NEXT_PUBLIC_` forms instead.
 
 ### Example: hybrid (local app + cloud Convex)
 
 ```env
 CONVEX_DEPLOYMENT=dev:<deployment>
-NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
-NEXT_PUBLIC_SITE_URL=http://localhost:3001
+CONVEX_URL=https://<deployment>.convex.cloud
+CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
 
 ### Example: fully cloud
 
 ```env
 CONVEX_DEPLOYMENT=prod:<deployment>
-NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
-NEXT_PUBLIC_SITE_URL=https://app.example.com
+CONVEX_URL=https://<deployment>.convex.cloud
+CONVEX_SITE_URL=https://<deployment>.convex.site
 ```
+
+### Operations CLI
+
+Start with `bun run ops setup` for guided GitHub/Vercel login and team/project selection; existing `gh` and `vercel` sessions are reused without tokens in ops config. Run `bun run ops` in a terminal for a guided operations console: monitor environments, investigate failures, review and deploy releases, roll back, and explore audit evidence using arrow keys and Enter. Explicit commands such as `ops status`, `ops diagnose RUN`, and `ops verify --run RUN` remain available for scripts; `--watch --until serving` follows a release through workflow success and serving verification. See the [operations CLI guide](docs/ops-cli.md) for setup and the end-to-end walkthrough.

@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
+    inputs:
+      git_sha:
+        description: Source commit to test
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ci-shared-${{ github.ref }}
@@ -26,8 +32,8 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.act-all.outputs.backend || steps.filter.outputs.backend }}
-      root: ${{ steps.act-all.outputs.root || steps.filter.outputs.root }}
+      backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
+      root: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.root || steps.filter.outputs.root }}
     steps:
       # In act (local CI), git worktrees use a .git file pointing to the main
       # repo which doesn't exist inside the container. Skip change detection
@@ -37,16 +43,18 @@ jobs:
         id: act-all
         run: |
           echo "Running in act — skipping change detection, all jobs will run"
-          echo "backend=true" >> $GITHUB_OUTPUT
-          echo "root=true" >> $GITHUB_OUTPUT
+          echo "backend=true" >> "$GITHUB_OUTPUT"
+          echo "root=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         if: ${{ !env.ACT }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -54,7 +62,7 @@ jobs:
               - 'packages/backend/**'
             root:
               - 'package.json'
-              - 'bun.lockb'
+              - 'bun.lock'
               - 'turbo.json'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
@@ -67,8 +75,20 @@ jobs:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
+
+      - name: Check runtime baseline (Node/Bun versions agree)
+        run: bun run check:runtime-baseline
+
+      - name: Check development scripts and process isolation
+        run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
+
+      - name: Test ops CLI
+        if: hashFiles('packages/ops/package.json') != ''
+        run: bun run test:ops
 
       - name: Run TypeScript check
         run: bunx turbo typecheck
@@ -85,11 +105,45 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.root == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Run Convex tests
         run: bunx turbo test:convex
+
+  # Local starter package contract and a rehearsal using the real demo app.
+  starter-upgrade:
+    name: Starter Upgrade Rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+        with:
+          node-version: "24"
+      - name: Typecheck and lint starter scripts
+        run: bun run typecheck:starter-upgrade && bun run lint:starter-upgrade
+      - name: Check starter ownership and exercise upgrade contracts
+        run: bun run check:starter-ownership && bun run test:starter-upgrade
+      - name: Rehearse real demo baseline to target
+        run: bun run test:starter-rehearsal
+      - name: Retain plan and executable evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: starter-upgrade-evidence
+          include-hidden-files: true
+          path: |
+            .ci-local-artifacts/starter-upgrade/*.json
+            .ci-local-artifacts/starter-upgrade/*.log
+            .ci-local-artifacts/starter-upgrade/apps/demo/starter-upgrade.lock.json
+            .ci-local-artifacts/starter-upgrade/apps/demo/.starter-upgrade/*.json
+            .ci-local-artifacts/starter-upgrade/apps/demo/.starter-upgrade/*.log
+            .ci-local-artifacts/starter-upgrade/apps/demo/.next/server/app/dashboard.html
 
   # ============================================================
   # SUMMARY
@@ -97,13 +151,19 @@ jobs:
   ci-shared-complete:
     name: CI Shared Complete
     runs-on: ubuntu-latest
-    needs: [lint, test-convex]
+    needs: [lint, test-convex, starter-upgrade]
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
           echo "Lint: ${{ needs.lint.result }}"
           echo "Convex: ${{ needs.test-convex.result }}"
+          echo "Starter upgrade rehearsal: ${{ needs.starter-upgrade.result }}"
+
+          if [[ "${{ needs.starter-upgrade.result }}" != "success" ]]; then
+            echo "Starter upgrade rehearsal failed"
+            exit 1
+          fi
 
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
             echo "Lint failed"

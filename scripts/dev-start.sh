@@ -12,6 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
+PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
+NODE_TS="$SCRIPT_DIR/node-ts.sh"
 
 # ============================================================
 # PARSE ARGUMENTS
@@ -98,6 +100,7 @@ fi
 echo -e "${BLUE}  Starting Development Environment...${NC}"
 
 cd "$PROJECT_DIR"
+"$NODE_TS" -e "" || exit 1
 
 # In CI mode, show environment info
 if [ "$NON_INTERACTIVE" = true ]; then
@@ -117,6 +120,14 @@ if [ "$NON_INTERACTIVE" = false ]; then
 else
     echo "[CI MODE] Skipping ensure-local-deps.sh (not needed in CI)"
 fi
+
+# ============================================================
+# SHARED ASSETS
+# ============================================================
+# `bun run dev` gets these via its predev hook, but Playwright's webServer
+# invokes this script directly — so without this, CI serves a site with no
+# icon.svg or favicon.ico and any "no console errors" test fails on 404s.
+"$SCRIPT_DIR/copy-shared-assets.sh"
 
 # ============================================================
 # ENSURE BRANCH TRACKING (push protection)
@@ -184,6 +195,32 @@ convex_startup_failure_line() {
     tr -d '\r' < "$log_file" 2>/dev/null | grep -a -E -i -m1 'Schema validation failed|SchemaDefinitionError|TypeScript typecheck.*failed|Collecting TypeScript errors|error TS[0-9]{4}|Unable to start push to|Error fetching POST|\\[ERROR\\]' || true
 }
 
+# Detect the interactive "upgrade the local backend?" prompt. Convex emits this
+# when the on-disk anonymous deployment predates the installed convex version.
+# Because we redirect Convex's output to a log file (no TTY), the CLI can't read
+# the y/n answer and dies with "Cannot prompt for input in non-interactive
+# terminals". Returns 0 (true) when that situation is detected.
+convex_needs_backend_upgrade() {
+    local log_file="$1"
+    tr -d '\r' < "$log_file" 2>/dev/null | grep -a -q -i -E 'using an older version of the Convex backend|Cannot prompt for input in non-interactive terminals'
+}
+
+# Print step-by-step recovery instructions for the backend upgrade prompt.
+print_convex_upgrade_fix() {
+    echo -e "${YELLOW}  Convex needs to upgrade the local (anonymous) backend before it can start.${NC}"
+    echo -e "${YELLOW}  This requires an interactive 'y' confirmation that this script can't provide,${NC}"
+    echo -e "${YELLOW}  because it captures Convex output to a log file (no interactive terminal).${NC}"
+    echo ""
+    echo -e "${GREEN}  To fix it, run the upgrade once yourself in a normal terminal:${NC}"
+    echo ""
+    echo -e "    ${GREEN}cd packages/backend && CONVEX_AGENT_MODE=anonymous npx convex dev${NC}"
+    echo ""
+    echo -e "${YELLOW}  When it asks \"Upgrade now?\", answer ${GREEN}y${YELLOW}. Wait for${NC}"
+    echo -e "${YELLOW}  \"Convex functions ready\", then press ${GREEN}Ctrl-C${YELLOW} to stop it.${NC}"
+    echo ""
+    echo -e "${GREEN}  Then re-run:${NC} ${GREEN}bun run dev${NC}"
+}
+
 # Get ports from Convex config
 get_convex_ports() {
     local deployment_name="$1"
@@ -216,10 +253,17 @@ get_convex_urls_from_backend_env() {
 }
 
 # Update Convex URLs in an app's .env.local
+#
+# web and admin read these unprefixed at request time so their build artifacts
+# stay environment-agnostic and can be promoted between environments. landing is
+# a static export (output: "export") with no server at runtime, so it still needs
+# the NEXT_PUBLIC_* form inlined at build time.
+# See docs/claude/build-once-promote-plan.md
 update_app_env_urls() {
     local env_file="$1"
     local cloud_port="$2"
     local site_port="$3"
+    local style="${4:-runtime}"   # runtime | inlined
 
     local cloud_url="http://127.0.0.1:$cloud_port"
     local site_url="http://127.0.0.1:$site_port"
@@ -227,21 +271,51 @@ update_app_env_urls() {
     # Ensure file exists
     touch "$env_file"
 
-    update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_URL" "$cloud_url"
-    update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
+    if [ "$style" = "inlined" ]; then
+        update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_URL" "$cloud_url"
+        update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
+    else
+        update_env_var "$env_file" "CONVEX_URL" "$cloud_url"
+        update_env_var "$env_file" "CONVEX_SITE_URL" "$site_url"
+    fi
 }
 
 # Check if esbuild binary is functional (Convex uses it to bundle functions)
+# Map the host to esbuild's platform package name. Hardcoding darwin-arm64 here
+# made the pre-flight check pass on every developer Mac and fail on every Linux
+# CI runner, which is why no E2E job ever got past webServer startup.
+esbuild_platform() {
+    local os arch
+    os=$(uname -s)
+    arch=$(uname -m)
+
+    case "$os" in
+        Darwin) os="darwin" ;;
+        Linux)  os="linux" ;;
+        *)      os="unknown" ;;
+    esac
+
+    case "$arch" in
+        arm64|aarch64) arch="arm64" ;;
+        x86_64|amd64)  arch="x64" ;;
+        *)             arch="unknown" ;;
+    esac
+
+    echo "${os}-${arch}"
+}
+
 check_esbuild() {
     local esbuild_bin=""
+    local platform
+    platform=$(esbuild_platform)
 
     # 1. Direct platform binary (classic node_modules layout)
-    if [ -x "$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild" ]; then
-        esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/darwin-arm64/bin/esbuild"
-    # 2. Bun's deduped layout: node_modules/.bun/@esbuild+darwin-arm64@*/...
+    if [ -x "$PROJECT_DIR/node_modules/@esbuild/$platform/bin/esbuild" ]; then
+        esbuild_bin="$PROJECT_DIR/node_modules/@esbuild/$platform/bin/esbuild"
+    # 2. Bun's deduped layout: node_modules/.bun/@esbuild+<platform>@*/...
     else
         local bun_esbuild
-        bun_esbuild=$(ls "$PROJECT_DIR"/node_modules/.bun/@esbuild+darwin-arm64@*/node_modules/@esbuild/darwin-arm64/bin/esbuild 2>/dev/null | head -1)
+        bun_esbuild=$(ls "$PROJECT_DIR"/node_modules/.bun/@esbuild+"$platform"@*/node_modules/@esbuild/"$platform"/bin/esbuild 2>/dev/null | head -1)
         if [ -x "$bun_esbuild" ]; then
             esbuild_bin="$bun_esbuild"
         fi
@@ -303,9 +377,11 @@ if [ -f "$PID_FILE" ]; then
     while IFS= read -r line; do
         name=$(echo "$line" | cut -d':' -f1)
         pid=$(echo "$line" | cut -d':' -f2)
-        if [ -n "$pid" ] && kill -0 $pid 2>/dev/null; then
+        if [ -n "$pid" ] && "$NODE_TS" "$PROCESS_HELPER" running "$name" "$pid"; then
             RUNNING_PIDS="$RUNNING_PIDS  $name: $pid\n"
             HAS_RUNNING_PROCESSES=true
+        elif [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            echo "Skipping unverified $name PID $pid. Stop pre-upgrade servers from their original terminal if needed."
         fi
     done < "$PID_FILE"
 
@@ -340,87 +416,46 @@ if [ -f "$PID_FILE" ]; then
     fi
 fi
 
-# ============================================================
-# CHECK FOR ORPHANED PROCESSES
-# ============================================================
-# Detect stale convex-local-backend or Next.js dev processes that aren't tracked
-# in .dev-pids (e.g. from a crashed terminal or killed script).
-
-kill_orphans() {
-    local pids="$1"
-    local label="$2"
-    for pid in $pids; do
-        if kill -0 "$pid" 2>/dev/null; then
-            local cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -c 80)
-            kill "$pid" 2>/dev/null || true
-            sleep 0.3
-            if kill -0 "$pid" 2>/dev/null; then
-                kill -9 "$pid" 2>/dev/null || true
-            fi
-            echo -e "  ${GREEN}✔ Killed $label (PID $pid): $cmd${NC}"
-        fi
-    done
-}
-
-# Stop a child process without risking an unbounded wait.
+# Only processes registered by this checkout may be stopped. An unrelated
+# Convex backend is never an orphan just because it isn't in our PID file.
 terminate_pid_with_timeout() {
     local pid="$1"
-    local grace_seconds="${2:-3}"
-    local waited=0
-
-    if [ -z "$pid" ]; then
-        return
-    fi
-
-    if ! kill -0 "$pid" 2>/dev/null; then
-        wait "$pid" 2>/dev/null || true
-        return
-    fi
-
-    kill "$pid" 2>/dev/null || true
-    while kill -0 "$pid" 2>/dev/null && [ $waited -lt $grace_seconds ]; do
-        sleep 1
-        waited=$((waited + 1))
-    done
-
-    if kill -0 "$pid" 2>/dev/null; then
-        kill -9 "$pid" 2>/dev/null || true
-    fi
-
+    "$NODE_TS" "$PROCESS_HELPER" stop --name convex
     wait "$pid" 2>/dev/null || true
 }
 
-ORPHAN_CONVEX=$(pgrep -f "convex-local-backend" 2>/dev/null || true)
-ORPHAN_NEXT=$(pgrep -f "next dev" 2>/dev/null | while read pid; do
-    # Only match Next.js processes rooted in this project
-    ps -p "$pid" -o args= 2>/dev/null | grep -q "$PROJECT_DIR" && echo "$pid"
-done || true)
-
-if [ -n "$ORPHAN_CONVEX" ] || [ -n "$ORPHAN_NEXT" ]; then
-    ORPHAN_COUNT=$(echo "$ORPHAN_CONVEX $ORPHAN_NEXT" | wc -w | tr -d ' ')
-    echo -e "${YELLOW}⚠ Found $ORPHAN_COUNT orphaned dev process(es) (not tracked in .dev-pids):${NC}"
-    for pid in $ORPHAN_CONVEX; do
-        echo -e "  ${RED}convex-local-backend${NC} (PID $pid)"
-    done
-    for pid in $ORPHAN_NEXT; do
-        cmd=$(ps -p "$pid" -o args= 2>/dev/null | head -c 80)
-        echo -e "  ${RED}next dev${NC} (PID $pid): $cmd"
-    done
-    echo ""
-
-    if [ ! -t 0 ]; then
-        echo -e "${YELLOW}Non-interactive mode: killing orphaned processes...${NC}"
-        kill_orphans "$ORPHAN_CONVEX" "convex-local-backend"
-        kill_orphans "$ORPHAN_NEXT" "next dev"
-        echo ""
-    else
-        read -p "Kill them? [Y/n]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            kill_orphans "$ORPHAN_CONVEX" "convex-local-backend"
-            kill_orphans "$ORPHAN_NEXT" "next dev"
-            echo ""
+# ============================================================
+# WARN IF OTHER WORKTREES HAVE RUNNING DEV PROCESSES
+# ============================================================
+if [ "$NON_INTERACTIVE" = false ] && command -v git &>/dev/null; then
+    OTHER_WT_WARNINGS=""
+    while IFS= read -r wt_line; do
+        wt_dir=$(echo "$wt_line" | awk '{print $1}')
+        # Skip this worktree
+        [ "$wt_dir" = "$PROJECT_DIR" ] && continue
+        if [ -f "$wt_dir/.dev-pids" ]; then
+            wt_procs=""
+            has_running=false
+            while IFS= read -r line; do
+                name=$(echo "$line" | cut -d':' -f1)
+                pid=$(echo "$line" | cut -d':' -f2)
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    wt_procs="$wt_procs    $name (PID $pid)\n"
+                    has_running=true
+                fi
+            done < "$wt_dir/.dev-pids"
+            if [ "$has_running" = true ]; then
+                OTHER_WT_WARNINGS="$OTHER_WT_WARNINGS  $wt_dir\n$wt_procs"
+            fi
         fi
+    done < <(cd "$PROJECT_DIR" && git worktree list 2>/dev/null)
+
+    if [ -n "$OTHER_WT_WARNINGS" ]; then
+        echo -e "${YELLOW}⚠ Another worktree already has dev processes running:${NC}"
+        echo -e "$OTHER_WT_WARNINGS"
+        echo -e "  Running dev servers in multiple worktrees simultaneously consumes"
+        echo -e "  significant resources. Consider using ${BLUE}--app=web${NC} for this worktree."
+        echo ""
     fi
 fi
 
@@ -477,6 +512,7 @@ if [ "$NEED_CONVEX" = true ]; then
         (cd "$CONVEX_DIR" && CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
     fi
+    "$NODE_TS" "$PROCESS_HELPER" track convex "$CONVEX_PID"
     echo "convex:$CONVEX_PID" > "$PID_FILE"
 
     MAX_WAIT=30
@@ -494,6 +530,13 @@ if [ "$NEED_CONVEX" = true ]; then
             fi
             printf "\n"
             echo -e "${RED}✖ Convex process exited${NC}"
+            if convex_needs_backend_upgrade "$PROJECT_DIR/.convex-dev.log"; then
+                echo ""
+                print_convex_upgrade_fix
+                echo ""
+                rm -f "$PID_FILE"
+                exit 1
+            fi
             echo -e "${RED}  Log output:${NC}"
             cat "$PROJECT_DIR/.convex-dev.log"
             echo ""
@@ -614,7 +657,7 @@ if [ "$NEED_CONVEX" = true ]; then
             update_app_env_urls "$PROJECT_DIR/apps/admin/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
         if [ "$START_LANDING" = true ]; then
-            update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+            update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
         fi
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
@@ -680,7 +723,7 @@ if [ "$NEED_CONVEX" = true ]; then
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
         echo -e "  ${GREEN}✔${NC} Dev users already exist"
     elif echo "$SEED_OUTPUT" | grep -q "Dev seed complete"; then
-        echo -e "  ${GREEN}✔${NC} Dev users created (admin@admin.com / adminadmin, user@user.com / useruser)"
+        echo -e "  ${GREEN}✔${NC} Dev users created (admin@admin.com / pw:emailx3, user@user.com / pw:emailx3)"
     else
         echo -e "  ${YELLOW}⚠${NC} Dev seed: ${SEED_OUTPUT:-no output} (non-fatal)"
     fi
@@ -741,6 +784,7 @@ start_next_app() {
 
     (cd "$app_dir" && bunx next dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
     local next_pid=$!
+    "$NODE_TS" "$PROCESS_HELPER" track "next-${app_name}" "$next_pid"
     echo "next-${app_name}:$next_pid" >> "$PID_FILE"
 
     local max_wait=60
@@ -791,15 +835,47 @@ start_next_app() {
 
     local next_port=$(echo "$next_url" | grep -o '[0-9]*$')
 
-    # Update NEXT_PUBLIC_SITE_URL for this app
+    # Record this app's origin.
+    #
+    # web and admin derive their own origin from the request Host header, so this
+    # is written as APP_ORIGIN and consumed only by the Playwright config, as the
+    # URL to point tests at. It is deliberately NOT called SITE_URL: that name
+    # already belongs to Convex, where it holds a comma-separated list of trusted
+    # origins (see the sync below and getSiteUrls() in convex/auth.ts).
+    # landing still inlines NEXT_PUBLIC_SITE_URL at build time.
     if [ -n "$next_port" ]; then
-        update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
+        case "$app_name" in
+            web|admin)
+                update_env_var "$app_dir/.env.local" "APP_ORIGIN" "http://localhost:$next_port"
+                ;;
+            *)
+                update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
+                ;;
+        esac
     fi
 
-    # Sync SITE_URL to Convex if this is the web app
-    if [ "$app_name" = "web" ] && [ "$NEED_CONVEX" = true ] && [ -n "$next_port" ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "http://localhost:$next_port" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex"
+    # Sync this app's origin into Convex's SITE_URL.
+    #
+    # SITE_URL is a comma-separated list; the backend splits it and uses every
+    # entry as a trusted origin (see getSiteUrls() in convex/auth.ts). This used
+    # to run for the web app only, so starting landing on its own left its
+    # origin untrusted and every browser call to the Convex HTTP router failed
+    # CORS -- which is exactly how it failed the moment E2E first ran in CI.
+    if [ "$NEED_CONVEX" = true ] && [ -n "$next_port" ]; then
+        local app_origin="http://localhost:$next_port"
+        local existing_site_url
+        existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
+
+        local merged_site_url="$app_origin"
+        if [ -n "$existing_site_url" ] && [ "$existing_site_url" != "$app_origin" ]; then
+            case ",$existing_site_url," in
+                *",$app_origin,"*) merged_site_url="$existing_site_url" ;;
+                *) merged_site_url="$app_origin,$existing_site_url" ;;
+            esac
+        fi
+
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$merged_site_url" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex ($merged_site_url)"
         else
             echo -e "  ${YELLOW}⚠${NC} Failed to sync SITE_URL to Convex"
         fi
@@ -836,6 +912,15 @@ if [ "$START_ADMIN" = true ]; then
     else
         APP_URLS="$LAST_APP_URL"
     fi
+
+    # Sync ADMIN_SITE_URL to Convex so CORS and admin invitation links work
+    if [ "$NEED_CONVEX" = true ] && [ -n "$ADMIN_APP_URL" ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "$ADMIN_APP_URL" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL synced to Convex"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Failed to sync ADMIN_SITE_URL to Convex"
+        fi
+    fi
 fi
 
 if [ "$START_LANDING" = true ]; then
@@ -859,13 +944,58 @@ if [ "$START_LANDING" = true ]; then
 
     # Set the landing URL in the web app so auth pages can link back
     if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/web/.env.local" "NEXT_PUBLIC_LANDING_URL" "$LANDING_APP_URL"
-        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_LANDING_URL set to $LANDING_APP_URL for web"
+        update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "$LANDING_APP_URL"
+        echo -e "  ${GREEN}✔${NC} LANDING_URL set to $LANDING_APP_URL for web"
     fi
 fi
 
 if [ "$START_STORYBOOK" = true ]; then
     start_next_app "storybook" 3003
+fi
+
+# ============================================================
+# SEED DEFAULT CROSS-APP VARS FOR SINGLE-APP MODE
+# ============================================================
+# When only some apps are started, seed default localhost URLs for missing
+# cross-app env vars and Convex env vars so pages don't crash at runtime.
+
+if [ "$NEED_CONVEX" = true ]; then
+    echo ""
+    echo -e "${GREEN}▶ Ensuring cross-app env vars are populated...${NC}"
+
+    # Seed LANDING_URL for web when landing is not started
+    if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
+        if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/apps/web/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "http://localhost:3000"
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to http://localhost:3000 for web"
+        else
+            echo -e "  ${GREEN}✔${NC} LANDING_URL already set for web (preserved)"
+        fi
+    fi
+
+    # Seed NEXT_PUBLIC_WEB_APP_URL for landing when web is not started
+    if [ "$START_LANDING" = true ] && [ "$START_WEB" = false ]; then
+        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/apps/landing/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "http://localhost:3001"
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to http://localhost:3001 for landing"
+        else
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL already set for landing (preserved)"
+        fi
+    fi
+
+    # Seed ADMIN_SITE_URL in Convex when admin is not started
+    if [ "$START_ADMIN" = false ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "http://localhost:3002" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL defaulted to http://localhost:3002 in Convex"
+        fi
+    fi
+
+    # Seed LANDING_URL in Convex when landing is not started
+    if [ "$START_LANDING" = false ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "http://localhost:3000" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to http://localhost:3000 in Convex"
+        fi
+    fi
 fi
 
 # ============================================================

@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:starter-policy": "vitest run qa/tests/starter-policy.test.tsx",
+    "test:business": "vitest run qa/tests/business.test.tsx"
   },
   "dependencies": {
+    "@repo/starter-sidebar-policy": "file:./starter-packages/sidebar-policy",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.7",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -19,15 +23,19 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.510.0",
-    "next": "^16.1.5",
+    "lucide-react": "^1.46.0",
+    "next": "^16.3.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.4",
-    "@types/node": "25.0.8",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "happy-dom": "^20.3.7",
+    "vitest": "^5.0.0",
+    "@types/node": "24.13.4",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "tailwindcss": "^4.1.4",

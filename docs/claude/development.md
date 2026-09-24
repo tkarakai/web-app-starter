@@ -1,6 +1,6 @@
 # Development Workflow
 
-> Detailed guide for AI agents. See `CLAUDE.md` for the quick reference.
+> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
 
 ## Starting Development
 
@@ -24,14 +24,19 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
+### Development process isolation
+
+See [Development process isolation](../../README.md#development-process-isolation)
+for launcher requirements, process ownership checks and safe stop commands.
+
 ### Dev Seed Accounts
 
 On first startup, `dev-start.sh` automatically creates two test accounts via `packages/backend/convex/devSeed.ts`:
 
 | Email | Password | Role |
 |-------|----------|------|
-| `admin@admin.com` | `adminadmin` | admin |
-| `user@user.com` | `useruser` | user |
+| `admin@admin.com` | email pasted x 3 | admin |
+| `user@user.com` | email pasted x 3 | user |
 
 The seed is gated behind the `DEV_SEED_ENABLED` Convex env var (set automatically by `dev-start.sh`) and is idempotent — it skips if the accounts already exist. To re-seed after a database reset, just restart `bun run dev`.
 

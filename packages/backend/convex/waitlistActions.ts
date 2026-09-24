@@ -8,6 +8,7 @@ import {
   DEFAULT_EMAIL_TEMPLATE,
   renderEmailTemplate,
 } from "./emailTemplates";
+import { sha256Hex } from "./tokenHash";
 
 /** Default token expiry in days (can be overridden via appSettings). */
 const DEFAULT_EXPIRY_DAYS = 7;
@@ -38,18 +39,21 @@ export const generateTokenAndSendEmail = internalAction({
     const now = Date.now();
     const expiresAt = now + expiryDays * 24 * 60 * 60 * 1000;
 
-    // Store the token
+    // Store only the SHA-256 hash — the raw token is sent in the email only.
+    const tokenHash = sha256Hex(token);
     await ctx.runMutation(internal.waitlistTokens.create, {
       waitlistEntryId: args.entryId,
-      token,
+      tokenHash,
       email: args.email,
       expiresAt,
     });
 
     // Build the signup URL
-    const siteUrl = (process.env.SITE_URL ?? "http://localhost:3001")
-      .split(",")[0]
-      .trim();
+    const siteUrlRaw = process.env.SITE_URL;
+    if (!siteUrlRaw) {
+      throw new Error("Missing required environment variable: SITE_URL");
+    }
+    const siteUrl = siteUrlRaw.split(",")[0].trim();
     const signupUrl = `${siteUrl}/signup-with-invitation?token=${token}`;
 
     // Load custom email template (if any), otherwise use default
@@ -86,12 +90,13 @@ export const generateTokenAndSendEmail = internalAction({
     const resend = new Resend(apiKey);
     const emailFrom = process.env.EMAIL_FROM ?? "noreply@example.com";
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: emailFrom,
       to: args.email,
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
     });
+    if (error) throw new Error(error.message);
   },
 });

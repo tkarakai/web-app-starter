@@ -262,17 +262,24 @@ function sortForAdmin(items: Doc<"announcements">[]): Doc<"announcements">[] {
   });
 }
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
 function getLandingPageUrl(): string {
-  return process.env.LANDING_URL ?? "http://localhost:3000";
+  return requireEnv("LANDING_URL");
 }
 
 function getWebAppUrl(): string {
-  const raw = process.env.SITE_URL ?? "http://localhost:3001";
+  const raw = requireEnv("SITE_URL");
   const first = raw
     .split(",")
     .map((entry) => entry.trim())
     .find(Boolean);
-  return first ?? "http://localhost:3001";
+  if (!first) throw new Error("SITE_URL environment variable is empty");
+  return first;
 }
 
 function renderLearnMoreContent(html: string | undefined): string | undefined {

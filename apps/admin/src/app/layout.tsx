@@ -5,8 +5,14 @@ import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
-import { EnvironmentBannerWrapper, OfflineBanner } from "@repo/design-system";
+import {
+  EnvironmentBannerWrapper,
+  OfflineBanner,
+  PublicConfigProvider,
+} from "@repo/design-system";
+import { readPublicConfigFromEnv } from "@repo/design-system/server";
 import { getToken } from "@repo/auth/server";
+import { ConvexErrorToast } from "@/components/convex-error-toast";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -36,13 +42,22 @@ export default async function RootLayout({
     headers().then((h) => h.get("x-nonce") ?? undefined),
   ]);
 
+  // Read at request time, not build time, so one artifact can serve any
+  // environment. See docs/claude/build-once-promote-plan.md
+  const publicConfig = readPublicConfigFromEnv();
+
   return (
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <EnvironmentBannerWrapper appName="admin" />
           <OfflineBanner />
-          <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
+          <PublicConfigProvider value={publicConfig}>
+            <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
+              <ConvexErrorToast />
+              {children}
+            </ConvexClientProvider>
+          </PublicConfigProvider>
         </ThemeProvider>
       </body>
     </html>

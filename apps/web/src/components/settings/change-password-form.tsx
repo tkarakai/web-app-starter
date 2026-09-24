@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
@@ -14,11 +14,16 @@ import {
   PasswordInput,
   toast,
 } from "@repo/design-system";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+import { useAuthUser } from "@/components/auth/auth-guard";
 
 export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");
   const tc = useTranslations("common");
+  const ta = useTranslations("auth");
+  const tps = useTranslations("passwordStrength");
 
+  const authUser = useAuthUser();
   const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
@@ -26,10 +31,28 @@ export function ChangePasswordForm() {
   const [revokeOtherSessions, setRevokeOtherSessions] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
+  // Throttled password for server-side strength evaluation (at most once per 500ms)
+  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(newPassword);
+  const strengthResult = useQuery(
+    api.passwordStrength.evaluate,
+    throttledPassword
+      ? { password: throttledPassword, email: authUser?.email ?? "", role: "user" as const }
+      : "skip",
+  );
+  React.useEffect(() => {
+    if (strengthResult !== undefined) notifyResolved();
+  }, [strengthResult, notifyResolved]);
+  const isNewPasswordValid = strengthResult?.valid ?? false;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast.error(tc("error"));
+      toast.error(ta("errors.passwordMismatch"));
+      return;
+    }
+
+    if (!isNewPasswordValid) {
+      toast.error(tps("strengthRequirement"));
       return;
     }
 
@@ -69,6 +92,14 @@ export function ChangePasswordForm() {
     }
   };
 
+  const canSubmit =
+    currentPassword.length > 0 &&
+    newPassword.length > 0 &&
+    confirmPassword.length > 0 &&
+    isNewPasswordValid &&
+    newPassword === confirmPassword &&
+    !submitting;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
       <div className="space-y-2">
@@ -88,7 +119,9 @@ export function ChangePasswordForm() {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           required
+          minLength={12}
         />
+        <PasswordStrengthMeter result={strengthResult} password={newPassword} t={tps} />
       </div>
 
       <div className="space-y-2">
@@ -98,6 +131,7 @@ export function ChangePasswordForm() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
+          minLength={12}
         />
       </div>
 
@@ -112,7 +146,7 @@ export function ChangePasswordForm() {
         </Label>
       </div>
 
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={!canSubmit}>
         {submitting ? tc("saving") : tcp("cta")}
       </Button>
     </form>

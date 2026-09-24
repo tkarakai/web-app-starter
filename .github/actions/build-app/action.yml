@@ -1,5 +1,14 @@
-name: "Build App"
-description: "Build a Next.js app via Vercel CLI and package as artifact"
+name: "Ensure App Artifact"
+description: >-
+  Resolve an app's deployable artifact by its build-input hash, building it only
+  if no artifact for that hash already exists.
+
+  Artifacts are content-addressed: the name is derived from Turborepo's hash of
+  the app's build inputs (its files, its dependency packages, the lockfile, and
+  the environment variables declared as hashed in turbo.json). Two commits whose
+  inputs are identical resolve to the same artifact, so an unchanged app is never
+  rebuilt and every commit resolves to something deployable.
+  See docs/claude/build-once-promote-plan.md
 
 inputs:
   app:
@@ -17,37 +26,42 @@ inputs:
   vercel-project-id:
     description: "Vercel project ID for this app"
     required: true
+  github-token:
+    description: "Token used to look up existing artifacts across workflow runs"
+    required: true
 
 outputs:
   artifact-name:
-    description: "Name of the uploaded artifact"
+    description: "Name of the artifact holding this app's build"
     value: ${{ steps.meta.outputs.artifact-name }}
   tarball:
-    description: "Filename of the tarball"
+    description: "Filename of the tarball within the artifact"
     value: ${{ steps.meta.outputs.tarball }}
   checksum-file:
-    description: "Filename of the checksum file"
+    description: "Filename of the checksum file within the artifact"
     value: ${{ steps.meta.outputs.checksum-file }}
+  input-hash:
+    description: "Turborepo hash of this app's build inputs"
+    value: ${{ steps.meta.outputs.input-hash }}
+  run-id:
+    description: "Workflow run holding the artifact (this run when freshly built)"
+    value: ${{ steps.resolve.outputs.run-id }}
+  artifact-id:
+    description: GitHub artifact ID (new or reused)
+    value: ${{ steps.resolve.outputs.artifact-id || steps.upload.outputs.artifact-id }}
+  built-sha:
+    description: Actual checked-out source SHA when this run builds the artifact
+    value: ${{ steps.resolve.outputs.found != 'true' && steps.meta.outputs.source-sha || '' }}
+  reused:
+    description: "'true' when an existing artifact was reused instead of rebuilt"
+    value: ${{ steps.resolve.outputs.found }}
 
 runs:
   using: "composite"
   steps:
-    - name: Set metadata
-      id: meta
-      shell: bash
-      run: |
-        ARTIFACT_NAME="${{ inputs.app }}-${{ inputs.environment }}-${{ github.sha }}"
-        TARBALL="${{ inputs.app }}-${{ inputs.environment }}.tar.gz"
-        CHECKSUM="${{ inputs.app }}-${{ inputs.environment }}.tar.gz.sha256"
-        TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        echo "artifact-name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
-        echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
-        echo "checksum-file=${CHECKSUM}" >> "$GITHUB_OUTPUT"
-        echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
-
     - name: Install Vercel CLI
       shell: bash
-      run: bun add -g vercel@latest
+      run: bun add -g vercel@59.26.0
 
     # Run all Vercel commands from the monorepo root to avoid the Turbopack
     # path-doubling bug (https://github.com/vercel/next.js/issues/88579).
@@ -71,7 +85,69 @@ runs:
           --environment=${{ inputs.environment }} \
           --token="$VERCEL_TOKEN"
 
+    - name: Compute build-input hash
+      id: meta
+      shell: bash
+      run: |
+        # Framework inference is disabled deliberately. With it on, Turborepo
+        # folds every NEXT_PUBLIC_* variable into the hash, which would include
+        # NEXT_PUBLIC_GIT_SHA and move the hash on every commit — defeating reuse
+        # entirely. What each app hashes is declared explicitly in turbo.json.
+        HASH=$(bun --env-file=".vercel/.env.${{ inputs.environment }}.local" run turbo build --dry=json --framework-inference=false \
+                 --filter="@repo/${{ inputs.app }}" \
+               | jq -r --arg id "@repo/${{ inputs.app }}#build" \
+                   '.tasks[] | select(.taskId == $id) | .hash')
+
+        if [[ ! "$HASH" =~ ^[a-f0-9]{16}$ ]]; then
+          echo "::error::Expected a 16-character hexadecimal build-input hash for @repo/${{ inputs.app }}"
+          exit 1
+        fi
+
+        {
+          echo "source-sha=$(git rev-parse HEAD)"
+          echo "input-hash=${HASH}"
+          echo "artifact-name=${{ inputs.app }}-${HASH}"
+          echo "tarball=${{ inputs.app }}.tar.gz"
+          echo "checksum-file=${{ inputs.app }}.tar.gz.sha256"
+          echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "${{ inputs.app }} build-input hash: ${HASH}"
+
+    - name: Look for an existing artifact with this hash
+      id: resolve
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        NAME="${{ steps.meta.outputs.artifact-name }}"
+
+        # Repo-wide lookup by exact name — the artifact may come from any earlier
+        # run, in any workflow.
+        # gh rejects --slurp with --jq; filter the collected pages with standalone jq.
+        FOUND=$(gh api --paginate --slurp "repos/${{ github.repository }}/actions/artifacts?name=${NAME}&per_page=100" \
+                  | jq -c '[.[].artifacts[] | select(.expired == false)] | sort_by(.created_at) | last')
+
+        if [ -n "$FOUND" ] && [ "$FOUND" != "null" ]; then
+          RUN_ID=$(jq -r '.workflow_run.id' <<< "$FOUND")
+          echo "artifact-id=$(jq -r '.id' <<< "$FOUND")" >> "$GITHUB_OUTPUT"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "run-id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+          echo "Reusing ${NAME} from run ${RUN_ID} — inputs unchanged, no rebuild."
+          {
+            echo "### ${{ inputs.app }}: reused existing artifact"
+            echo ""
+            echo "- hash: \`${{ steps.meta.outputs.input-hash }}\`"
+            echo "- built by run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${RUN_ID}"
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          echo "run-id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "No artifact named ${NAME} — building it."
+        fi
+
     - name: Debug Vercel project settings
+      if: steps.resolve.outputs.found != 'true'
       shell: bash
       run: |
         echo "::group::Vercel project settings"
@@ -89,14 +165,16 @@ runs:
         echo "::endgroup::"
 
     - name: Copy shared assets to app public directory
+      if: steps.resolve.outputs.found != 'true'
       shell: bash
       run: ./scripts/copy-shared-assets.sh
 
     - name: Build with Vercel
+      if: steps.resolve.outputs.found != 'true'
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
-        NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+        NEXT_PUBLIC_GIT_SHA: ${{ steps.meta.outputs.source-sha }}
         NEXT_PUBLIC_GIT_BRANCH: ${{ github.ref_name }}
         NEXT_PUBLIC_DEPLOY_TIMESTAMP: ${{ steps.meta.outputs.timestamp }}
         NEXT_PUBLIC_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
@@ -109,7 +187,17 @@ runs:
         vercel build ${BUILD_FLAGS} \
           --token="$VERCEL_TOKEN"
 
+    # Reports environment values that Next.js inlined at build time. These pin
+    # the artifact to the environment it was built for and block promotion.
+    # Warn-only while the migration is in progress — see
+    # docs/claude/build-once-promote-plan.md
+    - name: Check artifact is promotable
+      if: steps.resolve.outputs.found != 'true'
+      shell: bash
+      run: ./scripts/check-env-leak.sh "${{ inputs.app }}" --warn
+
     - name: Package artifact
+      if: steps.resolve.outputs.found != 'true'
       shell: bash
       run: |
         TARBALL="${{ steps.meta.outputs.tarball }}"
@@ -119,25 +207,33 @@ runs:
         # The serverless functions in .vercel/output reference files in
         # apps/<app>/.next/ via .nft.json trace files — both are needed
         # for vercel deploy --prebuilt to succeed.
-        tar -czf "${TARBALL}" .vercel/output "apps/${{ inputs.app }}/.next"
+        # cache/ is build cache and dev/ is `next dev` output; neither is read by
+        # `vercel deploy --prebuilt`. dev/ never exists on a fresh CI checkout, but
+        # excluding it keeps a local run of this action honest about artifact size.
+        tar -czf "${TARBALL}" \
+          --exclude="apps/${{ inputs.app }}/.next/cache" \
+          --exclude="apps/${{ inputs.app }}/.next/dev" \
+          .vercel/output "apps/${{ inputs.app }}/.next"
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
-        echo "### Build Artifact: ${{ inputs.app }} (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Build Artifact: ${{ inputs.app }} (built with ${{ inputs.environment }} config)" >> "$GITHUB_STEP_SUMMARY"
         echo '```' >> "$GITHUB_STEP_SUMMARY"
         cat "${CHECKSUM}" >> "$GITHUB_STEP_SUMMARY"
         echo '```' >> "$GITHUB_STEP_SUMMARY"
 
     - name: Generate build manifest
+      if: steps.resolve.outputs.found != 'true'
       shell: bash
       run: |
-        MANIFEST="${{ inputs.app }}-${{ inputs.environment }}-manifest.json"
+        MANIFEST="${{ inputs.app }}-manifest.json"
         CHECKSUM=$(awk '{print $1}' "${{ steps.meta.outputs.checksum-file }}")
         TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
         jq -n \
           --arg app "${{ inputs.app }}" \
+          --arg hash "${{ steps.meta.outputs.input-hash }}" \
           --arg env "${{ inputs.environment }}" \
-          --arg sha "${{ github.sha }}" \
+          --arg sha "${{ steps.meta.outputs.source-sha }}" \
           --arg ref "${{ github.ref }}" \
           --arg ts "$TIMESTAMP" \
           --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
@@ -146,6 +242,7 @@ runs:
           --arg arch "${{ runner.arch }}" \
           '{
             app: $app,
+            input_hash: $hash,
             environment: $env,
             git_sha: $sha,
             git_ref: $ref,
@@ -157,12 +254,14 @@ runs:
           }' > "${MANIFEST}"
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      id: upload
+      if: steps.resolve.outputs.found != 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ steps.meta.outputs.artifact-name }}
         path: |
           ${{ steps.meta.outputs.tarball }}
           ${{ steps.meta.outputs.checksum-file }}
-          ${{ inputs.app }}-${{ inputs.environment }}-manifest.json
+          ${{ inputs.app }}-manifest.json
         retention-days: 90
         if-no-files-found: error

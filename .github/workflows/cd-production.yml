@@ -1,8 +1,14 @@
 name: Deploy Production
 
+run-name: "Deploy production ${{ inputs.git_sha }} [ops:${{ inputs.request_id || github.run_id }}]"
+
 on:
   workflow_dispatch:
     inputs:
+      request_id:
+        description: Correlation ID supplied by the ops CLI
+        type: string
+        required: false
       git_sha:
         description: "Git SHA to deploy (must have been deployed to staging)"
         required: true
@@ -12,9 +18,13 @@ on:
         required: true
         type: string
 
+env:
+  OPS_SELECTED_SHA: ${{ inputs.git_sha }}
+
 permissions:
   contents: write
   actions: read
+  deployments: write
   id-token: write
   attestations: write
 
@@ -35,10 +45,10 @@ jobs:
           exit 1
 
       - name: Verify SHA was deployed to staging
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const sha = '${{ inputs.git_sha }}';
+            const sha = process.env.OPS_SELECTED_SHA;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
@@ -50,16 +60,21 @@ jobs:
                 ref: `tags/deploy/staging/`,
               });
 
-              const stagingTag = tags.find(tag => tag.object.sha === sha || tag.ref.endsWith(`/${sha}`));
-
-              if (!stagingTag) {
-                // Also check short SHA matches
-                const shortSha = sha.substring(0, 7);
-                const tagWithShort = tags.find(tag => tag.ref.includes(shortSha));
-                if (!tagWithShort) {
-                  core.setFailed(`SHA ${sha} has no staging deployment tag. Deploy to staging first.`);
-                  return;
+              const stagingTag = tags.find(tag => tag.ref.endsWith(`/${sha}`));
+              // A tag's name is only a claim: resolve annotated tags to the commit.
+              if (stagingTag) {
+                let object = stagingTag.object;
+                for (let depth = 0; object?.type === 'tag' && depth < 5; depth++) {
+                  const detail = await github.rest.git.getTag({ owner, repo, tag_sha: object.sha });
+                  object = detail.data.object;
                 }
+                if (object?.type !== 'commit' || object.sha !== sha) {
+                  throw new Error('Deployment tag target does not match its SHA suffix.');
+                }
+              }
+              if (!/^[a-f0-9]{40}$/.test(sha) || !stagingTag) {
+                core.setFailed(`Full SHA ${sha} has no exact staging deployment tag.`);
+                return;
               }
 
               console.log(`Verified: ${sha} was deployed to staging`);
@@ -68,10 +83,10 @@ jobs:
             }
 
       - name: Verify CI gate passed
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const sha = '${{ inputs.git_sha }}';
+            const sha = process.env.OPS_SELECTED_SHA;
             const { data: { statuses } } = await github.rest.repos.getCombinedStatusForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -85,17 +100,41 @@ jobs:
             }
             console.log('CI gate verified');
 
-  # ─── Build all three apps for production ─────────────────────────
+  # ─── Resolve each app's artifact by its build-input hash ─────────
+  #
+  # Artifacts are content-addressed, so this resolves rather than rebuilds:
+  # web and admin hash identically on staging and production, so their staging
+  # artifacts are found and reused — production deploys the bytes staging tested.
+  # landing and landing-static hash their inlined, environment-specific config,
+  # so they legitimately miss here and are built for production.
+  # A miss also covers an artifact that has aged past the 90-day retention.
+  # See docs/claude/build-once-promote-plan.md
   build-web:
-    name: Build Web (Production)
+    name: Resolve Web Artifact (Production)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: web
@@ -103,17 +142,34 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-admin:
-    name: Build Admin (Production)
+    name: Resolve Admin Artifact (Production)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: admin
@@ -121,17 +177,34 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-landing:
-    name: Build Landing (Production)
+    name: Resolve Landing Artifact (Production)
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      tarball: ${{ steps.build.outputs.tarball }}
+      checksum-file: ${{ steps.build.outputs.checksum-file }}
+      input-hash: ${{ steps.build.outputs.input-hash }}
+      run-id: ${{ steps.build.outputs.run-id }}
+      artifact-id: ${{ steps.build.outputs.artifact-id }}
+      built-sha: ${{ steps.build.outputs.built-sha }}
+      reused: ${{ steps.build.outputs.reused }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/build-app
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
           app: landing
@@ -139,32 +212,54 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ─── Attest build provenance ─────────────────────────────────────
+  # ─── Attest provenance for anything actually built here ──────────
   attest:
     name: Attest Build Provenance
     needs: [build-web, build-admin, build-landing]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      (needs.build-web.outputs.reused == 'false' ||
+       needs.build-admin.outputs.reused == 'false' ||
+       needs.build-landing.outputs.reused == 'false')
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Download web artifact
+        if: needs.build-web.outputs.reused == 'false'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          path: artifacts
-
+          name: ${{ needs.build-web.outputs.artifact-name }}
+          path: artifacts/web
       - name: Attest web artifact
-        uses: actions/attest-build-provenance@v2
+        if: needs.build-web.outputs.reused == 'false'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: artifacts/web-production-${{ inputs.git_sha }}/web-production.tar.gz
-
+          subject-path: artifacts/web/web.tar.gz
+      - name: Download admin artifact
+        if: needs.build-admin.outputs.reused == 'false'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build-admin.outputs.artifact-name }}
+          path: artifacts/admin
       - name: Attest admin artifact
-        uses: actions/attest-build-provenance@v2
+        if: needs.build-admin.outputs.reused == 'false'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: artifacts/admin-production-${{ inputs.git_sha }}/admin-production.tar.gz
+          subject-path: artifacts/admin/admin.tar.gz
+      - name: Download landing artifact
+        if: needs.build-landing.outputs.reused == 'false'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build-landing.outputs.artifact-name }}
+          path: artifacts/landing
 
       - name: Attest landing artifact
-        uses: actions/attest-build-provenance@v2
+        if: needs.build-landing.outputs.reused == 'false'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: artifacts/landing-production-${{ inputs.git_sha }}/landing-production.tar.gz
+          subject-path: artifacts/landing/landing.tar.gz
 
   # ─── Deploy Convex backend (before frontend) ────────────────────
   deploy-convex:
@@ -173,106 +268,166 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-convex
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-convex
         with:
           deploy-key: ${{ secrets.CONVEX_DEPLOY_KEY }}
           environment: production
 
-  # ─── Deploy all three apps to Vercel ─────────────────────────────
   deploy-web:
     name: Deploy Web (Production)
-    needs: deploy-convex
+    needs: [build-web, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: production
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: web
           environment: production
-          artifact-name: web-production-${{ inputs.git_sha }}
-          tarball: web-production.tar.gz
-          checksum-file: web-production.tar.gz.sha256
+          artifact-name: ${{ needs.build-web.outputs.artifact-name }}
+          tarball: ${{ needs.build-web.outputs.tarball }}
+          checksum-file: ${{ needs.build-web.outputs.checksum-file }}
+          run-id: ${{ needs.build-web.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ inputs.git_sha }}
+          logical-environment: production
+          request-id: ${{ inputs.request_id }}
+          expected-hash: ${{ needs.build-web.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
 
   deploy-admin:
     name: Deploy Admin (Production)
-    needs: deploy-convex
+    needs: [build-admin, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: production
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: admin
           environment: production
-          artifact-name: admin-production-${{ inputs.git_sha }}
-          tarball: admin-production.tar.gz
-          checksum-file: admin-production.tar.gz.sha256
+          artifact-name: ${{ needs.build-admin.outputs.artifact-name }}
+          tarball: ${{ needs.build-admin.outputs.tarball }}
+          checksum-file: ${{ needs.build-admin.outputs.checksum-file }}
+          run-id: ${{ needs.build-admin.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ inputs.git_sha }}
+          logical-environment: production
+          request-id: ${{ inputs.request_id }}
+          expected-hash: ${{ needs.build-admin.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
 
   deploy-landing:
     name: Deploy Landing (Production)
-    needs: deploy-convex
+    needs: [build-landing, deploy-convex]
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      built-sha: ${{ steps.deploy.outputs.built-sha }}
+      checksum: ${{ steps.deploy.outputs.checksum }}
     environment:
       name: production
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
-      - uses: ./.github/actions/setup-bun
-      - uses: ./.github/actions/deploy-vercel
+      - name: Checkout workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ops-workflow/.github/actions/setup-bun
+      - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
           app: landing
           environment: production
-          artifact-name: landing-production-${{ inputs.git_sha }}
-          tarball: landing-production.tar.gz
-          checksum-file: landing-production.tar.gz.sha256
+          artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
+          tarball: ${{ needs.build-landing.outputs.tarball }}
+          checksum-file: ${{ needs.build-landing.outputs.checksum-file }}
+          run-id: ${{ needs.build-landing.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deployed-commit: ${{ inputs.git_sha }}
+          logical-environment: production
+          request-id: ${{ inputs.request_id }}
+          expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
 
   # ─── Post-deploy health checks and tagging ───────────────────────
   post-deploy:
+    outputs:
+      health: ${{ steps.health.outcome }}
     name: Post-Deploy Verification
-    needs: [deploy-web, deploy-admin, deploy-landing]
+    needs: [deploy-web, deploy-admin, deploy-landing, attest]
+    if: >-
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.deploy-web.result == 'success' &&
+      needs.deploy-admin.result == 'success' &&
+      needs.deploy-landing.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
 
       - name: Health check all production apps
-        uses: actions/github-script@v7
+        id: health
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const apps = [
@@ -296,7 +451,7 @@ jobs:
                 if (response.ok) {
                   results.push(`✅ ${app.name}: ${response.status} (${app.url})`);
                 } else {
-                  results.push(`⚠️ ${app.name}: ${response.status} (${app.url})`);
+                  results.push(`❌ ${app.name}: ${response.status} (${app.url})`);
                 }
               } catch (error) {
                 results.push(`❌ ${app.name}: ${error.message}`);
@@ -321,13 +476,37 @@ jobs:
           git config user.name "${{ github.actor }}"
 
           TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-          TAG="deploy/production/${TIMESTAMP}/${{ inputs.git_sha }}"
-          git tag -a "${TAG}" "${{ inputs.git_sha }}" \
+          TAG="deploy/production/${TIMESTAMP}/${OPS_SELECTED_SHA}"
+          git tag -a "${TAG}" "${OPS_SELECTED_SHA}" \
             -m "Production deployment at ${TIMESTAMP}" \
             -m "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git push origin "${TAG}"
 
           echo "### Production Deployment Complete" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **SHA:** ${{ inputs.git_sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **SHA:** ${OPS_SELECTED_SHA}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Timestamp:** ${TIMESTAMP}" >> "$GITHUB_STEP_SUMMARY"
+
+  ops-record:
+    name: Record Ops Outcomes
+    if: always()
+    needs: [build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, validate, post-deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github
+      - name: Persist app outcomes
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          OPS_NEEDS: ${{ toJSON(needs) }}
+          OPS_ENVIRONMENT: production
+          OPS_SHA: ${{ inputs.git_sha }}
+          OPS_OPERATION: deploy
+          OPS_REQUEST_ID: ${{ inputs.request_id }}
+          OPS_HEALTH_JOB: post-deploy
+        with:
+          script: |
+            const record = require('./.github/scripts/record-ops.cjs');
+            await record({ github, context, core });

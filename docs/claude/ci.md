@@ -1,6 +1,6 @@
 # CI Guide
 
-> Detailed guide for AI agents. See `CLAUDE.md` for the quick reference.
+> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
 
 ## Local CI (Pre-Push Checks)
 
@@ -11,23 +11,22 @@ bun run ci                   # Full CI check (runs everything)
 bun run ci:quick             # Skip E2E tests for faster feedback
 ```
 
-The `bun run ci` command runs these checks in order (all via `turbo`):
-1. **TypeScript check** (`turbo typecheck`)
-2. **ESLint** (`turbo lint`)
-3. **Bun unit tests** (`turbo test`)
+The `bun run ci` command runs these checks in order (workspace checks use `turbo`;
+starter upgrade checks use the root scripts):
+1. **TypeScript check** (`bun run typecheck:dev-scripts`, `turbo typecheck`)
+2. **ESLint** (`bun run lint:dev-scripts`, `turbo lint`)
+3. **Development-script behavior and Bun unit tests** (`bun run test:dev-scripts`, `turbo test`)
 4. **Vitest component tests with coverage** (`turbo test:coverage`)
 5. **Coverage summary display** + artifact saving
 6. **Convex backend tests** (`turbo test:convex`)
-7. **Production build** (`turbo build`)
-8. **Bundle size check** (all apps with `.size-limit.json`)
-9. **Storybook build** (`turbo build --filter=@repo/storybook...`)
-10. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
+7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
+8. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
+9. **Bundle size check** (all apps with `.size-limit.json`)
+10. **Playwright E2E tests** (reuses running development servers or starts them through each app's Playwright configuration)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
-
-> **Note**: E2E tests require the dev environment (`bun run dev`) to be running. The CI script checks that servers are reachable before running Playwright tests and prints a clear error if they are not.
 
 > **Note**: Security checks (CodeQL, dependency audit, secrets scan), Lighthouse audits, and CI gate are only run in GitHub Actions CI, not locally.
 
@@ -45,7 +44,7 @@ bun run ci:act:quick          # Quiet mode, summary only
 bun run ci:act:offline        # Offline mode (after caches are populated)
 
 # Run a specific workflow
-./scripts/ci-local-act.sh -w shared    # Just lint + backend tests
+./scripts/ci-local-act.sh -w shared    # Shared workflow (checks listed below)
 ./scripts/ci-local-act.sh -w web       # Just web app CI
 ./scripts/ci-local-act.sh -w admin     # Just admin app CI
 ./scripts/ci-local-act.sh -w landing   # Just landing app CI
@@ -58,7 +57,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ```
 
 **CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:
-1. `ci-shared.yml` — Lint, typecheck, backend tests (shared across all packages)
+1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required starter ownership checks and demo upgrade rehearsal (see `docs/starter-upgrades.md`)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)
@@ -95,7 +94,20 @@ The `ci-local-act.sh` script uses **Docker volumes** to persist downloaded artif
 | `act-toolcache` | `/opt/act-toolcache` | Node.js installations |
 
 **First run (online):** Downloads and caches everything to Docker volumes
-**Subsequent runs:** Uses cached artifacts from volumes (fast, works offline)
+**Subsequent runs:** Uses cached artifacts from volumes. After a required tool
+version changes, run online again to populate that version before using offline mode.
+
+For Node, `.github/actions/setup-bun/find-node.sh` checks the requested major
+version and runner architecture in `RUNNER_TOOL_CACHE`. A cache miss falls back
+to `actions/setup-node`, including under act. An older cached major does not meet
+the new request. `scripts/tests/setup-node-cache.test.ts` covers this selection.
+
+For Bun under act, `.github/actions/setup-bun/setup-bun-act.sh` reuses a cached
+binary only when its reported version exactly matches the requested version.
+A missing or stale binary triggers installation; download failure or a mismatched
+installed version fails setup before publishing its directory to `GITHUB_PATH`.
+See `scripts/tests/setup-bun-cache.test.ts` for regression coverage. After a Bun
+upgrade, populate the matching binary online before returning to offline mode.
 
 ### Usage
 
@@ -113,33 +125,11 @@ The offline flag (`-o`) adds:
 
 ### Pattern for Adding New Tools
 
-When introducing a new tool that downloads from the internet, create a **composite action** in `.github/actions/<tool-name>/action.yml`:
-
-```yaml
-name: 'Setup ToolName'
-runs:
-  using: 'composite'
-  steps:
-    # Standard GitHub Actions (uses official setup action)
-    - name: Setup ToolName
-      if: ${{ !env.ACT }}
-      uses: vendor/setup-toolname@v1
-      with:
-        version: "1.2.3"
-
-    # act offline mode (checks cache first, downloads if needed)
-    - name: Setup ToolName (act)
-      if: ${{ env.ACT }}
-      shell: bash
-      run: |
-        TOOL_DIR="/path/to/cache"
-        if [ -x "$TOOL_DIR/bin/tool" ]; then
-          echo "Tool already installed"
-        else
-          curl -fsSL https://example.com/install.sh | bash
-        fi
-        echo "$TOOL_DIR/bin" >> $GITHUB_PATH
-```
+When introducing a tool that downloads from the internet, create a composite action
+in `.github/actions/<tool-name>/action.yml`. Use
+[setup-bun](../../.github/actions/setup-bun/action.yml) and its
+[act helper](../../.github/actions/setup-bun/setup-bun-act.sh) as the reference for
+version-aware cache reuse, installation failure handling, and path publication.
 
 Then use it in any workflow job:
 ```yaml
@@ -151,15 +141,15 @@ steps:
 1. Use composite actions to avoid duplicating setup across workflows
 2. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup steps
 3. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
-4. Check if the tool exists before downloading
+4. Reuse a cached tool only when it satisfies the requested version
 5. Install to a path that's mounted as a Docker volume
-6. Add the tool to `$GITHUB_PATH`
+6. Verify successful installation and the requested version before adding the tool to `$GITHUB_PATH`
 
 ### Currently Cached Tools
 
 | Tool | Cache Location | Setup Pattern |
 |------|----------------|---------------|
-| Bun | `/root/.bun/bin/bun` | Custom script checks existence |
+| Bun | `/root/.bun/bin/bun` | See exact-version selection under “How It Works” above |
 | Node.js | `/opt/act-toolcache/node/` | `setup-node` respects `RUNNER_TOOL_CACHE` |
 | Playwright | `/root/.cache/ms-playwright/` | Volume persists browser binaries |
 | npm packages | `/root/.bun/install/cache/` | Bun's package cache |

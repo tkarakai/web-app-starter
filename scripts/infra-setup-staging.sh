@@ -104,8 +104,6 @@ ask_input() {
     fi
 
     read -r value
-    # Append user input to log file (the chunk-based perl pipeline flushes
-    # the no-newline prompt before we get here, so ordering is correct)
     [ -n "${LOG_FILE:-}" ] && echo "$value" >> "$LOG_FILE"
     value="${value:-$default}"
     # Trim whitespace
@@ -428,7 +426,7 @@ print_summary() {
     echo ""
     echo -e "  ${BOLD}Planned Phase 3 Execution Steps:${NC}"
     echo "    Step 1: Create 3 Vercel staging projects"
-    echo "    Step 2: Set Convex environment variables (SITE_URL, LANDING_URL, BETTER_AUTH_SECRET)"
+    echo "    Step 2: Set Convex environment variables (SITE_URL, ADMIN_SITE_URL, LANDING_URL, BETTER_AUTH_SECRET)"
     echo "    Step 3: Set Vercel environment variables on all 3 projects"
     echo "    Step 4: Create GitHub staging environment, set secrets, branch protection"
     echo "    Step 5: (Optional) Deploy Convex to staging and bootstrap first admin"
@@ -566,11 +564,13 @@ step_configure_convex_env() {
     log_step "Phase 3, Step 2: Convex Environment Variables"
 
     local site_url_value="${VERCEL_WEB_URL},${VERCEL_ADMIN_URL}"
+    local admin_site_url_value="${VERCEL_ADMIN_URL}"
     local landing_url_value="${VERCEL_LANDING_URL}"
 
     echo ""
     echo "  Setting on the Convex staging project:"
     echo "    SITE_URL          = $site_url_value"
+    echo "    ADMIN_SITE_URL    = $admin_site_url_value"
     echo "    LANDING_URL       = $landing_url_value"
     echo "    BETTER_AUTH_SECRET = (auto-generated)"
     echo ""
@@ -586,6 +586,13 @@ step_configure_convex_env() {
         existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && \
             CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env get SITE_URL 2>/dev/null || true)
         log_warn "SITE_URL already set: $existing_site_url"
+        has_existing=true
+    fi
+    if echo "$existing_env" | grep -q "ADMIN_SITE_URL" 2>/dev/null; then
+        local existing_admin_site_url
+        existing_admin_site_url=$(cd "$PROJECT_DIR/packages/backend" && \
+            CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env get ADMIN_SITE_URL 2>/dev/null || true)
+        log_warn "ADMIN_SITE_URL already set: $existing_admin_site_url"
         has_existing=true
     fi
     if echo "$existing_env" | grep -q "LANDING_URL" 2>/dev/null; then
@@ -617,6 +624,11 @@ step_configure_convex_env() {
         CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env set SITE_URL "$site_url_value")
     log_success "SITE_URL set"
 
+    log_info "Setting ADMIN_SITE_URL..."
+    (cd "$PROJECT_DIR/packages/backend" && \
+        CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env set ADMIN_SITE_URL "$admin_site_url_value")
+    log_success "ADMIN_SITE_URL set"
+
     log_info "Setting LANDING_URL..."
     (cd "$PROJECT_DIR/packages/backend" && \
         CONVEX_DEPLOY_KEY="$CONVEX_STAGING_DEPLOY_KEY" bunx convex env set LANDING_URL "$landing_url_value")
@@ -630,6 +642,7 @@ step_configure_convex_env() {
     log_success "BETTER_AUTH_SECRET set"
 
     record_value "CONVEX_SITE_URL_VALUE" "$site_url_value"
+    record_value "CONVEX_ADMIN_SITE_URL_VALUE" "$admin_site_url_value"
     record_value "CONVEX_LANDING_URL_VALUE" "$landing_url_value"
     record_value "BETTER_AUTH_SECRET" "$auth_secret"
 
@@ -794,10 +807,10 @@ set_branch_protection() {
     "required_status_checks": {
         "strict": true,
         "contexts": [
-            "CI Shared / CI Shared Complete",
-            "CI Web / CI Web Complete",
-            "CI Admin / CI Admin Complete",
-            "CI Landing / CI Landing Complete"
+            "CI Shared Complete",
+            "CI Web Complete",
+            "CI Admin Complete",
+            "CI Landing Complete"
         ]
     },
     "enforce_admins": false,
@@ -1058,27 +1071,7 @@ print_final_summary() {
 # ============================================================
 
 main() {
-    # Capture all console output to the log file (plain ASCII) while still
-    # showing colored/Unicode output on screen. tee writes to both:
-    #   - stdout (terminal, with colors and Unicode symbols)
-    #   - process substitution (perl converts to plain ASCII, writes to log file)
-    #
-    # The perl process uses chunk-based sysread (not line-based -pe) so that
-    # no-newline prompts like "  GitHub repo: " get flushed to the log file
-    # immediately. This ensures direct >> writes for user input appear after
-    # the prompt, not before it. Raw byte matching for UTF-8 sequences.
-    exec > >(tee >(perl -e '
-        $| = 1;
-        while (sysread(STDIN, $buf, 4096)) {
-            $buf =~ s/\e\[[0-9;]*m//g;
-            $buf =~ s/\xe2\x84\xb9/[i]/g;
-            $buf =~ s/\xe2\x9c\x93/[ok]/g;
-            $buf =~ s/\xe2\x9c\x97/[FAIL]/g;
-            $buf =~ s/\xe2\x9a\xa0/[!]/g;
-            $buf =~ s/\xe2\x94\x81/=/g;
-            print $buf;
-        }
-    ' >> "$LOG_FILE")) 2>&1
+    exec > >(tee >("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/staging-log.ts" >> "$LOG_FILE")) 2>&1
 
     echo ""
     echo -e "${BOLD}  Staging Infrastructure Setup${NC}"

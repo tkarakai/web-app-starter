@@ -7,10 +7,21 @@ import type { DeviceInfo } from "./parseUserAgent";
 // CORS helpers — mirrors http.ts origin checking
 // ---------------------------------------------------------------------------
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
 function getAllowedOrigins(): Set<string> {
   const origins = new Set<string>();
-  const siteUrl = process.env.SITE_URL ?? "http://localhost:3001";
+  const siteUrl = requireEnv("SITE_URL");
   for (const u of siteUrl.split(",")) {
+    const trimmed = u.trim();
+    if (trimmed) origins.add(trimmed);
+  }
+  const adminUrl = requireEnv("ADMIN_SITE_URL");
+  for (const u of adminUrl.split(",")) {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
   }
@@ -27,6 +38,7 @@ function corsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
     Vary: "Origin",
   };
 }

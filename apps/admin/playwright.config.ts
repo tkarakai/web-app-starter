@@ -39,7 +39,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3002"),
+    baseURL: getEnvValue("APP_ORIGIN", "http://localhost:3002"),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -51,7 +51,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "../../scripts/dev-start.sh --ci --app=admin",
-    url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3002"),
+    // Playwright discards webServer stdout by default, which turns any CI
+    // boot failure into a bare "Exit code: 1" with no diagnostics.
+    stdout: "pipe",
+    stderr: "pipe",
+    url: getEnvValue("APP_ORIGIN", "http://localhost:3002"),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },

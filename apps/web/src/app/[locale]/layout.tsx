@@ -7,11 +7,19 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 
-import { Toaster, EnvironmentBannerWrapper, OfflineBanner } from "@repo/design-system";
+import {
+  Toaster,
+  EnvironmentBannerWrapper,
+  OfflineBanner,
+  PublicConfigProvider,
+} from "@repo/design-system";
+import { readPublicConfigFromEnv } from "@repo/design-system/server";
+import { getRequestOrigin } from "@/lib/request-origin";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import { getToken } from "@repo/auth/server";
 import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
+import { ConvexErrorToast } from "@/components/convex-error-toast";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -42,9 +50,11 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "metadata" });
+  const [t, siteUrl] = await Promise.all([
+    getTranslations({ locale, namespace: "metadata" }),
+    getRequestOrigin(),
+  ]);
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
   const canonicalUrl = `${siteUrl}/${locale}`;
 
   return {
@@ -98,16 +108,20 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const [token, nonce, messages, headersList, tOffline] = await Promise.all([
+  const [token, nonce, messages, headersList, tOffline, siteUrl] = await Promise.all([
     getToken(),
     headers().then((h) => h.get("x-nonce") ?? undefined),
     getMessages(),
     headers(),
     getTranslations({ locale, namespace: "offline" }),
+    getRequestOrigin(),
   ]);
 
+  // Read at request time, not build time, so one artifact can serve any
+  // environment. See docs/claude/build-once-promote-plan.md
+  const publicConfig = readPublicConfigFromEnv({ landingUrl: true });
+
   const pathname = headersList.get("x-pathname") ?? "/";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
   const dir = getLocaleDirection(locale);
 
   const font = fontsByLocale[locale] || raleway;
@@ -122,10 +136,13 @@ export default async function LocaleLayout({
           <EnvironmentBannerWrapper appName="web" />
           <OfflineBanner label={tOffline("message")} />
           <NextIntlClientProvider messages={messages}>
-            <ConvexClientProvider initialToken={token}>
-              <AnnouncementBannerHost hideOnDashboard fixed />
-              {children}
-            </ConvexClientProvider>
+            <PublicConfigProvider value={publicConfig}>
+              <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
+                <ConvexErrorToast />
+                <AnnouncementBannerHost hideOnDashboard fixed />
+                {children}
+              </ConvexClientProvider>
+            </PublicConfigProvider>
             <Toaster richColors closeButton position="bottom-right" />
           </NextIntlClientProvider>
         </ThemeProvider>

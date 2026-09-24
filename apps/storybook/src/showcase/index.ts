@@ -8,17 +8,22 @@ import BadgeShowcase from "./badge";
 import BreadcrumbShowcase from "./breadcrumb";
 import ButtonShowcase from "./button";
 import CardShowcase from "./card";
+import CopyableFieldShowcase from "./copyable-field";
 import CheckboxShowcase from "./checkbox";
 import DialogShowcase from "./dialog";
 import EnvironmentBannerShowcase from "./environment-banner";
 import OfflineBannerShowcase from "./offline-banner";
+import PasskeyUnsupportedAlertShowcase from "./passkey-unsupported-alert";
 import DropdownMenuShowcase from "./dropdown-menu";
 import InputShowcase from "./input";
+import OtpInputShowcase from "./otp-input";
+import PasswordStrengthMeterShowcase from "./password-strength-meter";
 import PopoverShowcase from "./popover";
 import ProgressShowcase from "./progress";
 import RadioGroupShowcase from "./radio-group";
 import SelectShowcase from "./select";
 import SeparatorShowcase from "./separator";
+import StyledQrCodeShowcase from "./styled-qr-code";
 import SheetShowcase from "./sheet";
 import SidebarShowcase from "./sidebar";
 import SkeletonShowcase from "./skeleton";
@@ -38,12 +43,16 @@ export const showcaseMap: Record<string, ComponentType> = {
   breadcrumb: BreadcrumbShowcase,
   button: ButtonShowcase,
   card: CardShowcase,
+  "copyable-field": CopyableFieldShowcase,
   checkbox: CheckboxShowcase,
   dialog: DialogShowcase,
   "environment-banner": EnvironmentBannerShowcase,
   "offline-banner": OfflineBannerShowcase,
+  "passkey-unsupported-alert": PasskeyUnsupportedAlertShowcase,
   "dropdown-menu": DropdownMenuShowcase,
   input: InputShowcase,
+  "otp-input": OtpInputShowcase,
+  "password-strength-meter": PasswordStrengthMeterShowcase,
   popover: PopoverShowcase,
   progress: ProgressShowcase,
   "radio-group": RadioGroupShowcase,
@@ -52,6 +61,7 @@ export const showcaseMap: Record<string, ComponentType> = {
   sheet: SheetShowcase,
   sidebar: SidebarShowcase,
   skeleton: SkeletonShowcase,
+  "styled-qr-code": StyledQrCodeShowcase,
   switch: SwitchShowcase,
   table: TableShowcase,
   tabs: TabsShowcase,

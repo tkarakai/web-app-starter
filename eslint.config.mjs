@@ -9,6 +9,10 @@ export default [
   {
     ignores: [
       "node_modules/**",
+      ".ci-local-artifacts/**",
+      "apps/demo/starter-packages/**",
+      "apps/demo/qa/fixtures/starter-releases/**",
+      "packages/starter-sidebar-policy/dist/**",
       "**/node_modules/**",
       "**/.next/**",
       "**/.turbo/**",
@@ -42,6 +46,7 @@ export default [
         __dirname: "readonly",
         Buffer: "readonly",
         fetch: "readonly",
+        AbortSignal: "readonly",
         URL: "readonly",
         URLSearchParams: "readonly",
         Headers: "readonly",
@@ -71,6 +76,8 @@ export default [
         HTMLHRElement: "readonly",
         KeyboardEvent: "readonly",
         Event: "readonly",
+        EventTarget: "readonly",
+        Blob: "readonly",
         BroadcastChannel: "readonly",
         MessageEvent: "readonly",
         document: "readonly",

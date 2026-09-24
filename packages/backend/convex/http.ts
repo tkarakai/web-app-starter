@@ -10,6 +10,7 @@ import {
   viewBackupCodesHandler,
 } from "./sessions";
 import { getDevTotpCode } from "./devTotp";
+import { createE2eUser } from "./e2eFixtures";
 import {
   isSignupOnboarding,
   isWaitlistOnboarding,
@@ -24,14 +25,25 @@ authComponent.registerRoutes(http, createAuth);
 // CORS helpers — dynamic origin checking
 // ---------------------------------------------------------------------------
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
 function getAllowedOrigins(): Set<string> {
   const origins = new Set<string>();
-  const siteUrl = process.env.SITE_URL ?? "http://localhost:3001";
+  const siteUrl = requireEnv("SITE_URL");
   for (const u of siteUrl.split(",")) {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
   }
-  const landingUrl = process.env.LANDING_URL ?? "http://localhost:3000";
+  const adminUrl = requireEnv("ADMIN_SITE_URL");
+  for (const u of adminUrl.split(",")) {
+    const trimmed = u.trim();
+    if (trimmed) origins.add(trimmed);
+  }
+  const landingUrl = requireEnv("LANDING_URL");
   for (const u of landingUrl.split(",")) {
     const trimmed = u.trim();
     if (trimmed) origins.add(trimmed);
@@ -48,7 +60,8 @@ function corsHeaders(request?: Request): Record<string, string> {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
     Vary: "Origin",
   };
 }
@@ -399,6 +412,14 @@ http.route({
   path: "/api/dev/totp-code",
   method: "GET",
   handler: getDevTotpCode,
+});
+
+// Disposable E2E user fixtures. Gated on DEV_SEED_ENABLED and a reserved
+// e2e.local address — see e2eFixtures.ts for the full safety rationale.
+http.route({
+  path: "/api/dev/e2e-user",
+  method: "POST",
+  handler: createE2eUser,
 });
 
 export default http;

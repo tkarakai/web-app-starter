@@ -4,7 +4,10 @@ import { SiteHeader } from "@repo/design-patterns";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
+const LANDING_URL = process.env.LANDING_URL;
+if (!LANDING_URL) {
+  throw new Error("Missing required environment variable: LANDING_URL");
+}
 
 export default async function ForgotPasswordPage() {
   const t = await getTranslations("auth.forgotPassword");
@@ -12,7 +15,7 @@ export default async function ForgotPasswordPage() {
 
   return (
     <main
-      className="flex min-h-screen flex-col"
+      className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
       style={{ background: "var(--glow-brand)" }}
     >
       <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />

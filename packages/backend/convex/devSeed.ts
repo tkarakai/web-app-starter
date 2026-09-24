@@ -10,8 +10,8 @@ import { createAuth } from "./auth";
 // ---------------------------------------------------------------------------
 
 const DEV_USERS = [
-  { email: "admin@admin.com", password: "adminadmin", name: "Dev Admin", isAdmin: true },
-  { email: "user@user.com", password: "useruser", name: "Dev User", isAdmin: false },
+  { email: "admin@admin.com", password: "admin@admin.comadmin@admin.comadmin@admin.com", name: "Dev Admin", isAdmin: true },
+  { email: "user@user.com", password: "user@user.comuser@user.comuser@user.com", name: "Dev User", isAdmin: false },
 ] as const;
 
 // Sentinel key written to appSettings only after ALL users are fully created.
@@ -149,6 +149,13 @@ export const seed = internalAction({
         email: user.email,
         isAdmin: user.isAdmin,
       });
+
+      // 1b. For admin users, also create an adminInvitations entry
+      if (user.isAdmin) {
+        await ctx.runMutation(internal.adminInvitations.createForSeed, {
+          email: user.email,
+        });
+      }
 
       // 2. Create the user via Better Auth (hashes password, databaseHook promotes admin).
       //    "User already exists" is expected on retry after partial failure — treat as success.

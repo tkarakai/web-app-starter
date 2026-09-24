@@ -12,9 +12,14 @@ import { SiteHeader } from "@repo/design-patterns";
 import { AuthForm } from "@/components/auth/auth-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3000";
-const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
+const LANDING_URL = process.env.LANDING_URL;
+if (!LANDING_URL) {
+  throw new Error("Missing required environment variable: LANDING_URL");
+}
+const CONVEX_SITE_URL = process.env.CONVEX_SITE_URL;
+if (!CONVEX_SITE_URL) {
+  throw new Error("Missing required environment variable: CONVEX_SITE_URL");
+}
 
 type OnboardingType = "inviteOnly" | "publicWaitlist" | "publicSignup";
 
@@ -61,7 +66,7 @@ export default async function SignUpPage() {
 
   return (
     <main
-      className="flex min-h-screen flex-col"
+      className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
       style={{ background: "var(--glow-cool)" }}
     >
       <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />

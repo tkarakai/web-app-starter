@@ -45,19 +45,22 @@ Push to main → cd-staging.yml (one unified workflow)
   │
   ├─ Change detection (which apps/packages changed?)
   │
-  ├─ Build only changed apps (vercel build)
+  ├─ Resolve each app's artifact by build-input hash (build only on a miss)
   ├─ Checksum + SLSA attest changed artifacts
   ├─ Deploy Convex to staging (if backend changed)
   ├─ Deploy changed apps to Vercel (vercel deploy --prebuilt --prod)
   └─ Smoke tests + git tag
   │
   ▼
-Deploy Production (manual trigger + approval gate)
-  ├─ Verify this SHA was deployed to staging
-  ├─ Build apps with production env vars (same SHA)
-  ├─ Checksum + SLSA attest each artifact
+Deploy Production (manual trigger)
+  ├─ Verify confirmation string, staging tag, and ci/gate-passed
+  ├─ Resolve each app's artifact by build-input hash
+  │    web/admin hash the same as on staging → reused, never rebuilt
+  │    landing hashes its inlined config → built for production
+  ├─ Checksum + SLSA attest anything actually built here
   ├─ Deploy Convex to production
-  ├─ Deploy 3 apps to Vercel (--prebuilt --prod)
+  ├─ Deploy all three (--prebuilt --prod)
+  │    (checksum + build-manifest input hash verified before deploy)
   └─ Health checks + git tag
 ```
 
@@ -66,7 +69,7 @@ Deploy Production (manual trigger + approval gate)
 | Workflow | File | Trigger | Purpose |
 |---|---|---|---|
 | Deploy Staging | `cd-staging.yml` | Push to `main` | Unified CI + selective build/deploy to staging |
-| Deploy Production | `cd-production.yml` | Manual (`workflow_dispatch`) | Deploy to production with approval gate |
+| Deploy Production | `cd-production.yml` | Manual (`workflow_dispatch`) | Promote the staging build of a SHA to production |
 | Rollback | `cd-rollback.yml` | Manual (`workflow_dispatch`) | Rollback any environment to a previous SHA |
 
 ## Composite Actions
@@ -104,12 +107,28 @@ gh workflow run cd-production.yml \
 ```
 
 The workflow:
-1. **Validates** the confirmation string and verifies the SHA was deployed to staging
-2. **Builds** all 3 apps with production environment variables
-3. **Attests** artifacts
-4. **Deploys Convex** to production (requires approval from the `production` GitHub Environment)
-5. **Deploys** all 3 apps to Vercel with `--prod` flag
-6. **Health checks** + creates annotated git tag `deploy/production/<timestamp>/<sha>`
+1. **Validates** the confirmation string, that the SHA carries a `deploy/staging/*` tag, and that
+   `ci/gate-passed` is green for it
+2. **Resolves** the `cd-staging` run that produced this SHA's `web-<sha>` and `admin-<sha>` artifacts
+3. **Builds** landing only — it is a static export and cannot be promoted (see
+   [Promotion](#promotion-build-once-deploy-twice))
+4. **Attests** the landing artifact. web and admin were attested by the staging run that built them
+5. **Deploys Convex** to production
+6. **Promotes** web and admin — downloads the staging artifacts and deploys them unchanged, after
+   verifying each tarball's checksum and that its build manifest records the requested SHA — and
+   deploys landing, all with `--prod`
+7. **Health checks** + creates annotated git tag `deploy/production/<timestamp>/<sha>`
+
+> **No human approval is enforced.** The `production` GitHub Environment has a branch policy but
+> **no required reviewers**, so a `workflow_dispatch` with the right confirmation string deploys
+> straight through. The gates are the confirmation string, the staging tag and the CI gate — all
+> automated. Add required reviewers to the `production` environment if a human sign-off is wanted.
+
+> **Change detection interacts with promotion.** `cd-staging` builds only the apps whose files
+> changed, so a push-triggered staging run may not contain a `web-<sha>` or `admin-<sha>` artifact.
+> `cd-production` then fails with an explicit message rather than promoting a different SHA's bytes.
+> Re-run `cd-staging` for that SHA with `force_deploy=true` to produce a complete set. Artifacts
+> also expire after 90 days.
 
 ### Rollback
 
@@ -160,9 +179,95 @@ To find the latest production deployment:
 git tag --list 'deploy/production/*' --sort=-creatordate | head -1
 ```
 
-## Per-Environment Builds
+## Artifacts are content-addressed
 
-`NEXT_PUBLIC_*` variables are baked into the JS bundle at build time by Next.js. A single artifact cannot serve both staging and production. The pipeline builds separate environment-specific artifacts from the **same commit SHA**, verified by the CI gate.
+Artifacts are named by **what went into them**, not by the commit that happened to
+trigger the build:
+
+```
+web-e555c7d44ceaca5c
+admin-215a2e8e3660ea0b
+landing-dc28be976c3e62ff
+```
+
+The hash is Turborepo's hash of that app's build inputs — its files, its dependency
+packages, the lockfile, and the environment variables `turbo.json` declares as hashed. The
+build action computes it, looks the name up across the whole repository, and **builds only
+on a miss**:
+
+```bash
+gh api "repos/:owner/:repo/actions/artifacts?name=web-e555c7d44ceaca5c"
+```
+
+Three consequences, and they are the whole point:
+
+- **An unchanged app is never rebuilt.** Push a change to `apps/web` and admin's hash does
+  not move, so admin's existing artifact is reused. Production reuses staging's for the
+  same reason.
+- **Every commit resolves.** The hash is computed from the tree at that commit, so there is
+  no "which commits are deployable?" question and no walking back through history. A commit
+  that changed nothing relevant simply resolves to the artifact that already exists.
+- **Reuse needs no bookkeeping.** Identical inputs produce an identical name. There is no
+  alias table, pointer file or extra tag to keep in sync.
+
+### What is and is not in the hash
+
+| | Hashed | Why |
+|---|---|---|
+| App + dependency package files, lockfile | yes | they determine the output |
+| `*.md`, `qa/**` | **no** | documentation and tests do not change the build; excluded via `inputs` in `turbo.json` |
+| `CONVEX_URL`, `CONVEX_SITE_URL`, `LANDING_URL`, `APP_ENVIRONMENT`, … | **no** (`passThroughEnv`) | web and admin read these at request time; they are present during the build but never inlined, so they must not make the hash environment-specific |
+| `NEXT_PUBLIC_GIT_SHA`, `BUILD_ID`, `DEPLOY_TIMESTAMP`, … | **no** (`passThroughEnv`) | they change every commit; hashing them would defeat reuse entirely |
+| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` for `landing` / `landing-static` | **yes** | these are static exports: the values *are* inlined, so staging and production legitimately produce different artifacts |
+
+Two settings make this work, and breaking either silently breaks reuse:
+
+- **`--framework-inference=false`** when computing the hash. Turborepo's Next.js inference
+  otherwise folds every `NEXT_PUBLIC_*` variable into the hash, including
+  `NEXT_PUBLIC_GIT_SHA` — which moves the hash on every commit. Each app declares what it
+  hashes explicitly instead.
+- **The Vercel CLI is pinned** (`vercel@59.26.0`). On `@latest`, the builder could change
+  under a hash that did not move.
+
+### Build identity vs deployed commit
+
+A reused artifact reports the commit that **built** it, which is not always the commit being
+deployed — and that is accurate: if an app's inputs did not change, the bytes running really
+are that earlier build. The environment banner shows both, labelling them `built from` and
+`deployed at`. `DEPLOYED_COMMIT` is set as a run-time variable at deploy time
+(`vercel deploy --env`), deliberately never at build time, since a build-time value would be
+inlined and make the artifact commit-specific again.
+
+## Promotion (build once, deploy twice)
+
+Next.js inlines `NEXT_PUBLIC_*` into the JS bundle at build time, so an artifact built with
+one environment's configuration is pinned to it. **web and admin avoid this**: they read
+`CONVEX_URL`, `CONVEX_SITE_URL`, `LANDING_URL` and `APP_ENVIRONMENT` unprefixed at request
+time, and derive their own origin from the request `Host` header. Their artifacts carry no
+environment identity.
+
+Combined with content addressing, that makes promotion fall out automatically: web and admin
+hash identically on staging and production, so `cd-production` resolves the artifact staging
+already built and deploys those exact bytes. Nothing is rebuilt, and nothing has to be
+tracked to make it happen.
+
+Two things keep the property honest:
+
+- `scripts/check-env-leak.sh` runs during every build and scans the output for the *values*
+  of the environment-identity variables. Anything inlined is reported, so a missed variable
+  is a build signal rather than a production incident.
+- `deploy-vercel` verifies the tarball's checksum and that its build manifest carries the
+  expected input hash, so deploying the wrong artifact fails before it reaches an
+  environment.
+
+**landing and landing-static are excluded from promotion.** Both set `output: "export"`, so
+they have no server at runtime and cannot read runtime configuration at all — they keep
+`NEXT_PUBLIC_*`, hash those values, and are therefore built once per environment. They still
+benefit from content addressing: repeated deploys to the *same* environment reuse the
+artifact when nothing changed.
+
+For the full rationale, the measurements behind it and the remaining work, see
+[claude/build-once-promote-plan.md](./claude/build-once-promote-plan.md).
 
 ## Vercel Project Architecture
 

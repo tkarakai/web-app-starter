@@ -10,6 +10,8 @@
 
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminEmails from "../adminEmails.js";
+import type * as adminInvitationActions from "../adminInvitationActions.js";
+import type * as adminInvitations from "../adminInvitations.js";
 import type * as announcements from "../announcements.js";
 import type * as appSettings from "../appSettings.js";
 import type * as auditTrail from "../auditTrail.js";
@@ -21,6 +23,7 @@ import type * as commerce from "../commerce.js";
 import type * as commerceWebhooks from "../commerceWebhooks.js";
 import type * as devSeed from "../devSeed.js";
 import type * as devTotp from "../devTotp.js";
+import type * as e2eFixtures from "../e2eFixtures.js";
 import type * as emailTemplates from "../emailTemplates.js";
 import type * as files from "../files.js";
 import type * as functions from "../functions.js";
@@ -30,12 +33,14 @@ import type * as meta from "../meta.js";
 import type * as migrations from "../migrations.js";
 import type * as onboardingType from "../onboardingType.js";
 import type * as parseUserAgent from "../parseUserAgent.js";
+import type * as passwordStrength from "../passwordStrength.js";
 import type * as projects from "../projects.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as securityPolicies from "../securityPolicies.js";
 import type * as sendAuthEmail from "../sendAuthEmail.js";
 import type * as sessions from "../sessions.js";
 import type * as tasks from "../tasks.js";
+import type * as tokenHash from "../tokenHash.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as waitlist from "../waitlist.js";
 import type * as waitlistActions from "../waitlistActions.js";
@@ -50,6 +55,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminEmails: typeof adminEmails;
+  adminInvitationActions: typeof adminInvitationActions;
+  adminInvitations: typeof adminInvitations;
   announcements: typeof announcements;
   appSettings: typeof appSettings;
   auditTrail: typeof auditTrail;
@@ -61,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   commerceWebhooks: typeof commerceWebhooks;
   devSeed: typeof devSeed;
   devTotp: typeof devTotp;
+  e2eFixtures: typeof e2eFixtures;
   emailTemplates: typeof emailTemplates;
   files: typeof files;
   functions: typeof functions;
@@ -70,12 +78,14 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   onboardingType: typeof onboardingType;
   parseUserAgent: typeof parseUserAgent;
+  passwordStrength: typeof passwordStrength;
   projects: typeof projects;
   rateLimits: typeof rateLimits;
   securityPolicies: typeof securityPolicies;
   sendAuthEmail: typeof sendAuthEmail;
   sessions: typeof sessions;
   tasks: typeof tasks;
+  tokenHash: typeof tokenHash;
   userProfiles: typeof userProfiles;
   waitlist: typeof waitlist;
   waitlistActions: typeof waitlistActions;
@@ -179,7 +189,14 @@ export declare const components: {
                 model: "verification";
               }
             | {
-                data: { backupCodes: string; secret: string; userId: string };
+                data: {
+                  backupCodes: string;
+                  failedVerificationCount?: null | number;
+                  lockedUntil?: null | number;
+                  secret: string;
+                  userId: string;
+                  verified?: null | boolean;
+                };
                 model: "twoFactor";
               }
             | {
@@ -288,6 +305,7 @@ export declare const components: {
                     | "banReason"
                     | "banExpires"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -323,6 +341,7 @@ export declare const components: {
                     | "userId"
                     | "impersonatedBy"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -362,6 +381,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -394,6 +414,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -419,7 +440,15 @@ export declare const components: {
                 model: "twoFactor";
                 where?: Array<{
                   connector?: "AND" | "OR";
-                  field: "secret" | "backupCodes" | "userId" | "_id";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -457,6 +486,7 @@ export declare const components: {
                     | "createdAt"
                     | "aaguid"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -495,6 +525,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -531,6 +562,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -564,6 +596,7 @@ export declare const components: {
                     | "updatedAt"
                     | "consentGiven"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -595,6 +628,7 @@ export declare const components: {
                     | "createdAt"
                     | "expiresAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -621,6 +655,7 @@ export declare const components: {
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -682,6 +717,7 @@ export declare const components: {
                     | "banReason"
                     | "banExpires"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -717,6 +753,7 @@ export declare const components: {
                     | "userId"
                     | "impersonatedBy"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -756,6 +793,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -788,6 +826,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -813,7 +852,15 @@ export declare const components: {
                 model: "twoFactor";
                 where?: Array<{
                   connector?: "AND" | "OR";
-                  field: "secret" | "backupCodes" | "userId" | "_id";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -851,6 +898,7 @@ export declare const components: {
                     | "createdAt"
                     | "aaguid"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -889,6 +937,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -925,6 +974,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -958,6 +1008,7 @@ export declare const components: {
                     | "updatedAt"
                     | "consentGiven"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -989,6 +1040,7 @@ export declare const components: {
                     | "createdAt"
                     | "expiresAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1015,6 +1067,7 @@ export declare const components: {
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1067,10 +1120,12 @@ export declare const components: {
             maximumRowsRead?: number;
             numItems: number;
           };
+          select?: Array<string>;
           sortBy?: { direction: "asc" | "desc"; field: string };
           where?: Array<{
             connector?: "AND" | "OR";
             field: string;
+            mode?: "sensitive" | "insensitive";
             operator?:
               | "lt"
               | "lte"
@@ -1115,6 +1170,7 @@ export declare const components: {
           where?: Array<{
             connector?: "AND" | "OR";
             field: string;
+            mode?: "sensitive" | "insensitive";
             operator?:
               | "lt"
               | "lte"
@@ -1185,6 +1241,7 @@ export declare const components: {
                     | "banReason"
                     | "banExpires"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1230,6 +1287,7 @@ export declare const components: {
                     | "userId"
                     | "impersonatedBy"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1283,6 +1341,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1322,6 +1381,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1347,12 +1407,23 @@ export declare const components: {
                 model: "twoFactor";
                 update: {
                   backupCodes?: string;
+                  failedVerificationCount?: null | number;
+                  lockedUntil?: null | number;
                   secret?: string;
                   userId?: string;
+                  verified?: null | boolean;
                 };
                 where?: Array<{
                   connector?: "AND" | "OR";
-                  field: "secret" | "backupCodes" | "userId" | "_id";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1402,6 +1473,7 @@ export declare const components: {
                     | "createdAt"
                     | "aaguid"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1453,6 +1525,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1500,6 +1573,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1541,6 +1615,7 @@ export declare const components: {
                     | "updatedAt"
                     | "consentGiven"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1578,6 +1653,7 @@ export declare const components: {
                     | "createdAt"
                     | "expiresAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1609,6 +1685,7 @@ export declare const components: {
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1689,6 +1766,7 @@ export declare const components: {
                     | "banReason"
                     | "banExpires"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1734,6 +1812,7 @@ export declare const components: {
                     | "userId"
                     | "impersonatedBy"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1787,6 +1866,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1826,6 +1906,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1851,12 +1932,23 @@ export declare const components: {
                 model: "twoFactor";
                 update: {
                   backupCodes?: string;
+                  failedVerificationCount?: null | number;
+                  lockedUntil?: null | number;
                   secret?: string;
                   userId?: string;
+                  verified?: null | boolean;
                 };
                 where?: Array<{
                   connector?: "AND" | "OR";
-                  field: "secret" | "backupCodes" | "userId" | "_id";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1906,6 +1998,7 @@ export declare const components: {
                     | "createdAt"
                     | "aaguid"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -1957,6 +2050,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -2004,6 +2098,7 @@ export declare const components: {
                     | "createdAt"
                     | "updatedAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -2045,6 +2140,7 @@ export declare const components: {
                     | "updatedAt"
                     | "consentGiven"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -2082,6 +2178,7 @@ export declare const components: {
                     | "createdAt"
                     | "expiresAt"
                     | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"
@@ -2113,6 +2210,7 @@ export declare const components: {
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
                     | "lte"

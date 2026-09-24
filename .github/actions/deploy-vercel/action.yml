@@ -26,8 +26,37 @@ inputs:
   vercel-project-id:
     description: "Vercel project ID for this app"
     required: true
+  run-id:
+    description: Workflow run that uploaded the resolved artifact
+    required: true
+  github-token:
+    description: Token used to download the resolved artifact
+    required: true
+  deployed-commit:
+    description: >-
+      Commit being deployed. Set as a run-time variable so the app can report it
+      alongside the commit its artifact was built from — for a reused artifact
+      those differ, which is the point of content-addressing.
+    required: true
+  logical-environment:
+    description: Ops environment (staging or production); independent of Vercel target
+    required: true
+  request-id:
+    description: Ops dispatch correlation ID
+    required: false
+    default: ""
+  expected-hash:
+    description: >-
+      Build-input hash the artifact name and manifest must carry.
+    required: true
 
 outputs:
+  built-sha:
+    description: Actual source SHA from the verified build manifest
+    value: ${{ steps.provenance.outputs.built-sha }}
+  checksum:
+    description: SHA256 of the deployed tarball
+    value: ${{ steps.provenance.outputs.checksum }}
   deployment-url:
     description: "URL of the Vercel deployment"
     value: ${{ steps.deploy.outputs.url }}
@@ -35,11 +64,70 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Validate deployment artifact identity
+      shell: bash
+      env:
+        ARTIFACT_APP: ${{ inputs.app }}
+        ARTIFACT_HASH: ${{ inputs.expected-hash }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        ARTIFACT_RUN_ID: ${{ inputs.run-id }}
+        ARTIFACT_TARBALL: ${{ inputs.tarball }}
+        ARTIFACT_CHECKSUM_FILE: ${{ inputs.checksum-file }}
+        DEPLOY_SELECTED_SHA: ${{ inputs.deployed-commit }}
+      run: |
+        if [[ ! "$ARTIFACT_APP" =~ ^(web|admin|landing)$ ||
+              ! "$ARTIFACT_HASH" =~ ^[a-f0-9]{16}$ ||
+              "$ARTIFACT_NAME" != "$ARTIFACT_APP-$ARTIFACT_HASH" ||
+              ! "$ARTIFACT_RUN_ID" =~ ^[1-9][0-9]*$ ||
+              ! "$DEPLOY_SELECTED_SHA" =~ ^[a-f0-9]{40}$ ||
+              "$ARTIFACT_TARBALL" != "$ARTIFACT_APP.tar.gz" ||
+              "$ARTIFACT_CHECKSUM_FILE" != "$ARTIFACT_APP.tar.gz.sha256" ]]; then
+          echo "::error::Deployment requires a hash-named app package, its source run, and a full selected commit SHA."
+          exit 1
+        fi
+
     - name: Download artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: ${{ inputs.artifact-name }}
         path: deploy-artifacts
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.github-token }}
+
+    # A promoted artifact is deployed without being rebuilt, so the only evidence
+    # of what it contains is its manifest. Verify it before it reaches the
+    # environment rather than trusting the artifact name.
+    - name: Verify artifact provenance
+      id: provenance
+      shell: bash
+      working-directory: deploy-artifacts
+      run: |
+        MANIFEST="${{ inputs.app }}-manifest.json"
+        if [ ! -f "$MANIFEST" ]; then
+          echo "::error::${MANIFEST} missing from artifact ${{ inputs.artifact-name }}"
+          exit 1
+        fi
+
+        jq -e --arg app "${{ inputs.app }}" \
+          '(.app == $app) and (.input_hash | test("^[a-f0-9]{16}$")) and (.git_sha | test("^[a-f0-9]{40}$")) and (.artifact_checksum | test("^[a-f0-9]{64}$"))' "$MANIFEST" >/dev/null
+        echo "built-sha=$(jq -r '.git_sha' "$MANIFEST")" >> "$GITHUB_OUTPUT"
+        echo "checksum=$(jq -r '.artifact_checksum' "$MANIFEST")" >> "$GITHUB_OUTPUT"
+        BUILT_HASH=$(jq -r '.input_hash' "$MANIFEST")
+        if [ "$BUILT_HASH" != "${{ inputs.expected-hash }}" ]; then
+          echo "::error::Artifact carries input hash ${BUILT_HASH}, expected ${{ inputs.expected-hash }}"
+          exit 1
+        fi
+
+        # The commit recorded here is the one that BUILT these bytes, which is
+        # deliberately not always the commit being deployed: if an app's inputs
+        # did not change, its artifact is reused across commits.
+        echo "Artifact verified: input hash ${BUILT_HASH}, built from commit $(jq -r '.git_sha' "$MANIFEST")"
+        {
+          echo "### Promoted artifact: ${{ inputs.app }}"
+          echo '```'
+          jq -r '"input hash: \(.input_hash)\nbuilt from: \(.git_sha)\nbuilt at:   \(.timestamp)\nbuild run:  \(.workflow_run)\nchecksum:   \(.artifact_checksum)"' "$MANIFEST"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Verify checksum
       shell: bash
@@ -47,6 +135,12 @@ runs:
       run: |
         echo "Verifying checksum for ${{ inputs.tarball }}..."
         sha256sum -c "${{ inputs.checksum-file }}"
+        ACTUAL=$(sha256sum "${{ inputs.tarball }}" | awk '{print $1}')
+        EXPECTED=$(jq -r '.artifact_checksum' "${{ inputs.app }}-manifest.json")
+        if [ "$ACTUAL" != "$EXPECTED" ]; then
+          echo "::error::Tarball checksum does not match the build manifest"
+          exit 1
+        fi
         echo "Checksum verified successfully"
 
     - name: Extract artifact into workspace root
@@ -60,7 +154,7 @@ runs:
 
     - name: Install Vercel CLI
       shell: bash
-      run: bun add -g vercel@latest
+      run: bun add -g vercel@59.26.0
 
     - name: Create Vercel project link
       shell: bash
@@ -76,12 +170,34 @@ runs:
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        OPS_DEPLOY_SHA: ${{ inputs.deployed-commit }}
+        OPS_REQUEST_ID: ${{ inputs.request-id }}
       run: |
-        DEPLOY_FLAGS="--prebuilt --token=${VERCEL_TOKEN}"
+        DEPLOY_FLAGS=(--prebuilt --token="$VERCEL_TOKEN"
+          --meta "opsRepository=${{ github.repository }}"
+          --meta "opsApp=${{ inputs.app }}"
+          --meta "opsEnvironment=${{ inputs.logical-environment }}"
+          --meta "opsSelectedSha=${OPS_DEPLOY_SHA}"
+          --meta "opsBuiltSha=${{ steps.provenance.outputs.built-sha }}"
+          --meta "opsInputHash=${{ inputs.expected-hash }}"
+          --meta "opsArtifactName=${{ inputs.artifact-name }}"
+          --meta "opsBuildRunId=${{ inputs.run-id }}"
+          --meta "opsRunId=${{ github.run_id }}"
+          --meta "opsRunAttempt=${{ github.run_attempt }}")
+
+        # Push-triggered and manual runs may have no ops request ID. Vercel
+        # rejects empty metadata values, so only attach it when supplied.
+        if [ -n "$OPS_REQUEST_ID" ]; then
+          DEPLOY_FLAGS+=(--meta "opsRequestId=${OPS_REQUEST_ID}")
+        fi
 
         if [ "${{ inputs.environment }}" = "production" ]; then
-          DEPLOY_FLAGS="${DEPLOY_FLAGS} --prod"
+          DEPLOY_FLAGS+=(--prod)
         fi
+
+        # Run-time only: it must not reach the build, or it would be inlined and
+        # make the artifact commit-specific again.
+        DEPLOY_FLAGS+=(--env "DEPLOYED_COMMIT=${OPS_DEPLOY_SHA}")
 
         echo "::group::Debug: deploy directory contents"
         ls -la .vercel/
@@ -97,7 +213,7 @@ runs:
 
         # Disable -e so we can capture the error output before exiting
         set +e
-        DEPLOY_OUTPUT=$(vercel deploy ${DEPLOY_FLAGS} 2>&1)
+        DEPLOY_OUTPUT=$(vercel deploy "${DEPLOY_FLAGS[@]}")
         DEPLOY_EXIT=$?
         set -e
 
@@ -107,9 +223,12 @@ runs:
           exit $DEPLOY_EXIT
         fi
 
-        # Vercel prints info messages after the URL, so tail -1 grabs the
-        # wrong line. Extract the actual https:// deployment URL instead.
-        DEPLOYMENT_URL=$(echo "${DEPLOY_OUTPUT}" | grep -oE 'https://[^ ]+\.vercel\.app[^ ]*' | head -1)
+        # Vercel writes the deployment URL to stdout and progress/errors to stderr.
+        DEPLOYMENT_URL=$(printf '%s' "$DEPLOY_OUTPUT" | tr -d '\r\n')
+        if [[ ! "$DEPLOYMENT_URL" =~ ^https://[a-zA-Z0-9.-]+\.vercel\.app/?$ ]]; then
+          echo "::error::Unexpected Vercel deployment output: $DEPLOY_OUTPUT"
+          exit 1
+        fi
         if [ -z "${DEPLOYMENT_URL}" ]; then
           echo "::error::Could not extract deployment URL from Vercel output:"
           echo "${DEPLOY_OUTPUT}"

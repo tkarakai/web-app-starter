@@ -3,12 +3,13 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
+import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
@@ -17,12 +18,90 @@ import { sendAuthEmail } from "./sendAuthEmail";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
-import {
-  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
-  USER_EMAIL_VERIFICATION_REQUIRED_KEY,
-  getEmailVerificationRequiredKey,
-  getPolicyScopeFromRole,
-} from "./securityPolicies";
+import { validatePasswordStrength } from "./passwordStrength";
+import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
+
+// ---------------------------------------------------------------------------
+// Auth endpoint rate limiting via convex-helpers (persistent, OCC-safe).
+// Better Auth's built-in rate limiting uses either "memory" (no-op in Convex
+// HTTP actions) or "database" (causes OCC conflicts). This mapping lets a
+// custom onRequest plugin enforce equivalent limits via convex-helpers'
+// token-bucket implementation, which handles concurrent writes correctly.
+// ---------------------------------------------------------------------------
+
+type RateLimitKeySource = "ip" | "email";
+
+const AUTH_RATE_LIMIT_MAP: Record<string, { name: string; keyFrom: RateLimitKeySource }> = {
+  "/sign-in/email": { name: "authSignIn", keyFrom: "email" },
+  "/sign-up/email": { name: "authSignUp", keyFrom: "ip" },
+  "/request-password-reset": { name: "authPasswordResetRequest", keyFrom: "ip" },
+  "/reset-password": { name: "authPasswordReset", keyFrom: "ip" },
+  "/send-verification-email": { name: "authVerificationEmail", keyFrom: "ip" },
+  "/email-otp/send-verification-otp": { name: "authEmailOtp", keyFrom: "ip" },
+  "/magic-link/send-magic-link": { name: "authMagicLink", keyFrom: "ip" },
+};
+
+function extractIp(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+/**
+ * Better Auth plugin that enforces persistent, OCC-safe rate limits via
+ * convex-helpers' token-bucket system. Replaces Better Auth's built-in
+ * rate limiting which cannot work reliably in Convex HTTP actions.
+ */
+const convexRateLimitPlugin = (
+  convexCtx: GenericCtx<DataModel>,
+): BetterAuthPlugin => ({
+  id: "convex-rate-limit",
+  async onRequest(request) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+    const config = AUTH_RATE_LIMIT_MAP[path];
+    if (!config) return;
+
+    let key: string;
+    if (config.keyFrom === "email") {
+      try {
+        const body = (await request.clone().json()) as Record<string, unknown>;
+        const email = (body.email as string | undefined)?.trim().toLowerCase();
+        key = email || extractIp(request);
+      } catch {
+        key = extractIp(request);
+      }
+    } else {
+      key = extractIp(request);
+    }
+
+    const actionCtx = requireActionCtx(convexCtx);
+    const result = await actionCtx.runMutation(
+      internal.rateLimits.consumeAuthRateLimit,
+      { name: config.name, key },
+    );
+
+    if (!result.ok) {
+      const retryAfter = Math.ceil(((result.retryAt ?? Date.now() + 1000) - Date.now()) / 1000);
+      return {
+        response: new Response(
+          JSON.stringify({
+            error: { message: "Too many requests. Please try again later." },
+          }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": String(retryAfter),
+            },
+          },
+        ),
+      };
+    }
+  },
+});
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -38,14 +117,27 @@ function positiveInt(envVar: string | undefined, defaultValue: number): number {
 }
 
 // Better Auth runs inside Convex, so env vars are set via `convex env set`.
-// SITE_URL can be a single URL or comma-separated list of URLs for multi-app development.
-// Falls back to http://localhost:3001 if not yet set during Convex startup.
-const siteUrlRaw = process.env.SITE_URL || "http://localhost:3001";
-const siteUrls = siteUrlRaw.split(",").map((url) => url.trim()).filter(Boolean);
-const siteUrl = siteUrls[0]; // Primary URL for baseURL
-// Optional override for passkey RP ID. Use a shared parent domain (hostname only)
-// when web/admin should both register and use the same passkeys.
-const passkeyRpId = (() => {
+// These helpers read env vars lazily (at runtime) rather than at module scope,
+// because Convex's push/analysis phase loads all modules before env vars are available.
+
+/** Read and validate SITE_URL at runtime.
+ *  During Convex's push/analysis phase, env vars set via `convex env set` are
+ *  not yet available, but `registerRoutes` in http.ts calls `createAuth` at
+ *  module scope to discover routes. We return a placeholder so the push
+ *  succeeds; real request handlers will have the env var populated. */
+function getSiteUrls(): { siteUrl: string; siteUrls: string[] } {
+  const siteUrlRaw = process.env.SITE_URL;
+  if (!siteUrlRaw) {
+    // Placeholder for push/analysis phase — never used for real requests.
+    return { siteUrl: "http://placeholder.invalid", siteUrls: ["http://placeholder.invalid"] };
+  }
+  const siteUrls = siteUrlRaw.split(",").map((url) => url.trim()).filter(Boolean);
+  return { siteUrl: siteUrls[0], siteUrls };
+}
+
+/** Optional override for passkey RP ID. Use a shared parent domain (hostname only)
+ *  when web/admin should both register and use the same passkeys. */
+function getPasskeyRpId(): string | undefined {
   const raw = process.env.PASSKEY_RP_ID?.trim();
   if (!raw) return undefined;
   try {
@@ -53,10 +145,10 @@ const passkeyRpId = (() => {
   } catch {
     return raw;
   }
-})();
+}
 
 // Custom plugin to set trusted origins for all app URLs
-const multiOriginPlugin = (): BetterAuthPlugin => ({
+const multiOriginPlugin = (siteUrls: string[]): BetterAuthPlugin => ({
   id: "multi-origin",
   init() {
     return {
@@ -119,6 +211,101 @@ const protectedAdminPlugin = (
   },
 });
 
+// Endpoints that accept a password in the request body.
+const PASSWORD_ENDPOINTS = ["/sign-up/email", "/reset-password", "/change-password"];
+
+// Plugin that enforces password strength server-side on all password-accepting
+// endpoints. Even if the client-side meter didn't load, the server will reject
+// weak passwords before Better Auth processes them.
+const passwordStrengthPlugin = (
+  convexCtx: GenericCtx<DataModel>,
+): BetterAuthPlugin => ({
+  id: "password-strength",
+  async onRequest(request, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+
+    if (!PASSWORD_ENDPOINTS.some((p) => path.endsWith(p))) return;
+
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.clone().json()) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+
+    const password =
+      (body.password as string | undefined) ??
+      (body.newPassword as string | undefined);
+    let email = (body.email as string | undefined) ?? "";
+    if (!password) return;
+
+    // For /change-password: resolve email from the authenticated session
+    // (body does not include email, so we must derive it from the session cookie)
+    if (path.endsWith("/change-password") && !email) {
+      try {
+        const cookieHeader = request.headers.get("cookie");
+        if (cookieHeader) {
+          const cookieName = (ctx as { authCookies?: { sessionToken?: { name?: string } } })
+            .authCookies?.sessionToken?.name ?? "better-auth.session_token";
+          const match = cookieHeader
+            .split(";")
+            .map((c) => c.trim())
+            .find((c) => c.startsWith(cookieName + "="));
+          if (match) {
+            const sessionToken = decodeURIComponent(match.slice(cookieName.length + 1));
+            const session = await ctx.internalAdapter.findSession(sessionToken);
+            if (session?.user?.email) {
+              email = session.user.email;
+            }
+          }
+        }
+      } catch {
+        // If session resolution fails, fall through with empty email
+      }
+    }
+
+    // For /reset-password: resolve email from the reset token owner
+    // (body only contains token + newPassword, so we look up the verification record)
+    if (path.endsWith("/reset-password") && !email) {
+      try {
+        const token = body.token as string | undefined;
+        if (token) {
+          const verification = await ctx.internalAdapter.findVerificationValue(
+            `reset-password:${token}`,
+          );
+          if (verification?.value) {
+            const user = await ctx.internalAdapter.findUserById(verification.value);
+            if (user?.email) {
+              email = user.email;
+            }
+          }
+        }
+      } catch {
+        // If token resolution fails, fall through with empty email
+      }
+    }
+
+    // Determine role: admin emails get the stricter threshold
+    const actionCtx = requireActionCtx(convexCtx);
+    const adminEmails = await actionCtx.runQuery(internal.adminEmails.list);
+    const role =
+      email && adminEmails.some((row: { email: string }) => row.email === email)
+        ? "admin"
+        : "user";
+
+    const result = validatePasswordStrength(password, email, role);
+    if (!result.valid) {
+      return {
+        response: new Response(
+          JSON.stringify({ error: { message: result.reason } }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        ),
+      };
+    }
+  },
+});
+
 export const authComponent = createClient<DataModel, typeof authSchema>(
   components.betterAuth,
   {
@@ -132,7 +319,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
  *  - Production: "Web App Starter"
  *  - Staging:    "Web App Starter (STAGING)"
  *  - Dev:        "Web App Starter (DEV: branch-name)" */
-function getTotpIssuer(): string {
+function getTotpIssuer(siteUrl: string): string {
   const base = "Web App Starter";
   const isDev = process.env.DEV_SEED_ENABLED === "true";
   const isLocalhost = siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1");
@@ -285,41 +472,66 @@ function mapEndpointErrorToStatus(
   return "failed.unknown";
 }
 
-async function isEmailVerificationRequiredForUser(
-  actionCtx: ReturnType<typeof requireActionCtx>,
-  role: unknown,
-): Promise<boolean> {
-  const scope = getPolicyScopeFromRole(role);
-  const scopedKey = getEmailVerificationRequiredKey(scope);
-  const scopedSetting = await actionCtx.runQuery(internal.appSettings.getInternal, {
-    key: scopedKey,
-  });
-
-  if (typeof scopedSetting === "boolean") {
-    return scopedSetting;
-  }
-
-  const legacySetting = await actionCtx.runQuery(internal.appSettings.getInternal, {
-    key: LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
-  });
-
-  return typeof legacySetting === "boolean" ? legacySetting : true;
-}
-
 /** Email verification token lifetime in seconds (BetterAuth default: 3600 = 1 hour). */
 const EMAIL_VERIFICATION_EXPIRY_SECONDS = positiveInt(
   process.env.AUTH_EMAIL_VERIFICATION_EXPIRY,
   3600,
 );
 
+/**
+ * Plugin that captures the user ID from a reset-password token before
+ * Better Auth consumes it. The ID is stored via the provided callback
+ * so the top-level hooks.after can mark the email as verified.
+ */
+const emailVerifiedOnResetPlugin = (
+  onUserIdCaptured: (userId: string) => void,
+): BetterAuthPlugin => ({
+  id: "email-verified-on-reset",
+  async onRequest(request, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/^\/api\/auth/, "");
+    if (!path.endsWith("/reset-password")) return;
+
+    try {
+      const body = (await request.clone().json()) as Record<string, unknown>;
+      const token = body.token as string | undefined;
+      if (token) {
+        const verification = await ctx.internalAdapter.findVerificationValue(
+          `reset-password:${token}`,
+        );
+        if (verification?.value) {
+          onUserIdCaptured(verification.value);
+        }
+      }
+    } catch {
+      // Don't break the reset flow if token lookup fails.
+    }
+  },
+});
+
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
 ) => {
+  const { siteUrl, siteUrls } = getSiteUrls();
+  const passkeyRpId = getPasskeyRpId();
+
+  // Shared across the plugin's onRequest and the top-level hooks.after within
+  // this single request invocation.  Captured in onRequest (before the token is
+  // consumed) so the after-hook can mark the email as verified.
+  let pendingResetUserId: string | null = null;
+
   return {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
+    session: {
+      // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
+      // Admin sessions (4 hours) are enforced at the middleware level.
+      expiresIn: 60 * 60 * 24 * 7,  // 7 days
+      updateAge: 60 * 60,            // 1 hour
+    },
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: 12,
       // requireEmailVerification is kept false here so Better Auth does not
       // block sign-ins at the protocol level. Enforcement is done at the
       // app level (dashboard layout + AuthGuard) so the admin toggle works
@@ -394,6 +606,9 @@ export const createAuthOptions = (
           context?: {
             returned?: unknown;
             session?: { user?: { email?: unknown } };
+            internalAdapter?: {
+              updateUser: (id: string, data: Record<string, unknown>) => Promise<unknown>;
+            };
           };
         };
 
@@ -426,36 +641,27 @@ export const createAuthOptions = (
           reason: error?.message,
           meta: JSON.stringify({ endpoint: path }),
         });
+
+        // After a successful email-link password reset, mark the email as
+        // verified — completing the reset proves the user controls the address.
+        if (path === "/reset-password" && !error && pendingResetUserId) {
+          const userId = pendingResetUserId;
+          pendingResetUserId = null;
+          try {
+            await middlewareCtx.context?.internalAdapter?.updateUser(userId, {
+              emailVerified: true,
+            });
+          } catch {
+            // Best-effort: don't break the reset response if this fails.
+          }
+        }
+
         return {};
       },
     },
     databaseHooks: {
       session: {
         create: {
-          before: async (session) => {
-            const actionCtx = requireActionCtx(ctx);
-            const s = session as Record<string, unknown>;
-            const userId = s.userId as string;
-            const user = await authComponent.getAnyUserById(ctx, userId);
-
-            if (!user) {
-              throw new Error("NOT_AUTHENTICATED");
-            }
-
-            const required = await isEmailVerificationRequiredForUser(
-              actionCtx,
-              (user as Record<string, unknown>).role,
-            );
-
-            if (
-              required &&
-              (user as Record<string, unknown>).emailVerified !== true
-            ) {
-              throw new Error("EMAIL_NOT_VERIFIED");
-            }
-
-            return { data: session };
-          },
           after: async (session) => {
             const actionCtx = requireActionCtx(ctx);
             const s = session as Record<string, unknown>;
@@ -525,11 +731,15 @@ export const createAuthOptions = (
               { key: "onboardingType" },
             );
             const onboardingType = parseOnboardingType(onboardingTypeRaw);
-            const hasInvitation = await actionCtx.runQuery(
+            const hasWaitlistInvitation = await actionCtx.runQuery(
               internal.waitlistTokens.hasValidInvitation,
               { email: user.email },
             );
-            if (!isSignupOnboarding(onboardingType) && !hasInvitation) {
+            const hasAdminInvitation = await actionCtx.runQuery(
+              internal.adminInvitations.hasValidAdminInvitation,
+              { email: user.email },
+            );
+            if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation) {
               throw new Error("SIGNUP_DISABLED");
             }
 
@@ -538,7 +748,7 @@ export const createAuthOptions = (
               internal.adminEmails.list,
             );
             if (adminEmails.some((row: { email: string }) => row.email === user.email)) {
-              return { data: { ...user, role: "admin" } };
+              return { data: { ...user, role: "admin", emailVerified: true } };
             }
             return { data: user };
           },
@@ -560,11 +770,14 @@ export const createAuthOptions = (
       },
     },
     plugins: [
-      multiOriginPlugin(),
+      convexRateLimitPlugin(ctx),
+      emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
+      multiOriginPlugin(siteUrls),
       protectedAdminPlugin(ctx),
+      passwordStrengthPlugin(ctx),
       admin(),
       twoFactor({
-        issuer: getTotpIssuer(),
+        issuer: getTotpIssuer(siteUrl),
         totpOptions: {
           period: 30,
           digits: 6,
@@ -598,46 +811,16 @@ export const createAuthOptions = (
         },
       }),
       passkey(passkeyRpId ? { rpID: passkeyRpId } : undefined),
+      haveIBeenPwned(),
       convex({ authConfig }),
     ],
-    rateLimit: {
-      enabled: true,
-      window: positiveInt(process.env.AUTH_RATE_LIMIT_WINDOW, 60),
-      max: positiveInt(process.env.AUTH_RATE_LIMIT_MAX, 100),
-      storage: "database",
-      customRules: {
-        "/sign-in/email": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_WINDOW, 10),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNIN_MAX, 3),
-        },
-        "/sign-up/email": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX, 5),
-        },
-        "/request-password-reset": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_MAX, 3),
-        },
-        "/reset-password": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_RESET_MAX, 5),
-        },
-        "/send-verification-email": {
-          window: positiveInt(process.env.AUTH_RATE_LIMIT_VERIFY_WINDOW, 60),
-          max: positiveInt(process.env.AUTH_RATE_LIMIT_VERIFY_MAX, 3),
-        },
-        "/email-otp/send-verification-otp": {
-          window: 60,
-          max: 3,
-        },
-        "/magic-link/send-magic-link": {
-          window: 60,
-          max: 3,
-        },
-        // Session checks must not be rate limited — real-time polling depends on them.
-        "/get-session": false,
-      },
-    },
+    // Better Auth's built-in rate limiting is disabled because neither storage
+    // option works reliably in Convex HTTP actions:
+    //   - "database" causes OCC conflicts under concurrent requests
+    //   - "memory" is a no-op (state doesn't persist between invocations)
+    // Instead, the convexRateLimitPlugin above enforces equivalent per-endpoint
+    // limits via convex-helpers' token-bucket system, which is OCC-safe.
+    rateLimit: { enabled: false },
     advanced: {
       ipAddress: {
         ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
@@ -658,5 +841,60 @@ export const getCurrentUser = query({
     } catch {
       return null;
     }
+  },
+});
+
+/**
+ * Fetch the current user's 2FA backup codes via the authenticated WebSocket
+ * connection. This avoids cross-origin HTTP / httpOnly cookie issues that
+ * affect direct fetches to the Convex site URL.
+ *
+ * We query the Better Auth adapter directly instead of calling
+ * `auth.api.viewBackupCodes()` because the `@convex-dev/better-auth` convex
+ * plugin has a bug where its afterHook matcher accesses `ctx.path.startsWith()`
+ * without optional chaining, crashing when there is no HTTP request context.
+ */
+export const viewBackupCodes = action({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) throw new Error("NOT_AUTHENTICATED");
+
+    const result = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      {
+        model: "twoFactor" as const,
+        where: [
+          {
+            field: "userId",
+            operator: "eq" as const,
+            value: user._id as string,
+          },
+        ],
+        paginationOpts: { cursor: null, numItems: 1 },
+      },
+    );
+
+    const page =
+      (result as { page?: Array<{ backupCodes: string }> }).page ?? [];
+    if (page.length === 0) return [];
+
+    const raw = page[0].backupCodes;
+
+    // Try plain JSON first (freshly generated codes).
+    // Fall back to symmetric decryption (Better Auth encrypts codes after
+    // any backup code is consumed, and some versions encrypt by default).
+    try {
+      const plain = JSON.parse(raw);
+      if (Array.isArray(plain)) return plain as string[];
+    } catch {
+      // not plain JSON — try decryption
+    }
+
+    const secret = process.env.BETTER_AUTH_SECRET;
+    if (!secret) throw new Error("BETTER_AUTH_SECRET not configured");
+
+    const decrypted = await symmetricDecrypt({ key: secret, data: raw });
+    return JSON.parse(decrypted) as string[];
   },
 });

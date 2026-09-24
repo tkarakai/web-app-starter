@@ -22,10 +22,8 @@ import {
   PasswordInput,
   Separator,
   toast,
+  usePublicConfig,
 } from "@repo/design-system";
-
-const CONVEX_SITE_URL =
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "http://localhost:3210";
 
 type Step =
   | "idle"
@@ -37,6 +35,7 @@ type Step =
   | "password-regenerate";
 
 export function AdminTwoFactorSection() {
+  const { convexSiteUrl } = usePublicConfig();
   const [step, setStep] = React.useState<Step>("idle");
   const [enabled, setEnabled] = React.useState(false);
   const [password, setPassword] = React.useState("");
@@ -80,8 +79,12 @@ export function AdminTwoFactorSection() {
         toast.error("Current password is incorrect.");
         return;
       }
-      const uri = (result.data as { totpURI?: string })?.totpURI ?? "";
-      setTotpUri(uri);
+      // Better Auth returns the backup codes here, at enrolment — `verifyTotp`
+      // does not return them. Stash them now or they are lost for good, leaving
+      // the admin with 2FA enforced and no way back in.
+      const data = result.data as { totpURI?: string; backupCodes?: string[] } | undefined;
+      setTotpUri(data?.totpURI ?? "");
+      setBackupCodes(data?.backupCodes ?? []);
       setPassword("");
       setStep("totp-uri");
     } catch {
@@ -100,8 +103,13 @@ export function AdminTwoFactorSection() {
         toast.error("Invalid verification code.");
         return;
       }
+      // Prefer codes from the verify response if a future Better Auth version
+      // starts returning them; otherwise keep the ones captured at enable time.
+      // Overwriting unconditionally is what left admins with zero codes.
       const data = result.data as { backupCodes?: string[] } | undefined;
-      setBackupCodes(data?.backupCodes ?? []);
+      if (data?.backupCodes?.length) {
+        setBackupCodes(data.backupCodes);
+      }
       setEnabled(true);
       setCode("");
       setStep("backup-codes");
@@ -135,7 +143,7 @@ export function AdminTwoFactorSection() {
   const handleViewBackupCodes = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${CONVEX_SITE_URL}/api/two-factor/backup-codes`, {
+      const response = await fetch(`${convexSiteUrl}/api/two-factor/backup-codes`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -283,6 +291,8 @@ export function AdminTwoFactorSection() {
             onClick={() => {
               setStep("idle");
               setPassword("");
+              setTotpUri("");
+              setBackupCodes([]);
             }}
           >
             Cancel
@@ -304,7 +314,10 @@ export function AdminTwoFactorSection() {
             Manual setup key
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2 space-y-2">
-            <div className="rounded-md border bg-muted p-3 text-xs font-mono break-all">
+            <div
+              data-slot="totp-secret"
+              className="rounded-md border bg-muted p-3 text-xs font-mono break-all"
+            >
               {secretKey || totpUri}
             </div>
             <Button
@@ -329,9 +342,25 @@ export function AdminTwoFactorSection() {
             </Button>
           </CollapsibleContent>
         </Collapsible>
-        <Button type="button" onClick={() => setStep("verify-code")}>
-          Continue to verification
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" onClick={() => setStep("verify-code")}>
+            Continue to verification
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // Abandoning enrolment must drop the codes captured at enable
+              // time; they belong to a TOTP secret that was never confirmed.
+              setStep("idle");
+              setCode("");
+              setTotpUri("");
+              setBackupCodes([]);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     );
   }
@@ -426,7 +455,10 @@ export function AdminTwoFactorSection() {
       <p className="text-xs text-muted-foreground">
         Save these backup codes in a secure place. Each code can be used once.
       </p>
-      <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted p-4">
+      <div
+        data-slot="backup-codes"
+        className="grid grid-cols-2 gap-2 rounded-md border bg-muted p-4"
+      >
         {backupCodes.map((backupCode) => (
           <code key={backupCode} className="text-sm font-mono">
             {backupCode}
@@ -434,7 +466,13 @@ export function AdminTwoFactorSection() {
         ))}
       </div>
       <div className="flex gap-2">
-        <Button type="button" onClick={() => setStep("idle")}>
+        <Button
+          type="button"
+          onClick={() => {
+            setStep("idle");
+            setBackupCodes([]);
+          }}
+        >
           Done
         </Button>
         <Button type="button" variant="outline" onClick={handleViewBackupCodes}>

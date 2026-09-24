@@ -2,35 +2,189 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "out/**"],
-      "env": ["EDGE_RATE_LIMIT_WINDOW", "EDGE_RATE_LIMIT_MAX", "EDGE_RATE_LIMIT_MAP_MAX_SIZE"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!qa/**"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "out/**"
+      ],
+      "env": [],
+      "passThroughEnv": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "WEB_APP_URL",
+        "APP_ENVIRONMENT",
+        "EDGE_RATE_LIMIT_WINDOW",
+        "EDGE_RATE_LIMIT_MAX",
+        "EDGE_RATE_LIMIT_MAP_MAX_SIZE",
+        "NEXT_PUBLIC_GIT_SHA",
+        "NEXT_PUBLIC_GIT_BRANCH",
+        "NEXT_PUBLIC_DEPLOY_TIMESTAMP",
+        "NEXT_PUBLIC_BUILD_ID",
+        "NEXT_PUBLIC_APP_NAME"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["EDGE_RATE_LIMIT_WINDOW", "EDGE_RATE_LIMIT_MAX", "EDGE_RATE_LIMIT_MAP_MAX_SIZE"]
+      "env": [
+        "EDGE_RATE_LIMIT_WINDOW",
+        "EDGE_RATE_LIMIT_MAX",
+        "EDGE_RATE_LIMIT_MAP_MAX_SIZE",
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "WEB_APP_URL",
+        "APP_ENVIRONMENT"
+      ]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "APP_ENVIRONMENT"
+      ]
     },
     "test:unit": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "APP_ENVIRONMENT"
+      ]
     },
     "test:convex": {},
     "test:coverage": {
-      "dependsOn": ["^build"],
-      "outputs": ["qa/coverage/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "qa/coverage/**"
+      ],
+      "env": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "APP_ENVIRONMENT"
+      ]
     },
     "test:e2e": {
-      "dependsOn": ["build"],
-      "cache": false
+      "dependsOn": [
+        "build"
+      ],
+      "cache": false,
+      "env": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "APP_ENVIRONMENT"
+      ]
+    },
+    "@repo/starter-sidebar-policy#build": {
+      "outputs": ["dist/**"]
+    },
+    "@repo/landing#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!qa/**"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "out/**"
+      ],
+      "env": [
+        "NEXT_PUBLIC_SITE_URL",
+        "NEXT_PUBLIC_WEB_APP_URL",
+        "NEXT_PUBLIC_CONVEX_SITE_URL"
+      ],
+      "passThroughEnv": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "WEB_APP_URL",
+        "APP_ENVIRONMENT",
+        "EDGE_RATE_LIMIT_WINDOW",
+        "EDGE_RATE_LIMIT_MAX",
+        "EDGE_RATE_LIMIT_MAP_MAX_SIZE",
+        "NEXT_PUBLIC_GIT_SHA",
+        "NEXT_PUBLIC_GIT_BRANCH",
+        "NEXT_PUBLIC_DEPLOY_TIMESTAMP",
+        "NEXT_PUBLIC_BUILD_ID",
+        "NEXT_PUBLIC_APP_NAME"
+      ]
+    },
+    "@repo/landing-static#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!qa/**"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "out/**"
+      ],
+      "env": [
+        "NEXT_PUBLIC_SITE_URL",
+        "NEXT_PUBLIC_WEB_APP_URL",
+        "NEXT_PUBLIC_CONVEX_SITE_URL"
+      ],
+      "passThroughEnv": [
+        "CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "APP_ORIGIN",
+        "LANDING_URL",
+        "WEB_APP_URL",
+        "APP_ENVIRONMENT",
+        "EDGE_RATE_LIMIT_WINDOW",
+        "EDGE_RATE_LIMIT_MAX",
+        "EDGE_RATE_LIMIT_MAP_MAX_SIZE",
+        "NEXT_PUBLIC_GIT_SHA",
+        "NEXT_PUBLIC_GIT_BRANCH",
+        "NEXT_PUBLIC_DEPLOY_TIMESTAMP",
+        "NEXT_PUBLIC_BUILD_ID",
+        "NEXT_PUBLIC_APP_NAME"
+      ]
     }
   }
 }

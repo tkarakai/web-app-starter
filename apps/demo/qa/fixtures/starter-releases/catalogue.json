@@ -1,0 +1,37 @@
+{
+  "latest": "1.0.1",
+  "package": "@repo/starter-sidebar-policy",
+  "releases": {
+    "1.0.0": {
+      "actions": [],
+      "affectedLayers": [
+        "starter-sidebar-policy"
+      ],
+      "files": {
+        "starter-packages/sidebar-policy/dist/index.d.ts": "713d1c2aef2512e5dd12e2dd62432710b758bec6cd1f01592bbd8a0ae3727744",
+        "starter-packages/sidebar-policy/dist/index.js": "25cbf10b4bf59b2eff480cbb2fd030f004ec685b8a439ba9139f18aa0ad0c988",
+        "starter-packages/sidebar-policy/package.json": "c52079fe5b5648c0787cc31f89316f5bb1f5db4a0863ec106325f7505169d775"
+      },
+      "from": [],
+      "securityUrgency": "none"
+    },
+    "1.0.1": {
+      "actions": [
+        "sidebar-finite-width"
+      ],
+      "affectedLayers": [
+        "starter-sidebar-policy"
+      ],
+      "files": {
+        "starter-packages/sidebar-policy/dist/index.d.ts": "e0135c55cef05608bcf47a0e9ac573e61d7c9e69a96dd6ad0a752289c55885cb",
+        "starter-packages/sidebar-policy/dist/index.js": "7b0f2dd6971daf9b4423fb5a8a448768af1c616c19eff2294953c48ccc2a5d20",
+        "starter-packages/sidebar-policy/package.json": "d80591ffbb67a4d6a0ab1d37e4580e4beeb2afa4e9313c98cf20d25d383d02d7"
+      },
+      "from": [
+        "1.0.0"
+      ],
+      "securityUrgency": "none"
+    }
+  },
+  "schemaVersion": 1
+}
