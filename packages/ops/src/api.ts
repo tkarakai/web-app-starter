@@ -1,11 +1,13 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { OpsError, registerSecret, redact } from "./errors";
-import type { Api } from "./types";
+import type { Api, PageReport } from "./types";
 
 export type Fetcher = (input: string | URL | Request, init?: Parameters<typeof fetch>[1]) => Promise<Response>;
 export class HttpApi implements Api {
   constructor(private provider: "github" | "vercel", private token: string,
     private log: (message: string) => void = () => {}, private fetcher: Fetcher = fetch,
-    private sleep: (ms: number) => Promise<void> = ms => new Promise(r => setTimeout(r, ms)),
+    private sleep: (ms: number) => Promise<void> = ms => delay(ms, undefined, { signal: this.signal }),
+    private signal?: globalThis.AbortSignal,
   ) { registerSecret(token); }
   get<T>(path: string) { return this.request<T>(path); }
   post<T>(path: string, body: unknown) { return this.request<T>(path, body); }
@@ -15,16 +17,18 @@ export class HttpApi implements Api {
     if (url.origin !== origin) throw new OpsError("INVALID_URL", "Refusing to send credentials to an unexpected host.", "Check the API path.");
     const method = body === undefined ? "GET" : "POST";
     for (let attempt = 0; attempt < 3; attempt++) {
+      if (this.signal?.aborted) throw new OpsError("INTERRUPTED", "Local observation stopped.", "Remote operations continue; resume by request or run ID.", 130);
       const started = Date.now();
       let response: Response;
       try {
         response = await this.fetcher(url, {
-          method, redirect: "error", signal: globalThis.AbortSignal.timeout(30_000),
+          method, redirect: "error", signal: globalThis.AbortSignal.any([globalThis.AbortSignal.timeout(30_000), ...(this.signal ? [this.signal] : [])]),
           headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json", "Content-Type": "application/json",
             ...(this.provider === "github" ? { "X-GitHub-Api-Version": "2022-11-28" } : {}) },
           ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         });
       } catch (cause) {
+        if (this.signal?.aborted) throw new OpsError(method === "POST" ? "WRITE_OUTCOME_UNKNOWN" : "INTERRUPTED", "Local request interrupted.", "Remote work may continue; check the saved request before retrying.", 130);
         if (cause instanceof OpsError) throw cause;
         if (method === "GET" && attempt < 2) {
           this.log(`${this.provider} ${method} ${url.pathname}: ${redact(String(cause))}; retry ${attempt + 1}/2`);
@@ -57,24 +61,37 @@ export class HttpApi implements Api {
     }
     throw new Error("Unreachable retry state");
   }
-  async pages<T>(path: string, key?: string, limit = 1000): Promise<T[]> {
+  async pages<T>(path: string, key?: string, limit = 1000, report?: PageReport): Promise<T[]> {
     const result: T[] = [];
+    const seen = new Set<string>();
     let cursor: number | undefined;
-    for (let page = 1; result.length < limit; page++) {
-      const url = new URL(path, "https://unused.invalid");
-      if (this.provider === "github") { url.searchParams.set("per_page", String(Math.min(100, limit))); url.searchParams.set("page", String(page)); }
-      else { url.searchParams.set("limit", String(Math.min(100, limit))); if (cursor !== undefined) url.searchParams.set("until", String(cursor)); }
-      const data = await this.get<unknown>(url.pathname + url.search);
-      const entries = key ? (data as Record<string, unknown>)?.[key] : data;
-      if (!Array.isArray(entries)) throw new OpsError("INVALID_RESPONSE", `${this.provider} response is missing the ${key ?? "array"} collection.`, "Run with --debug and report the provider response shape.");
-      result.push(...entries as T[]);
-      if (this.provider === "vercel") {
-        const next = (data as { pagination?: { next?: number | null } }).pagination?.next;
-        if (next == null) break;
-        if (next === cursor) throw new OpsError("PAGINATION", "Vercel returned a repeated pagination cursor.", "Retry later; results were not silently truncated.");
-        cursor = next;
-      } else if (entries.length < Number(url.searchParams.get("per_page"))) break;
+    let complete = false;
+    try {
+      for (let page = 1; result.length < limit; page++) {
+        const url = new URL(path, "https://unused.invalid");
+        const size = Math.min(100, limit);
+        if (this.provider === "github") { url.searchParams.set("per_page", String(size)); url.searchParams.set("page", String(page)); }
+        else { url.searchParams.set("limit", String(size)); if (cursor !== undefined) url.searchParams.set("until", String(cursor)); }
+        const data = await this.get<unknown>(url.pathname + url.search);
+        const entries = key ? (data as Record<string, unknown>)?.[key] : data;
+        if (!Array.isArray(entries)) throw new OpsError("INVALID_RESPONSE", `${this.provider} response is missing the ${key ?? "array"} collection.`, "Run with --debug and report the provider response shape.");
+        const fingerprint = JSON.stringify(entries);
+        if (entries.length && seen.has(fingerprint)) throw new OpsError("PAGINATION", "Provider returned a repeated page.", "Retry later; earlier pages remain available in partial reports.");
+        seen.add(fingerprint);
+        result.push(...entries as T[]);
+        if (this.provider === "vercel") {
+          const next = (data as { pagination?: { next?: number | null } }).pagination?.next;
+          if (next == null) { complete = result.length <= limit; break; }
+          if (next === cursor) throw new OpsError("PAGINATION", "Vercel returned a repeated pagination cursor.", "Retry later; results were not silently truncated.");
+          cursor = next;
+        } else if (entries.length < size) { complete = result.length <= limit; break; }
+      }
+    } catch (error) {
+      if (!report) throw error;
+      report({ source: `${this.provider}:${path}`, state: result.length ? "partial" : "unavailable", count: Math.min(result.length, limit), limit }, error);
+      return result.slice(0, limit);
     }
+    report?.({ source: `${this.provider}:${path}`, state: complete ? "complete" : "windowed", count: Math.min(result.length, limit), limit });
     return result.slice(0, limit);
   }
 }

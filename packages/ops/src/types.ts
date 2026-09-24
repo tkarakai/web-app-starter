@@ -11,6 +11,7 @@ export interface Run {
   head_branch: string; status: string; conclusion: string | null; run_attempt: number;
   html_url: string; created_at: string; updated_at: string; run_started_at?: string;
   actor: { login: string }; triggering_actor?: { login: string };
+  event?: string;
 }
 export interface Job {
   id: number; name: string; status: string; conclusion: string | null; html_url: string;
@@ -24,7 +25,7 @@ export interface Artifact {
 export interface RecordPayload {
   schemaVersion: 1; app: string; environment: Environment; selectedSha: string;
   builtSha?: string; inputHash?: string; artifactId?: number; artifactName?: string;
-  checksum?: string; buildRunId?: number; reused?: boolean; result: string;
+  checksum?: string; buildRunId?: number; reused?: boolean; result: string; buildResult?: string;
   health: string; runId: number; runAttempt: number; actor: string; recordedAt: string;
   deploymentUrl?: string; requestId?: string; operation: string;
 }
@@ -39,8 +40,13 @@ export interface VercelDeployment {
 export interface Alias { alias: string; deploymentId: string; projectId?: string }
 export interface Commit { sha: string; commit: { message: string; author: { date: string } }; html_url: string }
 export interface Result { rows?: Record<string, unknown>[]; [key: string]: unknown }
+export interface Coverage {
+  source: string; state: "complete" | "windowed" | "partial" | "unavailable";
+  count: number; limit?: number;
+}
+export type PageReport = (coverage: Coverage, error?: unknown) => void;
 export interface Api {
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body: unknown): Promise<T>;
-  pages<T>(path: string, key?: string, limit?: number): Promise<T[]>;
+  pages<T>(path: string, key?: string, limit?: number, report?: PageReport): Promise<T[]>;
 }

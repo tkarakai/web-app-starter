@@ -17,7 +17,7 @@ async function run(args: string[], mode = "success", useConfig = true, json = tr
   const [stdout, stderr, exitCode] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
   return { lines: json ? stdout.trim().split("\n").filter(Boolean).map(line => JSON.parse(line)) : [], stdout, stderr, exitCode };
 }
-for (const args of [["status", "--env", "staging"], ["history"], ["builds"], ["candidates"], ["inspect", sha], ["diff", "staging", sha], ["runs", "--active"], ["projects"]]) {
+for (const args of [["status", "--env", "staging"], ["history"], ["builds"], ["candidates"], ["inspect", sha, "--to", "staging", "--app", "web"], ["diff", "staging", sha], ["runs", "--active"], ["projects"]]) {
   test(`CLI ${args[0]} emits a clean, versioned JSON result`, async () => {
     const result = await run(args); expect(result.exitCode).toBe(0); expect(result.stderr).toBe("");
     expect(result.lines[0]).toMatchObject({ schemaVersion: 1, ok: true, partial: false });
@@ -31,6 +31,27 @@ test("CLI complete dispatch/watch flow follows the accepted request and sees com
 test("CLI production dry run checks gates and never dispatches", async () => {
   const result = await run(["deploy", sha, "--to", "production", "--dry-run"]);
   expect(result.exitCode).toBe(0); expect(result.lines[0].data.dispatched).toBe(false);
+});
+test("CLI staging candidates admit current-format producers and exclude legacy archives and reports", async () => {
+  const result = await run(["candidates", "--to", "staging"], "artifact-candidates");
+  expect(result.exitCode).toBe(0);
+  expect(result.lines[0].data).toMatchObject({ target: "staging", sourceBranch: "main", rows: [{ sha, change: "Fix invitations", ci: "success", branch: "main" }] });
+  expect(result.lines[0].data.rows).toHaveLength(1);
+  expect(result.lines[0].data.hiddenWithoutProducedArtifacts).toBe(1);
+  const all = await run(["candidates", "--to", "staging", "--all-commits"], "artifact-candidates");
+  expect(all.exitCode).toBe(0);
+  expect(all.lines[0].data.rows).toHaveLength(2);
+  expect(all.lines[0].data.rows[1]).toMatchObject({ sha: "b".repeat(40), hasProducedArtifacts: false, artifactSummary: "no current-format app artifacts" });
+  const human = await run(["candidates", "--to", "staging"], "artifact-candidates", true, false);
+  expect(human.stdout).toContain("Staging candidates"); expect(human.stdout).toContain("BRANCH"); expect(human.stdout).not.toContain("ARTIFACTS AVAILABLE");
+});
+test("staging candidates hide proven no-change commits with an explicit way to include them", async () => {
+  const filtered = await run(["candidates", "--to", "staging"], "unchanged");
+  expect(filtered.exitCode).toBe(0);
+  expect(filtered.lines[0].data).toMatchObject({ rows: [], hiddenWithoutProducedArtifacts: 1 });
+  const all = await run(["candidates", "--to", "staging", "--all-commits"], "unchanged");
+  expect(all.exitCode).toBe(0);
+  expect(all.lines[0].data).toMatchObject({ rows: [{ sha, noAppChanges: true, artifactSummary: "all apps unchanged" }], hiddenWithoutProducedArtifacts: 0 });
 });
 test("CLI watch failure returns actionable error and nonzero exit", async () => {
   const result = await run(["watch", "42", "--interval", "1"], "failed");
@@ -140,5 +161,40 @@ test("status and doctor succeed for a configured staging project and explicitly 
       expect(result.lines[0].data.rows).toHaveLength(1);
       expect(result.lines[0].data.skipped).toMatchObject([{ app: "web", environment: "production" }]);
     } else expect(result.lines[0].data.skippedProjectMappings).toEqual(["web/production"]);
+  }
+});
+
+async function servingConfig() {
+  const path = resolve(temp, "serving.json");
+  await writeFile(path, JSON.stringify({ repository: "team/repo", workflowRef: "main", apps: Object.fromEntries(["web", "admin", "landing"].map(app =>
+    [app, { projects: { staging: { id: `prj_${app}`, domain: `${app}.example.com` }, production: null } }])) }));
+  return path;
+}
+test("CLI dispatch continues through serving verification with the exact run and attempt", async () => {
+  const result = await run(["deploy", sha, "--to", "staging", "--yes", "--watch", "--until", "serving"], "serving", true, true, await servingConfig());
+  expect(result.exitCode).toBe(0);
+  expect(result.lines.at(-1)).toMatchObject({ command: "verify", data: { run: 42, attempt: 1, outcome: "serving" } });
+});
+test("CLI dispatch rejects a consistently recorded and serving release different from the approved target", async () => {
+  const result = await run(["deploy", sha, "--to", "staging", "--yes", "--watch", "--until", "serving"], "serving-wrong-target", true, true, await servingConfig());
+  expect(result.exitCode).toBe(3);
+  expect(result.lines.at(-1)).toMatchObject({ command: "verify", data: { outcome: "incomplete", note: "Recorded target does not match the reviewed release. Inspect the run before proceeding." } });
+});
+test.each([["serving-mismatch", 6, "mismatch"], ["serving-incomplete", 3, "incomplete"]])("CLI verification reports %s without false success", async (mode, code, outcome) => {
+  const result = await run(["verify", "--run", "42"], String(mode), true, true, await servingConfig());
+  expect(result.exitCode).toBe(Number(code)); expect(result.lines[0].data.outcome).toBe(outcome);
+});
+test("CLI serving watch times out while remote work remains untouched", async () => {
+  const result = await run(["watch", "42", "--until", "serving", "--timeout", "1", "--interval", "1"], "serving-mismatch", true, true, await servingConfig());
+  expect(result.exitCode).toBe(5); expect(result.lines.at(-1).errors[0].code).toBe("WATCH_TIMEOUT");
+});
+test("CLI watches remain pinned when a newer attempt exists", async () => {
+  const result = await run(["watch", "42", "--attempt", "1"], "rerun");
+  expect(result.exitCode).toBe(4); expect(result.lines[0].errors[0].code).toBe("RUN_SUPERSEDED");
+});
+test("console rejects JSON and piped use without opening prompts", async () => {
+  for (const json of [true, false]) {
+    const result = await run(["console"], "forbidden", false, json);
+    expect(result.exitCode).toBe(2); expect(result.stderr).toContain("INTERACTIVE_REQUIRED");
   }
 });

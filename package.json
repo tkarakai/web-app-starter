@@ -55,7 +55,7 @@
     "typecheck:starter-upgrade": "tsc -p scripts/starter-upgrade/tsconfig.json",
     "lint:starter-upgrade": "eslint scripts/starter-upgrade --max-warnings 0",
     "ops": "bun packages/ops/src/cli.ts",
-    "test:ops": "bun test packages/ops/tests",
+    "test:ops": "bun test packages/ops/tests packages/paper-roll/tests",
     "typecheck:ops": "bun run --cwd packages/ops typecheck"
   },
   "overrides": {

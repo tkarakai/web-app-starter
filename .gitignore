@@ -68,3 +68,7 @@ ops.config.json
 
 # Trusted CI workflow tooling checkout
 .ops-workflow/
+
+# Local ops sessions and exported observations
+*.session.json
+.ops-reports/

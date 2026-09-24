@@ -5,7 +5,7 @@ import { parseOptions } from "../src/options";
 import { defaultConfig, validateConfig } from "../src/config";
 import { OpsService } from "../src/service";
 import { envelope, safeCell } from "../src/output";
-import type { Api, Config, Deployment, Run } from "../src/types";
+import type { Api, Artifact, Config, Deployment, Run } from "../src/types";
 
 const sha = "a".repeat(40), old = "b".repeat(40);
 const base = "/repos/team/repo";
@@ -19,12 +19,12 @@ class FakeApi implements Api {
   async pages<T>(path: string, _key?: string, _limit?: number): Promise<T[]> { return this.get<T[]>(path); }
 }
 function fixture(path: string): unknown {
-  if (path.includes("/actions/runs?")) return [];
+  if (path.includes("/actions/runs?") || path.includes("/actions/workflows/")) return [];
   if (path === `${base}/commits/${sha}` || path === `${base}/commits/aaaaaaa`) return { sha, commit: { message: "Fix invitations", author: { date: "2026-09-23T12:00:00Z" } }, html_url: "https://github.com/team/repo/commit/" + sha };
-  if (path.includes("/git/matching-refs/")) return [{ ref: `refs/tags/deploy/staging/2026-09-23T12-00-00Z/${sha}` }];
+  if (path.includes("/git/matching-refs/")) return [{ ref: `refs/tags/deploy/staging/2026-09-23T12-00-00Z/${sha}`, object: { type: "commit", sha } }];
   if (path.endsWith("/status")) return { statuses: [{ context: "ci/gate-passed", state: "success" }] };
-  if (path.includes("/deployments?")) return [{ id: 1, sha, environment: "staging", created_at: "2026-09-23T12:00:00Z", payload: { schemaVersion: 1, app: "web", artifactName: "web-hash", artifactId: 99, inputHash: "hash", builtSha: old, runId: 42, runAttempt: 1, result: "success", health: "success" } }];
-  if (path.includes("/actions/artifacts")) return [{ id: 99, name: "web-hash", expired: false, expires_at: "2099-01-01T00:00:00Z", created_at: "2026-09-23T11:00:00Z", workflow_run: { id: 40, head_sha: old } }];
+  if (path.includes("/deployments?")) return [{ id: 1, sha, environment: "staging", created_at: "2026-09-23T12:00:00Z", payload: { schemaVersion: 1, selectedSha: sha, app: "web", artifactName: "web-cccccccccccccccc", artifactId: 99, inputHash: "cccccccccccccccc", builtSha: old, runId: 42, runAttempt: 1, result: "success", health: "success" } }];
+  if (path.includes("/actions/artifacts")) return [{ id: 99, name: "web-cccccccccccccccc", expired: false, expires_at: "2099-01-01T00:00:00Z", created_at: "2026-09-23T11:00:00Z", workflow_run: { id: 40, head_sha: old } }];
   throw new Error(`Unexpected fixture request ${path}`);
 }
 
@@ -88,6 +88,128 @@ describe("operator and agent contracts", () => {
 });
 
 describe("release selection and dispatch", () => {
+  test("report-only staging runs prove no app artifacts; scoped lookup also finds packages beyond the repository window", async () => {
+    const producer = "9cb2a49a1e82545af891e18d6304196405b30422", reportsOnly = "0ba386a1ac6e104fd4a1549f7ba3561a29d5fcaf";
+    const api = new FakeApi(path => {
+      if (path === base) return { default_branch: "main" };
+      if (path.includes("/commits?")) return [reportsOnly, producer].map(s => ({ sha: s, commit: { message: "Commit", author: { date: "2026-09-23T12:00:00Z" } } }));
+      if (path.includes("/deployments?") || path.endsWith("/actions/artifacts")) return [];
+      if (path.includes("/actions/workflows/")) {
+        const s = path.includes(reportsOnly) ? reportsOnly : producer;
+        return [{ id: s === reportsOnly ? 43 : 42, head_sha: s, event: "push", path: ".github/workflows/cd-staging.yml", status: "completed" }];
+      }
+      if (path.endsWith("/artifacts")) return (path.includes("/43/") ? ["coverage-report-web", "playwright-report-admin", "blob-report-web-1"]
+        : ["web-e555c7d44ceaca5c", "admin-215a2e8e3660ea0b", "landing-dc28be976c3e62ff"]).map((name, id) => ({ id, name, expired: false, created_at: "2026-09-23T12:00:00Z", expires_at: "2099-01-01T00:00:00Z" }));
+      return fixture(path);
+    });
+    const service = new OpsService(config(), api);
+    const all = await service.candidates(options(["candidates", "--to", "staging", "--all-commits"]));
+    expect(all.rows).toHaveLength(2);
+    expect(all.rows?.[0]).toMatchObject({ sha: reportsOnly, hasProducedArtifacts: false, artifactSummary: "no current-format app artifacts",
+      appEvidence: [{ app: "web", artifactState: "none" }, { app: "admin", artifactState: "none" }, { app: "landing", artifactState: "none" }, { app: "backend" }] });
+    expect(all.rows?.[1]).toMatchObject({ sha: producer, hasProducedArtifacts: true, artifactSummary: "artifacts: web/admin/landing" });
+    const selected = await service.candidates(options(["candidates", "--to", "staging"]));
+    expect(selected.rows?.map(r => r.sha)).toEqual([producer]); expect(selected.hiddenWithoutProducedArtifacts).toBe(1);
+    expect(service.errors).toHaveLength(0);
+  });
+  test.each(["in_progress", "failed-lookup", "windowed", "partial"])("%s artifact evidence cannot establish that none were produced", async mode => {
+    const api = new FakeApi(path => {
+      if (path.includes("/actions/workflows/")) return [{ id: 42, head_sha: sha, event: "push", path: ".github/workflows/cd-staging.yml", status: mode === "in_progress" ? mode : "completed" }];
+      if (mode === "failed-lookup") throw new OpsError("FORBIDDEN", "Cannot list artifacts", "Check access");
+      return [];
+    });
+    if (mode === "windowed" || mode === "partial") {
+      const original = api.pages.bind(api);
+      (api as Api).pages = async <T>(path: string, key?: string, limit?: number, report?: import("../src/types").PageReport) => {
+        const entries = await original<T>(path, key, limit);
+        report?.({ source: path, state: path.endsWith("/artifacts") ? mode : "complete", count: entries.length });
+        return entries;
+      };
+    }
+    const evidence = await new OpsService(config(), api).candidateUploadEvidence(sha);
+    expect(evidence.complete).toBe(false); expect(evidence.sources).toEqual([]);
+  });
+  test("pre-record staging push artifacts appear once per commit with all app packages", async () => {
+    const artifacts: Artifact[] = ["web", "admin", "landing"].map((app, i) => ({ id: i + 1, name: `${app}-${"c".repeat(16)}`, expired: false,
+      expires_at: "2099-01-01T00:00:00Z", created_at: "2026-09-23T12:00:00Z", size_in_bytes: 100, workflow_run: { id: 42, head_sha: sha } }));
+    const api = new FakeApi(path => {
+      if (path === base) return { default_branch: "main" };
+      if (path.includes("/commits?")) return [fixture(`${base}/commits/${sha}`)];
+      if (path.includes("/deployments?")) return [];
+      if (path.endsWith("/actions/artifacts")) return artifacts;
+      if (path.endsWith("/actions/runs/42")) return { id: 42, head_sha: sha, event: "push", path: ".github/workflows/cd-staging.yml" };
+      return fixture(path);
+    });
+    const service = new OpsService(config(), api);
+    const result = await service.candidates(options(["candidates", "--to", "staging"]));
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows?.[0]).toMatchObject({ sha, artifactSummary: "artifacts: web/admin/landing", noAppChanges: false, evidenceRun: null });
+    expect(result.rows?.[0].appEvidence).toMatchObject([...artifacts.map((a, i) => ({ app: ["web", "admin", "landing"][i], result: "unknown",
+      artifactState: "uploaded", artifactId: a.id, artifactSource: "staging-push-run", artifactRun: 42,
+      url: `https://github.com/team/repo/actions/runs/42/artifacts/${a.id}` })), { app: "backend", result: "unknown", artifactState: "source" }]);
+    expect(api.calls.filter(c => c.path.endsWith("/actions/runs/42"))).toHaveLength(1);
+    expect(service.errors).toHaveLength(0);
+  });
+  test("artifact fallback rejects ambiguous workflow heads, reports, expiry and commits outside the list", async () => {
+    const artifact = (id: number, overrides: Partial<Artifact> = {}): Artifact => ({ id, name: `web-${"c".repeat(16)}`, expired: false,
+      expires_at: "2099-01-01T00:00:00Z", created_at: "2026-09-23T12:00:00Z", size_in_bytes: 100, workflow_run: { id, head_sha: sha }, ...overrides });
+    const api = new FakeApi(path => {
+      const id = Number(path.split("/").at(-1));
+      return { id, head_sha: id === 3 ? old : sha, event: id === 1 ? "workflow_dispatch" : "push",
+        path: id === 2 ? ".github/workflows/ci-web.yml" : ".github/workflows/cd-staging.yml" };
+    });
+    const service = new OpsService(config(), api);
+    const sources = await service.candidateArtifactSources([
+      artifact(1), artifact(2), artifact(3), artifact(4, { name: "web-coverage" }), artifact(5, { expired: true }),
+      artifact(6, { expires_at: "2000-01-01T00:00:00Z" }), artifact(7, { workflow_run: { id: 7, head_sha: old } }),
+    ], [sha]);
+    expect(sources).toEqual([]); expect(api.calls).toHaveLength(3);
+  });
+  test("unreadable artifact source runs require opting in to unknown candidates", async () => {
+    const service = new OpsService(config(), new FakeApi(path => {
+      if (path === base) return { default_branch: "main" };
+      if (path.includes("/commits?")) return [fixture(`${base}/commits/${sha}`)];
+      if (path.includes("/deployments?")) return [];
+      if (path.endsWith("/actions/artifacts")) return [{ id: 1, name: `web-${"c".repeat(16)}`, expired: false,
+        expires_at: "2099-01-01T00:00:00Z", workflow_run: { id: 42, head_sha: sha } }];
+      if (path.endsWith("/actions/runs/42") || path.includes("/actions/workflows/")) throw new OpsError("FORBIDDEN", "Cannot read run", "Check access");
+      return fixture(path);
+    }));
+    const result = await service.candidates(options(["candidates", "--to", "staging"]));
+    expect(result).toMatchObject({ rows: [], hiddenWithoutProducedArtifacts: 1 });
+    expect(service.errors).toHaveLength(2);
+    const all = await service.candidates(options(["candidates", "--to", "staging", "--all-commits"]));
+    expect(all.rows).toMatchObject([{ sha, noAppChanges: false, hasAvailableArtifacts: false, artifactSummary: "artifact availability unknown" }]);
+  });
+  test("staging candidates use unique default-branch commits and the overall gate, not workflow heads or individual successes", async () => {
+    const commit = (sha: string, message: string) => ({ sha, commit: { message, author: { date: "2026-09-23T12:00:00Z" } }, html_url: `https://github.com/team/repo/commit/${sha}` });
+    const api = new FakeApi(path => {
+      if (path === base) return { default_branch: "release/main" };
+      if (path.includes("/deployments?") || path.endsWith("/actions/artifacts") || path.includes("/actions/workflows/")) return [];
+      if (path === `${base}/commits?sha=release%2Fmain`) return [commit(sha, "Fix invitations\n\nDetails"), commit(sha, "Duplicate page record"), commit(old, "Earlier change")];
+      if (path === `${base}/commits/${sha}/status`) return { statuses: [{ context: "Security", state: "success" }, { context: "ci/gate-passed", state: "failure" }] };
+      if (path === `${base}/commits/${old}/status`) return { statuses: [{ context: "Security", state: "success" }] };
+      throw new Error(`Unexpected ${path}`);
+    });
+    const service = new OpsService({ ...config(), workflowRef: "workflow-code-only" }, api);
+    const result = await service.candidates(options(["candidates", "--to", "staging", "--all-commits"]));
+    expect(result).toMatchObject({ sourceBranch: "release/main", target: "staging", rows: [
+      { sha, change: "Fix invitations", ci: "failure" }, { sha: old, change: "Earlier change", ci: "unknown" },
+    ] });
+    expect(result.rows).toHaveLength(2); expect(service.errors).toHaveLength(0);
+    expect(api.calls.filter(c => c.path.endsWith("/status"))).toHaveLength(2);
+    expect(api.calls.some(c => c.path.includes("/actions/runs") || c.body)).toBe(false);
+  });
+  test("a CI lookup failure preserves the commit without claiming it passed", async () => {
+    const service = new OpsService(config(), new FakeApi(path => {
+      if (path === base) return { default_branch: "main" };
+      if (path.includes("/deployments?") || path.endsWith("/actions/artifacts") || path.includes("/actions/workflows/")) return [];
+      if (path.includes("/commits?")) return [fixture(`${base}/commits/${sha}`)];
+      throw new OpsError("FORBIDDEN", "Cannot read CI", "Check access");
+    }));
+    const result = await service.candidates(options(["candidates", "--to", "staging", "--all-commits"]));
+    expect(result.rows).toMatchObject([{ sha, ci: "unavailable" }]); expect(service.errors).toHaveLength(1);
+  });
   test("distinguishes selected SHA from reused build SHA using target-environment evidence", async () => {
     const service = new OpsService(config(), new FakeApi(fixture));
     const result = await service.inspect("aaaaaaa", options(["inspect", "aaaaaaa", "--to", "staging"]));
@@ -95,10 +217,18 @@ describe("release selection and dispatch", () => {
     expect(result.rows?.find(r => r.app === "web")).toMatchObject({ action: "reuse-recorded-artifact", builtFrom: old });
     expect(result.rows?.find(r => r.app === "landing")).toMatchObject({ action: "resolve-at-deploy" });
   });
+  test("an unavailable artifact lookup does not become a claim that a rebuild is required", async () => {
+    const service = new OpsService(config(), new FakeApi(path => {
+      if (path.includes("/actions/artifacts")) throw new OpsError("FORBIDDEN", "Cannot read artifacts", "Check access");
+      return fixture(path);
+    }));
+    const result = await service.inspect(sha, options(["inspect", sha, "--to", "staging"]));
+    expect(result.rows?.[0].action).toBe("resolve-at-deploy"); expect(service.errors).toHaveLength(1);
+  });
   for (const app of ["web", "admin", "landing"]) {
     test(`${app} remains unresolved without a recorded target hash, regardless of staging artifacts`, async () => {
       const api = new FakeApi(path => path.includes("/deployments?")
-        ? (fixture(path) as Deployment[]).map(r => ({ ...r, payload: { ...r.payload, app, artifactName: `${app}-hash` } }))
+        ? (fixture(path) as Deployment[]).map(r => ({ ...r, payload: { ...r.payload, app, artifactName: `${app}-cccccccccccccccc` } }))
         : fixture(path));
       const service = new OpsService(config(), api);
       const result = await service.inspect(sha, options(["inspect", sha, "--to", "production"]));
@@ -118,8 +248,8 @@ describe("release selection and dispatch", () => {
       return fixture(path);
     });
     const result = await new OpsService(config(), api).inspect(sha, options(["inspect", sha]));
-    expect(result.rows?.find(r => r.app === "web")).toMatchObject({ action: "reuse-recorded-artifact", inputHash: "hash", artifact: "web-hash", builtFrom: old });
-    expect(api.calls.filter(c => c.path.includes("/artifacts")).map(c => c.path)).toEqual([`${base}/actions/artifacts?name=web-hash`]);
+    expect(result.rows?.find(r => r.app === "web")).toMatchObject({ action: "reuse-recorded-artifact", inputHash: "cccccccccccccccc", artifact: "web-cccccccccccccccc", builtFrom: old });
+    expect(api.calls.filter(c => c.path.includes("/artifacts")).map(c => c.path)).toEqual([`${base}/actions/artifacts?name=web-cccccccccccccccc`]);
   });
   test("target records without input hashes do not establish artifact reuse", async () => {
     const api = new FakeApi(path => path.includes("/deployments?")
@@ -129,7 +259,7 @@ describe("release selection and dispatch", () => {
     expect(result.rows?.[0].action).toBe("resolve-at-deploy");
   });
   test("expired bytes require a build while CI failure blocks eligibility", async () => {
-    const api = new FakeApi(path => path.includes("/artifacts") ? [{ expired: true, name: "web-hash", expires_at: "2000-01-01" }] : path.endsWith("/status") ? { statuses: [{ context: "ci/gate-passed", state: "failure" }] } : path.includes("/deployments?") ? (fixture(path) as Deployment[]).map(r => ({ ...r, environment: "production" })) : fixture(path));
+    const api = new FakeApi(path => path.includes("/artifacts") ? [{ expired: true, name: "web-cccccccccccccccc", expires_at: "2000-01-01" }] : path.endsWith("/status") ? { statuses: [{ context: "ci/gate-passed", state: "failure" }] } : path.includes("/deployments?") ? (fixture(path) as Deployment[]).map(r => ({ ...r, environment: "production" })) : fixture(path));
     const service = new OpsService(config(), api);
     const result = await service.inspect(sha, options(["inspect", sha]));
     expect(result.eligible).toBe(false); expect(result.rows?.[0].action).toBe("build-required");
