@@ -22,7 +22,7 @@ the repo and we control exactly when it runs; the price is owning the `RENOVATE_
 
 | | |
 |---|---|
-| **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC. Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
+| **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC, as a safety net; dependency work is drained in [Renovate windows](#renovate-windows). Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
 | **Manual run** | GitHub → **Actions → Renovate → Run workflow** (`workflow_dispatch`). Pick `debug` log level to troubleshoot. |
 | **Cooldown** | `minimumReleaseAge: "10 days"` + `internalChecksFilter: "strict"` — a new release is held until it has been public for 10 days. Younger releases show as *pending* on the dashboard rather than as open PRs. |
 | **Security fixes** | The cooldown is **bypassed for known-vulnerable dependencies**: `vulnerabilityAlerts` (GitHub security alerts) and `osvVulnerabilityAlerts` (OSV database) open fix PRs immediately, labeled `security`. |
@@ -39,15 +39,21 @@ Defined in `renovate.json` → `packageRules`:
 
 - **Patch / minor / pin / digest** → **auto-merged** (squash, matching the linear-history rule on
   `main`) once all required CI checks pass (`platformAutomerge`).
-- **Dev dependencies** (non-major) → grouped into a single "dev dependencies (non-major)" PR,
-  except `convex-test`, which moves with `convex` in the "convex monorepo" group. The harness
-  must remain compatible with the root SDK override. Check the resolved packages' peer
-  requirements in `bun.lock` when updating this group; advancing the harness alone can
-  break backend tests.
-- **Major versions** → **never auto-merged**; each arrives as its own PR for a human to review.
-  Treat majors of the sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
-  `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`) with
-  extra care — read the changelog / migration guide before merging.
+- **All non-major updates** → grouped into a single "all non-major dependencies" PR per cycle, so
+  automerge PRs do not compete for the "branch must be up to date" requirement on `main` (each merge
+  would otherwise leave every other open PR behind until the next run). The auth stack is the one
+  exception: it keeps its own never-automerged group.
+- **Major versions** → **never auto-merged**, and **no PR opens until approved** on the dashboard
+  (`dependencyDashboardApproval`; they wait under *Pending Approval*). Approve them during a
+  [Renovate window](#renovate-windows), after reading the changelog / migration guide. Treat majors
+  of the sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
+  `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`)
+  with extra care. `convex` and `convex-test` majors travel together in the "convex monorepo" group.
+- **Holds** → a major that cannot work yet (an upstream peer range, our runtime floor) is capped
+  with `allowedVersions` in a rule whose `description` starts with `HOLD:` and states the
+  evidence and the **REMOVE when** condition. Holds are decisions: add or remove them in a
+  reviewed PR, never by closing a bot PR silently. Held versions do not appear on the dashboard,
+  so each Renovate window re-checks the REMOVE conditions.
 - **Lockfile maintenance** (weekly transitive-dependency refresh, Mondays) → deliberately **not**
   auto-merged: it pulls transitive deps to their latest versions, which **sidesteps the 10-day
   cooldown**, so a human approves it.
@@ -58,6 +64,28 @@ Defined in `renovate.json` → `packageRules`:
 > The first run is intentionally noisy — it clears an accumulated drift backlog (several apps trail
 > on next/react/convex/tailwind), and one PR will digest-pin every workflow. Expect a wave of PRs,
 > after which it stays quiet.
+
+## Renovate windows
+
+Renovate and coding agents both merge to `main`, and `main` requires PRs to be up to date, so
+every merge from one side leaves the other side's PRs behind. Instead of running Renovate
+constantly, pause feature merges and drain the dependency queue in one supervised window:
+`/renovate-window` (`.claude/commands/renovate-window.md`). It dispatches Renovate, gets each
+automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, and stops for a
+human on majors and lockfile maintenance. The Monday/Thursday cron stays as a safety net that keeps
+the dashboard current. Security PRs (`security` label) are not deferred to a window.
+
+### Handling each PR state
+
+| State | Action |
+|---|---|
+| Green, automerge armed, **behind** `main` | Tick the PR's *rebase/retry* checkbox, then dispatch Renovate. **Never** use GitHub's *Update branch*: its merge commit counts as a human edit and Renovate stops managing the branch. |
+| Green, armed, up to date | GitHub merges it; nothing to do. |
+| Conflicting (`DIRTY`) | Renovate rebases its own branches on the next run. |
+| Red, flaky | Re-run the failed jobs. |
+| Red, needs code changes | Do the migration on your own branch (e.g. `deps/<name>`), then close the bot PR with a link. Do not push to `renovate/*`. |
+| Red, cannot work yet | Add a `HOLD:` rule with the evidence; Renovate autocloses the PR on its next run. |
+| *PR Edited (Blocked)* on the dashboard | Human commits exist; do not tick its checkbox (it discards them). Close or finish the PR by hand. |
 
 ## Security model
 
