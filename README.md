@@ -150,7 +150,7 @@ These values persist in the local Convex backend between sessions.
 │   │   └── src/
 │   ├── storybook/             # Component storybook (@repo/storybook, port 3003)
 │   │   └── src/
-│   └── demo/                  # Standalone UI style demo
+│   └── demo/                  # Customized downstream upgrade canary (no backend)
 │       └── src/
 ├── packages/
 │   ├── backend/               # Convex backend (@repo/backend)

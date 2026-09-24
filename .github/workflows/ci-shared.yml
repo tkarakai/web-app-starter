@@ -110,19 +110,53 @@ jobs:
       - name: Run Convex tests
         run: bunx turbo test:convex
 
+  # Source-snapshot contract + real downstream app; no publishing/deploy credentials.
+  foundation-canary:
+    name: Foundation Upgrade Canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+      - name: Exercise negative upgrade contracts
+        run: bun run test:foundation
+      - name: Rehearse real demo baseline to target
+        run: bun run test:foundation-canary
+      - name: Retain plan and executable evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: foundation-canary-evidence
+          include-hidden-files: true
+          path: |
+            .ci-local-artifacts/foundation-canary/*.json
+            .ci-local-artifacts/foundation-canary/*.log
+            .ci-local-artifacts/foundation-canary/apps/demo/foundation.lock.json
+            .ci-local-artifacts/foundation-canary/apps/demo/.foundation/*.json
+            .ci-local-artifacts/foundation-canary/apps/demo/.foundation/*.log
+            .ci-local-artifacts/foundation-canary/apps/demo/.next/server/app/dashboard.html
+
   # ============================================================
   # SUMMARY
   # ============================================================
   ci-shared-complete:
     name: CI Shared Complete
     runs-on: ubuntu-latest
-    needs: [lint, test-convex]
+    needs: [lint, test-convex, foundation-canary]
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
           echo "Lint: ${{ needs.lint.result }}"
           echo "Convex: ${{ needs.test-convex.result }}"
+          echo "Foundation canary: ${{ needs.foundation-canary.result }}"
+
+          if [[ "${{ needs.foundation-canary.result }}" != "success" ]]; then
+            echo "Foundation upgrade canary failed"
+            exit 1
+          fi
 
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
             echo "Lint failed"

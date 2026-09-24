@@ -58,7 +58,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ```
 
 **CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:
-1. `ci-shared.yml` — Lint, typecheck, backend tests (shared across all packages)
+1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required offline foundation upgrade canary (`bun run test:foundation` + `bun run test:foundation-canary`; see `docs/foundation-canary.md`)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)

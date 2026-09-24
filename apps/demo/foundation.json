@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "rail": "sidebar-width-snapshot",
+  "ownership": {
+    "src/": "application",
+    "src/components/ui/": "vendored",
+    "src/hooks/use-mobile.ts": "vendored",
+    "src/lib/utils.ts": "vendored",
+    "src/foundation/": "consumed",
+    "public/": "application",
+    "qa/": "application",
+    "README.md": "application",
+    "package.json": "application",
+    "next.config.ts": "application",
+    "postcss.config.mjs": "application",
+    "tsconfig.json": "application",
+    "vitest.config.ts": "application",
+    "foundation.json": "application",
+    "foundation.lock.json": "generated",
+    "node_modules/": "generated",
+    ".next/": "generated",
+    "out/": "generated",
+    ".turbo/": "generated",
+    ".foundation/": "generated",
+    "next-env.d.ts": "generated",
+    "tsconfig.tsbuildinfo": "generated"
+  }
+}

@@ -3,10 +3,24 @@
 This guide is for a **business app** — a repository that was cloned from
 web-app-starter and then diverged — that wants to take a newer starter release.
 
-The mechanism is git. You merge a starter tag into your app, resolve conflicts once,
-and run the health check. There is no package to bump; the starter ships source you
-own. See [`VERSIONING.md`](./VERSIONING.md) for what the version numbers promise and
-[`CHANGELOG.md`](./CHANGELOG.md) for what each release contains.
+The general mechanism is git. You merge a starter tag into your app, resolve
+conflicts once, and run the health check. There is no published package to bump;
+the starter ships source. See [`VERSIONING.md`](./VERSIONING.md) for what the
+version numbers promise and [`CHANGELOG.md`](./CHANGELOG.md) for each release.
+
+**An executable narrow rail now exists:** the real `apps/demo` consumes a locked
+sidebar-policy source bundle, with app-owned branding and dispatch behavior.
+[`docs/foundation-canary.md`](./docs/foundation-canary.md) documents ownership,
+enrollment, discovery, planning, actions and executable completion evidence.
+`bun run test:foundation-canary` rehearses it without live services. This does not
+replace the merge-by-tag process for other foundation areas or `.starter-version`.
+
+Keep release evidence, application upgrades and deployment separate: foundation
+maintainers publish the change and compatibility evidence; a business app takes
+it in its own **explicit upgrade PR**, preserving its customization and passing
+its own checks; only **after that PR lands** may the operations plane deploy or
+promote that revision under the existing approvals. This tooling neither merges
+nor deploys, and does not define the operator journey.
 
 ---
 
@@ -323,9 +337,12 @@ If you are an agent performing this upgrade, the procedure is:
    and apply the prescribed resolution. Do not invent a resolution for a file that is
    on the list. In particular: **run `./scripts/resolve-i18n-conflicts.py` for locale
    files rather than editing them**, and regenerate `bun.lock` rather than merging it.
-5. For files not on the list: the general rule is **take the starter's side in
-   platform code** (`packages/`, `scripts/`, `.github/`) and **your side in app code**
-   (`apps/*/src/app`, `apps/*/src/components` for anything you wrote).
+5. For files not on the list, consult an app's ownership manifest first if it has
+   one. Consumed foundation must match the declared release; vendored/editable UI
+   and app-owned code must not be blindly overwritten. For legacy areas with no
+   manifest, review starter changes in platform code (`packages/`, `scripts/`,
+   `.github/`) and preserve business changes in app code. Path location alone is
+   not permission to discard a downstream customization.
 6. Do the action-required items, including running any codemod the release ships in
    `scripts/codemods/`.
 7. `bun install`, then `bun run ci:quick`. Do not report success on a merge you have
@@ -349,6 +366,12 @@ cannot be completed, stop and say which and why.
 ---
 
 ## What a real upgrade looked like
+
+The historical manual rehearsal described below used throwaway release tags; it
+is not the automated canary or a list of currently published starter releases.
+The reproducible CI evidence now lives in
+[`docs/foundation-canary.md`](./docs/foundation-canary.md) and covers a narrower,
+explicit contract rather than claiming to automate this whole historical exercise.
 
 This guide was validated by building a business app on `v1.0.0` — rebranded across all
 29 branding files, with its own Convex tables, its own Convex functions, its own i18n

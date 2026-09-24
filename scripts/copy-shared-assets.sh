@@ -24,7 +24,7 @@ APPS=(
   "landing"
   "landing-static"
   "storybook"
-  "demo"
+  # demo owns its public branding assets; never overwrite them.
 )
 
 # Validate all source assets exist

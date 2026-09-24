@@ -1,0 +1,10 @@
+{
+  "files": {
+    "src/foundation/sidebar-width.ts": "9d80da2e709e52ba3ac80f7cad2e5337c3526adec612b226621a9f17f79e8bcd"
+  },
+  "rail": "sidebar-width-snapshot",
+  "release": "1.0.1",
+  "releaseDigest": "e2a50de79aff714cb0c1cce96848b3e36d1f23008aa2782ffef38f991db2f822",
+  "schemaVersion": 1,
+  "status": "baseline"
+}

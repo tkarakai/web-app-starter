@@ -71,6 +71,7 @@ export default [
         HTMLHRElement: "readonly",
         KeyboardEvent: "readonly",
         Event: "readonly",
+        EventTarget: "readonly",
         Blob: "readonly",
         BroadcastChannel: "readonly",
         MessageEvent: "readonly",

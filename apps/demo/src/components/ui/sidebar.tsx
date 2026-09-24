@@ -7,6 +7,7 @@ import { PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import { SIDEBAR_WIDTH_DEFAULT_REM, clampSidebarWidth, snapSidebarWidth } from "@/foundation/sidebar-width"
 import {
   Sheet,
   SheetContent,
@@ -24,12 +25,8 @@ import {
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_WIDTH_COOKIE_NAME = "sidebar_width"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH_DEFAULT_REM = 16
-const SIDEBAR_WIDTH_MIN_REM = 10
-const SIDEBAR_WIDTH_MAX_REM = 24
-const SIDEBAR_WIDTH_SNAP_POINTS_REM = [10, 12, 14, 16, 18, 20, 22, 24] as const
-const SIDEBAR_WIDTH_SNAP_DISTANCE_REM = 0.5
-const SIDEBAR_WIDTH_MOBILE = "18rem"
+// Northstar's editable UI choice: wider mobile navigation for freight corridors.
+const SIDEBAR_WIDTH_MOBILE = "20rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -67,27 +64,6 @@ function getCookieValue(name: string): string | undefined {
     ?.split("=")
     .slice(1)
     .join("=")
-}
-
-function clampSidebarWidth(width: number): number {
-  return Math.min(SIDEBAR_WIDTH_MAX_REM, Math.max(SIDEBAR_WIDTH_MIN_REM, width))
-}
-
-function snapSidebarWidth(width: number): number {
-  const clampedWidth = clampSidebarWidth(width)
-  const closestSnapPoint = SIDEBAR_WIDTH_SNAP_POINTS_REM.reduce(
-    (closest, candidate) =>
-      Math.abs(candidate - clampedWidth) < Math.abs(closest - clampedWidth)
-        ? candidate
-        : closest,
-    SIDEBAR_WIDTH_SNAP_POINTS_REM[0]
-  )
-
-  if (Math.abs(closestSnapPoint - clampedWidth) <= SIDEBAR_WIDTH_SNAP_DISTANCE_REM) {
-    return closestSnapPoint
-  }
-
-  return Math.round(clampedWidth * 100) / 100
 }
 
 const SidebarProvider = React.forwardRef<

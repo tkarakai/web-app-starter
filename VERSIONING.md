@@ -13,6 +13,13 @@ We publish **git tags**, `vMAJOR.MINOR.PATCH`, on `main`. The repo is the unit o
 versioning — individual workspace packages stay `private` and are not separately
 versioned until Phase 2 of [`docs/starter-versioning-strategy.md`](./docs/starter-versioning-strategy.md).
 
+The [foundation canary](./docs/foundation-canary.md) also has **rail-local fixture
+versions**, currently `sidebar-width-snapshot:1.0.0` and `1.0.1`. These identify
+immutable offline test payloads, not published starter tags or package versions.
+They do not imply a starter major was released or start a new LTS window. This
+slice adds no publishing/version-policy change; `.starter-version` remains the
+repo baseline for downstream merge-by-tag upgrades.
+
 Because we distribute source you own rather than a package you install, the usual
 semver definitions need one adjustment: *"breaking"* means **breaking to a business
 app that merges this tag**, which includes changes that compile fine but silently

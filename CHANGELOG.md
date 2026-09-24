@@ -18,6 +18,18 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
+- Executable downstream-upgrade canary in the existing `apps/demo`, with app-owned
+  Northstar Dispatch branding, freight-priority behavior, editable UI and a consumed
+  immutable sidebar-policy snapshot. This is an offline source-bundle rail, not
+  package publishing or operations integration.
+- Versioned ownership/lock/catalogue/plan/evidence contracts and
+  `scripts/foundation/upgrade.py` (`discover`, `plan`, `apply`, `verify`, `audit`).
+  Unsafe writes, unsupported baselines, drift, missing actions and unverifiable
+  completion are refused. CI Shared requires the real demo's red-to-green upgrade
+  rehearsal with interaction tests, typecheck and production build.
+- `docs/foundation-canary.md` — enrollment, upgrade PR procedure, limits and the
+  separation of foundation release evidence, business-app upgrades and subsequent
+  operations-plane deployment. Existing merge/deploy approvals remain unchanged.
 - `VERSIONING.md` — semver as it applies to a starter, the breaking-change budget
   (at most two majors a year), and the LTS window (previous major gets security
   fixes for six months).
@@ -43,7 +55,24 @@ merging that tag would pull an orphaned parallel history. A checkout with no
 `origin/main` — a throwaway clone used to rehearse a release — skips the check, which
 is where practice tags belong.
 
+### Fixed
+
+- Shared/demo sidebar sizing now returns its 16rem default for non-finite resize
+  calculations instead of allowing invalid CSS/state/cookies. Ordinary sizing and
+  snapping behavior is preserved; editable visual components share a pure policy.
+- Demo builds no longer overwrite app-owned branding with copied starter icons or
+  require a Google Fonts request. Other apps keep their existing asset behavior.
+
 ### Action required
+
+**Canary adoption is optional.** Existing web/admin/backend consumers stay on the
+merge-by-tag rail; no database migration or operations change is introduced.
+Demo-derived apps should preserve their own dashboard and branding when merging
+scaffold changes. To opt into the narrow managed snapshot rail, follow
+[`docs/foundation-canary.md`](./docs/foundation-canary.md#joining-this-rail-in-a-business-app)
+and keep the action/business verification scripts, manifest and locked snapshot
+together. Done when `bun run test:foundation` and `bun run test:foundation-canary`
+pass. The fixture versions are not published starter tags.
 
 **Every existing business app**, once:
 

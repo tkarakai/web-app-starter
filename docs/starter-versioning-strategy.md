@@ -1,8 +1,17 @@
 # Propagating starter updates to business apps
 
-Status: proposal, 2026-09-18. **Phase 0 is implemented** — see `VERSIONING.md`,
-`UPGRADING.md`, `CHANGELOG.md` and `scripts/release.sh`. Phases 1–3 remain a
-proposal with no decision taken.
+Status: proposal with an executable first slice. **Phase 0 tooling is implemented**
+— see `VERSIONING.md`, `UPGRADING.md`, `CHANGELOG.md` and `scripts/release.sh`.
+**The demo now exercises a narrow offline source-snapshot upgrade rail** — see
+[Foundation canary](foundation-canary.md) and `bun run test:foundation-canary`.
+It proves a real sidebar stability fix reaches a customized business app without
+replacing its editable UI, branding or dispatch rules. It is not a registry,
+published dependency architecture, or completion of Phases 1–3.
+
+Keep three planes separate: the foundation produces release/compatibility
+evidence; each business app takes it through an explicit, verified upgrade PR;
+only after that PR lands does the operations plane deploy/promote the app under
+its normal controls. Operator execution and integration are deferred.
 
 ## The problem
 
@@ -83,8 +92,10 @@ specific defects, each a guaranteed merge conflict on every future upgrade:
   and platform strings land in the same JSON objects. Adding a translation key
   downstream conflicts with any upstream key addition, in all 15 files at once.
 
-None of these are hard to fix. All three must be fixed before any propagation
-mechanism works, because a mechanism that delivers conflicts isn't propagation.
+These are repo-wide conflict seams, not prerequisites for every smaller upgrade.
+The implemented demo canary isolates one policy and the asset-copy branding seam
+without touching schema or locale ownership. Those broader seams still need their
+own executable consumers before claiming repo-wide conflict-free propagation.
 
 ## How the industry solves it
 
@@ -226,6 +237,12 @@ Propagate by *information*, not by merge:
 
 ### Tier 0 — The rail everything runs on
 
+Implemented subset: `apps/demo/foundation.json`, `foundation.lock.json`, immutable
+local releases, a deterministic plan/apply/verify/audit CLI, and a required CI
+rehearsal. These JSON contracts deliberately replace the proposed TypeScript config
+for this slice; there is no general `starter doctor`, scaffolder or registry yet.
+
+
 - **Semver the repo.** Today every package is `private`, `version: 0.0.0`. Tag
   releases, keep a real CHANGELOG, define an LTS window and a breaking-change
   budget.
@@ -312,11 +329,13 @@ first-class part of the design rather than a nice-to-have.
 
 ## Recommendation
 
-Adopt the three-tier model as the target architecture. Start with Phase 0 this
-quarter — it's cheap, it's strictly better than the status quo, and it buys time.
-Commit to Phase 1 next, because the three seam defects are pure debt: they cost us
-on every propagation attempt under *any* model, including the one we use today.
-Decide on Phase 2 once there are three or more business apps on the rail.
+Keep Phase 0's merge-by-tag rail for existing business apps. Expand the demonstrated
+canary contract incrementally, with a customized consumer and negative evidence for
+each additional boundary. The [remaining-phase table](foundation-canary.md#remaining-phases-tied-to-evidence)
+records what this slice proves and what it does not. Repo-wide branding/schema/i18n
+refactors and package/registry distribution remain proposals; the demo's isolated
+sidebar upgrade is not evidence that those harder migrations are already solved.
+Do not couple deployment or operator execution to this experiment.
 
 ## Glossary
 
@@ -369,9 +388,10 @@ project at version A and at version B, diff the two, and publish the result with
 per-file commentary. It merges nothing; it just tells a human precisely what
 changed in the parts that can't be merged automatically.
 
-**Canary app** — a consumer application kept inside the upstream repo that uses
-the published packages the way a real downstream project would, so upstream CI
-catches downstream breakage before a release ships.
+**Canary app** — a customized consumer kept inside the upstream repo that takes
+immutable releases through the downstream contract, rather than silently importing
+current workspace source. The implemented demo uses offline source bundles; using
+published packages is a later distribution decision.
 
 **Semver / LTS / breaking-change budget** — semantic versioning (major.minor.patch,
 where major means "this will break you"); a long-term-support window committing to
