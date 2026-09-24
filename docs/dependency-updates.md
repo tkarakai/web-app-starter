@@ -40,9 +40,9 @@ Defined in `renovate.json` → `packageRules`:
   `main`) once all required CI checks pass (`platformAutomerge`).
 - **Dev dependencies** (non-major) → grouped into a single "dev dependencies (non-major)" PR,
   except `convex-test`, which moves with `convex` in the "convex monorepo" group. The harness
-  has a real SDK peer constraint: `convex-test@0.0.57` requires `convex ^1.43.0`; updating it
-  alone against the `1.31.7` override fails backend tests. Check peers on both packages when
-  updating this group.
+  must remain compatible with the root SDK override. Check the resolved packages' peer
+  requirements in `bun.lock` when updating this group; advancing the harness alone can
+  break backend tests.
 - **Major versions** → **never auto-merged**; each arrives as its own PR for a human to review.
   Treat majors of the sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
   `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`) with
