@@ -1,0 +1,12 @@
+{
+  "files": {
+    "starter-packages/sidebar-policy/dist/index.d.ts": "e0135c55cef05608bcf47a0e9ac573e61d7c9e69a96dd6ad0a752289c55885cb",
+    "starter-packages/sidebar-policy/dist/index.js": "7b0f2dd6971daf9b4423fb5a8a448768af1c616c19eff2294953c48ccc2a5d20",
+    "starter-packages/sidebar-policy/package.json": "d80591ffbb67a4d6a0ab1d37e4580e4beeb2afa4e9313c98cf20d25d383d02d7"
+  },
+  "package": "@repo/starter-sidebar-policy",
+  "release": "1.0.1",
+  "releaseDigest": "edb1bba0f846150264006d12494de4407dd92b3e8db2564ea5fbcd3dae2211d0",
+  "schemaVersion": 1,
+  "status": "baseline"
+}

@@ -17,16 +17,10 @@ Follow `UPGRADING.md` — it is the source of truth, this command is the short f
    versions, so a jump of three releases means doing all three sets, in order.
 3. Create a branch `chore/starter-<target>` and `git merge <tag>`.
    Never rebase. Never merge `upstream/main`.
-4. Resolve conflicts using the "Known conflict hotspots" table in `UPGRADING.md`:
-   - locale files: run `./scripts/resolve-i18n-conflicts.py`. Do not hand-edit them
-     and do not keep both sides — that produces invalid JSON.
-   - `bun.lock`: take either side, then `bun install`. Never hand-edit.
-   - `schema.ts`: keep both sides.
-   - a branded line: if the starter changed code around the string, take their line
-     and re-apply your brand; if they only changed wording, keep yours.
-   - not on the list: starter's side in `packages/`, `scripts/`, `.github/`; this
-     app's side in app code it wrote. If you cannot tell, keep both sides and let the
-     type checker decide. Never resolve by deleting the side you did not write.
+4. Resolve conflicts using [Known conflict hotspots](../../UPGRADING.md#known-conflict-hotspots)
+   and the ownership guidance in [For coding agents](../../UPGRADING.md#for-coding-agents).
+   Those sections own the resolution rules, including locale merging and files
+   outside the hotspot list.
 5. Do the Action required items from step 2, including running any codemod the
    release ships under `scripts/codemods/`.
 6. `bun install`, then `bun run ci:quick`. Fix what it reports.

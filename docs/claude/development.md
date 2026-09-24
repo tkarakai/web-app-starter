@@ -1,6 +1,6 @@
 # Development Workflow
 
-> Detailed guide for AI agents. See `CLAUDE.md` for the quick reference.
+> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
 
 ## Starting Development
 
@@ -26,14 +26,8 @@ bun run dev:stop
 
 ### Development process isolation
 
-The launcher requires Python 3.9+ and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
-
-- `bun run dev:stop` stops verified services in this checkout.
-- `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.
-- `bun run dev:nuke-all` explicitly stops verified services across this Git repository's worktrees, with confirmation (`--yes` for non-interactive use). It preserves databases, dependencies and build caches.
-- Existing servers started before this change have no identity record. Stop them from their original terminals once, then restart with the updated launcher. Unknown or stale PIDs are never adopted automatically.
-
-Keep separate deployments and API/HTTP ports for separate applications. A different deployment's process name does not indicate a conflict. Run the isolation regression tests with `bun run test:dev-scripts`; they use disposable processes and temporary checkouts.
+See [Development process isolation](../../README.md#development-process-isolation)
+for launcher requirements, process ownership checks and safe stop commands.
 
 ### Dev Seed Accounts
 

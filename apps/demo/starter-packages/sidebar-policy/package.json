@@ -1,0 +1,14 @@
+{
+  "exports": {
+    ".": {
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "name": "@repo/starter-sidebar-policy",
+  "type": "module",
+  "version": "1.0.1"
+}

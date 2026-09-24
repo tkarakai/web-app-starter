@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3003",
-    "prebuild": "../../scripts/copy-shared-assets.sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:starter-policy": "vitest run qa/tests/starter-policy.test.tsx",
+    "test:business": "vitest run qa/tests/business.test.tsx"
   },
   "dependencies": {
+    "@repo/starter-sidebar-policy": "file:./starter-packages/sidebar-policy",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.7",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -28,6 +31,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.4",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "4.5.2",
+    "happy-dom": "^20.3.7",
+    "vitest": "^5.0.0",
     "@types/node": "25.0.8",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",

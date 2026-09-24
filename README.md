@@ -2,13 +2,13 @@
 
 [![CI Gate](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml)
 
-A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend foundation. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
+A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend starter. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
 
 ## What this starter gives you
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
 - **Six Next.js apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo.
-- **Shared packages**: UI (`@repo/design-system`), auth (`@repo/auth`), backend (`@repo/backend`), i18n (`@repo/i18n`), edge rate limiting (`@repo/edge-rate-limit`), design patterns (`@repo/design-patterns`).
+- **Shared packages** for UI, auth, backend, i18n, rate limiting and starter sidebar policy; see [Shared packages](#shared-packages).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
 - Tailwind v4 + shadcn/ui styling with a bold, modern interface.
@@ -91,12 +91,13 @@ This lists verified development services across this repository’s worktrees an
 
 ### Development process isolation
 
-The launcher requires Python 3.9+ and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+The launcher requires Node.js 22.6 or newer (it runs `scripts/dev-processes.ts` through `scripts/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
 
 - `bun run dev:stop` stops verified services in this checkout.
 - `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.
 - `bun run dev:nuke-all` explicitly stops verified services across this Git repository's worktrees, with confirmation (`--yes` for non-interactive use). It preserves databases, dependencies and build caches.
 - Existing servers started before this change have no identity record. Stop them from their original terminals once, then restart with the updated launcher. Unknown or stale PIDs are never adopted automatically.
+- Legacy PID cleanup uses one open file descriptor and rejects symlinks, hardlinks and non-files. Stopping all services leaves `.dev-pids` empty rather than deleting a path that another process may have replaced.
 
 Keep separate deployments and API/HTTP ports for separate applications. A different deployment's process name does not indicate a conflict. Run the isolation regression tests with `bun run test:dev-scripts`; they use disposable processes and temporary checkouts.
 
@@ -150,7 +151,7 @@ These values persist in the local Convex backend between sessions.
 │   │   └── src/
 │   ├── storybook/             # Component storybook (@repo/storybook, port 3003)
 │   │   └── src/
-│   └── demo/                  # Standalone UI style demo
+│   └── demo/                  # Standalone UI/dispatch demo; also tests starter upgrades
 │       └── src/
 ├── packages/
 │   ├── backend/               # Convex backend (@repo/backend)
@@ -166,6 +167,7 @@ These values persist in the local Convex backend between sessions.
 │   │   ├── messages/          # Translation files (15 languages)
 │   │   └── src/               # i18n config and utilities
 │   ├── edge-rate-limit/       # Shared edge rate limiting (@repo/edge-rate-limit)
+│   ├── starter-sidebar-policy/ # Versioned sidebar sizing policy
 │   └── design-patterns/       # Design patterns (@repo/design-patterns)
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
@@ -177,7 +179,7 @@ These values persist in the local Convex backend between sessions.
 │   ├── ensure-local-deps.sh   # Dependency setup
 │   └── ensure-branch-tracking.sh # Git utility
 ├── .github/workflows/
-│   ├── ci-shared.yml          # Shared CI: lint, typecheck, backend tests
+│   ├── ci-shared.yml          # Shared CI (see docs/claude/ci.md)
 │   ├── ci-web.yml             # Web app CI: test, build, E2E
 │   ├── ci-admin.yml           # Admin app CI: test, build, E2E
 │   ├── ci-landing.yml         # Landing app CI: test, build, E2E
@@ -230,6 +232,12 @@ Shared edge rate limiter used by web, admin, and landing app proxies. Provides p
 ### `@repo/design-patterns` — Design Patterns
 
 Shared design patterns and utilities.
+
+### `@repo/starter-sidebar-policy` — Sidebar Sizing
+
+Shared sizing policy used by the design system and the standalone demo. See the
+[package guide](packages/starter-sidebar-policy/README.md) for consumption and
+release instructions, and [the demo guide](apps/demo/README.md) to run the app.
 
 ## Run against cloud Convex + Better Auth
 

@@ -4,7 +4,7 @@
 #  IMPORTANT: Keep this script in sync with the GitHub Actions CI workflows!
 #
 #  This script mirrors what runs in .github/workflows/:
-#    - ci-shared.yml     (lint, typecheck, backend tests)
+#    - ci-shared.yml     (lint, typecheck, backend tests, starter upgrade rehearsal)
 #    - ci-web.yml        (web: tests, coverage, build, bundle size, E2E)
 #    - ci-admin.yml      (admin: tests, coverage, build, bundle size, E2E)
 #    - ci-landing.yml    (landing: tests, coverage, build, bundle size, E2E)
@@ -23,9 +23,10 @@
 #   3. Bun unit tests (per app: web, admin, landing)
 #   4. Component tests + coverage (per app: web, admin, landing)
 #   5. Convex backend tests (backend)
-#   6. Production build (per app: web, admin, landing, storybook)
-#   7. Bundle size check (per app: apps with .size-limit.json)
-#   8. E2E tests (per app: web, admin, landing, storybook) — skip with --skip-e2e
+#   6. Starter package ownership and upgrade tests + real demo rehearsal
+#   7. Production build (per app: web, admin, landing, storybook)
+#   8. Bundle size check (per app: apps with .size-limit.json)
+#   9. E2E tests (per app: web, admin, landing, storybook) — skip with --skip-e2e
 #
 # NOT included (CI-only):
 #   - Security checks (CodeQL, dependency audit, secrets scan)
@@ -91,10 +92,9 @@ STEP_RESULTS=()
 STEP_START=0
 
 # Current time in centiseconds (hundredths of a second).
-# Uses perl's Time::HiRes for sub-second precision on macOS where
-# date +%s only gives whole seconds.
+# Node provides sub-second precision on macOS where date +%s gives whole seconds.
 now_cs() {
-  perl -MTime::HiRes=time -e 'printf "%d\n", time() * 100'
+  node -e 'console.log(Math.floor(Date.now() / 10))'
 }
 
 step_start() {
@@ -306,9 +306,9 @@ save_e2e_artifacts() {
 # ============================================================
 # Phase 1: TypeScript (mirrors ci-shared.yml → lint job)
 # ============================================================
-print_step "Step 1/8: TypeScript Check"
+print_step "Step 1/9: TypeScript Check"
 step_start
-if turbo typecheck; then
+if bun run typecheck:dev-scripts && turbo typecheck; then
   print_success "TypeScript check passed"
   step_end "all: TypeScript" "pass"
 else
@@ -320,9 +320,9 @@ fi
 # ============================================================
 # Phase 2: ESLint (mirrors ci-shared.yml → lint job)
 # ============================================================
-print_step "Step 2/8: ESLint"
+print_step "Step 2/9: ESLint"
 step_start
-if turbo lint; then
+if bun run lint:dev-scripts && turbo lint; then
   print_success "ESLint passed"
   step_end "all: ESLint" "pass"
 else
@@ -335,7 +335,14 @@ fi
 # Phase 3: Bun Unit Tests (mirrors ci-{web,admin,landing}.yml → test job)
 # Per-app so failures show which app broke.
 # ============================================================
-print_step "Step 3/8: Unit Tests (Bun)"
+print_step "Step 3/9: Unit Tests (Bun)"
+step_start
+if bun run test:dev-scripts; then
+  step_end "scripts: Process isolation and locale merge" "pass"
+else
+  step_end "scripts: Process isolation and locale merge" "fail"
+  exit 1
+fi
 PHASE_FAILED=false
 for APP in web admin landing; do
   step_start
@@ -355,7 +362,7 @@ if [ "$PHASE_FAILED" = true ]; then exit 1; fi
 # (mirrors ci-{web,admin,landing}.yml → test job → "Run Vitest with coverage")
 # Saves coverage artifacts even on failure for inspection.
 # ============================================================
-print_step "Step 4/8: Component Tests + Coverage (Vitest)"
+print_step "Step 4/9: Component Tests + Coverage (Vitest)"
 COVERAGE_PASSED=true
 for APP in web admin landing; do
   step_start
@@ -378,7 +385,7 @@ fi
 # ============================================================
 # Phase 5: Convex Backend Tests (mirrors ci-shared.yml → test-convex job)
 # ============================================================
-print_step "Step 5/8: Backend Tests (Convex)"
+print_step "Step 5/9: Backend Tests (Convex)"
 step_start
 if turbo test:convex; then
   print_success "Convex tests passed"
@@ -390,12 +397,26 @@ else
 fi
 
 # ============================================================
-# Phase 6: Production Build (per app)
+# Phase 6: Starter Upgrade Rehearsal (mirrors ci-shared.yml → starter-upgrade job)
+# ============================================================
+print_step "Step 6/9: Starter Upgrade Rehearsal"
+step_start
+if bun run typecheck:starter-upgrade && bun run lint:starter-upgrade && bun run check:starter-ownership && bun run test:starter-upgrade && bun run test:starter-rehearsal; then
+  print_success "Starter upgrade rehearsal passed"
+  step_end "demo: Starter upgrade rehearsal" "pass"
+else
+  print_error "Starter upgrade rehearsal failed"
+  step_end "demo: Starter upgrade rehearsal" "fail"
+  exit 1
+fi
+
+# ============================================================
+# Phase 7: Production Build (per app)
 # (mirrors ci-{web,admin,landing}.yml → build job + ci-storybook.yml)
 # Uses --filter=@repo/$APP... to include dependency builds.
 # Turbo caching means shared packages only build once.
 # ============================================================
-print_step "Step 6/8: Production Build"
+print_step "Step 7/9: Production Build"
 # Provide placeholder env vars for apps that need them at build time.
 # These mirror the placeholder values in ci-{web,admin,landing}.yml.
 # The actual values are only needed at runtime, not at build time.
@@ -433,11 +454,11 @@ done
 if [ "$BUILD_FAILED" = true ]; then exit 1; fi
 
 # ============================================================
-# Phase 7: Bundle Size Check (per app)
+# Phase 8: Bundle Size Check (per app)
 # (mirrors ci-{web,admin,landing}.yml → build job → "Check bundle size")
 # Only runs for apps that have a .size-limit.json config.
 # ============================================================
-print_step "Step 7/8: Bundle Size"
+print_step "Step 8/9: Bundle Size"
 BUNDLE_FAILED=false
 for APP_DIR in apps/*/; do
   APP_NAME=$(basename "$APP_DIR")
@@ -458,7 +479,7 @@ done
 if [ "$BUNDLE_FAILED" = true ]; then exit 1; fi
 
 # ============================================================
-# Phase 8: E2E Tests — Playwright (per app)
+# Phase 9: E2E Tests — Playwright (per app)
 # (mirrors ci-{web,admin,landing,storybook}.yml → e2e job)
 # Optional — skip with --skip-e2e
 # ============================================================
@@ -469,7 +490,7 @@ if [ "$SKIP_E2E" = true ]; then
     step_end "$APP: E2E (Playwright)" "skip"
   done
 else
-  print_step "Step 8/8: E2E Tests (Playwright)"
+  print_step "Step 9/9: E2E Tests (Playwright)"
   # Each app's playwright.config.ts has a webServer + reuseExistingServer setting.
   # Locally (no CI env), Playwright reuses running dev servers automatically.
   # If no server is running, Playwright starts one via the webServer command.

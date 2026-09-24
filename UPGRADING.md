@@ -3,10 +3,82 @@
 This guide is for a **business app** — a repository that was cloned from
 web-app-starter and then diverged — that wants to take a newer starter release.
 
-The mechanism is git. You merge a starter tag into your app, resolve conflicts once,
-and run the health check. There is no package to bump; the starter ships source you
-own. See [`VERSIONING.md`](./VERSIONING.md) for what the version numbers promise and
-[`CHANGELOG.md`](./CHANGELOG.md) for what each release contains.
+The general mechanism is git. You merge a starter tag into your app, resolve
+conflicts once, and run the health check. The starter generally ships source rather than published packages. See [`VERSIONING.md`](./VERSIONING.md) for what the
+version numbers promise and [`CHANGELOG.md`](./CHANGELOG.md) for each release.
+
+The standalone `apps/demo` also demonstrates one package-based upgrade:
+`@repo/starter-sidebar-policy`, consumed from immutable local package artifacts.
+Its normal dashboard, editable UI and business behavior remain application-owned.
+[`docs/starter-upgrades.md`](./docs/starter-upgrades.md) describes the executable
+ownership contract and its limits. `bun run test:starter-rehearsal` tests an upgrade
+on a copy without live services. Other starter areas still use merge-by-tag.
+
+## Three separate responsibilities
+
+Releasing starter code, changing an application, and deploying it are separate
+jobs. They have different owners and outputs. A release is not an application
+upgrade, and an application upgrade is not a deployment.
+
+### 1. Starter releases: prepare an update others can adopt
+
+- **Purpose:** provide a known version and explain how to adopt it.
+- **Owner:** starter maintainers.
+- **Inputs:** reviewed starter changes, supported starting versions, regression
+  tests and a customized demonstration application.
+- **Outputs:** an immutable release, affected areas, security urgency, required
+  migrations/codemods (or an explicit statement that none are needed), verification
+  commands and upgrade-rehearsal results.
+- **Boundary:** publishing a release cannot edit a business application's files
+  or deploy it. Package contents must not depend on application-owned code.
+- **Example:** maintainers fix non-finite sidebar widths, build package `1.0.1`,
+  declare the supported `1.0.0` starting version and regression action, then run
+  the demo rehearsal. The fixture catalogue and CI evidence record this result.
+  These local package versions are not published starter git tags.
+
+### 2. Application upgrade PRs: adopt an update deliberately
+
+- **Purpose:** make a starter release work with one application's customizations.
+- **Owner:** the application team.
+- **Inputs:** the release, current baseline, ownership manifest, application source
+  and application-specific tests.
+- **Outputs:** a reviewed code-change PR, updated dependency/baseline, completed
+  required actions and verification evidence for that exact application source.
+- **Boundary:** application code is never automatically replaced by a package
+  payload. Consumed code must match its known baseline. Editable copies need a
+  separate supported copy/update contract; they cannot silently become managed.
+- **Example:** the Northstar demo discovers `1.0.1`, reviews a plan, replaces only
+  its consumed sidebar package and runs regression tests, dispatch tests, types
+  and build. Its customized UI, freight ordering and logo remain unchanged. The
+  application team reviews and merges that change through its normal process.
+
+### 3. Operations deployment: deploy the approved application
+
+- **Purpose:** make an approved application revision available in an environment.
+- **Owner:** application operators under the existing deployment approvals.
+- **Inputs:** the merged application commit, deployment configuration and relevant
+  upgrade/migration evidence.
+- **Outputs:** staging/production deployments and deployment records. An operations
+  view may show available starter releases, applications behind those releases,
+  security urgency and upgrade readiness.
+- **Boundary:** operations may consume evidence, but must not rewrite application
+  source or perform hidden migrations during deployment. Any required migration
+  must be explicit, reviewed and separately evidenced.
+- **Example:** after the demo-shaped application's upgrade PR is approved and
+  merged, operations deploys that resulting commit through the ordinary staging
+  and production path. Merely finding a newer starter release does not trigger
+  source edits or deployment. This revision adds no operations integration.
+
+### Code ownership is a separate distinction
+
+Within these responsibilities, files may be **consumed starter code**,
+**application-owned**, **generated**, or eventually **intentionally vendored**
+(editable starter copies with a supported origin/update contract). See the
+[ownership table and transition rules](./docs/starter-upgrades.md#ownership-who-may-change-each-file).
+The sidebar policy is the only proven package boundary today. Backend schemas,
+locale content and much shared UI still mix concerns; we do not claim otherwise.
+Vendoring is not supported yet, and no demo file is labeled both managed and
+editable. `bun run check:starter-ownership` validates the supported boundary.
 
 ---
 
@@ -35,7 +107,7 @@ Verify you share history with the starter:
 git merge-base HEAD upstream/main
 ```
 
-If this prints a commit, you are on the rail and every upgrade below is an ordinary
+If this prints a commit, the repositories share history and every upgrade below is an ordinary
 merge. If it fails with "no merge base", your app was created by copying files rather
 than by cloning — see [Apps with no shared history](#apps-with-no-shared-history).
 
@@ -109,13 +181,10 @@ Release notes separate the two: a *done when* that names a `bun run` command is 
 merge-time check, and a *done when* that names `npx convex run` or a deployed URL is
 a deploy-time check you owe before shipping, not before landing the branch.
 
-**A clean merge is not a safe upgrade.** The two are unrelated, and assuming
-otherwise is the single most likely way to ship a broken upgrade. In the validation
-run behind this guide, the major release merged with **zero conflicts** and left the
-app failing `typecheck` in its own business code, because the starter had renamed a
-property on a context object the app reads. Git had nothing to conflict about: the
-starter never touched the app's file. The conflict count tells you how much *text*
-overlapped. The changelog tells you what *broke*. Read the changelog.
+**A merge without conflicts still needs verification.** For example, renaming a
+starter API can break application code even when git can merge every file.
+Read the release's required actions, then run type checks and behavior tests for
+the application. Conflict counts do not show whether an upgrade works.
 
 ### 6. Record and land
 
@@ -174,13 +243,14 @@ look identical in the conflict markers:
 - **The starter only changed wording** (`"… Administration"` → `"… Admin Console"`)
   — keep *yours*. Their copy is not better than your copy; it is just theirs.
 
-When a release's fix lands on a branded line, its **Action required** section says so
-and gives you a `grep` that proves you took it. Run that grep. It is the only thing
-that distinguishes the two cases reliably, because a reverted fix compiles.
+When a release's fix lands on a branded line, its **Action required** section says
+so and gives you a `grep` command that shows whether your merge kept the fix. Run
+that command. It is the only reliable way to tell the two cases apart, because a
+merge that drops the fix still compiles and still passes CI.
 
-This is a known defect, not a fact of life — Phase 1 of the versioning strategy
-replaces all 29 literals with one config value. Until then it is the single largest
-source of conflict volume, and it is mechanical.
+Moving the name into one configuration value is planned work (Phase 1 in
+[the versioning strategy](./docs/starter-versioning-strategy.md#order-of-work)).
+Until then, review these files one by one; branding is not isolated yet.
 
 ### `packages/backend/convex/schema.ts`
 
@@ -206,14 +276,16 @@ objects. Expect all 15 to conflict at once whenever either side adds a key.
 sides".**
 
 ```bash
-./scripts/resolve-i18n-conflicts.py
+./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts
 ```
 
 It reads the three merge stages from git, merges the *parsed objects* key by key,
-writes the result and `git add`s it. Additions from both sides are kept, a key only
-one side changed takes that side's value, and a key both sides changed to different
-values is left for you with its exact path printed. `--check` reports without
-writing.
+writes the result and `git add`s it. Additions from both sides are kept, and a key
+only one side changed takes that side's value. For conflicting values, it stages
+your value, prints the exact key path and exits with status 1. Review each reported
+key before committing; the staged file no longer appears as an unmerged file.
+`--check` reports without writing or staging. Run through the wrapper directly so
+an unresolved root `package.json` does not prevent the resolver from starting.
 
 **Why not "keep both sides" here.** It is the right instinct and it produces a file
 that is not JSON. The closing brace of a namespace is usually *shared context* that
@@ -229,8 +301,8 @@ bodies together:
   }
 ```
 
-This is not a hypothetical. It is what happened on the first run of this guide, in
-all 15 locales, and it is why the resolver exists.
+The resolver avoids this structural problem by merging parsed JSON values rather
+than concatenating text.
 
 Then verify:
 
@@ -241,18 +313,20 @@ bun run typecheck
 Keys are type-checked against `en.json`, so a dropped key in another locale fails
 there rather than at runtime.
 
-### `CLAUDE.md`, `.claude/commands/`, `README.md`
+### `AGENTS.md`, `CLAUDE.md`, `.claude/commands/`, `README.md`
 
 Your app rewrote these and the starter keeps editing them.
 
 **Resolution: keep yours, then read the starter's diff for anything worth adopting:**
 
 ```bash
-git diff HEAD...v1.1.0 -- CLAUDE.md
+git diff HEAD...v1.1.0 -- AGENTS.md CLAUDE.md
 ```
 
-The starter's conventions sections (commands, directory structure, warnings) are
-usually worth porting; its project overview is not.
+The starter's conventions now live in `AGENTS.md`; `CLAUDE.md` imports that file.
+Review the commands and warnings for useful changes while preserving your app's
+guidance. Do not replace a customized `CLAUDE.md` with the import until its durable
+instructions have been retained in your app's `AGENTS.md`.
 
 ### `packages/backend/convex/_generated/`
 
@@ -292,7 +366,7 @@ changes are usually a small delta on top.
 ## Apps with no shared history
 
 If `git merge-base` found nothing, your app was created by copying files. You can
-still get on the rail:
+still establish shared history:
 
 ```bash
 git remote add upstream https://github.com/tkarakai/web-app-starter.git
@@ -321,11 +395,14 @@ If you are an agent performing this upgrade, the procedure is:
 3. `git merge <tag>` on a fresh branch. Never rebase. Never merge `upstream/main`.
 4. For each conflicted file, check it against [Known conflict hotspots](#known-conflict-hotspots)
    and apply the prescribed resolution. Do not invent a resolution for a file that is
-   on the list. In particular: **run `./scripts/resolve-i18n-conflicts.py` for locale
+   on the list. In particular: **run `./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts` for locale
    files rather than editing them**, and regenerate `bun.lock` rather than merging it.
-5. For files not on the list: the general rule is **take the starter's side in
-   platform code** (`packages/`, `scripts/`, `.github/`) and **your side in app code**
-   (`apps/*/src/app`, `apps/*/src/components` for anything you wrote).
+5. For files not on the list, consult an app's ownership manifest first if it has
+   one. Consumed starter code must match the declared release; editable UI
+   and app-owned code must not be blindly overwritten. For legacy areas with no
+   manifest, review starter changes in platform code (`packages/`, `scripts/`,
+   `.github/`) and preserve business changes in app code. Path location alone is
+   not permission to discard a downstream customization.
 6. Do the action-required items, including running any codemod the release ships in
    `scripts/codemods/`.
 7. `bun install`, then `bun run ci:quick`. Do not report success on a merge you have
@@ -350,25 +427,59 @@ cannot be completed, stop and say which and why.
 
 ## What a real upgrade looked like
 
-This guide was validated by building a business app on `v1.0.0` — rebranded across all
-29 branding files, with its own Convex tables, its own Convex functions, its own i18n
-namespace in all 15 locales, and its own `CLAUDE.md` — and then taking three releases.
+Two kinds of upgrade have been tried end to end. Most starter changes reach an app
+the first way (merging a git tag). Only the sidebar policy uses the second way (a
+versioned package).
 
-| Release | Conflicts | Work beyond the merge | `ci:quick` |
-|---------|-----------|----------------------|------------|
-| `v1.0.1` patch — security fix in `@repo/edge-rate-limit` | 0 | none | green |
-| `v1.1.0` minor — auth hardening + new platform table + new locale keys | 18 files | resolver for 15 locales; 3 by hand, all on the hotspot list | green |
-| `v2.0.0` major — context property renamed, schema migration | **0** | codemod, then the migration at deploy time | green |
+### Merging starter tags into a customized app
 
-Three things that run is worth knowing about:
+**What was tested.** A test business app was created from `v1.0.0` and customized
+the way a real app would be: its own name in all 29 branding files, its own Convex
+tables and functions, its own i18n keys in all 15 locales, and its own `CLAUDE.md`.
+Three practice releases were then merged into it, one at a time, following this
+guide.
 
-- **The minor was the noisy one, the major was the dangerous one.** `v1.1.0` produced
-  18 conflicts and every one had a prescribed resolution. `v2.0.0` produced none and
-  broke the build.
-- **The i18n conflicts were unresolvable by hand at that volume** — 15 files, and the
-  obvious resolution silently produced invalid JSON. That is what
-  `scripts/resolve-i18n-conflicts.py` is for.
-- **One conflict was a security fix disguised as a branding conflict.** The starter
-  had wrapped the branded string in a sanitiser; taking the app's side of the line
-  reverted the fix, compiled, and passed CI. Only the release's *done when* grep
-  caught it.
+| Release | What the release changed | Files in conflict | Extra work after the merge | `bun run ci:quick` |
+|---------|--------------------------|-------------------|----------------------------|---------------------|
+| `v1.0.1` (patch) | Security fix in `@repo/edge-rate-limit` | 0 | None | Passed |
+| `v1.1.0` (minor) | Auth hardening, a new platform table, new locale keys | 18 | Ran the locale resolver for 15 files; resolved 3 by hand, all listed in [Known conflict hotspots](#known-conflict-hotspots) | Passed |
+| `v2.0.0` (major) | Renamed a context property; schema migration | 0 | Ran the release's codemod, then the migration at deploy time | Passed |
+
+**What we learned from it:**
+
+- **The number of conflicts does not tell you the risk.** `v1.1.0` had 18 conflicts,
+  and each one had a documented resolution. `v2.0.0` merged with no conflicts at
+  all, but the build broke until the codemod ran. Always do the **Action required**
+  steps, even when `git merge` reports nothing.
+- **Locale files cannot be merged by hand at this volume.** All 15 conflicted at
+  once, and the obvious fix ("keep both sides") produced files that were not valid
+  JSON. That is why `scripts/resolve-i18n-conflicts.ts` exists.
+- **One conflict looked like branding but contained a security fix.** The starter
+  had wrapped the product name in a sanitising function. Keeping the app's side of
+  that line removed the fix, and the code still compiled and passed CI. Only the
+  release's `grep` check found it (see [Branding strings](#branding-strings)).
+
+### Upgrading a versioned starter package in the demo app
+
+**What was tested.** The real demo dashboard (`apps/demo`), with its own branding,
+freight rules and editable UI, is copied and started from sidebar-policy package
+`1.0.0`. It is then upgraded to `1.0.1`. Run it yourself with
+`bun run test:starter-rehearsal`. These are local package versions, not starter git
+tags.
+
+| Step | What happens | What you can check |
+|---|---|---|
+| Start from the old version | Install package `1.0.0` in the copy | Dispatch tests and typecheck pass. Two sidebar tests fail on an invalid width. |
+| Find and plan the upgrade | Select the declared `1.0.1` release | The plan lists the package file hashes, affected area, urgency and required checks. |
+| Apply | Replace only the package files | The lock file says `pending`; the upgrade is not reported as done yet. |
+| Verify | Run the sidebar regression check, business tests, typecheck and production build | All pass; an invalid width now falls back to the 16rem default. |
+| Audit and compare | Recheck the saved logs and output hashes, and compare app source | The dashboard builds; editable UI, business rules, tests, configuration and branding are unchanged. |
+
+See [the demo rehearsal guide](./docs/starter-upgrades.md#the-real-demo-rehearsal)
+for evidence locations and CI retention. A skipped required check, a changed
+source file, a locally edited package or an outdated build stops the upgrade
+from being reported as verified.
+
+This example covers one package only. It does not merge a PR or deploy anything,
+and it does not test backend, schema or i18n changes. Those still use the
+merge-by-tag steps above.

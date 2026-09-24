@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
 # copy-shared-assets.sh
-# Copies shared assets from @repo/design-system to all apps' public directories.
-# Run this before building any app to ensure icons are available.
+# Shared branding usage: packages/design-system/assets/README.md.
 
 set -euo pipefail
 
@@ -24,7 +23,7 @@ APPS=(
   "landing"
   "landing-static"
   "storybook"
-  "demo"
+  # demo owns its public branding assets; never overwrite them.
 )
 
 # Validate all source assets exist

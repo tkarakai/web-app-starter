@@ -1,6 +1,6 @@
 # CI Guide
 
-> Detailed guide for AI agents. See `CLAUDE.md` for the quick reference.
+> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
 
 ## Local CI (Pre-Push Checks)
 
@@ -11,17 +11,19 @@ bun run ci                   # Full CI check (runs everything)
 bun run ci:quick             # Skip E2E tests for faster feedback
 ```
 
-The `bun run ci` command runs these checks in order (all via `turbo`):
-1. **TypeScript check** (`turbo typecheck`)
-2. **ESLint** (`turbo lint`)
-3. **Bun unit tests** (`turbo test`)
+The `bun run ci` command runs these checks in order (workspace checks use `turbo`;
+starter upgrade checks use the root scripts):
+1. **TypeScript check** (`bun run typecheck:dev-scripts`, `turbo typecheck`)
+2. **ESLint** (`bun run lint:dev-scripts`, `turbo lint`)
+3. **Development-script behavior and Bun unit tests** (`bun run test:dev-scripts`, `turbo test`)
 4. **Vitest component tests with coverage** (`turbo test:coverage`)
 5. **Coverage summary display** + artifact saving
 6. **Convex backend tests** (`turbo test:convex`)
-7. **Production build** (`turbo build`)
-8. **Bundle size check** (all apps with `.size-limit.json`)
-9. **Storybook build** (`turbo build --filter=@repo/storybook...`)
-10. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
+7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
+8. **Production build** (`turbo build`)
+9. **Bundle size check** (all apps with `.size-limit.json`)
+10. **Storybook build** (`turbo build --filter=@repo/storybook...`)
+11. **Playwright E2E tests** (requires `bun run dev` running in another terminal)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
@@ -45,7 +47,7 @@ bun run ci:act:quick          # Quiet mode, summary only
 bun run ci:act:offline        # Offline mode (after caches are populated)
 
 # Run a specific workflow
-./scripts/ci-local-act.sh -w shared    # Just lint + backend tests
+./scripts/ci-local-act.sh -w shared    # Shared workflow (checks listed below)
 ./scripts/ci-local-act.sh -w web       # Just web app CI
 ./scripts/ci-local-act.sh -w admin     # Just admin app CI
 ./scripts/ci-local-act.sh -w landing   # Just landing app CI
@@ -58,7 +60,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ```
 
 **CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:
-1. `ci-shared.yml` — Lint, typecheck, backend tests (shared across all packages)
+1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required starter ownership checks and demo upgrade rehearsal (see `docs/starter-upgrades.md`)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)
