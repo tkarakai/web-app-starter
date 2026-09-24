@@ -10,14 +10,16 @@ code changes, and a verdict of adopted, held, or rejected. The default is to kee
 modern and do the work a migration needs, unless it would change the app.
 **Never change app functionality for the sake of an upgrade.**
 
-Mechanics (branch, scope, validation, downstream notes) are in `docs/dependency-migrations.md`;
-this skill decides and does the work.
+Mechanics (scope, validation, downstream notes) are in `docs/dependency-migrations.md`; this
+skill decides and does the work.
 
 ## Which ticket
 
-- **Given an issue** (e.g. `/deps-major #136`), or started by `deps-update` with one: work that
-  ticket. Read it first and continue from its evidence.
-- **Given a package**: find its open ticket, or open one (see *Tickets*), then work it.
+- **Given a ticket** (e.g. `/deps-major #136`), or started by `deps-update` with one: work it.
+  Read it first and continue from its evidence.
+- **Given a package**: find the open ticket whose title names it, and retitle it if the target
+  version changed. If there is none, open one (see *Tickets*). If no newer eligible version
+  exists, say so and stop.
 - **Given nothing**: list the open tickets (`gh issue list --label dependencies --state open`) and
   the *Pending Approval* majors without a ticket (`bun run renovate:status`). The user **must
   pick one**, in the decision format of `deps-update`; never pick for them, and do nothing until
@@ -28,19 +30,22 @@ this skill decides and does the work.
 **Announce before acting**, as in `deps-update`: say which ticket you are working and whether it
 changes anything.
 
-**Green light only for high-risk tickets.** Steps 1–4 are read-only. If the ticket is high-risk
-(anything *Who decides* sends to the user), present the findings, the proposed path and the
-planned actions, and ask for the green light before step 5. Other tickets proceed without
-asking. When `deps-update` started this skill, its green light covers the run, and high-risk
-tickets stop before merging instead (step 7).
+**Asking.** Steps 1–4 change no code; they only update the ticket. Run directly, a **high-risk**
+ticket (anything *Who decides* sends to the user) is asked about once, **before merging**, with
+the trial results; other tickets need no questions. Started by `deps-update`, its green light
+covers the run, and a high-risk ticket stops at its PR, labelled `deps:awaiting-user`.
+
+**If unsure.** Interactive and run directly: when the rules and the repo do not settle
+something, ask, in the decision format of `deps-update`; never ask what they already answer.
+As a subagent or non-interactive: take the conservative option (do not merge, do not hold
+silently), write the question into the ticket, label it `deps:awaiting-user`, and stop.
 
 **As a subagent** (started by `deps-update` for one ticket, in its own worktree): you cannot ask
-the user anything. Never merge; open the PR and report back. A high-risk ticket goes as far as
-the verdict and a PR, labelled `deps:awaiting-user`.
+the user anything. Never merge: push the `deps/` branch, open the PR, and report the verdict.
 
-**Alongside Renovate.** Apply the bump on the `deps/` branch; do not tick the dashboard box.
-Renovate drops the item once the change is on `main`. If a Renovate PR for the same package is
-open, close it with a link to the `deps/` PR.
+**Alongside Renovate.** Bump on the `deps/` branch; never tick the dashboard box. Renovate drops
+the item once the change is on `main`. If a Renovate PR for the same package is open, close it
+with a link to the `deps/` PR.
 
 **Time limit.** After three failed trial attempts, or when the remaining work clearly exceeds the
 budget in *Who decides*, write the progress and the blocker into the ticket and stop.
@@ -55,19 +60,19 @@ Every major gets a ticket: an issue titled `deps: <package> <from> → <to>` wit
 `dependencies` (older tickets titled `migrate: …` are the same thing). Open it yourself, without
 asking. It holds the open work: usage, breaking changes that hit us, behaviour to prove
 unchanged, downstream impact, evidence so far, and "Work this with the `deps-major` skill". Keep
-it updated as evidence comes in. The `HOLD:` rule and the `deps/` PR link it, the PR closes it,
-and the log entry links it.
+it updated as evidence comes in. The `HOLD:` rule, the `deps/` PR and the log entry link it.
 
-Its state is one status label (create any missing one with `gh label create <name>`):
+Its state is at most one status label (create a missing one with `gh label create <name>`):
 
 | Label | Meaning |
 |---|---|
-| `deps:in-progress` | Being worked; set it when you start |
-| `deps:awaiting-user` | Verdict and PR ready; the user decides |
-| `deps:held` | A `HOLD:` rule blocks it; the ticket states the REMOVE condition |
+| *(none)* | Open work, not started or not finished |
+| `deps:in-progress` | Being worked; set it at step 5 |
+| `deps:awaiting-user` | Verdict and PR ready, or a question open; the user decides |
+| `deps:held` | A `HOLD:` rule blocks it on something upstream; the ticket states the REMOVE condition |
 | `deps:rejected` | Tried and rejected; the ticket states why and when to revisit |
 
-An adopted ticket is closed by its PR; remove its status label.
+An adopted ticket is closed by its PR.
 
 ## Rules
 
@@ -76,15 +81,15 @@ An adopted ticket is closed by its PR; remove its status label.
 - Security fix: at least **twelve hours** old. It counts as a security fix only if a GitHub
   (GHSA) or OSV advisory lists this exact version as patched. A changelog saying "security" does
   not count.
-- Exploited in the wild *and* our code reaches the vulnerable path: ask the user; they may
-  approve it immediately.
+- Exploited in the wild *and* our code reaches the vulnerable path: the user may approve it
+  sooner.
 
 **Platform-bound versions** (Node, Bun, and anything a host runs for us): use the newest line that
 is Active LTS *and* supported by every host we deploy to (GitHub Actions, Vercel, Convex), at its
 latest patch. Without an LTS, use the latest stable version that meets the release age. When the
-move needs a vendor-side change (e.g. a Vercel project's Node setting), record it under
-*Awaiting external preconditions* in `docs/dependency-log.md` and ask the user to make the change
-and confirm; the repo change waits for that confirmation.
+move needs a vendor-side change (e.g. a Vercel project's Node setting), add it to *Awaiting
+external preconditions* in `docs/dependency-log.md`, label the ticket `deps:held`, and stop.
+`deps-update` asks the user once the upstream part is met, and their "Done" resumes the ticket.
 
 **Never force peers.** No `--force`, no overrides that ignore a peer range. If peers are not
 ready, it is a hold.
@@ -100,9 +105,10 @@ major only.
 |---|---|---|
 | **A** | Dev-only tooling: linters, type packages, test, build and bundle tools | Agent decides and merges |
 | **B** | Runtime libraries used by the apps | Agent decides and merges, once user-visible behaviour tests pass unchanged |
-| **C** | `next`, `react`/`react-dom`, `convex`, the auth stack, `tailwindcss`, the runtime baseline, GitHub Actions that change permissions or credential handling | Agent assesses and trials; **the user** gives the go-ahead to merge |
+| **C** | `next`, `react`/`react-dom`, `convex`, the auth stack, `tailwindcss`, the runtime baseline, GitHub Actions that change permissions or credential handling | Agent researches and trials; **the user** decides |
 
-These always go to the user, whatever the tier:
+High-risk, so the user decides, whatever the tier:
+- Tier C.
 - **Security-relevant behaviour changes, even improvements** (e.g. a password-strength library
   that scores differently, a stricter cookie default).
 - A migration touching security-sensitive code (auth, sessions, passwords, crypto, CSP, rate
@@ -112,7 +118,7 @@ These always go to the user, whatever the tier:
 ## Steps
 
 1. **Know the usage.** Find every import (`git grep`) and why the package is installed
-   (`bun why <pkg>`). Note the apps and packages that use it, client or server, runtime or
+   (`bun why <pkg>`). Note the workspaces that declare or use it, client or server, runtime or
    dev-only, and whether our code touches it directly or only transitively.
 2. **Read every release note** from our version to the target: GitHub releases
    (`gh release list -R <owner/repo>`, `gh release view <tag> -R <owner/repo>`), the CHANGELOG, and
@@ -129,26 +135,34 @@ These always go to the user, whatever the tier:
    `gh search issues --repo <owner/repo> "<version or symptom>"`.
    Then pick a path: adopt as-is, migrate, hold (with a REMOVE condition), or reject. A hold or
    reject is fine when the change cannot be adopted without changing functionality, security or
-   performance. Record the findings in the ticket.
-5. **Tests first.** On `deps/<pkg>-<major>` from `main`, and still on the *old* version: make
-   sure tests cover the **user-visible behaviour** the package provides. Add any that are
-   missing, and confirm they pass. Commit them separately, before the bump. After the upgrade
-   they must pass **unmodified**. Internal tests may change with the dependency's API (e.g. a
-   thrown error becoming a returned error result is fine to adopt).
-6. **Trial.** Apply the bump with `bun install --minimum-release-age=864000` (use `43200` for a
-   twelve-hour security fix), follow the migration guide, then `bun run ci`. Performance is an
-   informal check: bundle sizes stay within the size-limit budgets, and nothing in the diff or the
-   release notes suggests a slowdown. If the app turns out broken, reject; some changes can only
-   be judged by trying them.
-7. **Verdict.** Adopt: open the PR (it closes the ticket). Merge it per the tier, unless you run
-   as a subagent (the parent merges) or the ticket is high-risk under `deps-update` (label it
-   `deps:awaiting-user` and stop). Hold or reject: add a `HOLD:` rule in `renovate.json` whose
-   description links the ticket, and label it `deps:held` or `deps:rejected`; it stays open. If
-   downstream apps must act, add a `CHANGELOG.md` **Action required** entry (see
-   `dependency-migrations.md`).
-8. **Record it** in `docs/dependency-log.md`, in the same PR: versions, tier, decision, what was
-   read, tests added, CI run, the ticket, and when to revisit. Rejections and rollbacks need the
+   performance. Record the findings and the path in the ticket.
+5. **Tests first.** Label the ticket `deps:in-progress`. Branch from `main` as
+   `deps/<package>-<major>`, with `@` dropped and `/` as `-` (e.g. `deps/tanstack-react-table-9`).
+   Still on the *old* version, make sure tests cover the **user-visible behaviour** the package
+   provides; add any that are missing and confirm they pass. Commit them separately, before the
+   bump. After the upgrade they must pass **unmodified**. Internal tests may change with the
+   dependency's API (e.g. a thrown error becoming a returned error result is fine to adopt).
+6. **Trial.** Bump to the same version in every workspace that declares the package
+   (`bun add <pkg>@<version> --cwd <workspace>`) and in the root `overrides` if it is pinned
+   there, then `bun install --minimum-release-age=864000` (`43200` for a twelve-hour security
+   fix). Follow the migration guide, then `bun run ci`. Performance is an informal check: bundle
+   sizes stay within the size-limit budgets, and nothing in the diff or the release notes
+   suggests a slowdown. If the app turns out broken, reject; some changes can only be judged by
+   trying them.
+7. **Verdict and PR.** Every verdict ends in one PR, with the log entry (step 8). If downstream
+   apps must act, add a `CHANGELOG.md` **Action required** entry (see `dependency-migrations.md`).
+   As a subagent, never merge: the parent does.
+   - **Adopt**: title `chore(deps): <package> <from> → <to>`, body `Closes #<ticket>` and the
+     evidence. Merge it with `gh pr merge <n> --squash` once checks are green and the branch is
+     up to date (merge `main` into it if behind). On a high-risk ticket, not before the user's
+     yes (run directly: ask; under `deps-update`: label `deps:awaiting-user` and stop).
+   - **Hold or reject**: revert only the bump; keep the new tests. The PR carries the tests, a
+     `HOLD:` rule in `renovate.json` whose description links the ticket, and the log entry; body
+     `Refs #<ticket>`, so the ticket stays open. Label the ticket `deps:held` or `deps:rejected`.
+     Merge it as above: holding is always safe.
+8. **Record it** in `docs/dependency-log.md`, in that PR: versions, tier, decision, what was read,
+   tests added, CI run, the ticket, and when to revisit. Rejections and rollbacks need the
    evidence.
 
 Hand back to `deps-update` a short verdict: the ticket, the decision, the tier, a one-line reason,
-the PR if any, and whether the user must decide.
+the PR, and whether the user must decide.
