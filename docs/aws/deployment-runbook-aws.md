@@ -47,8 +47,15 @@ bun run aws:local:up         # first run also builds the patched Floci image (~3
 | admin | http://admin.app.localhost:8080 |
 | landing | printed at the end: `http://<id>.cloudfront.localhost.floci.io:4566` |
 | Convex (API / HTTP actions) | http://convex.localhost.floci.io:3310 / :3311 |
-| Convex function logs (emails show up here) | `infra/aws/local/.state/convex.log` |
+| Convex function logs (emails show up here) | `infra/aws/local/.state/convex.log` (`bun run aws:local:logs`) |
 | Floci console | http://localhost:4566/_floci/ui |
+
+| Command | Does |
+|---|---|
+| `bun run aws:local:status` | Lists the containers, the commit deployed and these URLs; exits non-zero when the target isn't running |
+| `bun run aws:local:check` | Runs the deploy's smoke checks again |
+| `bun run aws:local:logs` | Follows the Convex function logs |
+| `bun run aws:local:down` | Stops everything and wipes its Convex data; `aws:local:up` starts fresh |
 
 The dev seed accounts exist, as in `bun run dev` (`admin@admin.com`, `user@user.com`; passwords in
 `packages/backend/convex/devSeed.ts`). Passkeys work in a normal browser: `*.localhost` counts as a
@@ -64,7 +71,7 @@ E2E_BASE_URL=http://admin.app.localhost:8080 bun run --cwd apps/admin test:e2e
 ```
 
 `bun run aws:local:up --iam` does the same with IAM enforcement on, deploying as a user that holds
-only the deployer policy (step 3a). `bun run aws:local:down` removes everything.
+only the deployer policy (step 3a).
 
 What the local target can't show (TLS at the load balancer, DNS, security groups, IAM resource
 scoping, Fargate specifics) is listed in the
