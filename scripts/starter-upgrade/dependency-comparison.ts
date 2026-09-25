@@ -110,7 +110,7 @@ function classify(a: Json, b: Json, c: Json, hasBase: boolean): Classification {
   if (ac) return "downstream-only";
   return "divergent";
 }
-const stable = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
+const stable = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?![\s\S])/;
 function direction(from: string | null, to: string | null): string {
   if (from === null || to === null) return "absent";
   if (!stable.test(from) || !stable.test(to)) return "unsupported";
@@ -141,11 +141,12 @@ export function compareDependencies(base: Snapshot | undefined, downstream: Snap
   const inputHashes = { base: base ? hash(base as unknown as Json) : null, downstream: hash(downstream as unknown as Json), target: hash(target as unknown as Json) };
   const workspaces = files.map(file => {
     const manifests = snapshots.map(s => manifestAt(s, file));
+    const suppliedManifests = hasBase ? manifests : manifests.slice(1);
     const [a, b, c] = manifests;
     const reviewReasons: string[] = [];
-    if (manifests.some((m, i) => (i !== 0 || hasBase) && !m)) reviewReasons.push("workspace-mapping-review");
+    if (suppliedManifests.some(m => !m)) reviewReasons.push("workspace-mapping-review");
     const names = manifests.map(m => m ? own(m, "name") ?? null : null);
-    if (new Set(names.map(canonical)).size > 1) reviewReasons.push("workspace-name-review");
+    if (new Set(suppliedManifests.map(m => canonical(m ? own(m, "name") ?? null : null))).size > 1) reviewReasons.push("workspace-name-review");
     if (snapshots.some(s => s && Object.values(s.manifests).filter(m => typeof m.name === "string" && m.name === (manifestAt(s, file)?.name)).length > 1)) reviewReasons.push("duplicate-workspace-name");
     const entries = sections.flatMap(section => {
       const names = [...new Set(manifests.flatMap(m => m && object(own(m, section)) ? Object.keys(m[section] as ObjectValue) : []))].sort();
@@ -161,7 +162,7 @@ export function compareDependencies(base: Snapshot | undefined, downstream: Snap
         if (!hasBase) reasons.push("base-missing");
         if (B !== null && C !== null && direction(B, C) === "decrease") reasons.push("target-lower-than-downstream");
         if (manifests.some(m => m && sections.filter(s => dependency(m, s, name) !== null).length > 1)) reasons.push("multiple-sections-review");
-        if (new Set(manifests.map(m => sections.filter(s => dependency(m, s, name) !== null).join(","))).size > 1
+        if (new Set(suppliedManifests.map(m => sections.filter(s => dependency(m, s, name) !== null).join(","))).size > 1
           && manifests.some(m => m && sections.some(s => s !== section && dependency(m, s, name) !== null))) reasons.push("section-move-review");
         const manual = classification === "divergent" || reviewReasons.length > 0 || reasons.includes("section-move-review") || reasons.includes("multiple-sections-review");
         return {

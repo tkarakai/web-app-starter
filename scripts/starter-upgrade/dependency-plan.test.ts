@@ -88,6 +88,55 @@ test("strict exact annotations compare huge segments numerically and retain ever
   }
 });
 
+test("inventory diagnostics compare supplied workspace names and section memberships", () => {
+  const b = bundle("1.0.0");
+  b.manifests["package.json"].name = "web";
+  const same = report(inputs(null, b, b), 2);
+  assert.deepEqual(same.workspaces[0].names, { A: null, B: "web", C: "web" });
+  assert.deepEqual(same.workspaces[0].reviewReasons, []);
+  assert.equal(entry(same).disposition, "keep-downstream");
+  b.manifests["package.json"].devDependencies = { react: "1.0.0" };
+  const multiple = report(inputs(null, b, b), 2);
+  for (const e of multiple.workspaces[0].entries) {
+    assert.ok(e.reviewReasons.includes("multiple-sections-review"));
+    assert.ok(!e.reviewReasons.includes("section-move-review"));
+    assert.equal(e.disposition, "manual-review");
+  }
+  const c = bundle("1.0.0", "devDependencies");
+  c.manifests["package.json"].name = "renamed";
+  for (const [left, right] of [[b, c], [c, b]]) {
+    const changed = report(inputs(null, left, right), 2);
+    assert.ok(changed.workspaces[0].reviewReasons.includes("workspace-name-review"));
+    assert.ok(changed.workspaces[0].entries.every(e => e.reviewReasons.includes("section-move-review")));
+  }
+  const withBase = report(inputs(bundle(null), b, b));
+  assert.ok(withBase.workspaces[0].reviewReasons.includes("workspace-name-review"));
+  assert.ok(withBase.workspaces[0].entries.every(e => e.reviewReasons.includes("section-move-review")));
+});
+
+test("trailing line terminators remain opaque across every snapshot and ordering direction", () => {
+  for (const suffix of ["\n", "\r", "\r\n", "\u2028", "\u2029"]) {
+    for (const index of [0, 1, 2]) {
+      const specs = ["2.0.0", "2.0.0", "1.0.0"];
+      specs[index] += suffix;
+      const e = entry(report(inputs(bundle(specs[0]), bundle(specs[1]), bundle(specs[2]))));
+      assert.deepEqual([e.A, e.B, e.C, e.current], [...specs, specs[1]]);
+      assert.deepEqual(e.specKinds, {
+        A: index === 0 ? "opaque-spec" : "exact-stable",
+        B: index === 1 ? "opaque-spec" : "exact-stable",
+        C: index === 2 ? "opaque-spec" : "exact-stable",
+      });
+      assert.deepEqual(e.exactVersionDirection, {
+        AtoB: index === 2 ? "equal" : "unsupported",
+        AtoC: index === 1 ? "decrease" : "unsupported",
+        BtoC: index === 0 ? "decrease" : "unsupported",
+      });
+      assert.ok(e.reviewReasons.includes("semantic-assessment-unsupported"));
+      assert.equal(e.reviewReasons.includes("target-lower-than-downstream"), index === 0);
+    }
+  }
+});
+
 test("newer downstream, root overrides, required and optional peers remain unassessed with source locations", () => {
   const a = bundle("18.0.0"), b = bundle("20.0.0"), c = bundle("19.0.0");
   b.manifests["package.json"].overrides = { react: "20.0.0", nested: { react: "$react" } };
