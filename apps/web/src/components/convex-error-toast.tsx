@@ -27,7 +27,7 @@ export function ConvexErrorToast() {
   const handleError = useCallback(
     (info: ConvexErrorInfo) => {
       const key = I18N_KEY_MAP[info.code];
-      toast.error(key ? t(key, info.params) : info.message);
+      toast.error(key ? t(key, info.params) : t("serverError"));
     },
     [t],
   );

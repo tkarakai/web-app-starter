@@ -200,6 +200,7 @@ function SidebarProvider({
 }
 
 function Sidebar({
+  labels = { title: "Sidebar", description: "Sidebar navigation.", close: "Close" },
   side = "left",
   variant = "sidebar",
   collapsible = "offcanvas",
@@ -208,6 +209,7 @@ function Sidebar({
   ref,
   ...props
 }: React.ComponentProps<"div"> & {
+  labels?: { title: string; description: string; close: string };
   side?: "left" | "right";
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
@@ -234,6 +236,7 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
+          closeLabel={labels.close}
           data-sidebar="sidebar"
           data-mobile="true"
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
@@ -245,8 +248,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Sidebar navigation.</SheetDescription>
+            <SheetTitle>{labels.title}</SheetTitle>
+            <SheetDescription>{labels.description}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -323,7 +326,7 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeft />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{props["aria-label"] ?? "Toggle Sidebar"}</span>
     </button>
   );
 }

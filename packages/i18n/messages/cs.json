@@ -11,7 +11,30 @@
     "signOut": "Odhlásit se",
     "error": "Došlo k chybě",
     "backToHome": "Zpět na domů",
-    "note": "Poznámka"
+    "note": "Poznámka",
+    "anonymous": "Anonymní",
+    "unknown": "Neznámé",
+    "deviceName": "{browser} v systému {os}",
+    "showPassword": "Zobrazit heslo",
+    "hidePassword": "Skrýt heslo",
+    "copy": "Kopírovat do schránky",
+    "copied": "Zkopírováno",
+    "close": "Zavřít",
+    "toggleSidebar": "Přepnout postranní panel",
+    "resizeSidebar": "Přepnout nebo změnit velikost postranního panelu",
+    "navigation": "Navigace",
+    "notFound": "Tato stránka nebyla nalezena.",
+    "announcement": "Oznámení",
+    "announcementDetails": "Podrobnosti oznámení",
+    "dismissAnnouncement": "Zavřít oznámení",
+    "otpDigit": "Číslice {index} z {length}",
+    "qrCode": "QR kód",
+    "previousMonth": "Předchozí měsíc",
+    "nextMonth": "Další měsíc",
+    "hour": "Hodina",
+    "minute": "Minuta",
+    "dayPeriod": "Dopoledne nebo odpoledne",
+    "daylightSaving": "Letní čas"
   },
   "theme": {
     "light": "Světlý motiv",
@@ -59,7 +82,11 @@
       "passwordCompromised": "Zadané heslo bylo kompromitováno. Zvolte prosím jiné heslo.",
       "rateLimited": "Příliš mnoho pokusů. Počkejte prosím chvíli a zkuste to znovu.",
       "invalidCredentials": "Neplatný e-mail nebo heslo",
-      "generic": "Došlo k chybě"
+      "generic": "Došlo k chybě",
+      "securityCheckFailed": "Nepodařilo se ověřit zásady zabezpečení. Přihlaste se znovu.",
+      "passkeyCheckFailed": "Nepodařilo se ověřit zásady přístupových klíčů. Přihlaste se přístupovým klíčem.",
+      "passkeySignInFailed": "Přihlášení přístupovým klíčem se nezdařilo.",
+      "magicLinkFailed": "Nepodařilo se odeslat přihlašovací odkaz."
     },
     "twoFactorVerify": {
       "title": "Dvoufaktorové ověření",
@@ -155,7 +182,32 @@
       "goToSignIn": "Přejít na přihlášení",
       "closeWindow": "Zavřít toto okno"
     },
-    "forgotPasswordLink": "Zapomněli jste heslo?"
+    "forgotPasswordLink": "Zapomněli jste heslo?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Vítejte zpět",
+        "description": "Přihlaste se a pokračujte do panelu.",
+        "continue": "Pokračovat"
+      },
+      "authStep": {
+        "title": "Přihlásit se",
+        "signingInAs": "Přihlašujete se jako {email}",
+        "signInWithPassword": "Přihlásit se heslem",
+        "signInWithPasskey": "Přihlásit se přístupovým klíčem",
+        "signInWithMagicLink": "Přihlásit se e-mailovým odkazem",
+        "forgotPassword": "Zapomněli jste heslo?",
+        "or": "nebo"
+      },
+      "magicLinkStep": {
+        "sent": "Zkontrolujte svůj e-mail",
+        "sentDescription": "Na adresu {email} jsme poslali odkaz. Kliknutím se přihlásíte.",
+        "resend": "Znovu odeslat odkaz",
+        "resent": "Přihlašovací odkaz byl odeslán!",
+        "usePassword": "Použít heslo",
+        "usePasskey": "Použít přístupový klíč"
+      },
+      "back": "Zpět"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "Odhlásit ze všech",
       "revokeTitle": "Odhlásit toto zařízení?",
       "revokeDescription": "Tím ukončíte relaci pro {device}. Pro přístup k účtu se bude muset znovu přihlásit.",
-      "backToDashboard": "Zpět na přehled"
+      "backToDashboard": "Zpět na přehled",
+      "loadError": "Nepodařilo se načíst relace.",
+      "revokeError": "Nepodařilo se ukončit relaci.",
+      "revokeAllError": "Nepodařilo se ukončit relace."
     },
     "account": "Nastavení",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "Vygenerovat nové záložní kódy",
       "disableConfirm": "Opravdu chcete vypnout 2FA?",
       "regenerateConfirm": "Tímto nahradíte své stávající záložní kódy. Nepoužité kódy přestanou fungovat.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "Zásady účtu vyžadují dvoufaktorové ověření. Dokončete nastavení, abyste mohli pokračovat."
+    },
+    "passkeys": {
+      "title": "Přístupové klíče",
+      "description": "Přidávejte a spravujte přístupové klíče pro rychlejší přihlašování odolné proti phishingu.",
+      "policy": "Zásada: {policy}",
+      "disabled": "Zakázáno",
+      "optional": "Volitelné",
+      "required": "Povinné",
+      "disabledDescription": "Přihlášení přístupovým klíčem je pro váš účet zakázáno.",
+      "nameLabel": "Název nového přístupového klíče (volitelné)",
+      "namePlaceholder": "Můj notebook",
+      "add": "Přidat přístupový klíč",
+      "adding": "Přidávání...",
+      "empty": "Zatím nemáte žádné přístupové klíče.",
+      "unnamed": "Nepojmenovaný přístupový klíč",
+      "singleDevice": "Klíč vázaný na zařízení",
+      "multiDevice": "Synchronizovaný klíč",
+      "rename": "Přejmenovat přístupový klíč {name}",
+      "remove": "Smazat přístupový klíč {name}",
+      "name": "Název přístupového klíče",
+      "loadError": "Nepodařilo se načíst přístupové klíče.",
+      "addError": "Nepodařilo se přidat přístupový klíč.",
+      "renameError": "Nepodařilo se přejmenovat přístupový klíč.",
+      "deleteError": "Nepodařilo se smazat přístupový klíč.",
+      "added": "Přístupový klíč byl přidán.",
+      "renamed": "Přístupový klíč byl aktualizován.",
+      "deleted": "Přístupový klíč byl odstraněn.",
+      "unsupportedTitle": "Toto zařízení nebo prohlížeč nepodporuje přístupové klíče.",
+      "unsupportedDescription": "Pro nastavení klíče se přihlaste ze zařízení nebo prohlížeče, který přístupové klíče podporuje.",
+      "requiredNotice": "Zásady účtu vyžadují přístupový klíč. Přidejte jej, abyste mohli pokračovat.",
+      "signInRequired": "Váš účet vyžaduje přihlášení přístupovým klíčem."
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "Jste přihlášeni jako {email}.",
     "description": "Nemáte oprávnění k přístupu k tomuto prostředku. Pokud se domníváte, že jde o chybu, kontaktujte prosím administrátora vaší organizace.",
     "backToSignIn": "Zpět na přihlášení"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Amerika",
+      "Europe": "Evropa",
+      "Asia & Pacific": "Asie a Tichomoří",
+      "Africa": "Afrika"
+    },
+    "zones": {
+      "America/New_York": "New York",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Ciudad de México",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "Londýn",
+      "Europe/Paris": "Paříž",
+      "Europe/Berlin": "Berlín",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Řím",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Brusel",
+      "Europe/Vienna": "Vídeň",
+      "Europe/Warsaw": "Varšava",
+      "Europe/Prague": "Praha",
+      "Europe/Budapest": "Budapešť",
+      "Europe/Bucharest": "Bukurešť",
+      "Europe/Athens": "Atény",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Stockholm",
+      "Europe/Moscow": "Moskva",
+      "Europe/Istanbul": "Istanbul",
+      "Europe/Lisbon": "Lisabon",
+      "Europe/Dublin": "Dublin",
+      "Europe/Zurich": "Curych",
+      "Asia/Tokyo": "Tokio",
+      "Asia/Shanghai": "Šanghaj",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Singapur",
+      "Asia/Seoul": "Soul",
+      "Asia/Taipei": "Tchaj-pej",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Jakarta",
+      "Asia/Manila": "Manila",
+      "Asia/Ho_Chi_Minh": "Ho Či Minovo Město",
+      "Asia/Kolkata": "Dillí / Bombaj / Kalkata",
+      "Asia/Dubai": "Dubaj",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Fidži",
+      "Africa/Cairo": "Káhira",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

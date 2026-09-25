@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordInput } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -20,7 +22,6 @@ import {
   CardTitle,
   Input,
   Label,
-  PasswordInput,
   Skeleton,
 } from "@repo/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";

@@ -13,6 +13,8 @@ type DeadlineInputProps = {
 export function DeadlineInput({ value, onChange, timeZone }: DeadlineInputProps) {
   const t = useTranslations("tasks");
   const locale = useLocale();
+  const tc = useTranslations("common");
+  const tz = useTranslations("timezones");
 
   return (
     <div className="space-y-2">
@@ -21,6 +23,14 @@ export function DeadlineInput({ value, onChange, timeZone }: DeadlineInputProps)
         value={value}
         onChange={onChange}
         locale={locale}
+        timeZoneLabels={tz.raw("zones") as Record<string, string>}
+        labels={{
+          previousMonth: tc("previousMonth"),
+          nextMonth: tc("nextMonth"),
+          hour: tc("hour"),
+          minute: tc("minute"),
+          dayPeriod: tc("dayPeriod"),
+        }}
         timeZone={timeZone}
         pickerTimeZone={timeZone}
         placeholder={t("fields.deadlinePlaceholder")}

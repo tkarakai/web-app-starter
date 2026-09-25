@@ -11,7 +11,30 @@
     "signOut": "退出登录",
     "error": "发生了错误",
     "backToHome": "返回主页",
-    "note": "注意"
+    "note": "注意",
+    "anonymous": "匿名用户",
+    "unknown": "未知",
+    "deviceName": "{os} 上的 {browser}",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
+    "copy": "复制到剪贴板",
+    "copied": "已复制",
+    "close": "关闭",
+    "toggleSidebar": "切换侧边栏",
+    "resizeSidebar": "切换侧边栏或调整其大小",
+    "navigation": "导航",
+    "notFound": "找不到此页面。",
+    "announcement": "公告",
+    "announcementDetails": "公告详情",
+    "dismissAnnouncement": "关闭公告",
+    "otpDigit": "第 {index} 位，共 {length} 位",
+    "qrCode": "二维码",
+    "previousMonth": "上个月",
+    "nextMonth": "下个月",
+    "hour": "小时",
+    "minute": "分钟",
+    "dayPeriod": "上午或下午",
+    "daylightSaving": "夏令时"
   },
   "theme": {
     "light": "浅色主题",
@@ -59,7 +82,11 @@
       "passwordCompromised": "您输入的密码已被泄露，请选择其他密码。",
       "rateLimited": "尝试次数过多，请稍后再试。",
       "invalidCredentials": "邮箱或密码无效",
-      "generic": "发生了错误"
+      "generic": "发生了错误",
+      "securityCheckFailed": "无法验证安全策略。请重新登录。",
+      "passkeyCheckFailed": "无法验证通行密钥策略。请使用通行密钥登录。",
+      "passkeySignInFailed": "通行密钥登录失败。",
+      "magicLinkFailed": "无法发送登录链接。"
     },
     "twoFactorVerify": {
       "title": "双重身份验证",
@@ -155,7 +182,32 @@
       "goToSignIn": "前往登录页面",
       "closeWindow": "关闭此窗口"
     },
-    "forgotPasswordLink": "忘记密码？"
+    "forgotPasswordLink": "忘记密码？",
+    "multiStep": {
+      "emailStep": {
+        "title": "欢迎回来",
+        "description": "登录以继续使用控制面板。",
+        "continue": "继续"
+      },
+      "authStep": {
+        "title": "登录",
+        "signingInAs": "以 {email} 登录",
+        "signInWithPassword": "使用密码登录",
+        "signInWithPasskey": "使用通行密钥登录",
+        "signInWithMagicLink": "使用登录链接登录",
+        "forgotPassword": "忘记密码？",
+        "or": "或"
+      },
+      "magicLinkStep": {
+        "sent": "请查收邮件",
+        "sentDescription": "我们已向 {email} 发送链接。点击链接即可登录。",
+        "resend": "重新发送链接",
+        "resent": "已发送登录链接！",
+        "usePassword": "使用密码",
+        "usePasskey": "使用通行密钥"
+      },
+      "back": "返回"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "全部退出",
       "revokeTitle": "退出此设备？",
       "revokeDescription": "这将结束 {device} 的会话。需要重新登录才能访问账户。",
-      "backToDashboard": "返回控制面板"
+      "backToDashboard": "返回控制面板",
+      "loadError": "无法加载会话。",
+      "revokeError": "无法终止会话。",
+      "revokeAllError": "无法终止所有会话。"
     },
     "account": "设置",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "重新生成备用代码",
       "disableConfirm": "确定要停用双重身份验证吗？",
       "regenerateConfirm": "这将替换您现有的备用验证码。未使用的验证码将不再有效。",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "你的账户策略要求双重身份验证。请完成设置以继续。"
+    },
+    "passkeys": {
+      "title": "通行密钥",
+      "description": "添加和管理通行密钥，实现更快捷且防钓鱼的登录。",
+      "policy": "策略：{policy}",
+      "disabled": "已禁用",
+      "optional": "可选",
+      "required": "必需",
+      "disabledDescription": "你的账户已禁用通行密钥登录。",
+      "nameLabel": "新通行密钥名称（可选）",
+      "namePlaceholder": "我的笔记本电脑",
+      "add": "添加通行密钥",
+      "adding": "正在添加…",
+      "empty": "尚未注册通行密钥。",
+      "unnamed": "未命名的通行密钥",
+      "singleDevice": "设备绑定密钥",
+      "multiDevice": "同步密钥",
+      "rename": "重命名通行密钥 {name}",
+      "remove": "删除通行密钥 {name}",
+      "name": "通行密钥名称",
+      "loadError": "无法加载通行密钥。",
+      "addError": "无法添加通行密钥。",
+      "renameError": "无法重命名通行密钥。",
+      "deleteError": "无法删除通行密钥。",
+      "added": "已添加通行密钥。",
+      "renamed": "已更新通行密钥。",
+      "deleted": "已移除通行密钥。",
+      "unsupportedTitle": "此设备或浏览器不支持通行密钥。",
+      "unsupportedDescription": "请使用支持通行密钥的设备或浏览器登录以完成设置。",
+      "requiredNotice": "你的账户策略要求使用通行密钥。请添加一个以继续。",
+      "signInRequired": "你的账户必须使用通行密钥登录。"
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "您已以 {email} 身份登录。",
     "description": "您没有权限访问此资源。如果您认为这是一个错误，请联系您组织的管理员。",
     "backToSignIn": "返回登录"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "美洲",
+      "Europe": "欧洲",
+      "Asia & Pacific": "亚洲和太平洋",
+      "Africa": "非洲"
+    },
+    "zones": {
+      "America/New_York": "纽约",
+      "America/Chicago": "芝加哥",
+      "America/Denver": "丹佛",
+      "America/Los_Angeles": "洛杉矶",
+      "America/Anchorage": "安克雷奇",
+      "Pacific/Honolulu": "檀香山",
+      "America/Phoenix": "菲尼克斯",
+      "America/Toronto": "多伦多",
+      "America/Vancouver": "温哥华",
+      "America/Mexico_City": "墨西哥城",
+      "America/Sao_Paulo": "圣保罗",
+      "America/Argentina/Buenos_Aires": "布宜诺斯艾利斯",
+      "America/Bogota": "波哥大",
+      "America/Lima": "利马",
+      "America/Santiago": "圣地亚哥",
+      "Europe/London": "伦敦",
+      "Europe/Paris": "巴黎",
+      "Europe/Berlin": "柏林",
+      "Europe/Madrid": "马德里",
+      "Europe/Rome": "罗马",
+      "Europe/Amsterdam": "阿姆斯特丹",
+      "Europe/Brussels": "布鲁塞尔",
+      "Europe/Vienna": "维也纳",
+      "Europe/Warsaw": "华沙",
+      "Europe/Prague": "布拉格",
+      "Europe/Budapest": "布达佩斯",
+      "Europe/Bucharest": "布加勒斯特",
+      "Europe/Athens": "雅典",
+      "Europe/Helsinki": "赫尔辛基",
+      "Europe/Stockholm": "斯德哥尔摩",
+      "Europe/Moscow": "莫斯科",
+      "Europe/Istanbul": "伊斯坦布尔",
+      "Europe/Lisbon": "里斯本",
+      "Europe/Dublin": "都柏林",
+      "Europe/Zurich": "苏黎世",
+      "Asia/Tokyo": "东京",
+      "Asia/Shanghai": "上海",
+      "Asia/Hong_Kong": "香港",
+      "Asia/Singapore": "新加坡",
+      "Asia/Seoul": "首尔",
+      "Asia/Taipei": "台北",
+      "Asia/Bangkok": "曼谷",
+      "Asia/Jakarta": "雅加达",
+      "Asia/Manila": "马尼拉",
+      "Asia/Ho_Chi_Minh": "胡志明市",
+      "Asia/Kolkata": "德里 / 孟买 / 加尔各答",
+      "Asia/Dubai": "迪拜",
+      "Australia/Sydney": "悉尼",
+      "Australia/Melbourne": "墨尔本",
+      "Pacific/Auckland": "奥克兰",
+      "Pacific/Fiji": "斐济",
+      "Africa/Cairo": "开罗",
+      "Africa/Johannesburg": "约翰内斯堡",
+      "Africa/Lagos": "拉各斯",
+      "Africa/Nairobi": "内罗毕",
+      "Africa/Casablanca": "卡萨布兰卡"
+    }
   }
 }

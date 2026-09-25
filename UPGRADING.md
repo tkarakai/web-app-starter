@@ -217,40 +217,23 @@ checked out is just a starting point `bun install` overwrites.
 
 ### Branding strings
 
-The starter's name appears as a string literal in ~29 files — auth pages, layouts,
-sidebars, footers, `packages/backend/convex/auth.ts`, e2e specs, and all 15 locale
-files under `packages/i18n/messages/`. Your app changed all of them on day one, so
-every one of them conflicts whenever the starter edits the surrounding code.
+The application name is localized content, such as `common.appName` in
+`packages/i18n/messages/*.json`. Business apps may change its value per locale.
+Components should look it up through i18n; changing the name then requires no
+component edit. A user-visible name hardcoded in a component is a localization
+bug, not a reason to introduce a single nonlocalized configuration value.
 
-**Resolution depends on what the starter changed on that line**, and the two cases
-look identical in the conflict markers:
+An earlier inventory counted 29 files containing the default name, but combined
+15 locale files, nine UI source files with localization gaps, four E2E files,
+and the backend authenticator issuer. These have different responsibilities.
+E2E assertions may intentionally check literal text for a specified language.
+The backend issuer is a separate authentication identity and must be reviewed
+with its environment labels and authentication behavior in mind.
 
-- **The starter changed code around the string** — take *their* line and re-apply
-  *your* string to it. Keeping your side wholesale silently reverts their change.
-
-  ```diff
-  - <<<<<<< HEAD
-  -   const base = "Northwind Fleet";
-  -   =======
-  -   const base = sanitizeIssuerLabel("Web App Starter");
-  -   >>>>>>> v1.1.0
-  +   const base = sanitizeIssuerLabel("Northwind Fleet");
-  ```
-
-  Here the starter added a sanitiser. Taking your own line back would have dropped
-  it and left the security fix un-applied while CI stayed green.
-
-- **The starter only changed wording** (`"… Administration"` → `"… Admin Console"`)
-  — keep *yours*. Their copy is not better than your copy; it is just theirs.
-
-When a release's fix lands on a branded line, its **Action required** section says
-so and gives you a `grep` command that shows whether your merge kept the fix. Run
-that command. It is the only reliable way to tell the two cases apart, because a
-merge that drops the fix still compiles and still passes CI.
-
-Moving the name into one configuration value is planned work (Phase 1 in
-[the versioning strategy](./docs/starter-versioning-strategy.md#order-of-work)).
-Until then, review these files one by one; branding is not isolated yet.
+Neither changing a translation nor editing the same file guarantees a merge
+conflict. When edits do overlap, preserve application wording, required message
+keys and interpolation parameters, and any accompanying code fixes. Follow the
+locale merge procedure below and the release's action-required checks.
 
 ### `packages/backend/convex/schema.ts`
 
@@ -269,11 +252,16 @@ follow [`docs/convex-migrations.md`](./docs/convex-migrations.md) before deployi
 
 ### `packages/i18n/messages/*.json`
 
-15 locale files in a flat shared namespace; your keys and ours land in the same
-objects. Expect all 15 to conflict at once whenever either side adds a key.
+The 15 locale files are intentionally customizable. The starter expects its
+message keys and interpolation parameters to remain available; business apps may
+change translated values and add their own keys. The application team owns
+keeping these files consistent and resolving overlaps during upgrades. Changes
+to different keys can merge cleanly; conflicts are possible, not automatic.
 
-**Resolution: run the resolver. Do not hand-merge these, and do not "keep both
-sides".**
+**Resolution: use the resolver for conflicted locale files, then review its
+decisions.** Manual resolution is also valid when the resulting JSON, required
+keys and message parameters are checked. Do not blindly concatenate conflict
+hunks with an editor's "keep both sides" action.
 
 ```bash
 ./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts
@@ -451,13 +439,15 @@ guide.
   and each one had a documented resolution. `v2.0.0` merged with no conflicts at
   all, but the build broke until the codemod ran. Always do the **Action required**
   steps, even when `git merge` reports nothing.
-- **Locale files cannot be merged by hand at this volume.** All 15 conflicted at
-  once, and the obvious fix ("keep both sides") produced files that were not valid
-  JSON. That is why `scripts/resolve-i18n-conflicts.ts` exists.
+- **The resolver helps with overlapping locale edits.** All 15 conflicted in
+  this particular rehearsal, and blindly keeping both hunks produced invalid
+  JSON. This does not imply that every locale update conflicts or that reviewed
+  manual resolution is unsupported.
 - **One conflict looked like branding but contained a security fix.** The starter
   had wrapped the product name in a sanitising function. Keeping the app's side of
   that line removed the fix, and the code still compiled and passed CI. Only the
-  release's `grep` check found it (see [Branding strings](#branding-strings)).
+  release's `grep` check found it. This historical backend scenario is distinct
+  from looking up a localized UI name.
 
 ### Upgrading a versioned starter package in the demo app
 

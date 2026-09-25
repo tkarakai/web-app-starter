@@ -7,12 +7,13 @@ import { Separator } from "@repo/design-system";
 
 export function Footer() {
   const t = useTranslations("landing.footer");
+  const tc = useTranslations("common");
 
   return (
     <footer className="w-full">
       <Separator />
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-6 py-8 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-        <p>&copy; {new Date().getFullYear()} Web App Starter</p>
+        <p>&copy; {new Date().getFullYear()} {tc("appName")}</p>
         <nav className="flex gap-6">
           <Link
             href="/about"

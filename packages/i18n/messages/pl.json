@@ -11,7 +11,30 @@
     "signOut": "Wyloguj się",
     "error": "Wystąpił błąd",
     "backToHome": "Wróć do strony głównej",
-    "note": "Uwaga"
+    "note": "Uwaga",
+    "anonymous": "Anonimowy",
+    "unknown": "Nieznane",
+    "deviceName": "{browser} w systemie {os}",
+    "showPassword": "Pokaż hasło",
+    "hidePassword": "Ukryj hasło",
+    "copy": "Kopiuj do schowka",
+    "copied": "Skopiowano",
+    "close": "Zamknij",
+    "toggleSidebar": "Przełącz panel boczny",
+    "resizeSidebar": "Przełącz panel boczny lub zmień jego rozmiar",
+    "navigation": "Nawigacja",
+    "notFound": "Nie znaleziono tej strony.",
+    "announcement": "Ogłoszenie",
+    "announcementDetails": "Szczegóły ogłoszenia",
+    "dismissAnnouncement": "Zamknij ogłoszenie",
+    "otpDigit": "Cyfra {index} z {length}",
+    "qrCode": "Kod QR",
+    "previousMonth": "Poprzedni miesiąc",
+    "nextMonth": "Następny miesiąc",
+    "hour": "Godzina",
+    "minute": "Minuta",
+    "dayPeriod": "Przed południem lub po południu",
+    "daylightSaving": "Czas letni"
   },
   "theme": {
     "light": "Jasny motyw",
@@ -59,7 +82,11 @@
       "passwordCompromised": "Wprowadzone hasło zostało naruszone. Proszę wybrać inne hasło.",
       "rateLimited": "Zbyt wiele prób. Proszę chwilę poczekać przed ponowną próbą.",
       "invalidCredentials": "Nieprawidłowy adres e-mail lub hasło",
-      "generic": "Wystąpił błąd"
+      "generic": "Wystąpił błąd",
+      "securityCheckFailed": "Nie udało się sprawdzić zasad bezpieczeństwa. Zaloguj się ponownie.",
+      "passkeyCheckFailed": "Nie udało się sprawdzić zasad kluczy dostępu. Zaloguj się kluczem dostępu.",
+      "passkeySignInFailed": "Logowanie kluczem dostępu nie powiodło się.",
+      "magicLinkFailed": "Nie udało się wysłać linku do logowania."
     },
     "twoFactorVerify": {
       "title": "Uwierzytelnianie dwuskładnikowe",
@@ -155,7 +182,32 @@
       "goToSignIn": "Przejdź do strony logowania",
       "closeWindow": "Zamknij to okno"
     },
-    "forgotPasswordLink": "Nie pamiętasz hasła?"
+    "forgotPasswordLink": "Nie pamiętasz hasła?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Witaj ponownie",
+        "description": "Zaloguj się, aby przejść do panelu.",
+        "continue": "Kontynuuj"
+      },
+      "authStep": {
+        "title": "Zaloguj się",
+        "signingInAs": "Logowanie jako {email}",
+        "signInWithPassword": "Zaloguj się hasłem",
+        "signInWithPasskey": "Zaloguj się kluczem dostępu",
+        "signInWithMagicLink": "Zaloguj się linkiem",
+        "forgotPassword": "Nie pamiętasz hasła?",
+        "or": "lub"
+      },
+      "magicLinkStep": {
+        "sent": "Sprawdź swoją pocztę",
+        "sentDescription": "Wysłaliśmy link na adres {email}. Kliknij go, aby się zalogować.",
+        "resend": "Wyślij link ponownie",
+        "resent": "Link do logowania został wysłany!",
+        "usePassword": "Użyj hasła",
+        "usePasskey": "Użyj klucza dostępu"
+      },
+      "back": "Wstecz"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "Wyloguj wszystkie",
       "revokeTitle": "Wylogować to urządzenie?",
       "revokeDescription": "To zakończy sesję dla {device}. Ponowne zalogowanie będzie wymagane, aby uzyskać dostęp do konta.",
-      "backToDashboard": "Wróć do panelu"
+      "backToDashboard": "Wróć do panelu",
+      "loadError": "Nie udało się wczytać sesji.",
+      "revokeError": "Nie udało się zakończyć sesji.",
+      "revokeAllError": "Nie udało się zakończyć wszystkich sesji."
     },
     "account": "Ustawienia",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "Wygeneruj ponownie kody zapasowe",
       "disableConfirm": "Czy na pewno chcesz wyłączyć 2FA?",
       "regenerateConfirm": "Spowoduje to zastąpienie istniejących kodów zapasowych. Niewykorzystane kody przestaną działać.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "Zasady konta wymagają uwierzytelniania dwuskładnikowego. Dokończ konfigurację, aby kontynuować."
+    },
+    "passkeys": {
+      "title": "Klucze dostępu",
+      "description": "Dodawaj klucze dostępu i zarządzaj nimi, aby logować się szybciej i chronić przed phishingiem.",
+      "policy": "Zasada: {policy}",
+      "disabled": "Wyłączone",
+      "optional": "Opcjonalne",
+      "required": "Wymagane",
+      "disabledDescription": "Logowanie kluczem dostępu jest wyłączone dla Twojego konta.",
+      "nameLabel": "Nazwa nowego klucza dostępu (opcjonalnie)",
+      "namePlaceholder": "Mój laptop",
+      "add": "Dodaj klucz dostępu",
+      "adding": "Dodawanie...",
+      "empty": "Nie zarejestrowano jeszcze kluczy dostępu.",
+      "unnamed": "Klucz dostępu bez nazwy",
+      "singleDevice": "Klucz przypisany do urządzenia",
+      "multiDevice": "Zsynchronizowany klucz",
+      "rename": "Zmień nazwę klucza dostępu {name}",
+      "remove": "Usuń klucz dostępu {name}",
+      "name": "Nazwa klucza dostępu",
+      "loadError": "Nie udało się wczytać kluczy dostępu.",
+      "addError": "Nie udało się dodać klucza dostępu.",
+      "renameError": "Nie udało się zmienić nazwy klucza dostępu.",
+      "deleteError": "Nie udało się usunąć klucza dostępu.",
+      "added": "Dodano klucz dostępu.",
+      "renamed": "Zaktualizowano klucz dostępu.",
+      "deleted": "Usunięto klucz dostępu.",
+      "unsupportedTitle": "To urządzenie lub przeglądarka nie obsługuje kluczy dostępu.",
+      "unsupportedDescription": "Zaloguj się na urządzeniu lub w przeglądarce obsługującej klucze dostępu, aby je skonfigurować.",
+      "requiredNotice": "Zasady konta wymagają klucza dostępu. Dodaj go, aby kontynuować.",
+      "signInRequired": "Twoje konto wymaga logowania kluczem dostępu."
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "Jesteś zalogowany jako {email}.",
     "description": "Nie masz uprawnień do uzyskania dostępu do tego zasobu. Jeśli uważasz, że to błąd, skontaktuj się z administratorem swojej organizacji.",
     "backToSignIn": "Wróć do logowania"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Ameryki",
+      "Europe": "Europa",
+      "Asia & Pacific": "Azja i Pacyfik",
+      "Africa": "Afryka"
+    },
+    "zones": {
+      "America/New_York": "Nowy Jork",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Meksyk",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "Londyn",
+      "Europe/Paris": "Paryż",
+      "Europe/Berlin": "Berlin",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Rzym",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Bruksela",
+      "Europe/Vienna": "Wiedeń",
+      "Europe/Warsaw": "Warszawa",
+      "Europe/Prague": "Praga",
+      "Europe/Budapest": "Budapeszt",
+      "Europe/Bucharest": "Bukareszt",
+      "Europe/Athens": "Ateny",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Sztokholm",
+      "Europe/Moscow": "Moskwa",
+      "Europe/Istanbul": "Stambuł",
+      "Europe/Lisbon": "Lizbona",
+      "Europe/Dublin": "Dublin",
+      "Europe/Zurich": "Zurych",
+      "Asia/Tokyo": "Tokio",
+      "Asia/Shanghai": "Szanghaj",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Singapur",
+      "Asia/Seoul": "Seul",
+      "Asia/Taipei": "Tajpej",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Dżakarta",
+      "Asia/Manila": "Manila",
+      "Asia/Ho_Chi_Minh": "Ho Chi Minh",
+      "Asia/Kolkata": "Delhi / Mumbaj / Kolkata",
+      "Asia/Dubai": "Dubaj",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Fidżi",
+      "Africa/Cairo": "Kair",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

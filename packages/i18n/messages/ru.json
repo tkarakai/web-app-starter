@@ -11,7 +11,30 @@
     "signOut": "Выйти",
     "error": "Произошла ошибка",
     "backToHome": "Вернуться на главную",
-    "note": "Примечание"
+    "note": "Примечание",
+    "anonymous": "Аноним",
+    "unknown": "Неизвестно",
+    "deviceName": "{browser} на {os}",
+    "showPassword": "Показать пароль",
+    "hidePassword": "Скрыть пароль",
+    "copy": "Копировать в буфер обмена",
+    "copied": "Скопировано",
+    "close": "Закрыть",
+    "toggleSidebar": "Переключить боковую панель",
+    "resizeSidebar": "Переключить боковую панель или изменить её размер",
+    "navigation": "Навигация",
+    "notFound": "Страница не найдена.",
+    "announcement": "Объявление",
+    "announcementDetails": "Подробности объявления",
+    "dismissAnnouncement": "Закрыть объявление",
+    "otpDigit": "Цифра {index} из {length}",
+    "qrCode": "QR-код",
+    "previousMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "hour": "Час",
+    "minute": "Минута",
+    "dayPeriod": "До или после полудня",
+    "daylightSaving": "Летнее время"
   },
   "theme": {
     "light": "Светлая тема",
@@ -59,7 +82,11 @@
       "passwordCompromised": "Введённый пароль был скомпрометирован. Пожалуйста, выберите другой пароль.",
       "rateLimited": "Слишком много попыток. Пожалуйста, подождите немного и попробуйте снова.",
       "invalidCredentials": "Неверный адрес электронной почты или пароль",
-      "generic": "Произошла ошибка"
+      "generic": "Произошла ошибка",
+      "securityCheckFailed": "Не удалось проверить политику безопасности. Войдите снова.",
+      "passkeyCheckFailed": "Не удалось проверить политику ключей доступа. Войдите с ключом доступа.",
+      "passkeySignInFailed": "Не удалось войти с ключом доступа.",
+      "magicLinkFailed": "Не удалось отправить ссылку для входа."
     },
     "twoFactorVerify": {
       "title": "Двухфакторная аутентификация",
@@ -155,7 +182,32 @@
       "goToSignIn": "Перейти на страницу входа",
       "closeWindow": "Закрыть это окно"
     },
-    "forgotPasswordLink": "Забыли пароль?"
+    "forgotPasswordLink": "Забыли пароль?",
+    "multiStep": {
+      "emailStep": {
+        "title": "С возвращением",
+        "description": "Войдите, чтобы перейти к панели управления.",
+        "continue": "Продолжить"
+      },
+      "authStep": {
+        "title": "Войти",
+        "signingInAs": "Вход как {email}",
+        "signInWithPassword": "Войти с паролем",
+        "signInWithPasskey": "Войти с ключом доступа",
+        "signInWithMagicLink": "Войти по ссылке",
+        "forgotPassword": "Забыли пароль?",
+        "or": "или"
+      },
+      "magicLinkStep": {
+        "sent": "Проверьте почту",
+        "sentDescription": "Мы отправили ссылку на {email}. Нажмите на неё, чтобы войти.",
+        "resend": "Отправить ссылку повторно",
+        "resent": "Ссылка для входа отправлена!",
+        "usePassword": "Использовать пароль",
+        "usePasskey": "Использовать ключ доступа"
+      },
+      "back": "Назад"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "Выйти на всех",
       "revokeTitle": "Выйти на этом устройстве?",
       "revokeDescription": "Сессия для {device} будет завершена. Для доступа к аккаунту потребуется повторный вход.",
-      "backToDashboard": "Вернуться к панели"
+      "backToDashboard": "Вернуться к панели",
+      "loadError": "Не удалось загрузить сеансы.",
+      "revokeError": "Не удалось завершить сеанс.",
+      "revokeAllError": "Не удалось завершить сеансы."
     },
     "account": "Настройки",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "Сгенерировать новые резервные коды",
       "disableConfirm": "Вы уверены, что хотите отключить 2FA?",
       "regenerateConfirm": "Это заменит ваши существующие резервные коды. Неиспользованные коды перестанут работать.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "Политика учётной записи требует двухфакторную аутентификацию. Завершите настройку, чтобы продолжить."
+    },
+    "passkeys": {
+      "title": "Ключи доступа",
+      "description": "Добавляйте ключи доступа и управляйте ими для быстрого входа с защитой от фишинга.",
+      "policy": "Политика: {policy}",
+      "disabled": "Отключено",
+      "optional": "Необязательно",
+      "required": "Обязательно",
+      "disabledDescription": "Вход с ключом доступа отключён для вашей учётной записи.",
+      "nameLabel": "Название нового ключа доступа (необязательно)",
+      "namePlaceholder": "Мой ноутбук",
+      "add": "Добавить ключ доступа",
+      "adding": "Добавление...",
+      "empty": "Ключи доступа ещё не зарегистрированы.",
+      "unnamed": "Ключ доступа без названия",
+      "singleDevice": "Ключ, привязанный к устройству",
+      "multiDevice": "Синхронизируемый ключ",
+      "rename": "Переименовать ключ доступа {name}",
+      "remove": "Удалить ключ доступа {name}",
+      "name": "Название ключа доступа",
+      "loadError": "Не удалось загрузить ключи доступа.",
+      "addError": "Не удалось добавить ключ доступа.",
+      "renameError": "Не удалось переименовать ключ доступа.",
+      "deleteError": "Не удалось удалить ключ доступа.",
+      "added": "Ключ доступа добавлен.",
+      "renamed": "Ключ доступа обновлён.",
+      "deleted": "Ключ доступа удалён.",
+      "unsupportedTitle": "Это устройство или браузер не поддерживает ключи доступа.",
+      "unsupportedDescription": "Войдите с устройства или браузера с поддержкой ключей доступа, чтобы настроить ключ.",
+      "requiredNotice": "Политика учётной записи требует ключ доступа. Добавьте его, чтобы продолжить.",
+      "signInRequired": "Для вашей учётной записи требуется вход с ключом доступа."
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "Вы вошли как {email}.",
     "description": "У вас нет разрешения на доступ к этому ресурсу. Если вы считаете, что это ошибка, пожалуйста, свяжитесь с администратором вашей организации.",
     "backToSignIn": "Вернуться к входу"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Америка",
+      "Europe": "Европа",
+      "Asia & Pacific": "Азия и Тихоокеанский регион",
+      "Africa": "Африка"
+    },
+    "zones": {
+      "America/New_York": "Нью-Йорк",
+      "America/Chicago": "Чикаго",
+      "America/Denver": "Денвер",
+      "America/Los_Angeles": "Лос-Анджелес",
+      "America/Anchorage": "Анкоридж",
+      "Pacific/Honolulu": "Гонолулу",
+      "America/Phoenix": "Финикс",
+      "America/Toronto": "Торонто",
+      "America/Vancouver": "Ванкувер",
+      "America/Mexico_City": "Мехико",
+      "America/Sao_Paulo": "Сан-Паулу",
+      "America/Argentina/Buenos_Aires": "Буэнос-Айрес",
+      "America/Bogota": "Богота",
+      "America/Lima": "Лима",
+      "America/Santiago": "Сантьяго",
+      "Europe/London": "Лондон",
+      "Europe/Paris": "Париж",
+      "Europe/Berlin": "Берлин",
+      "Europe/Madrid": "Мадрид",
+      "Europe/Rome": "Рим",
+      "Europe/Amsterdam": "Амстердам",
+      "Europe/Brussels": "Брюссель",
+      "Europe/Vienna": "Вена",
+      "Europe/Warsaw": "Варшава",
+      "Europe/Prague": "Прага",
+      "Europe/Budapest": "Будапешт",
+      "Europe/Bucharest": "Бухарест",
+      "Europe/Athens": "Афины",
+      "Europe/Helsinki": "Хельсинки",
+      "Europe/Stockholm": "Стокгольм",
+      "Europe/Moscow": "Москва",
+      "Europe/Istanbul": "Стамбул",
+      "Europe/Lisbon": "Лиссабон",
+      "Europe/Dublin": "Дублин",
+      "Europe/Zurich": "Цюрих",
+      "Asia/Tokyo": "Токио",
+      "Asia/Shanghai": "Шанхай",
+      "Asia/Hong_Kong": "Гонконг",
+      "Asia/Singapore": "Сингапур",
+      "Asia/Seoul": "Сеул",
+      "Asia/Taipei": "Тайбэй",
+      "Asia/Bangkok": "Бангкок",
+      "Asia/Jakarta": "Джакарта",
+      "Asia/Manila": "Манила",
+      "Asia/Ho_Chi_Minh": "Хошимин",
+      "Asia/Kolkata": "Дели / Мумбаи / Калькутта",
+      "Asia/Dubai": "Дубай",
+      "Australia/Sydney": "Сидней",
+      "Australia/Melbourne": "Мельбурн",
+      "Pacific/Auckland": "Окленд",
+      "Pacific/Fiji": "Фиджи",
+      "Africa/Cairo": "Каир",
+      "Africa/Johannesburg": "Йоханнесбург",
+      "Africa/Lagos": "Лагос",
+      "Africa/Nairobi": "Найроби",
+      "Africa/Casablanca": "Касабланка"
+    }
   }
 }

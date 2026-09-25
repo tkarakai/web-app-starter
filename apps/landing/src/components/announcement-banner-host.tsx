@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { AnnouncementBanner } from "@repo/design-system";
 
@@ -28,6 +29,7 @@ type ActiveAnnouncement = {
 };
 
 export function AnnouncementBannerHost() {
+  const t = useTranslations("common");
   const [announcement, setAnnouncement] = React.useState<ActiveAnnouncement | null>(
     null
   );
@@ -152,6 +154,10 @@ export function AnnouncementBannerHost() {
       className="fixed top-[var(--env-banner-h,0px)] left-0 right-0 z-[60]"
     >
       <AnnouncementBanner
+      aria-label={t("announcement")}
+      dismissLabel={t("dismissAnnouncement")}
+      detailsLabel={t("announcementDetails")}
+      closeLabel={t("close")}
         name={announcement.name}
         bannerText={announcement.bannerText}
         callToActionName={announcement.callToActionName}

@@ -1,4 +1,26 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { defaultLocale, getLocaleDirection, locales, type Locale } from "@repo/i18n";
+import english from "@repo/i18n/messages/en.json";
+
 export default function NotFound() {
+  const [message, setMessage] = useState({ locale: defaultLocale, text: english.common.notFound });
+
+  // A static host serves the same 404.html for every locale. Resolve the URL's
+  // locale after hydration; the exported HTML uses the default-language message.
+  useEffect(() => {
+    const segment = window.location.pathname.split("/")[1];
+    const locale = locales.includes(segment as Locale) ? segment as Locale : defaultLocale;
+    let active = true;
+    void import(`@repo/i18n/messages/${locale}.json`).then(({ default: messages }) => {
+      if (active) setMessage({ locale, text: messages.common.notFound });
+    }).catch(() => {
+      // Keep the default-language message if the locale chunk is unavailable.
+    });
+    return () => { active = false; };
+  }, []);
+
   return (
     <>
       <style
@@ -14,6 +36,8 @@ export default function NotFound() {
         }}
       />
       <div
+        lang={message.locale}
+        dir={getLocaleDirection(message.locale)}
         style={{
           fontFamily:
             'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
@@ -49,7 +73,7 @@ export default function NotFound() {
                 margin: 0,
               }}
             >
-              This page could not be found.
+              {message.text}
             </h2>
           </div>
         </div>

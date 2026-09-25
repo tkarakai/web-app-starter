@@ -1,5 +1,7 @@
 "use client";
 
+import { PasskeyUnsupportedAlert, PasswordInput, OtpInput } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
@@ -48,10 +50,7 @@ import {
   CardTitle,
   Input,
   Label,
-  OtpInput,
   type OtpInputHandle,
-  PasskeyUnsupportedAlert,
-  PasswordInput,
   Separator,
   SlideTransition,
   usePasskeySupport,
@@ -83,6 +82,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const { landingUrl } = usePublicConfig();
   const locale = useLocale();
   const t = useTranslations("auth");
+  const tpk = useTranslations("dashboard.passkeys");
   const tps = useTranslations("passwordStrength");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -185,13 +185,13 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
     if (!policies.isResolved) {
       await authClient.signOut();
-      setError("Unable to verify security policy. Please sign in again.");
+      setError(t("errors.securityCheckFailed"));
       return true;
     }
 
     if (usedPasskey && policies.passkeyPolicy === "disabled") {
       await authClient.signOut();
-      setError("Passkey sign-in is disabled for your account.");
+      setError(tpk("disabledDescription"));
       return true;
     }
 
@@ -209,14 +209,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
       if (!passkeyResult || passkeyResult.error) {
         await authClient.signOut();
-        setError("Unable to verify passkey policy. Please sign in with passkey.");
+        setError(t("errors.passkeyCheckFailed"));
         return true;
       }
 
       const passkeys = passkeyResult.data ?? [];
       if (passkeys.length > 0 && !usedPasskey) {
         await authClient.signOut();
-        setError("Passkey sign-in is required for your account.");
+        setError(tpk("signInRequired"));
         return true;
       }
 
@@ -227,7 +227,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     }
 
     return false;
-  }, [getRolePolicies, router]);
+  }, [getRolePolicies, router, t, tpk]);
 
   // ── Sign-in: Step 0 → Step 1 ──
   const handleEmailContinue = (event: React.FormEvent<HTMLFormElement>) => {
@@ -300,7 +300,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (result.error) {
-        setError(result.error.message ?? "Passkey sign-in failed");
+        setError(t("errors.passkeySignInFailed"));
         return;
       }
 
@@ -335,7 +335,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       });
 
       if (result.error) {
-        setError(result.error.message ?? "Failed to send magic link");
+        setError(t("errors.magicLinkFailed"));
         return;
       }
 

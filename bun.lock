@@ -26,6 +26,7 @@
         "@repo/design-patterns": "workspace:*",
         "@repo/design-system": "workspace:*",
         "@repo/edge-rate-limit": "workspace:*",
+        "@repo/i18n": "workspace:*",
         "@tanstack/react-table": "^8.21.3",
         "convex": "^1.21.0",
         "lucide-react": "^1.46.0",
@@ -201,6 +202,7 @@
       },
       "devDependencies": {
         "@axe-core/playwright": "^4.10.0",
+        "@formatjs/icu-messageformat-parser": "3.5.1",
         "@playwright/test": "^1.58.0",
         "@size-limit/file": "^13.0.0",
         "@tailwindcss/postcss": "4.3.3",

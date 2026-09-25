@@ -11,7 +11,30 @@
     "signOut": "Abmelden",
     "error": "Ein Fehler ist aufgetreten",
     "backToHome": "Zurück zur Startseite",
-    "note": "Hinweis"
+    "note": "Hinweis",
+    "anonymous": "Anonym",
+    "unknown": "Unbekannt",
+    "deviceName": "{browser} auf {os}",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "copy": "In die Zwischenablage kopieren",
+    "copied": "Kopiert",
+    "close": "Schließen",
+    "toggleSidebar": "Seitenleiste umschalten",
+    "resizeSidebar": "Seitenleiste umschalten oder Größe ändern",
+    "navigation": "Navigation",
+    "notFound": "Diese Seite wurde nicht gefunden.",
+    "announcement": "Ankündigung",
+    "announcementDetails": "Details zur Ankündigung",
+    "dismissAnnouncement": "Ankündigung schließen",
+    "otpDigit": "Ziffer {index} von {length}",
+    "qrCode": "QR-Code",
+    "previousMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat",
+    "hour": "Stunde",
+    "minute": "Minute",
+    "dayPeriod": "Vormittags oder nachmittags",
+    "daylightSaving": "Sommerzeit"
   },
   "theme": {
     "light": "Helles Design",
@@ -59,7 +82,11 @@
       "passwordCompromised": "Das eingegebene Passwort wurde kompromittiert. Bitte wählen Sie ein anderes Passwort.",
       "rateLimited": "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
       "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
-      "generic": "Ein Fehler ist aufgetreten"
+      "generic": "Ein Fehler ist aufgetreten",
+      "securityCheckFailed": "Die Sicherheitsrichtlinie konnte nicht überprüft werden. Melden Sie sich erneut an.",
+      "passkeyCheckFailed": "Die Passkey-Richtlinie konnte nicht überprüft werden. Melden Sie sich mit einem Passkey an.",
+      "passkeySignInFailed": "Anmeldung mit Passkey fehlgeschlagen.",
+      "magicLinkFailed": "Der Anmeldelink konnte nicht gesendet werden."
     },
     "twoFactorVerify": {
       "title": "Zwei-Faktor-Authentifizierung",
@@ -155,7 +182,32 @@
       "goToSignIn": "Zur Anmeldeseite",
       "closeWindow": "Dieses Fenster schließen"
     },
-    "forgotPasswordLink": "Passwort vergessen?"
+    "forgotPasswordLink": "Passwort vergessen?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Willkommen zurück",
+        "description": "Melden Sie sich an, um zu Ihrem Dashboard zu gelangen.",
+        "continue": "Weiter"
+      },
+      "authStep": {
+        "title": "Anmelden",
+        "signingInAs": "Anmeldung als {email}",
+        "signInWithPassword": "Mit Passwort anmelden",
+        "signInWithPasskey": "Mit Passkey anmelden",
+        "signInWithMagicLink": "Mit Anmeldelink anmelden",
+        "forgotPassword": "Passwort vergessen?",
+        "or": "oder"
+      },
+      "magicLinkStep": {
+        "sent": "Überprüfen Sie Ihre E-Mails",
+        "sentDescription": "Wir haben einen Link an {email} gesendet. Klicken Sie darauf, um sich anzumelden.",
+        "resend": "Link erneut senden",
+        "resent": "Anmeldelink gesendet!",
+        "usePassword": "Passwort verwenden",
+        "usePasskey": "Passkey verwenden"
+      },
+      "back": "Zurück"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "Alle abmelden",
       "revokeTitle": "Von diesem Gerät abmelden?",
       "revokeDescription": "Dies beendet die Sitzung für {device}. Eine erneute Anmeldung ist erforderlich, um auf das Konto zuzugreifen.",
-      "backToDashboard": "Zurück zum Dashboard"
+      "backToDashboard": "Zurück zum Dashboard",
+      "loadError": "Sitzungen konnten nicht geladen werden.",
+      "revokeError": "Sitzung konnte nicht beendet werden.",
+      "revokeAllError": "Sitzungen konnten nicht beendet werden."
     },
     "account": "Einstellungen",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "Backup-Codes neu generieren",
       "disableConfirm": "Sind Sie sicher, dass Sie 2FA deaktivieren möchten?",
       "regenerateConfirm": "Dadurch werden Ihre bestehenden Backup-Codes ersetzt. Nicht verwendete Codes funktionieren nicht mehr.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "Ihre Kontorichtlinie erfordert eine Zwei-Faktor-Authentifizierung. Schließen Sie die Einrichtung ab, um fortzufahren."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Verwalten Sie Passkeys für eine schnellere, phishingresistente Anmeldung.",
+      "policy": "Richtlinie: {policy}",
+      "disabled": "Deaktiviert",
+      "optional": "Optional",
+      "required": "Erforderlich",
+      "disabledDescription": "Die Passkey-Anmeldung ist für Ihr Konto deaktiviert.",
+      "nameLabel": "Neuer Passkey-Name (optional)",
+      "namePlaceholder": "Mein Laptop",
+      "add": "Passkey hinzufügen",
+      "adding": "Wird hinzugefügt...",
+      "empty": "Noch keine Passkeys eingerichtet.",
+      "unnamed": "Unbenannter Passkey",
+      "singleDevice": "Gerätegebundener Passkey",
+      "multiDevice": "Synchronisierter Passkey",
+      "rename": "Passkey {name} umbenennen",
+      "remove": "Passkey {name} löschen",
+      "name": "Passkey-Name",
+      "loadError": "Passkeys konnten nicht geladen werden.",
+      "addError": "Passkey konnte nicht hinzugefügt werden.",
+      "renameError": "Passkey konnte nicht umbenannt werden.",
+      "deleteError": "Passkey konnte nicht gelöscht werden.",
+      "added": "Passkey hinzugefügt.",
+      "renamed": "Passkey aktualisiert.",
+      "deleted": "Passkey entfernt.",
+      "unsupportedTitle": "Dieses Gerät oder dieser Browser unterstützt keine Passkeys.",
+      "unsupportedDescription": "Melden Sie sich auf einem Gerät oder Browser mit Passkey-Unterstützung an, um einen einzurichten.",
+      "requiredNotice": "Ihre Kontorichtlinie erfordert einen Passkey. Fügen Sie einen hinzu, um fortzufahren.",
+      "signInRequired": "Für Ihr Konto ist die Anmeldung mit einem Passkey erforderlich."
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "Sie sind angemeldet als {email}.",
     "description": "Sie haben keine Berechtigung, auf diese Ressource zuzugreifen. Wenn Sie glauben, dass dies ein Fehler ist, wenden Sie sich bitte an den Administrator Ihrer Organisation.",
     "backToSignIn": "Zurück zur Anmeldung"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Amerika",
+      "Europe": "Europa",
+      "Asia & Pacific": "Asien und Pazifik",
+      "Africa": "Afrika"
+    },
+    "zones": {
+      "America/New_York": "New York",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Mexiko-Stadt",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "London",
+      "Europe/Paris": "Paris",
+      "Europe/Berlin": "Berlin",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Rom",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Brüssel",
+      "Europe/Vienna": "Wien",
+      "Europe/Warsaw": "Warschau",
+      "Europe/Prague": "Prag",
+      "Europe/Budapest": "Budapest",
+      "Europe/Bucharest": "Bukarest",
+      "Europe/Athens": "Athen",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Stockholm",
+      "Europe/Moscow": "Moskau",
+      "Europe/Istanbul": "Istanbul",
+      "Europe/Lisbon": "Lissabon",
+      "Europe/Dublin": "Dublin",
+      "Europe/Zurich": "Zürich",
+      "Asia/Tokyo": "Tokio",
+      "Asia/Shanghai": "Shanghai",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Singapur",
+      "Asia/Seoul": "Seoul",
+      "Asia/Taipei": "Taipei",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Jakarta",
+      "Asia/Manila": "Manila",
+      "Asia/Ho_Chi_Minh": "Ho-Chi-Minh-Stadt",
+      "Asia/Kolkata": "Delhi / Mumbai / Kolkata",
+      "Asia/Dubai": "Dubai",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Fidschi",
+      "Africa/Cairo": "Kairo",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

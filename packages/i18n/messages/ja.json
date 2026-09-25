@@ -11,7 +11,30 @@
     "signOut": "ログアウト",
     "error": "エラーが発生しました",
     "backToHome": "ホームに戻る",
-    "note": "注記"
+    "note": "注記",
+    "anonymous": "匿名",
+    "unknown": "不明",
+    "deviceName": "{os} 上の {browser}",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを非表示",
+    "copy": "クリップボードにコピー",
+    "copied": "コピーしました",
+    "close": "閉じる",
+    "toggleSidebar": "サイドバーの表示切り替え",
+    "resizeSidebar": "サイドバーの表示切り替え・サイズ変更",
+    "navigation": "ナビゲーション",
+    "notFound": "ページが見つかりません。",
+    "announcement": "お知らせ",
+    "announcementDetails": "お知らせの詳細",
+    "dismissAnnouncement": "お知らせを閉じる",
+    "otpDigit": "{length} 桁中の {index} 桁目",
+    "qrCode": "QRコード",
+    "previousMonth": "前の月",
+    "nextMonth": "次の月",
+    "hour": "時",
+    "minute": "分",
+    "dayPeriod": "午前または午後",
+    "daylightSaving": "夏時間"
   },
   "theme": {
     "light": "ライトテーマ",
@@ -59,7 +82,11 @@
       "passwordCompromised": "入力されたパスワードは漏洩しています。別のパスワードを選択してください。",
       "rateLimited": "試行回数が多すぎます。しばらく待ってからもう一度お試しください。",
       "invalidCredentials": "メールアドレスまたはパスワードが無効です",
-      "generic": "エラーが発生しました"
+      "generic": "エラーが発生しました",
+      "securityCheckFailed": "セキュリティポリシーを確認できませんでした。もう一度ログインしてください。",
+      "passkeyCheckFailed": "パスキーポリシーを確認できませんでした。パスキーでログインしてください。",
+      "passkeySignInFailed": "パスキーでのログインに失敗しました。",
+      "magicLinkFailed": "ログインリンクを送信できませんでした。"
     },
     "twoFactorVerify": {
       "title": "二要素認証",
@@ -155,7 +182,32 @@
       "goToSignIn": "サインインページへ",
       "closeWindow": "このウィンドウを閉じる"
     },
-    "forgotPasswordLink": "パスワードをお忘れですか？"
+    "forgotPasswordLink": "パスワードをお忘れですか？",
+    "multiStep": {
+      "emailStep": {
+        "title": "おかえりなさい",
+        "description": "ダッシュボードにアクセスするにはログインしてください。",
+        "continue": "続行"
+      },
+      "authStep": {
+        "title": "ログイン",
+        "signingInAs": "{email} としてログイン",
+        "signInWithPassword": "パスワードでログイン",
+        "signInWithPasskey": "パスキーでログイン",
+        "signInWithMagicLink": "ログインリンクでログイン",
+        "forgotPassword": "パスワードをお忘れですか？",
+        "or": "または"
+      },
+      "magicLinkStep": {
+        "sent": "メールをご確認ください",
+        "sentDescription": "{email} にリンクを送信しました。リンクをクリックしてログインしてください。",
+        "resend": "リンクを再送信",
+        "resent": "ログインリンクを送信しました！",
+        "usePassword": "パスワードを使用",
+        "usePasskey": "パスキーを使用"
+      },
+      "back": "戻る"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "すべてログアウト",
       "revokeTitle": "このデバイスからログアウトしますか？",
       "revokeDescription": "{device}のセッションが終了します。アカウントにアクセスするには再度ログインが必要です。",
-      "backToDashboard": "ダッシュボードに戻る"
+      "backToDashboard": "ダッシュボードに戻る",
+      "loadError": "セッションを読み込めませんでした。",
+      "revokeError": "セッションを終了できませんでした。",
+      "revokeAllError": "セッションを一括終了できませんでした。"
     },
     "account": "設定",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "バックアップコードを再生成",
       "disableConfirm": "2FAを無効にしてもよろしいですか？",
       "regenerateConfirm": "既存のバックアップコードが置き換えられます。未使用のコードは使用できなくなります。",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "アカウントのポリシーにより二要素認証が必要です。設定を完了して続行してください。"
+    },
+    "passkeys": {
+      "title": "パスキー",
+      "description": "パスキーを追加・管理し、フィッシングに強い高速なログインを利用できます。",
+      "policy": "ポリシー：{policy}",
+      "disabled": "無効",
+      "optional": "任意",
+      "required": "必須",
+      "disabledDescription": "このアカウントではパスキーによるログインが無効です。",
+      "nameLabel": "新しいパスキーの名前（任意）",
+      "namePlaceholder": "自分のノートパソコン",
+      "add": "パスキーを追加",
+      "adding": "追加中…",
+      "empty": "パスキーはまだ登録されていません。",
+      "unnamed": "名前のないパスキー",
+      "singleDevice": "デバイスに固定されたパスキー",
+      "multiDevice": "同期されたパスキー",
+      "rename": "パスキー {name} の名前を変更",
+      "remove": "パスキー {name} を削除",
+      "name": "パスキー名",
+      "loadError": "パスキーを読み込めませんでした。",
+      "addError": "パスキーを追加できませんでした。",
+      "renameError": "パスキーの名前を変更できませんでした。",
+      "deleteError": "パスキーを削除できませんでした。",
+      "added": "パスキーを追加しました。",
+      "renamed": "パスキーを更新しました。",
+      "deleted": "パスキーを削除しました。",
+      "unsupportedTitle": "このデバイスまたはブラウザーはパスキーに対応していません。",
+      "unsupportedDescription": "パスキー対応のデバイスまたはブラウザーからログインして設定してください。",
+      "requiredNotice": "アカウントのポリシーによりパスキーが必要です。追加して続行してください。",
+      "signInRequired": "このアカウントにはパスキーでのログインが必要です。"
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "{email} としてサインインしています。",
     "description": "このリソースへのアクセス権限がありません。これが誤りであると思われる場合は、組織の管理者にお問い合わせください。",
     "backToSignIn": "サインインに戻る"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "南北アメリカ",
+      "Europe": "ヨーロッパ",
+      "Asia & Pacific": "アジア・太平洋",
+      "Africa": "アフリカ"
+    },
+    "zones": {
+      "America/New_York": "ニューヨーク",
+      "America/Chicago": "シカゴ",
+      "America/Denver": "デンバー",
+      "America/Los_Angeles": "ロサンゼルス",
+      "America/Anchorage": "アンカレッジ",
+      "Pacific/Honolulu": "ホノルル",
+      "America/Phoenix": "フェニックス",
+      "America/Toronto": "トロント",
+      "America/Vancouver": "バンクーバー",
+      "America/Mexico_City": "メキシコシティ",
+      "America/Sao_Paulo": "サンパウロ",
+      "America/Argentina/Buenos_Aires": "ブエノスアイレス",
+      "America/Bogota": "ボゴタ",
+      "America/Lima": "リマ",
+      "America/Santiago": "サンティアゴ",
+      "Europe/London": "ロンドン",
+      "Europe/Paris": "パリ",
+      "Europe/Berlin": "ベルリン",
+      "Europe/Madrid": "マドリード",
+      "Europe/Rome": "ローマ",
+      "Europe/Amsterdam": "アムステルダム",
+      "Europe/Brussels": "ブリュッセル",
+      "Europe/Vienna": "ウィーン",
+      "Europe/Warsaw": "ワルシャワ",
+      "Europe/Prague": "プラハ",
+      "Europe/Budapest": "ブダペスト",
+      "Europe/Bucharest": "ブカレスト",
+      "Europe/Athens": "アテネ",
+      "Europe/Helsinki": "ヘルシンキ",
+      "Europe/Stockholm": "ストックホルム",
+      "Europe/Moscow": "モスクワ",
+      "Europe/Istanbul": "イスタンブール",
+      "Europe/Lisbon": "リスボン",
+      "Europe/Dublin": "ダブリン",
+      "Europe/Zurich": "チューリッヒ",
+      "Asia/Tokyo": "東京",
+      "Asia/Shanghai": "上海",
+      "Asia/Hong_Kong": "香港",
+      "Asia/Singapore": "シンガポール",
+      "Asia/Seoul": "ソウル",
+      "Asia/Taipei": "台北",
+      "Asia/Bangkok": "バンコク",
+      "Asia/Jakarta": "ジャカルタ",
+      "Asia/Manila": "マニラ",
+      "Asia/Ho_Chi_Minh": "ホーチミン",
+      "Asia/Kolkata": "デリー / ムンバイ / コルカタ",
+      "Asia/Dubai": "ドバイ",
+      "Australia/Sydney": "シドニー",
+      "Australia/Melbourne": "メルボルン",
+      "Pacific/Auckland": "オークランド",
+      "Pacific/Fiji": "フィジー",
+      "Africa/Cairo": "カイロ",
+      "Africa/Johannesburg": "ヨハネスブルグ",
+      "Africa/Lagos": "ラゴス",
+      "Africa/Nairobi": "ナイロビ",
+      "Africa/Casablanca": "カサブランカ"
+    }
   }
 }

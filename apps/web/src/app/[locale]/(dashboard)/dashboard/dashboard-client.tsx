@@ -1,5 +1,7 @@
 "use client";
 
+import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -7,7 +9,6 @@ import { useTranslations } from "next-intl";
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
 import {
-  Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
@@ -16,7 +17,6 @@ import {
   Separator,
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
   Tabs,
   TabsContent,
   TabsList,
@@ -38,10 +38,11 @@ export function DashboardClient() {
   useProfileSync();
 
   const authUser = useAuthUser();
+  const tc = useTranslations("common");
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<Id<"projects"> | null>(null);
 
-  const displayName = authUser?.name ?? "Anonymous";
+  const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
 
   return (

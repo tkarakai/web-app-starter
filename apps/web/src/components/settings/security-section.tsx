@@ -46,15 +46,15 @@ export function SecuritySection() {
         {enforce ? (
           <div className="mb-4 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
             {enforce === "passkey"
-              ? "Your account policy requires a passkey. Add one to continue."
-              : "Your account policy requires two-factor authentication. Complete setup to continue."}
+              ? td("passkeys.requiredNotice")
+              : td("twoFactor.requiredNotice")}
           </div>
         ) : null}
         <Tabs value={tab} onValueChange={(value) => setTab(normalizeTab(value))}>
           <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="password">{td("changePassword.title")}</TabsTrigger>
             <TabsTrigger value="2fa">{td("twoFactor.title")}</TabsTrigger>
-            <TabsTrigger value="passkeys">Passkeys</TabsTrigger>
+            <TabsTrigger value="passkeys">{td("passkeys.title")}</TabsTrigger>
             <TabsTrigger value="sessions">{td("sessions.title")}</TabsTrigger>
           </TabsList>
           <TabsContent value="password" className="mt-4">

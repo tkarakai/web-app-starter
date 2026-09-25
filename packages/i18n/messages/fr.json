@@ -11,7 +11,30 @@
     "signOut": "Se déconnecter",
     "error": "Une erreur est survenue",
     "backToHome": "Retour à l'accueil",
-    "note": "Remarque"
+    "note": "Remarque",
+    "anonymous": "Anonyme",
+    "unknown": "Inconnu",
+    "deviceName": "{browser} sur {os}",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "copy": "Copier dans le presse-papiers",
+    "copied": "Copié",
+    "close": "Fermer",
+    "toggleSidebar": "Afficher ou masquer le panneau latéral",
+    "resizeSidebar": "Afficher, masquer ou redimensionner le panneau latéral",
+    "navigation": "Navigation",
+    "notFound": "Cette page est introuvable.",
+    "announcement": "Annonce",
+    "announcementDetails": "Détails de l’annonce",
+    "dismissAnnouncement": "Fermer l’annonce",
+    "otpDigit": "Chiffre {index} sur {length}",
+    "qrCode": "Code QR",
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "hour": "Heure",
+    "minute": "Minute",
+    "dayPeriod": "Matin ou après-midi",
+    "daylightSaving": "Heure d’été"
   },
   "theme": {
     "light": "Thème clair",
@@ -59,7 +82,11 @@
       "passwordCompromised": "Le mot de passe que vous avez saisi a été compromis. Veuillez en choisir un autre.",
       "rateLimited": "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
       "invalidCredentials": "Adresse e-mail ou mot de passe incorrect",
-      "generic": "Une erreur est survenue"
+      "generic": "Une erreur est survenue",
+      "securityCheckFailed": "Impossible de vérifier la politique de sécurité. Veuillez vous reconnecter.",
+      "passkeyCheckFailed": "Impossible de vérifier la politique des clés d’accès. Connectez-vous avec une clé d’accès.",
+      "passkeySignInFailed": "La connexion par clé d’accès a échoué.",
+      "magicLinkFailed": "Impossible d’envoyer le lien de connexion."
     },
     "twoFactorVerify": {
       "title": "Authentification à deux facteurs",
@@ -155,7 +182,32 @@
       "goToSignIn": "Aller à la page de connexion",
       "closeWindow": "Fermer cette fenêtre"
     },
-    "forgotPasswordLink": "Mot de passe oublié ?"
+    "forgotPasswordLink": "Mot de passe oublié ?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Bon retour",
+        "description": "Connectez-vous pour accéder à votre tableau de bord.",
+        "continue": "Continuer"
+      },
+      "authStep": {
+        "title": "Se connecter",
+        "signingInAs": "Connexion en tant que {email}",
+        "signInWithPassword": "Se connecter avec un mot de passe",
+        "signInWithPasskey": "Se connecter avec une clé d’accès",
+        "signInWithMagicLink": "Se connecter avec un lien de connexion",
+        "forgotPassword": "Mot de passe oublié ?",
+        "or": "ou"
+      },
+      "magicLinkStep": {
+        "sent": "Vérifiez vos e-mails",
+        "sentDescription": "Nous avons envoyé un lien à {email}. Cliquez dessus pour vous connecter.",
+        "resend": "Renvoyer le lien",
+        "resent": "Lien de connexion envoyé !",
+        "usePassword": "Utiliser un mot de passe",
+        "usePasskey": "Utiliser une clé d’accès"
+      },
+      "back": "Retour"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +311,10 @@
       "revokeAllConfirm": "Tout déconnecter",
       "revokeTitle": "Déconnecter cet appareil ?",
       "revokeDescription": "Cela mettra fin à la session pour {device}. Une nouvelle connexion sera nécessaire pour accéder au compte.",
-      "backToDashboard": "Retour au tableau de bord"
+      "backToDashboard": "Retour au tableau de bord",
+      "loadError": "Impossible de charger les sessions.",
+      "revokeError": "Impossible de fermer la session.",
+      "revokeAllError": "Impossible de fermer les sessions."
     },
     "account": "Paramètres",
     "profile": {
@@ -310,7 +365,39 @@
       "regenerateBackupCodes": "Régénérer les codes de secours",
       "disableConfirm": "Voulez-vous vraiment désactiver 2FA ?",
       "regenerateConfirm": "Cela remplacera vos codes de secours existants. Les codes non utilisés ne fonctionneront plus.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "La politique de votre compte exige une authentification à deux facteurs. Terminez la configuration pour continuer."
+    },
+    "passkeys": {
+      "title": "Clés d’accès",
+      "description": "Ajoutez et gérez des clés d’accès pour une connexion plus rapide et résistante à l’hameçonnage.",
+      "policy": "Politique : {policy}",
+      "disabled": "Désactivé",
+      "optional": "Facultatif",
+      "required": "Obligatoire",
+      "disabledDescription": "La connexion par clé d’accès est désactivée pour votre compte.",
+      "nameLabel": "Nom de la nouvelle clé d’accès (facultatif)",
+      "namePlaceholder": "Mon ordinateur portable",
+      "add": "Ajouter une clé d’accès",
+      "adding": "Ajout en cours...",
+      "empty": "Aucune clé d’accès enregistrée.",
+      "unnamed": "Clé d’accès sans nom",
+      "singleDevice": "Clé liée à l’appareil",
+      "multiDevice": "Clé synchronisée",
+      "rename": "Renommer la clé d’accès {name}",
+      "remove": "Supprimer la clé d’accès {name}",
+      "name": "Nom de la clé d’accès",
+      "loadError": "Impossible de charger les clés d’accès.",
+      "addError": "Impossible d’ajouter la clé d’accès.",
+      "renameError": "Impossible de renommer la clé d’accès.",
+      "deleteError": "Impossible de supprimer la clé d’accès.",
+      "added": "Clé d’accès ajoutée.",
+      "renamed": "Clé d’accès mise à jour.",
+      "deleted": "Clé d’accès supprimée.",
+      "unsupportedTitle": "Cet appareil ou navigateur ne prend pas en charge les clés d’accès.",
+      "unsupportedDescription": "Connectez-vous depuis un appareil ou navigateur compatible pour configurer une clé d’accès.",
+      "requiredNotice": "La politique de votre compte exige une clé d’accès. Ajoutez-en une pour continuer.",
+      "signInRequired": "Votre compte exige une connexion par clé d’accès."
     }
   },
   "projects": {
@@ -503,5 +590,71 @@
     "signedInAs": "Vous êtes connecté en tant que {email}.",
     "description": "Vous n'avez pas la permission d'accéder à cette ressource. Si vous pensez qu'il s'agit d'une erreur, veuillez contacter l'administrateur de votre organisation.",
     "backToSignIn": "Retour à la connexion"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Amériques",
+      "Europe": "Europe",
+      "Asia & Pacific": "Asie et Pacifique",
+      "Africa": "Afrique"
+    },
+    "zones": {
+      "America/New_York": "New York",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Mexico",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "Londres",
+      "Europe/Paris": "Paris",
+      "Europe/Berlin": "Berlin",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Rome",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Bruxelles",
+      "Europe/Vienna": "Vienne",
+      "Europe/Warsaw": "Varsovie",
+      "Europe/Prague": "Prague",
+      "Europe/Budapest": "Budapest",
+      "Europe/Bucharest": "Bucarest",
+      "Europe/Athens": "Athènes",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Stockholm",
+      "Europe/Moscow": "Moscou",
+      "Europe/Istanbul": "Istanbul",
+      "Europe/Lisbon": "Lisbonne",
+      "Europe/Dublin": "Dublin",
+      "Europe/Zurich": "Zurich",
+      "Asia/Tokyo": "Tokyo",
+      "Asia/Shanghai": "Shanghai",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Singapour",
+      "Asia/Seoul": "Séoul",
+      "Asia/Taipei": "Taipei",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Jakarta",
+      "Asia/Manila": "Manille",
+      "Asia/Ho_Chi_Minh": "Hô Chi Minh-Ville",
+      "Asia/Kolkata": "Delhi / Bombay / Calcutta",
+      "Asia/Dubai": "Dubaï",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Fidji",
+      "Africa/Cairo": "Le Caire",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

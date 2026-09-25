@@ -46,6 +46,7 @@ interface StyledQrCodeProps {
   quietZone?: number;
   /** Additional CSS class names */
   className?: string;
+  "aria-label"?: string;
 }
 
 function StyledQrCode({
@@ -61,6 +62,7 @@ function StyledQrCode({
   borderRadius = 8,
   quietZone = 2,
   className,
+  "aria-label": ariaLabel = "QR Code",
 }: StyledQrCodeProps) {
   const [qrData, setQrData] = React.useState<{
     data: number[];
@@ -205,7 +207,7 @@ function StyledQrCode({
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         role="img"
-        aria-label="QR Code"
+        aria-label={ariaLabel}
       >
         <rect
           width={size}
