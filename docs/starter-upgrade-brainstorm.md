@@ -293,6 +293,20 @@ Suggested implementation sequence, reconsidered from this brief:
 
 This order intentionally changes the brief's “manifest first” emphasis: establish enough observable behavior to avoid encoding a confident but incorrect ownership map. Metadata and contract tests should grow together.
 
+## Reviewable implementation starting points
+
+These independent PRs are implementations of bounded ideas, not approval of the whole architecture. They remain separate from the inspected baseline; consult their checks and merge state before treating them as available features.
+
+| PR | Concrete result | Deliberate limit |
+|---|---|---|
+| [#148: app-owned icon overrides](https://github.com/tkarakai/web-app-starter/pull/148) | Tracked app inputs survive shared-asset updates; invalid overrides fail before copying | Three icon formats, existing app list; not a complete branding provider |
+| [#149: offline dependency comparison](https://github.com/tkarakai/web-app-starter/pull/149) | Explicit A/B/C snapshot bundles produce deterministic intent and conflict diagnostics without changing the app | Compatibility/security are not assessed; no resolver, install, apply or baseline advancement |
+| [#150: backend authorization contracts](https://github.com/tkarakai/web-app-starter/pull/150) | Registered query/mutation tests cover anonymous, owner and non-owner behavior plus data preservation | Emulator evidence; no production behavior change and no claim of complete browser/session coverage |
+
+The authorization work includes a negative control: temporarily bypassing the upload-deletion ownership guard makes its denial test fail, then the original production bytes are restored and the contracts pass. This is test-quality evidence, not a shipped bypass. The report prototype also tests standalone execution without app dependencies, malformed-input refusals and side-effect restrictions.
+
+UI ownership variations, message-layer composition and the broader stress applications remain proposed experiments. These first PRs make subsequent experiments easier to measure without committing to a universal shell, a large platform package or a backend storage migration.
+
 ## Decisions for review
 
 | ID | Recommendation | Alternative worth testing | What would change the recommendation? |
