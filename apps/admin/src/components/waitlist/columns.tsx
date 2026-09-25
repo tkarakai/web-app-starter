@@ -112,6 +112,9 @@ const STATUS_BADGE: Record<
 interface WaitlistMeta {
   superpowers?: string[];
   excitement?: string[];
+  role?: string;
+  company?: string;
+  useCase?: string;
 }
 
 function parseMeta(meta: string): WaitlistMeta {
@@ -143,6 +146,15 @@ const EXCITEMENT_LABELS: Record<string, string> = {
   "cautiously-optimistic": "Cautiously optimistic",
   "just-browsing": "Just browsing",
   "friend-made-me": "Friend made me",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  founder: "Founder",
+  engineering: "Engineering",
+  product: "Product",
+  design: "Design",
+  agency: "Agency",
+  other: "Other",
 };
 
 function ActionsCell({ entry }: { entry: WaitlistEntry }) {
@@ -316,6 +328,44 @@ export function createColumns(
                 {EXCITEMENT_LABELS[e] ?? e}
               </Badge>
             ))}
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "role",
+      header: "Role",
+      accessorFn: (row) => parseMeta(row.meta).role ?? "",
+      cell: ({ row }) => {
+        const role = parseMeta(row.original.meta).role;
+        if (!role) {
+          return <span className="text-muted-foreground">&mdash;</span>;
+        }
+        return (
+          <Badge variant="outline" className="text-xs">
+            {ROLE_LABELS[role] ?? role}
+          </Badge>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "company",
+      header: "Company / Use case",
+      accessorFn: (row) => {
+        const meta = parseMeta(row.meta);
+        return `${meta.company ?? ""} ${meta.useCase ?? ""}`.trim();
+      },
+      cell: ({ row }) => {
+        const { company, useCase } = parseMeta(row.original.meta);
+        if (!company && !useCase) {
+          return <span className="text-muted-foreground">&mdash;</span>;
+        }
+        return (
+          <div className="max-w-xs space-y-1 text-xs">
+            {company ? <p className="font-medium text-foreground">{company}</p> : null}
+            {useCase ? <p className="line-clamp-2 text-muted-foreground">{useCase}</p> : null}
           </div>
         );
       },

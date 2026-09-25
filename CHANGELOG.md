@@ -34,6 +34,9 @@ number attached to it and a documented, validated way to take future ones.
 - The existing standalone demo now includes Northstar Dispatch branding and
   interactive freight behavior. It also tests starter upgrades on a copy; its
   dashboard and editable UI remain application-owned.
+- Waitlist: optional **Your role**, **Company** and **What do you plan to build?** fields on the landing
+  form, shown as Role and Company / Use case columns in admin. Stored in the entry's `meta`; the backend
+  validates them only when present, so existing clients keep working. New `landing.waitlist.*` keys in all 15 locales.
 - Versioned `@repo/starter-sidebar-policy`, consumed through immutable local
   package artifacts. Demo-owned release fixtures live under `apps/demo/qa/fixtures/`.
   This does not publish a registry package or change operations.
