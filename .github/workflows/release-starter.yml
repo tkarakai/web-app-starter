@@ -25,6 +25,8 @@ concurrency:
 jobs:
   prepared:
     name: Verify release metadata
+    # Business apps keep their own package versions and publication workflows.
+    if: github.repository == 'tkarakai/web-app-starter'
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.verify.outputs.sha }}

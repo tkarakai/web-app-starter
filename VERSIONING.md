@@ -120,7 +120,9 @@ the GitHub release records actual publication time.
 
 In GitHub Actions, run **Starter Release** (`release-starter.yml`) on **main**,
 with version `1.0.0`. This is an explicit maintainer action, separate from merging
-the PR. The workflow:
+the PR. This workflow is restricted to the starter repository; it is inactive in
+downstream business apps, whose versions and publication process are independent.
+The workflow:
 
 1. Resolves and checks the prepared main commit and release notes.
 2. Runs the existing shared, web, admin, landing, landing-static and Storybook CI
