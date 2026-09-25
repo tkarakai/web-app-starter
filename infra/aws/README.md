@@ -16,7 +16,7 @@ params/<env>/     non-secret parameters per environment: local, staging, product
 docker/           next-app.Dockerfile (web and admin, standalone output)
 scripts/          operator scripts (below)
 local/            the local target: compose.yaml (Floci + a Convex backend), local-up.sh,
-                  local-down.sh, build-floci.sh + floci-patches/, convex.env
+                  local-down.sh, local-status.sh, build-floci.sh + floci-patches/, convex.env
 ```
 
 ## Deployment targets
@@ -53,7 +53,10 @@ working tree.
 ```bash
 # Local target (needs only Docker)
 bun run aws:local:up            # add --iam to deploy as the least-privilege deployer
-bun run aws:local:down
+bun run aws:local:status        # containers, deployed commit, URLs to open
+bun run aws:local:check         # smoke checks: Convex, web, admin and landing answer
+bun run aws:local:logs          # follow Convex function logs (auth emails show up here)
+bun run aws:local:down          # stop everything and wipe its Convex data
 
 # Staging (first time: infra/aws/scripts/bootstrap.sh --env staging, as an administrator)
 bun run aws:validate --env staging
