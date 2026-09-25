@@ -51,6 +51,25 @@ The copy script runs automatically:
 
 The script skips copying files that are already up to date.
 
+### Downstream app branding
+
+For any app in the script's `APPS` list, put application-owned icon sources in
+`apps/<app>/branding/`: `icon.svg`, `favicon.ico`, and `apple-touch-icon.png`.
+Commit those files. The copy script chooses each app's override first and uses
+the shared asset for each missing file. Existing apps without overrides keep
+their current behavior; the demo remains excluded.
+
+For example, `apps/web/branding/icon.svg` supplies only the web app's `/icon.svg`.
+Shared starter icon changes still reach other apps and any files you have not
+overridden. Removing an override deliberately restores the shared asset on the
+next copy. Supply all three formats for consistent branding across browsers.
+
+Do not edit the generated icons in `public/`: they remain ignored by Git and are
+replaced during build/dev. Overrides must be regular files in a real directory;
+symlinks and invalid override paths fail before copying. This mechanism covers
+these three icons only, not product names, page metadata, email branding or theme
+tokens. Keep other application assets in the app's `public/` directory.
+
 ### Where It's Used
 
 These app layout files reference the shared icons:
