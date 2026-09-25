@@ -72,7 +72,7 @@ tokens. Keep other application assets in the app's `public/` directory.
 
 ### Where It's Used
 
-These app layout files reference the shared icons:
+These app layout files reference the generated public icons:
 - `apps/web/src/app/[locale]/layout.tsx`
 - `apps/admin/src/app/layout.tsx`
 - `apps/landing/src/app/[locale]/layout.tsx`

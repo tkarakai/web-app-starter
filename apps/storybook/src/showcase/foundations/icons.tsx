@@ -126,7 +126,7 @@ export default function IconsShowcase() {
     <>
       <DemoSection
         title="App Icon"
-        description="The shared brand icon used across all applications. Managed in @repo/design-system/assets/ and automatically copied to each app's public directory during build."
+        description="This app's icon assets. See packages/design-system/assets/README.md for branding ownership, overrides, and fallback policy."
       >
         <div className="space-y-6">
           {/* SVG icon at different sizes */}
@@ -168,15 +168,15 @@ export default function IconsShowcase() {
             <p className="text-sm font-medium">Usage</p>
             <div className="space-y-1 text-xs text-muted-foreground">
               <p>
-                <strong className="text-foreground">Source:</strong>{" "}
+                <strong className="text-foreground">Branding guide:</strong>{" "}
                 <code className="rounded bg-background px-1 py-0.5">
-                  packages/design-system/assets/
+                  packages/design-system/assets/README.md
                 </code>
               </p>
               <p>
                 <strong className="text-foreground">Deployed to:</strong>{" "}
                 <code className="rounded bg-background px-1 py-0.5">
-                  apps/*/public/
+                  apps/storybook/public/
                 </code>
               </p>
               <p>
@@ -184,11 +184,6 @@ export default function IconsShowcase() {
                 <code className="rounded bg-background px-1 py-0.5">
                   scripts/copy-shared-assets.sh
                 </code>
-              </p>
-              <p className="pt-1">
-                All icon assets are automatically copied to every app before
-                development and production builds. To update, edit the source
-                files in the design-system package.
               </p>
             </div>
           </div>
