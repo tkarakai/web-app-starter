@@ -99,7 +99,9 @@ There is no `SITE_URL` for the apps: they derive their origin from the `Host` he
 ALB forwards unchanged (`routing.http.preserve_host_header.enabled`).
 
 landing build (`deploy-landing.sh`): `NEXT_PUBLIC_SITE_URL` (landing URL), `NEXT_PUBLIC_WEB_APP_URL`
-(web URL), `NEXT_PUBLIC_CONVEX_SITE_URL`.
+(web URL), `NEXT_PUBLIC_CONVEX_SITE_URL`. The optional `NEXT_PUBLIC_BOOK_DEMO_URL` and
+`NEXT_PUBLIC_CONTACT_URL` (links on the backend-unreachable card) are taken from the environment
+`deploy-landing.sh` runs in, as Vercel takes them from the project settings.
 
 Convex deployment (`deploy-convex.sh`): the AWS web, admin and landing origins are added to
 `SITE_URL`, `ADMIN_SITE_URL` and `LANDING_URL`, the comma-separated allow-lists Better Auth and
