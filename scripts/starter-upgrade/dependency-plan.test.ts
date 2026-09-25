@@ -244,9 +244,15 @@ test("prototype-looking names are data, not inherited declarations", () => {
 });
 
 function tree(dir: string): Json {
-  return Object.fromEntries(fs.readdirSync(dir).sort().map(name => {
-    const file = path.join(dir, name), stat = fs.lstatSync(file);
-    return [name, stat.isDirectory() ? tree(file) : { mode: stat.mode, content: fs.readFileSync(file).toString("base64") }];
+  return Object.fromEntries(fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0).map(entry => {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) return [entry.name, tree(file)];
+    const fd = fs.openSync(file, "r");
+    try {
+      return [entry.name, { mode: fs.fstatSync(fd).mode, content: fs.readFileSync(fd).toString("base64") }];
+    } finally {
+      fs.closeSync(fd);
+    }
   }));
 }
 test("standalone CLI cannot spawn/network/write and leaves source, index, locks, baseline and caches intact", () => {
