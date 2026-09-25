@@ -485,16 +485,20 @@ if [ "$NEED_CONVEX" = true ]; then
     # tsc. The default template lacks our test file exclusions, so tsc fails
     # on .test.ts files and Convex never reaches "functions ready".
     #
-    # Fix: start a background watcher that detects the overwrite and restores
-    # the committed version before tsc runs. The watcher exits after one restore.
+    # Fix: snapshot the current file, then start a background watcher that
+    # detects the overwrite and restores that snapshot before tsc runs. Using
+    # the current file (rather than git checkout) also protects in-progress
+    # tsconfig migrations during local CI. The watcher exits after one restore.
     CONVEX_TSCONFIG="$CONVEX_DIR/convex/tsconfig.json"
+    CONVEX_TSCONFIG_CONTENT=""
     TSCONFIG_WATCHER_PID=""
     if [ -f "$CONVEX_TSCONFIG" ]; then
+        CONVEX_TSCONFIG_CONTENT=$(cat "$CONVEX_TSCONFIG")
         (
             while true; do
                 sleep 0.1
-                if ! git -C "$PROJECT_DIR" diff --quiet -- "$CONVEX_TSCONFIG" 2>/dev/null; then
-                    git -C "$PROJECT_DIR" checkout -- "$CONVEX_TSCONFIG" 2>/dev/null
+                if [ "$(cat "$CONVEX_TSCONFIG" 2>/dev/null)" != "$CONVEX_TSCONFIG_CONTENT" ]; then
+                    printf '%s\n' "$CONVEX_TSCONFIG_CONTENT" > "$CONVEX_TSCONFIG"
                     break
                 fi
             done
@@ -617,7 +621,7 @@ if [ "$NEED_CONVEX" = true ]; then
         kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         # Check if restore happened
-        if git -C "$PROJECT_DIR" diff --quiet -- "$CONVEX_TSCONFIG" 2>/dev/null; then
+        if [ "$(cat "$CONVEX_TSCONFIG" 2>/dev/null)" = "$CONVEX_TSCONFIG_CONTENT" ]; then
             echo -e "  ${GREEN}✔${NC} convex/tsconfig.json protected (Convex CLI overwrites it on init)"
         fi
     fi

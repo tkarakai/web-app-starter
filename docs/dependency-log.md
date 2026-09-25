@@ -22,6 +22,17 @@ Upgrades the repo is ready for, blocked on a change outside it. Re-checked on ev
 
 ### 2026-09-24
 
+- **Adopted: `typescript` 5.9.3 → 6.0.3**, #143, ticket #135. Tier A.
+  Usage: codebase-wide typechecks/builds plus two compiler-API starter-upgrade scripts. Breaking
+  changes that hit us: deprecated `baseUrl`, ambient `types` now defaulting to `[]`, and the
+  existing TypeScript ESLint stack's `<6.0.0` peer range. Tests added first: none; this is build-only
+  tooling, and the existing compilation, build, test, bundle, starter-rehearsal and E2E coverage is
+  the behavior contract. Validation: `bun run typecheck`, `bun run lint`, Convex `dev --once`
+  typecheck, and `bun run ci`; every migration-sensitive check and bundle budget passed. Local
+  web/admin/landing E2E retained the same placeholder/fixture failures seen on 5.9.3; Storybook E2E
+  passed. Reason: removed `baseUrl`, made the web path target explicitly relative, declared Node
+  ambient types for Convex, updated TypeScript ESLint to eligible 8.70.0, and taught the anonymous
+  Convex launcher to preserve the current tsconfig rather than discarding in-progress changes.
 - `size-limit` + `@size-limit/file` 11 → 13, #131. Tier A. v13 drops Node 20; the runtime
   baseline is Node 24.
 - `@vitejs/plugin-react` 4 → 5, #130. Tier A. 5.2.0 accepts the installed Vite 7. 6.x stays held
