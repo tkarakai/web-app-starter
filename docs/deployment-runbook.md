@@ -4,6 +4,10 @@ Step-by-step procedures for deploying, operating, and rolling back the monorepo.
 
 For pipeline architecture, failure modes, and migration examples, see [deployment-architecture.md](./deployment-architecture.md).
 
+> **Hosting on AWS instead of Vercel:** see [aws/deployment-runbook-aws.md](./aws/deployment-runbook-aws.md).
+> It replaces Vercel only; Convex stays on Convex Cloud. This runbook remains the source of truth
+> for the GitHub-orchestrated Vercel + Convex pipeline.
+
 **How the pipeline works:** Push to `main` triggers automatic staging deployment (CI, build changed apps, deploy). After manual QA, promote to production via manual trigger. Six Vercel projects (3 staging, 3 production), two Convex projects (staging, production). Nothing reaches production without passing through staging first.
 
 ---

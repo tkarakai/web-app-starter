@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-import { signIn } from "./helpers/auth";
+import { appCookieDomain, signIn } from "./helpers/auth";
 import { createDisposableUser } from "./helpers/fixtures";
 
 /**
@@ -51,7 +51,7 @@ test.describe("Session Management Page", () => {
       {
         name: "better-auth.session_token",
         value: "test-session-token",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
       },
     ]);
@@ -306,7 +306,7 @@ test.describe("Session Management — route protection", () => {
         // it Chrome rejects the whole addCookies call as "Invalid cookie fields".
         name: "__Secure-better-auth.session_token",
         value: "prod-token-123",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
         secure: true,
       },

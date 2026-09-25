@@ -1,0 +1,16 @@
+[
+  { "ParameterKey": "ProjectName", "ParameterValue": "my-app" },
+  { "ParameterKey": "Environment", "ParameterValue": "staging" },
+  { "ParameterKey": "VpcCidr", "ParameterValue": "10.60.0.0/16" },
+  { "ParameterKey": "PublicSubnet1Cidr", "ParameterValue": "10.60.0.0/24" },
+  { "ParameterKey": "PublicSubnet2Cidr", "ParameterValue": "10.60.1.0/24" },
+  { "ParameterKey": "PrivateSubnet1Cidr", "ParameterValue": "10.60.10.0/24" },
+  { "ParameterKey": "PrivateSubnet2Cidr", "ParameterValue": "10.60.11.0/24" },
+  { "ParameterKey": "WebHost", "ParameterValue": "web.staging.example.com" },
+  { "ParameterKey": "AdminHost", "ParameterValue": "admin.staging.example.com" },
+  { "ParameterKey": "EnableHttps", "ParameterValue": "true" },
+  { "ParameterKey": "AcmCertificateArn", "ParameterValue": "" },
+  { "ParameterKey": "HttpListenerPort", "ParameterValue": "80" },
+  { "ParameterKey": "HostedZoneId", "ParameterValue": "" },
+  { "ParameterKey": "AppContainerPort", "ParameterValue": "3000" }
+]

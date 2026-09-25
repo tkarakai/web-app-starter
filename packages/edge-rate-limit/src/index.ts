@@ -106,13 +106,35 @@ export function positiveInt(envVar: string | undefined, defaultValue: number): n
   return parsed;
 }
 
-/** Extract the client IP from trusted proxy headers, with x-real-ip fallback. */
-export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown"
-  );
+/**
+ * Extract the client IP from trusted proxy headers, with x-real-ip fallback.
+ *
+ * How much of `x-forwarded-for` can be trusted depends on the host. Vercel
+ * overwrites the header, so its first entry is the client. A load balancer such
+ * as AWS ALB appends the address it saw to whatever the client sent, so there
+ * the first entry is client-controlled and the client is the entry the last
+ * trusted proxy added. `TRUSTED_PROXY_COUNT` (default 0: take the first entry)
+ * is how many proxies append to the header in front of the app.
+ */
+export function getClientIp(
+  request: NextRequest,
+  trustedProxyCount: number = nonNegativeInt(process.env.TRUSTED_PROXY_COUNT),
+): string {
+  const forwarded = request.headers
+    .get("x-forwarded-for")
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (forwarded && forwarded.length > 0) {
+    const index = trustedProxyCount > 0 ? Math.max(forwarded.length - trustedProxyCount, 0) : 0;
+    return forwarded[index] ?? "unknown";
+  }
+  return request.headers.get("x-real-ip") ?? "unknown";
+}
+
+function nonNegativeInt(value: string | undefined): number {
+  const parsed = parseInt(value ?? "", 10);
+  return Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
 }
 
 /**

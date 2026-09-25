@@ -1,0 +1,7 @@
+[
+  { "ParameterKey": "ProjectName", "ParameterValue": "my-app" },
+  { "ParameterKey": "Environment", "ParameterValue": "local" },
+  { "ParameterKey": "HostedZoneId", "ParameterValue": "" },
+  { "ParameterKey": "LandingDomainName", "ParameterValue": "" },
+  { "ParameterKey": "AcmCertificateArn", "ParameterValue": "" }
+]

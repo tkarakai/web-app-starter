@@ -1,0 +1,91 @@
+# The `local` deployment target: Floci (https://github.com/floci-io/floci)
+# emulating the AWS account the CloudFormation stacks deploy into, plus a Convex
+# backend standing in for the environment's Convex Cloud deployment. Started and
+# stopped by local-up.sh / local-down.sh.
+#
+# Addressing (see docs/aws/deployment-architecture-aws.md#the-local-target):
+#   web.app.localhost:8080, admin.app.localhost:8080
+#       The app hosts. Browsers resolve *.localhost to loopback and treat it as a
+#       secure context, so passkeys work over plain HTTP. Only the browser uses
+#       these names.
+#   convex.localhost.floci.io:3310 (API), :3311 (HTTP actions)
+#       The local Convex deployment. *.localhost.floci.io resolves to 127.0.0.1
+#       on the host (public DNS) and to Floci inside the containers Floci starts
+#       (its embedded DNS), so the browser and the web/admin tasks share one URL.
+#   {id}.cloudfront.localhost.floci.io:4566
+#       The landing distribution, via Floci's CloudFront domain suffix.
+#   localhost:4566
+#       AWS APIs and the ECR registry.
+name: ${COMPOSE_PROJECT_NAME:-app-aws-local}
+
+services:
+  floci:
+    # Upstream 2.1.0 plus local patches; built by build-floci.sh.
+    image: ${FLOCI_IMAGE:-floci/floci:2.1.0-patched}
+    ports:
+      - "127.0.0.1:4566:4566"
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:3310-3311:3310-3311"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      FLOCI_SERVICES_DOCKER_NETWORK: ${COMPOSE_PROJECT_NAME:-app-aws-local}
+      FLOCI_SERVICES_UI_ENABLED: "true"
+      FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX: cloudfront.localhost.floci.io
+      # Fail a stack on a resource type Floci would otherwise stub silently, so a
+      # template that "works locally" never skips a resource AWS would create.
+      FLOCI_SERVICES_CLOUDFORMATION_ALLOW_STUB_UNSUPPORTED_RESOURCE_TYPES: "false"
+      FLOCI_SERVICES_IAM_ENFORCEMENT_ENABLED: ${FLOCI_IAM_ENFORCEMENT:-false}
+    networks:
+      default:
+        aliases:
+          - localhost.floci.io
+
+  # The Convex deployment of the local target, as Convex Cloud is for staging
+  # and production. Local only: hosting Convex on AWS is out of scope.
+  #
+  # It shares Floci's network namespace because Convex calls its own public URL
+  # (it fetches the auth JWKS from CONVEX_SITE_URL to validate tokens). There,
+  # convex.localhost.floci.io resolves to loopback, which is where the relay
+  # below listens on 3310/3311.
+  convex:
+    image: ghcr.io/get-convex/convex-backend:0cf49cbf8c4b7e22e631ceda9b5111f6cccbcd49
+    network_mode: service:floci
+    depends_on: [floci]
+    stop_signal: SIGINT
+    environment:
+      INSTANCE_NAME: local-aws
+      CONVEX_CLOUD_ORIGIN: http://convex.localhost.floci.io:3310
+      CONVEX_SITE_ORIGIN: http://convex.localhost.floci.io:3311
+      DISABLE_BEACON: "true"
+    volumes:
+      - convex-data:/convex/data
+    healthcheck:
+      test: curl -sf http://localhost:3210/version
+      interval: 2s
+      start_period: 10s
+
+  # Serves Convex on 3310/3311 in Floci's network namespace: the tasks reach it
+  # at Floci's address, the host through Floci's published ports, and Convex
+  # itself on loopback. (3210/3211 stay free for `bun run dev` on the host.)
+  convex-relay:
+    image: alpine/socat:1.8.0.3
+    network_mode: service:floci
+    depends_on:
+      floci:
+        condition: service_started
+      convex:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        socat TCP-LISTEN:3310,fork,reuseaddr TCP:127.0.0.1:3210 &
+        socat TCP-LISTEN:3311,fork,reuseaddr TCP:127.0.0.1:3211 &
+        wait
+
+volumes:
+  convex-data:
+
+networks:
+  default:
+    name: ${COMPOSE_PROJECT_NAME:-app-aws-local}

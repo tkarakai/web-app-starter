@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Registry stack (ECR repositories for the web and admin images).
+
+# Kept apart from the apps stack so images can be pushed before the ECS services
+# that run them exist, and so a rollback can redeploy an image that is already here.
+
+Parameters:
+  ProjectName:
+    Type: String
+    AllowedPattern: '^[a-z][a-z0-9-]*$'
+  Environment:
+    Type: String
+    AllowedValues: [local, staging, production]
+  UntaggedImageRetentionDays:
+    Type: Number
+    Default: 7
+  TaggedImageRetentionCount:
+    Type: Number
+    Default: 50
+    Description: How many SHA-tagged images to keep per app. Rollback can only reach images still here.
+
+Resources:
+  WebRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-${Environment}-web'
+      # Images are tagged by git SHA and never overwritten, so a tag always means the same bits.
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: !Sub |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire untagged images",
+                "selection": {"tagStatus": "untagged", "countType": "sinceImagePushed", "countUnit": "days", "countNumber": ${UntaggedImageRetentionDays}},
+                "action": {"type": "expire"}
+              },
+              {
+                "rulePriority": 2,
+                "description": "Keep the most recent tagged images",
+                "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": ${TaggedImageRetentionCount}},
+                "action": {"type": "expire"}
+              }
+            ]
+          }
+
+  AdminRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-${Environment}-admin'
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: !Sub |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire untagged images",
+                "selection": {"tagStatus": "untagged", "countType": "sinceImagePushed", "countUnit": "days", "countNumber": ${UntaggedImageRetentionDays}},
+                "action": {"type": "expire"}
+              },
+              {
+                "rulePriority": 2,
+                "description": "Keep the most recent tagged images",
+                "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": ${TaggedImageRetentionCount}},
+                "action": {"type": "expire"}
+              }
+            ]
+          }
+
+Outputs:
+  WebRepositoryUri:
+    Value: !GetAtt WebRepository.RepositoryUri
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-WebRepositoryUri'
+
+  AdminRepositoryUri:
+    Value: !GetAtt AdminRepository.RepositoryUri
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-AdminRepositoryUri'

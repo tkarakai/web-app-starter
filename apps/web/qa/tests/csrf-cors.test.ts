@@ -116,5 +116,25 @@ describe("CORS Configuration", () => {
       // Must not allow all origins
       expect(connectSrc).not.toBe("connect-src *");
     });
+
+    it("CSP connect-src allows the configured Convex deployment outside *.convex.cloud", () => {
+      const saved = { url: process.env.CONVEX_URL, site: process.env.CONVEX_SITE_URL };
+      process.env.CONVEX_URL = "https://convex.example.org";
+      process.env.CONVEX_SITE_URL = "https://actions.example.org";
+      try {
+        const csp = proxy(createRequest("/")).headers.get("Content-Security-Policy")!;
+        const connectSrc = csp
+          .split(";")
+          .map((d) => d.trim())
+          .find((d) => d.startsWith("connect-src"));
+
+        expect(connectSrc).toContain("https://convex.example.org");
+        expect(connectSrc).toContain("wss://convex.example.org");
+        expect(connectSrc).toContain("https://actions.example.org");
+      } finally {
+        process.env.CONVEX_URL = saved.url;
+        process.env.CONVEX_SITE_URL = saved.site;
+      }
+    });
   });
 });

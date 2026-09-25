@@ -113,29 +113,28 @@ export function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
 
-  // In dev, Convex runs locally on dynamic ports (e.g. http://127.0.0.1:3210).
-  // Derive both http and ws origins so the CSP allows API calls and WebSocket sync.
-  // Also include the Convex site URL (HTTP actions) which runs on a separate port.
-  const devConvexOrigins = isDev
-    ? (() => {
-        const origins: string[] = [];
-        try {
-          const url = new URL(process.env.CONVEX_URL ?? "");
-          origins.push(url.origin, `ws://${url.host}`);
-        } catch {
-          // Invalid URL — skip
-        }
-        try {
-          const siteUrl = new URL(process.env.CONVEX_SITE_URL ?? "");
-          if (!origins.includes(siteUrl.origin)) {
-            origins.push(siteUrl.origin);
-          }
-        } catch {
-          // Invalid URL — skip
-        }
-        return origins.length > 0 ? ` ${origins.join(" ")}` : "";
-      })()
-    : "";
+  // The Convex deployment's own origins, read at request time: a local backend
+  // on dynamic ports in dev, a custom domain, or the local AWS target
+  // (infra/aws) are not on *.convex.cloud. Both the API origin and its WebSocket
+  // form (ws/wss) are allowed, plus the site URL for HTTP actions.
+  const convexOrigins = (() => {
+    const origins: string[] = [];
+    try {
+      const url = new URL(process.env.CONVEX_URL ?? "");
+      origins.push(url.origin, `${url.protocol === "https:" ? "wss" : "ws"}://${url.host}`);
+    } catch {
+      // Invalid URL — skip
+    }
+    try {
+      const siteUrl = new URL(process.env.CONVEX_SITE_URL ?? "");
+      if (!origins.includes(siteUrl.origin)) {
+        origins.push(siteUrl.origin);
+      }
+    } catch {
+      // Invalid URL — skip
+    }
+    return origins.length > 0 ? ` ${origins.join(" ")}` : "";
+  })();
 
   // When adding third-party services, add their origins to the relevant directives:
   //   Analytics (PostHog/Plausible): script-src, connect-src
@@ -149,7 +148,7 @@ export function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    `connect-src 'self' https://*.convex.cloud wss://*.convex.cloud${devConvexOrigins}`,
+    `connect-src 'self' https://*.convex.cloud wss://*.convex.cloud${convexOrigins}`,
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

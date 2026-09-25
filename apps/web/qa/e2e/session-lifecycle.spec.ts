@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { appCookieDomain } from "./helpers/auth";
+
 /**
  * Session Lifecycle E2E Tests
  *
@@ -19,7 +21,7 @@ test.describe("Session Cookie Security", () => {
       {
         name: "better-auth.session_token",
         value: "test-session-token",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
       },
     ]);
@@ -46,7 +48,7 @@ test.describe("Session Cookie Security", () => {
       {
         name: "better-auth.session_token",
         value: "expired-token-value",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
         // Expires in the past
         expires: Math.floor(Date.now() / 1000) - 3600,
@@ -67,7 +69,7 @@ test.describe("Session Cookie Security", () => {
       {
         name: "better-auth.session_token",
         value: "secret-session-token-12345",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
       },
     ]);

@@ -1,0 +1,280 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Apps stack (ECS cluster and Fargate services for web and admin).
+
+# CloudFormation owns the task definitions: a deploy is `cloudformation deploy`
+# with new image tags, never an out-of-band RegisterTaskDefinition, so the stack
+# always describes what is running.
+#
+# Runtime configuration follows the build-once/promote model on main: the images
+# carry no environment identity, and CONVEX_URL, CONVEX_SITE_URL, LANDING_URL and
+# APP_ENVIRONMENT are read at request time. See docs/claude/build-once-promote-plan.md
+
+Parameters:
+  ProjectName:
+    Type: String
+    AllowedPattern: '^[a-z][a-z0-9-]*$'
+  Environment:
+    Type: String
+    AllowedValues: [local, staging, production]
+  WebImageTag:
+    Type: String
+    Description: Git SHA of the web image in the registry stack's web repository.
+  AdminImageTag:
+    Type: String
+    Description: Git SHA of the admin image in the registry stack's admin repository.
+  ConvexUrl:
+    Type: String
+    Description: Convex Cloud deployment URL, e.g. https://happy-otter-123.convex.cloud
+  ConvexSiteUrl:
+    Type: String
+    Description: Convex Cloud HTTP actions URL, e.g. https://happy-otter-123.convex.site
+  AppEnvironment:
+    Type: String
+    AllowedValues: ['', development, staging, production]
+    Default: ''
+    Description: Environment banner. Leave empty in production.
+  TrustedProxyCount:
+    Type: Number
+    Default: 1
+    Description: Proxies that append to X-Forwarded-For in front of the app (the ALB is one). Used for rate-limit client IPs.
+  CpuArchitecture:
+    Type: String
+    AllowedValues: [ARM64, X86_64]
+    Default: ARM64
+    Description: Must match the platform the images were built for (build-push-images.sh reads this).
+  AppContainerPort:
+    Type: Number
+    Default: 3000
+  WebDesiredCount:
+    Type: Number
+    Default: 1
+  AdminDesiredCount:
+    Type: Number
+    Default: 1
+  WebCpu:
+    Type: String
+    Default: '512'
+  WebMemory:
+    Type: String
+    Default: '1024'
+  AdminCpu:
+    Type: String
+    Default: '512'
+  AdminMemory:
+    Type: String
+    Default: '1024'
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ProjectName}-${Environment}'
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  AppExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-app-exec'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # The apps call no AWS APIs; the task role exists so one can be granted later
+  # without replacing the task definitions.
+  AppTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-app-task'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  WebLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/ecs/${ProjectName}-${Environment}-web'
+      RetentionInDays: !Ref LogRetentionDays
+
+  AdminLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/ecs/${ProjectName}-${Environment}-admin'
+      RetentionInDays: !Ref LogRetentionDays
+
+  WebTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-${Environment}-web'
+      Cpu: !Ref WebCpu
+      Memory: !Ref WebMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: !Ref CpuArchitecture
+      ExecutionRoleArn: !GetAtt AppExecutionRole.Arn
+      TaskRoleArn: !GetAtt AppTaskRole.Arn
+      ContainerDefinitions:
+        - Name: web
+          Image: !Sub
+            - '${Repo}:${WebImageTag}'
+            - Repo:
+                Fn::ImportValue: !Sub '${ProjectName}-${Environment}-WebRepositoryUri'
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref AppContainerPort
+              Protocol: tcp
+          Environment:
+            - Name: PORT
+              Value: !Sub '${AppContainerPort}'
+            - Name: HOSTNAME
+              Value: 0.0.0.0
+            - Name: CONVEX_URL
+              Value: !Ref ConvexUrl
+            - Name: CONVEX_SITE_URL
+              Value: !Ref ConvexSiteUrl
+            - Name: LANDING_URL
+              Value:
+                Fn::ImportValue: !Sub '${ProjectName}-${Environment}-LandingUrl'
+            - Name: APP_ENVIRONMENT
+              Value: !Ref AppEnvironment
+            - Name: TRUSTED_PROXY_COUNT
+              Value: !Sub '${TrustedProxyCount}'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WebLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  AdminTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-${Environment}-admin'
+      Cpu: !Ref AdminCpu
+      Memory: !Ref AdminMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: !Ref CpuArchitecture
+      ExecutionRoleArn: !GetAtt AppExecutionRole.Arn
+      TaskRoleArn: !GetAtt AppTaskRole.Arn
+      ContainerDefinitions:
+        - Name: admin
+          Image: !Sub
+            - '${Repo}:${AdminImageTag}'
+            - Repo:
+                Fn::ImportValue: !Sub '${ProjectName}-${Environment}-AdminRepositoryUri'
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref AppContainerPort
+              Protocol: tcp
+          Environment:
+            - Name: PORT
+              Value: !Sub '${AppContainerPort}'
+            - Name: HOSTNAME
+              Value: 0.0.0.0
+            - Name: CONVEX_URL
+              Value: !Ref ConvexUrl
+            - Name: CONVEX_SITE_URL
+              Value: !Ref ConvexSiteUrl
+            - Name: APP_ENVIRONMENT
+              Value: !Ref AppEnvironment
+            - Name: TRUSTED_PROXY_COUNT
+              Value: !Sub '${TrustedProxyCount}'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AdminLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  WebService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      ServiceName: !Sub '${ProjectName}-${Environment}-web'
+      LaunchType: FARGATE
+      DesiredCount: !Ref WebDesiredCount
+      TaskDefinition: !Ref WebTaskDefinition
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Sub '${ProjectName}-${Environment}-ServiceSecurityGroupId'
+          Subnets: !Split
+            - ','
+            - Fn::ImportValue: !Sub '${ProjectName}-${Environment}-PrivateSubnetIds'
+      LoadBalancers:
+        - ContainerName: web
+          ContainerPort: !Ref AppContainerPort
+          TargetGroupArn:
+            Fn::ImportValue: !Sub '${ProjectName}-${Environment}-WebTargetGroupArn'
+      HealthCheckGracePeriodSeconds: 60
+
+  AdminService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      ServiceName: !Sub '${ProjectName}-${Environment}-admin'
+      LaunchType: FARGATE
+      DesiredCount: !Ref AdminDesiredCount
+      TaskDefinition: !Ref AdminTaskDefinition
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Sub '${ProjectName}-${Environment}-ServiceSecurityGroupId'
+          Subnets: !Split
+            - ','
+            - Fn::ImportValue: !Sub '${ProjectName}-${Environment}-PrivateSubnetIds'
+      LoadBalancers:
+        - ContainerName: admin
+          ContainerPort: !Ref AppContainerPort
+          TargetGroupArn:
+            Fn::ImportValue: !Sub '${ProjectName}-${Environment}-AdminTargetGroupArn'
+      HealthCheckGracePeriodSeconds: 60
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+
+  WebServiceName:
+    Value: !GetAtt WebService.Name
+
+  AdminServiceName:
+    Value: !GetAtt AdminService.Name
+
+  WebImageTag:
+    Value: !Ref WebImageTag
+
+  AdminImageTag:
+    Value: !Ref AdminImageTag
