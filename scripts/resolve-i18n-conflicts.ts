@@ -4,9 +4,9 @@
  *
  * Why this exists
  * ---------------
- * `packages/i18n/messages/*.json` is a flat shared namespace: the starter adds keys
- * and every business app adds keys, so an upgrade conflicts in all 15 locales at
- * once. The obvious instruction — "keep both sides" — is wrong here. The closing
+ * `packages/i18n/messages/*.json` is intentionally shared: starter and application
+ * edits can overlap, while independent edits may merge cleanly. For a conflicted
+ * file, blindly concatenating both hunks can produce invalid JSON. The closing
  * brace of a namespace is usually *shared context* outside the conflict, so
  * concatenating both sides interleaves the bodies of two different objects and
  * produces a file that is not JSON at all:

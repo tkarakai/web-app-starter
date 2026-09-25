@@ -3,8 +3,9 @@
 Status, 2026-09-24: **Phase 0 tooling is implemented** (`VERSIONING.md`, `UPGRADING.md`,
 `CHANGELOG.md`, `scripts/release.sh`), and one versioned package is upgraded end
 to end in the demo app. The first starter release tag has not been published.
-Phase 1.1 localization remediation is implemented for web and both landing apps;
-admin remains English-only and reuses existing English catalog entries.
+Localization remediation is separate maintenance, tracked in
+[PR #144](https://github.com/tkarakai/web-app-starter/pull/144), and is not an
+upgrade-readiness milestone.
 Shared locale files and application-reviewed merges are the intended contract;
 namespace/file separation is not required. Broader package extraction remains a proposal.
 
@@ -216,18 +217,21 @@ Renovate already runs in this repo; in a business app it opens the upgrade PRs.
 A security fix arrives as a PR that CI checks, and it cannot conflict because the
 app never changed the code.
 
-Candidates, all already independent of any app:
+Candidates to investigate; being in a shared package does not prove independence
+from application data, configuration or generated types:
 
 - `@repo/edge-rate-limit` (157 lines, no app dependencies; the easiest first step)
-- `@repo/auth` (264 lines, configuration only)
-- `@repo/i18n` runtime (config, request, navigation; not the message files)
+- `@repo/auth` (review authentication behavior and host configuration contracts)
+- `@repo/i18n` runtime (its current request loader imports the shared message
+  files directly, so a package boundary would need an application message input)
 - Backend platform code as **Convex Components**: `auditTrail*`, `securityPolicies`,
   `rateLimits`, `tokenHash`, `passwordStrength`, `parseUserAgent`,
   `adminInvitations`, `waitlist*`, `announcements`, `appSettings`
 - CI as **reusable workflows**. GitHub Actions supports
   `uses: org/web-app-starter/.github/workflows/ci-shared.yml@v2`. The 3,037 lines of
   workflow would no longer be copied; a business app keeps a ten-line caller. This
-  gives the most value for the least work.
+  requires a downstream rehearsal: the current workflow uses relative composite
+  actions and repository-specific scripts from the checked-out application.
 - `scripts/` (4,016 lines) as a published CLI: `starter dev`, `starter ci`
 
 This group matters most for security: a fix in rate limiting or token hashing
@@ -287,48 +291,47 @@ Additional tools proposed to assist those reviews:
 
 ### Order of work
 
-These groups are the goal, not the first step. In order of value for effort:
+The earlier product-name/config and mandatory locale-split tasks are withdrawn.
+Localized names, application-owned translations and reviewed JSON merges are the
+normal contract, not preparation work for upgrading. The milestones below are
+proposed from the implementation audit; they do not authorize publishing releases
+or choosing package boundaries.
 
-**Phase 0: works today, no refactor. Done.** Version and tag the repo, write
-`UPGRADING.md` and a changelog with **Action required** sections, document the git
-remote workflow, and ask existing business apps to add the remote. This matches
-supastarter, Makerkit, TurboStarter and fullstackhero, costs days rather than
-weeks, and is better than no process.
+**Phase 0: release groundwork exists; first publication is pending.** Policy,
+changelog, release script, upgrade instructions and an agent command exist. No
+starter `v*` tags were returned by `git ls-remote --tags origin 'v*'` during this
+audit. The historical tag-merge narrative is not a repeatable CI test; the current
+automated rehearsal covers only the sidebar package.
 
-We copied their specifics rather than inventing new ones: merge by tag, never
-rebase; treat `bun.lock` as a known conflict (take either side, never edit it by
-hand, run `bun install`); run `bun run ci:quick` after the merge. The
-**Action required** notes are written for coding agents as well as people, because
-`CLAUDE.md` and `.claude/commands/` mean agents do some of the merging.
+**Phase 1: prove a controlled business-app upgrade using the current source model.**
 
-**Phase 1: fix localization and review structural ownership separately.**
+1. **Establish a truthful baseline and release identity.** Record the exact
+   starter commit an app came from, and the verified release tag/commit when one
+   exists. Handle pre-release clones and apps without shared history explicitly;
+   never assign `v1.0.0` just because it appears in an example. Disambiguate starter
+   release tags from an application's own tags.
+2. **Make the merge-by-tag rehearsal repeatable.** Use isolated repositories with
+   fixed starting commits, an application-specific schema/function, customized UI,
+   translated values and additional keys, app tests, and deployment configuration.
+   Exercise a patch, an additive change, and a breaking change with required
+   actions. Verify both the starter fix and the business behavior after each
+   upgrade. Include ambiguous merges and incomplete actions that must prevent a
+   successful result. Retain source revisions and check output in CI.
+3. **Make the upgrade result reviewable.** Produce an upgrade PR with baseline and
+   target commits, affected areas, reviewed conflicts, required actions and checks.
+   Distinguish source adoption from deployment/migration readiness. The sidebar
+   tool's `pending`/`verified` evidence is useful precedent, but does not currently
+   apply to whole-repository merges.
+4. **Prove the release path.** Rehearse version/changelog preparation, validation
+   of the exact release commit, immutable publication from main, and downstream
+   discovery. Audit `scripts/release.sh` against that path before cutting the first
+   release. Publishing is a separate maintainer action.
 
-1. **Fix missing localization.** User-visible names and surrounding UI copy must
-   use the existing translation system. Keep application names in locale JSON;
-   do not replace them with a single `starter.config.ts` string. Language-specific
-   E2E assertions may retain literal expectations. The backend authenticator
-   issuer is a separate authentication concern.
-2. **Split the schema.** Divide `schema.ts` into `platformTables` and `appTables`
-   using the spread pattern the file already uses. Needed before the Convex
-   Component work.
-3. **Maintain the locale merge contract.** Business apps own their translated
-   values and additional keys, preserve required starter keys and parameters,
-   and review locale merges. The earlier mandatory `starter.*` namespace and
-   file split proposal is withdrawn; sharing locale files is expected.
-
-Localization changes need tests with customized message values and non-English
-locales. A schema split needs separate evidence that application definitions and
-data survive. The sidebar package rehearsal alone proves neither of these.
-
-Also in this phase: write down who owns what. fullstackhero's rule ("don't edit the
-shared modules, create your own") is cheap to state. `AGENTS.md` is the natural
-place, so coding agents in business apps follow it too.
-[`docs/starter-upgrades.md`](starter-upgrades.md) now does this for the demo.
-
-**Phase 2: publish consumed packages.** Reusable CI workflows first (largest gain,
-lowest risk, no code moves). Then `@repo/edge-rate-limit` to GitHub Packages to
-prove the publishing process. Then the backend platform as Convex Components,
-which is the biggest piece and needs the schema split first.
+**Phase 2: extract only boundaries justified by the rehearsal.** A schema-file
+split may reduce edit overlap, but it does not by itself isolate a Convex
+component or migrate data. Reusable workflows already have `workflow_call`; their
+relative actions and repository assumptions still need a downstream test. Compare
+these candidates with retaining reviewed source merges before selecting an order.
 
 For each candidate package, define its public exports, dependencies, version
 policy, supported starting versions and required upgrade tests before adding it to
@@ -339,8 +342,42 @@ really separate the code, not just rename a directory.
 **Phase 3: editable-copy registry and tooling for app-owned code.** The component
 registry, the published diff, the codemod tooling and `starter doctor`.
 
-Phases 0 and 1 remove most of the risk. Phases 2 and 3 are needed once there are
-more than a handful of business apps.
+Package publishing and editable-copy tooling are optional later approaches, not
+prerequisites for supporting the first business-app source upgrade.
+
+### Implementation audit: unresolved readiness gaps
+
+| Finding | Evidence and required follow-up |
+|---|---|
+| Baseline examples claim a release that is not published | `UPGRADING.md` and the unreleased changelog previously instructed every app to record `v1.0.0`. A shared ancestor proves ancestry, not adoption of a later release. Define bootstrap evidence before stamping a version. |
+| The general upgrade command is a prompt, not an enforced workflow | `.claude/commands/upgrade-starter.md` delegates to the guide. `scripts/starter-upgrade/model.ts` deliberately hardcodes the sidebar package and its three payload files. Do not describe it as a general business-app upgrader. |
+| Locale delete/edit disagreement is silently resolved | Reproduced in a temporary Git repo: business deletes `common.label`, starter edits it, Git merge fails, but resolver `--check` exits 0 and says every file resolves cleanly. Fix and test delete/edit cases in both directions before trusting automatic resolution. |
+| Locale coverage needs release-aware evidence | The catalog test checks other locales against the app's current `en.json`. It cannot detect a required starter key removed from all catalogs, including English. Validate against the target release's required contract as well; app-specific extra keys remain allowed. |
+| Conflict advice overstates what can be inferred | Schema changes can include incompatible field/index edits, and generated code must be regenerated. Typechecking does not establish data preservation. Review release actions and app behavior instead of using blanket "keep both" rules. |
+| Release script checks are narrower than release readiness | `scripts/release.sh` checks Git state and changelog structure, then creates a new release commit and tag. It does not run CI or verify that new commit's CI result. No release-script behavior tests were found in `scripts/tests`. Test the intended publication sequence, including failures. |
+| Version policy needs one clarification | `VERSIONING.md` ties major versions to manual work after a merge. Distinguish starter-required migrations/API changes from ordinary application conflict resolution, which can occur for any release. Do not promise conflict-free patches for customized apps. |
+
+These findings concern readiness of the existing merge process. They do not
+justify moving localized values into config, separating locale namespaces, or
+assuming every shared file needs packaging.
+
+### Representative business-app scenarios
+
+Use these to define acceptance criteria before selecting a refactor. They are
+proposed scenarios, not claims that the current tooling already handles them.
+
+| Application customization | Starter update to exercise | What must survive or be proved |
+|---|---|---|
+| Replaces projects/tasks with orders, customer roles and its own navigation | Auth/session security fix that touches both backend and UI | The fix is exercised through the app's actual auth flow; routes, authorization rules and domain behavior still work. Deleted example features do not silently return. |
+| Changes translated values and adds domain messages in all supported locales | Adds a required UI key, changes an ICU parameter, or removes a key the app still uses | Preserve app wording and extra keys; flag semantic/delete-edit disagreements; check the target release contract and real rendering. Ordinary JSON merges are expected. |
+| Adds fields/indexes and stores production business data alongside platform data | Changes a platform schema or requires a backfill | App definitions and representative stored records survive; migration ordering, reruns and deployment compatibility are tested separately from source merging. |
+| Customizes CI, environment variables and deployment targets | Updates build/runtime requirements or the release pipeline | Keep app-specific deployment targets and secrets references while adopting necessary build/security changes. CI success is evidence for the adopted app commit, not permission to deploy. |
+| Skips several releases or partially adopted an earlier fix | Adopts a later release with cumulative required actions | Resolve exact baseline/target commits, determine applicable intermediate actions, reject an incomplete upgrade, and retain evidence of completed checks. |
+
+The first acceptance target is a reviewed source upgrade that preserves these
+customizations and demonstrably adopts a starter fix. Conflict count, moving files,
+or installing a package is not the acceptance target. A schema split, extension
+point or package should be proposed only for a specific difficulty found here.
 
 #### Design editable component copying
 
@@ -388,9 +425,9 @@ two, Phase 0 alone is the right place to stop.
 for their case. That is what the supported exit is for. Leaving a package is an
 accepted outcome, not a failure.
 
-**The group boundaries will be wrong at first** and will change. The product-name
-and schema work is useful wherever the boundaries end up, which is another reason
-to do Phase 1 before Phase 2.
+**The group boundaries may change.** Use measured upgrade failures and application
+customization needs to choose them; a source-file split alone proves no upgrade
+guarantee.
 
 **Coding agents make app-owned updates cheaper.** This repo already has
 `AGENTS.md` and `.claude/commands/`. Upgrade notes written for agents, and
@@ -399,11 +436,10 @@ each app owns than a person reading a diff. Treat this as part of the design.
 
 ### Recommendation
 
-Fix missing localization first, retaining application-owned locale values and
-reviewed merges. Evaluate the schema split and package boundaries on their own
-merits. Phase 0 release tooling is implemented; publishing the first starter tag
-is still a separate task. Decide on Phase 2 once three or more business apps use
-the starter.
+Start with a repeatable customized-business-app merge rehearsal and truthful
+baseline tracking. Repair failures it exposes in resolution, required actions,
+verification and release preparation. Evaluate schema splits and package boundaries
+from that evidence. Localization maintenance is outside this roadmap.
 
 ### Glossary
 

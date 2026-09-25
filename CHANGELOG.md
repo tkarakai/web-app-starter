@@ -129,17 +129,17 @@ package artifact, lock and required tests together. Done when
    git remote add upstream https://github.com/tkarakai/web-app-starter.git
    git fetch upstream --tags
    ```
-2. Record your baseline so future upgrades know where to start:
-   ```bash
-   echo "STARTER_VERSION=v1.0.0" > .starter-version
-   git add .starter-version && git commit -m "chore: record starter baseline v1.0.0"
-   ```
+2. Establish the exact starter source commit your app includes. The first starter
+   release is not published yet, so do not stamp `v1.0.0` as an assumed baseline.
+   Once a release is adopted and its required actions are verified, record that
+   release in `.starter-version` using the setup procedure in `UPGRADING.md`.
 3. Confirm you share history with the starter:
    ```bash
    git merge-base HEAD upstream/main
    ```
-   If this prints a commit, you are done. If it errors, follow
+   A commit proves shared history, not adoption of a particular release. If it errors, follow
    [Apps with no shared history](./UPGRADING.md#apps-with-no-shared-history).
 
-Done when `cat .starter-version` prints `STARTER_VERSION=v1.0.0` and
-`git tag -l 'v*'` lists the starter's tags.
+Done when the starter source baseline and history relationship are recorded, and
+any claimed release resolves to the verified starter commit with required actions
+completed. Release discovery remains pending until starter tags are published.
