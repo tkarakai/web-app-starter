@@ -85,7 +85,7 @@ export function release(argv: string[]): void {
 
   const date = new Date().toISOString().slice(0, 10);
   const nextPackage = { ...JSON.parse(packageSource), version };
-  let nextChangelog = changelog.replace(/^## \[Unreleased\]\s*$/m, `## [Unreleased]\n\n## [${version}] - ${date}`);
+  let nextChangelog = changelog.replace(/^## \[Unreleased\][ \t]*$/m, `## [Unreleased]\n\n## [${version}] - ${date}`);
   nextChangelog = nextChangelog.replace(/^\[Unreleased\]:.*\n?/gm, "").trimEnd();
   nextChangelog += `\n\n[Unreleased]: ${REPO_URL}/compare/${tag}...HEAD\n[${version}]: ${REPO_URL}/${previous ? `compare/v${previous}...${tag}` : `releases/tag/${tag}`}\n`;
   writeFileSync("package.json", `${JSON.stringify(nextPackage, null, 2)}\n`);

@@ -14,6 +14,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ## [Unreleased]
 
 ## [1.0.0] - 2026-09-25
+
 First tagged release. The baseline: the starter as it exists today, with a version
 number attached to it and a documented source-merge upgrade process. This is the
 first supported starting point, not proof of arbitrary pre-release app upgrades.
