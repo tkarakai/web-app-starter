@@ -164,3 +164,12 @@ steps:
 ```bash
 docker volume rm act-bun-cache act-playwright-cache act-toolcache
 ```
+
+## Starter release verification
+
+The manual `release-starter.yml` workflow publishes prepared release metadata only
+from main. It calls the existing CI workflows with one resolved `git_sha` and
+`require_e2e: true` for app workflows, forcing E2E even when `SKIP_E2E` is set.
+The publish job depends on every workflow succeeding and checks main again before
+creating the immutable tag. Workflow concurrency includes the caller name so
+ordinary PR or deployment CI cannot cancel release validation. See `VERSIONING.md`.

@@ -12,7 +12,7 @@ on:
         default: ""
 
 concurrency:
-  group: ci-shared-${{ github.ref }}
+  group: ci-shared-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:

@@ -7,15 +7,15 @@ Upgrade this app to a newer web-app-starter release. Target version: $ARGUMENTS
 
 Follow `UPGRADING.md` — it is the source of truth, this command is the short form.
 
-1. `git fetch upstream --tags`. Read `.starter-version` for the current baseline.
-   List releases with `git tag -l 'v*' --sort=v:refname` — the `'v*'` filter matters,
-   deploy tags outnumber release tags here.
+1. Fetch starter releases into `refs/tags/starter/v*` using the exact one-time setup
+   command in `UPGRADING.md` (without importing application-conflicting tags). Read `.starter-version` for the current baseline.
+   List releases with `git tag -l 'starter/v*' --sort=v:refname`.
    If there is no `upstream` remote or no `.starter-version`, do the one-time setup
    in `UPGRADING.md` first.
 2. Read the `CHANGELOG.md` entry for **each** release between the baseline and the
    target. Collect every **Action required** item — they compose across intermediate
    versions, so a jump of three releases means doing all three sets, in order.
-3. Create a branch `chore/starter-<target>` and `git merge <tag>`.
+3. Create a branch `chore/starter-<target>` and `git merge refs/tags/starter/<tag>`.
    Never rebase. Never merge `upstream/main`.
 4. Resolve conflicts using [Known conflict hotspots](../../UPGRADING.md#known-conflict-hotspots)
    and the ownership guidance in [For coding agents](../../UPGRADING.md#for-coding-agents).
@@ -27,7 +27,7 @@ Follow `UPGRADING.md` — it is the source of truth, this command is the short f
 7. Run each release's **done when** check literally, as written, and paste the output.
    They exist to catch failures that are invisible otherwise — a security fix reverted
    by a branding conflict still compiles and still passes CI.
-8. Write the new version to `.starter-version`, commit, and report: versions taken,
+8. Write the verified release name and resolved commit to `.starter-version`, commit, and report: versions taken,
    files that conflicted, action-required items done with their done-when output, the
    CI result, and any deploy-time step (a migration, a new env var) still outstanding.
 
