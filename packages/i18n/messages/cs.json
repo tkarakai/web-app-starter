@@ -34,7 +34,8 @@
     "hour": "Hodina",
     "minute": "Minuta",
     "dayPeriod": "Dopoledne nebo odpoledne",
-    "daylightSaving": "Letní čas"
+    "daylightSaving": "Letní čas",
+    "breadcrumb": "Drobečková navigace"
   },
   "theme": {
     "light": "Světlý motiv",

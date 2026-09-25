@@ -34,7 +34,8 @@
     "hour": "الساعة",
     "minute": "الدقيقة",
     "dayPeriod": "صباحًا أو مساءً",
-    "daylightSaving": "التوقيت الصيفي"
+    "daylightSaving": "التوقيت الصيفي",
+    "breadcrumb": "مسار التنقل"
   },
   "theme": {
     "light": "مظهر فاتح",

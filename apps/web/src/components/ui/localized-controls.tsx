@@ -55,7 +55,7 @@ export function SidebarTrigger(props: ComponentProps<typeof BaseSidebarTrigger>)
 
 export function Breadcrumb(props: ComponentProps<typeof BaseBreadcrumb>): ReactElement {
   const t = useTranslations("common");
-  return <BaseBreadcrumb aria-label={t("navigation")} {...props} />;
+  return <BaseBreadcrumb aria-label={t("breadcrumb")} {...props} />;
 }
 
 export function OtpInput(props: ComponentProps<typeof BaseOtpInput>): ReactElement {

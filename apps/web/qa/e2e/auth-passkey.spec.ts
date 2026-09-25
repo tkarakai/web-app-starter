@@ -132,7 +132,7 @@ test.describe("Passkey registration and sign-in", () => {
 
     // Exact: the row's pencil button is also named "Rename passkey ...", and it
     // comes first in the DOM, so a loose /rename/i match would re-open the editor.
-    await page.getByRole("button", { name: "Save", exact: true }).first().click();
+    await page.getByRole("button", { name: "Save changes", exact: true }).first().click();
 
     await expect(page.getByText("After Rename")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("Before Rename")).toHaveCount(0);

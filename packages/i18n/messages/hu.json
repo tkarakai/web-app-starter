@@ -34,7 +34,8 @@
     "hour": "Óra",
     "minute": "Perc",
     "dayPeriod": "Délelőtt vagy délután",
-    "daylightSaving": "Nyári időszámítás"
+    "daylightSaving": "Nyári időszámítás",
+    "breadcrumb": "Morzsamenü"
   },
   "theme": {
     "light": "Világos téma",

@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 import arabic from "@repo/i18n/messages/ar.json";
 import french from "@repo/i18n/messages/fr.json";
-import { PasswordInput, CopyableField, PasskeyUnsupportedAlert, OtpInput, TimezoneSelector } from "@/components/ui/localized-controls";
+import { PasswordInput, CopyableField, PasskeyUnsupportedAlert, OtpInput, TimezoneSelector, Breadcrumb } from "@/components/ui/localized-controls";
 import { DeadlineInput } from "@/components/projects/deadline-input";
 
 describe("localized shared controls", () => {
@@ -13,12 +13,14 @@ describe("localized shared controls", () => {
         <PasswordInput aria-label="password" />
         <CopyableField value="example" />
         <PasskeyUnsupportedAlert />
+        <Breadcrumb />
       </NextIntlClientProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: arabic.common.showPassword }));
     expect(screen.getByLabelText("password")).toHaveAttribute("type", "text");
     expect(screen.getByRole("button", { name: arabic.common.hidePassword })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: arabic.common.copy })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: arabic.common.breadcrumb })).toBeInTheDocument();
     expect(screen.getByText(arabic.dashboard.passkeys.unsupportedTitle)).toBeInTheDocument();
     expect(screen.queryByText("Passkeys aren't supported on this device or browser.")).not.toBeInTheDocument();
   });

@@ -34,7 +34,8 @@
     "hour": "Час",
     "minute": "Минута",
     "dayPeriod": "До или после полудня",
-    "daylightSaving": "Летнее время"
+    "daylightSaving": "Летнее время",
+    "breadcrumb": "Навигационная цепочка"
   },
   "theme": {
     "light": "Светлая тема",

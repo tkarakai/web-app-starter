@@ -34,7 +34,8 @@
     "hour": "Hora",
     "minute": "Minuto",
     "dayPeriod": "Manhã ou tarde",
-    "daylightSaving": "Horário de verão"
+    "daylightSaving": "Horário de verão",
+    "breadcrumb": "Caminho de navegação"
   },
   "theme": {
     "light": "Tema claro",

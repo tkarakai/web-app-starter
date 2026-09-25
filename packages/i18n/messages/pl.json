@@ -34,7 +34,8 @@
     "hour": "Godzina",
     "minute": "Minuta",
     "dayPeriod": "Przed południem lub po południu",
-    "daylightSaving": "Czas letni"
+    "daylightSaving": "Czas letni",
+    "breadcrumb": "Ścieżka nawigacji"
   },
   "theme": {
     "light": "Jasny motyw",

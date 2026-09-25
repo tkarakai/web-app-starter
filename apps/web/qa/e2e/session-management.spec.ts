@@ -111,7 +111,6 @@ test.describe("Session Management Page", () => {
 
   test("sessions page has breadcrumb navigation", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
 
@@ -119,7 +118,7 @@ test.describe("Session Management Page", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Breadcrumb should be present
-    const breadcrumb = page.locator("nav[aria-label='breadcrumb']");
+    const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
     await expect(breadcrumb).toBeVisible({ timeout: 5000 });
   });
 
