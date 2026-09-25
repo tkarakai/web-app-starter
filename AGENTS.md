@@ -119,7 +119,7 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 - **Server Components** cannot use React hooks or browser APIs
 - **Client Components** must have `"use client"` directive at top
 - **Path aliases** (`@/`) are app-internal only; use `@repo/` for cross-package imports
-- **Playwright tests** require Chromium browser installed (`npx playwright install chromium`)
+- **Playwright tests**: follow the [E2E setup instructions](README.md#tests).
 - **convex-test in monorepos**: Must pass `import.meta.glob("./**/*.*s")` as second arg to `convexTest()`
 
 ## File Naming Conventions

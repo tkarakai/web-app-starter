@@ -278,6 +278,54 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   assert.deepEqual(manager.readRecords(root), {});
 });
 
+for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"]]) {
+  test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 30_000 }, async () => {
+    // Keep the public package scripts and predev helpers real. Only the external
+    // server is substituted; this tests command wiring, not Next.js compilation.
+    fs.copyFileSync(path.join(SCRIPTS, "../package.json"), path.join(root, "package.json"));
+    for (const name of ["ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh"]) {
+      fs.copyFileSync(path.join(SCRIPTS, name), path.join(root, "scripts", name));
+    }
+    fs.cpSync(path.join(SCRIPTS, "../packages/design-system/assets"), path.join(root, "packages/design-system/assets"), { recursive: true });
+    fs.mkdirSync(path.join(root, "apps/storybook"), { recursive: true });
+    fs.writeFileSync(path.join(root, "apps/storybook/.env.example"), "SMOKE_TEST_DEFAULT=seeded\n");
+    // Recreate the isolated workspace layout behind the original predev bug.
+    fs.mkdirSync(path.join(root, "apps/web/node_modules/@playwright/test"), { recursive: true });
+    const bindir = path.join(root, "fake-bin");
+    fs.mkdirSync(bindir);
+    fs.writeFileSync(path.join(bindir, "bunx"), "#!/usr/bin/env node\nconsole.log('Local: http://localhost:3999');\nconsole.log('Ready in 1ms');\nsetTimeout(() => {}, 300000);\n", { mode: 0o755 });
+    fs.writeFileSync(path.join(bindir, "npx"), '#!/bin/bash\nif [ "$1" = "--version" ]; then echo fixture; exit 0; fi\necho "Unexpected package download during dev startup" >&2\nexit 127\n', { mode: 0o755 });
+
+    const log = path.join(root, "bun-start.log");
+    const output = fs.openSync(log, "w");
+    const launcher = spawn("bun", args, {
+      cwd: root,
+      env: { ...process.env, PATH: bindir + path.delimiter + process.env.PATH },
+      stdio: ["ignore", output, output], detached: true,
+    });
+    processes.push(launcher);
+    fs.closeSync(output);
+    try {
+      await waitFor(() => {
+        const logs = fs.readFileSync(log, "utf8");
+        assert.ok(!exited(launcher), logs);
+        return logs.includes("[CI MODE] Staying in foreground");
+      });
+      assert.ok(fs.existsSync(path.join(root, "apps/storybook/public/icon.svg")));
+      if (args[0] === "dev") {
+        assert.match(fs.readFileSync(path.join(root, "apps/storybook/.env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
+      }
+      assert.ok(Object.keys(manager.readRecords(root)).includes("next-storybook"));
+    } finally {
+      // The process group belongs exclusively to this fixture. Stop the Bun
+      // wrapper, launcher, and log tail even when a startup assertion fails.
+      try { process.kill(-(launcher.pid as number), "SIGTERM"); } catch { /* Already exited. */ }
+      await waitFor(() => exited(launcher));
+    }
+    await waitFor(() => Object.keys(manager.readRecords(root)).length === 0);
+  });
+}
+
 test("nuke is limited to registered git worktrees and preserves state", async () => {
   const git = (...args: string[]): void => {
     execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });

@@ -104,10 +104,7 @@ cd apps/web && bunx vitest --version
 cd apps/web && bunx vitest run --reporter=verbose
 ```
 
-**Playwright browser not installed:**
-```bash
-npx playwright install chromium
-```
+**Playwright browser not installed:** Follow the [E2E setup instructions](../../README.md#tests).
 
 **Convex sync issues:**
 ```bash
