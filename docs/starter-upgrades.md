@@ -6,6 +6,11 @@ copy of it to test starter upgrades. The test is not the app's purpose.
 
 ## What works today
 
+For read-only dependency declaration comparison across old starter, downstream
+and target snapshots, see the independent [dependency planning prototype](dependency-planning.md).
+It does not apply changes or establish compatibility and does not use the package
+upgrade commands below.
+
 One package has a supported ownership boundary: `@repo/starter-sidebar-policy`.
 Its TypeScript source is in `packages/starter-sidebar-policy`. The demo consumes
 an independently versioned, built package through its package exports, not through
