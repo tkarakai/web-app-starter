@@ -13,6 +13,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-25
 First tagged release. The baseline: the starter as it exists today, with a version
 number attached to it and a documented source-merge upgrade process. This is the
 first supported starting point, not proof of arbitrary pre-release app upgrades.
@@ -152,3 +153,6 @@ Done when the starter source baseline and history relationship are recorded, and
 any claimed release resolves to the verified starter commit with required actions
 completed. New apps cloned from the published `v1.0.0` tag can record that exact
 tag/commit immediately; their own setup and deployment still need validation.
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v1.0.0
