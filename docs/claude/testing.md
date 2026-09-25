@@ -112,6 +112,27 @@ describe("launchItems", () => {
 
 > **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails.
 
+### Backend authorization contract
+
+`packages/backend/convex/authorization-contract.test.ts` exercises registered
+project, task, and upload endpoints as anonymous, verified owner, and verified
+non-owner callers. It registers the local Better Auth component and seeds real
+component users/sessions; it does not mock auth or call ownership helpers as a
+substitute for endpoint execution. Denied writes must preserve all project,
+task, and upload records plus the fixture's stored attachment bytes. Owner
+success cases prevent an always-deny implementation from passing.
+
+Run it with `bun run --cwd packages/backend test:convex convex/authorization-contract.test.ts`.
+The fixture supplies missing MIME metadata because convex-test 0.0.58 omits
+`Blob.type` when storing files. This is an emulator-only setup workaround.
+These tests do not cover HTTP login, JWT verification, browser sessions, banned
+or unverified users, or rate-limit boundaries.
+
+Negative control verified during introduction: temporarily removing the
+`requireProjectAccess` call from `files.deleteUpload` made the non-owner upload
+deletion case fail (the mutation resolved instead of rejecting). The guard was
+restored before the full backend suite passed; no production change is required.
+
 ### Scheduled Functions and Fake Timers
 
 When a Convex mutation calls `ctx.scheduler.runAfter()`, convex-test auto-executes the scheduled function via `setTimeout`. If the scheduled function is an `internalAction` that can't run in the test environment (e.g. it calls external APIs or uses features unavailable in tests), this causes unhandled rejection errors.
