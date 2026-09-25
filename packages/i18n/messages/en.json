@@ -203,6 +203,20 @@
       "superpowersPlaceholder": "Select your superpowers",
       "excitementLabel": "How excited are you?",
       "excitementPlaceholder": "Tell us how you feel",
+      "roleLabel": "Your role (optional)",
+      "rolePlaceholder": "Select your role",
+      "companyLabel": "Company (optional)",
+      "companyPlaceholder": "Acme Inc.",
+      "useCaseLabel": "What do you plan to build? (optional)",
+      "useCasePlaceholder": "A customer portal, internal tool…",
+      "roles": {
+        "founder": "Founder",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Agency",
+        "other": "Other"
+      },
       "selectedCount": "{count} selected",
       "submit": "Join waitlist",
       "submitting": "Joining...",
@@ -237,6 +251,12 @@
         "rateLimited": "Too many requests. Please wait a moment and try again.",
         "generic": "Something went wrong. Please try again."
       }
+    },
+    "fallback": {
+      "title": "Sign-up is temporarily unavailable",
+      "description": "We can't reach our services right now and will keep retrying in the background. You can still sign in to an existing account.",
+      "bookDemo": "Book a demo",
+      "contact": "Contact us"
     }
   },
   "dashboard": {

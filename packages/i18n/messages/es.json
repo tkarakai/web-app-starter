@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Elige tus superpoderes",
       "excitementLabel": "¿Qué tan emocionado estás?",
       "excitementPlaceholder": "Cuéntanos cómo te sientes",
+      "roleLabel": "Tu rol (opcional)",
+      "rolePlaceholder": "Selecciona tu rol",
+      "companyLabel": "Empresa (opcional)",
+      "companyPlaceholder": "Acme S.A.",
+      "useCaseLabel": "¿Qué piensas construir? (opcional)",
+      "useCasePlaceholder": "Un portal de clientes, una herramienta interna…",
+      "roles": {
+        "founder": "Fundador/a",
+        "engineering": "Ingeniería",
+        "product": "Producto",
+        "design": "Diseño",
+        "agency": "Agencia",
+        "other": "Otro"
+      },
       "selectedCount": "{count} seleccionado(s)",
       "submit": "Unirse a la lista",
       "submitting": "Registrando...",
@@ -212,6 +226,12 @@
         "rateLimited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
         "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
       }
+    },
+    "fallback": {
+      "title": "El registro no está disponible temporalmente",
+      "description": "No podemos conectar con nuestros servicios en este momento y seguiremos intentándolo en segundo plano. Aún puedes iniciar sesión en una cuenta existente.",
+      "bookDemo": "Reservar una demo",
+      "contact": "Contáctanos"
     }
   },
   "dashboard": {

@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "选择你的超能力",
       "excitementLabel": "你有多期待？",
       "excitementPlaceholder": "告诉我们你的感受",
+      "roleLabel": "你的角色（可选）",
+      "rolePlaceholder": "选择你的角色",
+      "companyLabel": "公司（可选）",
+      "companyPlaceholder": "示例科技有限公司",
+      "useCaseLabel": "你打算构建什么？（可选）",
+      "useCasePlaceholder": "客户门户、内部工具……",
+      "roles": {
+        "founder": "创始人",
+        "engineering": "工程",
+        "product": "产品",
+        "design": "设计",
+        "agency": "代理机构",
+        "other": "其他"
+      },
       "selectedCount": "已选 {count} 项",
       "submit": "加入候补名单",
       "submitting": "正在提交...",
@@ -212,6 +226,12 @@
         "rateLimited": "请求过于频繁。请稍等片刻后重试。",
         "generic": "出了点问题。请重试。"
       }
+    },
+    "fallback": {
+      "title": "注册暂时不可用",
+      "description": "目前无法连接到我们的服务，我们会在后台持续重试。你仍然可以登录现有账户。",
+      "bookDemo": "预约演示",
+      "contact": "联系我们"
     }
   },
   "dashboard": {

@@ -18,12 +18,25 @@ number attached to it and a documented, validated way to take future ones.
 
 ### Added
 
+- Licensing: `LICENSE` (evaluation licence: free to evaluate, commercial licence required for
+  production), `COMMERCIAL-LICENSE.md` (Starter / Pro / Team tiers) and `TERMS-OF-SALE.md`.
+  **Downstream apps:** these files arrive with the merge and are your copy of the licence terms; keep them.
+- Admin → Configure → Integrations shows live provider status instead of "Not yet implemented":
+  Resend reports connected / not connected from `RESEND_API_KEY` and `EMAIL_FROM`; providers with
+  no adapter yet (Mailgun, Postmark, Twilio, Sentry, Datadog, New Relic, Grafana) are labelled
+  "Not available" with the variables they would need. Backend: `integrations.getStatus` (admin only).
 - Runtime baseline: Node 24 (Active LTS) is declared in `.node-version` and `engines.node: "24.x"`,
   with `@types/node` 24 in every workspace. `bun run check:runtime-baseline` (CI) keeps Node and
   Bun versions consistent. Process: `docs/dependency-migrations.md`.
+- Landing: when the backend is unreachable, the hero shows a "Sign-up is temporarily unavailable"
+  card with a Sign in button instead of rendering nothing. Optional `NEXT_PUBLIC_BOOK_DEMO_URL` and
+  `NEXT_PUBLIC_CONTACT_URL` add Book a demo / Contact us buttons. New `landing.fallback.*` keys in all 15 locales.
 - The existing standalone demo now includes Northstar Dispatch branding and
   interactive freight behavior. It also tests starter upgrades on a copy; its
   dashboard and editable UI remain application-owned.
+- Waitlist: optional **Your role**, **Company** and **What do you plan to build?** fields on the landing
+  form, shown as Role and Company / Use case columns in admin. Stored in the entry's `meta`; the backend
+  validates them only when present, so existing clients keep working. New `landing.waitlist.*` keys in all 15 locales.
 - Versioned `@repo/starter-sidebar-policy`, consumed through immutable local
   package artifacts. Demo-owned release fixtures live under `apps/demo/qa/fixtures/`.
   This does not publish a registry package or change operations.
@@ -80,6 +93,13 @@ is where practice tags belong.
   require a Google Fonts request. Other apps keep their existing asset behavior.
 
 ### Action required
+
+**TypeScript 6:** downstream apps that copied the starter's TypeScript setup must bump all
+`typescript` declarations to `6.0.3`. Remove deprecated `baseUrl` settings; path aliases no longer
+need it, but their targets must be explicitly relative (for example, `"@/*": ["./src/*"]`). Add
+explicit ambient `types` where needed, including `"types": ["node"]` for Convex code that uses
+`process.env`. Update the TypeScript ESLint stack to a release that supports TypeScript 6. Done
+when `bun install --minimum-release-age=864000` and `bun run ci:quick` pass.
 
 **Package adoption is optional.** Existing web/admin/backend consumers continue
 using merge-by-tag; no database migration or operations change is introduced.

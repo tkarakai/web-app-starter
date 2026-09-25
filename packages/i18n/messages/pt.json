@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Escolha seus superpoderes",
       "excitementLabel": "Qual o seu nível de empolgação?",
       "excitementPlaceholder": "Conte-nos como você se sente",
+      "roleLabel": "Sua função (opcional)",
+      "rolePlaceholder": "Selecione sua função",
+      "companyLabel": "Empresa (opcional)",
+      "companyPlaceholder": "Acme Ltda.",
+      "useCaseLabel": "O que você pretende construir? (opcional)",
+      "useCasePlaceholder": "Um portal de clientes, uma ferramenta interna…",
+      "roles": {
+        "founder": "Fundador(a)",
+        "engineering": "Engenharia",
+        "product": "Produto",
+        "design": "Design",
+        "agency": "Agência",
+        "other": "Outro"
+      },
       "selectedCount": "{count} selecionado(s)",
       "submit": "Entrar na lista",
       "submitting": "Registrando...",
@@ -212,6 +226,12 @@
         "rateLimited": "Muitas solicitações. Aguarde um momento e tente novamente.",
         "generic": "Algo deu errado. Tente novamente."
       }
+    },
+    "fallback": {
+      "title": "O cadastro está temporariamente indisponível",
+      "description": "Não conseguimos acessar nossos serviços agora e continuaremos tentando em segundo plano. Você ainda pode entrar em uma conta existente.",
+      "bookDemo": "Agendar uma demonstração",
+      "contact": "Fale conosco"
     }
   },
   "dashboard": {

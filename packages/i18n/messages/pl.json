@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Wybierz swoje supermoce",
       "excitementLabel": "Jak bardzo się cieszysz?",
       "excitementPlaceholder": "Powiedz nam, co czujesz",
+      "roleLabel": "Twoja rola (opcjonalnie)",
+      "rolePlaceholder": "Wybierz swoją rolę",
+      "companyLabel": "Firma (opcjonalnie)",
+      "companyPlaceholder": "Acme sp. z o.o.",
+      "useCaseLabel": "Co planujesz zbudować? (opcjonalnie)",
+      "useCasePlaceholder": "Portal klienta, narzędzie wewnętrzne…",
+      "roles": {
+        "founder": "Założyciel",
+        "engineering": "Inżynieria",
+        "product": "Produkt",
+        "design": "Projektowanie",
+        "agency": "Agencja",
+        "other": "Inne"
+      },
       "selectedCount": "{count} wybrano",
       "submit": "Dołącz do listy",
       "submitting": "Zapisywanie...",
@@ -212,6 +226,12 @@
         "rateLimited": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
         "generic": "Coś poszło nie tak. Spróbuj ponownie."
       }
+    },
+    "fallback": {
+      "title": "Rejestracja jest tymczasowo niedostępna",
+      "description": "Nie możemy teraz połączyć się z naszymi usługami i będziemy ponawiać próby w tle. Nadal możesz zalogować się na istniejące konto.",
+      "bookDemo": "Umów prezentację",
+      "contact": "Kontakt"
     }
   },
   "dashboard": {

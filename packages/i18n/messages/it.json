@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Scegli i tuoi superpoteri",
       "excitementLabel": "Quanto sei entusiasta?",
       "excitementPlaceholder": "Dicci come ti senti",
+      "roleLabel": "Il tuo ruolo (facoltativo)",
+      "rolePlaceholder": "Seleziona il tuo ruolo",
+      "companyLabel": "Azienda (facoltativo)",
+      "companyPlaceholder": "Acme S.r.l.",
+      "useCaseLabel": "Cosa pensi di realizzare? (facoltativo)",
+      "useCasePlaceholder": "Un portale clienti, uno strumento interno…",
+      "roles": {
+        "founder": "Fondatore/Fondatrice",
+        "engineering": "Ingegneria",
+        "product": "Prodotto",
+        "design": "Design",
+        "agency": "Agenzia",
+        "other": "Altro"
+      },
       "selectedCount": "{count} selezionato/i",
       "submit": "Iscriviti alla lista",
       "submitting": "Iscrizione...",
@@ -212,6 +226,12 @@
         "rateLimited": "Troppe richieste. Attendi un momento e riprova.",
         "generic": "Qualcosa è andato storto. Riprova."
       }
+    },
+    "fallback": {
+      "title": "La registrazione è temporaneamente non disponibile",
+      "description": "Al momento non riusciamo a raggiungere i nostri servizi e continueremo a riprovare in background. Puoi comunque accedere a un account esistente.",
+      "bookDemo": "Prenota una demo",
+      "contact": "Contattaci"
     }
   },
   "dashboard": {

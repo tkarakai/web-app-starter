@@ -132,7 +132,9 @@
       "env": [
         "NEXT_PUBLIC_SITE_URL",
         "NEXT_PUBLIC_WEB_APP_URL",
-        "NEXT_PUBLIC_CONVEX_SITE_URL"
+        "NEXT_PUBLIC_CONVEX_SITE_URL",
+        "NEXT_PUBLIC_BOOK_DEMO_URL",
+        "NEXT_PUBLIC_CONTACT_URL"
       ],
       "passThroughEnv": [
         "CONVEX_URL",

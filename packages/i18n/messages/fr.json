@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Choisissez vos super-pouvoirs",
       "excitementLabel": "Quel est votre niveau d'enthousiasme ?",
       "excitementPlaceholder": "Dites-nous ce que vous ressentez",
+      "roleLabel": "Votre rôle (facultatif)",
+      "rolePlaceholder": "Choisissez votre rôle",
+      "companyLabel": "Entreprise (facultatif)",
+      "companyPlaceholder": "Acme SAS",
+      "useCaseLabel": "Que comptez-vous créer ? (facultatif)",
+      "useCasePlaceholder": "Un portail client, un outil interne…",
+      "roles": {
+        "founder": "Fondateur·rice",
+        "engineering": "Ingénierie",
+        "product": "Produit",
+        "design": "Design",
+        "agency": "Agence",
+        "other": "Autre"
+      },
       "selectedCount": "{count} sélectionné(s)",
       "submit": "Rejoindre la liste",
       "submitting": "Inscription...",
@@ -212,6 +226,12 @@
         "rateLimited": "Trop de requêtes. Veuillez patienter un instant et réessayer.",
         "generic": "Une erreur est survenue. Veuillez réessayer."
       }
+    },
+    "fallback": {
+      "title": "L'inscription est temporairement indisponible",
+      "description": "Nos services sont momentanément injoignables ; nous réessayons en arrière-plan. Vous pouvez toujours vous connecter à un compte existant.",
+      "bookDemo": "Réserver une démo",
+      "contact": "Nous contacter"
     }
   },
   "dashboard": {

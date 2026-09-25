@@ -178,6 +178,20 @@
       "superpowersPlaceholder": "Vyber si své superschopnosti",
       "excitementLabel": "Jak moc se těšíš?",
       "excitementPlaceholder": "Řekni nám, jak se cítíš",
+      "roleLabel": "Vaše role (nepovinné)",
+      "rolePlaceholder": "Vyberte svou roli",
+      "companyLabel": "Společnost (nepovinné)",
+      "companyPlaceholder": "Acme s.r.o.",
+      "useCaseLabel": "Co plánujete vytvořit? (nepovinné)",
+      "useCasePlaceholder": "Zákaznický portál, interní nástroj…",
+      "roles": {
+        "founder": "Zakladatel",
+        "engineering": "Vývoj",
+        "product": "Produkt",
+        "design": "Design",
+        "agency": "Agentura",
+        "other": "Jiné"
+      },
       "selectedCount": "{count} vybráno",
       "submit": "Připojit se na listinu",
       "submitting": "Zapisování...",
@@ -212,6 +226,12 @@
         "rateLimited": "Příliš mnoho požadavků. Počkejte chvíli a zkuste to znovu.",
         "generic": "Něco se pokazilo. Zkuste to prosím znovu."
       }
+    },
+    "fallback": {
+      "title": "Registrace je dočasně nedostupná",
+      "description": "Momentálně se nemůžeme spojit s našimi službami a budeme to na pozadí zkoušet znovu. Do existujícího účtu se přihlásit můžete.",
+      "bookDemo": "Domluvit ukázku",
+      "contact": "Kontaktujte nás"
     }
   },
   "dashboard": {
