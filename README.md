@@ -304,6 +304,7 @@ Run tests via Turborepo (from the project root):
 bun run test            # Bun unit tests (across all workspaces)
 bun run test:unit       # Vitest component tests
 bun run test:convex     # Convex backend tests
+bun run setup:e2e       # Download Chromium before first E2E run / after Playwright upgrades
 bun run test:e2e        # Playwright E2E tests
 bun run test:all        # All of the above
 ```

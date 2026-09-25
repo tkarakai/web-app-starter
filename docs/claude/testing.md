@@ -147,6 +147,26 @@ describe("myModule", () => {
 
 ## Test Helpers
 
+### Developer command smoke tests
+
+Run `bun run test:dev-scripts` for the Node/TypeScript tests in `scripts/tests/`.
+They run in local CI and the shared GitHub Actions workflow. The process tests
+exercise real `bun dev --app=storybook` and `bun run dev:storybook` entry points,
+including the root package scripts, predev hooks, asset copying, environment
+seeding, process registration, and shutdown. Next.js is substituted with a fixture
+process, so these checks do not prove that real apps compile or serve HTTP.
+
+Test public commands through Bun when lifecycle hooks matter; invoking the shell
+script directly misses `predev`. Keep fixtures in disposable directories, bound
+startup waits, include logs in failures, and clean up only fixture-owned processes.
+Commands that delete state or access external services need explicit fixtures;
+never execute every package script blindly against a developer's checkout.
+
+Real server smoke coverage should separately boot each supported dev command in
+a clean checkout, request its expected HTTP route, and verify shutdown releases
+its ports. Test both macOS and Linux, cold and warm generated files, and occupied
+preferred ports. A printed readiness message alone does not prove HTTP readiness.
+
 ### Authentication Mocking (`apps/web/qa/tests/helpers/auth-mock.ts`)
 
 ```typescript
