@@ -1,5 +1,7 @@
 "use client";
 
+import messages from "@repo/i18n/messages/en.json";
+
 import * as React from "react";
 import { useAction } from "convex/react";
 import { ArrowLeft, Download } from "lucide-react";
@@ -52,11 +54,10 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
 
   const handleDownload = () => {
     const content = [
-      "Web App Starter — Admin Backup Codes",
+      `${messages.common.appName} — Admin ${messages.dashboard.twoFactor.backupCodes}`,
       "=====================================",
       "",
-      "Each code can only be used once.",
-      "Store these codes in a safe place.",
+      messages.dashboard.twoFactor.backupCodesDescription,
       "",
       ...codes,
       "",
@@ -88,7 +89,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
     try {
       await onComplete();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(messages.errors.convex.serverError);
     } finally {
       setCompleting(false);
     }
@@ -116,7 +117,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
           <CopyableField
             value={codes.join("\n")}
             rows={10}
-            onCopied={() => toast.success("Backup codes copied.")}
+            onCopied={() => toast.success(messages.dashboard.twoFactor.copied)}
             onCopyError={() => toast.error("Failed to copy.")}
           />
 
@@ -142,7 +143,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
             onClick={() => setSubStep(1)}
             disabled={!saved}
           >
-            Continue
+            {messages.auth.multiStep.emailStep.continue}
           </Button>
         </div>
       ) : (
@@ -189,7 +190,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
             onClick={handleVerifyContinue}
             disabled={!verifiedCodes || completing}
           >
-            {completing ? "Continuing..." : "Continue"}
+            {completing ? messages.auth.working : messages.auth.multiStep.emailStep.continue}
           </Button>
 
           <Button

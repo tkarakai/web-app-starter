@@ -195,9 +195,11 @@ function getUtcOffset(tz: string, value?: number): string {
 function getTimezoneDisplay(
   timeZone?: string,
   value?: number,
+  labels?: Readonly<Record<string, string>>,
 ): TimezoneDisplay | undefined {
   if (!timeZone) return undefined
   const label =
+    labels?.[timeZone] ??
     CURATED_TIMEZONES.flatMap((group) => group.zones).find(
       (zone) => zone.value === timeZone,
     )?.label ?? timeZone.replace(/_/g, " ")
@@ -258,6 +260,16 @@ export type DateTimePickerProps = {
   clearable?: boolean
   /** Aria label for the clear button */
   clearLabel?: string
+  /** Localized city labels keyed by IANA timezone identifier */
+  timeZoneLabels?: Readonly<Record<string, string>>
+  /** Localized navigation and time-field labels */
+  labels?: {
+    previousMonth: string
+    nextMonth: string
+    hour: string
+    minute: string
+    dayPeriod: string
+  }
   /** Additional className for the trigger button */
   className?: string
 }
@@ -272,8 +284,23 @@ function DateTimePicker({
   placeholder = "Pick a date",
   clearable = true,
   clearLabel = "Clear",
+  timeZoneLabels,
+  labels = {
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    hour: "Hour",
+    minute: "Minute",
+    dayPeriod: "AM or PM",
+  },
   className,
 }: DateTimePickerProps) {
+  const dayPeriodLabel = (hour: number): string =>
+    new Intl.DateTimeFormat(locale, {
+      hour: "numeric",
+      hour12: true,
+      timeZone: "UTC",
+    }).formatToParts(new Date(Date.UTC(2020, 0, 1, hour)))
+      .find((part) => part.type === "dayPeriod")?.value ?? ""
   const browserTimeZone = React.useMemo(() => detectBrowserTimeZone(), [])
   const displayTimeZone = timeZone ?? browserTimeZone
   const selectionTimeZone = pickerTimeZone ?? displayTimeZone
@@ -382,8 +409,8 @@ function DateTimePicker({
   const displayText = value
     ? formatDisplay(value, locale, mode, displayTimeZone)
     : placeholder
-  const displayTimezoneDisplay = getTimezoneDisplay(displayTimeZone, value)
-  const selectionTimezoneDisplay = getTimezoneDisplay(selectionTimeZone, value)
+  const displayTimezoneDisplay = getTimezoneDisplay(displayTimeZone, value, timeZoneLabels)
+  const selectionTimezoneDisplay = getTimezoneDisplay(selectionTimeZone, value, timeZoneLabels)
 
   return (
     <div className="flex items-center gap-2">
@@ -416,6 +443,8 @@ function DateTimePicker({
           <Calendar
             selected={selectedDate}
             onSelect={handleDaySelect}
+            previousMonthLabel={labels.previousMonth}
+            nextMonthLabel={labels.nextMonth}
             locale={locale}
           />
 
@@ -423,7 +452,7 @@ function DateTimePicker({
             <div className="border-t border-border px-3 py-3">
               <div className="flex min-w-0 items-center gap-1.5">
                 <Select value={String(hour)} onValueChange={handleHourChange}>
-                  <SelectTrigger className="h-8 w-[60px] shrink-0 tabular-nums">
+                  <SelectTrigger aria-label={labels.hour} className="h-8 w-[60px] shrink-0 tabular-nums">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -441,7 +470,7 @@ function DateTimePicker({
                   value={String(minute)}
                   onValueChange={handleMinuteChange}
                 >
-                  <SelectTrigger className="h-8 w-[60px] shrink-0 tabular-nums">
+                  <SelectTrigger aria-label={labels.minute} className="h-8 w-[60px] shrink-0 tabular-nums">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -454,12 +483,12 @@ function DateTimePicker({
                 </Select>
                 {is12h && (
                   <Select value={period} onValueChange={handlePeriodChange}>
-                    <SelectTrigger className="h-8 w-[62px] shrink-0">
+                    <SelectTrigger aria-label={labels.dayPeriod} className="h-8 w-[62px] shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="AM">AM</SelectItem>
-                      <SelectItem value="PM">PM</SelectItem>
+                      <SelectItem value="AM">{dayPeriodLabel(0)}</SelectItem>
+                      <SelectItem value="PM">{dayPeriodLabel(12)}</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

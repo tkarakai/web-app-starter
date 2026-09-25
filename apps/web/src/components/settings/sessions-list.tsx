@@ -8,7 +8,7 @@ import {
   Monitor,
   Smartphone,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 
 import { useMutation } from "convex/react";
 import { api } from "@repo/backend";
@@ -65,21 +65,6 @@ function normalizeIp(ip: string): string {
   return ip;
 }
 
-function formatRelativeTime(date: Date): string {
-  const now = Date.now();
-  const diff = now - date.getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (seconds < 60) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 30) return `${days}d ago`;
-  return date.toLocaleDateString();
-}
-
 /**
  * The single session-list implementation. Rendered by two call sites: the
  * Security settings tab (`security-section.tsx`) and the standalone
@@ -105,7 +90,7 @@ export function SessionsList() {
       // HTTP failure lands here with data undefined. Without this branch the
       // page sits in its loading skeleton forever and never tells the user why.
       if (result.error) {
-        setError("Failed to load sessions.");
+        setError(ts("loadError"));
         return;
       }
       if (result.data) {
@@ -116,9 +101,9 @@ export function SessionsList() {
         setCurrentSessionToken(sessionResult.data.session.token);
       }
     } catch {
-      setError("Failed to load sessions.");
+      setError(ts("loadError"));
     }
-  }, []);
+  }, [ts]);
 
   React.useEffect(() => {
     fetchSessions();
@@ -135,7 +120,7 @@ export function SessionsList() {
       setSessions((prev) => prev?.filter((s) => s.token !== sessionToken) ?? null);
     } catch {
       status = "failed.unknown";
-      setError("Failed to revoke session.");
+      setError(ts("revokeError"));
     } finally {
       setRevoking(null);
       postAuditEvent({
@@ -163,7 +148,7 @@ export function SessionsList() {
       await fetchSessions();
     } catch {
       status = "failed.unknown";
-      setError("Failed to revoke sessions.");
+      setError(ts("revokeAllError"));
     } finally {
       setRevokingAll(false);
       postAuditEvent({
@@ -291,7 +276,13 @@ function SessionCard({
 }) {
   const tc = useTranslations("common");
   const parsed = parseUserAgent(session.userAgent);
-  const lastActive = formatRelativeTime(new Date(session.updatedAt));
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const lastActive = format.relativeTime(new Date(session.updatedAt), now);
+  const deviceName = tc("deviceName", {
+    browser: parsed.browser === "Unknown" ? tc("unknown") : parsed.browser,
+    os: parsed.os === "Unknown" ? tc("unknown") : parsed.os,
+  });
 
   return (
     <Card
@@ -315,7 +306,7 @@ function SessionCard({
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium truncate">
-                {parsed.browser} on {parsed.os}
+                {deviceName}
               </span>
               {isCurrent ? (
                 <Badge variant="outline" className="shrink-0 border-primary/30 text-primary text-[10px] px-1.5 py-0">
@@ -339,6 +330,7 @@ function SessionCard({
                   variant="ghost"
                   size="sm"
                   className="shrink-0 text-muted-foreground hover:text-destructive"
+                  aria-label={tc("signOut")}
                   disabled={revoking}
                 >
                   <LogOut className="h-3.5 w-3.5" />
@@ -349,7 +341,7 @@ function SessionCard({
                   <AlertDialogTitle>{ts("revokeTitle")}</AlertDialogTitle>
                   <AlertDialogDescription>
                     {ts("revokeDescription", {
-                      device: `${parsed.browser} on ${parsed.os}`,
+                      device: deviceName,
                     })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>

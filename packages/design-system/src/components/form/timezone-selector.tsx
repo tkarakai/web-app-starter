@@ -37,6 +37,7 @@ export type TimezoneSelectorProps = {
   detectedLabel?: string
   /** Text shown when search yields no results */
   noResultsText?: string
+  daylightSavingLabel?: string
   /** Custom timezone groups. Falls back to a built-in curated list. */
   groups?: TimezoneGroup[]
   /** Additional class names for the trigger button */
@@ -192,6 +193,7 @@ function TimezoneSelector({
   searchPlaceholder = "Search timezones...",
   detectedLabel = "Detected",
   noResultsText = "No timezone found.",
+  daylightSavingLabel = "DST",
   groups,
   className,
   disabled,
@@ -227,11 +229,11 @@ function TimezoneSelector({
             tz.label.toLowerCase().includes(q) ||
             tz.value.toLowerCase().includes(q) ||
             tz.offset.toLowerCase().includes(q) ||
-            (q === "dst" && tz.hasDST),
+            ((q === "dst" || daylightSavingLabel.toLowerCase().includes(q)) && tz.hasDST),
         ),
       }))
       .filter((group) => group.timezones.length > 0)
-  }, [search, resolvedGroups])
+  }, [search, resolvedGroups, daylightSavingLabel])
 
   // Detected timezone entry
   const detectedEntry = React.useMemo(() => {
@@ -254,6 +256,7 @@ function TimezoneSelector({
         <Button
           variant="outline"
           role="combobox"
+          aria-label={value ? selectedDisplay : placeholder}
           aria-expanded={open}
           disabled={disabled}
           className={cn("flex w-full justify-between font-normal", className)}
@@ -301,7 +304,7 @@ function TimezoneSelector({
                 </span>
                 {detectedEntry.hasDST && (
                   <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
-                    DST
+                    {daylightSavingLabel}
                   </span>
                 )}
                 <span className="text-xs text-muted-foreground">
@@ -331,7 +334,7 @@ function TimezoneSelector({
                   <span className="flex-1 text-start">{tz.label}</span>
                   {tz.hasDST && (
                     <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
-                      DST
+                      {daylightSavingLabel}
                     </span>
                   )}
                   <span className="text-xs text-muted-foreground">

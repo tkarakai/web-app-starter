@@ -11,7 +11,31 @@
     "signOut": "Esci",
     "error": "Si è verificato un errore",
     "backToHome": "Torna alla home",
-    "note": "Nota"
+    "note": "Nota",
+    "anonymous": "Anonimo",
+    "unknown": "Sconosciuto",
+    "deviceName": "{browser} su {os}",
+    "showPassword": "Mostra password",
+    "hidePassword": "Nascondi password",
+    "copy": "Copia negli appunti",
+    "copied": "Copiato",
+    "close": "Chiudi",
+    "toggleSidebar": "Mostra o nascondi la barra laterale",
+    "resizeSidebar": "Mostra, nascondi o ridimensiona la barra laterale",
+    "navigation": "Navigazione",
+    "notFound": "Questa pagina non è stata trovata.",
+    "announcement": "Annuncio",
+    "announcementDetails": "Dettagli dell’annuncio",
+    "dismissAnnouncement": "Chiudi annuncio",
+    "otpDigit": "Cifra {index} di {length}",
+    "qrCode": "Codice QR",
+    "previousMonth": "Mese precedente",
+    "nextMonth": "Mese successivo",
+    "hour": "Ora",
+    "minute": "Minuto",
+    "dayPeriod": "Mattina o pomeriggio",
+    "daylightSaving": "Ora legale",
+    "breadcrumb": "Percorso di navigazione"
   },
   "theme": {
     "light": "Tema chiaro",
@@ -59,7 +83,11 @@
       "passwordCompromised": "La password inserita è stata compromessa. Scegli una password diversa.",
       "rateLimited": "Troppi tentativi. Attendi un momento prima di riprovare.",
       "invalidCredentials": "Email o password non validi",
-      "generic": "Si è verificato un errore"
+      "generic": "Si è verificato un errore",
+      "securityCheckFailed": "Impossibile verificare il criterio di sicurezza. Accedi di nuovo.",
+      "passkeyCheckFailed": "Impossibile verificare il criterio delle passkey. Accedi con una passkey.",
+      "passkeySignInFailed": "Accesso con passkey non riuscito.",
+      "magicLinkFailed": "Impossibile inviare il link di accesso."
     },
     "twoFactorVerify": {
       "title": "Autenticazione a due fattori",
@@ -155,7 +183,32 @@
       "goToSignIn": "Vai alla pagina di accesso",
       "closeWindow": "Chiudi questa finestra"
     },
-    "forgotPasswordLink": "Hai dimenticato la password?"
+    "forgotPasswordLink": "Hai dimenticato la password?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Bentornato",
+        "description": "Accedi per continuare alla tua dashboard.",
+        "continue": "Continua"
+      },
+      "authStep": {
+        "title": "Accedi",
+        "signingInAs": "Accesso come {email}",
+        "signInWithPassword": "Accedi con password",
+        "signInWithPasskey": "Accedi con passkey",
+        "signInWithMagicLink": "Accedi con un link di accesso",
+        "forgotPassword": "Hai dimenticato la password?",
+        "or": "oppure"
+      },
+      "magicLinkStep": {
+        "sent": "Controlla la tua e-mail",
+        "sentDescription": "Abbiamo inviato un link a {email}. Fai clic sul link per accedere.",
+        "resend": "Invia di nuovo il link",
+        "resent": "Link di accesso inviato!",
+        "usePassword": "Usa password",
+        "usePasskey": "Usa passkey"
+      },
+      "back": "Indietro"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +312,10 @@
       "revokeAllConfirm": "Disconnetti tutti",
       "revokeTitle": "Disconnettere questo dispositivo?",
       "revokeDescription": "Questo terminerà la sessione per {device}. Sarà necessario accedere di nuovo per utilizzare l'account.",
-      "backToDashboard": "Torna alla dashboard"
+      "backToDashboard": "Torna alla dashboard",
+      "loadError": "Impossibile caricare le sessioni.",
+      "revokeError": "Impossibile terminare la sessione.",
+      "revokeAllError": "Impossibile terminare le sessioni."
     },
     "account": "Impostazioni",
     "profile": {
@@ -310,7 +366,39 @@
       "regenerateBackupCodes": "Rigenera codici di backup",
       "disableConfirm": "Sei sicuro di voler disattivare la 2FA?",
       "regenerateConfirm": "Questo sostituirà i tuoi codici di backup esistenti. I codici non utilizzati non funzioneranno più.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "Il criterio del tuo account richiede l’autenticazione a due fattori. Completa la configurazione per continuare."
+    },
+    "passkeys": {
+      "title": "Passkey",
+      "description": "Aggiungi e gestisci le passkey per un accesso più rapido e resistente al phishing.",
+      "policy": "Criterio: {policy}",
+      "disabled": "Disabilitato",
+      "optional": "Facoltativo",
+      "required": "Obbligatorio",
+      "disabledDescription": "L’accesso con passkey è disabilitato per il tuo account.",
+      "nameLabel": "Nome della nuova passkey (facoltativo)",
+      "namePlaceholder": "Il mio portatile",
+      "add": "Aggiungi passkey",
+      "adding": "Aggiunta in corso...",
+      "empty": "Nessuna passkey registrata.",
+      "unnamed": "Passkey senza nome",
+      "singleDevice": "Passkey legata al dispositivo",
+      "multiDevice": "Passkey sincronizzata",
+      "rename": "Rinomina passkey {name}",
+      "remove": "Elimina passkey {name}",
+      "name": "Nome della passkey",
+      "loadError": "Impossibile caricare le passkey.",
+      "addError": "Impossibile aggiungere la passkey.",
+      "renameError": "Impossibile rinominare la passkey.",
+      "deleteError": "Impossibile eliminare la passkey.",
+      "added": "Passkey aggiunta.",
+      "renamed": "Passkey aggiornata.",
+      "deleted": "Passkey rimossa.",
+      "unsupportedTitle": "Questo dispositivo o browser non supporta le passkey.",
+      "unsupportedDescription": "Accedi da un dispositivo o browser compatibile per configurare una passkey.",
+      "requiredNotice": "Il criterio del tuo account richiede una passkey. Aggiungine una per continuare.",
+      "signInRequired": "Il tuo account richiede l’accesso con passkey."
     }
   },
   "projects": {
@@ -503,5 +591,71 @@
     "signedInAs": "Hai effettuato l'accesso come {email}.",
     "description": "Non hai il permesso di accedere a questa risorsa. Se ritieni che si tratti di un errore, contatta l'amministratore della tua organizzazione.",
     "backToSignIn": "Torna all'accesso"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Americhe",
+      "Europe": "Europa",
+      "Asia & Pacific": "Asia e Pacifico",
+      "Africa": "Africa"
+    },
+    "zones": {
+      "America/New_York": "New York",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Città del Messico",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "Londra",
+      "Europe/Paris": "Parigi",
+      "Europe/Berlin": "Berlino",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Roma",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Bruxelles",
+      "Europe/Vienna": "Vienna",
+      "Europe/Warsaw": "Varsavia",
+      "Europe/Prague": "Praga",
+      "Europe/Budapest": "Budapest",
+      "Europe/Bucharest": "Bucarest",
+      "Europe/Athens": "Atene",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Stoccolma",
+      "Europe/Moscow": "Mosca",
+      "Europe/Istanbul": "Istanbul",
+      "Europe/Lisbon": "Lisbona",
+      "Europe/Dublin": "Dublino",
+      "Europe/Zurich": "Zurigo",
+      "Asia/Tokyo": "Tokyo",
+      "Asia/Shanghai": "Shanghai",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Singapore",
+      "Asia/Seoul": "Seul",
+      "Asia/Taipei": "Taipei",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Giacarta",
+      "Asia/Manila": "Manila",
+      "Asia/Ho_Chi_Minh": "Città di Ho Chi Minh",
+      "Asia/Kolkata": "Delhi / Mumbai / Calcutta",
+      "Asia/Dubai": "Dubai",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Figi",
+      "Africa/Cairo": "Il Cairo",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

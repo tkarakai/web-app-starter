@@ -75,10 +75,8 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof Error ? uploadError.message : t("errors.generic")
-      );
+    } catch {
+      setError(t("errors.uploadFailed"));
     } finally {
       setUploading(false);
     }

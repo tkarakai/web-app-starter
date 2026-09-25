@@ -1,5 +1,7 @@
 "use client";
 
+import { DialogContent } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { Circle, CircleCheck, CircleDashed, Clock, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -11,7 +13,6 @@ import {
   Button,
   DateTimeWithTimezone,
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   Input,

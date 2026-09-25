@@ -1,11 +1,12 @@
 "use client";
 
+import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
+
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
-  Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
@@ -15,7 +16,6 @@ import {
   Separator,
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@repo/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AppSidebar } from "@/components/projects/app-sidebar";
@@ -34,10 +34,11 @@ import { SessionsList } from "@/components/settings/sessions-list";
 export function SessionsClient() {
   const router = useRouter();
   const authUser = useAuthUser();
+  const tc = useTranslations("common");
   const ts = useTranslations("dashboard.sessions");
   const td = useTranslations("dashboard");
 
-  const displayName = authUser?.name ?? "Anonymous";
+  const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
 
   return (

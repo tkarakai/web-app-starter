@@ -11,7 +11,31 @@
     "signOut": "تسجيل الخروج",
     "error": "حدث خطأ",
     "backToHome": "العودة إلى الصفحة الرئيسية",
-    "note": "ملاحظة"
+    "note": "ملاحظة",
+    "anonymous": "مجهول",
+    "unknown": "غير معروف",
+    "deviceName": "{browser} على {os}",
+    "showPassword": "إظهار كلمة المرور",
+    "hidePassword": "إخفاء كلمة المرور",
+    "copy": "نسخ إلى الحافظة",
+    "copied": "تم النسخ",
+    "close": "إغلاق",
+    "toggleSidebar": "تبديل الشريط الجانبي",
+    "resizeSidebar": "تبديل الشريط الجانبي أو تغيير حجمه",
+    "navigation": "التنقل",
+    "notFound": "تعذر العثور على هذه الصفحة.",
+    "announcement": "إعلان",
+    "announcementDetails": "تفاصيل الإعلان",
+    "dismissAnnouncement": "إغلاق الإعلان",
+    "otpDigit": "الرقم {index} من {length}",
+    "qrCode": "رمز الاستجابة السريعة",
+    "previousMonth": "الشهر السابق",
+    "nextMonth": "الشهر التالي",
+    "hour": "الساعة",
+    "minute": "الدقيقة",
+    "dayPeriod": "صباحًا أو مساءً",
+    "daylightSaving": "التوقيت الصيفي",
+    "breadcrumb": "مسار التنقل"
   },
   "theme": {
     "light": "مظهر فاتح",
@@ -59,7 +83,11 @@
       "passwordCompromised": "كلمة المرور التي أدخلتها مخترقة. يرجى اختيار كلمة مرور مختلفة.",
       "rateLimited": "محاولات كثيرة جدًا. يرجى الانتظار لحظة قبل المحاولة مرة أخرى.",
       "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
-      "generic": "حدث خطأ"
+      "generic": "حدث خطأ",
+      "securityCheckFailed": "تعذر التحقق من سياسة الأمان. يرجى تسجيل الدخول مجددًا.",
+      "passkeyCheckFailed": "تعذر التحقق من سياسة مفاتيح المرور. يرجى تسجيل الدخول بمفتاح مرور.",
+      "passkeySignInFailed": "فشل تسجيل الدخول بمفتاح مرور.",
+      "magicLinkFailed": "تعذر إرسال رابط تسجيل الدخول."
     },
     "twoFactorVerify": {
       "title": "المصادقة الثنائية",
@@ -155,7 +183,32 @@
       "goToSignIn": "الانتقال إلى صفحة تسجيل الدخول",
       "closeWindow": "إغلاق هذه النافذة"
     },
-    "forgotPasswordLink": "نسيت كلمة المرور؟"
+    "forgotPasswordLink": "نسيت كلمة المرور؟",
+    "multiStep": {
+      "emailStep": {
+        "title": "مرحباً بعودتك",
+        "description": "سجّل الدخول للمتابعة إلى لوحة التحكم.",
+        "continue": "متابعة"
+      },
+      "authStep": {
+        "title": "تسجيل الدخول",
+        "signingInAs": "تسجيل الدخول باسم {email}",
+        "signInWithPassword": "تسجيل الدخول بكلمة المرور",
+        "signInWithPasskey": "تسجيل الدخول بمفتاح مرور",
+        "signInWithMagicLink": "تسجيل الدخول برابط الدخول",
+        "forgotPassword": "نسيت كلمة المرور؟",
+        "or": "أو"
+      },
+      "magicLinkStep": {
+        "sent": "تحقق من بريدك الإلكتروني",
+        "sentDescription": "أرسلنا رابطًا إلى {email}. انقر عليه لتسجيل الدخول.",
+        "resend": "إعادة إرسال الرابط",
+        "resent": "تم إرسال رابط تسجيل الدخول!",
+        "usePassword": "استخدام كلمة المرور",
+        "usePasskey": "استخدام مفتاح مرور"
+      },
+      "back": "رجوع"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +312,10 @@
       "revokeAllConfirm": "تسجيل الخروج من الكل",
       "revokeTitle": "تسجيل الخروج من هذا الجهاز؟",
       "revokeDescription": "سيتم إنهاء الجلسة لـ {device}. سيحتاجون إلى تسجيل الدخول مرة أخرى للوصول إلى الحساب.",
-      "backToDashboard": "العودة إلى لوحة التحكم"
+      "backToDashboard": "العودة إلى لوحة التحكم",
+      "loadError": "تعذر تحميل الجلسات.",
+      "revokeError": "تعذر إنهاء الجلسة.",
+      "revokeAllError": "تعذر إنهاء الجلسات."
     },
     "account": "الإعدادات",
     "profile": {
@@ -310,7 +366,39 @@
       "regenerateBackupCodes": "إعادة إنشاء رموز الاسترداد",
       "disableConfirm": "هل أنت متأكد من رغبتك في تعطيل المصادقة الثنائية؟",
       "regenerateConfirm": "سيؤدي هذا إلى استبدال رموز الاسترداد الحالية. لن تعمل أي رموز غير مستخدمة بعد الآن.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "تتطلب سياسة حسابك المصادقة الثنائية. أكمل الإعداد للمتابعة."
+    },
+    "passkeys": {
+      "title": "مفاتيح المرور",
+      "description": "أضف مفاتيح المرور وأدرها لتسجيل دخول أسرع ومقاوم للتصيد الاحتيالي.",
+      "policy": "السياسة: {policy}",
+      "disabled": "معطّل",
+      "optional": "اختياري",
+      "required": "مطلوب",
+      "disabledDescription": "تسجيل الدخول بمفتاح مرور معطّل لحسابك.",
+      "nameLabel": "اسم مفتاح المرور الجديد (اختياري)",
+      "namePlaceholder": "حاسبي المحمول",
+      "add": "إضافة مفتاح مرور",
+      "adding": "جارٍ الإضافة...",
+      "empty": "لم تُسجَّل أي مفاتيح مرور بعد.",
+      "unnamed": "مفتاح مرور بلا اسم",
+      "singleDevice": "مفتاح مرتبط بالجهاز",
+      "multiDevice": "مفتاح متزامن",
+      "rename": "إعادة تسمية مفتاح المرور {name}",
+      "remove": "حذف مفتاح المرور {name}",
+      "name": "اسم مفتاح المرور",
+      "loadError": "تعذر تحميل مفاتيح المرور.",
+      "addError": "تعذرت إضافة مفتاح المرور.",
+      "renameError": "تعذرت إعادة تسمية مفتاح المرور.",
+      "deleteError": "تعذر حذف مفتاح المرور.",
+      "added": "تمت إضافة مفتاح المرور.",
+      "renamed": "تم تحديث مفتاح المرور.",
+      "deleted": "تمت إزالة مفتاح المرور.",
+      "unsupportedTitle": "هذا الجهاز أو المتصفح لا يدعم مفاتيح المرور.",
+      "unsupportedDescription": "سجّل الدخول من جهاز أو متصفح يدعم مفاتيح المرور لإعداد مفتاح.",
+      "requiredNotice": "تتطلب سياسة حسابك مفتاح مرور. أضف واحدًا للمتابعة.",
+      "signInRequired": "يتطلب حسابك تسجيل الدخول بمفتاح مرور."
     }
   },
   "projects": {
@@ -503,5 +591,71 @@
     "signedInAs": "أنت مسجّل الدخول بحساب {email}.",
     "description": "ليس لديك إذن للوصول إلى هذا المورد. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع مسؤول مؤسستك.",
     "backToSignIn": "العودة إلى تسجيل الدخول"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "الأمريكتان",
+      "Europe": "أوروبا",
+      "Asia & Pacific": "آسيا والمحيط الهادئ",
+      "Africa": "أفريقيا"
+    },
+    "zones": {
+      "America/New_York": "نيويورك",
+      "America/Chicago": "شيكاغو",
+      "America/Denver": "دنفر",
+      "America/Los_Angeles": "لوس أنجلوس",
+      "America/Anchorage": "أنكوراج",
+      "Pacific/Honolulu": "هونولولو",
+      "America/Phoenix": "فينيكس",
+      "America/Toronto": "تورونتو",
+      "America/Vancouver": "فانكوفر",
+      "America/Mexico_City": "مكسيكو سيتي",
+      "America/Sao_Paulo": "ساو باولو",
+      "America/Argentina/Buenos_Aires": "بوينس آيرس",
+      "America/Bogota": "بوغوتا",
+      "America/Lima": "ليما",
+      "America/Santiago": "سانتياغو",
+      "Europe/London": "لندن",
+      "Europe/Paris": "باريس",
+      "Europe/Berlin": "برلين",
+      "Europe/Madrid": "مدريد",
+      "Europe/Rome": "روما",
+      "Europe/Amsterdam": "أمستردام",
+      "Europe/Brussels": "بروكسل",
+      "Europe/Vienna": "فيينا",
+      "Europe/Warsaw": "وارسو",
+      "Europe/Prague": "براغ",
+      "Europe/Budapest": "بودابست",
+      "Europe/Bucharest": "بوخارست",
+      "Europe/Athens": "أثينا",
+      "Europe/Helsinki": "هلسنكي",
+      "Europe/Stockholm": "ستوكهولم",
+      "Europe/Moscow": "موسكو",
+      "Europe/Istanbul": "إسطنبول",
+      "Europe/Lisbon": "لشبونة",
+      "Europe/Dublin": "دبلن",
+      "Europe/Zurich": "زيورخ",
+      "Asia/Tokyo": "طوكيو",
+      "Asia/Shanghai": "شنغهاي",
+      "Asia/Hong_Kong": "هونغ كونغ",
+      "Asia/Singapore": "سنغافورة",
+      "Asia/Seoul": "سيول",
+      "Asia/Taipei": "تايبيه",
+      "Asia/Bangkok": "بانكوك",
+      "Asia/Jakarta": "جاكرتا",
+      "Asia/Manila": "مانيلا",
+      "Asia/Ho_Chi_Minh": "هو تشي منه",
+      "Asia/Kolkata": "دلهي / مومباي / كولكاتا",
+      "Asia/Dubai": "دبي",
+      "Australia/Sydney": "سيدني",
+      "Australia/Melbourne": "ملبورن",
+      "Pacific/Auckland": "أوكلاند",
+      "Pacific/Fiji": "فيجي",
+      "Africa/Cairo": "القاهرة",
+      "Africa/Johannesburg": "جوهانسبرغ",
+      "Africa/Lagos": "لاغوس",
+      "Africa/Nairobi": "نيروبي",
+      "Africa/Casablanca": "الدار البيضاء"
+    }
   }
 }

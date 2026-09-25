@@ -8,6 +8,8 @@ import { cn } from "../../lib/utils";
 export interface CopyableFieldProps {
   /** The text value to display and copy to clipboard */
   value: string;
+  copyLabel?: string;
+  copiedLabel?: string;
   /** Additional class names for the outer container */
   className?: string;
   /** Number of visible rows. When set, renders a scrollable multi-line container. */
@@ -26,6 +28,8 @@ const ROW_HEIGHT_REM = 1.25;
 
 function CopyableField({
   value,
+  copyLabel = "Copy to clipboard",
+  copiedLabel = "Copied",
   className,
   rows,
   onCopied,
@@ -59,7 +63,7 @@ function CopyableField({
       type="button"
       onClick={handleCopy}
       className="flex-none rounded-sm p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      aria-label={copied ? "Copied" : "Copy to clipboard"}
+      aria-label={copied ? copiedLabel : copyLabel}
     >
       {copied ? (
         <Check className="h-4 w-4 text-green-600 dark:text-green-400" />

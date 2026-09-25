@@ -11,7 +11,31 @@
     "signOut": "Kijelentkezés",
     "error": "Hiba történt",
     "backToHome": "Vissza a kezdőlapra",
-    "note": "Megjegyzés"
+    "note": "Megjegyzés",
+    "anonymous": "Névtelen",
+    "unknown": "Ismeretlen",
+    "deviceName": "{browser} – {os}",
+    "showPassword": "Jelszó megjelenítése",
+    "hidePassword": "Jelszó elrejtése",
+    "copy": "Másolás a vágólapra",
+    "copied": "Másolva",
+    "close": "Bezárás",
+    "toggleSidebar": "Oldalsáv megjelenítése vagy elrejtése",
+    "resizeSidebar": "Oldalsáv megjelenítése, elrejtése vagy átméretezése",
+    "navigation": "Navigáció",
+    "notFound": "Az oldal nem található.",
+    "announcement": "Közlemény",
+    "announcementDetails": "Közlemény részletei",
+    "dismissAnnouncement": "Közlemény bezárása",
+    "otpDigit": "{index}. számjegy, összesen {length}",
+    "qrCode": "QR-kód",
+    "previousMonth": "Előző hónap",
+    "nextMonth": "Következő hónap",
+    "hour": "Óra",
+    "minute": "Perc",
+    "dayPeriod": "Délelőtt vagy délután",
+    "daylightSaving": "Nyári időszámítás",
+    "breadcrumb": "Morzsamenü"
   },
   "theme": {
     "light": "Világos téma",
@@ -59,7 +83,11 @@
       "passwordCompromised": "A megadott jelszó kompromittálódott. Kérjük, válasszon másik jelszót.",
       "rateLimited": "Túl sok próbálkozás. Kérjük, várjon egy pillanatot, mielőtt újra próbálkozna.",
       "invalidCredentials": "Érvénytelen e-mail cím vagy jelszó",
-      "generic": "Hiba történt"
+      "generic": "Hiba történt",
+      "securityCheckFailed": "Nem sikerült ellenőrizni a biztonsági szabályzatot. Jelentkezz be újra.",
+      "passkeyCheckFailed": "Nem sikerült ellenőrizni a hozzáférési kulcsokra vonatkozó szabályzatot. Jelentkezz be hozzáférési kulccsal.",
+      "passkeySignInFailed": "Nem sikerült bejelentkezni a hozzáférési kulccsal.",
+      "magicLinkFailed": "Nem sikerült elküldeni a bejelentkezési hivatkozást."
     },
     "twoFactorVerify": {
       "title": "Kétlépcsős hitelesítés",
@@ -155,7 +183,32 @@
       "goToSignIn": "Ugrás a bejelentkezési oldalra",
       "closeWindow": "Ablak bezárása"
     },
-    "forgotPasswordLink": "Elfelejtetted a jelszavadat?"
+    "forgotPasswordLink": "Elfelejtetted a jelszavadat?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Üdv újra",
+        "description": "Jelentkezz be a vezérlőpultod eléréséhez.",
+        "continue": "Folytatás"
+      },
+      "authStep": {
+        "title": "Bejelentkezés",
+        "signingInAs": "Bejelentkezés ezzel a címmel: {email}",
+        "signInWithPassword": "Bejelentkezés jelszóval",
+        "signInWithPasskey": "Bejelentkezés hozzáférési kulccsal",
+        "signInWithMagicLink": "Bejelentkezés e-mailes hivatkozással",
+        "forgotPassword": "Elfelejtetted a jelszavadat?",
+        "or": "vagy"
+      },
+      "magicLinkStep": {
+        "sent": "Ellenőrizd az e-mailjeidet",
+        "sentDescription": "Hivatkozást küldtünk a(z) {email} címre. Kattints rá a bejelentkezéshez.",
+        "resend": "Hivatkozás újraküldése",
+        "resent": "Bejelentkezési hivatkozás elküldve!",
+        "usePassword": "Jelszó használata",
+        "usePasskey": "Hozzáférési kulcs használata"
+      },
+      "back": "Vissza"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +312,10 @@
       "revokeAllConfirm": "Összes kijelentkeztetése",
       "revokeTitle": "Kijelentkezés erről az eszközről?",
       "revokeDescription": "Ez befejezi a munkamenetet a(z) {device} eszközön. Újra be kell jelentkezni a fiókhoz való hozzáféréshez.",
-      "backToDashboard": "Vissza az irányítópulthoz"
+      "backToDashboard": "Vissza az irányítópulthoz",
+      "loadError": "Nem sikerült betölteni a munkameneteket.",
+      "revokeError": "Nem sikerült megszüntetni a munkamenetet.",
+      "revokeAllError": "Nem sikerült megszüntetni a munkameneteket."
     },
     "account": "Beállítások",
     "profile": {
@@ -310,7 +366,39 @@
       "regenerateBackupCodes": "Tartalék kódok újragenerálása",
       "disableConfirm": "Biztosan ki szeretnéd kapcsolni a 2FA-t?",
       "regenerateConfirm": "Ez lecseréli a meglévő biztonsági kódjaidat. A fel nem használt kódok többé nem fognak működni.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "A fiókszabályzat kétlépcsős hitelesítést követel meg. A folytatáshoz fejezd be a beállítást."
+    },
+    "passkeys": {
+      "title": "Hozzáférési kulcsok",
+      "description": "Adj hozzá és kezelj hozzáférési kulcsokat a gyorsabb, adathalászatnak ellenálló bejelentkezéshez.",
+      "policy": "Szabály: {policy}",
+      "disabled": "Letiltva",
+      "optional": "Választható",
+      "required": "Kötelező",
+      "disabledDescription": "A hozzáférési kulcsos bejelentkezés le van tiltva a fiókodban.",
+      "nameLabel": "Új hozzáférési kulcs neve (nem kötelező)",
+      "namePlaceholder": "Saját laptop",
+      "add": "Hozzáférési kulcs hozzáadása",
+      "adding": "Hozzáadás...",
+      "empty": "Még nincs hozzáférési kulcs regisztrálva.",
+      "unnamed": "Névtelen hozzáférési kulcs",
+      "singleDevice": "Eszközhöz kötött kulcs",
+      "multiDevice": "Szinkronizált kulcs",
+      "rename": "A(z) {name} hozzáférési kulcs átnevezése",
+      "remove": "A(z) {name} hozzáférési kulcs törlése",
+      "name": "Hozzáférési kulcs neve",
+      "loadError": "Nem sikerült betölteni a hozzáférési kulcsokat.",
+      "addError": "Nem sikerült hozzáadni a hozzáférési kulcsot.",
+      "renameError": "Nem sikerült átnevezni a hozzáférési kulcsot.",
+      "deleteError": "Nem sikerült törölni a hozzáférési kulcsot.",
+      "added": "Hozzáférési kulcs hozzáadva.",
+      "renamed": "Hozzáférési kulcs frissítve.",
+      "deleted": "Hozzáférési kulcs eltávolítva.",
+      "unsupportedTitle": "Ez az eszköz vagy böngésző nem támogatja a hozzáférési kulcsokat.",
+      "unsupportedDescription": "A beállításhoz jelentkezz be hozzáférési kulcsokat támogató eszközről vagy böngészőből.",
+      "requiredNotice": "A fiókszabályzat hozzáférési kulcsot követel meg. A folytatáshoz adj hozzá egyet.",
+      "signInRequired": "A fiókodhoz hozzáférési kulccsal kell bejelentkezned."
     }
   },
   "projects": {
@@ -503,5 +591,71 @@
     "signedInAs": "Bejelentkezve mint {email}.",
     "description": "Nincs engedélye ehhez az erőforráshoz való hozzáféréshez. Ha úgy gondolja, hogy ez tévedés, kérjük, lépjen kapcsolatba szervezete rendszergazdájával.",
     "backToSignIn": "Vissza a bejelentkezéshez"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Amerika",
+      "Europe": "Európa",
+      "Asia & Pacific": "Ázsia és a csendes-óceáni térség",
+      "Africa": "Afrika"
+    },
+    "zones": {
+      "America/New_York": "New York",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Mexikóváros",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "London",
+      "Europe/Paris": "Párizs",
+      "Europe/Berlin": "Berlin",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Róma",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Brüsszel",
+      "Europe/Vienna": "Bécs",
+      "Europe/Warsaw": "Varsó",
+      "Europe/Prague": "Prága",
+      "Europe/Budapest": "Budapest",
+      "Europe/Bucharest": "Bukarest",
+      "Europe/Athens": "Athén",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Stockholm",
+      "Europe/Moscow": "Moszkva",
+      "Europe/Istanbul": "Isztambul",
+      "Europe/Lisbon": "Lisszabon",
+      "Europe/Dublin": "Dublin",
+      "Europe/Zurich": "Zurich",
+      "Asia/Tokyo": "Tokió",
+      "Asia/Shanghai": "Sanghaj",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Szingapúr",
+      "Asia/Seoul": "Szöul",
+      "Asia/Taipei": "Tajpej",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Jakarta",
+      "Asia/Manila": "Manila",
+      "Asia/Ho_Chi_Minh": "Ho Si Minh-város",
+      "Asia/Kolkata": "Delhi / Mumbai / Kolkata",
+      "Asia/Dubai": "Dubai",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Fidzsi",
+      "Africa/Cairo": "Kairó",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

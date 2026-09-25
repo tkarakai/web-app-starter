@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordInput } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
@@ -7,7 +9,7 @@ import { useTranslations } from "next-intl";
 
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient, isAuthRateLimited } from "@repo/auth/client";
 import {
   Button,
   Card,
@@ -16,17 +18,9 @@ import {
   CardHeader,
   CardTitle,
   Label,
-  PasswordInput,
   Separator,
 } from "@repo/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
-
-function formatResetError(error: { status?: number; message?: string }): string {
-  if (error.message?.includes("INVALID_TOKEN") || error.message?.includes("expired")) {
-    return "This reset link has expired or is invalid. Please request a new one.";
-  }
-  return formatAuthError(error, "Something went wrong. Please try again.");
-}
 
 export function ResetPasswordForm({
   token,
@@ -152,12 +146,16 @@ export function ResetPasswordForm({
       });
 
       if (result.error) {
-        setError(formatResetError(result.error));
+        setError(
+          isAuthRateLimited(result.error) ? t("errors.rateLimited")
+            : /INVALID_TOKEN|expired/i.test(result.error.message ?? "") ? tr("tokenInvalid")
+              : t("errors.generic"),
+        );
       } else {
         setSuccess(true);
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setPending(false);
     }

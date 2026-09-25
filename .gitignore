@@ -27,6 +27,7 @@ apps/*/public/favicon.ico
 
 # Playwright
 **/qa/playwright-report/
+**/blob-report/
 **/qa/test-results/
 **/qa/e2e/__screenshots__/
 

@@ -1,6 +1,9 @@
 "use client";
 
+import { PasskeyUnsupportedAlert } from "@/components/ui/localized-controls";
+
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
 import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -12,7 +15,6 @@ import {
   Button,
   Input,
   Label,
-  PasskeyUnsupportedAlert,
   Separator,
   toast,
   usePasskeySupport,
@@ -38,6 +40,8 @@ function getRecordId(record: PasskeyRecord, index: number): string {
 }
 
 export function PasskeySection() {
+  const t = useTranslations("dashboard.passkeys");
+  const tc = useTranslations("common");
   const { supported: passkeySupported } = usePasskeySupport();
   const postAuditEvent = useMutation(api.auditTrail.postEvent);
   const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
@@ -70,7 +74,7 @@ export function PasskeySection() {
       ]);
 
       if (listResult?.error) {
-        toast.error(listResult.error.message ?? "Failed to load passkeys");
+        toast.error(t("loadError"));
       }
       setPasskeys(listResult?.data ?? []);
 
@@ -78,11 +82,11 @@ export function PasskeySection() {
       const selected = role === "admin" ? adminPasskeyPolicy : userPasskeyPolicy;
       setPolicy(toPasskeyPolicy(selected));
     } catch {
-      toast.error("Failed to load passkeys");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [adminPasskeyPolicy, userPasskeyPolicy]);
+  }, [adminPasskeyPolicy, userPasskeyPolicy, t]);
 
   React.useEffect(() => {
     refreshPasskeys();
@@ -106,16 +110,16 @@ export function PasskeySection() {
 
       if (!result || result.error) {
         status = "failed.unknown";
-        toast.error(result?.error?.message ?? "Failed to add passkey");
+        toast.error(t("addError"));
         return;
       }
 
       setNewName("");
-      toast.success("Passkey added");
+      toast.success(t("added"));
       await refreshPasskeys();
     } catch {
       status = "failed.unknown";
-      toast.error("Failed to add passkey");
+      toast.error(t("addError"));
     } finally {
       setAdding(false);
       postAuditEvent({
@@ -146,17 +150,17 @@ export function PasskeySection() {
 
       if (!result || result.error) {
         status = "failed.unknown";
-        toast.error(result?.error?.message ?? "Failed to rename passkey");
+        toast.error(t("renameError"));
         return;
       }
 
       setEditingId(null);
       setEditName("");
-      toast.success("Passkey updated");
+      toast.success(t("renamed"));
       await refreshPasskeys();
     } catch {
       status = "failed.unknown";
-      toast.error("Failed to rename passkey");
+      toast.error(t("renameError"));
     } finally {
       postAuditEvent({
         happenedAt,
@@ -182,15 +186,15 @@ export function PasskeySection() {
 
       if (!result || result.error) {
         status = "failed.unknown";
-        toast.error(result?.error?.message ?? "Failed to delete passkey");
+        toast.error(t("deleteError"));
         return;
       }
 
-      toast.success("Passkey removed");
+      toast.success(t("deleted"));
       await refreshPasskeys();
     } catch {
       status = "failed.unknown";
-      toast.error("Failed to delete passkey");
+      toast.error(t("deleteError"));
     } finally {
       postAuditEvent({
         happenedAt,
@@ -203,7 +207,7 @@ export function PasskeySection() {
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading passkeys...</p>;
+    return <p className="text-sm text-muted-foreground">{tc("loading")}</p>;
   }
 
   return (
@@ -211,17 +215,17 @@ export function PasskeySection() {
       <div className="flex items-center gap-2">
         <KeyRound className="h-4 w-4 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Add and manage passkeys for faster, phishing-resistant sign-in.
+          {t("description")}
         </p>
       </div>
 
       <div className="flex items-center gap-2">
         <Badge variant={policy === "required" ? "default" : "outline"}>
-          Policy: {policy}
+          {t("policy", { policy: t(policy) })}
         </Badge>
         {policy === "disabled" ? (
           <span className="text-xs text-muted-foreground">
-            Admin policy currently disables passkey usage.
+            {t("disabledDescription")}
           </span>
         ) : null}
       </div>
@@ -231,18 +235,18 @@ export function PasskeySection() {
           <PasskeyUnsupportedAlert />
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="new-passkey-name">New passkey label (optional)</Label>
+            <Label htmlFor="new-passkey-name">{t("nameLabel")}</Label>
             <div className="flex gap-2">
               <Input
                 id="new-passkey-name"
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}
-                placeholder="My Laptop"
+                placeholder={t("namePlaceholder")}
                 className="max-w-sm"
               />
               <Button type="button" onClick={addPasskey} disabled={adding}>
                 <Plus className="h-4 w-4" />
-                {adding ? "Adding..." : "Add passkey"}
+                {adding ? t("adding") : t("add")}
               </Button>
             </div>
           </div>
@@ -253,13 +257,13 @@ export function PasskeySection() {
 
       {passkeys.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No passkeys enrolled yet.
+          {t("empty")}
         </p>
       ) : (
         <div className="space-y-3">
           {passkeys.map((record, index) => {
             const id = getRecordId(record, index);
-            const label = record.name || "Unnamed passkey";
+            const label = record.name || t("unnamed");
             const isEditing = editingId === id;
             return (
               <div
@@ -270,7 +274,7 @@ export function PasskeySection() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{label}</p>
                     <p className="text-xs text-muted-foreground">
-                      {record.deviceType ?? "Unknown device"}
+                      {record.deviceType === "singleDevice" ? t("singleDevice") : record.deviceType === "multiDevice" ? t("multiDevice") : tc("unknown")}
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
@@ -278,7 +282,7 @@ export function PasskeySection() {
                       type="button"
                       size="icon"
                       variant="ghost"
-                      aria-label={`Rename passkey ${record.name ?? ""}`.trim()}
+                      aria-label={t("rename", { name: label })}
                       onClick={() => {
                         setEditingId(id);
                         setEditName(record.name ?? "");
@@ -291,7 +295,7 @@ export function PasskeySection() {
                       size="icon"
                       variant="ghost"
                       className="text-destructive hover:text-destructive"
-                      aria-label={`Delete passkey ${record.name ?? ""}`.trim()}
+                      aria-label={t("remove", { name: label })}
                       onClick={() => deletePasskey(id)}
                       disabled={policy === "required" && passkeys.length <= 1}
                     >
@@ -306,7 +310,7 @@ export function PasskeySection() {
                       value={editName}
                       onChange={(event) => setEditName(event.target.value)}
                       className="max-w-sm"
-                      aria-label="Passkey name"
+                      aria-label={t("name")}
                       autoFocus
                     />
                     <Button
@@ -314,7 +318,7 @@ export function PasskeySection() {
                       size="sm"
                       onClick={() => renamePasskey(id)}
                     >
-                      Save
+                      {tc("save")}
                     </Button>
                     <Button
                       type="button"
@@ -325,7 +329,7 @@ export function PasskeySection() {
                         setEditName("");
                       }}
                     >
-                      Cancel
+                      {tc("cancel")}
                     </Button>
                   </div>
                 ) : null}

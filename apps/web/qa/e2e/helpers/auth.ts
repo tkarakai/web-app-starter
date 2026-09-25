@@ -96,13 +96,9 @@ export async function throttlePasswordResetRequest(): Promise<void> {
 /**
  * Type into a controlled input and confirm the value stuck.
  *
- * `locator.fill()` does NOT work on this form's inputs: it sets the value and
- * fires a single synthetic `input` event, which these controlled components
- * discard — the field reads back empty and the submit silently does nothing.
- * `pressSequentially` sends real key events, which React always honours.
- *
- * Verified against `#password` on the sign-in form: `fill()` -> `""`,
- * `pressSequentially()` -> the typed value.
+ * Keep keystroke-based entry and verify the resulting controlled value. Clear
+ * through the locator before every attempt: a select-all keyboard shortcut can
+ * lose its selection during a re-render and append the retry to existing text.
  */
 export async function fillStable(page: Page, selector: string, value: string): Promise<void> {
   // Typing goes to the focused page, so a backgrounded tab silently swallows
@@ -113,9 +109,8 @@ export async function fillStable(page: Page, selector: string, value: string): P
   await field.waitFor({ state: "visible", timeout: 15_000 });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await field.click();
-    await page.keyboard.press("ControlOrMeta+A");
-    await page.keyboard.press("Backspace");
+    await field.fill("");
+    await expect(field).toHaveValue("");
     await field.pressSequentially(value, { delay: 15 });
 
     if ((await field.inputValue()) === value) return;

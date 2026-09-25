@@ -26,6 +26,7 @@ export interface OtpInputProps {
   error?: boolean;
   /** Accessible label */
   "aria-label"?: string;
+  digitLabel?: (index: number, length: number) => string;
 }
 
 export interface OtpInputHandle {
@@ -42,6 +43,7 @@ export const OtpInput = React.forwardRef<OtpInputHandle, OtpInputProps>(function
   autoFocus = false,
   error = false,
   "aria-label": ariaLabel = "One-time password",
+  digitLabel = (index, length) => `Digit ${index} of ${length}`,
 }: OtpInputProps, ref) {
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
@@ -85,7 +87,7 @@ export const OtpInput = React.forwardRef<OtpInputHandle, OtpInputProps>(function
         // argument, so clearing the controlled value is safe.
         onChange("");
         setActiveIndex(0);
-        requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           programmaticFocusRef.current = true;
           inputRefs.current[0]?.focus();
         });
@@ -210,7 +212,7 @@ export const OtpInput = React.forwardRef<OtpInputHandle, OtpInputProps>(function
             inputMode="numeric"
             autoComplete={index === 0 ? "one-time-code" : "off"}
             tabIndex={index === activeIndex ? 0 : -1}
-            aria-label={`Digit ${index + 1} of ${length}`}
+            aria-label={digitLabel(index + 1, length)}
             value={digit}
             disabled={disabled}
             autoFocus={autoFocus && index === 0}

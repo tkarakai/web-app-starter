@@ -1,8 +1,12 @@
 # Delivering starter updates to business apps
 
-Status, 2026-09-23: **Phase 0 is implemented** (`VERSIONING.md`, `UPGRADING.md`,
+Status, 2026-09-24: **Phase 0 tooling is implemented** (`VERSIONING.md`, `UPGRADING.md`,
 `CHANGELOG.md`, `scripts/release.sh`), and one versioned package is upgraded end
-to end in the demo app. Phases 1–3 below are a proposal; no decision has been taken.
+to end in the demo app. The first starter release tag has not been published.
+Phase 1.1 localization remediation is implemented for web and both landing apps;
+admin remains English-only and reuses existing English catalog entries.
+Shared locale files and application-reviewed merges are the intended contract;
+namespace/file separation is not required. Broader package extraction remains a proposal.
 
 The first part of this document describes what works today. The second part,
 [Long-term plan](#long-term-plan), explains the problem, what other starters do,
@@ -125,25 +129,22 @@ that separation, and upgrading a component does not rewrite the host app's table
 The backend is normally the hardest part to distribute, and the mechanism for it is
 already in use.
 
-**3. Three shared files make every upgrade conflict.** Each of these is edited by
-both the starter and every business app, so each one causes merge conflicts on
-every upgrade:
+**3. Shared source needs reviewed merges; UI localization is a separate concern.**
 
-- **The product name is typed out in 29 files**: `apps/admin` sign-in,
-  forgot-password, reset-password, onboarding, `layout.tsx`, `admin-sidebar.tsx`,
-  landing footers, `packages/backend/convex/auth.ts`, e2e specs, and all 15 locale
-  files. Every business app changes all 29 on day one.
-- **One `schema.ts` holds both platform and app tables** (179 lines, 11 tables). A
+- **UI names belong in translations.** The previous 29-file inventory combined
+  locale values, hardcoded UI, test expectations and a backend authenticator
+  issuer. It did not establish 29 component edits or inevitable merge conflicts.
+  Hardcoded user-visible strings are localization defects. Fix them through i18n,
+  preserving the ability to choose an application name per locale.
+- **One `schema.ts` holds both platform and app tables.** A
   business app adding tables edits the same file we edit. The file already combines
   table groups with object spread (`...rateLimitTables`, `migrationsTable`), so
   splitting it is straightforward; we just don't do it for our own tables yet.
-- **i18n is 7,330 lines across 15 locales with no separation.** App text and
-  platform text are in the same JSON objects, so a key added by the app conflicts
-  with a key added by the starter, in all 15 files at once.
-
-None of these are hard to fix. They should be fixed before any other update
-method, because an update method that still produces these conflicts does not
-solve the problem.
+- **The 15 locale files are intentionally shared and customizable.** Business
+  apps change values, add keys and resolve overlapping changes during upgrades.
+  Required starter keys and interpolation parameters must remain available.
+  Separate additions can merge cleanly; a shared file does not guarantee a
+  conflict. The existing resolver assists application teams with actual conflicts.
 
 ### How other starters handle updates
 
@@ -248,13 +249,15 @@ A business app runs `shadcn add @starter/sidebar` to take a component and
 component, with no repo-wide merge. This category is not supported yet; see
 [Design editable component copying](#design-editable-component-copying).
 
-#### Application-owned starting code: copied once, never synced
+#### Application-owned starting code: reviewed by the application team
 
 App shells (`apps/web` dashboard, `apps/admin` pages, landing content), the example
-domain (`projects` / `tasks` / `uploads`), and text. Every business app rewrites
-these, so merging them only creates conflicts nobody wants.
+domain (`projects` / `tasks` / `uploads`), and text may be customized by business
+apps. Today those applications review starter tag merges, including shared locale
+JSON. Owning translated values does not mean giving up future required keys or
+avoiding locale merges.
 
-Share changes as information instead of merges:
+Additional tools proposed to assist those reviews:
 
 - A published diff between versions, as React Native does: create a clean app at
   v1.4 and v1.5 and publish the diff with notes. The team reads it and decides.
@@ -298,18 +301,24 @@ hand, run `bun install`); run `bun run ci:quick` after the merge. The
 **Action required** notes are written for coding agents as well as people, because
 `CLAUDE.md` and `.claude/commands/` mean agents do some of the merging.
 
-**Phase 1: separate the shared files.** The three problems above, in this order:
+**Phase 1: fix localization and review structural ownership separately.**
 
-1. **Product name in one place.** One `starter.config.ts`; all 29 files read the
-   name from it. This removes the largest source of conflicts.
+1. **Fix missing localization.** User-visible names and surrounding UI copy must
+   use the existing translation system. Keep application names in locale JSON;
+   do not replace them with a single `starter.config.ts` string. Language-specific
+   E2E assertions may retain literal expectations. The backend authenticator
+   issuer is a separate authentication concern.
 2. **Split the schema.** Divide `schema.ts` into `platformTables` and `appTables`
    using the spread pattern the file already uses. Needed before the Convex
    Component work.
-3. **Separate i18n keys.** Reserve a `starter.*` key prefix for platform text,
-   leave the rest to the app, and split the message files along that line.
+3. **Maintain the locale merge contract.** Business apps own their translated
+   values and additional keys, preserve required starter keys and parameters,
+   and review locale merges. The earlier mandatory `starter.*` namespace and
+   file split proposal is withdrawn; sharing locale files is expected.
 
-Each change needs a customized app and regression tests that prove the app's data
-and edits survive. The current schema and locale structure cannot prove that yet.
+Localization changes need tests with customized message values and non-English
+locales. A schema split needs separate evidence that application definitions and
+data survive. The sidebar package rehearsal alone proves neither of these.
 
 Also in this phase: write down who owns what. fullstackhero's rule ("don't edit the
 shared modules, create your own") is cheap to state. `AGENTS.md` is the natural
@@ -390,9 +399,11 @@ each app owns than a person reading a diff. Treat this as part of the design.
 
 ### Recommendation
 
-Adopt the three groups as the target. Phase 0 is done. Do Phase 1 next: the three
-shared files cause conflicts under *every* update method, including the one we use
-today. Decide on Phase 2 once three or more business apps use the starter.
+Fix missing localization first, retaining application-owned locale values and
+reviewed merges. Evaluate the schema split and package boundaries on their own
+merits. Phase 0 release tooling is implemented; publishing the first starter tag
+is still a separate task. Decide on Phase 2 once three or more business apps use
+the starter.
 
 ### Glossary
 

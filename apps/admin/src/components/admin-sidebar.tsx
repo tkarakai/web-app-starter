@@ -1,5 +1,7 @@
 "use client";
 
+import messages from "@repo/i18n/messages/en.json";
+
 import * as React from "react";
 import { useQuery } from "convex/react";
 import Link from "next/link";
@@ -62,7 +64,7 @@ const observabilityItems = [
 
 const configureItems = [
   { label: "Features", href: "/configure/features", icon: SlidersHorizontal },
-  { label: "Security", href: "/configure/security", icon: ShieldCheck },
+  { label: messages.dashboard.security, href: "/configure/security", icon: ShieldCheck },
   { label: "Integrations", href: "/configure/integrations", icon: PlugZap },
 ];
 
@@ -112,12 +114,12 @@ export function AdminSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="Web App Starter Admin"
+              tooltip={`${messages.common.appName} Admin`}
               className="font-semibold"
             >
               <Link href="/dashboard">
                 <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
-                <span>Web App Starter Admin</span>
+                <span>{messages.common.appName} Admin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -276,7 +278,7 @@ export function AdminSidebar({
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  {messages.common.signOut}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

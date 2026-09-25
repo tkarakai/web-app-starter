@@ -81,6 +81,18 @@ is where practice tags belong.
 
 ### Fixed
 
+- Localization: web passkey settings, session errors and relative times, auth
+  feedback, timezone names, and shared control accessibility labels use translated messages.
+  The 17 multi-step sign-in keys now exist in all 15 locales. Both landing
+  footers use `common.appName`, legal pages use existing translated copy, and
+  the static landing 404 resolves its locale after hydration. Admin remains
+  English-only and reuses English catalog entries for its application name and
+  applicable existing labels. Catalog tests check required keys and ICU parameters.
+- Upgrade guidance now treats hardcoded UI names as localization defects.
+  Application-specific locale values and reviewed JSON merges remain supported;
+  the single branding-config value and mandatory locale separation proposals
+  are withdrawn.
+
 - Legacy development PID cleanup now uses one open file descriptor, rejects linked
   or non-regular files, and does not overwrite or delete a replacement path.
   Process start-identity and checkout checks remain required before every signal.

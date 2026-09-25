@@ -1,3 +1,5 @@
+import messages from "@repo/i18n/messages/en.json";
+
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Raleway } from "next/font/google";
@@ -21,8 +23,8 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: "Admin - Web App Starter",
-  description: "Administration panel for Web App Starter.",
+  title: `Admin - ${messages.common.appName}`,
+  description: `Administration panel for ${messages.common.appName}.`,
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

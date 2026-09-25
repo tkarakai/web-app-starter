@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useQuery } from "convex/react";
 
@@ -20,6 +21,7 @@ export function AnnouncementBannerHost({
   hideOnDashboard = false,
   fixed = false,
 }: AnnouncementBannerHostProps) {
+  const t = useTranslations("common");
   const pathname = usePathname();
   const announcement = useQuery(api.announcements.getActivePublic);
   const [dismissedId, setDismissedId] = React.useState<string | null>(null);
@@ -81,6 +83,10 @@ export function AnnouncementBannerHost({
 
   const banner = (
     <AnnouncementBanner
+      aria-label={t("announcement")}
+      dismissLabel={t("dismissAnnouncement")}
+      detailsLabel={t("announcementDetails")}
+      closeLabel={t("close")}
       className={className}
       name={announcement.name}
       bannerText={announcement.bannerText}

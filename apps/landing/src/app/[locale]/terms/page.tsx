@@ -25,12 +25,7 @@ export default async function TermsPage({ params }: Props) {
 
   return (
     <ContentPageLayout title={t("heading")} notice={t("notice")}>
-      <p>{t("notice")}</p>
-      <p>
-        This is a template terms of service. You should replace this with your
-        own terms that describe the rules and guidelines for using your service,
-        including any limitations of liability and user obligations.
-      </p>
+      <p>{t("description")}</p>
     </ContentPageLayout>
   );
 }

@@ -8,6 +8,21 @@ The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n libr
 
 ### Key Design Decisions
 
+**Scope:** web, landing and landing-static localize their user-visible text.
+Admin remains English-only and imports existing entries from
+`@repo/i18n/messages/en.json` where applicable; it does not need locale routing.
+Application names are translated content (`common.appName`), not a single config
+string. Business apps own their message values and extra keys, preserve required
+starter keys and interpolation parameters, and resolve locale merges on upgrades.
+
+`apps/web/qa/tests/message-catalogues.test.ts` checks every supported catalog for
+required keys, ICU syntax and matching interpolation parameters. Run it through
+`bun run --cwd apps/web test`. Locale values may differ, and extra keys are allowed.
+The web app's `localized-controls.tsx` supplies current-locale labels to shared
+primitives without making the design system depend on i18n. The static landing
+404 reads its URL locale after hydration because static hosting serves one
+`404.html`; its initial HTML uses the English catalog.
+
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Library | next-intl v4+ | First-class Next.js App Router / RSC support, ICU MessageFormat, built-in formatting, tree-shaking |
@@ -920,4 +935,3 @@ test("authenticated user syncs locale across sign-out/sign-in", async ({ page })
   await expect(page).toHaveURL(/\/fr\//);
 });
 ```
-

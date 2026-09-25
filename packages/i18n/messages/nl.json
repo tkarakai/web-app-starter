@@ -11,7 +11,31 @@
     "signOut": "Uitloggen",
     "error": "Er is een fout opgetreden",
     "backToHome": "Terug naar startpagina",
-    "note": "Opmerking"
+    "note": "Opmerking",
+    "anonymous": "Anoniem",
+    "unknown": "Onbekend",
+    "deviceName": "{browser} op {os}",
+    "showPassword": "Wachtwoord tonen",
+    "hidePassword": "Wachtwoord verbergen",
+    "copy": "Naar klembord kopiëren",
+    "copied": "Gekopieerd",
+    "close": "Sluiten",
+    "toggleSidebar": "Zijbalk tonen of verbergen",
+    "resizeSidebar": "Zijbalk tonen, verbergen of formaat wijzigen",
+    "navigation": "Navigatie",
+    "notFound": "Deze pagina is niet gevonden.",
+    "announcement": "Aankondiging",
+    "announcementDetails": "Details van de aankondiging",
+    "dismissAnnouncement": "Aankondiging sluiten",
+    "otpDigit": "Cijfer {index} van {length}",
+    "qrCode": "QR-code",
+    "previousMonth": "Vorige maand",
+    "nextMonth": "Volgende maand",
+    "hour": "Uur",
+    "minute": "Minuut",
+    "dayPeriod": "Ochtend of middag",
+    "daylightSaving": "Zomertijd",
+    "breadcrumb": "Broodkruimelpad"
   },
   "theme": {
     "light": "Licht thema",
@@ -59,7 +83,11 @@
       "passwordCompromised": "Het ingevoerde wachtwoord is gecompromitteerd. Kies een ander wachtwoord.",
       "rateLimited": "Te veel pogingen. Wacht even voordat u het opnieuw probeert.",
       "invalidCredentials": "Ongeldig e-mailadres of wachtwoord",
-      "generic": "Er is een fout opgetreden"
+      "generic": "Er is een fout opgetreden",
+      "securityCheckFailed": "Het beveiligingsbeleid kon niet worden gecontroleerd. Log opnieuw in.",
+      "passkeyCheckFailed": "Het passkeybeleid kon niet worden gecontroleerd. Log in met een passkey.",
+      "passkeySignInFailed": "Inloggen met passkey is mislukt.",
+      "magicLinkFailed": "De inloglink kon niet worden verstuurd."
     },
     "twoFactorVerify": {
       "title": "Tweefactorauthenticatie",
@@ -155,7 +183,32 @@
       "goToSignIn": "Naar de inlogpagina",
       "closeWindow": "Dit venster sluiten"
     },
-    "forgotPasswordLink": "Wachtwoord vergeten?"
+    "forgotPasswordLink": "Wachtwoord vergeten?",
+    "multiStep": {
+      "emailStep": {
+        "title": "Welkom terug",
+        "description": "Log in om naar je dashboard te gaan.",
+        "continue": "Doorgaan"
+      },
+      "authStep": {
+        "title": "Inloggen",
+        "signingInAs": "Inloggen als {email}",
+        "signInWithPassword": "Inloggen met wachtwoord",
+        "signInWithPasskey": "Inloggen met passkey",
+        "signInWithMagicLink": "Inloggen met een inloglink",
+        "forgotPassword": "Wachtwoord vergeten?",
+        "or": "of"
+      },
+      "magicLinkStep": {
+        "sent": "Controleer je e-mail",
+        "sentDescription": "We hebben een link naar {email} gestuurd. Klik erop om in te loggen.",
+        "resend": "Link opnieuw versturen",
+        "resent": "Inloglink verstuurd!",
+        "usePassword": "Wachtwoord gebruiken",
+        "usePasskey": "Passkey gebruiken"
+      },
+      "back": "Terug"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +312,10 @@
       "revokeAllConfirm": "Alles uitloggen",
       "revokeTitle": "Dit apparaat uitloggen?",
       "revokeDescription": "Dit beëindigt de sessie voor {device}. Er moet opnieuw worden ingelogd om toegang te krijgen tot het account.",
-      "backToDashboard": "Terug naar dashboard"
+      "backToDashboard": "Terug naar dashboard",
+      "loadError": "Sessies laden is mislukt.",
+      "revokeError": "Sessie beëindigen is mislukt.",
+      "revokeAllError": "Sessies beëindigen is mislukt."
     },
     "account": "Instellingen",
     "profile": {
@@ -310,7 +366,39 @@
       "regenerateBackupCodes": "Backupcodes opnieuw genereren",
       "disableConfirm": "Weet je zeker dat je 2FA wilt uitschakelen?",
       "regenerateConfirm": "Dit vervangt uw bestaande back-upcodes. Ongebruikte codes werken niet meer.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "Je accountbeleid vereist tweefactorauthenticatie. Voltooi de instellingen om door te gaan."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Voeg passkeys toe en beheer ze voor sneller inloggen met bescherming tegen phishing.",
+      "policy": "Beleid: {policy}",
+      "disabled": "Uitgeschakeld",
+      "optional": "Optioneel",
+      "required": "Verplicht",
+      "disabledDescription": "Inloggen met een passkey is uitgeschakeld voor je account.",
+      "nameLabel": "Naam van nieuwe passkey (optioneel)",
+      "namePlaceholder": "Mijn laptop",
+      "add": "Passkey toevoegen",
+      "adding": "Toevoegen...",
+      "empty": "Nog geen passkeys geregistreerd.",
+      "unnamed": "Naamloze passkey",
+      "singleDevice": "Apparaatgebonden passkey",
+      "multiDevice": "Gesynchroniseerde passkey",
+      "rename": "Passkey {name} hernoemen",
+      "remove": "Passkey {name} verwijderen",
+      "name": "Passkeynaam",
+      "loadError": "Passkeys laden is mislukt.",
+      "addError": "Passkey toevoegen is mislukt.",
+      "renameError": "Passkey hernoemen is mislukt.",
+      "deleteError": "Passkey verwijderen is mislukt.",
+      "added": "Passkey toegevoegd.",
+      "renamed": "Passkey bijgewerkt.",
+      "deleted": "Passkey verwijderd.",
+      "unsupportedTitle": "Dit apparaat of deze browser ondersteunt geen passkeys.",
+      "unsupportedDescription": "Log in vanaf een apparaat of browser met passkeyondersteuning om er een in te stellen.",
+      "requiredNotice": "Je accountbeleid vereist een passkey. Voeg er een toe om door te gaan.",
+      "signInRequired": "Voor je account moet je inloggen met een passkey."
     }
   },
   "projects": {
@@ -503,5 +591,71 @@
     "signedInAs": "U bent ingelogd als {email}.",
     "description": "U heeft geen toestemming om toegang te krijgen tot deze bron. Als u denkt dat dit een fout is, neem dan contact op met de beheerder van uw organisatie.",
     "backToSignIn": "Terug naar inloggen"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "Amerika",
+      "Europe": "Europa",
+      "Asia & Pacific": "Azië en de Stille Oceaan",
+      "Africa": "Afrika"
+    },
+    "zones": {
+      "America/New_York": "New York",
+      "America/Chicago": "Chicago",
+      "America/Denver": "Denver",
+      "America/Los_Angeles": "Los Angeles",
+      "America/Anchorage": "Anchorage",
+      "Pacific/Honolulu": "Honolulu",
+      "America/Phoenix": "Phoenix",
+      "America/Toronto": "Toronto",
+      "America/Vancouver": "Vancouver",
+      "America/Mexico_City": "Mexico-Stad",
+      "America/Sao_Paulo": "São Paulo",
+      "America/Argentina/Buenos_Aires": "Buenos Aires",
+      "America/Bogota": "Bogotá",
+      "America/Lima": "Lima",
+      "America/Santiago": "Santiago",
+      "Europe/London": "Londen",
+      "Europe/Paris": "Parijs",
+      "Europe/Berlin": "Berlijn",
+      "Europe/Madrid": "Madrid",
+      "Europe/Rome": "Rome",
+      "Europe/Amsterdam": "Amsterdam",
+      "Europe/Brussels": "Brussel",
+      "Europe/Vienna": "Wenen",
+      "Europe/Warsaw": "Warschau",
+      "Europe/Prague": "Praag",
+      "Europe/Budapest": "Boedapest",
+      "Europe/Bucharest": "Boekarest",
+      "Europe/Athens": "Athene",
+      "Europe/Helsinki": "Helsinki",
+      "Europe/Stockholm": "Stockholm",
+      "Europe/Moscow": "Moskou",
+      "Europe/Istanbul": "Istanboel",
+      "Europe/Lisbon": "Lissabon",
+      "Europe/Dublin": "Dublin",
+      "Europe/Zurich": "Zürich",
+      "Asia/Tokyo": "Tokyo",
+      "Asia/Shanghai": "Shanghai",
+      "Asia/Hong_Kong": "Hong Kong",
+      "Asia/Singapore": "Singapore",
+      "Asia/Seoul": "Seoel",
+      "Asia/Taipei": "Taipei",
+      "Asia/Bangkok": "Bangkok",
+      "Asia/Jakarta": "Jakarta",
+      "Asia/Manila": "Manila",
+      "Asia/Ho_Chi_Minh": "Ho Chi Minhstad",
+      "Asia/Kolkata": "Delhi / Mumbai / Kolkata",
+      "Asia/Dubai": "Dubai",
+      "Australia/Sydney": "Sydney",
+      "Australia/Melbourne": "Melbourne",
+      "Pacific/Auckland": "Auckland",
+      "Pacific/Fiji": "Fiji",
+      "Africa/Cairo": "Caïro",
+      "Africa/Johannesburg": "Johannesburg",
+      "Africa/Lagos": "Lagos",
+      "Africa/Nairobi": "Nairobi",
+      "Africa/Casablanca": "Casablanca"
+    }
   }
 }

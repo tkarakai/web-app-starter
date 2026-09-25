@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordInput } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useTranslations } from "next-intl";
 
@@ -11,7 +13,6 @@ import {
   Button,
   Checkbox,
   Label,
-  PasswordInput,
   toast,
 } from "@repo/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";

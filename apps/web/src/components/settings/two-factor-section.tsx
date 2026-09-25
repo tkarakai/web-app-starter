@@ -1,5 +1,7 @@
 "use client";
 
+import { CopyableField, PasswordInput, OtpInput, StyledQrCode } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useAction } from "convex/react";
@@ -18,16 +20,12 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  CopyableField,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Label,
-  OtpInput,
   type OtpInputHandle,
-  PasswordInput,
   Separator,
-  StyledQrCode,
   toast,
 } from "@repo/design-system";
 
@@ -348,7 +346,7 @@ export function TwoFactorSection() {
                 <code className="flex-1 break-all rounded-md border bg-muted px-3 py-2 text-xs font-mono">
                   {secretKey}
                 </code>
-                <Button variant="ghost" size="sm" onClick={handleCopySecret} className="shrink-0">
+                <Button variant="ghost" size="sm" onClick={handleCopySecret} className="shrink-0" aria-label={tc("copy")}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>

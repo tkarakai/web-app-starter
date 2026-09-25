@@ -1,5 +1,7 @@
 "use client";
 
+import { TimezoneSelector } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
@@ -25,7 +27,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TimezoneSelector,
   toast,
 } from "@repo/design-system";
 import { ThemeToggle } from "@repo/design-patterns";

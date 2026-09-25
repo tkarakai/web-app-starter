@@ -1,12 +1,13 @@
 "use client";
 
+import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { UserCog } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
-  Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
@@ -15,7 +16,6 @@ import {
   Separator,
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
   Tabs,
   TabsContent,
   TabsList,
@@ -31,6 +31,7 @@ export function AccountClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authUser = useAuthUser();
+  const tc = useTranslations("common");
   const td = useTranslations("dashboard");
   const [tab, setTab] = React.useState<"profile" | "security">(
     searchParams.get("tab") === "security" ? "security" : "profile",
@@ -40,7 +41,7 @@ export function AccountClient() {
     setTab(searchParams.get("tab") === "security" ? "security" : "profile");
   }, [searchParams]);
 
-  const displayName = authUser?.name ?? "Anonymous";
+  const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
 
   return (

@@ -1,5 +1,7 @@
 "use client";
 
+import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
@@ -20,7 +22,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DropdownMenu,
@@ -30,7 +31,6 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -41,7 +41,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   Textarea,
   useSidebar,
 } from "@repo/design-system";

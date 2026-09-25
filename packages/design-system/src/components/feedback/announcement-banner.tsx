@@ -22,6 +22,8 @@ export type AnnouncementBannerProps = Omit<
   learnMoreName?: string;
   learnMoreContent?: string;
   dismissLabel?: string;
+  detailsLabel?: string;
+  closeLabel?: string;
   onDismiss?: () => void;
 };
 
@@ -33,6 +35,8 @@ export function AnnouncementBanner({
   learnMoreName,
   learnMoreContent,
   dismissLabel = "Dismiss announcement",
+  detailsLabel = "Announcement details",
+  closeLabel = "Close",
   onDismiss,
   className,
   ...props
@@ -97,20 +101,20 @@ export function AnnouncementBanner({
       </section>
 
       <Dialog open={learnMoreOpen} onOpenChange={setLearnMoreOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl" closeLabel={closeLabel}>
           <DialogTitle className="flex items-center text-foreground">
             <Info className="h-5 w-5" aria-hidden="true" />
-            <span className="sr-only">Announcement details</span>
+            <span className="sr-only">{detailsLabel}</span>
           </DialogTitle>
           <iframe
-            title={learnMoreName ?? "Announcement details"}
+            title={learnMoreName ?? detailsLabel}
             srcDoc={learnMoreContent ?? ""}
             sandbox=""
             className="h-[420px] w-full rounded-md border bg-white"
           />
           <div className="mt-1 flex justify-end">
             <Button type="button" onClick={() => setLearnMoreOpen(false)}>
-              Close
+              {closeLabel}
             </Button>
           </div>
         </DialogContent>

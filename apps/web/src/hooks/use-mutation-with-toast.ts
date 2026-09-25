@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { toast } from "@repo/design-system";
 import { ConvexError } from "convex/values";
@@ -14,6 +15,7 @@ export function useMutationWithToast(
   ...args: Parameters<typeof useMutation>
 ): ReturnType<typeof useMutation> {
   const mutation = useMutation(...args);
+  const t = useTranslations("errors.convex");
 
   const wrappedMutation = (...mutationArgs: Parameters<typeof mutation>) => {
     return mutation(...mutationArgs).catch((err: unknown) => {
@@ -23,11 +25,11 @@ export function useMutationWithToast(
           const wait = data.retryAt
             ? Math.ceil((data.retryAt - Date.now()) / 1000)
             : 5;
-          toast.error(`Too many requests. Please wait ${wait} seconds.`);
+          toast.error(t("rateLimited", { seconds: Math.max(0, wait) }));
           return;
         }
       }
-      toast.error("Something went wrong. Please try again.");
+      toast.error(t("serverError"));
     });
   };
 

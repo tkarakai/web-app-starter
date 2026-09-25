@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient, isAuthRateLimited } from "@repo/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
@@ -24,14 +24,14 @@ import {
   parseUserAgent,
 } from "@repo/design-system";
 
-function formatDeviceName(userAgent: string | null | undefined): string {
+function formatDeviceName(userAgent: string | null | undefined, t: ReturnType<typeof useTranslations>): string {
   const parsed = parseUserAgent(userAgent);
   if (parsed.browser === "Unknown" && parsed.os === "Unknown") {
-    return "this device";
+    return t("unknown");
   }
   if (parsed.browser === "Unknown") return parsed.os;
   if (parsed.os === "Unknown") return parsed.browser;
-  return `${parsed.browser} on ${parsed.os}`;
+  return t("deviceName", { browser: parsed.browser, os: parsed.os });
 }
 
 export function VerifyEmailForm() {
@@ -39,6 +39,7 @@ export function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const tv = useTranslations("auth.verifyEmail");
   const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const verificationError = searchParams.get("error");
   const isVerificationSuccess =
     searchParams.get("verified") === "1" && !verificationError;
@@ -46,7 +47,7 @@ export function VerifyEmailForm() {
   const [hasActiveSession, setHasActiveSession] = React.useState<boolean | null>(
     null,
   );
-  const [deviceName, setDeviceName] = React.useState("this device");
+  const [deviceName, setDeviceName] = React.useState(tc("unknown"));
   const [resending, setResending] = React.useState(false);
   const [resent, setResent] = React.useState(false);
   const [resendError, setResendError] = React.useState<string | null>(null);
@@ -98,7 +99,7 @@ export function VerifyEmailForm() {
         }
 
         setHasActiveSession(true);
-        setDeviceName(formatDeviceName(sessionRecord.userAgent));
+        setDeviceName(formatDeviceName(sessionRecord.userAgent, tc));
       } catch {
         if (!cancelled) setHasActiveSession(false);
       }
@@ -107,7 +108,7 @@ export function VerifyEmailForm() {
     return () => {
       cancelled = true;
     };
-  }, [isVerificationSuccess]);
+  }, [isVerificationSuccess, tc]);
 
   const handleCloseWindow = () => {
     globalThis.window?.close();
@@ -132,7 +133,7 @@ export function VerifyEmailForm() {
 
       if (result.error) {
         setResendError(
-          formatAuthError(result.error, tv("verificationErrorUnknown")),
+          isAuthRateLimited(result.error) ? t("errors.rateLimited") : tv("verificationErrorUnknown"),
         );
         return;
       }

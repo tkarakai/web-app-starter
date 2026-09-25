@@ -25,12 +25,7 @@ export default async function PrivacyPage({ params }: Props) {
 
   return (
     <ContentPageLayout title={t("heading")} notice={t("notice")}>
-      <p>{t("notice")}</p>
-      <p>
-        This is a template privacy policy. You should replace this with your own
-        privacy policy that describes how your application collects, uses, and
-        protects user data.
-      </p>
+      <p>{t("description")}</p>
     </ContentPageLayout>
   );
 }

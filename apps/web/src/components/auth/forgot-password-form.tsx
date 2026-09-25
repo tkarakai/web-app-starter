@@ -51,7 +51,7 @@ export function ForgotPasswordForm() {
       // Always show "email sent" to prevent email enumeration, except for
       // rate limiting which is safe to surface (not user-specific).
       if (result.error?.status === 429) {
-        setError("Too many requests. Please try again later.");
+        setError(t("errors.rateLimited"));
       } else {
         setEmailSent(true);
       }

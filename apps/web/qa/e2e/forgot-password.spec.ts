@@ -105,10 +105,9 @@ test.describe("Forgot Password Page", () => {
     const errorBox = page.locator(".rounded-md.border.bg-muted");
     await expect(errorBox).toBeVisible({ timeout: 10000 });
 
-    // The forgot-password form's own copy — note it differs from the sign-in
-    // form's "Too many attempts. Please wait a moment before trying again."
+    // The English locale shares the translated auth rate-limit message.
     const errorText = await errorBox.textContent();
-    expect(errorText).toContain("Too many requests");
+    expect(errorText).toBe("Too many attempts. Please wait a moment before trying again.");
     expect(errorText).not.toContain("429");
   });
 

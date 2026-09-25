@@ -1,5 +1,7 @@
 "use client";
 
+import { DialogContent } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useMutation } from "convex/react";
@@ -19,7 +21,6 @@ import {
   AlertDialogTrigger,
   Button,
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,

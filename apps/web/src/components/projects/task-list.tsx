@@ -1,5 +1,7 @@
 "use client";
 
+import { DialogContent } from "@/components/ui/localized-controls";
+
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -14,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,

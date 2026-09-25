@@ -11,7 +11,31 @@
     "signOut": "התנתקות",
     "error": "אירעה שגיאה",
     "backToHome": "חזור לעמוד הבית",
-    "note": "הערה"
+    "note": "הערה",
+    "anonymous": "אנונימי",
+    "unknown": "לא ידוע",
+    "deviceName": "{browser} ב־{os}",
+    "showPassword": "הצגת סיסמה",
+    "hidePassword": "הסתרת סיסמה",
+    "copy": "העתקה ללוח",
+    "copied": "הועתק",
+    "close": "סגירה",
+    "toggleSidebar": "הצגה או הסתרה של סרגל הצד",
+    "resizeSidebar": "הצגה, הסתרה או שינוי גודל של סרגל הצד",
+    "navigation": "ניווט",
+    "notFound": "העמוד לא נמצא.",
+    "announcement": "הודעה",
+    "announcementDetails": "פרטי ההודעה",
+    "dismissAnnouncement": "סגירת ההודעה",
+    "otpDigit": "ספרה {index} מתוך {length}",
+    "qrCode": "קוד QR",
+    "previousMonth": "החודש הקודם",
+    "nextMonth": "החודש הבא",
+    "hour": "שעה",
+    "minute": "דקה",
+    "dayPeriod": "לפני הצהריים או אחרי הצהריים",
+    "daylightSaving": "שעון קיץ",
+    "breadcrumb": "נתיב ניווט"
   },
   "theme": {
     "light": "ערכת נושא בהירה",
@@ -59,7 +83,11 @@
       "passwordCompromised": "הסיסמה שהזנת נחשפה. אנא בחר/י סיסמה אחרת.",
       "rateLimited": "יותר מדי ניסיונות. אנא המתן/י רגע לפני שתנסה/י שוב.",
       "invalidCredentials": "כתובת אימייל או סיסמה שגויים",
-      "generic": "אירעה שגיאה"
+      "generic": "אירעה שגיאה",
+      "securityCheckFailed": "לא ניתן לאמת את מדיניות האבטחה. יש להתחבר מחדש.",
+      "passkeyCheckFailed": "לא ניתן לאמת את מדיניות מפתחות הגישה. יש להתחבר עם מפתח גישה.",
+      "passkeySignInFailed": "ההתחברות עם מפתח גישה נכשלה.",
+      "magicLinkFailed": "שליחת קישור הכניסה נכשלה."
     },
     "twoFactorVerify": {
       "title": "אימות דו-שלבי",
@@ -155,7 +183,32 @@
       "goToSignIn": "מעבר לעמוד ההתחברות",
       "closeWindow": "סגור חלון זה"
     },
-    "forgotPasswordLink": "שכחת סיסמה?"
+    "forgotPasswordLink": "שכחת סיסמה?",
+    "multiStep": {
+      "emailStep": {
+        "title": "ברוך שובך",
+        "description": "התחבר כדי להמשיך ללוח הבקרה.",
+        "continue": "המשך"
+      },
+      "authStep": {
+        "title": "התחברות",
+        "signingInAs": "התחברות בתור {email}",
+        "signInWithPassword": "התחברות עם סיסמה",
+        "signInWithPasskey": "התחברות עם מפתח גישה",
+        "signInWithMagicLink": "התחברות עם קישור כניסה",
+        "forgotPassword": "שכחת סיסמה?",
+        "or": "או"
+      },
+      "magicLinkStep": {
+        "sent": "בדוק את הדוא״ל שלך",
+        "sentDescription": "שלחנו קישור אל {email}. יש ללחוץ עליו כדי להתחבר.",
+        "resend": "שליחת הקישור מחדש",
+        "resent": "קישור הכניסה נשלח!",
+        "usePassword": "שימוש בסיסמה",
+        "usePasskey": "שימוש במפתח גישה"
+      },
+      "back": "חזרה"
+    }
   },
   "landing": {
     "badge": "Next.js + Convex + Better Auth",
@@ -259,7 +312,10 @@
       "revokeAllConfirm": "התנתק מהכל",
       "revokeTitle": "להתנתק ממכשיר זה?",
       "revokeDescription": "פעולה זו תסיים את הסשן עבור {device}. יהיה צורך להתחבר מחדש כדי לגשת לחשבון.",
-      "backToDashboard": "חזרה ללוח הבקרה"
+      "backToDashboard": "חזרה ללוח הבקרה",
+      "loadError": "טעינת ההפעלות נכשלה.",
+      "revokeError": "סיום ההפעלה נכשל.",
+      "revokeAllError": "סיום ההפעלות נכשל."
     },
     "account": "הגדרות",
     "profile": {
@@ -310,7 +366,39 @@
       "regenerateBackupCodes": "חדש קודי גיבוי",
       "disableConfirm": "האם אתה בטוח שברצונך להשבית את האימות הדו-שלבי?",
       "regenerateConfirm": "פעולה זו תחליף את קודי הגיבוי הקיימים שלך. קודים שלא נעשה בהם שימוש לא יעבדו יותר.",
-      "codePlaceholder": "000000"
+      "codePlaceholder": "000000",
+      "requiredNotice": "מדיניות החשבון מחייבת אימות דו־שלבי. יש להשלים את ההגדרה כדי להמשיך."
+    },
+    "passkeys": {
+      "title": "מפתחות גישה",
+      "description": "הוספה וניהול של מפתחות גישה להתחברות מהירה יותר ועמידה בפני דיוג.",
+      "policy": "מדיניות: {policy}",
+      "disabled": "מושבת",
+      "optional": "רשות",
+      "required": "חובה",
+      "disabledDescription": "התחברות באמצעות מפתח גישה מושבתת בחשבון שלך.",
+      "nameLabel": "שם מפתח הגישה החדש (לא חובה)",
+      "namePlaceholder": "המחשב הנייד שלי",
+      "add": "הוספת מפתח גישה",
+      "adding": "מוסיף...",
+      "empty": "עדיין לא נרשמו מפתחות גישה.",
+      "unnamed": "מפתח גישה ללא שם",
+      "singleDevice": "מפתח המשויך למכשיר",
+      "multiDevice": "מפתח מסונכרן",
+      "rename": "שינוי שם מפתח הגישה {name}",
+      "remove": "מחיקת מפתח הגישה {name}",
+      "name": "שם מפתח הגישה",
+      "loadError": "טעינת מפתחות הגישה נכשלה.",
+      "addError": "הוספת מפתח הגישה נכשלה.",
+      "renameError": "שינוי שם מפתח הגישה נכשל.",
+      "deleteError": "מחיקת מפתח הגישה נכשלה.",
+      "added": "מפתח הגישה נוסף.",
+      "renamed": "מפתח הגישה עודכן.",
+      "deleted": "מפתח הגישה הוסר.",
+      "unsupportedTitle": "המכשיר או הדפדפן הזה אינו תומך במפתחות גישה.",
+      "unsupportedDescription": "יש להתחבר ממכשיר או מדפדפן שתומך במפתחות גישה כדי להגדיר מפתח.",
+      "requiredNotice": "מדיניות החשבון מחייבת מפתח גישה. יש להוסיף אחד כדי להמשיך.",
+      "signInRequired": "החשבון שלך מחייב התחברות באמצעות מפתח גישה."
     }
   },
   "projects": {
@@ -503,5 +591,71 @@
     "signedInAs": "אתה מחובר בתור {email}.",
     "description": "אין לך הרשאה לגשת למשאב זה. אם אתה סבור שמדובר בטעות, אנא פנה למנהל הארגון שלך.",
     "backToSignIn": "חזרה להתחברות"
+  },
+  "timezones": {
+    "regions": {
+      "Americas": "אמריקה",
+      "Europe": "אירופה",
+      "Asia & Pacific": "אסיה והאוקיינוס השקט",
+      "Africa": "אפריקה"
+    },
+    "zones": {
+      "America/New_York": "ניו יורק",
+      "America/Chicago": "שיקגו",
+      "America/Denver": "דנוור",
+      "America/Los_Angeles": "לוס אנג׳לס",
+      "America/Anchorage": "אנקורג׳",
+      "Pacific/Honolulu": "הונולולו",
+      "America/Phoenix": "פיניקס",
+      "America/Toronto": "טורונטו",
+      "America/Vancouver": "ונקובר",
+      "America/Mexico_City": "מקסיקו סיטי",
+      "America/Sao_Paulo": "סאו פאולו",
+      "America/Argentina/Buenos_Aires": "בואנוס איירס",
+      "America/Bogota": "בוגוטה",
+      "America/Lima": "לימה",
+      "America/Santiago": "סנטיאגו",
+      "Europe/London": "לונדון",
+      "Europe/Paris": "פריז",
+      "Europe/Berlin": "ברלין",
+      "Europe/Madrid": "מדריד",
+      "Europe/Rome": "רומא",
+      "Europe/Amsterdam": "אמסטרדם",
+      "Europe/Brussels": "בריסל",
+      "Europe/Vienna": "וינה",
+      "Europe/Warsaw": "ורשה",
+      "Europe/Prague": "פראג",
+      "Europe/Budapest": "בודפשט",
+      "Europe/Bucharest": "בוקרשט",
+      "Europe/Athens": "אתונה",
+      "Europe/Helsinki": "הלסינקי",
+      "Europe/Stockholm": "סטוקהולם",
+      "Europe/Moscow": "מוסקבה",
+      "Europe/Istanbul": "איסטנבול",
+      "Europe/Lisbon": "ליסבון",
+      "Europe/Dublin": "דבלין",
+      "Europe/Zurich": "ציריך",
+      "Asia/Tokyo": "טוקיו",
+      "Asia/Shanghai": "שנגחאי",
+      "Asia/Hong_Kong": "הונג קונג",
+      "Asia/Singapore": "סינגפור",
+      "Asia/Seoul": "סיאול",
+      "Asia/Taipei": "טאיפיי",
+      "Asia/Bangkok": "בנגקוק",
+      "Asia/Jakarta": "ג׳קרטה",
+      "Asia/Manila": "מנילה",
+      "Asia/Ho_Chi_Minh": "הו צ׳י מין סיטי",
+      "Asia/Kolkata": "דלהי / מומבאי / קולקטה",
+      "Asia/Dubai": "דובאי",
+      "Australia/Sydney": "סידני",
+      "Australia/Melbourne": "מלבורן",
+      "Pacific/Auckland": "אוקלנד",
+      "Pacific/Fiji": "פיג׳י",
+      "Africa/Cairo": "קהיר",
+      "Africa/Johannesburg": "יוהנסבורג",
+      "Africa/Lagos": "לאגוס",
+      "Africa/Nairobi": "ניירובי",
+      "Africa/Casablanca": "קזבלנקה"
+    }
   }
 }

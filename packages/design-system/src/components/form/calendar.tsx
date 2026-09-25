@@ -91,6 +91,8 @@ export type CalendarProps = {
   onSelect?: (date: Date) => void
   /** BCP 47 locale string (e.g. "en", "de", "ja") */
   locale?: string
+  previousMonthLabel?: string
+  nextMonthLabel?: string
   className?: string
 }
 
@@ -98,6 +100,8 @@ function Calendar({
   selected,
   onSelect,
   locale = "en",
+  previousMonthLabel = "Previous month",
+  nextMonthLabel = "Next month",
   className,
 }: CalendarProps) {
   const [viewDate, setViewDate] = React.useState(
@@ -130,6 +134,7 @@ function Calendar({
           variant="outline"
           size="sm"
           className="h-7 w-7 p-0 opacity-50 hover:opacity-100"
+          aria-label={previousMonthLabel}
           onClick={goPrev}
           type="button"
         >
@@ -140,6 +145,7 @@ function Calendar({
           variant="outline"
           size="sm"
           className="h-7 w-7 p-0 opacity-50 hover:opacity-100"
+          aria-label={nextMonthLabel}
           onClick={goNext}
           type="button"
         >

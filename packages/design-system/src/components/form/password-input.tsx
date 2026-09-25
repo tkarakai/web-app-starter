@@ -6,10 +6,15 @@ import { Eye, EyeOff } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { Input, type InputProps } from "./input"
 
-export type PasswordInputProps = Omit<InputProps, "type">
+export type PasswordInputProps = Omit<InputProps, "type"> & {
+  showPasswordLabel?: string
+  hidePasswordLabel?: string
+}
 
 function PasswordInput({
   className,
+  showPasswordLabel = "Show password",
+  hidePasswordLabel = "Hide password",
   ref,
   ...props
 }: PasswordInputProps & { ref?: React.Ref<HTMLInputElement> }) {
@@ -28,7 +33,7 @@ function PasswordInput({
         className="absolute right-0 top-0 flex h-full items-center justify-center px-3 text-muted-foreground hover:text-foreground transition-colors"
         onClick={() => setVisible((v) => !v)}
         tabIndex={-1}
-        aria-label={visible ? "Hide password" : "Show password"}
+        aria-label={visible ? hidePasswordLabel : showPasswordLabel}
       >
         {visible ? (
           <EyeOff className="h-4 w-4" />
