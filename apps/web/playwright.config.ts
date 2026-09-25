@@ -20,6 +20,10 @@ function getEnvValue(name: string, fallback: string): string {
   return fallback;
 }
 
+// E2E_BASE_URL points the suite at an already-deployed app (e.g. the local AWS
+// stack: E2E_BASE_URL=http://web.localhost:8080) instead of starting a dev server.
+const deployedBaseUrl = process.env.E2E_BASE_URL || undefined;
+
 export default defineConfig({
   testDir: "./qa/e2e",
   outputDir: "./qa/test-results",
@@ -47,7 +51,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: getEnvValue("APP_ORIGIN", "http://localhost:3001"),
+    baseURL: deployedBaseUrl ?? getEnvValue("APP_ORIGIN", "http://localhost:3001"),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -57,15 +61,17 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "../../scripts/dev-start.sh --ci --app=web",
-    // Playwright defaults webServer stdout to "ignore". When the script fails to
-    // boot in CI that leaves "Process from config.webServer was not able to
-    // start. Exit code: 1" and nothing else — no way to tell what broke.
-    stdout: "pipe",
-    stderr: "pipe",
-    url: getEnvValue("APP_ORIGIN", "http://localhost:3001"),
-    reuseExistingServer: !process.env.CI,
-    timeout: 180 * 1000,
-  },
+  webServer: deployedBaseUrl
+    ? undefined
+    : {
+        command: "../../scripts/dev-start.sh --ci --app=web",
+        // Playwright defaults webServer stdout to "ignore". When the script fails to
+        // boot in CI that leaves "Process from config.webServer was not able to
+        // start. Exit code: 1" and nothing else — no way to tell what broke.
+        stdout: "pipe",
+        stderr: "pipe",
+        url: getEnvValue("APP_ORIGIN", "http://localhost:3001"),
+        reuseExistingServer: !process.env.CI,
+        timeout: 180 * 1000,
+      },
 });

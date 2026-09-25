@@ -1,0 +1,7 @@
+[
+  { "ParameterKey": "ProjectName", "ParameterValue": "my-app" },
+  { "ParameterKey": "Environment", "ParameterValue": "staging" },
+  { "ParameterKey": "HostedZoneId", "ParameterValue": "" },
+  { "ParameterKey": "LandingDomainName", "ParameterValue": "staging.example.com" },
+  { "ParameterKey": "AcmCertificateArn", "ParameterValue": "" }
+]

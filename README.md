@@ -343,6 +343,9 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 - Use Convex deployments for environment-specific configuration.
 - Keep secrets in Convex env vars, never in committed files.
 - CI runs via Turborepo: `turbo lint`, `turbo typecheck`, `turbo build`, etc.
+- web, admin and landing deploy to Vercel. `infra/aws` hosts them on AWS instead (Convex stays on
+  Convex Cloud), with a local target that runs in Docker: see
+  [deployment-architecture-aws.md](docs/aws/deployment-architecture-aws.md).
 
 ## Local vs cloud deployments
 

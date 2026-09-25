@@ -14,7 +14,7 @@ import { createHmac } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The user seeded by `packages/backend/convex/devSeed.ts`. The password is the
@@ -25,6 +25,14 @@ import { expect, type Page } from "@playwright/test";
  * self-register — every spec shares this one account. Any spec that mutates it
  * (password, 2FA, passkeys) must restore it, and must run serially.
  */
+/**
+ * Host name of the app under test, for cookies a spec sets directly. Follows
+ * `baseURL`, so the suite also runs against a deployed target (E2E_BASE_URL).
+ */
+export function appCookieDomain(): string {
+  return new URL(test.info().project.use.baseURL ?? "http://localhost").hostname;
+}
+
 export const SEED_USER = {
   email: "user@user.com",
   password: "user@user.comuser@user.comuser@user.com",
@@ -291,7 +299,10 @@ export async function awaitStableTotpWindow(minSeconds = 5): Promise<void> {
  * console, and `dev-start.sh` redirects Convex's output to `.convex-dev.log`.
  * Scraping it is how the email-link flows become testable without an inbox.
  */
-const CONVEX_LOG = path.join(__dirname, "../../../../../.convex-dev.log");
+const CONVEX_LOG =
+  // A deployed target streams its Convex logs elsewhere (infra/aws/local writes
+  // them to infra/aws/local/.state/convex.log).
+  process.env.E2E_CONVEX_LOG ?? path.join(__dirname, "../../../../../.convex-dev.log");
 
 export type AuthEmailType = "reset-password" | "verification" | "magic-link" | "email-otp";
 

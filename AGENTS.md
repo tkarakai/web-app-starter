@@ -206,6 +206,7 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
 | Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 and 6 done, start at phase 5** |
+| Hosting on AWS instead of Vercel (`infra/aws`, Floci local emulation) | `docs/aws/deployment-architecture-aws.md`. Replaces Vercel only; hosting Convex on AWS is out of scope |
 | Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md`; drain the queue with the `deps-update` skill (`.agents/skills/`) |
 | Migrating a dependency major, or changing the Node/Bun runtime baseline | `docs/dependency-migrations.md` and the `deps-major` skill; `bun run check:runtime-baseline`; decisions go in `docs/dependency-log.md` |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md` and `scripts/release.sh` |

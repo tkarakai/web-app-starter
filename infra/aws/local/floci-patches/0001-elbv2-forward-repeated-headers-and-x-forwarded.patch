@@ -1,0 +1,43 @@
+diff --git a/src/main/java/io/github/hectorvent/floci/services/elbv2/ElbV2DataPlane.java b/src/main/java/io/github/hectorvent/floci/services/elbv2/ElbV2DataPlane.java
+index 09f63f9..5883f9e 100644
+--- a/src/main/java/io/github/hectorvent/floci/services/elbv2/ElbV2DataPlane.java
++++ b/src/main/java/io/github/hectorvent/floci/services/elbv2/ElbV2DataPlane.java
+@@ -605,12 +605,27 @@ public class ElbV2DataPlane {
+                 .onSuccess(clientReq -> {
+                     req.headers().forEach(entry -> {
+                         if (!HOP_BY_HOP_HEADERS.contains(entry.getKey().toLowerCase())) {
+-                            clientReq.putHeader(entry.getKey(), entry.getValue());
++                            // add, not put: a repeated request header must keep every value.
++                            clientReq.headers().add(entry.getKey(), entry.getValue());
+                         }
+                     });
+                     if (!preserveHostHeader) {
+                         clientReq.putHeader("Host", host + ":" + port);
+                     }
++                    // Like an ALB: append the peer address to X-Forwarded-For and report
++                    // the listener's protocol and port, keeping values a TLS front set.
++                    String peer = req.remoteAddress() != null ? req.remoteAddress().host() : null;
++                    if (peer != null) {
++                        String forwardedFor = req.getHeader("X-Forwarded-For");
++                        clientReq.putHeader("X-Forwarded-For",
++                                forwardedFor == null || forwardedFor.isBlank() ? peer : forwardedFor + ", " + peer);
++                    }
++                    if (req.getHeader("X-Forwarded-Proto") == null) {
++                        clientReq.putHeader("X-Forwarded-Proto", req.isSSL() ? "https" : "http");
++                    }
++                    if (req.getHeader("X-Forwarded-Port") == null && req.localAddress() != null) {
++                        clientReq.putHeader("X-Forwarded-Port", String.valueOf(req.localAddress().port()));
++                    }
+                     AtomicBoolean responseStarted = new AtomicBoolean();
+                     AtomicBoolean requestFailed = new AtomicBoolean();
+                     clientReq.response().onSuccess(resp -> {
+@@ -621,7 +636,8 @@ public class ElbV2DataPlane {
+                         req.response().setStatusCode(resp.statusCode());
+                         resp.headers().forEach(entry -> {
+                             if (!HOP_BY_HOP_HEADERS.contains(entry.getKey().toLowerCase())) {
+-                                req.response().putHeader(entry.getKey(), entry.getValue());
++                                // add, not put: every Set-Cookie must reach the client.
++                                req.response().headers().add(entry.getKey(), entry.getValue());
+                             }
+                         });
+                         if (resp.getHeader("Content-Length") == null) {

@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Bootstrap stack (deployed once per environment by an administrator): the role
+  CloudFormation assumes to create the other stacks, and the least-privilege
+  policy for whoever runs the deploy scripts.
+
+# With this stack in place the deploy scripts pass --role-arn to CloudFormation,
+# so the person or CI job deploying needs only DeployerPolicy: CloudFormation on
+# this project's stacks, iam:PassRole on the execution role, ECR push, the
+# landing bucket and CloudFront invalidations. Everything that creates VPCs, load
+# balancers, services and roles is done by the execution role, never directly.
+
+Parameters:
+  ProjectName:
+    Type: String
+    AllowedPattern: '^[a-z][a-z0-9-]*$'
+  Environment:
+    Type: String
+    AllowedValues: [local, staging, production]
+
+Resources:
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-cfn-exec'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: provision-app-stacks
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Services
+                Effect: Allow
+                Action:
+                  - ec2:*
+                  - elasticloadbalancing:*
+                  - ecs:*
+                  - ecr:*
+                  - logs:*
+                  - s3:*
+                  - cloudfront:*
+                  - acm:DescribeCertificate
+                  - acm:ListCertificates
+                  - route53:GetHostedZone
+                  - route53:ListHostedZones
+                  - route53:ChangeResourceRecordSets
+                  - route53:GetChange
+                  - route53:ListResourceRecordSets
+                  - ssm:GetParameters
+                Resource: '*'
+              - Sid: ProjectRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:PassRole
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${ProjectName}-${Environment}-*'
+              - Sid: ServiceLinkedRoles
+                Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName:
+                      - ecs.amazonaws.com
+                      - elasticloadbalancing.amazonaws.com
+
+  DeployerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${ProjectName}-${Environment}-deployer'
+      Description: Run the infra/aws deploy scripts for this environment.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ProjectStacks
+            Effect: Allow
+            Action:
+              - cloudformation:CreateChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DeleteStack
+              - cloudformation:GetTemplateSummary
+            Resource: !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ProjectName}-${Environment}-*/*'
+          - Sid: TemplateValidation
+            Effect: Allow
+            Action:
+              - cloudformation:ValidateTemplate
+              - cloudformation:GetTemplateSummary
+            Resource: '*'
+          - Sid: PassExecutionRole
+            Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt CloudFormationExecutionRole.Arn
+            Condition:
+              StringEquals:
+                iam:PassedToService: cloudformation.amazonaws.com
+          - Sid: RegistryLogin
+            Effect: Allow
+            Action: ecr:GetAuthorizationToken
+            Resource: '*'
+          - Sid: ProjectImages
+            Effect: Allow
+            Action:
+              - ecr:DescribeImages
+              - ecr:BatchCheckLayerAvailability
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+              - ecr:PutImage
+            Resource: !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ProjectName}-${Environment}-*'
+          - Sid: LandingBucket
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::${ProjectName}-${Environment}-landing-*'
+              - !Sub 'arn:${AWS::Partition}:s3:::${ProjectName}-${Environment}-landing-*/*'
+          - Sid: LandingInvalidation
+            Effect: Allow
+            Action:
+              - cloudfront:CreateInvalidation
+              - cloudfront:GetInvalidation
+            Resource: '*'
+
+Outputs:
+  ExecutionRoleArn:
+    Value: !GetAtt CloudFormationExecutionRole.Arn
+  DeployerPolicyArn:
+    Value: !Ref DeployerPolicy

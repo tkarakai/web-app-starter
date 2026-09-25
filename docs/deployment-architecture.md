@@ -2,6 +2,10 @@
 
 This document explains the design and internals of the CI/CD pipeline — how it works, why it's built this way, and what happens when things fail. For step-by-step operational procedures, see [deployment-runbook.md](./deployment-runbook.md).
 
+> **Hosting on AWS instead of Vercel:** see [aws/deployment-architecture-aws.md](./aws/deployment-architecture-aws.md).
+> It replaces Vercel only; Convex stays on Convex Cloud either way. It is operated from the CLI
+> and does not change the GitHub CD workflows documented here.
+
 ## Why This Architecture
 
 There are several ways to wire up CI/CD with GitHub, Vercel, and Convex. We evaluated the common approaches and chose the one that gives us the most control.
@@ -704,4 +708,3 @@ gh api repos/{owner}/{repo}/deployments --jq '.[0:5] | .[] | "\(.environment) \(
 | Solo / small team | GitHub email notifications (built-in, zero setup) |
 | Team with Slack | Add Slack webhook to CD workflows |
 | Production-critical | PagerDuty or Opsgenie integration via webhook |
-
