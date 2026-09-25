@@ -15,6 +15,7 @@ type Manifest = {
 
 const setupAction = ".github/actions/setup-bun/action.yml";
 const workflowDir = ".github/workflows";
+const dockerDir = "infra/aws/docker";
 
 function readManifest(file: string): Manifest {
   return JSON.parse(readFileSync(file, "utf8")) as Manifest;
@@ -70,6 +71,15 @@ export function checkRuntimeBaseline(root: string): string[] {
     for (const [, value] of text.matchAll(/node-version:\s*["']?([^"'\s#]+)/g)) {
       if (major(value) !== node) errors.push(`${workflowDir}/${file} sets node-version "${value}", expected "${node}"`);
     }
+  }
+
+  const dockerfiles = path.join(root, dockerDir);
+  for (const file of existsSync(dockerfiles) ? readdirSync(dockerfiles).filter((f) => f.endsWith("Dockerfile")).sort() : []) {
+    const text = readFileSync(path.join(dockerfiles, file), "utf8");
+    const dockerNode = text.match(/^ARG NODE_VERSION=(\S+)/m)?.[1];
+    const dockerBun = text.match(/^ARG BUN_VERSION=(\S+)/m)?.[1];
+    if (dockerNode !== node) errors.push(`${dockerDir}/${file} NODE_VERSION is "${dockerNode}", expected "${node}"`);
+    if (bun && dockerBun !== bun) errors.push(`${dockerDir}/${file} BUN_VERSION is "${dockerBun}", expected "${bun}"`);
   }
 
   const manifests = [path.join(root, "package.json"), ...workspaceManifests(root, rootManifest.workspaces ?? [])];

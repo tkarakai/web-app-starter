@@ -1,0 +1,17 @@
+[
+  { "ParameterKey": "ProjectName", "ParameterValue": "my-app" },
+  { "ParameterKey": "Environment", "ParameterValue": "staging" },
+  { "ParameterKey": "ConvexUrl", "ParameterValue": "https://REPLACE-staging-deployment.convex.cloud" },
+  { "ParameterKey": "ConvexSiteUrl", "ParameterValue": "https://REPLACE-staging-deployment.convex.site" },
+  { "ParameterKey": "AppEnvironment", "ParameterValue": "staging" },
+  { "ParameterKey": "TrustedProxyCount", "ParameterValue": "1" },
+  { "ParameterKey": "CpuArchitecture", "ParameterValue": "ARM64" },
+  { "ParameterKey": "AppContainerPort", "ParameterValue": "3000" },
+  { "ParameterKey": "WebDesiredCount", "ParameterValue": "1" },
+  { "ParameterKey": "AdminDesiredCount", "ParameterValue": "1" },
+  { "ParameterKey": "WebCpu", "ParameterValue": "512" },
+  { "ParameterKey": "WebMemory", "ParameterValue": "1024" },
+  { "ParameterKey": "AdminCpu", "ParameterValue": "512" },
+  { "ParameterKey": "AdminMemory", "ParameterValue": "1024" },
+  { "ParameterKey": "LogRetentionDays", "ParameterValue": "14" }
+]

@@ -24,6 +24,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for container hosting (infra/aws). Vercel builds
+  // leave NEXT_OUTPUT unset and are unaffected.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   reactStrictMode: true,
   env: {
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
