@@ -7,14 +7,15 @@ Versioning: [semver as defined in `VERSIONING.md`](./VERSIONING.md) — read tha
 if you are wondering why a small-looking change was a major.
 
 Every release that requires anything of a downstream app has an **Action required**
-section. A release without one is a promise that merging the tag and running
-`bun run ci:quick` is the whole upgrade. How to actually take a release:
+section. Ordinary conflict resolution remains expected for customized source at every
+version. Release-specific compatibility and deployment steps are listed explicitly. How to actually take a release:
 [`UPGRADING.md`](./UPGRADING.md).
 
 ## [Unreleased]
 
 First tagged release. The baseline: the starter as it exists today, with a version
-number attached to it and a documented, validated way to take future ones.
+number attached to it and a documented source-merge upgrade process. This is the
+first supported starting point, not proof of arbitrary pre-release app upgrades.
 
 ### Added
 
@@ -58,12 +59,13 @@ number attached to it and a documented, validated way to take future ones.
   hotspots with a prescribed resolution for each, and a procedure written for coding
   agents.
 - `CHANGELOG.md` — this file.
-- `scripts/release.sh` — cuts a release: verifies the tree, bumps `package.json`,
-  promotes the `Unreleased` section, and tags.
+- `scripts/release.sh` — prepares version/changelog changes for a reviewed PR
+  without committing or tagging. The main-only **Starter Release** workflow runs
+  existing CI against the exact merged commit, requires E2E, then publishes an
+  immutable tag and GitHub release. It does not deploy applications.
 - `scripts/resolve-i18n-conflicts.ts` — resolves conflicted
-  `packages/i18n/messages/*.json` by merging parsed objects key by key. Locale files
-  conflict in all 15 at once on any key addition, and the intuitive "keep both sides"
-  resolution produces invalid JSON there.
+  `packages/i18n/messages/*.json` by merging parsed objects key by key. Independent key changes can merge cleanly; overlapping changes require review.
+  Blindly concatenating conflict hunks can produce invalid JSON.
 - The development launcher and the locale resolver are TypeScript on Node
   (`scripts/dev-processes.ts`, `scripts/resolve-i18n-conflicts.ts`). Python is no
   longer required.
@@ -72,14 +74,20 @@ number attached to it and a documented, validated way to take future ones.
 - `.claude/commands/upgrade-starter.md` — the upgrade procedure as a slash command,
   for downstream coding agents.
 
-`scripts/release.sh` refuses to tag a commit that is not yet reachable from
-`origin/main`. This repo squash-merges, so a tag cut on a feature branch would
-survive the merge pointing at commits that never reach `main`, and a business app
-merging that tag would pull an orphaned parallel history. A checkout with no
-`origin/main` — a throwaway clone used to rehearse a release — skips the check, which
-is where practice tags belong.
+Release preparation, application adoption and deployment are separate.
+`VERSIONING.md` documents preparation and publication; `UPGRADING.md` describes
+verified source baselines and reviewed application merges. Broader package
+extraction and a full customized-app/schema-migration rehearsal remain follow-up
+work. The existing automated demo rehearsal covers the sidebar package only.
 
 ### Fixed
+
+- Locale conflict resolution now reports delete/edit disagreements in both
+  directions, including deleted namespaces, and preserves the application side
+  for review. `--check` returns failure without modifying the file or Git index.
+- Starter discovery uses namespaced local tags, avoiding collisions with business
+  app release tags. Baselines record the exact adopted starter commit as well as
+  its version. Patch releases do not promise conflict-free customized merges.
 
 - Localization: web passkey settings, session errors and relative times, auth
   feedback, timezone names, and shared control accessibility labels use translated messages.
@@ -127,12 +135,12 @@ package artifact, lock and required tests together. Done when
 1. Add the starter as a remote and fetch its tags:
    ```bash
    git remote add upstream https://github.com/tkarakai/web-app-starter.git
-   git fetch upstream --tags
+   git fetch upstream --no-tags 'refs/heads/main:refs/remotes/upstream/main' 'refs/tags/v*:refs/tags/starter/v*'
    ```
-2. Establish the exact starter source commit your app includes. The first starter
-   release is not published yet, so do not stamp `v1.0.0` as an assumed baseline.
-   Once a release is adopted and its required actions are verified, record that
-   release in `.starter-version` using the setup procedure in `UPGRADING.md`.
+2. Establish the exact starter source commit your app includes. Do not stamp
+   `v1.0.0` merely because your app shares history. After the tag is published,
+   merge it, resolve app-specific changes and verify applicable required actions;
+   then record that release and its resolved commit in `.starter-version` using the setup procedure in `UPGRADING.md`.
 3. Confirm you share history with the starter:
    ```bash
    git merge-base HEAD upstream/main
@@ -142,4 +150,5 @@ package artifact, lock and required tests together. Done when
 
 Done when the starter source baseline and history relationship are recorded, and
 any claimed release resolves to the verified starter commit with required actions
-completed. Release discovery remains pending until starter tags are published.
+completed. New apps cloned from the published `v1.0.0` tag can record that exact
+tag/commit immediately; their own setup and deployment still need validation.

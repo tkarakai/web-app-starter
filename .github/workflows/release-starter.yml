@@ -1,0 +1,140 @@
+name: Starter Release
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'CHANGELOG.md'
+      - 'scripts/release*'
+      - '.github/workflows/release-starter.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Prepared version to publish (for example 1.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: starter-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepared:
+    name: Verify release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.verify.outputs.sha }}
+      version: ${{ steps.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Check prepared metadata and publication source
+        id: verify
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${REQUESTED_VERSION:-$(node -p 'require("./package.json").version')}"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "Publish only from main"; exit 1; }
+            git fetch origin main --tags
+            ./scripts/release.sh "$VERSION" --check --require-main
+          else
+            # Ordinary future PRs may add Unreleased notes. Only prepared release
+            # PRs have empty Unreleased; preparation itself has behavior tests.
+            if node -e 'const s=require("node:fs").readFileSync("CHANGELOG.md","utf8"); process.exit(/^## \[Unreleased\]\s+## \[/m.test(s) ? 0 : 1)'; then
+              ./scripts/release.sh "$VERSION" --check
+            fi
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  shared:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepared
+    uses: ./.github/workflows/ci-shared.yml
+    with:
+      git_sha: ${{ needs.prepared.outputs.sha }}
+
+  web:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepared
+    uses: ./.github/workflows/ci-web.yml
+    with:
+      git_sha: ${{ needs.prepared.outputs.sha }}
+      require_e2e: true
+
+  admin:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepared
+    uses: ./.github/workflows/ci-admin.yml
+    with:
+      git_sha: ${{ needs.prepared.outputs.sha }}
+      require_e2e: true
+
+  landing:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepared
+    uses: ./.github/workflows/ci-landing.yml
+    with:
+      git_sha: ${{ needs.prepared.outputs.sha }}
+      require_e2e: true
+
+  landing-static:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepared
+    uses: ./.github/workflows/ci-landing-static.yml
+    with:
+      git_sha: ${{ needs.prepared.outputs.sha }}
+      require_e2e: true
+
+  storybook:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepared
+    uses: ./.github/workflows/ci-storybook.yml
+    with:
+      git_sha: ${{ needs.prepared.outputs.sha }}
+      require_e2e: true
+
+  publish:
+    name: Publish tested main commit
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: [prepared, shared, web, admin, landing, landing-static, storybook]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepared.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Publish immutable tag and release notes
+        env:
+          VERSION: ${{ needs.prepared.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main --tags
+          ./scripts/release.sh "$VERSION" --check --require-main
+          ./scripts/release.sh "$VERSION" --notes > "$RUNNER_TEMP/release-notes.md"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Reruns may reuse the same tag/commit; the check above rejects moving it.
+          if ! git show-ref --verify --quiet "refs/tags/v$VERSION"; then
+            git tag -a "v$VERSION" -m "v$VERSION"
+          fi
+          git push origin "refs/tags/v$VERSION"
+          if ! gh release view "v$VERSION" >/dev/null 2>&1; then
+            gh release create "v$VERSION" --verify-tag --title "v$VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi

@@ -129,3 +129,46 @@ test("is a no-op outside a merge", () => {
   assert.deepEqual(conflictedMessageFiles(), []);
   assert.equal(main([]), 0);
 });
+
+for (const deletedBy of ["main", "upstream"] as const) {
+  for (const namespace of [false, true]) {
+    test(`reports ${namespace ? "namespace" : "key"} deletion by ${deletedBy} versus edit without silently choosing`, () => {
+      const editedBy = deletedBy === "main" ? "upstream" : "main";
+      git("checkout", "-q", deletedBy);
+      const deleted = JSON.parse(fs.readFileSync(locale, "utf8")) as Messages;
+      if (namespace) delete deleted.auth;
+      else delete deleted.auth.signIn;
+      write(locale, deleted);
+      git("commit", "-qam", "delete translation");
+      git("checkout", "-q", editedBy);
+      const edited = JSON.parse(fs.readFileSync(locale, "utf8")) as Messages;
+      edited.auth.signIn = "Log in";
+      write(locale, edited);
+      git("commit", "-qam", "edit translation");
+      git("checkout", "-q", "main");
+      mergeUpstream();
+
+      const before = fs.readFileSync(locale, "utf8");
+      const indexBefore = git("ls-files", "--stage");
+      assert.equal(main(["--check"]), 1);
+      assert.equal(fs.readFileSync(locale, "utf8"), before);
+      assert.equal(git("ls-files", "--stage"), indexBefore);
+      assert.equal(main([]), 1);
+      const result = JSON.parse(fs.readFileSync(locale, "utf8")) as Messages;
+      assert.deepEqual(result.auth, deletedBy === "main" ? deleted.auth : edited.auth);
+      assert.deepEqual(result.fleet, { title: "Fleet", vehicles: "Vehicles" });
+      assert.equal(result.security.revoke, "Revoke");
+    });
+  }
+}
+
+test("accepts a deletion when the other side left the key unchanged", () => {
+  const ours = JSON.parse(fs.readFileSync(locale, "utf8")) as Messages;
+  delete ours.common.note;
+  write(locale, ours);
+  git("commit", "-qam", "remove unused note");
+  mergeUpstream();
+  assert.equal(main([]), 0);
+  const merged = JSON.parse(fs.readFileSync(locale, "utf8")) as Messages;
+  assert.equal(Object.hasOwn(merged.common, "note"), false);
+});

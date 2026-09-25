@@ -5,9 +5,20 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      require_e2e:
+        description: Require every E2E job for release verification
+        type: boolean
+        default: false
+      git_sha:
+        description: Source commit to test
+        type: string
+        required: false
+        default: ""
 
 concurrency:
-  group: ci-storybook-${{ github.ref }}
+  group: ci-storybook-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -21,7 +32,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
+      should_run: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
     steps:
       - name: Run all jobs in act
         if: ${{ env.ACT }}
@@ -33,6 +44,8 @@ jobs:
       - name: Checkout
         if: ${{ !env.ACT }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
@@ -75,6 +88,8 @@ jobs:
     if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
       - name: Build
@@ -87,10 +102,12 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [changes, build]
-    if: vars.SKIP_E2E != 'true' && needs.changes.outputs.should_run == 'true' && github.event.pull_request.draft == false
+    if: needs.changes.outputs.should_run == 'true' && (inputs.require_e2e || (vars.SKIP_E2E != 'true' && github.event.pull_request.draft == false))
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-playwright
         with:
@@ -149,6 +166,10 @@ jobs:
           fi
 
           E2E="${{ needs.e2e.result }}"
+          if [[ "${{ inputs.require_e2e }}" == "true" && "$E2E" != "success" ]]; then
+            echo "Release verification requires successful E2E tests"
+            exit 1
+          fi
           if [[ "$E2E" != "success" && "$E2E" != "skipped" ]]; then
             echo "E2E failed: $E2E"
             exit 1

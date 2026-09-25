@@ -1,8 +1,9 @@
 # Delivering starter updates to business apps
 
-Status, 2026-09-24: **Phase 0 tooling is implemented** (`VERSIONING.md`, `UPGRADING.md`,
+Status, 2026-09-25: **Phase 0 tooling is implemented** (`VERSIONING.md`, `UPGRADING.md`,
 `CHANGELOG.md`, `scripts/release.sh`), and one versioned package is upgraded end
-to end in the demo app. The first starter release tag has not been published.
+to end in the demo app. Release metadata for `v1.0.0` is prepared; publication follows PR merge through
+the main-only Starter Release workflow.
 Localization remediation is separate maintenance, tracked in
 [PR #144](https://github.com/tkarakai/web-app-starter/pull/144), and is not an
 upgrade-readiness milestone.
@@ -345,21 +346,25 @@ registry, the published diff, the codemod tooling and `starter doctor`.
 Package publishing and editable-copy tooling are optional later approaches, not
 prerequisites for supporting the first business-app source upgrade.
 
-### Implementation audit: unresolved readiness gaps
+### Implementation audit: v1.0.0 disposition
 
 | Finding | Evidence and required follow-up |
 |---|---|
-| Baseline examples claim a release that is not published | `UPGRADING.md` and the unreleased changelog previously instructed every app to record `v1.0.0`. A shared ancestor proves ancestry, not adoption of a later release. Define bootstrap evidence before stamping a version. |
+| Fixed: misleading baseline examples | `UPGRADING.md` and the unreleased changelog previously instructed every app to record `v1.0.0`. A shared ancestor proves ancestry, not adoption of a later release. The guide now distinguishes preparation/publication/adoption, records exact commits and fetches namespaced starter tags. |
 | The general upgrade command is a prompt, not an enforced workflow | `.claude/commands/upgrade-starter.md` delegates to the guide. `scripts/starter-upgrade/model.ts` deliberately hardcodes the sidebar package and its three payload files. Do not describe it as a general business-app upgrader. |
-| Locale delete/edit disagreement is silently resolved | Reproduced in a temporary Git repo: business deletes `common.label`, starter edits it, Git merge fails, but resolver `--check` exits 0 and says every file resolves cleanly. Fix and test delete/edit cases in both directions before trusting automatic resolution. |
+| Fixed: locale delete/edit disagreement | Resolver reports these disagreements, preserves the app side and exits 1. Real Git merge tests cover both directions, namespace deletion and read-only check mode. |
 | Locale coverage needs release-aware evidence | The catalog test checks other locales against the app's current `en.json`. It cannot detect a required starter key removed from all catalogs, including English. Validate against the target release's required contract as well; app-specific extra keys remain allowed. |
-| Conflict advice overstates what can be inferred | Schema changes can include incompatible field/index edits, and generated code must be regenerated. Typechecking does not establish data preservation. Review release actions and app behavior instead of using blanket "keep both" rules. |
-| Release script checks are narrower than release readiness | `scripts/release.sh` checks Git state and changelog structure, then creates a new release commit and tag. It does not run CI or verify that new commit's CI result. No release-script behavior tests were found in `scripts/tests`. Test the intended publication sequence, including failures. |
-| Version policy needs one clarification | `VERSIONING.md` ties major versions to manual work after a merge. Distinguish starter-required migrations/API changes from ordinary application conflict resolution, which can occur for any release. Do not promise conflict-free patches for customized apps. |
+| Fixed: overbroad conflict advice | Schema changes can include incompatible field/index edits, and generated code must be regenerated. Typechecking does not establish data preservation. Review release actions and app behavior instead of using blanket "keep both" rules. |
+| Fixed: untested release commit/tag | Preparation creates metadata changes only. The publication workflow validates the exact merged main commit with existing CI and required E2E before tagging; preparation/check refusal paths have isolated Git tests. Publication itself remains a post-merge maintainer action. |
+| Fixed: version policy ambiguity | `VERSIONING.md` distinguishes required compatibility work from ordinary app conflict resolution. Customized patches are not promised to be conflict-free. |
 
 These findings concern readiness of the existing merge process. They do not
 justify moving localized values into config, separating locale namespaces, or
 assuming every shared file needs packaging.
+
+The full customized-app source/schema rehearsal and automated target-release
+locale contract remain deferred. They are valuable follow-ups, not claims made
+by the first baseline release. Required target keys still need explicit review.
 
 ### Representative business-app scenarios
 

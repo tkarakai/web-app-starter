@@ -7,10 +7,10 @@ The general mechanism is git. You merge a starter tag into your app, resolve
 conflicts once, and run the health check. The starter generally ships source rather than published packages. See [`VERSIONING.md`](./VERSIONING.md) for what the
 version numbers promise and [`CHANGELOG.md`](./CHANGELOG.md) for each release.
 
-**Publication status:** the first starter release has not been published. Version
-numbers below are examples, not available releases. Until a release exists, record
-the exact starter source commit in your application's bootstrap notes; do not claim
-that the application has adopted `v1.0.0`.
+**First release:** this revision prepares `v1.0.0`. It becomes available only after
+the main-only Starter Release workflow publishes the tag. Verify availability
+with the discovery commands below. Until then, record the exact starter source
+commit in bootstrap notes; preparation is not publication or application adoption.
 
 The standalone `apps/demo` also demonstrates one package-based upgrade:
 `@repo/starter-sidebar-policy`, consumed from immutable local package artifacts.
@@ -103,7 +103,7 @@ If your app already has its own `origin`, just add the remote:
 
 ```bash
 git remote add upstream https://github.com/tkarakai/web-app-starter.git
-git fetch upstream --tags
+git fetch upstream --no-tags 'refs/heads/main:refs/remotes/upstream/main' 'refs/tags/v*:refs/tags/starter/v*'
 ```
 
 Verify you share history with the starter:
@@ -117,12 +117,14 @@ merge. If it fails with "no merge base", your app was created by copying files r
 than by cloning — see [Apps with no shared history](#apps-with-no-shared-history).
 
 Once a starter release exists, establish which release your app actually includes
-before recording `.starter-version`. Check its source history and required actions;
+before recording `.starter-version`. Resolve `refs/tags/starter/<tag>^{commit}`
+with `git rev-parse` to obtain the exact target commit. Check its source history and required actions;
 a merge base alone does not prove adoption. Use the verified tag below, not an
 assumed first version:
 
 ```bash
-echo "STARTER_VERSION=<verified-starter-release-tag>" > .starter-version
+printf 'STARTER_VERSION=%s\nSTARTER_COMMIT=%s\n' \
+  "<verified-starter-release-tag>" "<verified-starter-commit>" > .starter-version
 git add .starter-version && git commit -m "chore: record verified starter baseline"
 ```
 
@@ -133,14 +135,14 @@ git add .starter-version && git commit -m "chore: record verified starter baseli
 ### 1. Find out what you are about to take
 
 ```bash
-git fetch upstream --tags
-git tag -l 'v*' --sort=-v:refname | head        # newest starter releases
+git fetch upstream --no-tags 'refs/heads/main:refs/remotes/upstream/main' 'refs/tags/v*:refs/tags/starter/v*'
+git tag -l 'starter/v*' --sort=-v:refname | head        # newest starter releases
 cat .starter-version                            # where you are now
 ```
 
-The `'v*'` filter is not decoration. The starter's deploy pipeline also pushes
-`deploy/staging/...` and `deploy/production/...` tags — there are dozens of them and
-they are not releases. A bare `git tag -l` buries the four tags you care about.
+Starter tags live locally under `starter/v*`, so an application can also have
+its own `v1.0.0`. Fetch explicitly with `--no-tags` as above; never force-update
+a previously fetched release tag. Deployment tags are excluded.
 
 Read every `CHANGELOG.md` entry between your version and the target, not just the
 target's. **Do the Action required items for each intermediate release**, even if you
@@ -150,7 +152,7 @@ are jumping several versions — they compose, they do not supersede each other.
 
 ```bash
 git checkout -b chore/starter-v1.1.0
-git merge v1.1.0
+git merge refs/tags/starter/v1.1.0
 ```
 
 **Merge, do not rebase.** Rebasing replays each of your commits onto the new starter
@@ -196,8 +198,14 @@ the application. Conflict counts do not show whether an upgrade works.
 
 ### 6. Record and land
 
+Record source adoption only after all applicable source checks pass. List any
+remaining deployment/migration actions in the PR; this baseline is not evidence
+that those actions have run. Keep the upgrade PR and check results as evidence.
+
 ```bash
-echo "STARTER_VERSION=v1.1.0" > .starter-version
+printf 'STARTER_VERSION=%s\nSTARTER_COMMIT=%s\n' \
+  "v1.1.0" "$(git rev-parse refs/tags/starter/v1.1.0^{commit})" > .starter-version
+git add .starter-version
 git commit -am "chore: upgrade starter to v1.1.0"
 git push -u origin chore/starter-v1.1.0
 ```
@@ -284,9 +292,10 @@ key before committing; the staged file no longer appears as an unmerged file.
 `--check` reports without writing or staging. Run through the wrapper directly so
 an unresolved root `package.json` does not prevent the resolver from starting.
 
-**Current limitation:** when one side deletes a key and the other edits it, the
-resolver retains the edited value without reporting the disagreement. Review these
-cases manually; a zero exit status does not prove that no review is needed.
+Delete/edit disagreements (including whole namespaces) also exit with status 1
+and retain your side, including your deletion. They always need review. A zero
+exit status only means there were no conflicting parsed values; it does not
+validate the target release’s required message keys or ICU parameters.
 
 **Why not "keep both sides" here.** It is the right instinct and it produces a file
 that is not JSON. The closing brace of a namespace is usually *shared context* that
@@ -324,7 +333,7 @@ Your app rewrote these and the starter keeps editing them.
 **Resolution: keep yours, then read the starter's diff for anything worth adopting:**
 
 ```bash
-git diff HEAD...v1.1.0 -- AGENTS.md CLAUDE.md
+git diff HEAD...refs/tags/starter/v1.1.0 -- AGENTS.md CLAUDE.md
 ```
 
 The starter's conventions now live in `AGENTS.md`; `CLAUDE.md` imports that file.
@@ -360,9 +369,9 @@ starter's number is harmless — just do it deliberately rather than by accident
 
 ### `.env.example`, `.github/workflows/`, `turbo.json`
 
-**Resolution: take the starter's side, then re-apply your app's additions.** These
-are infrastructure files where the starter's version is the maintained one and your
-changes are usually a small delta on top.
+**Resolution: review both changes.** Preserve application deployment targets,
+environment choices and secrets references while adopting relevant starter fixes.
+Do not replace business infrastructure just because the starter changed its own.
 
 ---
 
@@ -373,8 +382,8 @@ still establish shared history:
 
 ```bash
 git remote add upstream https://github.com/tkarakai/web-app-starter.git
-git fetch upstream --tags
-git merge v1.0.0 --allow-unrelated-histories
+git fetch upstream --no-tags 'refs/heads/main:refs/remotes/upstream/main' 'refs/tags/v*:refs/tags/starter/v*'
+git merge refs/tags/starter/v1.0.0 --allow-unrelated-histories
 ```
 
 This first merge is large and mostly conflicts, because git has no idea which of
@@ -388,17 +397,17 @@ merge.
 
 If you are an agent performing this upgrade, the procedure is:
 
-1. `git fetch upstream --tags`, read `.starter-version`, list intermediate versions
+1. `git fetch upstream --no-tags 'refs/heads/main:refs/remotes/upstream/main' 'refs/tags/v*:refs/tags/starter/v*'`, read `.starter-version`, list intermediate versions
    with `git tag -l 'v*' --sort=v:refname` (the `'v*'` filter matters — deploy tags
    outnumber release tags here by an order of magnitude).
 2. Read every `CHANGELOG.md` **Action required** section between the current version
    and the target. Treat them as tasks, not as background reading. They compose
    across intermediate releases; a jump of three versions means doing all three sets,
    in order.
-3. `git merge <tag>` on a fresh branch. Never rebase. Never merge `upstream/main`.
+3. `git merge refs/tags/starter/<tag>` on a fresh branch. Never rebase. Never merge `upstream/main`.
 4. For each conflicted file, check it against [Known conflict hotspots](#known-conflict-hotspots)
    and review both sets of changes. For locale files, use the resolver where useful
-   and inspect its decisions and documented limitations; reviewed manual JSON
+   and inspect its reported disagreements; reviewed manual JSON
    resolution is supported. Regenerate `bun.lock` rather than hand-merging it.
 5. For files not on the list, consult an app's ownership manifest first if it has
    one. Consumed starter code must match the declared release; editable UI
@@ -429,41 +438,19 @@ cannot be completed, stop and say which and why.
 
 ---
 
-## What a real upgrade looked like
+## Verification evidence and limits
 
-Two kinds of upgrade have been tried end to end. Most starter changes reach an app
-the first way (merging a git tag). Only the sidebar policy uses the second way (a
-versioned package).
+Release preparation and locale merging have automated tests in
+`scripts/tests/release.test.ts` and `scripts/tests/resolve-i18n-conflicts.test.ts`.
+They use isolated Git repositories and include refusal paths and overlapping
+application translations. Run them through `bun run test:dev-scripts`.
 
-### Merging starter tags into a customized app
-
-**What was tested.** A test business app was created from `v1.0.0` and customized
-the way a real app would be: its own name in all 29 branding files, its own Convex
-tables and functions, its own i18n keys in all 15 locales, and its own `CLAUDE.md`.
-Three practice releases were then merged into it, one at a time, following this
-guide.
-
-| Release | What the release changed | Files in conflict | Extra work after the merge | `bun run ci:quick` |
-|---------|--------------------------|-------------------|----------------------------|---------------------|
-| `v1.0.1` (patch) | Security fix in `@repo/edge-rate-limit` | 0 | None | Passed |
-| `v1.1.0` (minor) | Auth hardening, a new platform table, new locale keys | 18 | Ran the locale resolver for 15 files; resolved 3 by hand, all listed in [Known conflict hotspots](#known-conflict-hotspots) | Passed |
-| `v2.0.0` (major) | Renamed a context property; schema migration | 0 | Ran the release's codemod, then the migration at deploy time | Passed |
-
-**What we learned from it:**
-
-- **The number of conflicts does not tell you the risk.** `v1.1.0` had 18 conflicts,
-  and each one had a documented resolution. `v2.0.0` merged with no conflicts at
-  all, but the build broke until the codemod ran. Always do the **Action required**
-  steps, even when `git merge` reports nothing.
-- **The resolver helps with overlapping locale edits.** All 15 conflicted in
-  this particular rehearsal, and blindly keeping both hunks produced invalid
-  JSON. This does not imply that every locale update conflicts or that reviewed
-  manual resolution is unsupported.
-- **One conflict looked like branding but contained a security fix.** The starter
-  had wrapped the product name in a sanitising function. Keeping the app's side of
-  that line removed the fix, and the code still compiled and passed CI. Only the
-  release's `grep` check found it. This historical backend scenario is distinct
-  from looking up a localized UI name.
+Earlier versions of this guide described an ad hoc, whole-source rehearsal using
+practice tags named `v1.0.0` through `v2.0.0`. Those were not published releases,
+and no repeatable fixture or retained CI evidence supports treating that narrative
+as current release verification. A full customized-app source/schema migration
+rehearsal remains follow-up work. The repeatable app rehearsal below covers one
+package only.
 
 ### Upgrading a versioned starter package in the demo app
 
