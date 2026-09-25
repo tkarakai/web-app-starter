@@ -13,6 +13,8 @@ type Fixture = {
   actionBun?: string;
   workflowNode?: string;
   appTypes?: string;
+  dockerNode?: string;
+  dockerBun?: string;
 };
 
 function write(root: string, file: string, text: string): void {
@@ -29,6 +31,8 @@ function fixture(overrides: Fixture = {}): string {
     actionBun: "1.4.2",
     workflowNode: "24",
     appTypes: "24.13.4",
+    dockerNode: "24",
+    dockerBun: "1.4.2",
     ...overrides,
   };
   const root = mkdtempSync(path.join(tmpdir(), "runtime-baseline-"));
@@ -51,6 +55,7 @@ function fixture(overrides: Fixture = {}): string {
     "runs:",
     "",
   ].join("\n"));
+  write(root, "infra/aws/docker/next-app.Dockerfile", `ARG NODE_VERSION=${f.dockerNode}\nARG BUN_VERSION=${f.dockerBun}\n`);
   write(root, ".github/workflows/ci.yml", `steps:\n  - uses: ./.github/actions/setup-bun\n    with:\n      node-version: "${f.workflowNode}"\n`);
   return root;
 }
@@ -73,6 +78,11 @@ test("reports each location that disagrees with .node-version", () => {
   assert.match(check({ actionNode: "22" }).join("\n"), /node-version default is "22"/);
   assert.match(check({ workflowNode: "26" }).join("\n"), /ci\.yml sets node-version "26"/);
   assert.match(check({ appTypes: "^25.2.3" }).join("\n"), /apps\/web\/package\.json has @types\/node "\^25\.2\.3"/);
+});
+
+test("reports container images that disagree with the baseline", () => {
+  assert.match(check({ dockerNode: "22" }).join("\n"), /next-app\.Dockerfile NODE_VERSION is "22", expected "24"/);
+  assert.match(check({ dockerBun: "1.3.6" }).join("\n"), /next-app\.Dockerfile BUN_VERSION is "1\.3\.6", expected "1\.4\.2"/);
 });
 
 test("reports Bun drift and malformed inputs", () => {

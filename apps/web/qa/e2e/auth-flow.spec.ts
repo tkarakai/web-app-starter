@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { fillStable, submitEmailStep } from "./helpers/auth";
+import { appCookieDomain, fillStable, submitEmailStep } from "./helpers/auth";
 
 /**
  * Authentication Flow E2E Tests
@@ -131,7 +131,7 @@ test.describe("Auth Route Guards", () => {
       {
         name: "better-auth.session_token",
         value: "fake-session-token",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
       },
     ]);
@@ -162,7 +162,7 @@ test.describe("Auth Route Guards", () => {
       {
         name: "better-auth.session_token",
         value: "fake-session-token",
-        domain: "localhost",
+        domain: appCookieDomain(),
         path: "/",
       },
     ]);

@@ -1,0 +1,162 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Landing stack (S3 static hosting + CloudFront + optional Route53) for the statically exported landing app.
+
+Parameters:
+  ProjectName:
+    Type: String
+    AllowedPattern: '^[a-z][a-z0-9-]*$'
+  Environment:
+    Type: String
+    AllowedValues: [local, staging, production]
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route53 hosted zone for the landing domain. Leave empty to manage DNS yourself.
+  LandingDomainName:
+    Type: String
+    Default: ''
+  AcmCertificateArn:
+    Type: String
+    Default: ''
+    Description: Certificate for LandingDomainName. CloudFront requires it to be in us-east-1.
+
+Conditions:
+  IsLocal: !Equals [!Ref Environment, local]
+  UseRoute53: !Not [!Equals [!Ref HostedZoneId, '']]
+  HasDomainName: !Not [!Equals [!Ref LandingDomainName, '']]
+  HasCertificate: !Not [!Equals [!Ref AcmCertificateArn, '']]
+  UseCustomDomain: !And
+    - !Condition HasDomainName
+    - !Condition HasCertificate
+  CreateDnsRecord: !And
+    - !Condition UseRoute53
+    - !Condition UseCustomDomain
+
+Resources:
+  LandingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  LandingOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ProjectName}-${Environment}-landing-oac'
+        Description: Origin access control for landing bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  LandingDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: landingS3Origin
+            DomainName: !GetAtt LandingBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !GetAtt LandingOriginAccessControl.Id
+        DefaultCacheBehavior:
+          TargetOriginId: landingS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        # The export is a set of real pages, not a single-page app: a missing key
+        # (403 from S3 behind OAC) is a genuine 404 and gets the exported 404 page.
+        # Directory URLs (/en/) are served by objects deploy-landing.sh uploads
+        # under the directory key, which works the same on CloudFront and Floci.
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 404
+            ResponsePagePath: /404.html
+          - ErrorCode: 404
+            ResponseCode: 404
+            ResponsePagePath: /404.html
+        Aliases: !If
+          - UseCustomDomain
+          - [!Ref LandingDomainName]
+          - !Ref AWS::NoValue
+        ViewerCertificate: !If
+          - UseCustomDomain
+          - AcmCertificateArn: !Ref AcmCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+
+  LandingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LandingBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${LandingBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${LandingDistribution}'
+
+  LandingDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDnsRecord
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref LandingDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt LandingDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+Outputs:
+  LandingBucketName:
+    Value: !Ref LandingBucket
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-LandingBucketName'
+
+  LandingCloudFrontDistributionId:
+    Value: !Ref LandingDistribution
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-LandingCloudFrontDistributionId'
+
+  LandingCloudFrontDomainName:
+    Value: !GetAtt LandingDistribution.DomainName
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-LandingCloudFrontDomainName'
+
+  # The local Floci names distributions {id}.cloudfront.localhost.floci.io
+  # (infra/aws/local/compose.yaml), which resolves to loopback on the host and to
+  # Floci inside its containers, and serves them over HTTP on its API port.
+  LandingUrl:
+    Value: !If
+      - IsLocal
+      - !Join ['', ['http://', !GetAtt LandingDistribution.DomainName, ':4566']]
+      - !If
+        - UseCustomDomain
+        - !Sub 'https://${LandingDomainName}'
+        - !Join ['', ['https://', !GetAtt LandingDistribution.DomainName]]
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-LandingUrl'
