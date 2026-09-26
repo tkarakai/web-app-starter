@@ -39,7 +39,8 @@ export function AdminForgotPasswordForm() {
     try {
       const result = await authClient.requestPasswordReset({
         email,
-        redirectTo: "/reset-password",
+        // The shared auth backend's base URL belongs to the web app.
+        redirectTo: new URL("/reset-password", window.location.origin).href,
       });
 
       // Always show "email sent" to prevent email enumeration, except for

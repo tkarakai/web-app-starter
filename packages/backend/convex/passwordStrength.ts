@@ -3,6 +3,10 @@ import * as zxcvbnCommonPackage from "@zxcvbn-ts/language-common";
 import * as zxcvbnEnPackage from "@zxcvbn-ts/language-en";
 import { v } from "convex/values";
 
+import { getMinPasswordLength, REQUIRED_PASSWORD_SCORE, type PasswordRole } from "@repo/auth/password-policy";
+import type { PasswordStrengthResult } from "@repo/design-system/password-strength";
+import { components } from "./_generated/api";
+
 import { query } from "./_generated/server";
 
 // Use key-path translations so zxcvbn returns translatable keys
@@ -75,81 +79,61 @@ function ensureOptions(): void {
   optionsLoaded = true;
 }
 
-const MIN_LENGTHS = { admin: 40, user: 12 } as const;
-const REQUIRED_SCORE = 4;
+/** Same evaluation drives both meter feedback and final password acceptance. */
+export function evaluatePasswordStrength(password: string, email: string, role: PasswordRole): PasswordStrengthResult {
+  ensureOptions();
+  const minLength = getMinPasswordLength(role);
+  const userInputs = [email, role, "admin", "user", ...email.split(/[@.+]/).filter((p) => p.length > 2)];
+  const result = zxcvbn(password, userInputs);
+  const tooShort = password.length < minLength;
+  return {
+    valid: !tooShort && result.score >= REQUIRED_PASSWORD_SCORE,
+    score: tooShort ? Math.min(result.score, 2) : result.score,
+    warningKey: result.feedback.warning || null,
+    suggestionKeys: result.feedback.suggestions,
+    crackTimeSeconds: result.crackTimesSeconds.offlineSlowHashing1e4PerSecond as number,
+    tooShort,
+    minLength,
+  };
+}
 
-/**
- * Evaluate password strength server-side via reactive query.
- * Clients call this with a debounced password to get real-time feedback
- * without shipping the ~8MB zxcvbn dictionaries to the browser.
- */
+/** Reset links resolve account context server-side without exposing the email. */
 export const evaluate = query({
   args: {
     password: v.string(),
     email: v.string(),
     role: v.union(v.literal("admin"), v.literal("user")),
+    resetToken: v.optional(v.string()),
   },
-  handler: async (_ctx, { password, email, role }) => {
-    ensureOptions();
-
-    const minLength = MIN_LENGTHS[role];
-
-    if (!password) {
-      return null;
+  handler: async (ctx, { password, email, role, resetToken }) => {
+    if (!password) return null;
+    if (resetToken !== undefined) {
+      if (!resetToken) return null;
+      const verification: { value: string; expiresAt: number } | null = await ctx.runQuery(
+        components.betterAuth.adapter.findOne,
+        { model: "verification", where: [{ field: "identifier", value: `reset-password:${resetToken}` }] },
+      );
+      if (!verification || verification.expiresAt <= Date.now()) return null;
+      const user: { email: string } | null = await ctx.runQuery(
+        components.betterAuth.adapter.findOne,
+        { model: "user", where: [{ field: "_id", value: verification.value }] },
+      );
+      if (!user) return null;
+      email = user.email;
+      const admin = await ctx.db.query("adminEmails").withIndex("by_email", (q) => q.eq("email", email)).first();
+      role = admin ? "admin" : "user";
     }
-
-    const userInputs = [email, role, "admin", "user"];
-    const emailParts = email.split(/[@.+]/);
-    userInputs.push(...emailParts.filter((p) => p.length > 2));
-
-    const result = zxcvbn(password, userInputs);
-
-    const tooShort = password.length < minLength;
-    const scoreTooLow = result.score < REQUIRED_SCORE;
-    const effectiveScore = tooShort
-      ? Math.min(result.score, 2)
-      : result.score;
-
-    return {
-      valid: !tooShort && !scoreTooLow,
-      score: effectiveScore,
-      warningKey: result.feedback.warning || null,
-      suggestionKeys: result.feedback.suggestions,
-      crackTimeSeconds:
-        result.crackTimesSeconds.offlineSlowHashing1e4PerSecond as number,
-      tooShort,
-      minLength,
-    };
+    return evaluatePasswordStrength(password, email, role);
   },
 });
 
-/**
- * Internal validation used by the passwordStrengthPlugin in auth.ts.
- * Not a Convex function — called directly within the plugin's onRequest handler.
- */
 export function validatePasswordStrength(
   password: string,
   email: string,
-  role: "admin" | "user",
+  role: PasswordRole,
 ): { valid: boolean; reason?: string } {
-  ensureOptions();
-
-  const minLength = MIN_LENGTHS[role];
-  if (password.length < minLength) {
-    return {
-      valid: false,
-      reason: `Password must be at least ${minLength} characters`,
-    };
-  }
-
-  const userInputs = [email, role, "admin", "user"];
-  const emailParts = email.split(/[@.+]/);
-  userInputs.push(...emailParts.filter((p) => p.length > 2));
-
-  const result = zxcvbn(password, userInputs);
-  if (result.score < REQUIRED_SCORE) {
-    return { valid: false, reason: "Password is not strong enough" };
-  }
-
+  const result = evaluatePasswordStrength(password, email, role);
+  if (result.tooShort) return { valid: false, reason: `Password must be at least ${result.minLength} characters` };
+  if (!result.valid) return { valid: false, reason: "Password is not strong enough" };
   return { valid: true };
 }

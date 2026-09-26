@@ -1,11 +1,13 @@
 "use client";
 
+import { usePasswordStrength } from "@repo/backend/password-strength";
+
 import { PasswordInput } from "@/components/ui/localized-controls";
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
@@ -15,7 +17,7 @@ import {
   Label,
   toast,
 } from "@repo/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+import { PasswordStrengthMeter, getMinPasswordLength } from "@repo/design-system/password-strength";
 import { useAuthUser } from "@/components/auth/auth-guard";
 
 export function ChangePasswordForm() {
@@ -32,18 +34,10 @@ export function ChangePasswordForm() {
   const [revokeOtherSessions, setRevokeOtherSessions] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
-  // Throttled password for server-side strength evaluation (at most once per 500ms)
-  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(newPassword);
-  const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
-    throttledPassword
-      ? { password: throttledPassword, email: authUser?.email ?? "", role: "user" as const }
-      : "skip",
+  const { result: strengthResult, valid: isNewPasswordValid } = usePasswordStrength(
+    newPassword,
+    { email: authUser?.email ?? "", role: "user" },
   );
-  React.useEffect(() => {
-    if (strengthResult !== undefined) notifyResolved();
-  }, [strengthResult, notifyResolved]);
-  const isNewPasswordValid = strengthResult?.valid ?? false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +114,7 @@ export function ChangePasswordForm() {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           required
-          minLength={12}
+          minLength={getMinPasswordLength("user")}
         />
         <PasswordStrengthMeter result={strengthResult} password={newPassword} t={tps} />
       </div>
@@ -132,7 +126,7 @@ export function ChangePasswordForm() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
-          minLength={12}
+          minLength={getMinPasswordLength("user")}
         />
       </div>
 

@@ -1,5 +1,6 @@
 export {
   getMinPasswordLength,
+  REQUIRED_PASSWORD_SCORE,
   formatCrackTime,
   type PasswordRole,
 } from "./lib/password-validation";

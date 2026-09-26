@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./password-strength": "./src/password-strength.ts"
   },
   "scripts": {
     "dev": "convex dev",
@@ -14,6 +15,7 @@
     "@convex-dev/better-auth": "0.12.5",
     "@repo/app-config": "workspace:*",
     "@repo/auth": "workspace:*",
+    "@repo/design-system": "workspace:*",
     "@repo/i18n": "workspace:*",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
@@ -25,8 +27,12 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.4",
+    "@types/react": "19.3.0",
     "convex-test": "^0.0.58",
     "typescript": "6.0.3",
     "vitest": "^5.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }

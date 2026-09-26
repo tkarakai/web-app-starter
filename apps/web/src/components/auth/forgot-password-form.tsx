@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { authClient } from "@repo/auth/client";
 import {
@@ -30,6 +30,7 @@ function getAndClearPrefillEmail(): string {
 
 export function ForgotPasswordForm() {
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations("auth");
   const tf = useTranslations("auth.forgotPassword");
   const [pending, setPending] = React.useState(false);
@@ -45,7 +46,7 @@ export function ForgotPasswordForm() {
     try {
       const result = await authClient.requestPasswordReset({
         email,
-        redirectTo: "/reset-password",
+        redirectTo: new URL(`/${locale}/reset-password`, window.location.origin).href,
       });
 
       // Always show "email sent" to prevent email enumeration, except for

@@ -1,5 +1,7 @@
 "use client";
 
+import { usePasswordStrength } from "@repo/backend/password-strength";
+
 import { PasswordInput } from "@/components/ui/localized-controls";
 
 import * as React from "react";
@@ -7,8 +9,6 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useQuery } from "convex/react";
-import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited } from "@repo/auth/client";
 import {
   Button,
@@ -20,7 +20,7 @@ import {
   Label,
   Separator,
 } from "@repo/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+import { PasswordStrengthMeter, getMinPasswordLength } from "@repo/design-system/password-strength";
 
 export function ResetPasswordForm({
   token,
@@ -39,21 +39,13 @@ export function ResetPasswordForm({
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [success, setSuccess] = React.useState(false);
 
-  // Throttled password for server-side strength evaluation (at most once per 500ms)
-  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
-  const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
-    throttledPassword
-      ? { password: throttledPassword, email: "", role: "user" as const }
-      : "skip",
+  const { result: strengthResult, valid: isPasswordValid } = usePasswordStrength(
+    password,
+    { email: "", role: "user", resetToken: token ?? "" },
   );
-  React.useEffect(() => {
-    if (strengthResult !== undefined) notifyResolved();
-  }, [strengthResult, notifyResolved]);
-  const isPasswordValid = strengthResult?.valid ?? false;
 
-  // No token — show invalid state
-  if (!token) {
+  // Missing, expired or consumed reset tokens cannot produce valid feedback.
+  if (!success && !pending && (!token || (password && strengthResult === null))) {
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
         <CardHeader className="space-y-3">
@@ -148,7 +140,8 @@ export function ResetPasswordForm({
       if (result.error) {
         setError(
           isAuthRateLimited(result.error) ? t("errors.rateLimited")
-            : /INVALID_TOKEN|expired/i.test(result.error.message ?? "") ? tr("tokenInvalid")
+            : result.error.code === "PASSWORD_TOO_WEAK" ? tps("strengthRequirement")
+              : result.error.code === "INVALID_TOKEN" || /INVALID_TOKEN|expired/i.test(result.error.message ?? "") ? tr("tokenInvalid")
               : t("errors.generic"),
         );
       } else {
@@ -184,7 +177,7 @@ export function ResetPasswordForm({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              minLength={12}
+              minLength={strengthResult?.minLength ?? getMinPasswordLength("user")}
               autoFocus
             />
             <PasswordStrengthMeter result={strengthResult} password={password} t={tps} />
@@ -198,7 +191,7 @@ export function ResetPasswordForm({
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
-              minLength={12}
+              minLength={strengthResult?.minLength ?? getMinPasswordLength("user")}
             />
           </div>
           {error ? (

@@ -1,13 +1,4 @@
-export type PasswordRole = "admin" | "user";
-
-const MIN_LENGTHS: Record<PasswordRole, number> = {
-  admin: 40,
-  user: 12,
-};
-
-export function getMinPasswordLength(role: PasswordRole): number {
-  return MIN_LENGTHS[role];
-}
+export { getMinPasswordLength, REQUIRED_PASSWORD_SCORE, type PasswordRole } from "@repo/auth/password-policy";
 
 /**
  * Format a duration in seconds to a human-readable crack time string.

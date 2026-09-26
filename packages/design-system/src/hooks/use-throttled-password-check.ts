@@ -14,6 +14,8 @@ const POLL_MS = 250;
  * - If the queue is empty → exit.
  * - If a server call is in-flight OR less than 500 ms since the last call
  *   → schedule a 250 ms self-check and exit.
+ * - If the queued value is already the sent value → discard it without
+ *   marking a call pending; unchanged query arguments produce no new response.
  * - Otherwise → dequeue, record the time, mark pending, and send
  *   (by updating state, which drives the consumer's `useQuery`).
  *
@@ -21,22 +23,14 @@ const POLL_MS = 250;
  * evaluated — either within 500 ms of the previous call or as soon as the
  * pending call resolves.
  *
- * Usage:
- * ```tsx
- * const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
- * const result = useQuery(api.passwordStrength.evaluate,
- *   throttledPassword ? { password: throttledPassword, ... } : "skip");
- *
- * // Notify when query resolves so the hook can send queued passwords
- * useEffect(() => {
- *   if (result !== undefined) notifyResolved();
- * }, [result, notifyResolved]);
- * ```
+ * Product forms use `usePasswordStrength` from `@repo/backend/password-strength`,
+ * which owns query completion notifications and guards against stale results.
  */
 export function useThrottledPasswordCheck(
   password: string,
 ): [throttledPassword: string, notifyResolved: () => void] {
   const [sentPassword, setSentPassword] = useState("");
+  const sentPasswordRef = useRef("");
 
   // --- refs (never trigger re-renders) ---
   const queueRef = useRef<string | null>(null);
@@ -65,6 +59,10 @@ export function useThrottledPasswordCheck(
     // 3. Ready to send
     const pwd = queueRef.current;
     queueRef.current = null;
+    // Returning to the already evaluated value does not trigger a new query.
+    // Do not wait for a notification that can never arrive.
+    if (pwd === sentPasswordRef.current) return;
+    sentPasswordRef.current = pwd;
     lastCallTimeRef.current = Date.now();
     pendingRef.current = true;
     setSentPassword(pwd);
@@ -82,6 +80,7 @@ export function useThrottledPasswordCheck(
         timerRef.current = null;
       }
       setSentPassword("");
+      sentPasswordRef.current = "";
       return;
     }
 
