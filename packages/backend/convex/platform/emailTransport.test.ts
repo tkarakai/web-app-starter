@@ -1,3 +1,4 @@
+import { platformRunner } from "../../test/platform-component";
 import { createTestEnv as createPlatformTest } from "../test.modules";
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
@@ -65,6 +66,7 @@ describe("Resend email transport", () => {
 
   async function prepareCaller(kind: "auth" | "admin" | "waitlist") {
     const t = createPlatformTest();
+    const runPlatform = platformRunner(t);
     if (kind === "auth") {
       return {
         send: () => sendAuthEmail({ to: recipient, type: "verification", urlOrCode: "https://web.example.test/verify?token=local" }),
@@ -76,10 +78,10 @@ describe("Resend email transport", () => {
       };
     }
     const now = Date.now();
-    const adminId = kind === "admin" ? await t.run((ctx) => ctx.db.insert("adminInvitations", {
+    const adminId = kind === "admin" ? await runPlatform((ctx) => ctx.db.insert("adminInvitations", {
       email: recipient, status: "invited", invitedAt: now, createdAt: now,
     })) : undefined;
-    const entryId = kind === "waitlist" ? await t.run((ctx) => ctx.db.insert("waitlistEntries", {
+    const entryId = kind === "waitlist" ? await runPlatform((ctx) => ctx.db.insert("waitlistEntries", {
       email: recipient, status: "invited", meta: "{}", createdAt: now,
     })) : undefined;
     return {
@@ -94,7 +96,7 @@ describe("Resend email transport", () => {
         expect(url.pathname).toBe(kind === "admin" ? "/onboarding" : "/signup-with-invitation");
         expect(message.html).toContain(url.href);
         expect(message.subject.length).toBeGreaterThan(0);
-        const stored = await t.run(async (ctx) => adminId
+        const stored = await runPlatform(async (ctx) => adminId
           ? await ctx.db.get(adminId)
           : await ctx.db.query("invitationTokens").unique());
         expect(stored?.token).toBe(createHash("sha256").update(link![1]).digest("hex"));

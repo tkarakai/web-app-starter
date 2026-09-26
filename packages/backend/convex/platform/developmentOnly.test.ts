@@ -1,3 +1,4 @@
+import { platformRunner } from "../../test/platform-component";
 import { createTestEnv as createPlatformTest } from "../test.modules";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -79,15 +80,16 @@ describe("mock email", () => {
         sendAuthEmail({ to: recipient, type: "magic-link", urlOrCode: "https://web.example.test/?token=secret" });
     }
     const t = createPlatformTest();
+    const runPlatform = platformRunner(t);
     const now = Date.now();
     if (kind === "admin") {
-      const adminInvitationId = await t.run((ctx) =>
+      const adminInvitationId = await runPlatform((ctx) =>
         ctx.db.insert("adminInvitations", { email: recipient, status: "invited", invitedAt: now, createdAt: now }),
       );
       return () =>
         t.action(internal.platform.adminInvitationActions.generateTokenAndSendEmail, { adminInvitationId, email: recipient });
     }
-    const entryId = await t.run((ctx) =>
+    const entryId = await runPlatform((ctx) =>
       ctx.db.insert("waitlistEntries", { email: recipient, status: "invited", meta: "{}", createdAt: now }),
     );
     return () => t.action(internal.platform.waitlistActions.generateTokenAndSendEmail, { entryId, email: recipient });
@@ -122,12 +124,13 @@ describe("devSeed", () => {
     vi.stubEnv("SITE_URL", "https://app.example.com");
     const t = createPlatformTest();
 
+    const runPlatform = platformRunner(t);
     await expect(t.action(internal.platform.devSeed.seed, {})).rejects.toThrow("DEV_SEED_NOT_LOCAL");
 
-    const created = await t.run(async (ctx) => ({
-      adminEmails: await ctx.db.query("adminEmails").collect(),
-      waitlistEntries: await ctx.db.query("waitlistEntries").collect(),
-    }));
+    const created = {
+      adminEmails: await t.run(ctx => ctx.db.query("adminEmails").collect()),
+      waitlistEntries: await runPlatform(ctx => ctx.db.query("waitlistEntries").collect()),
+    };
     expect(created).toEqual({ adminEmails: [], waitlistEntries: [] });
     expect(await t.query(internal.platform.devSeed.isSeeded, {})).toBe(false);
   });

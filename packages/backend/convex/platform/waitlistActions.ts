@@ -20,7 +20,7 @@ const DEFAULT_EXPIRY_DAYS = 7;
  */
 export const generateTokenAndSendEmail = internalAction({
   args: {
-    entryId: v.id("waitlistEntries"),
+    entryId: v.string(),
     email: v.string(),
   },
   handler: async (ctx, args) => {

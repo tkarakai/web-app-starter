@@ -28,7 +28,7 @@
 
 import { v } from "convex/values";
 
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { httpAction, internalMutation } from "../_generated/server";
 import { createAuth } from "./auth";
 
@@ -80,8 +80,6 @@ export const prepareE2eInvitation = internalMutation({
       throw new Error("E2E_EMAIL_REJECTED");
     }
 
-    const now = Date.now();
-
     if (args.isAdmin) {
       const existingAdmin = await ctx.db
         .query("adminEmails")
@@ -92,30 +90,7 @@ export const prepareE2eInvitation = internalMutation({
       }
     }
 
-    const existingEntry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-    if (existingEntry) return;
-
-    const entryId = await ctx.db.insert("waitlistEntries", {
-      email: args.email,
-      meta: JSON.stringify({ superpowers: ["e2e"], excitement: ["e2e"] }),
-      status: "claimed",
-      createdAt: now,
-      invitedAt: now,
-      claimedAt: now,
-    });
-
-    await ctx.db.insert("invitationTokens", {
-      waitlistEntryId: entryId,
-      token: `e2e-fixture-${args.email}`,
-      email: args.email,
-      status: "claiming",
-      expiresAt: now + 1000 * 60 * 60 * 24, // fixtures are short-lived
-      createdAt: now,
-      claimStartedAt: now,
-    });
+    await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["e2e"], excitement: ["e2e"] }), token: `e2e-fixture-${args.email}`, ttlMs: 24 * 60 * 60_000 });
   },
 });
 
@@ -127,14 +102,7 @@ export const finalizeE2eInvitation = internalMutation({
       throw new Error("E2E_EMAIL_REJECTED");
     }
 
-    const token = await ctx.db
-      .query("invitationTokens")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (token && token.status === "claiming") {
-      await ctx.db.patch(token._id, { status: "claimed", claimedAt: Date.now() });
-    }
+    await ctx.runMutation(components.platform.invitationFixtures.finalize, args);
   },
 });
 

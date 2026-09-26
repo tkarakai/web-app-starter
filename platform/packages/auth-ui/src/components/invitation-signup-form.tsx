@@ -68,11 +68,12 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   React.useEffect(() => {
     if (!token || !tokenValidation?.valid) return;
 
+    const invitedEmail = tokenValidation.email;
     async function checkSession() {
       try {
         const session = await authClient.getSession();
         const userEmail = (session.data?.user as Record<string, unknown>)?.email as string | undefined;
-        if (session.data?.session && userEmail && userEmail !== tokenValidation!.email) {
+        if (session.data?.session && userEmail && userEmail !== invitedEmail) {
           setSessionConflict({ sessionEmail: userEmail });
         } else {
           setSessionConflict(null);
