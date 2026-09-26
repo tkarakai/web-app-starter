@@ -65,7 +65,7 @@ The [case study](case-study-lifeor2-client.md) has the full analysis.
 | 15 | Convex platform component, after a spike on `auditTrail` | Isolates platform tables and schema from app data. The spike tests the documented constraints before committing |
 | 16 | Storybook ships as the design system's reference, platform-owned | Buyers use it; they don't edit it |
 | 17 | The app template ships a proprietary root `LICENSE` that carves out `platform/` | The app's licence must not claim platform code it doesn't own. Needs a lawyer's read before publishing |
-| 18 | Security review, roadmap, trackers, dependency log and release tooling are maintainer-only | Buyers don't need them. They're already in public history, so fix any unresolved findings rather than rely on moving the file |
+| 18 | Security reviews, roadmap, trackers, dependency log and release tooling are maintainer-only. The existing `SECURITY-REVIEW.md` is outdated and is deleted; a new review is on the roadmap | Buyers don't need them. Old material stays in public history, so the new review starts from the current code |
 | 19 | First release in the new shape: **v2.0.0** | v1.0.0 was prepared but never published. The new shape is a breaking change |
 | 20 | Release notes cover the platform only; no effort goes into porting reference-app changes to adopted apps | Reference code is the app's once adopted |
 | 21 | Keep the starter's staging deployment and migrate its data; production isn't set up yet | Staging holds useful state; production starts on the new shape |
@@ -168,7 +168,8 @@ web-app-starter-maintainer/
 | `LICENSE`, `COMMERCIAL-LICENSE.md` | `platform/`; the root keeps the evaluation licence until adoption | Product |
 | `TERMS-OF-SALE.md` | `sales/` | Maintainer |
 | `CHANGELOG.md`, `VERSIONING.md`, `UPGRADING.md` | `platform/` | Product |
-| `docs/roadmap.md`, `*-plan.md` trackers, `dependency-log.md`, `dependency-catchup.md`, `SECURITY-REVIEW.md` | `docs/` | Maintainer |
+| `docs/roadmap.md`, `*-plan.md` trackers, `dependency-log.md`, `dependency-catchup.md` | `docs/` | Maintainer |
+| `docs/SECURITY-REVIEW.md` | Deleted (outdated); a new review is on the maintainer roadmap | — |
 | `docs/starter-upgrade-brainstorm.md`, `starter-versioning-strategy.md`, `starter-upgrades.md`, `docs/upgradeability/*` | `docs/upgradeability/` | Maintainer |
 | Architecture docs (audit trail, rate limiting, i18n, auth and onboarding, deployment architecture, `docs/claude/architecture.md`) | Split by the layer test (§7): behaviour → `platform/docs/`; internals → `docs/platform-internals/` | Both |
 | Usage docs (code style, testing, development, CI, Convex migrations, deployment runbook, AWS, ops CLI, dependency method) | `platform/docs/` | Product |
@@ -351,7 +352,7 @@ Before adoption, the root describes the starter for an evaluator; after it, the 
 Contracts are black-box tests of platform behaviour. They exercise HTTP and Convex function calls, not UI, so they survive an app replacing its screens. They run in every app's CI, on every PR.
 
 - **Auth:** sign-in, session expiry, clear-session, banned user, admin blocked from the web app, MFA enforcement, and session and cookie isolation.
-- **Endpoint authorization** for every platform function (closed, unmerged PR #150 is the starting point).
+- **Endpoint authorization** for every platform function.
 - **Security headers, rate limits, origin checks.**
 - **Required environment variables** present and valid.
 - **Advisory check:** the installed platform version isn't affected by a known advisory at `high` or above.
@@ -643,4 +644,4 @@ Experiments ran on 2026-09-25 on the private repo `tkarakai/web-app-starter-stor
 | Convex component constraints are worse than documented | The spike with exit criteria; the zone rule works without the component |
 | Maintainer agents get confused by the product repo's app-developer instructions | The workspace layout, override files and explicit wording in layer 3; tested like the buyer view |
 | The two repos drift (maintainer docs describe product code that has changed) | Maintainer docs link to product paths by release tag; the release checklist reviews them |
-| Old maintainer material stays in the public repo's history | Accepted; unresolved security findings are fixed rather than hidden |
+| Old maintainer material stays in the public repo's history | Accepted; the outdated security review is replaced by a new one rather than relied on |

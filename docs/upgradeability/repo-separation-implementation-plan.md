@@ -14,11 +14,13 @@
 ## Overview
 
 ```text
-Phase 0  Preparation ─────────────┐
-Phase 1  Maintainer repo ─────────┼──► Phase 2  Instruction layers and first skills
-Phase 3  Configuration seam ──────┘              │
-Phase 4  Convex spike (decision gate) ───────────┤
-                                                 ▼
+Phase 0  Preparation (independent) ──────────────────────────────────┐
+Phase 1  Maintainer repo ──► Phase 2  Instruction layers and skills ─┤
+                                  │ (2.3 skill folder)               │
+                                  ▼                                  │
+Phase 3  Configuration seam (only 3.4 waits for 2.3) ────────────────┤
+Phase 4  Convex spike (decision gate, independent) ──────────────────┤
+                                                                     ▼
 Phase 5  The big move (v2 branch, breaking) ──► Phase 6  Component migration
                                                  │
 Phase 7  Upgrade tool and update delivery ◄──────┘
@@ -26,7 +28,7 @@ Phase 8  Lab
 Phase 9  Release v2.0.0 ──► Phase 10  Re-baseline lifeor2-client
 ```
 
-Phases 0, 1, 3 and 4 can run in parallel. Phase 2 needs Phase 1 (layer 3 must exist before content moves out of `AGENTS.md`). Phase 5 needs 2, 3 and the Phase 4 decision.
+Phases 0, 1, 3 and 4 can start in parallel. Phase 2 needs Phase 1: layer 3 must exist (1.4) before content moves out of `AGENTS.md`, and the doc split (2.2) needs the maintainer repo (1.2). Phase 3 needs Phase 2 only for its last task, the `platform-configure` skill (3.4 needs 2.3). Phase 5 needs 2, 3 and the Phase 4 decision.
 
 ## Branching
 
@@ -46,21 +48,13 @@ Phases 0, 1, 3 and 4 can run in parallel. Phase 2 needs Phase 1 (layer 3 must ex
 
 **Checkpoint 0:** lifeor2-client's two fixes are starter code. lifeor2-client keeps its own copies until it moves to v2.0.0 (Phase 10), where they're replaced by the starter's versions.
 
-**Open pull requests:** none (confirmed 2026-09-25). The three that were open are closed and unmerged; their branches still exist on `origin`:
-
-| PR | Branch | Use in this plan |
-| --- | --- | --- |
-| #150 endpoint authorization contract | `tkarakai/starter-auth-contract-tests` | Starting point for the endpoint-authorization contract in 5.11 |
-| #148 app-owned branding icon overrides | `tkarakai/starter-branding-overrides` | Input to the brand part of 3.1 and 3.2 |
-| #149 offline dependency snapshot comparison | `tkarakai/starter-dependency-plan` | Not used: it extends the old starter-upgrade machinery (decision 24) |
-
 ## Phase 1: Maintainer repo and workspace
 
 | # | Task | Repo | Size | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
 | 1.1 | **Create the private repo** `web-app-starter-maintainer` with the §5 layout skeleton, a README, and `.gitignore` for `product/` | M | S | — | Repo exists; cloning it and cloning the product repo into `product/` works |
-| 1.2 | **Move maintainer-only material.** `docs/roadmap.md`, the `*-plan.md` trackers, `dependency-log.md`, `dependency-catchup.md`, `SECURITY-REVIEW.md`, `docs/starter-upgrade-brainstorm.md`, `starter-versioning-strategy.md`, `starter-upgrades.md`, `docs/upgradeability/*` and `TERMS-OF-SALE.md` (to `sales/`). Remove them from the product repo in one PR. Fix every reference: the `AGENTS.md` topic-guide table, READMEs, skills and scripts | M + P | M | 1.1 | `grep` finds no product-repo links to moved files; `bun run ci:quick` passes |
-| 1.3 | **Security review follow-up.** Check `SECURITY-REVIEW.md` for unresolved findings. It stays in public history, so any open finding is fixed rather than hidden (decision 18) | P | S–M | 1.2 | Every finding is either resolved or recorded as accepted in the maintainer repo |
+| 1.2 | **Move maintainer-only material.** `docs/roadmap.md`, the `*-plan.md` trackers, `dependency-log.md`, `dependency-catchup.md`, `docs/starter-upgrade-brainstorm.md`, `starter-versioning-strategy.md`, `starter-upgrades.md`, `docs/upgradeability/*` and `TERMS-OF-SALE.md` (to `sales/`). Remove them from the product repo in one PR. Fix every reference: the `AGENTS.md` topic-guide table, READMEs, skills and scripts | M + P | M | 1.1 | `grep` finds no product-repo links to moved files; `bun run ci:quick` passes |
+| 1.3 | **Retire the old security review.** Delete `docs/SECURITY-REVIEW.md` (outdated) and add "new security review" to the maintainer repo's roadmap. Future reviews live only in the maintainer repo | P + M | S | 1.2 | The file is gone from the product repo; the roadmap item exists |
 | 1.4 | **Write layer 3** (`AGENTS.md`, `CLAUDE.md`) from today's maintainer content: trackers, release, "Maintaining this file", internals, the conflict-resolution wording from §7 | M | S | 1.2 | A maintainer agent started at the maintainer root can describe the release process and the zone rule's exemption for maintainers |
 | 1.5 | **Setup script** (`setup/`). Per machine: link maintainer skills at user level. Per worktree: write `CLAUDE.local.md` and `AGENTS.override.md` into a product worktree. Add both names to the product repo's `.gitignore` | M + P | M | 1.4 | In a product worktree with overrides, Claude Code and Codex both report maintainer instructions; without them, only product guidance |
 | 1.6 | **Maintainer skills.** Maintainer variants of `deps-update` and `deps-major` (writing to the maintainer repo's dependency log) become `starter-deps`; add `starter-release` and `starter-lab` stubs | M | S | 1.5 | The skills load at user level in both tools |
@@ -119,7 +113,7 @@ The order matters: paths first, then the things that depend on them.
 | 5.8 | **Reusable workflows.** `platform-*.yml` (CI, CD, security) plus thin callers. Paid features conditional (CodeQL, dependency review, attestations, environment protections) with visible notices. Platform suite runs when `platform/**` changes. Check that actions stay SHA-pinned | P | L | 5.1 | CI green; a private-repo run on GitHub Free skips the paid features cleanly (tested on a scratch private repo) |
 | 5.9 | **Renovate preset** in `platform/config/` with `ignorePaths: ["platform/**"]`; platform packages declare ranges | P | S | 5.1 | Renovate dry run proposes no change under `platform/` |
 | 5.10 | **Zone check, `.platform-base.json`, `PLATFORM-PATCH`**: a tool and a CI job; a `platform-patch` skill | P | M | 5.4 | An unrecorded edit under `platform/` fails CI; a recorded one passes and is listed |
-| 5.11 | **Contracts job:** session and cookie isolation (would have caught lifeor2's `clear-session` revert), endpoint authorization (revived from closed #150, branch `tkarakai/starter-auth-contract-tests`), headers, env check. Runs on every PR | P | M | 5.5 | Contracts run against the reference apps; a deliberately reverted cookie fix fails |
+| 5.11 | **Contracts job:** session and cookie isolation (would have caught lifeor2's `clear-session` revert), endpoint authorization for every platform function, headers, env check. Runs on every PR | P | M | 5.5 | Contracts run against the reference apps; a deliberately reverted cookie fix fails |
 | 5.12 | **`bun run adopt`** (§9) | P | M | 5.4, 5.10, 3.1 | On a fresh clone: set values, swap templates, optionally strip the sample and landings, link skills, write the base record; then zone check and build pass |
 | 5.13 | **Update skills and docs for new paths**: the Phase 2 skills, `platform/AGENTS.md`, `platform/docs/` | P | S | 5.1–5.12 | Skill example tasks pass again on the new layout |
 
@@ -195,7 +189,6 @@ lifeor2-client forked before the new layout, so its first move to v2.0.0 is a **
 
 | Item | Resolved in |
 | --- | --- |
-| Unresolved security-review findings | 1.3 |
 | Component or `convex/platform/` only | 4.2 |
 | Legal wording of the licences | 9.4 |
 | Detailed upgrade tool design | 7.1 |
