@@ -1,5 +1,4 @@
-import { ForceSystemTheme } from "@/components/auth/force-system-theme";
-import { GuestGuard } from "@/components/auth/guest-guard";
+import { ForceSystemTheme, GuestGuard } from "@web-app-starter/auth-ui";
 
 export default function AuthLayout({
   children,

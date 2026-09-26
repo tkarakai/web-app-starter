@@ -55,7 +55,7 @@ type TaskListProps = {
 
 export function TaskList({ projectId }: TaskListProps) {
   const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
-  const profile = useQuery(api.userProfiles.get);
+  const profile = useQuery(api.platform.userProfiles.get);
   const createTask = useMutationWithToast(api.tasks.create);
   const t = useTranslations("tasks");
   const tc = useTranslations("common");

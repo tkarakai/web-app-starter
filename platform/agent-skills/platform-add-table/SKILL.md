@@ -5,25 +5,29 @@ description: Use to add a new Convex table for app data - schema entry, indexes,
 
 # Add an app table
 
-The backend is one Convex project in `packages/backend/convex/`. Its `schema.ts` is a **seam**:
-the platform's tables and yours live side by side. Background: `platform/docs/code-style.md`
-(Convex section), `platform/docs/testing.md` (convex-test) and `platform/docs/convex-migrations.md`.
+The backend is one Convex project in `packages/backend/convex/`. Platform functions live in
+`convex/platform/` (platform zone: never edit) and are called as `api.platform.<module>`; your
+modules live at the `convex/` root and are called as `api.<module>`. `schema.ts` is a **seam**:
+it spreads the platform's tables (`...platformTables`, the platform hook) and the sample domain's
+(`...sampleTables` from `sampleTables.ts`), then lists yours. Background:
+`platform/docs/code-style.md` (Convex section), `platform/docs/testing.md` (convex-test) and
+`platform/docs/convex-migrations.md`.
 
 ## Rules
 
-- **Add, don't edit.** Add your table at the end of the schema object in `schema.ts`. Never
-  change or remove a platform table (`userProfiles`, `adminEmails`, `appSettings`,
-  `waitlistEntries`, `invitationTokens`, `adminInvitations`, `announcements`, `auditTrail`, the
-  rate-limit and migration tables, and Better Auth's component tables).
-- **One module per table**, named in camelCase after it: `convex/bookmarks.ts`.
-- **Authenticated by default.** Use `authedQuery` and `authedMutation` from `./functions`:
+- **Add, don't edit.** Add your table at the end of the schema object in `schema.ts`, after the
+  spreads. Keep the `...platformTables` spread, and never reuse a platform table name (see
+  `convex/platform/tables.ts`; Better Auth's component tables are separate).
+- **One module per table**, named in camelCase after it: `convex/bookmarks.ts`. Never put app
+  modules in `convex/platform/`.
+- **Authenticated by default.** Use `authedQuery` and `authedMutation` from `./platform/functions`:
   handlers get `ctx.ownerId`; `authedQuery` returns `null` when signed out (safe for `useQuery`),
   `authedMutation` throws `NOT_AUTHENTICATED` and applies the global mutation rate limit.
   Use plain `query`/`mutation` only for data that is deliberately public.
 - **Own your rows.** Store `ownerId: v.string()` and index it (`by_owner`). Every read filters by
   `ctx.ownerId` through the index; every write to an existing row loads it and checks
   `row.ownerId === ctx.ownerId` first. Rows that belong to a project go through
-  `requireProjectAccess(ctx, projectId)` from `./functions`.
+  `requireProjectAccess(ctx, projectId)` from `./projectAccess` (part of the sample domain; keep it if you keep projects).
 - **Validate everything.** `v` validators on every argument and field; string lengths with
   `assertMaxLength(value, MAX_NAME_LENGTH, "TITLE")`.
 - **Errors are codes**, not text: `throw new Error("BOOKMARK_NOT_FOUND")`. Give each code a
@@ -49,7 +53,7 @@ the platform's tables and yours live side by side. Background: `platform/docs/co
 
    This starts a local backend for this checkout, pushes the functions, regenerates and exits.
    Commit everything it regenerates under `convex/_generated/` and
-   `convex/betterAuth/_generated/`, even lines unrelated to your table: generated files are
+   `convex/platform/betterAuth/_generated/`, even lines unrelated to your table: generated files are
    committed as generated, never trimmed by hand.
 4. **Tests.** `packages/backend/convex/<table>.test.ts` with convex-test. Pass the module glob
    (monorepo requirement) and cover: required fields are enforced, the owner index returns only
@@ -64,7 +68,8 @@ the platform's tables and yours live side by side. Background: `platform/docs/co
    ```
 
 5. **Audit (optional).** If the action matters for security or support, record it with
-   `scheduleAuditEvent` and add the action to `auditTrailConstants.ts`
+   `scheduleAuditEvent` from `./platform/auditTrailHelpers`. Actions are a platform list
+   (`convex/platform/auditTrailConstants.ts`); if none fits, ask the platform maintainers for one
    (`platform/docs/audit-trail-architecture.md`).
 6. **Check.**
 
@@ -97,7 +102,7 @@ their own bookmarks, newest first, and remove one. Nobody sees another user's bo
 ```ts
 import { v } from "convex/values";
 
-import { assertMaxLength, authedMutation, authedQuery, MAX_NAME_LENGTH } from "./functions";
+import { assertMaxLength, authedMutation, authedQuery, MAX_NAME_LENGTH } from "./platform/functions";
 
 export const MAX_URL_LENGTH = 2048;
 

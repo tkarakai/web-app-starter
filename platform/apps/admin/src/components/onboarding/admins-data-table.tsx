@@ -211,13 +211,13 @@ export function AdminsDataTable() {
   const [inviteOpen, setInviteOpen] = React.useState(false);
 
   const { results, status, loadMore } = usePaginatedQuery(
-    api.adminInvitations.list,
+    api.platform.adminInvitations.list,
     {},
     { initialNumItems: PAGE_SIZE }
   );
 
-  const inviteMutation = useMutation(api.adminInvitations.invite);
-  const removeMutation = useMutation(api.adminInvitations.remove);
+  const inviteMutation = useMutation(api.platform.adminInvitations.invite);
+  const removeMutation = useMutation(api.platform.adminInvitations.remove);
 
   const loading = status === "LoadingFirstPage";
   const loadingMore = status === "LoadingMore";

@@ -39,7 +39,7 @@ export function AuditTrailDataTable() {
   }, [filterAction, filterSource, filterStatus]);
 
   const { results, status, loadMore } = usePaginatedQuery(
-    api.auditTrail.list,
+    api.platform.auditTrail.list,
     queryArgs,
     { initialNumItems: INITIAL_NUM_ITEMS },
   );

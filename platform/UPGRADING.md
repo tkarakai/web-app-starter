@@ -266,12 +266,19 @@ bun run test:convex
 If the starter's release notes mention a **schema migration**, a merge is not enough —
 follow [`platform/docs/convex-migrations.md`](./docs/convex-migrations.md) before deploying.
 
-### `platform/packages/i18n/messages/*.json`
+### `packages/messages/*.json` and `platform/packages/i18n/messages/*.json`
 
-The 15 locale files are intentionally customizable. The starter expects its
-message keys and interpolation parameters to remain available; business apps may
-change translated values and add their own keys. The application team owns
-keeping these files consistent and resolving overlaps during upgrades. Changes
+From v2, messages are split by owner (`platform/docs/i18n-architecture.md`, "Message
+ownership"): the platform's files are taken wholesale and never merged; your strings live in
+`packages/messages/<locale>.json` and your wording for platform strings in
+`packages/messages/overrides.json`. After taking a release, run `bun run check:i18n`: it names
+any override whose platform key the release renamed or removed. Your own message files can
+still conflict when you merge changes to the reference app's namespaces; the resolver below
+handles both directories.
+
+Before v2, the 15 locale files were intentionally customizable. The starter expected its
+message keys and interpolation parameters to remain available; business apps could
+change translated values and add their own keys. Changes
 to different keys can merge cleanly; conflicts are possible, not automatic.
 
 **Resolution: use the resolver for conflicted locale files, then review its

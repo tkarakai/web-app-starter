@@ -34,6 +34,7 @@ The root `app.config.ts` holds every value an app built on the starter is expect
 | `runtime` | local port per app, Better Auth cookie prefix | dev scripts, each app's `dev` script, Playwright configs, CI, `@web-app-starter/auth`, both proxies, both `clear-session` routes, Convex `auth.ts` and `sessions.ts` |
 | `brand` | icon sources, design-token overrides, email palette, `lang` and footer | `copy-shared-assets.sh`, `BrandTokenStyle` in each root layout, Convex email templates |
 | `features` | `waitlist`, `invitations`, `announcements`, `environmentBanner` | admin feature controls and navigation, announcement banners, environment banner |
+| `i18n` | `locales` | the locales every app routes, lists and loads app messages for (`@web-app-starter/i18n` `locales`); `bun run check:i18n` |
 
 It is validated when loaded (`platform/packages/app-config/src/schema.ts`); an invalid or unknown value
 stops dev, build and tests with a message naming each bad setting. Everything in it is public:
@@ -65,14 +66,14 @@ for launcher requirements, process ownership checks and safe stop commands.
 
 ### Dev Seed Accounts
 
-On first startup, `dev-start.sh` automatically creates two test accounts via `packages/backend/convex/devSeed.ts`:
+On first startup, `dev-start.sh` automatically creates two test accounts via `packages/backend/convex/platform/devSeed.ts`:
 
 | Email | Password | Role |
 |-------|----------|------|
 | `admin@admin.com` | email pasted x 3 | admin |
 | `user@user.com` | email pasted x 3 | user |
 
-The seed is gated behind the `DEV_SEED_ENABLED` Convex env var (set automatically by `dev-start.sh`), refuses to run unless every `SITE_URL` origin is loopback HTTP (`packages/backend/convex/developmentOnly.ts`), and is idempotent — it skips if the accounts already exist. To re-seed after a database reset, just restart `bun run dev`.
+The seed is gated behind the `DEV_SEED_ENABLED` Convex env var (set automatically by `dev-start.sh`), refuses to run unless every `SITE_URL` origin is loopback HTTP (`packages/backend/convex/platform/developmentOnly.ts`), and is idempotent — it skips if the accounts already exist. To re-seed after a database reset, just restart `bun run dev`.
 
 ## Testing Commands (Detailed)
 

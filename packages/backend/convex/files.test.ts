@@ -377,7 +377,7 @@ describe("files", () => {
   describe("upload validation — name length", () => {
     test("name exceeding MAX_NAME_LENGTH (255) is rejected by assertMaxLength", async () => {
       // The saveUpload handler calls assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME")
-      const { assertMaxLength, MAX_NAME_LENGTH } = await import("./functions");
+      const { assertMaxLength, MAX_NAME_LENGTH } = await import("./platform/functions");
 
       expect(() =>
         assertMaxLength("a".repeat(MAX_NAME_LENGTH + 1), MAX_NAME_LENGTH, "NAME")
@@ -385,7 +385,7 @@ describe("files", () => {
     });
 
     test("name at exactly MAX_NAME_LENGTH passes", async () => {
-      const { assertMaxLength, MAX_NAME_LENGTH } = await import("./functions");
+      const { assertMaxLength, MAX_NAME_LENGTH } = await import("./platform/functions");
 
       expect(() =>
         assertMaxLength("a".repeat(MAX_NAME_LENGTH), MAX_NAME_LENGTH, "NAME")

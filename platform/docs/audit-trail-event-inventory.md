@@ -27,9 +27,9 @@ Last verified against `main` on 2026-09-15.
 
 | Helper | Module | Use |
 |---|---|---|
-| `scheduleAuditEvent` | `packages/backend/convex/auditTrailHelpers.ts` | Mutation contexts; schedules `internal.auditTrail.insertEvent` |
-| `runAuditEvent` | `packages/backend/convex/auditTrailHelpers.ts` | Action contexts; runs `internal.auditTrail.insertEvent` |
-| `postEvent` | `packages/backend/convex/auditTrail.ts` | Public mutation for `web:*` events from browser clients |
+| `scheduleAuditEvent` | `packages/backend/convex/platform/auditTrailHelpers.ts` | Mutation contexts; schedules `internal.platform.auditTrail.insertEvent` |
+| `runAuditEvent` | `packages/backend/convex/platform/auditTrailHelpers.ts` | Action contexts; runs `internal.platform.auditTrail.insertEvent` |
+| `postEvent` | `packages/backend/convex/platform/auditTrail.ts` | Public mutation for `web:*` events from browser clients |
 
 ---
 
@@ -37,7 +37,7 @@ Last verified against `main` on 2026-09-15.
 
 ### Join waitlist (`POST /api/waitlist/join`)
 
-`waitlist.join` — `packages/backend/convex/waitlist.ts`
+`waitlist.join` — `packages/backend/convex/platform/waitlist.ts`
 
 - `action`: `waitlist.joined`
 - `source`: `server:waitlist`
@@ -52,7 +52,7 @@ rejections — those throw before the audit call.
 
 ### Invitation signup claims a token
 
-`waitlistTokens.beginClaim` — `packages/backend/convex/waitlistTokens.ts`
+`waitlistTokens.beginClaim` — `packages/backend/convex/platform/waitlistTokens.ts`
 
 Emitted from a `finally`, so both outcomes are recorded.
 
@@ -70,7 +70,7 @@ Lookup is by `sha256Hex(token)` against the `by_token` index — tokens are hash
 
 ### Invitation signup releases a claim after signup fails
 
-`waitlistTokens.releaseClaim` — `packages/backend/convex/waitlistTokens.ts`
+`waitlistTokens.releaseClaim` — `packages/backend/convex/platform/waitlistTokens.ts`
 
 - `action`: `waitlist.token.released`
 - `source`: `server:waitlist-token`
@@ -90,7 +90,7 @@ with no event.
 ## 2. Better Auth endpoint hook events
 
 `source`: `server:auth-endpoint-hook`. Emitted by the `hooks.after` middleware in
-`packages/backend/convex/auth.ts`, driven by the `AUTH_ENDPOINT_AUDIT_CONFIG` map in the
+`packages/backend/convex/platform/auth.ts`, driven by the `AUTH_ENDPOINT_AUDIT_CONFIG` map in the
 same module. Every event in this section carries:
 
 - `authenticatedUserId`: empty
@@ -123,7 +123,7 @@ the reset proves address control) — that side effect writes no separate audit 
 ## 3. Better Auth database hook events
 
 `source`: `server:auth-hook`. Emitted from `databaseHooks` in
-`packages/backend/convex/auth.ts`. `meta` carries `{"ip":…,"userAgent":…}` when the
+`packages/backend/convex/platform/auth.ts`. `meta` carries `{"ip":…,"userAgent":…}` when the
 session record has them (IP truncated to 200 chars, user agent to 500).
 
 ### Session created
@@ -230,7 +230,7 @@ On failure the extra fields still reflect what was *requested*, not what took ef
 `authenticatedUserId` is `ctx.ownerId` — except where flagged below. **None of these
 write a failure event**; the mutations throw before reaching the audit call.
 
-### Waitlist — `packages/backend/convex/waitlist.ts`
+### Waitlist — `packages/backend/convex/platform/waitlist.ts`
 
 | Function | `action` | `resource` | `meta` |
 |---|---|---|---|
@@ -243,7 +243,7 @@ write a failure event**; the mutations throw before reaching the audit call.
 `remove` refuses to delete a `claimed` entry and hard-deletes associated tokens — those
 token deletions are not individually audited.
 
-### Admin invitations — `packages/backend/convex/adminInvitations.ts`
+### Admin invitations — `packages/backend/convex/platform/adminInvitations.ts`
 
 | Function | `action` | `resource` | `meta` |
 |---|---|---|---|
@@ -257,7 +257,7 @@ Note the `resource` shape is inconsistent between the two — email for `sent`, 
 `claimInvitation`, so the admin role cannot be obtained without proving token possession.
 Token lookup is by `sha256Hex(token)`.
 
-### Announcements — `packages/backend/convex/announcements.ts`
+### Announcements — `packages/backend/convex/platform/announcements.ts`
 
 All routed through the module's local audit helper, with `resource` always
 `announcement:<announcementId>` and `status` always `succeeded`.
@@ -274,7 +274,7 @@ Scheduler-initiated, from the publish/unpublish jobs rather than a human:
 nothing to do (announcement deleted, already live, schedule moved); `reason` explains
 which.
 
-### Settings and policy changes — `packages/backend/convex/appSettings.ts`
+### Settings and policy changes — `packages/backend/convex/platform/appSettings.ts`
 
 `appSettings.set` is the mutation the admin UI actually calls. It emits
 `source`: `server:admin-settings` with `actor` and `authenticatedUserId` both set to
@@ -296,7 +296,7 @@ Only keys present in the module's `POLICY_AUDIT_ACTIONS` map produce an event:
 
 Other accepted keys write **no** audit event — see section 7.
 
-### Legacy policy mutations — `packages/backend/convex/adminAuth.ts`
+### Legacy policy mutations — `packages/backend/convex/platform/adminAuth.ts`
 
 `setMfaPolicy` (`admin.mfa_policy_changed`) and `setEmailVerificationPolicy`
 (`admin.email_verification_policy_changed`) still emit, with `actor` set to `ctx.ownerId`

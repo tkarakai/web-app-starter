@@ -1,10 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { sessionCookieNames } from "@web-app-starter/auth/cookies";
+import { authRedirect } from "@web-app-starter/auth-ui/proxy";
 import {
   checkEdgeRateLimit,
   positiveInt,
   getClientIp,
-  hasSessionCookie,
   rateLimitResponse,
   setRateLimitHeaders,
   type EdgeRateLimitConfig,
@@ -37,23 +36,9 @@ export function proxy(request: NextRequest) {
     return rateLimitResponse(RATE_LIMIT_CONFIG, rl);
   }
 
-  const { pathname } = request.nextUrl;
-  const hasSession = hasSessionCookie(request, sessionCookieNames());
-
-  // Unauthenticated users hitting a protected route → sign-in
-  if (
-    PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
-    !hasSession
-  ) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
-  }
-
-  // Authenticated users hitting auth pages → dashboard
-  // UNLESS they're coming from a session clear (prevents redirect loop when session is stale)
-  const isSessionCleared = request.nextUrl.searchParams.has("session_cleared");
-  if (AUTH_ROUTES.includes(pathname) && hasSession && !isSessionCleared) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  // --- Auth redirects (session cookie only; pages validate the session) ---
+  const redirect = authRedirect(request, { protectedPrefixes: PROTECTED_PREFIXES, authRoutes: AUTH_ROUTES });
+  if (redirect) return redirect;
 
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";

@@ -80,7 +80,7 @@ test.describe("Sign-In Flow", () => {
 
 /**
  * Sign-up is gated. `onboardingType` defaults to `inviteOnly`
- * (`packages/backend/convex/onboardingType.ts`), and the self-service form only
+ * (`packages/backend/convex/platform/onboardingType.ts`), and the self-service form only
  * renders under `publicSignup`.
  *
  * These previously asserted #name / #password / #confirm-password on

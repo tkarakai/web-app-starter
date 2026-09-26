@@ -1,10 +1,12 @@
 import { getRequestConfig } from "next-intl/server";
 
-import { type Locale, locales } from "./config";
+import { defaultLocale, type Locale, locales } from "./config";
+import { loadMessages } from "./messages";
 
 /**
  * next-intl request configuration.
- * Loads the message bundle for the requested locale at runtime.
+ * Loads the requested locale's messages at runtime: platform and app namespaces
+ * merged, with the app's overrides applied (see ./messages.ts).
  *
  * Usage: import this module from `i18n/request.ts` in each Next.js app
  * (required by next-intl's plugin / middleware).
@@ -12,13 +14,13 @@ import { type Locale, locales } from "./config";
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale;
 
-  // Validate — fall back to en if the requested locale is unknown
+  // Validate — fall back to the default if the app doesn't ship the requested locale
   if (!locale || !locales.includes(locale as Locale)) {
-    locale = "en";
+    locale = defaultLocale;
   }
 
   return {
     locale,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    messages: await loadMessages(locale as Locale),
   };
 });

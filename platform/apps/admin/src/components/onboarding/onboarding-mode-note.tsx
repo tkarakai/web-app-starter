@@ -12,7 +12,7 @@ import {
 } from "./onboarding-policy-copy";
 
 export function OnboardingModeNote() {
-  const onboardingType = useQuery(api.appSettings.get, {
+  const onboardingType = useQuery(api.platform.appSettings.get, {
     key: "onboardingType",
   });
 

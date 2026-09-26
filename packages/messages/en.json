@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Your starting line.",
+    "headingLine2": "Build from here.",
+    "description": "Auth, database, real-time sync, and file uploads — wired and ready.",
+    "getStarted": "Get started",
+    "signIn": "Sign in",
+    "footer": {
+      "about": "About",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service"
+    },
+    "waitlist": {
+      "title": "Join the Waitlist",
+      "description": "Request access by joining the waitlist.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "superpowersLabel": "What's your superpower?",
+      "superpowersPlaceholder": "Select your superpowers",
+      "excitementLabel": "How excited are you?",
+      "excitementPlaceholder": "Tell us how you feel",
+      "roleLabel": "Your role (optional)",
+      "rolePlaceholder": "Select your role",
+      "companyLabel": "Company (optional)",
+      "companyPlaceholder": "Acme Inc.",
+      "useCaseLabel": "What do you plan to build? (optional)",
+      "useCasePlaceholder": "A customer portal, internal tool…",
+      "roles": {
+        "founder": "Founder",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Agency",
+        "other": "Other"
+      },
+      "selectedCount": "{count} selected",
+      "submit": "Join waitlist",
+      "submitting": "Joining...",
+      "successTitle": "You're on the list!",
+      "successDescription": "We'll send you an invitation when it's your turn.",
+      "alreadySignedUp": "Already have an account?",
+      "signIn": "Sign in",
+      "superpowers": {
+        "coffee-to-code": "Turning coffee into code",
+        "pixel-perfect": "Making pixels perfect",
+        "bug-whisperer": "Bug whispering",
+        "spreadsheet-wizard": "Spreadsheet wizardry",
+        "inbox-zero": "Inbox zero every day",
+        "parallel-parking": "Parallel parking on the first try",
+        "remembering-names": "Remembering everyone's name",
+        "never-burning-toast": "Never burning toast",
+        "explaining-tech": "Explaining tech to parents",
+        "finding-restaurants": "Finding the best restaurants",
+        "staying-calm": "Staying calm in long meetings",
+        "other": "Something else entirely"
+      },
+      "excitement": {
+        "take-my-money": "Take my money!",
+        "cant-wait": "Can't wait to try it",
+        "cautiously-optimistic": "Cautiously optimistic",
+        "just-browsing": "Just browsing",
+        "friend-made-me": "My friend made me sign up"
+      },
+      "errors": {
+        "waitlistNotEnabled": "The waitlist is not currently accepting sign-ups. Please try again later.",
+        "invalidEmail": "Please enter a valid email address.",
+        "rateLimited": "Too many requests. Please wait a moment and try again.",
+        "generic": "Something went wrong. Please try again."
+      }
+    },
+    "fallback": {
+      "title": "Sign-up is temporarily unavailable",
+      "description": "We can't reach our services right now and will keep retrying in the background. You can still sign in to an existing account.",
+      "bookDemo": "Book a demo",
+      "contact": "Contact us"
+    }
+  },
+  "dashboard": {
+    "projects": "Projects",
+    "noProjects": "No projects yet",
+    "noProjectsDescription": "Create a project to get started.",
+    "projectNotFound": "Project not found",
+    "projectNotFoundDescription": "This project may have been deleted.",
+    "tabs": {
+      "tasks": "Tasks",
+      "attachments": "Attachments"
+    },
+    "security": "Security",
+    "sessions": {
+      "title": "Active Sessions",
+      "description": "Manage your active sessions across all devices. You can sign out of any session you no longer recognize.",
+      "currentSession": "This device",
+      "otherSessions": "Other devices",
+      "current": "Current",
+      "lastActive": "Active {time}",
+      "noOtherSessions": "No other active sessions. You're only signed in on this device.",
+      "revokeAll": "Sign out all others",
+      "revokeAllTitle": "Sign out all other devices?",
+      "revokeAllDescription": "This will sign you out of all other devices and browsers. Only your current session will remain active.",
+      "revokeAllConfirm": "Sign out all",
+      "revokeTitle": "Sign out this device?",
+      "revokeDescription": "This will end the session for {device}. They will need to sign in again to access the account.",
+      "backToDashboard": "Back to dashboard",
+      "loadError": "Failed to load sessions.",
+      "revokeError": "Failed to revoke session.",
+      "revokeAllError": "Failed to revoke sessions."
+    },
+    "account": "Settings",
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your profile information and preferences.",
+      "name": "Display name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailReadonly": "Contact support to change your email.",
+      "avatarColor": "Avatar color",
+      "saved": "Profile updated.",
+      "language": "Language",
+      "timezone": "Timezone",
+      "timezonePlaceholder": "Select your timezone",
+      "timezoneSearch": "Search timezones...",
+      "timezoneDetected": "Detected",
+      "noTimezoneResults": "No timezone found.",
+      "theme": "Theme"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "revokeOtherSessions": "Sign out all other devices",
+      "cta": "Update password",
+      "success": "Password updated successfully.",
+      "errorCurrentPassword": "Current password is incorrect."
+    },
+    "twoFactor": {
+      "title": "Two-Factor Authentication",
+      "description": "Add an extra layer of security to your account.",
+      "enabled": "2FA is enabled",
+      "disabled": "2FA is not enabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "enterPassword": "Enter your password to continue.",
+      "scanQrCode": "Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy).",
+      "manualEntry": "Can't scan? Enter this key manually",
+      "manualEntryDescription": "Open your authenticator app, choose \"Add account\", then select \"Enter setup key\" and paste the key below.",
+      "secretKey": "Secret key",
+      "copied": "Copied to clipboard",
+      "enterCode": "Enter the 6-digit code from your authenticator app to verify setup.",
+      "verify": "Verify",
+      "backupCodes": "Backup codes",
+      "backupCodesDescription": "Save these codes in a safe place. Each code can only be used once.",
+      "viewBackupCodes": "View backup codes",
+      "regenerateBackupCodes": "Regenerate backup codes",
+      "disableConfirm": "Are you sure you want to disable 2FA?",
+      "regenerateConfirm": "This will replace your existing backup codes. Any unused codes will no longer work.",
+      "codePlaceholder": "000000",
+      "requiredNotice": "Your account policy requires two-factor authentication. Complete setup to continue."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Add and manage passkeys for faster, phishing-resistant sign-in.",
+      "policy": "Policy: {policy}",
+      "disabled": "Disabled",
+      "optional": "Optional",
+      "required": "Required",
+      "disabledDescription": "Passkey sign-in is disabled for your account.",
+      "nameLabel": "New passkey label (optional)",
+      "namePlaceholder": "My Laptop",
+      "add": "Add passkey",
+      "adding": "Adding...",
+      "empty": "No passkeys enrolled yet.",
+      "unnamed": "Unnamed passkey",
+      "singleDevice": "Device-bound passkey",
+      "multiDevice": "Synced passkey",
+      "rename": "Rename passkey {name}",
+      "remove": "Delete passkey {name}",
+      "name": "Passkey name",
+      "loadError": "Failed to load passkeys.",
+      "addError": "Failed to add passkey.",
+      "renameError": "Failed to rename passkey.",
+      "deleteError": "Failed to delete passkey.",
+      "added": "Passkey added.",
+      "renamed": "Passkey updated.",
+      "deleted": "Passkey removed.",
+      "unsupportedTitle": "Passkeys are not supported on this device or browser.",
+      "unsupportedDescription": "Sign in from a device or browser that supports passkeys to set one up.",
+      "requiredNotice": "Your account policy requires a passkey. Add one to continue.",
+      "signInRequired": "Passkey sign-in is required for your account."
+    }
+  },
+  "projects": {
+    "newProject": "New project",
+    "createProject": "Create project",
+    "createFirst": "Create your first project",
+    "noProjects": "No projects",
+    "editProject": "Edit project",
+    "deleteProject": "Delete project",
+    "deleteConfirmTitle": "Delete project?",
+    "deleteConfirmDescription": "This will permanently delete “{name}” and all its tasks. This action cannot be undone.",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Project name",
+      "description": "Description",
+      "descriptionPlaceholder": "What is this project about?"
+    }
+  },
+  "tasks": {
+    "title": "Tasks",
+    "addTask": "Add task",
+    "newTask": "New task",
+    "editTask": "Edit task",
+    "deleteTask": "Delete task",
+    "confirmDelete": "Confirm delete",
+    "createTask": "Create task",
+    "noTasks": "No tasks yet. Add one to get started.",
+    "noTasksSummary": "No tasks yet",
+    "progress": "{doneCount} of {totalCount} tasks done",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Status",
+      "todo": "To do",
+      "inProgress": "In progress",
+      "done": "Done",
+      "all": "All"
+    },
+    "fields": {
+      "title": "Title",
+      "titlePlaceholder": "What needs to be done?",
+      "description": "Description",
+      "descriptionPlaceholder": "Add details...",
+      "deadline": "Deadline",
+      "deadlinePlaceholder": "No deadline",
+      "clearDeadline": "Clear deadline"
+    },
+    "deadline": {
+      "overdue": "Overdue",
+      "dueToday": "Due today"
+    },
+    "aria": {
+      "changeStatus": "Change status from {status}"
+    },
+    "count": "{count, plural, =0 {No tasks yet} one {# task} other {# tasks}}"
+  },
+  "uploads": {
+    "title": "Attachments",
+    "addFile": "Add file",
+    "uploading": "Uploading...",
+    "processing": "Processing",
+    "view": "View",
+    "deleteFile": "Delete file",
+    "emptyState": "Upload files to show the Convex file storage flow.",
+    "errors": {
+      "tooLarge": "File too large (max 1MB)",
+      "uploadFailed": "Upload failed. Please try again.",
+      "generic": "Upload failed."
+    },
+    "count": "{count, plural, =0 {No attachments} one {# attachment} other {# attachments}}"
+  },
+  "metadata": {
+    "description": "A Next.js starter with Convex, Better Auth, and Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "About",
+      "description": "Learn about {productName} and our mission.",
+      "notice": "This is placeholder content. Replace it with your own before launching.",
+      "heading": "About",
+      "mission": "Our Mission",
+      "missionText": "We believe developers should spend their time building features, not configuring infrastructure. {productName} provides a production-ready starting point with real-time data sync, file uploads, and session-based authentication out of the box.",
+      "whatIncluded": "What's Included",
+      "whatIncludedText": "The starter kit ships with a landing page, a fully authenticated web application, an admin dashboard, and a component storybook. Each app shares a unified design system built on Radix UI primitives with Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "This project is open source and designed to be forked and customised.",
+      "intro": "{productName} is a full-stack starter for building modern web applications. It combines Next.js for the frontend, Convex for the backend, and Better Auth for secure authentication — all wired together and ready to ship."
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "How we collect, use, and protect your data.",
+      "notice": "This is a template privacy policy. Customize it for your specific application and jurisdiction before launching.",
+      "heading": "Privacy Policy",
+      "lastUpdated": "Last updated: {date}"
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "description": "The rules and guidelines for using our service.",
+      "notice": "This is a template terms of service. Customize it for your specific application and jurisdiction before launching.",
+      "heading": "Terms of Service",
+      "lastUpdated": "Last updated: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Project not found.",
+    "taskNotFound": "Task not found.",
+    "fileNotFound": "File not found in storage.",
+    "fileTooLarge": "File too large (max 1MB).",
+    "uploadNotFound": "Upload not found."
+  }
+}

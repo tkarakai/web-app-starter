@@ -239,7 +239,7 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 ```
 
-> **How `SITE_URL` works:** The auth config in `packages/backend/convex/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
+> **How `SITE_URL` works:** The auth config in `packages/backend/convex/platform/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
 >
 > **How `ADMIN_SITE_URL` works:** The HTTP router in `packages/backend/convex/http.ts` and session management in `sessions.ts` use `ADMIN_SITE_URL` for CORS allowed-origins on admin-specific endpoints. The admin invitation system in `adminInvitationActions.ts` uses it to construct invitation email links.
 >
@@ -247,7 +247,7 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 >
 > **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Without it, the landing app's cross-origin requests to Convex would be blocked.
 >
-> **Why `RESEND_API_KEY` is required here:** Without it, auth and invitation emails fall back to being logged to the console, and that fallback runs only in local development (every `SITE_URL` origin on `http://localhost`; see `packages/backend/convex/developmentOnly.ts`). On a hosted deployment, sending an email without `RESEND_API_KEY` throws `EMAIL_DELIVERY_NOT_CONFIGURED`, so sign-up verification, password reset and invitations fail until it is set.
+> **Why `RESEND_API_KEY` is required here:** Without it, auth and invitation emails fall back to being logged to the console, and that fallback runs only in local development (every `SITE_URL` origin on `http://localhost`; see `packages/backend/convex/platform/developmentOnly.ts`). On a hosted deployment, sending an email without `RESEND_API_KEY` throws `EMAIL_DELIVERY_NOT_CONFIGURED`, so sign-up verification, password reset and invitations fail until it is set.
 
 ### 2d. Configure Vercel Environment Variables
 
@@ -496,23 +496,23 @@ gh run watch $(gh run list --workflow=cd-staging.yml --limit 1 --json databaseId
 
 On a fresh deployment the database is empty — no admin user exists yet. The `bootstrap` module provides internal functions to seed the first admin without needing a UI.
 
-**Run from the Convex dashboard** (Dashboard → select your project → Functions → `bootstrap:initialize`):
+**Run from the Convex dashboard** (Dashboard → select your project → Functions → `platform/bootstrap:initialize`):
 
 ```
-bootstrap:initialize  { "email": "you@example.com" }
+platform/bootstrap:initialize  { "email": "you@example.com" }
 ```
 
 Or via CLI with the deploy key:
 
 ```bash
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:initialize '{"email": "you@example.com"}'
+  bunx convex run platform/bootstrap:initialize '{"email": "you@example.com"}'
 ```
 
 This will:
 1. Add the email to the `adminEmails` table
 2. Create a waitlist entry and mark it as "invited"
-3. Send an invitation email (requires `RESEND_API_KEY`; without it the invitation action fails with `EMAIL_DELIVERY_NOT_CONFIGURED`; set the key, then resend with `bootstrap:rescue`, passing the same email as both `currentEmail` and `newEmail`)
+3. Send an invitation email (requires `RESEND_API_KEY`; without it the invitation action fails with `EMAIL_DELIVERY_NOT_CONFIGURED`; set the key, then resend with `platform/bootstrap:rescue`, passing the same email as both `currentEmail` and `newEmail`)
 
 **Check your email** for the invitation link and complete registration to claim the admin account.
 
@@ -520,7 +520,7 @@ This will:
 
 ```bash
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:status '{}'
+  bunx convex run platform/bootstrap:status '{}'
 ```
 
 The `status` function returns the current state and an actionable hint (e.g. "token expired — run rescue").
@@ -530,11 +530,11 @@ The `status` function returns the current state and an actionable hint (e.g. "to
 ```bash
 # Fix email typo and resend invitation
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:rescue '{"currentEmail": "typo@exmaple.com", "newEmail": "correct@example.com"}'
+  bunx convex run platform/bootstrap:rescue '{"currentEmail": "typo@exmaple.com", "newEmail": "correct@example.com"}'
 
 # Same email, just resend (expired token)
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:rescue '{"currentEmail": "you@example.com", "newEmail": "you@example.com"}'
+  bunx convex run platform/bootstrap:rescue '{"currentEmail": "you@example.com", "newEmail": "you@example.com"}'
 ```
 
 > **Note:** All bootstrap functions are `internalMutation`/`internalQuery` — they cannot be called from the client. The `rescue` function cannot be used after the admin has claimed the invitation (i.e. completed registration). Repeat this bootstrap step for production after promoting in Step 4.

@@ -58,7 +58,7 @@ jobs:
             design-system:
               - 'platform/packages/design-system/**'
             auth:
-              - 'platform/packages/auth/**'
+              - 'platform/packages/auth*/**'
             root:
               - 'package.json'
               - 'bun.lock'

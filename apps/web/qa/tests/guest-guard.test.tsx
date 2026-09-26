@@ -6,7 +6,7 @@ import { render, screen, act } from "@testing-library/react";
 let broadcastCallback: (() => void) | null = null;
 const mockBroadcastCleanup = vi.fn();
 
-vi.mock("@/lib/auth-broadcast", () => ({
+vi.mock("../../../../platform/packages/auth-ui/src/lib/auth-broadcast", () => ({
   onAuthBroadcast: (cb: () => void) => {
     broadcastCallback = cb;
     return mockBroadcastCleanup;
@@ -40,7 +40,7 @@ afterEach(() => {
 
 // --- Import after mocks ---
 
-import { GuestGuard } from "@/components/auth/guest-guard";
+import { GuestGuard } from "@web-app-starter/auth-ui";
 
 describe("GuestGuard", () => {
   beforeEach(() => {

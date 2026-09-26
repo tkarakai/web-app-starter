@@ -115,7 +115,7 @@ type UserSearchResult = {
 };
 
 export function SessionViewer() {
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   // User search state
   const [searchInput, setSearchInput] = React.useState("");

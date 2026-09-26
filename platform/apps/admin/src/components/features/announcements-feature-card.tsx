@@ -266,13 +266,13 @@ export function AnnouncementsFeatureCard() {
     };
   }, [showArchived, sorting]);
 
-  const announcements = useQuery(api.announcements.list, listArgs);
-  const createAnnouncement = useMutation(api.announcements.create);
-  const updateAnnouncement = useMutation(api.announcements.update);
-  const archiveAnnouncement = useMutation(api.announcements.archive);
-  const publishNow = useMutation(api.announcements.publishNow);
-  const unpublishNow = useMutation(api.announcements.unpublishNow);
-  const removeAnnouncement = useMutation(api.announcements.remove);
+  const announcements = useQuery(api.platform.announcements.list, listArgs);
+  const createAnnouncement = useMutation(api.platform.announcements.create);
+  const updateAnnouncement = useMutation(api.platform.announcements.update);
+  const archiveAnnouncement = useMutation(api.platform.announcements.archive);
+  const publishNow = useMutation(api.platform.announcements.publishNow);
+  const unpublishNow = useMutation(api.platform.announcements.unpublishNow);
+  const removeAnnouncement = useMutation(api.platform.announcements.remove);
 
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editorMode, setEditorMode] = React.useState<"create" | "edit">("create");

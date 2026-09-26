@@ -86,6 +86,22 @@ describe("validateAppConfig", () => {
     expect(() => validateAppConfig(config)).toThrow(/Invalid app\.config\.ts:\n {2}- /);
   });
 
+  it("accepts a locale subset and rejects empty, duplicate or en-less lists", () => {
+    const config = draft();
+    config.i18n.locales = ["en", "de"];
+    expect(validateAppConfig(config).i18n.locales).toEqual(["en", "de"]);
+
+    config.i18n.locales = [];
+    expect(issuesOf(config).join("\n")).toContain("i18n.locales: must be a non-empty array");
+    config.i18n.locales = ["en", "de", "de", "Not a tag"];
+    expect(issuesOf(config)).toEqual([
+      'i18n.locales[2]: "de" is listed twice',
+      'i18n.locales[3]: must be a language tag such as en or pt-BR (got "Not a tag")',
+    ]);
+    config.i18n.locales = ["de"];
+    expect(issuesOf(config)).toEqual(['i18n.locales: must include "en", the fallback locale']);
+  });
+
   it("rejects unknown settings, which are usually typos", () => {
     const config = draft();
     (config.identity as Record<string, unknown>).prodcutName = "Typo";

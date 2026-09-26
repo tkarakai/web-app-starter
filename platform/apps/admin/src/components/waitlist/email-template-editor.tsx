@@ -104,9 +104,9 @@ export function EmailTemplateEditor({
   embedded = false,
 }: EmailTemplateEditorProps) {
   const router = useRouter();
-  const templateData = useQuery(api.appSettings.getEmailTemplate);
-  const setSetting = useMutation(api.appSettings.set);
-  const removeSetting = useMutation(api.appSettings.remove);
+  const templateData = useQuery(api.platform.appSettings.getEmailTemplate);
+  const setSetting = useMutation(api.platform.appSettings.set);
+  const removeSetting = useMutation(api.platform.appSettings.remove);
 
   const [mode, setMode] = React.useState<"view" | "edit">("view");
   const [draftSubject, setDraftSubject] = React.useState("");

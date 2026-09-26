@@ -92,7 +92,7 @@ describe("CSRF Protection", () => {
 
 describe("CORS Configuration", () => {
   // NOTE: Better Auth's trustedOrigins are configured inside the Convex
-  // backend (packages/backend/convex/auth.ts) via the multiOriginPlugin.
+  // backend (packages/backend/convex/platform/auth.ts) via the multiOriginPlugin.
   // Those cannot be imported in a Bun unit test since they run in the
   // Convex server environment. The trusted origins invariants are best
   // verified via integration / E2E tests against the real auth endpoints.

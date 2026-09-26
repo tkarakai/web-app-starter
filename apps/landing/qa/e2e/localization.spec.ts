@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
-import french from "@web-app-starter/i18n/messages/fr.json";
-import arabic from "@web-app-starter/i18n/messages/ar.json";
+import platformFrench from "@web-app-starter/i18n/messages/fr.json";
+import appFrench from "@repo/messages/fr.json";
+import platformArabic from "@web-app-starter/i18n/messages/ar.json";
+import appArabic from "@repo/messages/ar.json";
 import { appConfig } from "@web-app-starter/app-config";
+
+// Platform and app namespaces, as the app loads them.
+const french = { ...platformFrench, ...appFrench };
+const arabic = { ...platformArabic, ...appArabic };
 
 for (const [locale, messages] of [["fr", french], ["ar", arabic]] as const) {
   test(`${locale} legal pages render translated content and footer`, async ({ page }) => {

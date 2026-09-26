@@ -9,7 +9,7 @@
 | Unit | Bun | Pure functions, utilities, helpers | `apps/*/qa/tests/*.test.ts` |
 | Component | Vitest | React components, UI interactions | `apps/*/qa/tests/*.test.tsx` |
 | E2E | Playwright | Full user flows, navigation, auth | `apps/*/qa/e2e/*.spec.ts` |
-| Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` |
+| Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` (app), `packages/backend/convex/platform/*.test.ts` (platform) |
 
 ## Bun Test Pattern (Utility Functions)
 
@@ -110,7 +110,7 @@ describe("launchItems", () => {
 });
 ```
 
-> **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails.
+> **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails. The glob must be taken from the `convex/` root: a test in a subdirectory (such as the platform's own tests in `convex/platform/`) imports `modules` from `convex/test.modules.ts` instead, because a glob taken there keys its own directory's files as `./x.ts` and convex-test cannot find them.
 
 ### Scheduled Functions and Fake Timers
 

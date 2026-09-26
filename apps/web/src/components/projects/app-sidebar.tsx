@@ -9,11 +9,10 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { LocaleSwitcher } from "@/components/ui/locale-switcher";
+import { LocaleSwitcher, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
-import { authClient } from "@web-app-starter/auth/client";
 import {
   Avatar,
   AvatarFallback,
@@ -80,7 +79,7 @@ export function AppSidebar({
   const tt = useTranslations("theme");
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
-  const userProfile = useQuery(api.userProfiles.get) ?? null;
+  const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -123,13 +122,7 @@ export function AppSidebar({
     }
   };
 
-  const handleSignOut = () => {
-    authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => router.push("/"),
-      },
-    });
-  };
+  const handleSignOut = useSignOut("/");
 
   return (
     <>

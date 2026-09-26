@@ -21,13 +21,13 @@ export default async function DashboardLayout({
 
   let preloadedUser;
   try {
-    preloadedUser = await preloadAuthQuery(api.auth.getCurrentUser);
+    preloadedUser = await preloadAuthQuery(api.platform.auth.getCurrentUser);
   } catch {
     redirect("/api/auth/clear-session");
   }
 
   // Verify user has admin role (fetchAuthQuery returns the actual data)
-  const user = await fetchAuthQuery(api.auth.getCurrentUser);
+  const user = await fetchAuthQuery(api.platform.auth.getCurrentUser);
   if (!user || (user as Record<string, unknown>).role !== "admin") {
     redirect("/api/auth/clear-session");
   }
@@ -41,7 +41,7 @@ export default async function DashboardLayout({
   // This checks the invitation status, NOT twoFactorEnabled — ensuring ALL onboarding
   // steps are enforced (TOTP, backup codes, passkey decision).
   // Stage 7 will handle forced enrollment for existing admins without invitations.
-  const onboardingStatus = await fetchAuthQuery(api.adminInvitations.getMyOnboardingStatus);
+  const onboardingStatus = await fetchAuthQuery(api.platform.adminInvitations.getMyOnboardingStatus);
   if (onboardingStatus && !onboardingStatus.completed) {
     redirect("/onboarding");
   }

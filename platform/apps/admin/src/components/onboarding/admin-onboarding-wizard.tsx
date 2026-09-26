@@ -69,19 +69,19 @@ export function AdminOnboardingWizard() {
   const [backupCodes, setBackupCodes] = React.useState<string[]>([]);
 
   // Convex mutations
-  const claimInvitation = useMutation(api.adminInvitations.claimInvitation);
-  const advanceOnboardingStep = useMutation(api.adminInvitations.advanceOnboardingStep);
-  const completeOnboarding = useMutation(api.adminInvitations.completeOnboarding);
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const claimInvitation = useMutation(api.platform.adminInvitations.claimInvitation);
+  const advanceOnboardingStep = useMutation(api.platform.adminInvitations.advanceOnboardingStep);
+  const completeOnboarding = useMutation(api.platform.adminInvitations.completeOnboarding);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   // Token validation (only when token is present)
   const tokenResult = useQuery(
-    api.adminInvitations.validateToken,
+    api.platform.adminInvitations.validateToken,
     token ? { token } : "skip",
   );
 
   // Onboarding status (for resume flow — always queries)
-  const onboardingStatus = useQuery(api.adminInvitations.getMyOnboardingStatus);
+  const onboardingStatus = useQuery(api.platform.adminInvitations.getMyOnboardingStatus);
 
   // Mount logic: determine entry mode
   React.useEffect(() => {

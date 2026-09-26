@@ -1,6 +1,2 @@
-import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
-import type { AuthConfig } from "convex/server";
-
-export default {
-  providers: [getAuthConfigProvider()],
-} satisfies AuthConfig;
+// Convex reads its auth configuration from this path. The platform owns it.
+export { default } from "./platform/auth.config";

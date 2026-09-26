@@ -2,8 +2,12 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import french from "@web-app-starter/i18n/messages/fr.json";
+import platformFrench from "@web-app-starter/i18n/messages/fr.json";
+import appFrench from "@repo/messages/fr.json";
 import { Footer } from "@/components/footer";
+
+// Platform and app namespaces, as the app loads them.
+const french = { ...platformFrench, ...appFrench };
 
 vi.mock("@web-app-starter/i18n/navigation", () => ({
   Link: (props: ComponentProps<"a">) => <a {...props} />,

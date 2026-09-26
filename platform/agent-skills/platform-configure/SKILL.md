@@ -18,7 +18,7 @@ Reference: `platform/docs/development.md`, "App configuration".
 
 | You want to change | Set in `app.config.ts` | Notes |
 |---|---|---|
-| Product name | `identity.productName` | Page titles, headers, TOTP issuer, email footer, `{productName}` in messages. Never write it into `platform/packages/i18n/messages` |
+| Product name | `identity.productName` | Page titles, headers, TOTP issuer, email footer, `{productName}` in messages. Never write it into a message file (`packages/messages`) |
 | Company name in footers | `identity.legalEntity` | |
 | Support address | `identity.supportEmail` | |
 | Local ports | `runtime.ports.<app>` | `landing`, `web`, `admin`, `storybook`, `landing-static`; integers 1024–65535, all different. Local origins (`http://localhost:<port>`) follow from them |
@@ -27,6 +27,7 @@ Reference: `platform/docs/development.md`, "App configuration".
 | Colours and other design tokens | `brand.tokenOverrides` | `{ "--primary": "oklch(0.55 0.2 260)" }`; names from `platform/packages/design-system/tokens/` |
 | Email look | `brand.email.lang`, `.palette.*` (hex colours), `.footerText` | |
 | Optional features | `features.waitlist`, `.invitations`, `.announcements`, `.environmentBanner` | `false` hides the feature; its code stays and keeps receiving fixes |
+| Languages shipped | `i18n.locales` | A subset of the platform's 15 (`allLocales` in `@web-app-starter/i18n`), including `en`. Each needs `packages/messages/<locale>.json`; `bun run check:i18n` says what's missing |
 
 **Not here:** deployed URLs, Convex URLs and secrets are per-deployment environment variables
 (`platform/AGENTS.md`, "Environment variables"); translated wording is in the message files

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createTranslator } from "next-intl";
 import { parse, TYPE, type MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 import { locales } from "@web-app-starter/i18n/config";
+import { mergeMessages } from "@web-app-starter/i18n/merge";
 import { appConfig } from "@web-app-starter/app-config";
 
 type Messages = { [key: string]: string | Messages };
@@ -15,8 +16,18 @@ function flatten(messages: Messages, prefix = ""): Record<string, string> {
   ));
 }
 
+function read(path: string): Messages {
+  return JSON.parse(readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf8")) as Messages;
+}
+
+/** What the app loads for a locale: platform and app messages, with the app's overrides. */
 function load(locale: string): Messages {
-  return JSON.parse(readFileSync(new URL(`../../../../platform/packages/i18n/messages/${locale}.json`, import.meta.url), "utf8")) as Messages;
+  const overrides = read("packages/messages/overrides.json")[locale];
+  return mergeMessages(
+    read(`platform/packages/i18n/messages/${locale}.json`),
+    read(`packages/messages/${locale}.json`),
+    typeof overrides === "object" ? overrides : {},
+  );
 }
 
 function argumentsOf(message: string): string[] {

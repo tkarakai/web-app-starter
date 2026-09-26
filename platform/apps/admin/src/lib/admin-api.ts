@@ -2,7 +2,7 @@ import type { AuditAction, AuditStatus } from "@repo/backend";
 import { authClient } from "@web-app-starter/auth/client";
 
 // ---------------------------------------------------------------------------
-// Audit event callback type — callers pass useMutation(api.auditTrail.postEvent)
+// Audit event callback type — callers pass useMutation(api.platform.auditTrail.postEvent)
 // ---------------------------------------------------------------------------
 
 export type PostAuditEventFn = (args: {

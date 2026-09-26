@@ -121,9 +121,9 @@ export function EmailVerificationTemplateEditor({
   embedded = false,
 }: EmailVerificationTemplateEditorProps) {
   const router = useRouter();
-  const templateData = useQuery(api.appSettings.getVerificationEmailTemplate);
-  const setSetting = useMutation(api.appSettings.set);
-  const removeSetting = useMutation(api.appSettings.remove);
+  const templateData = useQuery(api.platform.appSettings.getVerificationEmailTemplate);
+  const setSetting = useMutation(api.platform.appSettings.set);
+  const removeSetting = useMutation(api.platform.appSettings.remove);
 
   const [mode, setMode] = React.useState<"view" | "edit">("view");
   const [draftSubject, setDraftSubject] = React.useState("");

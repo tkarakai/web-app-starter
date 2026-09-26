@@ -2,9 +2,10 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
 import { ALLOWED_CONTENT_TYPES } from "./files";
-import { isEmailVerificationRequired, requireProjectAccess } from "./functions";
+import { isEmailVerificationRequired } from "./platform/functions";
+import { requireProjectAccess } from "./projectAccess";
 import schema from "./schema";
-import { VALID_THEMES } from "./userProfiles";
+import { VALID_THEMES } from "./platform/userProfiles";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -19,7 +20,7 @@ describe("authentication security", () => {
       // and returns null on failure. This is critical for useQuery subscriptions
       // that would crash the UI if an error were thrown.
       // We verify the contract by checking the handler's shape.
-      const { getCurrentUser } = await import("./auth");
+      const { getCurrentUser } = await import("./platform/auth");
       expect(getCurrentUser).toBeDefined();
       // It's a query (not a mutation), so it's safe for real-time subscriptions
     });
@@ -27,13 +28,13 @@ describe("authentication security", () => {
 
   describe("authedQuery / authedMutation contract", () => {
     test("authedQuery is defined as a query function", async () => {
-      const { authedQuery } = await import("./functions");
+      const { authedQuery } = await import("./platform/functions");
       expect(authedQuery).toBeDefined();
       expect(typeof authedQuery).toBe("function");
     });
 
     test("authedMutation is defined with rate limiting", async () => {
-      const { authedMutation } = await import("./functions");
+      const { authedMutation } = await import("./platform/functions");
       expect(authedMutation).toBeDefined();
       // authedMutation is a customMutation that:
       // 1. Checks auth (throws NOT_AUTHENTICATED if no user)
@@ -387,7 +388,7 @@ describe("input validation in mutations", () => {
 describe("mutation rate limiting", () => {
   describe("rate limit configuration", () => {
     test("mutationGlobal rate limit is defined as token bucket", async () => {
-      const { checkRateLimit, rateLimit } = await import("./rateLimits");
+      const { checkRateLimit, rateLimit } = await import("./platform/rateLimits");
 
       // Both check and consume functions should be available
       expect(checkRateLimit).toBeDefined();

@@ -35,10 +35,10 @@ const SETTINGS_KEY: Record<Scope, string> = {
 export function MfaPolicyCard({ scope }: { scope: Scope }) {
   const isAdminScope = scope === "admin";
   const key = SETTINGS_KEY[scope];
-  const mfaRequired = useQuery(api.appSettings.get, {
+  const mfaRequired = useQuery(api.platform.appSettings.get, {
     key,
   });
-  const setSetting = useMutation(api.appSettings.set);
+  const setSetting = useMutation(api.platform.appSettings.set);
 
   const [togglePending, setTogglePending] = React.useState(false);
   const [confirmToggle, setConfirmToggle] = React.useState<boolean | null>(null);

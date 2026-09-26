@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "あなたのスタートライン。",
+    "headingLine2": "ここから始めよう。",
+    "description": "認証、データベース、リアルタイム同期、ファイルアップロード — すべて接続済みですぐに使えます。",
+    "getStarted": "始める",
+    "signIn": "ログイン",
+    "footer": {
+      "about": "について",
+      "privacyPolicy": "プライバシーポリシー",
+      "termsOfService": "利用規約"
+    },
+    "waitlist": {
+      "title": "ウェイトリストに参加",
+      "description": "ウェイトリストに参加して、アクセスをリクエストしましょう。",
+      "emailLabel": "メールアドレス",
+      "emailPlaceholder": "you@example.jp",
+      "superpowersLabel": "あなたの超能力は？",
+      "superpowersPlaceholder": "超能力を選んでね",
+      "excitementLabel": "どのくらいワクワクしてる？",
+      "excitementPlaceholder": "気持ちを教えてください",
+      "roleLabel": "役割（任意）",
+      "rolePlaceholder": "役割を選択",
+      "companyLabel": "会社名（任意）",
+      "companyPlaceholder": "株式会社サンプル",
+      "useCaseLabel": "何を作る予定ですか？（任意）",
+      "useCasePlaceholder": "顧客ポータル、社内ツールなど",
+      "roles": {
+        "founder": "創業者",
+        "engineering": "エンジニアリング",
+        "product": "プロダクト",
+        "design": "デザイン",
+        "agency": "エージェンシー",
+        "other": "その他"
+      },
+      "selectedCount": "{count}件選択中",
+      "submit": "ウェイトリストに参加",
+      "submitting": "登録中...",
+      "successTitle": "リストに登録されました！",
+      "successDescription": "順番が来ましたら招待メールをお送りします。",
+      "alreadySignedUp": "すでにアカウントをお持ちですか？",
+      "signIn": "ログイン",
+      "superpowers": {
+        "coffee-to-code": "コーヒーをコードに変える",
+        "pixel-perfect": "ピクセルを完璧に仕上げる",
+        "bug-whisperer": "バグとささやき合う",
+        "spreadsheet-wizard": "スプレッドシートの魔術師",
+        "inbox-zero": "毎日受信トレイをゼロにする",
+        "parallel-parking": "一発で縦列駐車を決める",
+        "remembering-names": "全員の名前を覚えている",
+        "never-burning-toast": "トーストを絶対に焦がさない",
+        "explaining-tech": "親にテクノロジーを説明する",
+        "finding-restaurants": "最高のレストランを見つける",
+        "staying-calm": "長い会議でも冷静でいられる",
+        "other": "まったく別の何か"
+      },
+      "excitement": {
+        "take-my-money": "お金を受け取って！",
+        "cant-wait": "待ちきれない！",
+        "cautiously-optimistic": "慎重に期待している",
+        "just-browsing": "ちょっと見てるだけ",
+        "friend-made-me": "友達に登録させられた"
+      },
+      "errors": {
+        "waitlistNotEnabled": "現在ウェイトリストへの登録を受け付けておりません。後ほどお試しください。",
+        "invalidEmail": "有効なメールアドレスを入力してください。",
+        "rateLimited": "リクエストが多すぎます。しばらく待ってからもう一度お試しください。",
+        "generic": "エラーが発生しました。もう一度お試しください。"
+      }
+    },
+    "fallback": {
+      "title": "新規登録は一時的にご利用いただけません",
+      "description": "現在サービスに接続できません。バックグラウンドで再試行を続けます。既存のアカウントへのサインインは引き続きご利用いただけます。",
+      "bookDemo": "デモを予約",
+      "contact": "お問い合わせ"
+    }
+  },
+  "dashboard": {
+    "projects": "プロジェクト",
+    "noProjects": "プロジェクトはまだありません",
+    "noProjectsDescription": "プロジェクトを作成して始めましょう。",
+    "projectNotFound": "プロジェクトが見つかりません",
+    "projectNotFoundDescription": "このプロジェクトは削除された可能性があります。",
+    "tabs": {
+      "tasks": "タスク",
+      "attachments": "添付ファイル"
+    },
+    "security": "セキュリティ",
+    "sessions": {
+      "title": "アクティブなセッション",
+      "description": "すべてのデバイスでのアクティブなセッションを管理します。覚えのないセッションはログアウトできます。",
+      "currentSession": "このデバイス",
+      "otherSessions": "その他のデバイス",
+      "current": "現在",
+      "lastActive": "{time}にアクティブ",
+      "noOtherSessions": "他にアクティブなセッションはありません。このデバイスでのみログインしています。",
+      "revokeAll": "他のすべてをログアウト",
+      "revokeAllTitle": "他のすべてのデバイスからログアウトしますか？",
+      "revokeAllDescription": "他のすべてのデバイスとブラウザからログアウトされます。現在のセッションのみアクティブのまま残ります。",
+      "revokeAllConfirm": "すべてログアウト",
+      "revokeTitle": "このデバイスからログアウトしますか？",
+      "revokeDescription": "{device}のセッションが終了します。アカウントにアクセスするには再度ログインが必要です。",
+      "backToDashboard": "ダッシュボードに戻る",
+      "loadError": "セッションを読み込めませんでした。",
+      "revokeError": "セッションを終了できませんでした。",
+      "revokeAllError": "セッションを一括終了できませんでした。"
+    },
+    "account": "設定",
+    "profile": {
+      "title": "プロフィール",
+      "description": "プロフィール情報と設定を管理します。",
+      "name": "表示名",
+      "namePlaceholder": "あなたの名前",
+      "email": "メールアドレス",
+      "emailReadonly": "メールアドレスの変更はサポートにお問い合わせください。",
+      "avatarColor": "アバターの色",
+      "saved": "プロフィールを更新しました。",
+      "language": "言語",
+      "timezone": "タイムゾーン",
+      "timezonePlaceholder": "タイムゾーンを選択",
+      "timezoneSearch": "タイムゾーンを検索...",
+      "timezoneDetected": "検出済み",
+      "noTimezoneResults": "タイムゾーンが見つかりません。",
+      "theme": "テーマ"
+    },
+    "changePassword": {
+      "title": "パスワード変更",
+      "currentPassword": "現在のパスワード",
+      "newPassword": "新しいパスワード",
+      "confirmPassword": "新しいパスワードの確認",
+      "revokeOtherSessions": "他のすべてのデバイスからログアウト",
+      "cta": "パスワードを更新",
+      "success": "パスワードを更新しました。",
+      "errorCurrentPassword": "現在のパスワードが正しくありません。"
+    },
+    "twoFactor": {
+      "title": "二要素認証",
+      "description": "アカウントにセキュリティレイヤーを追加します。",
+      "enabled": "2FAは有効です",
+      "disabled": "2FAは無効です",
+      "enable": "2FAを有効にする",
+      "disable": "2FAを無効にする",
+      "enterPassword": "続行するにはパスワードを入力してください。",
+      "scanQrCode": "認証アプリ（Google Authenticator、Authyなど）でこのQRコードをスキャンしてください。",
+      "manualEntry": "スキャンできませんか？このキーを手動で入力してください",
+      "manualEntryDescription": "認証アプリを開き、「アカウントを追加」を選択してから「セットアップキーを入力」を選び、以下のキーを貼り付けてください。",
+      "secretKey": "シークレットキー",
+      "copied": "クリップボードにコピーしました",
+      "enterCode": "設定を確認するため、認証アプリの6桁のコードを入力してください。",
+      "verify": "認証",
+      "backupCodes": "バックアップコード",
+      "backupCodesDescription": "これらのコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
+      "viewBackupCodes": "バックアップコードを表示",
+      "regenerateBackupCodes": "バックアップコードを再生成",
+      "disableConfirm": "2FAを無効にしてもよろしいですか？",
+      "regenerateConfirm": "既存のバックアップコードが置き換えられます。未使用のコードは使用できなくなります。",
+      "codePlaceholder": "000000",
+      "requiredNotice": "アカウントのポリシーにより二要素認証が必要です。設定を完了して続行してください。"
+    },
+    "passkeys": {
+      "title": "パスキー",
+      "description": "パスキーを追加・管理し、フィッシングに強い高速なログインを利用できます。",
+      "policy": "ポリシー：{policy}",
+      "disabled": "無効",
+      "optional": "任意",
+      "required": "必須",
+      "disabledDescription": "このアカウントではパスキーによるログインが無効です。",
+      "nameLabel": "新しいパスキーの名前（任意）",
+      "namePlaceholder": "自分のノートパソコン",
+      "add": "パスキーを追加",
+      "adding": "追加中…",
+      "empty": "パスキーはまだ登録されていません。",
+      "unnamed": "名前のないパスキー",
+      "singleDevice": "デバイスに固定されたパスキー",
+      "multiDevice": "同期されたパスキー",
+      "rename": "パスキー {name} の名前を変更",
+      "remove": "パスキー {name} を削除",
+      "name": "パスキー名",
+      "loadError": "パスキーを読み込めませんでした。",
+      "addError": "パスキーを追加できませんでした。",
+      "renameError": "パスキーの名前を変更できませんでした。",
+      "deleteError": "パスキーを削除できませんでした。",
+      "added": "パスキーを追加しました。",
+      "renamed": "パスキーを更新しました。",
+      "deleted": "パスキーを削除しました。",
+      "unsupportedTitle": "このデバイスまたはブラウザーはパスキーに対応していません。",
+      "unsupportedDescription": "パスキー対応のデバイスまたはブラウザーからログインして設定してください。",
+      "requiredNotice": "アカウントのポリシーによりパスキーが必要です。追加して続行してください。",
+      "signInRequired": "このアカウントにはパスキーでのログインが必要です。"
+    }
+  },
+  "projects": {
+    "newProject": "新規プロジェクト",
+    "createProject": "プロジェクト作成",
+    "createFirst": "最初のプロジェクトを作成",
+    "noProjects": "プロジェクトなし",
+    "editProject": "プロジェクトを編集",
+    "deleteProject": "プロジェクトを削除",
+    "deleteConfirmTitle": "プロジェクトを削除しますか？",
+    "deleteConfirmDescription": "“{name}”とすべてのタスクが完全に削除されます。この操作は元に戻せません。",
+    "fields": {
+      "name": "名前",
+      "namePlaceholder": "プロジェクト名",
+      "description": "説明",
+      "descriptionPlaceholder": "このプロジェクトについて"
+    }
+  },
+  "tasks": {
+    "title": "タスク",
+    "addTask": "タスクを追加",
+    "newTask": "新規タスク",
+    "editTask": "タスクを編集",
+    "deleteTask": "タスクを削除",
+    "confirmDelete": "削除を確認",
+    "createTask": "タスク作成",
+    "noTasks": "タスクはまだありません。追加して始めましょう。",
+    "noTasksSummary": "タスクはまだありません",
+    "progress": "{totalCount}件中{doneCount}件完了",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "ステータス",
+      "todo": "未着手",
+      "inProgress": "進行中",
+      "done": "完了",
+      "all": "すべて"
+    },
+    "fields": {
+      "title": "タイトル",
+      "titlePlaceholder": "何をする必要がありますか？",
+      "description": "説明",
+      "descriptionPlaceholder": "詳細を追加...",
+      "deadline": "期限",
+      "deadlinePlaceholder": "期限なし",
+      "clearDeadline": "期限を削除"
+    },
+    "deadline": {
+      "overdue": "期限超過",
+      "dueToday": "本日期限"
+    },
+    "aria": {
+      "changeStatus": "{status}からステータスを変更"
+    },
+    "count": "{count, plural, =0 {タスクはまだありません} other {#件のタスク}}"
+  },
+  "uploads": {
+    "title": "添付ファイル",
+    "addFile": "ファイルを追加",
+    "uploading": "アップロード中...",
+    "processing": "処理中",
+    "view": "表示",
+    "deleteFile": "ファイルを削除",
+    "emptyState": "ファイルをアップロードしてConvexのストレージフローを確認しましょう。",
+    "errors": {
+      "tooLarge": "ファイルが大きすぎます（最大1MB）",
+      "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
+      "generic": "アップロードに失敗しました。"
+    },
+    "count": "{count, plural, =0 {添付ファイルなし} other {#件の添付ファイル}}"
+  },
+  "metadata": {
+    "description": "Convex、Better Auth、Bunを使ったNext.jsスターター。"
+  },
+  "legal": {
+    "about": {
+      "title": "について",
+      "description": "{productName}と私たちのミッションについて知りましょう。",
+      "notice": "これはプレースホルダーコンテンツです。起動前に自分のコンテンツで置き換えてください。",
+      "heading": "について",
+      "mission": "私たちのミッション",
+      "missionText": "開発者は基盤構築ではなく機能開発に時間を費やすべきだと私たちは考えています。{productName}は、リアルタイムデータ同期、ファイルアップロード、セッションベースの認証がすべて組み込まれた本番環境対応のスタートポイントを提供します。",
+      "whatIncluded": "含まれる内容",
+      "whatIncludedText": "スターターキットには、ランディングページ、完全に認証されたウェブアプリケーション、管理ダッシュボード、およびコンポーネントストーリーブックが含まれています。各アプリはRadix UIプリミティブとTailwind CSSで構築された統一されたデザインシステムを共有しています。",
+      "openSource": "オープンソース",
+      "openSourceText": "このプロジェクトはオープンソースであり、フォークとカスタマイズが想定されています。",
+      "intro": "{productName}は、モダンなウェブアプリケーション構築のための完全なスタック基盤です。フロントエンドのNext.js、バックエンドのConvex、セキュアな認証のBetter Authを統合 — すべて接続済みで発送準備完了です。"
+    },
+    "privacy": {
+      "title": "プライバシーポリシー",
+      "description": "データの収集、使用、保護方法について。",
+      "notice": "これはプライバシーポリシーのテンプレートです。起動前に特定のアプリケーションと法域に合わせてカスタマイズしてください。",
+      "heading": "プライバシーポリシー",
+      "lastUpdated": "最終更新日: {date}"
+    },
+    "terms": {
+      "title": "利用規約",
+      "description": "当サービス利用のルールとガイドライン。",
+      "notice": "これは利用規約のテンプレートです。起動前に特定のアプリケーションと法域に合わせてカスタマイズしてください。",
+      "heading": "利用規約",
+      "lastUpdated": "最終更新日: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "プロジェクトが見つかりません。",
+    "taskNotFound": "タスクが見つかりません。",
+    "fileNotFound": "ストレージにファイルが見つかりません。",
+    "fileTooLarge": "ファイルが大きすぎます（最大1MB）。",
+    "uploadNotFound": "アップロードが見つかりません。"
+  }
+}

@@ -36,6 +36,73 @@ version. Release-specific compatibility and deployment steps are listed explicit
   then the build uses the checkout's directory and the deploy warns.
   **Done when:** `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-platform-packages.ts --check`
   exits 0 and `bun run typecheck`, `bun run lint` and `bun run build` pass.
+- **Who is affected:** every app. Platform Convex functions moved from
+  `packages/backend/convex/<module>.ts` to `packages/backend/convex/platform/<module>.ts`, so
+  their API paths changed: `api.<module>.*` and `internal.<module>.*` are now
+  `api.platform.<module>.*` / `internal.platform.<module>.*` for `adminAuth`, `adminEmails`,
+  `adminInvitationActions`, `adminInvitations`, `announcements`, `appSettings`, `auditTrail`,
+  `auth`, `bootstrap`, `developmentOnly`, `devSeed`, `e2eFixtures`, `integrations`, `meta`,
+  `passwordStrength`, `rateLimits`, `securityPolicies`, `sessions`, `userProfiles`, `waitlist`,
+  `waitlistActions` and `waitlistTokens` (and their helper modules). CLI paths follow:
+  `convex run platform/bootstrap:initialize`. The Better Auth component moved to
+  `convex/platform/betterAuth/`. `schema.ts`, `http.ts`, `convex.config.ts` and
+  `auth.config.ts` are now thin seams: `schema.ts` spreads `platformTables` (from
+  `convex/platform/tables.ts`) and the sample's `sampleTables` (`convex/sampleTables.ts`);
+  `http.ts` calls `registerPlatformRoutes(http)`. `requireProjectAccess` moved out of the
+  platform's `functions.ts` into the sample domain's `convex/projectAccess.ts`. Platform
+  tests moved with their modules and import `modules` from `convex/test.modules.ts`.
+  **What to do:** run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-convex-platform.ts` from the
+  repository root (`--convex-dir <dir>` if your Convex functions are elsewhere). It rewrites
+  function references, `convex run` paths, and relative imports from your Convex modules to
+  the moved ones (`./functions` → `./platform/functions`). Take the starter's `schema.ts`,
+  `http.ts`, `convex.config.ts` and `auth.config.ts`, then re-add your own tables after the
+  `...platformTables` spread and your own routes after `registerPlatformRoutes(http)`. Delete
+  your copies of the moved modules at the `convex/` root. If your app code called
+  `requireProjectAccess`, import it from `./projectAccess`. Regenerate the API with
+  `bun run dev` (or `bunx convex dev --once`). Data is unaffected: table names are unchanged.
+  **Done when:** the codemod's `--check` exits 0, `ls packages/backend/convex/*.ts` lists no
+  moved module, and `bun run typecheck` and `bun run test:convex` pass.
+- **Who is affected:** apps that kept the web app's auth pages (every app built on
+  `apps/web`). The auth routes, their logic and default views moved from `apps/web` to the new
+  platform package `@web-app-starter/auth-ui`: sign-in, sign-up, forgot and reset password,
+  verify email and invitation sign-up pages; the guest, public and protected (dashboard)
+  layouts; `/forbidden`; the `api/auth/[...all]` and `api/auth/clear-session` handlers; the
+  session-cookie part of `proxy.ts` (`authRedirect`); `AuthGuard`/`useAuthUser`, `GuestGuard`,
+  `broadcastAuth`, `LocaleSwitcher`, `ConvexErrorToast` and the sign-in locale action. Deleted
+  from `apps/web/src`: `components/auth/*`, `components/ui/locale-switcher.tsx`,
+  `components/convex-error-toast.tsx`, `lib/auth-*.ts`, `lib/error-messages.ts` (unused) and
+  `app/actions.ts`. `ConvexErrorToast` now takes the app's own codes as `appErrorKeys`.
+  **What to do:** take the starter's route files under `apps/web/src/app/` (each is a one-line
+  re-export) and `proxy.ts`, add `@web-app-starter/auth-ui` to your app's dependencies and
+  `transpilePackages`, and run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-auth-ui.ts`: it rewrites imports
+  of the moved modules (`@/components/auth/*`, `@/components/ui/locale-switcher`,
+  `@/components/convex-error-toast`, `@/lib/auth-*`) to `@web-app-starter/auth-ui`, and leaves
+  alone any module you still have a local copy of. If you had customised an auth page, keep your page file and
+  build it from the package's `AuthPageShell` and forms instead of the old local components.
+  **Done when:** `test ! -e apps/web/src/components/auth`, and `bun run typecheck`,
+  `bun run test:unit` and the auth E2E suite (`bun run test:e2e`) pass.
+- **Who is affected:** every app that added or changed strings in
+  `platform/packages/i18n/messages/*.json`. Messages are split by owner and merged at load:
+  the platform's files keep only platform namespaces (`common`, `theme`, `language`, `offline`,
+  `auth`, `errors`, `passwordStrength`, `forbidden`, `timezones`); app namespaces live in the new
+  app-owned package `packages/messages/` (`@repo/messages`, `<locale>.json`), and app wording for
+  platform strings in `packages/messages/overrides.json`. The reference app's namespaces
+  (`metadata`, `landing`, `legal`, `dashboard`, `projects`, `tasks`, `uploads`) moved there; the
+  sample-domain error strings moved from `errors` to `sampleErrors`, and the auth forms' passkey
+  strings gained a platform copy under `auth.passkeys`. `app.config.ts` gains a required
+  `i18n.locales` (the locales you ship, including `en`); `locales` from `@web-app-starter/i18n` is
+  now that subset and `allLocales` the full set.
+  **What to do:** take the starter's `platform/packages/i18n/messages/` wholesale. Move each of
+  your own namespaces from your old copies of those files into `packages/messages/<locale>.json`;
+  where you had changed a platform string, put the new wording in `overrides.json` under
+  `{ "<locale>": { "<namespace>": { ... } } }`. Add `i18n: { locales: [...] }` to `app.config.ts`,
+  add `@repo/messages` to each Next app's dependencies and `transpilePackages`, and in component
+  tests render with `{ ...platformMessages, ...appMessages }`. Code that read
+  `errors.convex.projectNotFound` (etc.) or `errors.PROJECT_NOT_FOUND` reads `sampleErrors.*`.
+  **Done when:** `bun run check:i18n` passes (it names missing keys, namespace clashes and
+  stale overrides) and `bun run --cwd apps/web test` passes.
 - **Who is affected:** apps whose hosted (staging or production) Convex deployment has no
   `RESEND_API_KEY`. Auth and invitation emails there used to be written to the Convex logs;
   they now fail with `EMAIL_DELIVERY_NOT_CONFIGURED`.
@@ -73,6 +140,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
+- `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and
+  default views, shared by the web app and (for its equivalents) admin, and
+  `platform/tooling/codemods/v2-auth-ui.ts`, the codemod for its imports.
+- `bun run check:i18n` (`platform/tooling/check-i18n.ts`, run in CI): message key parity,
+  namespace ownership and stale-override validation; `loadMessages`, `mergeMessages` and
+  `staleOverrides` in `@web-app-starter/i18n`; `i18n.locales` in `app.config.ts` to ship a subset
+  of the 15 locales.
+- `platform/tooling/codemods/v2-convex-platform.ts`: the codemod for the Convex
+  `convex/platform/` move (idempotent; `--check` for CI).
 - `platform/VERSION` (the installed platform version), `platform/templates/README.md` and
   `platform/templates/LICENSE` (draft, pending legal review), and
   `platform/tooling/app-config.ts dir <app>` / `APP_CONFIG_DIR_<APP>` for an app's directory.

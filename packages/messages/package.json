@@ -1,0 +1,12 @@
+{
+  "name": "@repo/messages",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./index.ts",
+    "./*.json": "./*.json"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

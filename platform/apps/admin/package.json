@@ -22,6 +22,7 @@
     "@convex-dev/better-auth": "0.12.5",
     "@web-app-starter/app-config": "workspace:*",
     "@web-app-starter/auth": "workspace:*",
+    "@web-app-starter/auth-ui": "workspace:*",
     "@repo/backend": "workspace:*",
     "@web-app-starter/design-patterns": "workspace:*",
     "@web-app-starter/design-system": "workspace:*",

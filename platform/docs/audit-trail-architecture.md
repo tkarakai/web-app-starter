@@ -346,7 +346,7 @@ failed.internal_error    — failure category: internal_error
 
 ### Adding New Actions or Statuses
 
-1. Open `packages/backend/convex/auditTrailConstants.ts`
+1. Open `packages/backend/convex/platform/auditTrailConstants.ts`
 2. Add the new value to `AUDIT_ACTIONS` or `AUDIT_STATUSES` array
 3. The type union updates automatically (`AuditAction` / `AuditStatus`)
 4. Deploy — old string values in the database are unaffected
@@ -386,4 +386,4 @@ The admin dashboard (`platform/apps/admin`) provides:
 - **Event details** — expandable view showing all fields including oldValue, newValue, meta (JSON-formatted), and truncatedFields
 - **Truncation indicator** — visual indicator when fields were truncated
 
-The admin UI is read-only. It queries via `api.auditTrail.list` which returns empty for non-admin users (safe for reactive subscriptions).
+The admin UI is read-only. It queries via `api.platform.auditTrail.list` which returns empty for non-admin users (safe for reactive subscriptions).

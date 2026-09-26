@@ -39,14 +39,14 @@ const PAGE_SIZE = 50;
 
 export function WaitlistDataTable() {
   const { results, status, loadMore } = usePaginatedQuery(
-    api.waitlist.list,
+    api.platform.waitlist.list,
     {},
     { initialNumItems: PAGE_SIZE }
   );
-  const inviteMutation = useMutation(api.waitlist.invite);
-  const inviteManyMutation = useMutation(api.waitlist.inviteMany);
-  const uninviteMutation = useMutation(api.waitlist.uninvite);
-  const removeMutation = useMutation(api.waitlist.remove);
+  const inviteMutation = useMutation(api.platform.waitlist.invite);
+  const inviteManyMutation = useMutation(api.platform.waitlist.inviteMany);
+  const uninviteMutation = useMutation(api.platform.waitlist.uninvite);
+  const removeMutation = useMutation(api.platform.waitlist.remove);
 
   const loading = status === "LoadingFirstPage";
   const loadingMore = status === "LoadingMore";

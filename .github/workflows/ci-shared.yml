@@ -88,6 +88,9 @@ jobs:
       - name: Check agent skills and their links
         run: bun run check:agent-skills
 
+      - name: Check message files (platform and app, overrides)
+        run: bun run check:i18n
+
       - name: Check development scripts and process isolation
         run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
 

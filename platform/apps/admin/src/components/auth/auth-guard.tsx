@@ -21,7 +21,7 @@ export function useAuthUser(): AuthUser | null {
 }
 
 type AuthGuardProps = {
-  preloadedUser: Preloaded<typeof api.auth.getCurrentUser>;
+  preloadedUser: Preloaded<typeof api.platform.auth.getCurrentUser>;
   children: React.ReactNode;
 };
 

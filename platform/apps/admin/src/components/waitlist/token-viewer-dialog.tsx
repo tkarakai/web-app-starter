@@ -224,7 +224,7 @@ export function TokenViewerDialog({
   entry,
 }: TokenViewerDialogProps) {
   const tokens = useQuery(
-    api.waitlistTokens.listByEntry,
+    api.platform.waitlistTokens.listByEntry,
     open ? { waitlistEntryId: entry._id } : "skip"
   );
   const loading = tokens === undefined;

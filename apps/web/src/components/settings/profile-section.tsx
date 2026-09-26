@@ -31,7 +31,7 @@ import {
 } from "@web-app-starter/design-system";
 import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
-import { useAuthUser } from "@/components/auth/auth-guard";
+import { useAuthUser } from "@web-app-starter/auth-ui";
 
 const AVATAR_COLORS = [
   "#3b82f6",
@@ -57,10 +57,10 @@ export function ProfileSection() {
   const router = useRouter();
   const { theme } = useTheme();
 
-  const userProfile = useQuery(api.userProfiles.get) ?? null;
-  const upsertProfile = useMutation(api.userProfiles.upsert);
-  const setLocale = useMutation(api.userProfiles.setLocale);
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
+  const upsertProfile = useMutation(api.platform.userProfiles.upsert);
+  const setLocale = useMutation(api.platform.userProfiles.setLocale);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   const [name, setName] = React.useState(authUser?.name ?? "");
   const [avatarColor, setAvatarColor] = React.useState<string>("");

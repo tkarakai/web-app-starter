@@ -53,7 +53,7 @@ vi.mock("next-intl", () => ({
 
 // --- Import after mocks ---
 
-import { AuthGuard, useAuthUser } from "@/components/auth/auth-guard";
+import { AuthGuard, useAuthUser } from "@web-app-starter/auth-ui";
 
 // Helper component to read context
 function UserDisplay() {

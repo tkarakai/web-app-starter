@@ -1,4 +1,4 @@
-import { ForceSystemTheme } from "@/components/auth/force-system-theme";
+import { ForceSystemTheme } from "@web-app-starter/auth-ui";
 
 export default function OnboardingLayout({
   children,

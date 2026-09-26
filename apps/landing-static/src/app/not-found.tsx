@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { defaultLocale, getLocaleDirection, locales, type Locale } from "@web-app-starter/i18n";
 import english from "@web-app-starter/i18n/messages/en.json";
+import { loadMessages } from "@web-app-starter/i18n/messages";
 
 export default function NotFound() {
   const [message, setMessage] = useState({ locale: defaultLocale, text: english.common.notFound });
@@ -13,8 +14,10 @@ export default function NotFound() {
     const segment = window.location.pathname.split("/")[1];
     const locale = locales.includes(segment as Locale) ? segment as Locale : defaultLocale;
     let active = true;
-    void import(`@web-app-starter/i18n/messages/${locale}.json`).then(({ default: messages }) => {
-      if (active) setMessage({ locale, text: messages.common.notFound });
+    void loadMessages(locale).then((messages) => {
+      const common = messages.common;
+      const text = typeof common === "object" ? common.notFound : undefined;
+      if (active && typeof text === "string") setMessage({ locale, text });
     }).catch(() => {
       // Keep the default-language message if the locale chunk is unavailable.
     });

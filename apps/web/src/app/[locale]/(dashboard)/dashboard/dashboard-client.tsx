@@ -22,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { useAuthUser } from "@/components/auth/auth-guard";
+import { useAuthUser } from "@web-app-starter/auth-ui";
 import { useProfileSync } from "@/hooks/useProfileSync";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";

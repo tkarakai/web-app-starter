@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "A kiindulópontod.",
+    "headingLine2": "Építs innen tovább.",
+    "description": "Hitelesítés, adatbázis, valós idejű szinkronizáció és fájlfeltöltés — bekötve és használatra készen.",
+    "getStarted": "Kezdés",
+    "signIn": "Bejelentkezés",
+    "footer": {
+      "about": "Rólunk",
+      "privacyPolicy": "Adatvédelmi irányelvek",
+      "termsOfService": "Felhasználási feltételek"
+    },
+    "waitlist": {
+      "title": "Csatlakozás a várólistához",
+      "description": "Kérjen hozzáférést a várólistára való feliratkozással.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "on@pelda.hu",
+      "superpowersLabel": "Mi a szuperképességed?",
+      "superpowersPlaceholder": "Válaszd ki a szuperképességeidet",
+      "excitementLabel": "Mennyire vagy izgatott?",
+      "excitementPlaceholder": "Mondd el, mit érzel",
+      "roleLabel": "Szerepköre (nem kötelező)",
+      "rolePlaceholder": "Válassza ki a szerepkörét",
+      "companyLabel": "Cég (nem kötelező)",
+      "companyPlaceholder": "Acme Kft.",
+      "useCaseLabel": "Mit tervez építeni? (nem kötelező)",
+      "useCasePlaceholder": "Ügyfélportált, belső eszközt…",
+      "roles": {
+        "founder": "Alapító",
+        "engineering": "Fejlesztés",
+        "product": "Termék",
+        "design": "Design",
+        "agency": "Ügynökség",
+        "other": "Egyéb"
+      },
+      "selectedCount": "{count} kiválasztva",
+      "submit": "Feliratkozás",
+      "submitting": "Feliratkozás...",
+      "successTitle": "Felkerült a listára!",
+      "successDescription": "Meghívót küldünk, amikor Önre kerül a sor.",
+      "alreadySignedUp": "Már van fiókja?",
+      "signIn": "Bejelentkezés",
+      "superpowers": {
+        "coffee-to-code": "Kávéból kódot varázsolok",
+        "pixel-perfect": "Pixelre pontos munkát végzek",
+        "bug-whisperer": "Bugsuttogó",
+        "spreadsheet-wizard": "Táblázatvarázsló",
+        "inbox-zero": "Minden nap üres postafiók",
+        "parallel-parking": "Párhuzamos parkolás elsőre",
+        "remembering-names": "Mindenki nevére emlékszem",
+        "never-burning-toast": "Soha nem égetem meg a pirítóst",
+        "explaining-tech": "Elmagyarázom a technikát a szüleimnek",
+        "finding-restaurants": "Megtalálom a legjobb éttermeket",
+        "staying-calm": "Nyugodt maradok a hosszú meetingeken",
+        "other": "Valami egészen más"
+      },
+      "excitement": {
+        "take-my-money": "Vedd el a pénzem!",
+        "cant-wait": "Alig várom, hogy kipróbáljam",
+        "cautiously-optimistic": "Óvatosan optimista",
+        "just-browsing": "Csak nézelődök",
+        "friend-made-me": "A barátom íratott fel"
+      },
+      "errors": {
+        "waitlistNotEnabled": "A várólista jelenleg nem fogad regisztrációkat. Kérjük, próbálja újra később.",
+        "invalidEmail": "Kérjük, adjon meg egy érvényes e-mail-címet.",
+        "rateLimited": "Túl sok kérés. Kérjük, várjon egy pillanatot, és próbálja újra.",
+        "generic": "Valami hiba történt. Kérjük, próbálja újra."
+      }
+    },
+    "fallback": {
+      "title": "A regisztráció átmenetileg nem érhető el",
+      "description": "Szolgáltatásaink jelenleg nem érhetők el, a háttérben újrapróbálkozunk. Meglévő fiókjába továbbra is bejelentkezhet.",
+      "bookDemo": "Bemutató foglalása",
+      "contact": "Kapcsolat"
+    }
+  },
+  "dashboard": {
+    "projects": "Projektek",
+    "noProjects": "Még nincsenek projektek",
+    "noProjectsDescription": "Hozz létre egy projektet a kezdéshez.",
+    "projectNotFound": "Projekt nem található",
+    "projectNotFoundDescription": "Ez a projekt lehet, hogy törölve lett.",
+    "tabs": {
+      "tasks": "Feladatok",
+      "attachments": "Mellékletek"
+    },
+    "security": "Biztonság",
+    "sessions": {
+      "title": "Aktív munkamenetek",
+      "description": "Kezeld az aktív munkameneteidet az összes eszközön. Kijelentkezhetsz bármely munkamenetből, amelyet nem ismersz fel.",
+      "currentSession": "Ez az eszköz",
+      "otherSessions": "Egyéb eszközök",
+      "current": "Jelenlegi",
+      "lastActive": "Aktív {time}",
+      "noOtherSessions": "Nincs más aktív munkamenet. Csak ezen az eszközön vagy bejelentkezve.",
+      "revokeAll": "Összes többi kijelentkeztetése",
+      "revokeAllTitle": "Kijelentkezés az összes többi eszközről?",
+      "revokeAllDescription": "Kijelentkezteted magadat az összes többi eszközről és böngészőből. Csak a jelenlegi munkameneted marad aktív.",
+      "revokeAllConfirm": "Összes kijelentkeztetése",
+      "revokeTitle": "Kijelentkezés erről az eszközről?",
+      "revokeDescription": "Ez befejezi a munkamenetet a(z) {device} eszközön. Újra be kell jelentkezni a fiókhoz való hozzáféréshez.",
+      "backToDashboard": "Vissza az irányítópulthoz",
+      "loadError": "Nem sikerült betölteni a munkameneteket.",
+      "revokeError": "Nem sikerült megszüntetni a munkamenetet.",
+      "revokeAllError": "Nem sikerült megszüntetni a munkameneteket."
+    },
+    "account": "Beállítások",
+    "profile": {
+      "title": "Profil",
+      "description": "Kezeld a profiladataidat és beállításaidat.",
+      "name": "Megjelenítési név",
+      "namePlaceholder": "A neved",
+      "email": "E-mail",
+      "emailReadonly": "Az e-mail módosításához lépj kapcsolatba az ügyfélszolgálattal.",
+      "avatarColor": "Avatar színe",
+      "saved": "Profil frissítve.",
+      "language": "Nyelv",
+      "timezone": "Időzóna",
+      "timezonePlaceholder": "Válaszd ki az időzónádat",
+      "timezoneSearch": "Időzónák keresése...",
+      "timezoneDetected": "Felismert",
+      "noTimezoneResults": "Nem található időzóna.",
+      "theme": "Téma"
+    },
+    "changePassword": {
+      "title": "Jelszó módosítása",
+      "currentPassword": "Jelenlegi jelszó",
+      "newPassword": "Új jelszó",
+      "confirmPassword": "Új jelszó megerősítése",
+      "revokeOtherSessions": "Kijelentkezés az összes többi eszközről",
+      "cta": "Jelszó frissítése",
+      "success": "A jelszó sikeresen frissítve.",
+      "errorCurrentPassword": "A jelenlegi jelszó helytelen."
+    },
+    "twoFactor": {
+      "title": "Kétlépcsős hitelesítés",
+      "description": "Adj hozzá egy extra biztonsági réteget a fiókodhoz.",
+      "enabled": "A 2FA be van kapcsolva",
+      "disabled": "A 2FA nincs bekapcsolva",
+      "enable": "2FA bekapcsolása",
+      "disable": "2FA kikapcsolása",
+      "enterPassword": "Add meg a jelszavadat a folytatáshoz.",
+      "scanQrCode": "Olvasd be ezt a QR-kódot a hitelesítő alkalmazásoddal (pl. Google Authenticator, Authy).",
+      "manualEntry": "Nem tudod beolvasni? Írd be ezt a kulcsot kézzel",
+      "manualEntryDescription": "Nyisd meg a hitelesítő alkalmazásodat, válaszd a „Fiók hozzáadása” lehetőséget, majd válaszd a „Beállítási kulcs megadása” opciót, és illeszd be az alábbi kulcsot.",
+      "secretKey": "Titkos kulcs",
+      "copied": "Vágólapra másolva",
+      "enterCode": "Add meg a 6 jegyű kódot a hitelesítő alkalmazásodból a beállítás ellenőrzéséhez.",
+      "verify": "Ellenőrzés",
+      "backupCodes": "Tartalék kódok",
+      "backupCodesDescription": "Mentsd el ezeket a kódokat biztonságos helyre. Minden kód csak egyszer használható.",
+      "viewBackupCodes": "Tartalék kódok megtekintése",
+      "regenerateBackupCodes": "Tartalék kódok újragenerálása",
+      "disableConfirm": "Biztosan ki szeretnéd kapcsolni a 2FA-t?",
+      "regenerateConfirm": "Ez lecseréli a meglévő biztonsági kódjaidat. A fel nem használt kódok többé nem fognak működni.",
+      "codePlaceholder": "000000",
+      "requiredNotice": "A fiókszabályzat kétlépcsős hitelesítést követel meg. A folytatáshoz fejezd be a beállítást."
+    },
+    "passkeys": {
+      "title": "Hozzáférési kulcsok",
+      "description": "Adj hozzá és kezelj hozzáférési kulcsokat a gyorsabb, adathalászatnak ellenálló bejelentkezéshez.",
+      "policy": "Szabály: {policy}",
+      "disabled": "Letiltva",
+      "optional": "Választható",
+      "required": "Kötelező",
+      "disabledDescription": "A hozzáférési kulcsos bejelentkezés le van tiltva a fiókodban.",
+      "nameLabel": "Új hozzáférési kulcs neve (nem kötelező)",
+      "namePlaceholder": "Saját laptop",
+      "add": "Hozzáférési kulcs hozzáadása",
+      "adding": "Hozzáadás...",
+      "empty": "Még nincs hozzáférési kulcs regisztrálva.",
+      "unnamed": "Névtelen hozzáférési kulcs",
+      "singleDevice": "Eszközhöz kötött kulcs",
+      "multiDevice": "Szinkronizált kulcs",
+      "rename": "A(z) {name} hozzáférési kulcs átnevezése",
+      "remove": "A(z) {name} hozzáférési kulcs törlése",
+      "name": "Hozzáférési kulcs neve",
+      "loadError": "Nem sikerült betölteni a hozzáférési kulcsokat.",
+      "addError": "Nem sikerült hozzáadni a hozzáférési kulcsot.",
+      "renameError": "Nem sikerült átnevezni a hozzáférési kulcsot.",
+      "deleteError": "Nem sikerült törölni a hozzáférési kulcsot.",
+      "added": "Hozzáférési kulcs hozzáadva.",
+      "renamed": "Hozzáférési kulcs frissítve.",
+      "deleted": "Hozzáférési kulcs eltávolítva.",
+      "unsupportedTitle": "Ez az eszköz vagy böngésző nem támogatja a hozzáférési kulcsokat.",
+      "unsupportedDescription": "A beállításhoz jelentkezz be hozzáférési kulcsokat támogató eszközről vagy böngészőből.",
+      "requiredNotice": "A fiókszabályzat hozzáférési kulcsot követel meg. A folytatáshoz adj hozzá egyet.",
+      "signInRequired": "A fiókodhoz hozzáférési kulccsal kell bejelentkezned."
+    }
+  },
+  "projects": {
+    "newProject": "Új projekt",
+    "createProject": "Projekt létrehozása",
+    "createFirst": "Hozd létre az első projektedet",
+    "noProjects": "Nincsenek projektek",
+    "editProject": "Projekt szerkesztése",
+    "deleteProject": "Projekt törlése",
+    "deleteConfirmTitle": "Projekt törlése?",
+    "deleteConfirmDescription": "Ez véglegesen törli a(z) “{name}” projektet és az összes feladatát. Ez a művelet nem vonható vissza.",
+    "fields": {
+      "name": "Név",
+      "namePlaceholder": "Projekt neve",
+      "description": "Leírás",
+      "descriptionPlaceholder": "Miről szól ez a projekt?"
+    }
+  },
+  "tasks": {
+    "title": "Feladatok",
+    "addTask": "Feladat hozzáadása",
+    "newTask": "Új feladat",
+    "editTask": "Feladat szerkesztése",
+    "deleteTask": "Feladat törlése",
+    "confirmDelete": "Törlés megerősítése",
+    "createTask": "Feladat létrehozása",
+    "noTasks": "Még nincsenek feladatok. Adj hozzá egyet a kezdéshez.",
+    "noTasksSummary": "Még nincsenek feladatok",
+    "progress": "{doneCount}/{totalCount} feladat kész",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Állapot",
+      "todo": "Teendő",
+      "inProgress": "Folyamatban",
+      "done": "Kész",
+      "all": "Összes"
+    },
+    "fields": {
+      "title": "Cím",
+      "titlePlaceholder": "Mit kell megcsinálni?",
+      "description": "Leírás",
+      "descriptionPlaceholder": "Részletek hozzáadása...",
+      "deadline": "Határidő",
+      "deadlinePlaceholder": "Nincs határidő",
+      "clearDeadline": "Határidő törlése"
+    },
+    "deadline": {
+      "overdue": "Lejárt",
+      "dueToday": "Ma esedékes"
+    },
+    "aria": {
+      "changeStatus": "Állapot módosítása innen: {status}"
+    },
+    "count": "{count, plural, =0 {Még nincsenek feladatok} one {# feladat} other {# feladat}}"
+  },
+  "uploads": {
+    "title": "Mellékletek",
+    "addFile": "Fájl hozzáadása",
+    "uploading": "Feltöltés...",
+    "processing": "Feldolgozás",
+    "view": "Megtekintés",
+    "deleteFile": "Fájl törlése",
+    "emptyState": "Tölts fel fájlokat a Convex tárhelyfolyamat megtekintéséhez.",
+    "errors": {
+      "tooLarge": "A fájl túl nagy (max. 1 MB)",
+      "uploadFailed": "A feltöltés sikertelen. Próbáld újra.",
+      "generic": "A feltöltés sikertelen."
+    },
+    "count": "{count, plural, =0 {Nincsenek mellékletek} one {# melléklet} other {# melléklet}}"
+  },
+  "metadata": {
+    "description": "Next.js starter Convex, Better Auth és Bun támogatással."
+  },
+  "legal": {
+    "about": {
+      "title": "Rólunk",
+      "description": "Tudj meg többet a {productName}ről és a mi küldetésünkről.",
+      "notice": "Ez a tartalom helyőrző. Indítás előtt cseréld le a saját tartalomra.",
+      "heading": "Rólunk",
+      "mission": "A mi küldetésünk",
+      "missionText": "Úgy gondoljuk, hogy a fejlesztőknek az alkalmazások fejlesztésére kell fordítaniuk az idejüket, nem az infrastruktúra konfigurálására. A {productName} egy éles használatra kész kiindulópontot biztosít valós idejű adatszinkronizálással, fájlfeltöltésekkel és munkamenet-alapú hitelesítéssel, melyből már minden be van kötve.",
+      "whatIncluded": "Mi van benne",
+      "whatIncludedText": "A kezdőcsomag tartalmaz egy leszálló oldalt, egy teljes mértékben hitelesített webalkalmazást, egy admin irányítópultot és egy komponens-vitrin könyvet. Mindegyik alkalmazás egy egységes tervezési rendszert használ, amely a Radix UI primitívekből és Tailwind CSS-ből épül fel.",
+      "openSource": "Nyílt forráskód",
+      "openSourceText": "Ez a projekt nyílt forráskódú és úgy lett megtervezve, hogy fel lehessen osztani és testre lehessen szabni.",
+      "intro": "A {productName} egy teljes veremű alapja a modern webalkalmazások építésének. A Next.js-t használja az előoldalhoz, a Convexet a háttéroldalhoz, és a Better Auth-ot a biztonságos hitelesítéshez — mindegyik be van kötve és készen áll az indulásra."
+    },
+    "privacy": {
+      "title": "Adatvédelmi irányelvek",
+      "description": "Hogyan gyűjtjük, használjuk és védjük az adataidat.",
+      "notice": "Ez egy sablon adatvédelmi irányelv. A bevezetés előtt szabd testre az alkalmazásodnak és a te joghatóságodnak megfelelően.",
+      "heading": "Adatvédelmi irányelvek",
+      "lastUpdated": "Utolsó frissítés: {date}"
+    },
+    "terms": {
+      "title": "Felhasználási feltételek",
+      "description": "A szolgáltatás használatára vonatkozó szabályok és irányelvek.",
+      "notice": "Ez egy sablon felhasználási feltételek. A bevezetés előtt szabd testre az alkalmazásodnak és a te joghatóságodnak megfelelően.",
+      "heading": "Felhasználási feltételek",
+      "lastUpdated": "Utolsó frissítés: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Projekt nem található.",
+    "taskNotFound": "Feladat nem található.",
+    "fileNotFound": "Fájl nem található a tárhelyen.",
+    "fileTooLarge": "A fájl túl nagy (max. 1 MB).",
+    "uploadNotFound": "Feltöltés nem található."
+  }
+}
