@@ -298,15 +298,25 @@ Notes:
 
 ## Tests
 
-Run tests via Turborepo (from the project root):
+Run tests via Turborepo (from the project root), with a separate E2E setup command:
 
 ```bash
 bun run test            # Bun unit tests (across all workspaces)
 bun run test:unit       # Vitest component tests
 bun run test:convex     # Convex backend tests
+bun run setup:e2e       # Download Chromium before first E2E run / after Playwright upgrades
 bun run test:e2e        # Playwright E2E tests
-bun run test:all        # All of the above
+bun run test:all        # All test suites above (does not run setup:e2e)
 ```
+
+Development startup does not install browsers. After `bun install`, run
+`bun run setup:e2e` before the first E2E run (including local CI with E2E), and
+again after Playwright upgrades. It downloads Chromium using each installed app
+workspace's Playwright CLI, including a hoisted root install, without fetching a
+different Playwright version. Installer output and failure status are preserved;
+setup stops at the first failure. Avoid package runners that could fetch a newer
+CLI: its browser build may not match the installed version. GitHub Actions uses
+the dedicated [setup-playwright action](.github/actions/setup-playwright/action.yml).
 
 > **WARNING**: Always use `bun run test` (with `run`), never bare `bun test`. Bare `bun test` picks up all test files and fails because some require Vitest's DOM environment.
 

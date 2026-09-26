@@ -845,11 +845,8 @@ lookup paths, so on a Linux runner it reported the binary missing and exited bef
 started. Now derived from `uname` via `esbuild_platform()`. If you add a platform-specific
 path to that script, this is the shape of bug to avoid.
 
-**Playwright must be installed from the app directory.** There is no `playwright` binary at
-the repo root, so `bunx playwright install` there fetches the *latest* from npm and
-downloads a browser build the pinned version cannot use — surfacing much later as
-`Executable doesn't exist at .../chromium_headless_shell-<n>/`. `setup-playwright` now
-takes a required `working-directory` and runs that workspace's own binary.
+**Playwright browser setup:** Follow the [E2E setup instructions](../../README.md#tests)
+for version-matched browser installation locally and the CI setup action.
 
 **`convex dev` downloads its backend from GitHub unauthenticated.** Four shards booting at
 once hit `403 API rate limit exceeded`. Mitigated by caching `~/.convex` and staggering
