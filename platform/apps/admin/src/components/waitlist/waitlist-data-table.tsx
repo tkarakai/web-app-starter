@@ -8,7 +8,8 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { usePaginatedQuery } from "convex-helpers/react";
 import { toast } from "sonner";
 
 import { api } from "@repo/backend";

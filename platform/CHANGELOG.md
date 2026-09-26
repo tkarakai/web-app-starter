@@ -24,6 +24,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** apps consuming waitlists or invitations. These tables now live in
+  the platform component; existing wrapper API paths, auth checks and email delivery remain.
+  **What to do:** run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-invitation-types.ts` to replace
+  app-model `Doc` / `Id` types with `WaitlistEntry`, `InvitationToken`, `AdminInvitation`
+  and opaque string IDs. Use `usePaginatedQuery` from `convex-helpers/react` for waitlist
+  and admin-invitation lists. Pages are non-reactive; a full last page needs another fetch
+  to report completion. Existing data remains in the legacy tables for staged migration.
+
 - **Who is affected:** apps consuming announcements or reading platform settings directly.
   Settings and announcements now live in the platform component. Existing public API paths
   and authorization rules are preserved; announcement IDs cross the boundary as strings.

@@ -1,3 +1,4 @@
+import { platformRunner } from "../../test/platform-component";
 import { createTestEnv as createPlatformTest } from "../test.modules";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -29,6 +30,7 @@ describe("bootstrap", () => {
   describe("initialize", () => {
     test("seeds admin email and creates invited waitlist entry on empty system", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       const result = await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
@@ -45,7 +47,7 @@ describe("bootstrap", () => {
       expect(adminEmails[0].email).toBe("admin@example.com");
 
       // Verify waitlist entry was created and invited
-      const entry = await t.run(async (ctx) => {
+      const entry = await runPlatform(async (ctx) => {
         return ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -82,9 +84,10 @@ describe("bootstrap", () => {
 
     test("throws BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY if email already on waitlist", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       // Pre-seed a waitlist entry (but no admin email, so the admin guard passes)
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         await ctx.db.insert("waitlistEntries", {
           email: "admin@example.com",
           meta: BOOTSTRAP_META,
@@ -122,6 +125,7 @@ describe("bootstrap", () => {
   describe("rescue", () => {
     test("updates admin email and revokes old tokens when email changes", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       // Seed via initialize
       await t.mutation(internal.platform.bootstrap.initialize, {
@@ -129,7 +133,7 @@ describe("bootstrap", () => {
       });
 
       // Seed a token for the old email
-      const tokenId = await t.run(async (ctx) => {
+      const tokenId = await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "typo@exmaple.com"))
@@ -161,13 +165,13 @@ describe("bootstrap", () => {
       expect(adminEmails[0].email).toBe("correct@example.com");
 
       // Verify old token revoked
-      const oldToken = await t.run(async (ctx) => {
+      const oldToken = await runPlatform(async (ctx) => {
         return ctx.db.get(tokenId);
       });
       expect(oldToken?.status).toBe("revoked");
 
       // Verify waitlist entry updated
-      const entry = await t.run(async (ctx) => {
+      const entry = await runPlatform(async (ctx) => {
         return ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) =>
@@ -181,13 +185,14 @@ describe("bootstrap", () => {
 
     test("resends invitation when email is the same (no change)", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Seed an expired token
-      const tokenId = await t.run(async (ctx) => {
+      const tokenId = await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -211,13 +216,13 @@ describe("bootstrap", () => {
       expect(result.changed).toBe(false);
 
       // Old token should be revoked
-      const oldToken = await t.run(async (ctx) => {
+      const oldToken = await runPlatform(async (ctx) => {
         return ctx.db.get(tokenId);
       });
       expect(oldToken?.status).toBe("revoked");
 
       // Entry should be re-invited
-      const entry = await t.run(async (ctx) => {
+      const entry = await runPlatform(async (ctx) => {
         return ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -270,13 +275,14 @@ describe("bootstrap", () => {
 
     test("throws BOOTSTRAP_ALREADY_COMPLETE if waitlist entry is claimed", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Mark the entry as claimed
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -312,13 +318,14 @@ describe("bootstrap", () => {
 
     test("throws BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY if newEmail already on waitlist", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Pre-seed a waitlist entry for the new email
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         await ctx.db.insert("waitlistEntries", {
           email: "taken@example.com",
           meta: BOOTSTRAP_META,
@@ -337,12 +344,13 @@ describe("bootstrap", () => {
 
     test("revokes tokens in 'claiming' state too", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
-      const tokenId = await t.run(async (ctx) => {
+      const tokenId = await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -363,7 +371,7 @@ describe("bootstrap", () => {
         newEmail: "admin@example.com",
       });
 
-      const token = await t.run(async (ctx) => {
+      const token = await runPlatform(async (ctx) => {
         return ctx.db.get(tokenId);
       });
       expect(token?.status).toBe("revoked");
@@ -371,13 +379,14 @@ describe("bootstrap", () => {
 
     test("recreates waitlist entry if it was manually deleted", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Delete the waitlist entry to simulate manual deletion
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -393,7 +402,7 @@ describe("bootstrap", () => {
       expect(result.success).toBe(true);
 
       // Entry should be recreated and invited
-      const entry = await t.run(async (ctx) => {
+      const entry = await runPlatform(async (ctx) => {
         return ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -421,13 +430,14 @@ describe("bootstrap", () => {
 
     test("returns bootstrapped: true when waitlist entry is claimed", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Mark claimed
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -446,13 +456,14 @@ describe("bootstrap", () => {
 
     test("reports active token when invitation is pending", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Seed an active token
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -478,13 +489,14 @@ describe("bootstrap", () => {
 
     test("detects expired token", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Seed an expired token
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -508,12 +520,13 @@ describe("bootstrap", () => {
 
     test("finds most recent token among multiple", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))
@@ -562,13 +575,14 @@ describe("bootstrap", () => {
 
     test("hints to rescue when token is revoked", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       await t.mutation(internal.platform.bootstrap.initialize, {
         email: "admin@example.com",
       });
 
       // Seed a revoked token
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         const entry = await ctx.db
           .query("waitlistEntries")
           .withIndex("by_email", (q) => q.eq("email", "admin@example.com"))

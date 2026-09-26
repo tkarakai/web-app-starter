@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import type { Doc } from "@repo/backend";
+import type { WaitlistEntry as PlatformWaitlistEntry } from "@repo/backend";
 
-export type WaitlistEntry = Doc<"waitlistEntries"> & {
+export type WaitlistEntry = PlatformWaitlistEntry & {
   invitationExpired: boolean;
 };
 export type WaitlistAction = "invite" | "uninvite" | "delete";

@@ -17,11 +17,12 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { usePaginatedQuery } from "convex-helpers/react";
 import { toast } from "sonner";
 
 import { api } from "@repo/backend";
-import type { Doc } from "@repo/backend";
+import type { AdminInvitation as PlatformAdminInvitation } from "@repo/backend";
 import {
   Badge,
   Button,
@@ -46,7 +47,7 @@ import { InviteAdminDialog } from "./invite-admin-dialog";
 
 const PAGE_SIZE = 50;
 
-type AdminInvitation = Doc<"adminInvitations"> & {
+type AdminInvitation = PlatformAdminInvitation & {
   invitationExpired: boolean;
 };
 

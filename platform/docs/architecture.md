@@ -164,3 +164,23 @@ type from `@repo/backend` for row data. Never cast them to the app data model’
 For backend tests, use the shared factory in `convex/test.modules.ts`; see [testing](testing.md).
 The legacy app tables remain during the data-migration transition, but new writes and reads
 use the component. Historical rows must be migrated before the old schema is removed.
+
+### Waitlists and invitations
+
+Waitlist entries, invitation tokens and admin invitations live in the platform component.
+Use the existing `api.platform.waitlist.*`, `api.platform.waitlistTokens.*` and
+`api.platform.adminInvitations.*` wrappers. Their component IDs are opaque strings;
+row types are exported as `WaitlistEntry`, `InvitationToken` and `AdminInvitation`
+from `@repo/backend`. Do not query these tables through the app database.
+
+Wrappers resolve Better Auth sessions, enforce roles and rate limits, and schedule the
+app's email transport. The component owns token hashes, claim/revoke transitions and
+onboarding state. An admin invitation grants the admin-email entry only after a valid
+token is claimed. Bootstrap, local seeds and E2E fixtures use the same component storage.
+
+For paginated waitlist and admin-invitation queries, import `usePaginatedQuery` from
+`convex-helpers/react`. Loaded pages are not reactive, and cursors contain index values
+(they are not secrets). Reload the list after mutations when fresh rows are needed. A full
+page reports `isDone: false`; fetch the next page even when the previous one looked final.
+Waitlist pagination excludes admin addresses before selecting a page, so hidden admins do
+not shorten visible pages or cause entries to be skipped.

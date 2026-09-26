@@ -37,7 +37,65 @@ export const announcementFields = {
     updatedBy: v.optional(v.string()),
 };
 
+export const waitlistEntriesFields = {
+    email: v.string(),
+    meta: v.string(), // JSON: { superpowers: string[], excitement: string[] }
+    status: v.union(
+      v.literal("waiting"),
+      v.literal("invited"),
+      v.literal("claimed")
+    ),
+    invitedAt: v.optional(v.number()),
+    invitationExpiresAt: v.optional(v.number()),
+    claimedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  };
+
+export const invitationTokensFields = {
+    waitlistEntryId: v.id("waitlistEntries"),
+    token: v.string(),
+    email: v.string(),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("claiming"),
+      v.literal("claimed"),
+      v.literal("revoked")
+    ),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    claimedAt: v.optional(v.number()),
+    claimStartedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  };
+
+export const adminInvitationsFields = {
+    email: v.string(),
+    token: v.optional(v.string()),
+    status: v.union(
+      v.literal("invited"),
+      v.literal("claimed"),
+      v.literal("completed")
+    ),
+    onboardingStep: v.optional(v.number()),
+    invitedAt: v.number(),
+    invitationExpiresAt: v.optional(v.number()),
+    claimedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  };
+
 export default defineSchema({
+  adminInvitations: defineTable(adminInvitationsFields)
+    .index("by_email", ["email"])
+    .index("by_created", ["createdAt"])
+    .index("by_token", ["token"]),
+  invitationTokens: defineTable(invitationTokensFields)
+    .index("by_token", ["token"])
+    .index("by_email", ["email"])
+    .index("by_waitlist_entry", ["waitlistEntryId"]),
+  waitlistEntries: defineTable(waitlistEntriesFields)
+    .index("by_email", ["email"])
+    .index("by_status", ["status"])
+    .index("by_created", ["createdAt"]),
   appSettings: defineTable(appSettingsFields).index("by_key", ["key"]),
   announcements: defineTable(announcementFields)
     .index("by_isLive", ["isLive"])

@@ -1,3 +1,4 @@
+import { platformRunner } from "../../test/platform-component";
 import { createTestEnv as createPlatformTest, modules } from "../test.modules";
 // Contract: endpoint authorization for every public platform function.
 //
@@ -80,11 +81,14 @@ const SAMPLE_STRING = "contract@example.test";
 // not an empty table.
 async function seed(t: ReturnType<typeof emulator>): Promise<void> {
   const now = Date.now();
+  const runPlatform = platformRunner(t);
+  await runPlatform(async ctx => {
+    await ctx.db.insert("waitlistEntries", { email: "seed@example.test", meta: "{}", status: "waiting", createdAt: now });
+    await ctx.db.insert("adminInvitations", { email: "seed@example.test", status: "invited", invitedAt: now, createdAt: now });
+  });
   await t.run(async (ctx) => {
     await ctx.db.insert("adminEmails", { email: "seed-admin@example.test" });
     await ctx.runMutation(components.platform.appSettings.putRaw, { key: SAMPLE_STRING, value: "\"seeded\"" });
-    await ctx.db.insert("waitlistEntries", { email: "seed@example.test", meta: "{}", status: "waiting", createdAt: now });
-    await ctx.db.insert("adminInvitations", { email: "seed@example.test", status: "invited", invitedAt: now, createdAt: now });
     await ctx.runMutation(components.platform.announcements.create, { name: "seed", bannerText: "seed", identity: { userId: "seed", actor: "seed" } });
     await ctx.runMutation(components.platform.auditTrail.insertEvent, {
       happenedAt: now, actor: "seed", source: "server:seed", action: "auth.sign_in", resource: "seed", status: "succeeded",

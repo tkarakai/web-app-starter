@@ -22,7 +22,7 @@ const DEFAULT_EXPIRY_DAYS = 7;
  */
 export const generateTokenAndSendEmail = internalAction({
   args: {
-    adminInvitationId: v.id("adminInvitations"),
+    adminInvitationId: v.string(),
     email: v.string(),
   },
   handler: async (ctx, args) => {

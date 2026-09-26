@@ -36,15 +36,9 @@
  */
 import { v } from "convex/values";
 
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { internalMutation, internalQuery } from "../_generated/server";
 import { assertMaxLength, MAX_NAME_LENGTH } from "./functions";
-
-/** Synthetic meta for bootstrap waitlist entries (valid per waitlist.ts validation). */
-const BOOTSTRAP_META = JSON.stringify({
-  superpowers: ["coffee-to-code"],
-  excitement: ["take-my-money"],
-});
 
 /** Basic email format check — must contain @ and be reasonable length. */
 function assertValidEmail(email: string): void {
@@ -68,32 +62,8 @@ export const initialize = internalMutation({
 
     assertValidEmail(args.email);
 
-    // Guard: no existing waitlist entry for this email (prevents duplicates
-    // that rescue's .first() would silently mishandle)
-    const existingEntry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-    if (existingEntry) {
-      throw new Error("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
-    }
-
-    // Seed the admin email
     await ctx.db.insert("adminEmails", { email: args.email });
-
-    // Create a waitlist entry and immediately invite
-    const now = Date.now();
-    const entryId = await ctx.db.insert("waitlistEntries", {
-      email: args.email,
-      meta: BOOTSTRAP_META,
-      status: "waiting",
-      createdAt: now,
-    });
-
-    await ctx.db.patch(entryId, {
-      status: "invited",
-      invitedAt: now,
-    });
+    const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.initialize, args);
 
     // Schedule the token generation + email action (same as waitlist.invite)
     await ctx.scheduler.runAfter(
@@ -135,78 +105,10 @@ export const rescue = internalMutation({
       throw new Error("BOOTSTRAP_EMAIL_MISMATCH");
     }
 
-    // Guard: bootstrap must not already be complete
-    const waitlistEntry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", args.currentEmail))
-      .first();
-
-    if (waitlistEntry && waitlistEntry.status === "claimed") {
-      throw new Error("BOOTSTRAP_ALREADY_COMPLETE");
-    }
-
     assertValidEmail(args.newEmail);
-
+    const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.rescue, args);
     const emailChanged = args.newEmail !== args.currentEmail;
-
-    // Guard: no existing waitlist entry for the new email (prevents duplicates
-    // when changing email to one that's already on the waitlist)
-    if (emailChanged) {
-      const existingNewEntry = await ctx.db
-        .query("waitlistEntries")
-        .withIndex("by_email", (q) => q.eq("email", args.newEmail))
-        .first();
-      if (existingNewEntry) {
-        throw new Error("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
-      }
-    }
-
-    // Update admin email if changed
-    if (emailChanged) {
-      await ctx.db.patch(adminRow._id, { email: args.newEmail });
-    }
-
-    // Revoke all existing tokens for the old email
-    const oldTokens = await ctx.db
-      .query("invitationTokens")
-      .withIndex("by_email", (q) => q.eq("email", args.currentEmail))
-      .collect();
-
-    const revokeNow = Date.now();
-    for (const token of oldTokens) {
-      if (token.status === "sent" || token.status === "claiming") {
-        await ctx.db.patch(token._id, { status: "revoked", revokedAt: revokeNow });
-      }
-    }
-
-    // Handle waitlist entry
-    const now = Date.now();
-    let entryId;
-
-    if (waitlistEntry) {
-      // Reset existing entry
-      await ctx.db.patch(waitlistEntry._id, {
-        email: args.newEmail,
-        status: "waiting",
-        invitedAt: undefined,
-        invitationExpiresAt: undefined,
-      });
-      entryId = waitlistEntry._id;
-    } else {
-      // Edge case: entry was manually deleted — recreate
-      entryId = await ctx.db.insert("waitlistEntries", {
-        email: args.newEmail,
-        meta: BOOTSTRAP_META,
-        status: "waiting",
-        createdAt: now,
-      });
-    }
-
-    // Re-invite
-    await ctx.db.patch(entryId, {
-      status: "invited",
-      invitedAt: now,
-    });
+    if (emailChanged) await ctx.db.patch(adminRow._id, { email: args.newEmail });
 
     await ctx.scheduler.runAfter(
       0,
@@ -248,24 +150,8 @@ export const status = internalQuery({
 
     const adminEmail = adminEmails[0].email;
 
-    // Check waitlist entry
-    const waitlistEntry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", adminEmail))
-      .first();
-
-    if (waitlistEntry?.status === "claimed") {
-      return {
-        bootstrapped: true,
-        adminEmail,
-      };
-    }
-
-    // Find the most recent token for this email
-    const tokens = await ctx.db
-      .query("invitationTokens")
-      .withIndex("by_email", (q) => q.eq("email", adminEmail))
-      .collect();
+    const { waitlistEntry, tokens } = await ctx.runQuery(components.platform.waitlistBootstrap.state, { email: adminEmail });
+    if (waitlistEntry?.status === "claimed") return { bootstrapped: true, adminEmail };
 
     const latestToken = tokens.length > 0
       ? tokens.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))

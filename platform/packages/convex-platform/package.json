@@ -11,7 +11,9 @@
     "./test": "./src/test.ts",
     "./validation": "./src/component/inputLimits.ts",
     "./securityPolicies": "./src/component/securityPolicies.ts",
-    "./onboardingType": "./src/component/onboardingType.ts"
+    "./onboardingType": "./src/component/onboardingType.ts",
+    "./waitlist-validation": "./src/component/waitlistValidation.ts",
+    "./token-hash": "./src/component/tokenHash.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -57,8 +57,6 @@ export const setupDevUser = internalMutation({
     isAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-
     // Admin email entry (triggers auto-promotion in databaseHook).
     // Skip if already exists (idempotent for retries after partial failure).
     if (args.isAdmin) {
@@ -71,33 +69,7 @@ export const setupDevUser = internalMutation({
       }
     }
 
-    // Waitlist entry — skip if already exists (idempotent for retries).
-    const existingEntry = await ctx.db
-      .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-    if (existingEntry) return;
-
-    const entryId = await ctx.db.insert("waitlistEntries", {
-      email: args.email,
-      meta: JSON.stringify({ superpowers: ["dev-seed"], excitement: ["dev-seed"] }),
-      status: "claimed",
-      createdAt: now,
-      invitedAt: now,
-      claimedAt: now,
-    });
-
-    // Invitation token in "claiming" state — hasValidInvitation checks for
-    // status "claiming" or "claimed" with a non-expired expiresAt.
-    await ctx.db.insert("invitationTokens", {
-      waitlistEntryId: entryId,
-      token: `dev-seed-${args.email}`,
-      email: args.email,
-      status: "claiming",
-      expiresAt: now + 1000 * 60 * 60 * 24 * 365, // 1 year
-      createdAt: now,
-      claimStartedAt: now,
-    });
+    await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["dev-seed"], excitement: ["dev-seed"] }), token: `dev-seed-${args.email}`, ttlMs: 365 * 24 * 60 * 60_000 });
   },
 });
 
@@ -108,16 +80,7 @@ export const setupDevUser = internalMutation({
 export const finalizeDevToken = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const token = await ctx.db
-      .query("invitationTokens")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-    if (token && token.status === "claiming") {
-      await ctx.db.patch(token._id, {
-        status: "claimed",
-        claimedAt: Date.now(),
-      });
-    }
+    await ctx.runMutation(components.platform.invitationFixtures.finalize, args);
   },
 });
 

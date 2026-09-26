@@ -35,3 +35,8 @@ export type AuditTrailEvent = FunctionReturnType<typeof api.platform.auditTrail.
 
 /** Announcement storage shape exposed by wrappers; IDs are component strings. */
 export type Announcement = Omit<NonNullable<FunctionReturnType<typeof api.platform.announcements.list>>[number], "isActiveNow" | "isPublishNowEligible" | "status">;
+
+/** Platform component rows; IDs are opaque strings across the app boundary. */
+export type WaitlistEntry = Omit<FunctionReturnType<typeof api.platform.waitlist.list>["page"][number], "invitationExpired">;
+export type AdminInvitation = Omit<FunctionReturnType<typeof api.platform.adminInvitations.list>["page"][number], "invitationExpired">;
+export type InvitationToken = NonNullable<FunctionReturnType<typeof api.platform.waitlistTokens.listByEntry>>[number];
