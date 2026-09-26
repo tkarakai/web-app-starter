@@ -9,7 +9,7 @@ import type { PublicConfig } from "./public-config";
  *
  * The variables are deliberately unprefixed: a `NEXT_PUBLIC_*` read would be
  * inlined at build time and pin the artifact to one environment.
- * See docs/deployment-architecture.md
+ * See platform/docs/deployment-architecture.md
  */
 export function readPublicConfigFromEnv(
   options: { landingUrl?: boolean; webAppUrl?: boolean } = {}

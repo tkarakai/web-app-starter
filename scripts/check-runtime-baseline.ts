@@ -1,6 +1,6 @@
 // Verify every place that names the Node or Bun runtime agrees with the baseline.
 // Usage: ./scripts/node-ts.sh scripts/check-runtime-baseline.ts [ROOT]
-// Policy and the list of locations: docs/dependency-migrations.md#runtime-baseline
+// Policy and the list of locations: platform/docs/dependency-migrations.md#runtime-baseline
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -101,7 +101,7 @@ export function main(args: string[]): number {
     return 0;
   }
   process.stderr.write(
-    `Runtime baseline mismatch (see docs/dependency-migrations.md#runtime-baseline):\n${errors.map((e) => `  - ${e}`).join("\n")}\n`,
+    `Runtime baseline mismatch (see platform/docs/dependency-migrations.md#runtime-baseline):\n${errors.map((e) => `  - ${e}`).join("\n")}\n`,
   );
   return 1;
 }

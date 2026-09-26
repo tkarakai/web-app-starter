@@ -3,7 +3,7 @@
 # backend standing in for the environment's Convex Cloud deployment. Started and
 # stopped by local-up.sh / local-down.sh.
 #
-# Addressing (see docs/aws/deployment-architecture-aws.md#the-local-target):
+# Addressing (see platform/docs/aws/deployment-architecture-aws.md#the-local-target):
 #   web.app.localhost:8080, admin.app.localhost:8080
 #       The app hosts. Browsers resolve *.localhost to loopback and treat it as a
 #       secure context, so passkeys work over plain HTTP. Only the browser uses

@@ -45,7 +45,7 @@
       "matchUpdateTypes": ["major"]
     },
     {
-      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). The deps-update agent approves it after an deps-major assessment; tier C (next/react/convex/auth stack/tailwind/runtime baseline) and security-relevant behaviour changes need the user. See .agents/skills/deps-major/SKILL.md",
+      "description": "No major ever auto-merges, and none opens a PR until approved on the Dependency Dashboard (Pending Approval). The platform-deps skill works each one as a ticket; tier C (next/react/convex/auth stack/tailwind/runtime baseline) and security-relevant behaviour changes need the user. See platform/agent-skills/platform-deps/references/major-ticket.md",
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "dependencyDashboardApproval": true
@@ -62,7 +62,7 @@
       "allowedVersions": "<1.7.0"
     },
     {
-      "description": "Runtime baseline: Node moves as one change across .node-version, engines, CI and @types/node (docs/dependency-migrations.md#runtime-baseline). Renovate reads .node-version and proposes the next major once it is LTS; like every major it waits for dashboard approval.",
+      "description": "Runtime baseline: Node moves as one change across .node-version, engines, CI and @types/node (platform/docs/dependency-migrations.md#runtime-baseline). Renovate reads .node-version and proposes the next major once it is LTS; like every major it waits for dashboard approval.",
       "matchDepNames": ["node"],
       "groupName": "node runtime baseline"
     },

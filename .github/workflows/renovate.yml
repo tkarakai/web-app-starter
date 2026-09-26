@@ -3,7 +3,7 @@ name: Renovate
 # Automated dependency updates with a 10-day stability cooldown.
 # "Self-hosted" Renovate in the Renovate sense only: we run the bot ourselves in
 # this workflow, on GitHub-hosted runners. Nothing runs outside GitHub.
-# See docs/dependency-updates.md for setup, the RENOVATE_TOKEN secret, and policy.
+# See platform/docs/dependency-updates.md for setup, the RENOVATE_TOKEN secret, and policy.
 on:
   schedule:
     # Periodic runs: Monday & Thursday at 06:00 UTC (GitHub's scheduler; runs may

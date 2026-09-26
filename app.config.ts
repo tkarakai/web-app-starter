@@ -9,9 +9,9 @@
  *   value stops dev, build and tests with a message naming the setting.
  * - Everything here is public: it is checked in and bundled into client code.
  *   Per-deployment values (deployed URLs, Convex URLs) and secrets stay
- *   environment variables; see AGENTS.md "Environment Variables".
+ *   environment variables; see platform/AGENTS.md "Environment variables".
  * - Consumers: import `appConfig` from `@repo/app-config` in TypeScript; shell
- *   scripts and CI use `scripts/app-config.ts` (see docs/claude/development.md).
+ *   scripts and CI use `scripts/app-config.ts` (see platform/docs/development.md).
  */
 import type { AppConfig } from "./packages/app-config/src/schema.ts";
 

@@ -85,6 +85,9 @@ jobs:
       - name: Check runtime baseline (Node/Bun versions agree)
         run: bun run check:runtime-baseline
 
+      - name: Check agent skills and their links
+        run: bun run check:agent-skills
+
       - name: Check development scripts and process isolation
         run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
 

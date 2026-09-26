@@ -22,6 +22,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `... bunx convex env set EMAIL_FROM <address>` on each hosted deployment.
   **Done when:** `CONVEX_DEPLOY_KEY=<key> bunx convex env get RESEND_API_KEY` prints a value
   for every hosted deployment. Local development is unchanged.
+- **Who is affected:** every app. Agent instructions and platform docs split into two layers.
+  The platform's rules moved from the root `AGENTS.md` to `platform/AGENTS.md`; the guides in
+  `docs/` and `docs/claude/` moved to `platform/docs/`.
+  **What to do:** keep your root `AGENTS.md`, make it open with "Before any task, read
+  `platform/AGENTS.md`.", and make your root `CLAUDE.md` import both (`@AGENTS.md` and
+  `@platform/AGENTS.md`); templates are in `platform/templates/`. Delete the old copies under
+  `docs/` and `docs/claude/`. See `UPGRADING.md`, "`AGENTS.md`, `CLAUDE.md`, `.claude/`,
+  `.agents/`, `docs/`, `README.md`".
+  **Done when:** `test -f platform/AGENTS.md && test ! -e docs/claude && grep -q '@platform/AGENTS.md' CLAUDE.md`
+  exits 0.
 - **Who is affected:** every app. Values that used to be literals in starter files now come
   from the new root `app.config.ts`.
   **What to do:** when merging, set `identity.productName`, `identity.legalEntity`,
@@ -47,12 +57,18 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Invalid or unknown values stop dev, build and tests with a message naming each one. Shell
   scripts read it through `scripts/app-config.ts`, CI through `APP_CONFIG_*` variables exported
   by the `setup-bun` action, and each app's `dev` script through `scripts/next-dev.sh`.
-  Turborepo treats it as a global dependency. Guide: `docs/claude/development.md`.
+  Turborepo treats it as a global dependency. Guide: `platform/docs/development.md`.
 - `@repo/auth/cookies` (cookie names for the configured prefix) and
   `@repo/auth/clear-session` (the shared `clear-session` response).
 
 ### Changed
 
+- Platform skills live in `platform/agent-skills/` and are linked into `.claude/skills/platform-*`
+  and `.agents/skills/platform-*`: `platform-add-table`, `platform-add-page`,
+  `platform-add-strings`, `platform-configure`, `platform-deps`, `platform-pr-review`,
+  `platform-pr-respond`. They
+  replace `.claude/commands/pr-review*.md` and `.agents/skills/deps-update` and `deps-major`.
+  `bun run check:agent-skills` checks the links and frontmatter.
 - The auth cookie prefix is configurable (`runtime.authCookiePrefix`, default `better-auth`, so
   existing sessions keep working). It reaches Better Auth (`advanced.cookiePrefix`), the Next.js
   auth helpers, both proxies, both `clear-session` routes and the Convex sessions API. Two apps on
@@ -103,7 +119,7 @@ first supported starting point, not proof of arbitrary pre-release app upgrades.
   "Not available" with the variables they would need. Backend: `integrations.getStatus` (admin only).
 - Runtime baseline: Node 24 (Active LTS) is declared in `.node-version` and `engines.node: "24.x"`,
   with `@types/node` 24 in every workspace. `bun run check:runtime-baseline` (CI) keeps Node and
-  Bun versions consistent. Process: `docs/dependency-migrations.md`.
+  Bun versions consistent. Process: `platform/docs/dependency-migrations.md`.
 - Landing: when the backend is unreachable, the hero shows a "Sign-up is temporarily unavailable"
   card with a Sign in button instead of rendering nothing. Optional `NEXT_PUBLIC_BOOK_DEMO_URL` and
   `NEXT_PUBLIC_CONTACT_URL` add Book a demo / Contact us buttons. New `landing.fallback.*` keys in all 15 locales.

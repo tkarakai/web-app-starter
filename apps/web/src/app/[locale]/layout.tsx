@@ -123,7 +123,7 @@ export default async function LocaleLayout({
   ]);
 
   // Read at request time, not build time, so one artifact can serve any
-  // environment. See docs/deployment-architecture.md
+  // environment. See platform/docs/deployment-architecture.md
   const publicConfig = readPublicConfigFromEnv({ landingUrl: true });
 
   const pathname = headersList.get("x-pathname") ?? "/";

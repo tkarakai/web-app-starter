@@ -4,9 +4,9 @@ CloudFormation stacks and operator scripts that host `web`, `admin` and `landing
 of Vercel. **Convex is not hosted here:** it stays on Convex Cloud, deployed with its deploy key
 exactly as the Vercel pipeline does. The `local` target runs its own Convex backend container.
 
-Docs: [architecture](../../docs/aws/deployment-architecture-aws.md) ·
-[runbook](../../docs/aws/deployment-runbook-aws.md) ·
-[stack contracts](../../docs/aws/cloudformation-stacks-aws.md)
+Docs: [architecture](../../platform/docs/aws/deployment-architecture-aws.md) ·
+[runbook](../../platform/docs/aws/deployment-runbook-aws.md) ·
+[stack contracts](../../platform/docs/aws/cloudformation-stacks-aws.md)
 
 ## Layout
 
@@ -67,5 +67,5 @@ CONVEX_DEPLOY_KEY=… infra/aws/scripts/deploy-manual.sh --env production --prof
   --sha <commit> --promote-from staging --from-profile my-staging
 ```
 
-See the [runbook](../../docs/aws/deployment-runbook-aws.md) for first-time setup (certificates,
+See the [runbook](../../platform/docs/aws/deployment-runbook-aws.md) for first-time setup (certificates,
 DNS, parameters) and for passing the deploy key without leaving it in shell history.

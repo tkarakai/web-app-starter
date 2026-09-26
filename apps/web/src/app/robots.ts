@@ -3,7 +3,7 @@ import { getRequestOrigin } from "@/lib/request-origin";
 
 // Dynamic so the origin comes from the request rather than being baked in at
 // build time — that is what lets one artifact serve any environment.
-// See docs/deployment-architecture.md
+// See platform/docs/deployment-architecture.md
 export const dynamic = "force-dynamic";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {

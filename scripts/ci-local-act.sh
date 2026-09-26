@@ -46,7 +46,7 @@
 # First run (online): Downloads and installs all tools to Docker volumes
 # Subsequent runs: Uses cached tools from volumes (works offline)
 #
-# See CLAUDE.md "Offline CI Mode (act)" for full documentation.
+# See platform/docs/ci.md "Offline CI Mode (act)" for full documentation.
 # =============================================================================
 #
 

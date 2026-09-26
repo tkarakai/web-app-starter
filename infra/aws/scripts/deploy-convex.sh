@@ -137,7 +137,7 @@ fi
 # on the Convex deployment exactly as they are for Vercel. Only check the one
 # the apps cannot run without.
 if [[ -z "$(convex_env get BETTER_AUTH_SECRET 2>/dev/null | tr -d '\r\n' || true)" ]]; then
-  die "BETTER_AUTH_SECRET is not set on the Convex ${ENV} deployment (see docs/aws/deployment-runbook-aws.md)"
+  die "BETTER_AUTH_SECRET is not set on the Convex ${ENV} deployment (see platform/docs/aws/deployment-runbook-aws.md)"
 fi
 
 log "Convex ready for env=${ENV}"

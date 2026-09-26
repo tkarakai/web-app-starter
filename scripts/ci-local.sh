@@ -424,7 +424,7 @@ print_step "Step 7/9: Production Build"
 # Two forms are exported because the apps differ: web and admin read runtime
 # (unprefixed) names so their artifacts stay promotable, while landing and
 # landing-static are static exports that must inline NEXT_PUBLIC_* at build time.
-# See docs/deployment-architecture.md
+# See platform/docs/deployment-architecture.md
 #
 # Local origins come from app.config.ts, as APP_CONFIG_* variables.
 _APP_CONFIG_VARS=$(./scripts/node-ts.sh scripts/app-config.ts shell) || exit 1

@@ -33,7 +33,7 @@ export class OpsService {
       `Manual setup: create ${this.configPath} from ops.config.example.json, then run gh auth login and vercel login.\n` +
       "Run bun run ops teams to find teamId, then bun run ops projects --team TEAM_ID to find project IDs.\n" +
       "Fill apps.<app>.projects.<environment>.id for the missing targets, then rerun the command. CI can supply VERCEL_TOKEN via a secret manager.\n" +
-      "See docs/ops-cli.md for the setup walkthrough.",
+      "See platform/docs/ops-cli.md for the setup walkthrough.",
       2, { configPath: this.configPath, missingProjectMappings: missing });
   }
   requireVercel(): Api {

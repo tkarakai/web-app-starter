@@ -115,7 +115,7 @@ Each value above must be resolved at request time instead of build time:
   - Server code: read process.env.<VAR> (unprefixed) from a dynamically rendered route.
   - Client code: read it from the public-config provider, which the root layout
     populates at request time.
-See docs/deployment-architecture.md
+See platform/docs/deployment-architecture.md
 MSG
   if [ "$MODE" = "--warn" ]; then
     echo "::warning::${leaks} leak(s) found; not failing the build (--warn)"
