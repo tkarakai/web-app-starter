@@ -76,6 +76,17 @@ bun run dev:storybook        # Component storybook (no Convex)
    - Landing static: `http://localhost:3004`
    - Storybook: `http://localhost:3003`
 
+   The **Convex UI** URL is printed by `bun run dev` and `bun run dev:status` when
+   the local dashboard is running. It defaults to `http://127.0.0.1:6790/`, but
+   Convex chooses another available port if that one is occupied (for example,
+   by another worktree). Use the printed URL for this deployment.
+
+   In anonymous local development, Convex starts the dashboard and supplies its
+   deployment credentials automatically. No Convex account, app admin login, or
+   separate dashboard setup is needed. Keep `bun run dev` running while using it.
+   To open it directly, run `cd packages/backend && bunx convex dashboard`;
+   add `--no-open` to print the URL without opening a browser.
+
 4. When you're done, stop everything:
 
 ```bash
