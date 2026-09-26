@@ -26,5 +26,5 @@ release artifact. Update the demo's installed artifact/baseline deliberately and
 run its full upgrade rehearsal before releasing. Registry publication is not
 configured.
 
-See [starter upgrades](../../docs/starter-upgrades.md) for the ownership rules,
-required evidence and unsupported package-to-vendored transitions.
+See [the demo README](../../apps/demo/README.md) and [UPGRADING.md](../../UPGRADING.md)
+for the ownership rules and required evidence.

@@ -60,7 +60,7 @@ Every major gets a ticket: an issue titled `deps: <package> <from> → <to>` wit
 `dependencies` (older tickets titled `migrate: …` are the same thing). Open it yourself, without
 asking. It holds the open work: usage, breaking changes that hit us, behaviour to prove
 unchanged, downstream impact, evidence so far, and "Work this with the `deps-major` skill". Keep
-it updated as evidence comes in. The `HOLD:` rule, the `deps/` PR and the log entry link it.
+it updated as evidence comes in. The `HOLD:` rule and the `deps/` PR link it.
 
 Its state is at most one status label (create a missing one with `gh label create <name>`):
 
@@ -87,8 +87,9 @@ An adopted ticket is closed by its PR.
 **Platform-bound versions** (Node, Bun, and anything a host runs for us): use the newest line that
 is Active LTS *and* supported by every host we deploy to (GitHub Actions, Vercel, Convex), at its
 latest patch. Without an LTS, use the latest stable version that meets the release age. When the
-move needs a vendor-side change (e.g. a Vercel project's Node setting), add it to *Awaiting
-external preconditions* in `docs/dependency-log.md`, label the ticket `deps:held`, and stop.
+move needs a vendor-side change (e.g. a Vercel project's Node setting), add an *Awaiting
+external preconditions* section to the ticket naming that change, label the ticket `deps:held`,
+and stop.
 `deps-update` asks the user once the upstream part is met, and their "Done" resumes the ticket.
 
 **Never force peers.** No `--force`, no overrides that ignore a peer range. If peers are not
@@ -149,7 +150,7 @@ High-risk, so the user decides, whatever the tier:
    sizes stay within the size-limit budgets, and nothing in the diff or the release notes
    suggests a slowdown. If the app turns out broken, reject; some changes can only be judged by
    trying them.
-7. **Verdict and PR.** Every verdict ends in one PR, with the log entry (step 8). If downstream
+7. **Verdict and PR.** Every verdict ends in one PR, with the decision record (step 8). If downstream
    apps must act, add a `CHANGELOG.md` **Action required** entry (see `dependency-migrations.md`).
    As a subagent, never merge: the parent does.
    - **Adopt**: title `chore(deps): <package> <from> → <to>`, body `Closes #<ticket>` and the
@@ -157,10 +158,10 @@ High-risk, so the user decides, whatever the tier:
      up to date (merge `main` into it if behind). On a high-risk ticket, not before the user's
      yes (run directly: ask; under `deps-update`: label `deps:awaiting-user` and stop).
    - **Hold or reject**: revert only the bump; keep the new tests. The PR carries the tests, a
-     `HOLD:` rule in `renovate.json` whose description links the ticket, and the log entry; body
+     `HOLD:` rule in `renovate.json` whose description links the ticket, and the decision record; body
      `Refs #<ticket>`, so the ticket stays open. Label the ticket `deps:held` or `deps:rejected`.
      Merge it as above: holding is always safe.
-8. **Record it** in `docs/dependency-log.md`, in that PR: versions, tier, decision, what was read,
+8. **Record it** in that PR's description, and link it from the ticket: versions, tier, decision, what was read,
    tests added, CI run, the ticket, and when to revisit. Rejections and rollbacks need the
    evidence.
 

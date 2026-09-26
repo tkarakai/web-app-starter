@@ -7,8 +7,9 @@ ecosystem has already vetted (not yanked, not a fresh supply-chain surprise).
 
 - Config: [`renovate.json`](../renovate.json)
 - Workflow: [`.github/workflows/renovate.yml`](../.github/workflows/renovate.yml)
-- Current catch-up and compatibility holds: [`dependency-catchup.md`](dependency-catchup.md)
-- Every decision, and what awaits a vendor-side change: [`dependency-log.md`](dependency-log.md)
+- Compatibility holds: `HOLD:` rules in `renovate.json` (see "Holds" below)
+- Every major decision, and what awaits a vendor-side change: its `deps:*` ticket and the PR that
+  lands it
 
 ## "Self-hosted" — what that means (and doesn't)
 
@@ -53,8 +54,8 @@ Defined in `renovate.json` → `packageRules`:
   `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`),
   the runtime baseline, and any security-relevant behaviour change need the user's yes. Every major gets a
   ticket (a `dependencies` issue with a `deps:*` status label), worked by one `deps-major` run;
-  independent tickets run in parallel, merged one at a time. Each decision is recorded in
-  [`dependency-log.md`](dependency-log.md). `convex` and `convex-test` majors travel together in the "convex monorepo" group.
+  independent tickets run in parallel, merged one at a time. Each decision is recorded on the
+  ticket and in the PR description. `convex` and `convex-test` majors travel together in the "convex monorepo" group.
 - **Holds** → a major that cannot work yet (an upstream peer range, our runtime floor) is capped
   with `allowedVersions` in a rule whose `description` starts with `HOLD:` and states the
   evidence and the **REMOVE when** condition. Holds are decisions: add or remove them in a
@@ -203,9 +204,19 @@ The following are already configured on this repo (via `gh api` / Settings):
    `CI Landing Static Complete` and `CI Storybook Complete` were **added on 2026-09-16**, so all
    six `*-complete` jobs are now required and a regression in any of the five apps can block an
    automerge. The list lives in **two** places — classic branch protection *and* ruleset `rule01`
-   (id `12113493`) — and both must be updated; see step 9 item 1 in
-   `docs/claude/auth-e2e-and-upgrade-plan.md` for the commands and the `PUT`-replaces-everything
-   caveat on the ruleset.
+   (id `12113493`) — and both must be updated. Verify both:
+
+   ```bash
+   gh api repos/<owner>/<repo>/branches/main/protection \
+     --jq '.required_status_checks.contexts'
+   gh api repos/<owner>/<repo>/rulesets/<ruleset-id> \
+     --jq '.rules[] | select(.type=="required_status_checks")
+           | .parameters.required_status_checks[].context'
+   ```
+
+   The ruleset is updated with `PUT`, which **replaces the whole ruleset**: read it first and send
+   back every rule plus `bypass_actors`, or you will silently drop protections. Re-check
+   `[.rules[].type]` afterwards.
 4. The **`RENOVATE_TOKEN`** secret exists (above).
 
 ## Diagnosing a stalled queue

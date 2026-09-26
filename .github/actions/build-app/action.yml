@@ -8,7 +8,7 @@ description: >-
   the environment variables declared as hashed in turbo.json). Two commits whose
   inputs are identical resolve to the same artifact, so an unchanged app is never
   rebuilt and every commit resolves to something deployable.
-  See docs/claude/build-once-promote-plan.md
+  See docs/deployment-architecture.md
 
 inputs:
   app:
@@ -190,7 +190,7 @@ runs:
     # Reports environment values that Next.js inlined at build time. These pin
     # the artifact to the environment it was built for and block promotion.
     # Warn-only while the migration is in progress — see
-    # docs/claude/build-once-promote-plan.md
+    # docs/deployment-architecture.md
     - name: Check artifact is promotable
       if: steps.resolve.outputs.found != 'true'
       shell: bash

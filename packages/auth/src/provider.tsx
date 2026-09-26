@@ -15,7 +15,7 @@ export function ConvexClientProvider({
   // scope: a NEXT_PUBLIC_* read is inlined into the client bundle at build time,
   // which pins the artifact to one environment. The root layout reads CONVEX_URL
   // at request time and passes it down instead.
-  // See docs/claude/build-once-promote-plan.md
+  // See docs/deployment-architecture.md
   const [convex] = useState(() => new ConvexReactClient(convexUrl));
 
   return (

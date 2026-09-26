@@ -108,7 +108,7 @@ jobs:
   # landing and landing-static hash their inlined, environment-specific config,
   # so they legitimately miss here and are built for production.
   # A miss also covers an artifact that has aged past the 90-day retention.
-  # See docs/claude/build-once-promote-plan.md
+  # See docs/deployment-architecture.md
   build-web:
     name: Resolve Web Artifact (Production)
     needs: validate

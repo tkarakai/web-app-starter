@@ -28,9 +28,7 @@ its business rules, navigation, styling or icon.
 
 `starter-upgrade.json` records these boundaries. There is no supported vendored
 starter category yet: the copied/shadcn-style UI is application-owned, not
-simultaneously editable and package-managed. See the
-[ownership contract](../../docs/starter-upgrades.md#ownership-who-may-change-each-file)
-for current limitations and the requirements for a future supported copy process.
+simultaneously editable and package-managed.
 
 ## Test a starter upgrade
 
@@ -52,7 +50,6 @@ through the author workspace source. When replacing a local package manually,
 refresh Bun's cache with `bun install --force --frozen-lockfile`; normal installs
 use the checked-in version. Upgrade verification checks the installed bytes too.
 
-[Starter upgrade commands and evidence](../../docs/starter-upgrades.md) explain
-the complete procedure. Releases are prepared by starter authors, upgrades are
+[`UPGRADING.md`](../../UPGRADING.md) explains the complete procedure. Releases are prepared by starter authors, upgrades are
 reviewed application PRs, and operations deploys the resulting approved commit.
 None of the upgrade commands deploys or changes the operations tooling.
