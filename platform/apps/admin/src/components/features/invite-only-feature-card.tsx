@@ -31,10 +31,10 @@ import {
 import { OnboardingModeTransition } from "@/components/onboarding/onboarding-mode-transition";
 
 export function InviteOnlyFeatureCard() {
-  const onboardingType = useQuery(api.appSettings.get, {
+  const onboardingType = useQuery(api.platform.appSettings.get, {
     key: "onboardingType",
   });
-  const setSetting = useMutation(api.appSettings.set);
+  const setSetting = useMutation(api.platform.appSettings.set);
 
   const [togglePending, setTogglePending] = React.useState(false);
   const [confirmEnable, setConfirmEnable] = React.useState(false);

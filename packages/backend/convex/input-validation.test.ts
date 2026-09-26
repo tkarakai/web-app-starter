@@ -6,8 +6,8 @@ import {
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
-  requireProjectAccess,
-} from "./functions";
+} from "./platform/functions";
+import { requireProjectAccess } from "./projectAccess";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");

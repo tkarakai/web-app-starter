@@ -76,7 +76,7 @@ export function SessionsList() {
   const ts = useTranslations("dashboard.sessions");
   const tc = useTranslations("common");
 
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
   const [sessions, setSessions] = React.useState<Session[] | null>(null);
   const [currentSessionToken, setCurrentSessionToken] = React.useState<string | null>(null);
   const [revoking, setRevoking] = React.useState<string | null>(null);

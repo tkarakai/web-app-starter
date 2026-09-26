@@ -7,7 +7,7 @@ import { Card, CardContent, Skeleton } from "@web-app-starter/design-system";
 import { IntegrationProviderCard } from "@/components/configure/integration-provider-card";
 
 export function IntegrationsDashboard() {
-  const status = useQuery(api.integrations.getStatus, {});
+  const status = useQuery(api.platform.integrations.getStatus, {});
 
   if (status === undefined) {
     return (

@@ -3,10 +3,10 @@ import { v } from "convex/values";
 import {
   authedMutation,
   authedQuery,
-  requireProjectAccess,
   assertMaxLength,
   MAX_NAME_LENGTH,
-} from "./functions";
+} from "./platform/functions";
+import { requireProjectAccess } from "./projectAccess";
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 

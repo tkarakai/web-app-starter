@@ -87,7 +87,7 @@ export function AdminSidebar({
   const [manageOpen, setManageOpen] = React.useState(true);
   const [observabilityOpen, setObservabilityOpen] = React.useState(true);
   const [configureOpen, setConfigureOpen] = React.useState(true);
-  const announcements = useQuery(api.announcements.list, {});
+  const announcements = useQuery(api.platform.announcements.list, {});
   const hasLiveAnnouncement = React.useMemo(
     () => Boolean(announcements?.some((announcement) => announcement.isLive)),
     [announcements]

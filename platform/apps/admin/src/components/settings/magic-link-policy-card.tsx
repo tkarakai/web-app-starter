@@ -26,10 +26,10 @@ import {
 } from "@web-app-starter/design-system";
 
 export function MagicLinkPolicyCard() {
-  const magicLinkEnabled = useQuery(api.appSettings.get, {
+  const magicLinkEnabled = useQuery(api.platform.appSettings.get, {
     key: "userMagicLinkEnabled",
   });
-  const setSetting = useMutation(api.appSettings.set);
+  const setSetting = useMutation(api.platform.appSettings.set);
 
   const [togglePending, setTogglePending] = React.useState(false);
   const [confirmToggle, setConfirmToggle] = React.useState<boolean | null>(null);

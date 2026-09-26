@@ -3,11 +3,11 @@ import { v } from "convex/values";
 import {
   authedMutation,
   authedQuery,
-  requireProjectAccess,
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
-} from "./functions";
+} from "./platform/functions";
+import { requireProjectAccess } from "./projectAccess";
 
 export const listByProject = authedQuery({
   args: { projectId: v.id("projects") },

@@ -34,7 +34,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
   const [completing, setCompleting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const viewBackupCodes = useAction(api.auth.viewBackupCodes);
+  const viewBackupCodes = useAction(api.platform.auth.viewBackupCodes);
 
   // Fetch backup codes on resume flow (when none are passed from Step 1)
   React.useEffect(() => {

@@ -93,16 +93,16 @@ export function AdminSignInForm() {
   }, [email]);
 
   // Policy settings
-  const userMfaRequired = useQuery(api.appSettings.getPublic, {
+  const userMfaRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "userMfaRequired",
   });
-  const adminMfaRequired = useQuery(api.appSettings.getPublic, {
+  const adminMfaRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "adminMfaRequired",
   });
-  const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+  const userPasskeyPolicy = useQuery(api.platform.appSettings.getPublic, {
     key: "userPasskeyPolicy",
   });
-  const adminPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+  const adminPasskeyPolicy = useQuery(api.platform.appSettings.getPublic, {
     key: "adminPasskeyPolicy",
   });
 

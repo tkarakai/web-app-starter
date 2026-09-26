@@ -20,7 +20,7 @@ export async function getAuthUserLocaleAction(): Promise<string | null> {
     // that would pin the artifact to one environment.
     // See platform/docs/deployment-architecture.md
     const locale = await fetchQuery(
-      api.userProfiles.getLocale,
+      api.platform.userProfiles.getLocale,
       {},
       { url: process.env.CONVEX_URL }
     );

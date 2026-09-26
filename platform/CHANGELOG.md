@@ -36,6 +36,33 @@ version. Release-specific compatibility and deployment steps are listed explicit
   then the build uses the checkout's directory and the deploy warns.
   **Done when:** `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-platform-packages.ts --check`
   exits 0 and `bun run typecheck`, `bun run lint` and `bun run build` pass.
+- **Who is affected:** every app. Platform Convex functions moved from
+  `packages/backend/convex/<module>.ts` to `packages/backend/convex/platform/<module>.ts`, so
+  their API paths changed: `api.<module>.*` and `internal.<module>.*` are now
+  `api.platform.<module>.*` / `internal.platform.<module>.*` for `adminAuth`, `adminEmails`,
+  `adminInvitationActions`, `adminInvitations`, `announcements`, `appSettings`, `auditTrail`,
+  `auth`, `bootstrap`, `developmentOnly`, `devSeed`, `e2eFixtures`, `integrations`, `meta`,
+  `passwordStrength`, `rateLimits`, `securityPolicies`, `sessions`, `userProfiles`, `waitlist`,
+  `waitlistActions` and `waitlistTokens` (and their helper modules). CLI paths follow:
+  `convex run platform/bootstrap:initialize`. The Better Auth component moved to
+  `convex/platform/betterAuth/`. `schema.ts`, `http.ts`, `convex.config.ts` and
+  `auth.config.ts` are now thin seams: `schema.ts` spreads `platformTables` (from
+  `convex/platform/tables.ts`) and the sample's `sampleTables` (`convex/sampleTables.ts`);
+  `http.ts` calls `registerPlatformRoutes(http)`. `requireProjectAccess` moved out of the
+  platform's `functions.ts` into the sample domain's `convex/projectAccess.ts`. Platform
+  tests moved with their modules and import `modules` from `convex/test.modules.ts`.
+  **What to do:** run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-convex-platform.ts` from the
+  repository root (`--convex-dir <dir>` if your Convex functions are elsewhere). It rewrites
+  function references, `convex run` paths, and relative imports from your Convex modules to
+  the moved ones (`./functions` → `./platform/functions`). Take the starter's `schema.ts`,
+  `http.ts`, `convex.config.ts` and `auth.config.ts`, then re-add your own tables after the
+  `...platformTables` spread and your own routes after `registerPlatformRoutes(http)`. Delete
+  your copies of the moved modules at the `convex/` root. If your app code called
+  `requireProjectAccess`, import it from `./projectAccess`. Regenerate the API with
+  `bun run dev` (or `bunx convex dev --once`). Data is unaffected: table names are unchanged.
+  **Done when:** the codemod's `--check` exits 0, `ls packages/backend/convex/*.ts` lists no
+  moved module, and `bun run typecheck` and `bun run test:convex` pass.
 - **Who is affected:** apps whose hosted (staging or production) Convex deployment has no
   `RESEND_API_KEY`. Auth and invitation emails there used to be written to the Convex logs;
   they now fail with `EMAIL_DELIVERY_NOT_CONFIGURED`.
@@ -73,6 +100,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
+- `platform/tooling/codemods/v2-convex-platform.ts`: the codemod for the Convex
+  `convex/platform/` move (idempotent; `--check` for CI).
 - `platform/VERSION` (the installed platform version), `platform/templates/README.md` and
   `platform/templates/LICENSE` (draft, pending legal review), and
   `platform/tooling/app-config.ts dir <app>` / `APP_CONFIG_DIR_<APP>` for an app's directory.

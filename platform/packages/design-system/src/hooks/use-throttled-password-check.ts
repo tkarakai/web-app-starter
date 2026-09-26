@@ -24,7 +24,7 @@ const POLL_MS = 250;
  * Usage:
  * ```tsx
  * const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
- * const result = useQuery(api.passwordStrength.evaluate,
+ * const result = useQuery(api.platform.passwordStrength.evaluate,
  *   throttledPassword ? { password: throttledPassword, ... } : "skip");
  *
  * // Notify when query resolves so the hook can send queued passwords

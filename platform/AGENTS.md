@@ -25,14 +25,17 @@ A **Bun workspaces + Turborepo** monorepo:
   `@web-app-starter/*` packages (`platform/packages/`), the admin dashboard and component
   showcase (`platform/apps/`), dev and CI tooling (`platform/tooling/`), config bases
   (`platform/config/`), docs, skills, templates, and the release files (`CHANGELOG.md`,
-  `UPGRADING.md`, `VERSIONING.md`, `VERSION`, licences).
+  `UPGRADING.md`, `VERSIONING.md`, `VERSION`, licences). In the backend,
+  `packages/backend/convex/platform/` holds the platform's Convex functions, tables
+  (`platformTables`), HTTP routes and Better Auth component.
 - **Seams** are the files where your app meets the platform. Edit them, and keep the platform's
   entries intact:
 
   | Seam | Use it to |
   |---|---|
   | `app.config.ts` | Set product name, legal entity, support email, local ports, auth cookie prefix, brand and feature switches (`platform-configure`) |
-  | `packages/backend/convex/schema.ts` | Add your tables next to the platform's (`platform-add-table`) |
+  | `packages/backend/convex/schema.ts` | Add your tables after the `...platformTables` hook (`platform-add-table`) |
+  | `packages/backend/convex/http.ts`, `convex.config.ts`, `auth.config.ts` | Add your HTTP routes after `registerPlatformRoutes(http)`, your components after the platform's |
   | `platform/packages/i18n/messages/*.json` | Add your strings in your own namespaces (`platform-add-strings`). The one file set under `platform/` you edit, until app message files arrive |
   | Root `package.json`, `turbo.json`, `tsconfig.json`, `eslint.config.mjs`, `renovate.json` | Add scripts, tasks, env declarations, lint and dependency rules; `tsconfig` and ESLint extend `platform/config/` |
   | Each app's `.env.example` | Declare the environment variables your code reads |
@@ -88,7 +91,7 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 |---|---|
 | `@web-app-starter/design-system` | `import { Button, cn } from "@web-app-starter/design-system"`; styles: `@web-app-starter/design-system/styles/globals.css` |
 | `@web-app-starter/auth` | `@web-app-starter/auth/client` (`authClient`), `@web-app-starter/auth/server` (`auth`, `isAuthenticated`, ...), `@web-app-starter/auth/provider` |
-| `@repo/backend` | `import { api } from "@repo/backend"` |
+| `@repo/backend` | `import { api } from "@repo/backend"`: platform functions are `api.platform.<module>`, app functions `api.<module>` |
 | `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
 | `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
 
@@ -133,7 +136,7 @@ by package name (`@web-app-starter/*` for the platform, `@repo/backend` for the 
 
 **Be careful:**
 
-- `convexTest()` in this monorepo needs the module glob: `convexTest(schema, import.meta.glob("./**/*.*s"))`.
+- `convexTest()` in this monorepo needs the module glob: `convexTest(schema, import.meta.glob("./**/*.*s"))` in a test at the `convex/` root; in a subdirectory import `modules` from `convex/test.modules.ts`.
 - A protected web page must live under `src/app/[locale]/(dashboard)/dashboard/` to get the proxy,
   layout and client guards ([docs/architecture.md](docs/architecture.md)).
 - Schema changes that remove, rename or narrow need a widen/migrate/narrow sequence

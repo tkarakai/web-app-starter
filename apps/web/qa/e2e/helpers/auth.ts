@@ -17,7 +17,7 @@ import * as path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * The user seeded by `packages/backend/convex/devSeed.ts`. The password is the
+ * The user seeded by `packages/backend/convex/platform/devSeed.ts`. The password is the
  * email repeated three times, and the seed marks the address email-verified, so
  * this account can sign in without an inbox.
  *

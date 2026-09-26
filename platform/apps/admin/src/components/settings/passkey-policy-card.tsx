@@ -36,8 +36,8 @@ function normalizePolicy(value: unknown): PasskeyPolicy {
 export function PasskeyPolicyCard({ scope }: { scope: Scope }) {
   const isAdminScope = scope === "admin";
   const key = SETTINGS_KEY[scope];
-  const policyRaw = useQuery(api.appSettings.get, { key });
-  const setSetting = useMutation(api.appSettings.set);
+  const policyRaw = useQuery(api.platform.appSettings.get, { key });
+  const setSetting = useMutation(api.platform.appSettings.set);
   const [saving, setSaving] = React.useState(false);
 
   const isLoading = policyRaw === undefined;

@@ -21,7 +21,7 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthUser();
-  const setLocale = useMutation(api.userProfiles.setLocale);
+  const setLocale = useMutation(api.platform.userProfiles.setLocale);
   const isOnline = useNetworkStatus();
 
   const localeOptions = locales.map((code) => ({

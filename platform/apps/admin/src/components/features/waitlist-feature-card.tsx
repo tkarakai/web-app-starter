@@ -34,13 +34,13 @@ import { OnboardingModeTransition } from "@/components/onboarding/onboarding-mod
 import { EmailTemplateEditor } from "@/components/waitlist/email-template-editor";
 
 export function WaitlistFeatureCard() {
-  const onboardingType = useQuery(api.appSettings.get, {
+  const onboardingType = useQuery(api.platform.appSettings.get, {
     key: "onboardingType",
   });
-  const invitationExpiryDays = useQuery(api.appSettings.get, {
+  const invitationExpiryDays = useQuery(api.platform.appSettings.get, {
     key: "invitationTokenExpiryDays",
   });
-  const setSetting = useMutation(api.appSettings.set);
+  const setSetting = useMutation(api.platform.appSettings.set);
 
   const [togglePending, setTogglePending] = React.useState(false);
   const [confirmToggle, setConfirmToggle] = React.useState<boolean | null>(null);

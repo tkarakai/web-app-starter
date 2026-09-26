@@ -6,7 +6,7 @@ import { api } from "@repo/backend";
 
 export default async function ForbiddenPage() {
   const t = await getTranslations("forbidden");
-  const user = await fetchAuthQuery(api.auth.getCurrentUser).catch(
+  const user = await fetchAuthQuery(api.platform.auth.getCurrentUser).catch(
     () => null,
   );
 

@@ -58,7 +58,7 @@ bun run aws:local:up         # first run also builds the patched Floci image (~3
 | `bun run aws:local:down` | Stops everything and wipes its Convex data; `aws:local:up` starts fresh |
 
 The dev seed accounts exist, as in `bun run dev` (`admin@admin.com`, `user@user.com`; passwords in
-`packages/backend/convex/devSeed.ts`). Passkeys work in a normal browser: `*.localhost` counts as a
+`packages/backend/convex/platform/devSeed.ts`). Passkeys work in a normal browser: `*.localhost` counts as a
 secure context without HTTPS.
 
 Deploy another commit with `infra/aws/scripts/deploy-manual.sh --env local --sha <commit>`; the

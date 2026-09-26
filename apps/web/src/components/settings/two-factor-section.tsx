@@ -45,7 +45,7 @@ export function TwoFactorSection() {
   const otpRef = React.useRef<OtpInputHandle>(null);
   const [loading, setLoading] = React.useState(false);
   const [statusLoading, setStatusLoading] = React.useState(true);
-  const fetchBackupCodes = useAction(api.auth.viewBackupCodes);
+  const fetchBackupCodes = useAction(api.platform.auth.viewBackupCodes);
   const [disableDialogOpen, setDisableDialogOpen] = React.useState(false);
   const [regenerateDialogOpen, setRegenerateDialogOpen] = React.useState(false);
 

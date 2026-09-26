@@ -8,7 +8,7 @@
  *
  * Backed by `POST /api/dev/e2e-user` on the Convex HTTP router, which is gated
  * on `DEV_SEED_ENABLED` and refuses any address outside `e2e-<token>@e2e.local`.
- * See `packages/backend/convex/e2eFixtures.ts` for the safety rationale.
+ * See `packages/backend/convex/platform/e2eFixtures.ts` for the safety rationale.
  *
  * @module qa/e2e/helpers/fixtures
  */

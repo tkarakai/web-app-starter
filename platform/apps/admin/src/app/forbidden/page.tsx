@@ -3,7 +3,7 @@ import { fetchAuthQuery } from "@web-app-starter/auth/server";
 import { api } from "@repo/backend";
 
 export default async function ForbiddenPage() {
-  const user = await fetchAuthQuery(api.auth.getCurrentUser).catch(
+  const user = await fetchAuthQuery(api.platform.auth.getCurrentUser).catch(
     () => null,
   );
 

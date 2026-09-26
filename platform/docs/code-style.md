@@ -55,6 +55,17 @@ export function ItemCard({ className, children }: ItemCardProps) {
 
 ## Convex Backend
 
+- **Layout.** `packages/backend/convex/` is one Convex project in two zones. Platform modules
+  live in `convex/platform/` (called as `api.platform.<module>` / `internal.platform.<module>`,
+  and never edited in an app). App modules, including the sample domain (`projects.ts`,
+  `tasks.ts`, `files.ts`, `projectAccess.ts`), live at the `convex/` root and are called as
+  `api.<module>`.
+- **Seams** at the root: `schema.ts` spreads `platformTables` (from `platform/tables.ts`) and the
+  sample's `sampleTables` (from `sampleTables.ts`) before the app's own tables; `http.ts` calls
+  `registerPlatformRoutes(http)` before the app's routes; `convex.config.ts` installs the platform's
+  Better Auth component; `auth.config.ts` re-exports the platform's auth config.
+- App modules import the platform's function builders and helpers from `./platform/*`, for example
+  `import { authedQuery } from "./platform/functions"`.
 - **Schema** is defined in `packages/backend/convex/schema.ts`
 - Use `v` validator for all fields
 - Queries are read-only, mutations modify data

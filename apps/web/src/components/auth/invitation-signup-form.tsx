@@ -34,15 +34,15 @@ export function InvitationSignupForm({ token }: { token?: string }) {
 
   // Validate token via Convex query (real-time)
   const tokenValidation = useQuery(
-    api.waitlistTokens.validate,
+    api.platform.waitlistTokens.validate,
     token ? { token } : "skip"
   );
 
-  const beginClaim = useMutation(api.waitlistTokens.beginClaim);
-  const finalizeClaim = useMutation(api.waitlistTokens.finalizeClaim);
+  const beginClaim = useMutation(api.platform.waitlistTokens.beginClaim);
+  const finalizeClaim = useMutation(api.platform.waitlistTokens.finalizeClaim);
 
   // Read admin setting so we know whether to gate unverified users after sign-up.
-  const emailVerifRequired = useQuery(api.appSettings.getPublic, {
+  const emailVerifRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "userEmailVerificationRequired",
   });
 
@@ -55,7 +55,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   // Throttled password for server-side strength evaluation (at most once per 500ms)
   const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
   const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
+    api.platform.passwordStrength.evaluate,
     throttledPassword && tokenValidation?.valid
       ? { password: throttledPassword, email: tokenValidation.email, role: "user" as const }
       : "skip",

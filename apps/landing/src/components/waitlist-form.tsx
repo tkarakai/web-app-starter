@@ -47,7 +47,7 @@ const EXCITEMENT_LEVELS = [
   "friend-made-me",
 ] as const;
 
-/** Optional profile fields; must match VALID_ROLES in packages/backend/convex/waitlist.ts. */
+/** Optional profile fields; must match VALID_ROLES in packages/backend/convex/platform/waitlist.ts. */
 const ROLES = ["founder", "engineering", "product", "design", "agency", "other"] as const;
 
 function MultiSelectDropdown({

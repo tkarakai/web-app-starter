@@ -25,7 +25,7 @@ export function ChangePasswordForm() {
   const tps = useTranslations("passwordStrength");
 
   const authUser = useAuthUser();
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -35,7 +35,7 @@ export function ChangePasswordForm() {
   // Throttled password for server-side strength evaluation (at most once per 500ms)
   const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(newPassword);
   const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
+    api.platform.passwordStrength.evaluate,
     throttledPassword
       ? { password: throttledPassword, email: authUser?.email ?? "", role: "user" as const }
       : "skip",

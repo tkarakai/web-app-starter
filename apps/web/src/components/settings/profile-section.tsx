@@ -57,10 +57,10 @@ export function ProfileSection() {
   const router = useRouter();
   const { theme } = useTheme();
 
-  const userProfile = useQuery(api.userProfiles.get) ?? null;
-  const upsertProfile = useMutation(api.userProfiles.upsert);
-  const setLocale = useMutation(api.userProfiles.setLocale);
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
+  const upsertProfile = useMutation(api.platform.userProfiles.upsert);
+  const setLocale = useMutation(api.platform.userProfiles.setLocale);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   const [name, setName] = React.useState(authUser?.name ?? "");
   const [avatarColor, setAvatarColor] = React.useState<string>("");

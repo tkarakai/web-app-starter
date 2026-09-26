@@ -737,14 +737,14 @@ if [ "$NEED_CONVEX" = true ]; then
         (cd "$CONVEX_DIR" && bunx convex env set GIT_BRANCH "$CURRENT_GIT_BRANCH" > /dev/null 2>&1) || true
     fi
     # The seed (and the console fallback for auth emails) runs only when every
-    # SITE_URL origin is loopback HTTP (convex/developmentOnly.ts). A fresh
+    # SITE_URL origin is loopback HTTP (convex/platform/developmentOnly.ts). A fresh
     # backend, as in CI, has no SITE_URL yet: the real origins are synced once
     # the apps are up, below. Give it a provisional local value until then.
     EXISTING_SITE_URL=$(cd "$CONVEX_DIR" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
     if [ -z "$EXISTING_SITE_URL" ] || [ "$EXISTING_SITE_URL" = "undefined" ]; then
         (cd "$CONVEX_DIR" && bunx convex env set SITE_URL "$APP_CONFIG_ORIGIN_WEB" > /dev/null 2>&1) || true
     fi
-    SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run devSeed:seed 2>&1) || true
+    SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run platform/devSeed:seed 2>&1) || true
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
         echo -e "  ${GREEN}✔${NC} Dev users already exist"
     elif echo "$SEED_OUTPUT" | grep -q "Dev seed complete"; then
@@ -866,7 +866,7 @@ start_next_app() {
     # is written as APP_ORIGIN and consumed only by the Playwright config, as the
     # URL to point tests at. It is deliberately NOT called SITE_URL: that name
     # already belongs to Convex, where it holds a comma-separated list of trusted
-    # origins (see the sync below and getSiteUrls() in convex/auth.ts).
+    # origins (see the sync below and getSiteUrls() in convex/platform/auth.ts).
     # landing still inlines NEXT_PUBLIC_SITE_URL at build time.
     if [ -n "$next_port" ]; then
         case "$app_name" in
@@ -882,7 +882,7 @@ start_next_app() {
     # Sync this app's origin into Convex's SITE_URL.
     #
     # SITE_URL is a comma-separated list; the backend splits it and uses every
-    # entry as a trusted origin (see getSiteUrls() in convex/auth.ts). This used
+    # entry as a trusted origin (see getSiteUrls() in convex/platform/auth.ts). This used
     # to run for the web app only, so starting landing on its own left its
     # origin untrusted and every browser call to the Convex HTTP router failed
     # CORS -- which is exactly how it failed the moment E2E first ran in CI.

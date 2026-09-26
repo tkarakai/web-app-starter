@@ -30,7 +30,7 @@ export function useAuthUser(): AuthUser | null {
 }
 
 type AuthGuardProps = {
-  preloadedUser: Preloaded<typeof api.auth.getCurrentUser>;
+  preloadedUser: Preloaded<typeof api.platform.auth.getCurrentUser>;
   children: React.ReactNode;
 };
 
@@ -40,22 +40,22 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
   const session = authClient.useSession();
   const [wasAuthenticated, setWasAuthenticated] = React.useState(false);
 
-  const userEmailVerifRequired = useQuery(api.appSettings.getPublic, {
+  const userEmailVerifRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "userEmailVerificationRequired",
   });
-  const adminEmailVerifRequired = useQuery(api.appSettings.getPublic, {
+  const adminEmailVerifRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "adminEmailVerificationRequired",
   });
-  const userMfaRequired = useQuery(api.appSettings.getPublic, {
+  const userMfaRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "userMfaRequired",
   });
-  const adminMfaRequired = useQuery(api.appSettings.getPublic, {
+  const adminMfaRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "adminMfaRequired",
   });
-  const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+  const userPasskeyPolicy = useQuery(api.platform.appSettings.getPublic, {
     key: "userPasskeyPolicy",
   });
-  const adminPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+  const adminPasskeyPolicy = useQuery(api.platform.appSettings.getPublic, {
     key: "adminPasskeyPolicy",
   });
 

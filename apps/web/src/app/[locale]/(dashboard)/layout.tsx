@@ -20,12 +20,12 @@ export default async function DashboardLayout({
 
   let preloadedUser;
   try {
-    preloadedUser = await preloadAuthQuery(api.auth.getCurrentUser);
+    preloadedUser = await preloadAuthQuery(api.platform.auth.getCurrentUser);
   } catch {
     redirect("/api/auth/clear-session");
   }
 
-  const user = await fetchAuthQuery(api.auth.getCurrentUser);
+  const user = await fetchAuthQuery(api.platform.auth.getCurrentUser);
   if (!user) {
     redirect("/api/auth/clear-session");
   }
@@ -46,7 +46,7 @@ export default async function DashboardLayout({
   // the user hasn't set up 2FA, redirect to settings security tab.
   if (userRecord.twoFactorEnabled !== true) {
     try {
-      const mfaRequired = await fetchAuthQuery(api.appSettings.getPublic, {
+      const mfaRequired = await fetchAuthQuery(api.platform.appSettings.getPublic, {
         key: "userMfaRequired",
       });
       if (mfaRequired === true) {

@@ -106,7 +106,7 @@ export function CreateAccountStep({ email, onBeforeSignUp, onComplete, onBack }:
   // Throttled password for server-side strength evaluation (at most once per 500ms)
   const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
   const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
+    api.platform.passwordStrength.evaluate,
     throttledPassword
       ? { password: throttledPassword, email, role: "admin" as const }
       : "skip",

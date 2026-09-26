@@ -80,7 +80,7 @@ export function AppSidebar({
   const tt = useTranslations("theme");
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
-  const userProfile = useQuery(api.userProfiles.get) ?? null;
+  const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);

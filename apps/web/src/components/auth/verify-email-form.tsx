@@ -68,7 +68,7 @@ export function VerifyEmailForm() {
 
   // Real-time subscription: when the user verifies via the email link (even in
   // another tab), Convex pushes the updated record and we redirect automatically.
-  const currentUser = useQuery(api.auth.getCurrentUser);
+  const currentUser = useQuery(api.platform.auth.getCurrentUser);
   React.useEffect(() => {
     if (showTokenResult) return;
     const userRecord = currentUser as Record<string, unknown> | null | undefined;

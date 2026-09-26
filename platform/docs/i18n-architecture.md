@@ -384,7 +384,7 @@ t("count", { count: 5 }); // "5 tasks"
 Backend (Convex) functions throw error codes as plain UPPER_SNAKE_CASE strings, keeping the backend completely locale-agnostic:
 
 ```ts
-// packages/backend/convex/functions.ts
+// packages/backend/convex/platform/functions.ts
 throw new Error("NOT_AUTHENTICATED");
 throw new Error("PROJECT_NOT_FOUND");
 

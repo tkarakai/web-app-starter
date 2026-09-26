@@ -32,7 +32,7 @@ function ActiveAnnouncementBannerHost({
 }: AnnouncementBannerHostProps) {
   const t = useTranslations("common");
   const pathname = usePathname();
-  const announcement = useQuery(api.announcements.getActivePublic);
+  const announcement = useQuery(api.platform.announcements.getActivePublic);
   const [dismissedId, setDismissedId] = React.useState<string | null>(null);
   const [hasHydratedDismissal, setHasHydratedDismissal] = React.useState(false);
   const bannerContainerRef = React.useRef<HTMLDivElement | null>(null);

@@ -94,7 +94,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   // Throttled password for server-side strength evaluation (at most once per 500ms)
   const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
   const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
+    api.platform.passwordStrength.evaluate,
     throttledPassword
       ? { password: throttledPassword, email, role: "user" as const }
       : "skip",
@@ -114,25 +114,25 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const isSignUp = mode === "sign-up";
 
   // Policy queries
-  const userEmailVerifRequired = useQuery(api.appSettings.getPublic, {
+  const userEmailVerifRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "userEmailVerificationRequired",
   });
-  const adminEmailVerifRequired = useQuery(api.appSettings.getPublic, {
+  const adminEmailVerifRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "adminEmailVerificationRequired",
   });
-  const userMfaRequired = useQuery(api.appSettings.getPublic, {
+  const userMfaRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "userMfaRequired",
   });
-  const adminMfaRequired = useQuery(api.appSettings.getPublic, {
+  const adminMfaRequired = useQuery(api.platform.appSettings.getPublic, {
     key: "adminMfaRequired",
   });
-  const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+  const userPasskeyPolicy = useQuery(api.platform.appSettings.getPublic, {
     key: "userPasskeyPolicy",
   });
-  const adminPasskeyPolicy = useQuery(api.appSettings.getPublic, {
+  const adminPasskeyPolicy = useQuery(api.platform.appSettings.getPublic, {
     key: "adminPasskeyPolicy",
   });
-  const magicLinkEnabled = useQuery(api.appSettings.getPublic, {
+  const magicLinkEnabled = useQuery(api.platform.appSettings.getPublic, {
     key: "userMagicLinkEnabled",
   });
 
