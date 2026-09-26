@@ -22,6 +22,8 @@ import type * as platform_auditTrailConstants from "../platform/auditTrailConsta
 import type * as platform_auditTrailHelpers from "../platform/auditTrailHelpers.js";
 import type * as platform_auth from "../platform/auth.js";
 import type * as platform_bootstrap from "../platform/bootstrap.js";
+import type * as platform_componentMigration from "../platform/componentMigration.js";
+import type * as platform_componentMigrationLegacy from "../platform/componentMigrationLegacy.js";
 import type * as platform_devSeed from "../platform/devSeed.js";
 import type * as platform_devTotp from "../platform/devTotp.js";
 import type * as platform_developmentOnly from "../platform/developmentOnly.js";
@@ -70,6 +72,8 @@ declare const fullApi: ApiFromModules<{
   "platform/auditTrailHelpers": typeof platform_auditTrailHelpers;
   "platform/auth": typeof platform_auth;
   "platform/bootstrap": typeof platform_bootstrap;
+  "platform/componentMigration": typeof platform_componentMigration;
+  "platform/componentMigrationLegacy": typeof platform_componentMigrationLegacy;
   "platform/devSeed": typeof platform_devSeed;
   "platform/devTotp": typeof platform_devTotp;
   "platform/developmentOnly": typeof platform_developmentOnly;

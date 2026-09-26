@@ -24,6 +24,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** any existing deployment with platform data in app-level tables. Before
+  deploying this release, prepare the additive bridge with
+  `platform/tooling/codemods/v2-component-data-bridge.ts`, stop writers, and run the internal
+  `platform/componentMigration:run` action for that deployment. Require a complete, matching
+  status report before deploying the final backend/apps. The copy is resumable, remaps invitation
+  references, and transfers announcement jobs atomically. The deploy action blocks unmigrated
+  legacy data. See [the migration procedure](docs/component-data-migration.md). Legacy definitions
+  leave the schema; source rows remain for recovery. New empty apps need no copy.
+
 - **Who is affected:** apps reading protected-admin addresses directly. `adminEmails`
   now lives in the platform component, including signup promotion, protected-admin checks
   and password-reset policy lookup. **What to do:** use `api.platform.adminEmails.listProtected`

@@ -20,7 +20,8 @@ import {
   AUDIT_SOURCE_TRANSPORTS,
   AUDIT_STATUSES,
 } from "./auditTrailConstants";
-import { mutation, query } from "./_generated/server";
+import { mutation } from "./_generated/server";
+import { query } from "./functions";
 import schema, { auditTrailFields } from "./schema";
 
 // ---------------------------------------------------------------------------
