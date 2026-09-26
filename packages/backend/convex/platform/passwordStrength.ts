@@ -120,7 +120,7 @@ export const evaluate = query({
       );
       if (!user) return null;
       email = user.email;
-      const admin = await ctx.db.query("adminEmails").withIndex("by_email", (q) => q.eq("email", email)).first();
+      const admin = await ctx.runQuery(components.platform.adminEmails.contains, { email });
       role = admin ? "admin" : "user";
     }
     return evaluatePasswordStrength(password, email, role);

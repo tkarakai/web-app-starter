@@ -16,7 +16,7 @@ async function resetAccount(role: "admin" | "user", expiresAt = Date.now() + 60_
   await t.mutation(components.betterAuth.adapter.create, {
     input: { model: "verification", data: { identifier: "reset-password:test-token", value: user._id, expiresAt, createdAt: Date.now(), updatedAt: Date.now() } },
   });
-  if (role === "admin") await t.run(async (ctx) => { await ctx.db.insert("adminEmails", { email }); });
+  if (role === "admin") await t.mutation(components.platform.adminEmails.ensure, { email });
   return { t, email };
 }
 

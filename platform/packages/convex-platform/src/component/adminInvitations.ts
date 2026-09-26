@@ -1,3 +1,4 @@
+import { ensureAdminEmail } from "./adminEmails";
 /** Trusted app callers only; clients use the authenticated app wrappers. */
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
@@ -222,6 +223,8 @@ export const claimInvitation = mutation({
       onboardingStep: 1,
     });
 
+    // Token possession has been proved; signup may now promote this email.
+    await ensureAdminEmail(ctx, doc.email);
     return { email: doc.email };
 
   },

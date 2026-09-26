@@ -24,6 +24,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** apps reading protected-admin addresses directly. `adminEmails`
+  now lives in the platform component, including signup promotion, protected-admin checks
+  and password-reset policy lookup. **What to do:** use `api.platform.adminEmails.listProtected`
+  for the admin-only email list or `internal.platform.adminEmails.list` in backend code.
+  Run `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-admin-email-types.ts`
+  to migrate app-model row/ID types to `AdminEmail` and opaque strings. Profiles, sessions
+  and rate-limit state remain app-side; legacy admin rows await the staged data migration.
+
 - **Who is affected:** apps consuming waitlists or invitations. These tables now live in
   the platform component; existing wrapper API paths, auth checks and email delivery remain.
   **What to do:** run

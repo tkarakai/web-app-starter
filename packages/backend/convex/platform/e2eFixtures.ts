@@ -81,13 +81,7 @@ export const prepareE2eInvitation = internalMutation({
     }
 
     if (args.isAdmin) {
-      const existingAdmin = await ctx.db
-        .query("adminEmails")
-        .withIndex("by_email", (q) => q.eq("email", args.email))
-        .first();
-      if (!existingAdmin) {
-        await ctx.db.insert("adminEmails", { email: args.email });
-      }
+      await ctx.runMutation(components.platform.adminEmails.ensure, { email: args.email });
     }
 
     await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["e2e"], excitement: ["e2e"] }), token: `e2e-fixture-${args.email}`, ttlMs: 24 * 60 * 60_000 });

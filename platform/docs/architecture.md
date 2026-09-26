@@ -184,3 +184,16 @@ For paginated waitlist and admin-invitation queries, import `usePaginatedQuery` 
 page reports `isDone: false`; fetch the next page even when the previous one looked final.
 Waitlist pagination excludes admin addresses before selecting a page, so hidden admins do
 not shorten visible pages or cause entries to be skipped.
+
+### Protected admin addresses
+
+`adminEmails` is stored in the platform component. The admin-only
+`api.platform.adminEmails.listProtected` wrapper returns addresses; backend auth hooks
+use `internal.platform.adminEmails.list`. Its rows have the exported `AdminEmail` type.
+Signup promotion, protected-admin changes and password-reset policy lookup read this API,
+so they use the same state as invitation claims and bootstrap. Component functions are
+trusted backend entry points and cannot be called directly by clients.
+
+`userProfiles`, Better Auth sessions and rate-limit state stay in `convex/platform/`
+and the host database/components. They do not read the platform component database
+directly; settings and protected-address queries cross its typed API boundary.

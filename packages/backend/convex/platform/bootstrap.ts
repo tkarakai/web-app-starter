@@ -55,14 +55,14 @@ function assertValidEmail(email: string): void {
 export const initialize = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.query("adminEmails").collect();
+    const existing = await ctx.runQuery(components.platform.adminEmails.list, {});
     if (existing.length > 0) {
       throw new Error("BOOTSTRAP_ALREADY_INITIALIZED");
     }
 
     assertValidEmail(args.email);
 
-    await ctx.db.insert("adminEmails", { email: args.email });
+    await ctx.runMutation(components.platform.adminEmails.ensure, { email: args.email });
     const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.initialize, args);
 
     // Schedule the token generation + email action (same as waitlist.invite)
@@ -91,7 +91,7 @@ export const rescue = internalMutation({
   },
   handler: async (ctx, args) => {
     // Guard: exactly one admin email must exist
-    const adminEmails = await ctx.db.query("adminEmails").collect();
+    const adminEmails = await ctx.runQuery(components.platform.adminEmails.list, {});
     if (adminEmails.length === 0) {
       throw new Error("BOOTSTRAP_NOT_INITIALIZED");
     }
@@ -108,7 +108,7 @@ export const rescue = internalMutation({
     assertValidEmail(args.newEmail);
     const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.rescue, args);
     const emailChanged = args.newEmail !== args.currentEmail;
-    if (emailChanged) await ctx.db.patch(adminRow._id, { email: args.newEmail });
+    if (emailChanged) await ctx.runMutation(components.platform.adminEmails.replace, { id: adminRow._id, email: args.newEmail });
 
     await ctx.scheduler.runAfter(
       0,
@@ -135,7 +135,7 @@ export const rescue = internalMutation({
 export const status = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const adminEmails = await ctx.db.query("adminEmails").collect();
+    const adminEmails = await ctx.runQuery(components.platform.adminEmails.list, {});
 
     if (adminEmails.length === 0) {
       return {

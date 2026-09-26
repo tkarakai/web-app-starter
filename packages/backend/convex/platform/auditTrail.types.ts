@@ -18,6 +18,7 @@ export type AuditTrailTypeContract = [
   Assert<IsAny<FunctionReturnType<Component["waitlist"]["list"]>["page"][number]> extends false ? true : false>,
   Assert<IsAny<FunctionReturnType<Component["adminInvitations"]["list"]>["page"][number]> extends false ? true : false>,
   Assert<IsAny<FunctionReturnType<Component["waitlistTokens"]["validate"]>> extends false ? true : false>,
+  Assert<IsAny<FunctionReturnType<Component["adminEmails"]["list"]>[number]> extends false ? true : false>,
   Assert<IsAny<Insert> extends false ? true : false>,
   Assert<IsAny<Page["page"][number]> extends false ? true : false>,
   Assert<Page["page"][number]["_id"] extends string ? true : false>,

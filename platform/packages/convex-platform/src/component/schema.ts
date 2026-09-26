@@ -84,6 +84,7 @@ export const adminInvitationsFields = {
   };
 
 export default defineSchema({
+  adminEmails: defineTable({ email: v.string() }).index("by_email", ["email"]),
   adminInvitations: defineTable(adminInvitationsFields)
     .index("by_email", ["email"])
     .index("by_created", ["createdAt"])

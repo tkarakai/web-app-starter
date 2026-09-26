@@ -75,10 +75,11 @@ export const join = mutation({
 });
 
 export const list = query({
-  args: { adminEmails: v.array(v.string()), paginationOpts: paginationOptsValidator },
+  args: { paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ ...row.fields, invitationExpired: v.boolean() })),
   handler: async (ctx, args) => {
-    const adminEmailSet = new Set(args.adminEmails.map(email => email.toLowerCase()));
+    const adminEmails = await ctx.db.query("adminEmails").collect();
+    const adminEmailSet = new Set(adminEmails.map(row => row.email.toLowerCase()));
     const entries = await paginator(ctx.db, schema)
       .query("waitlistEntries")
       .withIndex("by_created")

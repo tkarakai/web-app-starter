@@ -23,6 +23,36 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    adminEmails: {
+      contains: FunctionReference<
+        "query",
+        "internal",
+        { email: string },
+        boolean,
+        Name
+      >;
+      ensure: FunctionReference<
+        "mutation",
+        "internal",
+        { email: string },
+        string,
+        Name
+      >;
+      list: FunctionReference<
+        "query",
+        "internal",
+        {},
+        Array<{ _creationTime: number; _id: string; email: string }>,
+        Name
+      >;
+      replace: FunctionReference<
+        "mutation",
+        "internal",
+        { email: string; id: string },
+        null,
+        Name
+      >;
+    };
     adminInvitations: {
       advanceOnboardingStep: FunctionReference<
         "mutation",
@@ -602,7 +632,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "query",
         "internal",
         {
-          adminEmails: Array<string>;
           paginationOpts: {
             cursor: string | null;
             endCursor?: string | null;

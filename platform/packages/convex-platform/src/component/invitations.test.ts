@@ -24,12 +24,12 @@ describe("component invitations", () => {
     await t.run(async ctx => {
       for (let i = 0; i < 11; i++) await ctx.db.insert("waitlistEntries", { email: `${i % 2 ? "member" : "admin"}${i}@example.test`, meta, status: "waiting", createdAt: i });
     });
-    const adminEmails = [0, 2, 4, 6, 8, 10].map(i => `ADMIN${i}@example.test`);
+    for (const i of [0, 2, 4, 6, 8, 10]) await t.mutation(api.adminEmails.ensure, { email: `ADMIN${i}@example.test` });
     let cursor: string | null = null;
     const emails: string[] = [];
     const sizes: number[] = [];
     for (let page = 0; page < 10; page++) {
-      const result: FunctionReturnType<typeof api.waitlist.list> = await t.query(api.waitlist.list, { adminEmails, paginationOpts: { cursor, numItems: 2 } });
+      const result: FunctionReturnType<typeof api.waitlist.list> = await t.query(api.waitlist.list, { paginationOpts: { cursor, numItems: 2 } });
       sizes.push(result.page.length);
       emails.push(...result.page.map(row => row.email));
       if (result.isDone) break;

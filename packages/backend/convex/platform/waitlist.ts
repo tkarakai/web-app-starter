@@ -52,9 +52,7 @@ export const list = query({
       };
     }
 
-    // Exclude emails that belong to admin accounts
-    const adminEmailDocs = await ctx.db.query("adminEmails").collect();
-    return await ctx.runQuery(components.platform.waitlist.list, { ...args, adminEmails: adminEmailDocs.map(row => row.email) });
+    return await ctx.runQuery(components.platform.waitlist.list, args);
   },
 });
 
