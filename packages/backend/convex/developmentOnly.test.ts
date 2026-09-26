@@ -8,28 +8,31 @@ import {
   isLocalDevelopment,
 } from "./developmentOnly";
 import schema from "./schema";
+import { appConfig } from "@repo/app-config";
 import { sendAuthEmail } from "./sendAuthEmail";
 
 const modules = import.meta.glob("./**/*.*s");
 const recipient = "recipient@example.test";
+const WEB_PORT = appConfig.runtime.ports.web;
+const ADMIN_PORT = appConfig.runtime.ports.admin;
 
 const LOCAL_SITE_URLS = [
-  "http://localhost:3001",
-  "http://localhost:3001,http://localhost:3002",
-  "http://127.0.0.1:3001",
-  "http://[::1]:3001",
+  `http://localhost:${WEB_PORT}`,
+  `http://localhost:${WEB_PORT},http://localhost:${ADMIN_PORT}`,
+  `http://127.0.0.1:${WEB_PORT}`,
+  `http://[::1]:${WEB_PORT}`,
   // The local AWS target (infra/aws/local) serves the apps on *.localhost.
   "http://web.app.localhost:8080,http://admin.app.localhost:8080",
   // A trailing comma is tolerated, as getSiteUrls() in auth.ts tolerates it.
-  "http://localhost:3001,",
+  `http://localhost:${WEB_PORT},`,
 ];
 
 const HOSTED_SITE_URLS = [
   "https://app.example.com",
-  "https://localhost:3001",
-  "http://192.168.1.2:3001",
+  `https://localhost:${WEB_PORT}`,
+  `http://192.168.1.2:${WEB_PORT}`,
   "http://localhost.example.com",
-  "http://localhost:3001,https://app.example.com",
+  `http://localhost:${WEB_PORT},https://app.example.com`,
   "not a url",
   "",
 ];
@@ -102,7 +105,7 @@ describe("mock email", () => {
     });
 
     test(`${kind} email falls back to the console in local development`, async () => {
-      vi.stubEnv("SITE_URL", "http://localhost:3001");
+      vi.stubEnv("SITE_URL", `http://localhost:${WEB_PORT}`);
       const send = await prepareSender(kind);
 
       await send();
@@ -141,7 +144,7 @@ describe("devSeed", () => {
 
   test("still skips quietly when DEV_SEED_ENABLED is not set", async () => {
     vi.stubEnv("DEV_SEED_ENABLED", undefined);
-    vi.stubEnv("SITE_URL", "http://localhost:3001");
+    vi.stubEnv("SITE_URL", `http://localhost:${WEB_PORT}`);
     const t = convexTest(schema, modules);
 
     await expect(t.action(internal.devSeed.seed, {})).resolves.toBeNull();

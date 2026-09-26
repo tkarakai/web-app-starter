@@ -4,7 +4,13 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { assertMockEmailAllowed } from "./developmentOnly";
-import { escapeHtml } from "./emailTemplates";
+import {
+  EMAIL_FOOTER_HTML,
+  EMAIL_FOOTER_TEXT,
+  EMAIL_LANG,
+  EMAIL_PALETTE,
+  escapeHtml,
+} from "./emailTemplates";
 import { sha256Hex } from "./tokenHash";
 
 /** Default token expiry in days (can be overridden via appSettings). */
@@ -92,57 +98,58 @@ function buildAdminInviteHtml(
   expiryDays: string,
 ): string {
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${EMAIL_LANG}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Invitation</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: ${EMAIL_PALETTE.background}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${EMAIL_PALETTE.background}; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: ${EMAIL_PALETTE.surface}; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <tr>
-            <td style="height: 4px; background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);"></td>
+            <td style="height: 4px; background: linear-gradient(135deg, ${EMAIL_PALETTE.accent} 0%, ${EMAIL_PALETTE.accentGradientEnd} 100%);"></td>
           </tr>
           <tr>
             <td style="padding: 40px 36px 32px;">
-              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: #18181b; line-height: 1.3;">
+              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: ${EMAIL_PALETTE.heading}; line-height: 1.3;">
                 You've been invited as an administrator
               </h1>
-              <p style="margin: 0 0 28px; font-size: 15px; color: #3f3f46; line-height: 1.6;">
+              <p style="margin: 0 0 28px; font-size: 15px; color: ${EMAIL_PALETTE.text}; line-height: 1.6;">
                 You've been invited to set up an administrator account. Click the button below to begin the onboarding process. You'll create your account, set up two-factor authentication, and optionally add a passkey.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 28px;">
                 <tr>
-                  <td style="border-radius: 8px; background-color: #18181b;">
-                    <a href="${onboardingUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
+                  <td style="border-radius: 8px; background-color: ${EMAIL_PALETTE.accent};">
+                    <a href="${onboardingUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: ${EMAIL_PALETTE.accentText}; text-decoration: none; border-radius: 8px;">
                       Set up your admin account
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin: 0; font-size: 13px; color: #71717a; line-height: 1.5;">
+              <p style="margin: 0; font-size: 13px; color: ${EMAIL_PALETTE.mutedText}; line-height: 1.5;">
                 This invitation expires in ${expiryDays} days. If you didn't expect this invitation, you can safely ignore this email.
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding: 0 36px;">
-              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 0;">
+              <hr style="border: none; border-top: 1px solid ${EMAIL_PALETTE.border}; margin: 0;">
             </td>
           </tr>
           <tr>
             <td style="padding: 20px 36px 32px;">
-              <p style="margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.5;">
+              <p style="margin: 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5;">
                 If the button doesn't work, copy and paste this URL into your browser:
               </p>
-              <p style="margin: 6px 0 0; font-size: 12px; color: #a1a1aa; line-height: 1.5; word-break: break-all;">
+              <p style="margin: 6px 0 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5; word-break: break-all;">
                 ${onboardingUrl}
               </p>
             </td>
           </tr>
+${EMAIL_FOOTER_HTML}
         </table>
       </td>
     </tr>
@@ -163,5 +170,7 @@ ${onboardingUrl}
 
 You'll create your account, set up two-factor authentication, and optionally add a passkey.
 
-This invitation expires in ${expiryDays} days. If you didn't expect this invitation, you can safely ignore this email.`;
+This invitation expires in ${expiryDays} days. If you didn't expect this invitation, you can safely ignore this email.
+
+${EMAIL_FOOTER_TEXT}`;
 }

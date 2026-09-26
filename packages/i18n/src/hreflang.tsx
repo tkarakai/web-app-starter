@@ -13,7 +13,7 @@ type HreflangLinksProps = {
  *
  * @param locale - Current locale (e.g., "en", "fr")
  * @param pathname - Current pathname without locale prefix (e.g., "/dashboard", "/")
- * @param siteUrl - Base site URL (e.g., "http://localhost:3001")
+ * @param siteUrl - Base site URL (e.g., "https://app.example.com")
  * @returns JSX fragment containing hreflang link tags
  */
 export function HreflangLinks({

@@ -17,7 +17,7 @@ type Messages = Record<string, Record<string, string>>;
 
 const MESSAGES = "packages/i18n/messages";
 const BASE: Messages = {
-  common: { appName: "Web App Starter", save: "Save", note: "Note" },
+  common: { appName: "Acme", save: "Save", note: "Note" },
   auth: { signIn: "Sign in" },
 };
 
@@ -104,7 +104,7 @@ test("reports keys both sides changed and keeps ours", () => {
   // upstream edits a key the app also rebranded
   git("checkout", "-q", "upstream");
   const theirs = JSON.parse(fs.readFileSync(locale, "utf8")) as Messages;
-  theirs.common.appName = "Web App Starter Platform";
+  theirs.common.appName = "Acme Platform";
   write(locale, theirs);
   git("commit", "-qam", "upstream rebrand");
   git("checkout", "-q", "main");

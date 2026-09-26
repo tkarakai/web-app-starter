@@ -1,8 +1,7 @@
-import messages from "@repo/i18n/messages/en.json";
-
 import { SiteHeader } from "@repo/design-patterns";
 import { AdminOnboardingWizard } from "@/components/onboarding/admin-onboarding-wizard";
 import { OnboardingProfileMenu } from "@/components/onboarding/onboarding-profile-menu";
+import { appConfig } from "@repo/app-config";
 
 export default function OnboardingPage() {
   return (
@@ -10,7 +9,7 @@ export default function OnboardingPage() {
       className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
       style={{ background: "var(--glow-warm-intense)" }}
     >
-      <SiteHeader appName={`${messages.common.appName} Administration`} actions={<OnboardingProfileMenu />} />
+      <SiteHeader appName={`${appConfig.identity.productName} Administration`} actions={<OnboardingProfileMenu />} />
       <div className="flex flex-1 items-center justify-center overflow-y-auto p-4 pt-20">
         <AdminOnboardingWizard />
       </div>

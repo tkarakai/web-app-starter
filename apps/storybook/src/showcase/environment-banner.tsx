@@ -1,13 +1,14 @@
 "use client";
 
+import { localAppOrigin } from "@repo/app-config";
 import { EnvironmentBanner } from "@repo/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const sampleEnvVars: Record<string, string> = {
-  NEXT_PUBLIC_SITE_URL: "http://localhost:3001",
+  NEXT_PUBLIC_SITE_URL: localAppOrigin("web"),
   NEXT_PUBLIC_CONVEX_URL: "https://happy-animal-123.convex.cloud",
   NEXT_PUBLIC_CONVEX_SITE_URL: "https://happy-animal-123.convex.site",
-  NEXT_PUBLIC_LANDING_URL: "http://localhost:3000",
+  NEXT_PUBLIC_LANDING_URL: localAppOrigin("landing"),
   NEXT_PUBLIC_APP_ENVIRONMENT: "development",
   NEXT_PUBLIC_GIT_BRANCH: "feat/environment-banner",
   NEXT_PUBLIC_GIT_SHA: "a1b2c3d4e5f6789012345678",

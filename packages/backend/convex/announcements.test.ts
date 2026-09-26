@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "./_generated/api";
 import schema from "./schema";
+import { localAppOrigin } from "@repo/app-config";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -121,8 +122,8 @@ describe("announcements", () => {
     });
 
     const result = await t.query(internal.announcements.getActiveInternal, {});
-    expect(result?.learnMoreContent).toContain("http://localhost:3000");
-    expect(result?.learnMoreContent).toContain("http://localhost:3001");
+    expect(result?.learnMoreContent).toContain(localAppOrigin("landing"));
+    expect(result?.learnMoreContent).toContain(localAppOrigin("web"));
   });
 
   test("scheduled publish keeps only the most recently updated announcement", async () => {

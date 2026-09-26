@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { appConfig } from "@repo/app-config";
+
+const { productName } = appConfig.identity;
 
 /**
  * Playwright E2E tests for the web app.
@@ -9,7 +12,7 @@ test.describe("Homepage", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page).toHaveTitle("Web App Starter");
+    await expect(page).toHaveTitle(`${productName}`);
   });
 
   test("has no console errors on load", async ({ page }) => {

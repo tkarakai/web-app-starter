@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { localAppOrigin } from "@repo/app-config";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -43,7 +44,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: deployedBaseUrl ?? getEnvValue("APP_ORIGIN", "http://localhost:3002"),
+    baseURL: deployedBaseUrl ?? getEnvValue("APP_ORIGIN", localAppOrigin("admin")),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -61,7 +62,7 @@ export default defineConfig({
         // boot failure into a bare "Exit code: 1" with no diagnostics.
         stdout: "pipe",
         stderr: "pipe",
-        url: getEnvValue("APP_ORIGIN", "http://localhost:3002"),
+        url: getEnvValue("APP_ORIGIN", localAppOrigin("admin")),
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,
       },

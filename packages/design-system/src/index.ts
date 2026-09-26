@@ -73,6 +73,7 @@ export {
   usePublicConfig,
   type PublicConfig,
 } from "./components/config/public-config";
+export { BrandTokenStyle } from "./components/config/brand-token-style";
 export { OfflineBanner, type OfflineBannerProps } from "./components/feedback/offline-banner";
 export {
   PasskeyUnsupportedAlert,

@@ -3,6 +3,11 @@ import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
 import { _resetStore } from "@repo/edge-rate-limit";
+import { sessionCookieNames } from "@repo/auth/cookies";
+import { localAppOrigin } from "@repo/app-config";
+
+// Session cookie names for the prefix in app.config.ts.
+const [SESSION, SECURE_SESSION] = sessionCookieNames();
 
 // Each test gets a fresh rate limit store to avoid cross-test contamination.
 beforeEach(() => {
@@ -18,7 +23,7 @@ function createRequest(
   headers: Record<string, string> = {},
 ): NextRequest {
   ipCounter += 1;
-  const url = `http://localhost:3002${path}`;
+  const url = `${localAppOrigin("admin")}${path}`;
   const req = new NextRequest(url, {
     headers: { "x-forwarded-for": headers["x-forwarded-for"] ?? `10.0.0.${ipCounter}`, ...headers },
   });
@@ -39,7 +44,7 @@ describe("proxy — admin session and MFA settings routes", () => {
     it("allows /dashboard/sessions with dev session cookie", () => {
       const response = proxy(
         createRequest("/dashboard/sessions", {
-          "better-auth.session_token": "token-123",
+          [SESSION]: "token-123",
         })
       );
       expect(response.status).toBe(200);
@@ -48,7 +53,7 @@ describe("proxy — admin session and MFA settings routes", () => {
     it("allows /dashboard/sessions with production session cookie", () => {
       const response = proxy(
         createRequest("/dashboard/sessions", {
-          "__Secure-better-auth.session_token": "token-123",
+          [SECURE_SESSION]: "token-123",
         })
       );
       expect(response.status).toBe(200);
@@ -64,14 +69,14 @@ describe("proxy — admin session and MFA settings routes", () => {
 
     it("allows /configure/security with dev session cookie", () => {
       const response = proxy(
-        createRequest("/configure/security", { "better-auth.session_token": "token-123" })
+        createRequest("/configure/security", { [SESSION]: "token-123" })
       );
       expect(response.status).toBe(200);
     });
 
     it("allows /settings with dev session cookie", () => {
       const response = proxy(
-        createRequest("/settings", { "better-auth.session_token": "token-123" })
+        createRequest("/settings", { [SESSION]: "token-123" })
       );
       expect(response.status).toBe(200);
     });
@@ -81,7 +86,7 @@ describe("proxy — admin session and MFA settings routes", () => {
     it("sets CSP header on /dashboard/sessions", () => {
       const response = proxy(
         createRequest("/dashboard/sessions", {
-          "better-auth.session_token": "token-123",
+          [SESSION]: "token-123",
         })
       );
       const csp = response.headers.get("Content-Security-Policy");
@@ -92,7 +97,7 @@ describe("proxy — admin session and MFA settings routes", () => {
 
     it("sets CSP header on /configure/security", () => {
       const response = proxy(
-        createRequest("/configure/security", { "better-auth.session_token": "token-123" })
+        createRequest("/configure/security", { [SESSION]: "token-123" })
       );
       const csp = response.headers.get("Content-Security-Policy");
       expect(csp).toBeDefined();
@@ -104,7 +109,7 @@ describe("proxy — admin session and MFA settings routes", () => {
     it("includes rate limit headers on /dashboard/sessions", () => {
       const response = proxy(
         createRequest("/dashboard/sessions", {
-          "better-auth.session_token": "token-123",
+          [SESSION]: "token-123",
         })
       );
       expect(response.headers.get("X-RateLimit-Limit")).toBe("100");

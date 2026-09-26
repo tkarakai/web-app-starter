@@ -3,7 +3,8 @@ import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
-import { EnvironmentBannerWrapper } from "@repo/design-system";
+import { BrandTokenStyle, EnvironmentBannerWrapper } from "@repo/design-system";
+import { appConfig, tokenOverrideCss } from "@repo/app-config";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -32,7 +33,8 @@ export default function RootLayout({
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <EnvironmentBannerWrapper appName="storybook" />
+          {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="storybook" />}
+          <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
           {children}
         </ThemeProvider>
       </body>

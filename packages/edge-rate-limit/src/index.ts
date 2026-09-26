@@ -138,24 +138,21 @@ function nonNegativeInt(value: string | undefined): number {
 }
 
 /**
- * Better Auth's session cookie names: `better-auth.session_token` over HTTP
- * (local development) and `__Secure-better-auth.session_token` over HTTPS.
- * Matched exactly, so a look-alike such as `evil-better-auth.session_token`
- * or `better-auth.session_token_x` does not count as a session.
- */
-const SESSION_COOKIE_NAMES: readonly string[] = [
-  "better-auth.session_token",
-  "__Secure-better-auth.session_token",
-];
-
-/**
  * Quick cookie-presence check (Edge-compatible, no backend call).
- * True when a cookie named exactly as in `SESSION_COOKIE_NAMES` is present.
+ *
+ * True when a cookie is named exactly one of `sessionCookieNames` — the app's
+ * session token names, `sessionCookieNames()` from `@repo/auth/cookies`, which
+ * follow the cookie prefix in `app.config.ts`. Exact matching means a
+ * look-alike such as `evil-better-auth.session_token`, or another app's session
+ * on the same host, does not count as a session.
  */
-export function hasSessionCookie(request: NextRequest): boolean {
+export function hasSessionCookie(
+  request: NextRequest,
+  sessionCookieNames: readonly string[],
+): boolean {
   return request.cookies
     .getAll()
-    .some((c) => SESSION_COOKIE_NAMES.includes(c.name));
+    .some((c) => sessionCookieNames.includes(c.name));
 }
 
 /** Build a 429 "Too Many Requests" response with standard rate-limit headers. */

@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
+    "./cookies": "./src/cookies.ts",
+    "./clear-session": "./src/clear-session.ts",
     "./client": "./src/client.ts",
     "./server": "./src/server.ts",
     "./provider": "./src/provider.tsx",
@@ -11,6 +13,7 @@
   "dependencies": {
     "@better-auth/passkey": "1.6.33",
     "@convex-dev/better-auth": "0.12.5",
+    "@repo/app-config": "workspace:*",
     "better-auth": "1.6.33",
     "convex": "1.45.0"
   },

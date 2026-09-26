@@ -3,6 +3,11 @@ import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
 import { _resetStore } from "@repo/edge-rate-limit";
+import { sessionCookieNames } from "@repo/auth/cookies";
+import { localAppOrigin } from "@repo/app-config";
+
+// Session cookie names for the prefix in app.config.ts.
+const [SESSION, SECURE_SESSION] = sessionCookieNames();
 
 // Each test gets a fresh rate limit store to avoid cross-test contamination.
 beforeEach(() => {
@@ -18,7 +23,7 @@ function createRequest(
   headers: Record<string, string> = {},
 ): NextRequest {
   ipCounter += 1;
-  const url = `http://localhost:3001${path}`;
+  const url = `${localAppOrigin("web")}${path}`;
   const req = new NextRequest(url, {
     headers: { "x-forwarded-for": headers["x-forwarded-for"] ?? `10.0.0.${ipCounter}`, ...headers },
   });
@@ -37,7 +42,7 @@ describe("proxy — new auth guest routes", () => {
 
     it("redirects /en/forgot-password to /en/dashboard when authenticated", () => {
       const response = proxy(
-        createRequest("/en/forgot-password", { "better-auth.session_token": "token-123" })
+        createRequest("/en/forgot-password", { [SESSION]: "token-123" })
       );
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
@@ -46,7 +51,7 @@ describe("proxy — new auth guest routes", () => {
     it("allows /en/forgot-password with session_cleared param even when authenticated", () => {
       const response = proxy(
         createRequest("/en/forgot-password?session_cleared=1", {
-          "better-auth.session_token": "token-123",
+          [SESSION]: "token-123",
         })
       );
       expect(response.status).toBe(200);
@@ -55,7 +60,7 @@ describe("proxy — new auth guest routes", () => {
     it("redirects /en/forgot-password to /en/dashboard with __Secure- cookie", () => {
       const response = proxy(
         createRequest("/en/forgot-password", {
-          "__Secure-better-auth.session_token": "token-123",
+          [SECURE_SESSION]: "token-123",
         })
       );
       expect(response.status).toBe(307);
@@ -76,7 +81,7 @@ describe("proxy — new auth guest routes", () => {
 
     it("redirects /en/reset-password to /en/dashboard when authenticated", () => {
       const response = proxy(
-        createRequest("/en/reset-password", { "better-auth.session_token": "token-123" })
+        createRequest("/en/reset-password", { [SESSION]: "token-123" })
       );
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/en/dashboard");
@@ -91,7 +96,7 @@ describe("proxy — new auth guest routes", () => {
 
     it("allows /en/verify-email when authenticated", () => {
       const response = proxy(
-        createRequest("/en/verify-email", { "better-auth.session_token": "token-123" })
+        createRequest("/en/verify-email", { [SESSION]: "token-123" })
       );
       expect(response.status).toBe(200);
     });
@@ -143,7 +148,7 @@ describe("proxy — new auth guest routes", () => {
 
     it("redirects /fr/forgot-password to /fr/dashboard when authenticated", () => {
       const response = proxy(
-        createRequest("/fr/forgot-password", { "better-auth.session_token": "token-123" })
+        createRequest("/fr/forgot-password", { [SESSION]: "token-123" })
       );
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/fr/dashboard");

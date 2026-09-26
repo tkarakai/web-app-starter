@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   env: {
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
-  transpilePackages: ["@repo/design-system", "@repo/design-patterns", "@repo/i18n"],
+  transpilePackages: ["@repo/app-config", "@repo/design-system", "@repo/design-patterns", "@repo/i18n"],
   images: {
     unoptimized: true,
   },

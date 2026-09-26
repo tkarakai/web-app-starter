@@ -3,6 +3,11 @@ import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
 import { _resetStore } from "@repo/edge-rate-limit";
+import { sessionCookieNames } from "@repo/auth/cookies";
+import { localAppOrigin } from "@repo/app-config";
+
+// Session cookie names for the prefix in app.config.ts.
+const [SESSION, SECURE_SESSION] = sessionCookieNames();
 
 // Each test gets a fresh rate limit store to avoid cross-test contamination.
 beforeEach(() => {
@@ -18,7 +23,7 @@ function createRequest(
   headers: Record<string, string> = {},
 ): NextRequest {
   ipCounter += 1;
-  const url = `http://localhost:3001${path}`;
+  const url = `${localAppOrigin("web")}${path}`;
   const req = new NextRequest(url, {
     headers: { "x-forwarded-for": headers["x-forwarded-for"] ?? `10.0.0.${ipCounter}`, ...headers },
   });
@@ -48,7 +53,7 @@ describe("proxy", () => {
   describe("protected routes (authenticated)", () => {
     it("allows /en/dashboard with dev session cookie", () => {
       const response = proxy(
-        createRequest("/en/dashboard", { "better-auth.session_token": "token-123" })
+        createRequest("/en/dashboard", { [SESSION]: "token-123" })
       );
 
       expect(response.status).toBe(200);
@@ -57,7 +62,7 @@ describe("proxy", () => {
     it("allows /en/dashboard with production session cookie (__Secure- prefix)", () => {
       const response = proxy(
         createRequest("/en/dashboard", {
-          "__Secure-better-auth.session_token": "token-123",
+          [SECURE_SESSION]: "token-123",
         })
       );
 
@@ -65,7 +70,7 @@ describe("proxy", () => {
     });
 
     it("redirects /en/dashboard to sign-in when only a look-alike cookie is set", () => {
-      for (const name of ["evil-better-auth.session_token", "better-auth.session_token_x"]) {
+      for (const name of [`evil-${SESSION}`, `${SESSION}_x`]) {
         const response = proxy(createRequest("/en/dashboard", { [name]: "token-123" }));
 
         expect(response.status).toBe(307);
@@ -91,7 +96,7 @@ describe("proxy", () => {
   describe("auth routes (authenticated)", () => {
     it("redirects /en/sign-in to /en/dashboard when session cookie exists", () => {
       const response = proxy(
-        createRequest("/en/sign-in", { "better-auth.session_token": "token-123" })
+        createRequest("/en/sign-in", { [SESSION]: "token-123" })
       );
 
       expect(response.status).toBe(307);
@@ -100,7 +105,7 @@ describe("proxy", () => {
 
     it("redirects /en/sign-up to /en/dashboard when session cookie exists", () => {
       const response = proxy(
-        createRequest("/en/sign-up", { "better-auth.session_token": "token-123" })
+        createRequest("/en/sign-up", { [SESSION]: "token-123" })
       );
 
       expect(response.status).toBe(307);
@@ -110,7 +115,7 @@ describe("proxy", () => {
     it("allows /en/sign-in with session_cleared param even when session cookie exists", () => {
       const response = proxy(
         createRequest("/en/sign-in?session_cleared=1", {
-          "better-auth.session_token": "token-123",
+          [SESSION]: "token-123",
         })
       );
 
@@ -121,7 +126,7 @@ describe("proxy", () => {
     it("allows /en/sign-up with session_cleared param even when session cookie exists", () => {
       const response = proxy(
         createRequest("/en/sign-up?session_cleared=1", {
-          "__Secure-better-auth.session_token": "token-123",
+          [SECURE_SESSION]: "token-123",
         })
       );
 

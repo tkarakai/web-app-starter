@@ -22,6 +22,7 @@ import {
 import { ThemeToggle } from "@repo/design-patterns";
 import { api } from "@repo/backend";
 import { authClient } from "@repo/auth/client";
+import { appConfig } from "@repo/app-config";
 import {
   Avatar,
   AvatarFallback,
@@ -53,7 +54,10 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 const manageItems = [
-  { label: "Announcements", href: "/manage/announcements", icon: Megaphone },
+  // Optional platform feature: `features.announcements` in app.config.ts.
+  ...(appConfig.features.announcements
+    ? [{ label: "Announcements", href: "/manage/announcements", icon: Megaphone }]
+    : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
   { label: "Users", href: "/manage/users", icon: Users },
 ];
@@ -114,12 +118,12 @@ export function AdminSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip={`${messages.common.appName} Admin`}
+              tooltip={`${appConfig.identity.productName} Admin`}
               className="font-semibold"
             >
               <Link href="/dashboard">
                 <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
-                <span>{messages.common.appName} Admin</span>
+                <span>{appConfig.identity.productName} Admin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

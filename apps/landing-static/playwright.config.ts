@@ -1,4 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import { appConfig, localAppOrigin } from "@repo/app-config";
+
+const origin = localAppOrigin("landing-static");
 
 export default defineConfig({
   testDir: "./qa/e2e",
@@ -19,7 +22,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: "http://localhost:3004",
+    baseURL: origin,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -32,12 +35,12 @@ export default defineConfig({
   webServer: {
     // `npx serve` downloads the package on a cold runner, which blew the old
     // 30s timeout. serve is now a devDependency, so use the local binary.
-    command: "./node_modules/.bin/serve out -l 3004",
+    command: `./node_modules/.bin/serve out -l ${appConfig.runtime.ports["landing-static"]}`,
     // Playwright discards webServer stdout by default, which turns any CI
     // boot failure into a bare "Exit code: 1" with no diagnostics.
     stdout: "pipe",
     stderr: "pipe",
-    url: "http://localhost:3004",
+    url: origin,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

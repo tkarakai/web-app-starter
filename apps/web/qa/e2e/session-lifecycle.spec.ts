@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 
 import { appCookieDomain } from "./helpers/auth";
+import { sessionCookieNames } from "@repo/auth/cookies";
+
+// Session cookie names for the prefix in app.config.ts.
+const [SESSION] = sessionCookieNames();
 
 /**
  * Session Lifecycle E2E Tests
@@ -19,7 +23,7 @@ test.describe("Session Cookie Security", () => {
     // Set a session cookie to pass the proxy layer
     await context.addCookies([
       {
-        name: "better-auth.session_token",
+        name: SESSION,
         value: "test-session-token",
         domain: appCookieDomain(),
         path: "/",
@@ -46,7 +50,7 @@ test.describe("Session Cookie Security", () => {
     // Set a session cookie that's already expired
     await context.addCookies([
       {
-        name: "better-auth.session_token",
+        name: SESSION,
         value: "expired-token-value",
         domain: appCookieDomain(),
         path: "/",
@@ -67,7 +71,7 @@ test.describe("Session Cookie Security", () => {
   }) => {
     await context.addCookies([
       {
-        name: "better-auth.session_token",
+        name: SESSION,
         value: "secret-session-token-12345",
         domain: appCookieDomain(),
         path: "/",

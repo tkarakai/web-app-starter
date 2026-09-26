@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "Web App Starter",
     "loading": "加载中...",
     "cancel": "取消",
     "save": "保存更改",
@@ -489,22 +488,21 @@
     }
   },
   "metadata": {
-    "title": "Web App Starter",
     "description": "基于 Next.js 的启动模板，集成 Convex、Better Auth 和 Bun。"
   },
   "legal": {
     "about": {
       "title": "关于",
-      "description": "了解 Web App Starter 和我们的使命。",
+      "description": "了解 {productName} 和我们的使命。",
       "notice": "这是占位符内容。在启动前用您自己的内容替换。",
       "heading": "关于",
       "mission": "我们的使命",
-      "missionText": "我们相信开发者应该将时间花在构建功能上，而不是配置基础设施。Web App Starter 提供了一个生产就绪的起点，具有实时数据同步、文件上传和基于会话的身份验证，一切都已连接并可随时使用。",
+      "missionText": "我们相信开发者应该将时间花在构建功能上，而不是配置基础设施。{productName} 提供了一个生产就绪的起点，具有实时数据同步、文件上传和基于会话的身份验证，一切都已连接并可随时使用。",
       "whatIncluded": "包含内容",
       "whatIncludedText": "起始工具包包含登陆页面、功能完整的已验证的网络应用、管理仪表板和组件故事书。每个应用都共享一个统一的设计系统，该系统建立在 Radix UI 原语和 Tailwind CSS 之上。",
       "openSource": "开源",
       "openSourceText": "此项目是开源的，设计用于 fork 和自定义。",
-      "intro": "Web App Starter 是构建现代网络应用的完整堆栈基础。它结合了 Next.js（前端）、Convex（后端）和 Better Auth（安全认证）——一切都已连接并可随时部署。"
+      "intro": "{productName} 是构建现代网络应用的完整堆栈基础。它结合了 Next.js（前端）、Convex（后端）和 Better Auth（安全认证）——一切都已连接并可随时部署。"
     },
     "privacy": {
       "title": "隐私政策",

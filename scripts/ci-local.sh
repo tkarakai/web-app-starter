@@ -425,20 +425,25 @@ print_step "Step 7/9: Production Build"
 # (unprefixed) names so their artifacts stay promotable, while landing and
 # landing-static are static exports that must inline NEXT_PUBLIC_* at build time.
 # See docs/deployment-architecture.md
+#
+# Local origins come from app.config.ts, as APP_CONFIG_* variables.
+_APP_CONFIG_VARS=$(./scripts/node-ts.sh scripts/app-config.ts shell) || exit 1
+eval "$_APP_CONFIG_VARS"
+: "${APP_CONFIG_ORIGIN_WEB:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
 export CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}"
 export CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}"
-export LANDING_URL="${LANDING_URL:-http://localhost:3000}"
+export LANDING_URL="${LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}"
 export NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}"
 export NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}"
-export NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-http://localhost:3000}"
-export NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-http://localhost:3001}"
+export NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}"
+export NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
 BUILD_FAILED=false
 for APP in web admin landing storybook; do
   # Set per-app site URL (each app runs on a different port)
   case "$APP" in
-    web)     _SITE_URL="http://localhost:3001" ;;
-    admin)   _SITE_URL="http://localhost:3002" ;;
-    landing) _SITE_URL="http://localhost:3000" ;;
+    web)     _SITE_URL="$APP_CONFIG_ORIGIN_WEB" ;;
+    admin)   _SITE_URL="$APP_CONFIG_ORIGIN_ADMIN" ;;
+    landing) _SITE_URL="$APP_CONFIG_ORIGIN_LANDING" ;;
     *)       _SITE_URL="" ;;
   esac
   step_start
