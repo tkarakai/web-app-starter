@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import type { SessionInfo } from "./sessions";
+import { getSessionToken, type SessionInfo } from "./sessions";
 import { parseUserAgent } from "./parseUserAgent";
 
 /**
@@ -60,30 +60,49 @@ describe("sessions module", () => {
     });
   });
 
-  describe("session token extraction logic", () => {
+  describe("session token extraction (getSessionToken)", () => {
+    function request(headers: Record<string, string>): Request {
+      return new Request("http://127.0.0.1:3211/api/sessions", { headers });
+    }
+
     test("Bearer token is extracted from authorization header", () => {
-      const token = "test-token-123";
-      const header = `Bearer ${token}`;
-      const extracted = header.startsWith("Bearer ") ? header.slice(7) : null;
-      expect(extracted).toBe(token);
+      expect(getSessionToken(request({ authorization: "Bearer test-token-123" }))).toBe(
+        "test-token-123",
+      );
     });
 
-    test("session token is extracted from cookie string", () => {
-      const cookies =
-        "other=value; better-auth.session_token=my-session-token; another=data";
-      const match = cookies.match(/better-auth\.session_token=([^;]+)/);
-      expect(match?.[1]).toBe("my-session-token");
+    test("session token is extracted from the HTTP cookie", () => {
+      const cookie = "other=value; better-auth.session_token=my-session-token; another=data";
+      expect(getSessionToken(request({ cookie }))).toBe("my-session-token");
+    });
+
+    test("session token is extracted from the HTTPS (__Secure-) cookie", () => {
+      const cookie = "__Secure-better-auth.session_token=secure-token";
+      expect(getSessionToken(request({ cookie }))).toBe("secure-token");
+    });
+
+    test("look-alike cookie names are ignored", () => {
+      for (const name of [
+        "evil-better-auth.session_token",
+        "better-auth.session_token_x",
+        "xbetter-auth.session_token",
+        "__Host-better-auth.session_token",
+      ]) {
+        expect(getSessionToken(request({ cookie: `${name}=forged` }))).toBeNull();
+      }
+    });
+
+    test("a look-alike before the real cookie does not shadow it", () => {
+      const cookie = "evil-better-auth.session_token=forged; better-auth.session_token=real";
+      expect(getSessionToken(request({ cookie }))).toBe("real");
     });
 
     test("returns null when no session token in cookies", () => {
-      const cookies = "other=value; another=data";
-      const match = cookies.match(/better-auth\.session_token=([^;]+)/);
-      expect(match).toBeNull();
+      expect(getSessionToken(request({ cookie: "other=value; another=data" }))).toBeNull();
     });
 
-    test("returns null for empty cookie string", () => {
-      const match = "".match(/better-auth\.session_token=([^;]+)/);
-      expect(match).toBeNull();
+    test("returns null without cookie or authorization headers", () => {
+      expect(getSessionToken(request({}))).toBeNull();
     });
   });
 
