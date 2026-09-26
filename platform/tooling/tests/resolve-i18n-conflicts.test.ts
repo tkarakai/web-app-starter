@@ -1,7 +1,7 @@
 /**
  * Run with: bun run test:dev-scripts
  *
- * Exercises scripts/resolve-i18n-conflicts.ts against real git merge conflicts in
+ * Exercises platform/tooling/resolve-i18n-conflicts.ts against real git merge conflicts in
  * real locale files, because the failure it exists to prevent — "keep both sides"
  * producing invalid JSON — is only visible in a genuine three-stage merge.
  */
@@ -15,7 +15,7 @@ import { conflictedMessageFiles, main } from "../resolve-i18n-conflicts.ts";
 
 type Messages = Record<string, Record<string, string>>;
 
-const MESSAGES = "packages/i18n/messages";
+const MESSAGES = "platform/packages/i18n/messages";
 const BASE: Messages = {
   common: { appName: "Acme", save: "Save", note: "Note" },
   auth: { signIn: "Sign in" },

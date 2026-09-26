@@ -12,7 +12,7 @@
 # pushes to differently-named branches.
 #
 # Usage:
-#   ./scripts/ensure-branch-tracking.sh
+#   ./platform/tooling/ensure-branch-tracking.sh
 #
 
 set -e
@@ -25,7 +25,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$PROJECT_DIR"
 

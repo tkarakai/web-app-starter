@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, type TestContext } from "node:test";
 
-const script = fileURLToPath(new URL("../../.github/actions/setup-bun/find-node.sh", import.meta.url));
+const script = fileURLToPath(new URL("../../../.github/actions/setup-bun/find-node.sh", import.meta.url));
 
 function fixture(t: TestContext) {
   const root = mkdtempSync(join(process.cwd(), ".node-cache-test-"));

@@ -65,7 +65,7 @@ export default defineConfig({
   webServer: deployedBaseUrl
     ? undefined
     : {
-        command: "../../scripts/dev-start.sh --ci --app=web",
+        command: "../../platform/tooling/dev-start.sh --ci --app=web",
         // Playwright defaults webServer stdout to "ignore". When the script fails to
         // boot in CI that leaves "Process from config.webServer was not able to
         // start. Exit code: 1" and nothing else — no way to tell what broke.

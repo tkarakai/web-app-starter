@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "../../scripts/next-dev.sh landing --turbopack",
-    "prebuild": "../../scripts/copy-shared-assets.sh",
+    "dev": "../../platform/tooling/next-dev.sh landing --turbopack",
+    "prebuild": "../../platform/tooling/copy-shared-assets.sh",
     "build": "next build",
     "start": "npx serve out",
     "lint": "eslint . --max-warnings 0",

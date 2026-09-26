@@ -4,7 +4,7 @@
 # package.json `dev` script calls this, so the port lives in one place.
 #
 # Usage (from an app directory, as `bun run dev` does):
-#   ../../scripts/next-dev.sh <app> [extra next dev flags...]
+#   ../../platform/tooling/next-dev.sh <app> [extra next dev flags...]
 #
 set -euo pipefail
 

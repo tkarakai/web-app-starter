@@ -51,7 +51,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "../../scripts/dev-start.sh --ci --app=landing",
+    command: "../../platform/tooling/dev-start.sh --ci --app=landing",
     // Playwright discards webServer stdout by default, which turns any CI
     // boot failure into a bare "Exit code: 1" with no diagnostics.
     stdout: "pipe",

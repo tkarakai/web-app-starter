@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, type TestContext } from "node:test";
 
-const script = fileURLToPath(new URL("../../.github/actions/setup-bun/setup-bun-act.sh", import.meta.url));
+const script = fileURLToPath(new URL("../../../.github/actions/setup-bun/setup-bun-act.sh", import.meta.url));
 
 function fixture(t: TestContext, cached?: string, installerVersion = "1.4.2", downloadFails = false) {
   const root = mkdtempSync(join(process.cwd(), ".bun-cache-test-"));

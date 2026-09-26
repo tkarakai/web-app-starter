@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run a project TypeScript script with Node: ./scripts/node-ts.sh FILE.ts [ARGS...]
+# Run a project TypeScript script with Node: ./platform/tooling/node-ts.sh FILE.ts [ARGS...]
 # Node 22.18+ and 23.6+ run .ts files directly; 22.6-22.17 and 23.0-23.5 need
 # --experimental-strip-types. The flags go in NODE_OPTIONS so that Node child
 # processes started by the script get them too. Older Node versions are refused.

@@ -41,7 +41,7 @@
 #        bun run ci:quick             # Skip E2E tests
 #        bun run ci:reset-coverage    # Reset coverage thresholds to 0, then run
 #
-# Flags can be combined: ./scripts/ci-local.sh --skip-e2e --reset-coverage
+# Flags can be combined: ./platform/tooling/ci-local.sh --skip-e2e --reset-coverage
 #
 
 set -e
@@ -167,14 +167,14 @@ START_TIME=$(now_cs)
 # Clean stale turbo caches so each CI run gets fresh results.
 # We do NOT clean .next/ — dev servers are expected to be running and manage it.
 print_warning "Cleaning stale turbo caches..."
-rm -rf apps/*/.turbo packages/*/.turbo
+rm -rf apps/*/.turbo packages/*/.turbo platform/apps/*/.turbo platform/packages/*/.turbo
 
 # Reset coverage thresholds to 0 if requested.
 # Useful when source files have been added/removed and thresholds are stale.
 # autoUpdate: true will ratchet them back up on the next successful run.
 if [ "$RESET_COVERAGE" = true ]; then
   print_warning "Resetting coverage thresholds to 0 in all vitest configs..."
-  for CONFIG in apps/*/vitest.config.ts; do
+  for CONFIG in apps/*/vitest.config.ts platform/apps/*/vitest.config.ts; do
     if [ -f "$CONFIG" ]; then
       sed -i '' -E 's/(lines|branches|functions|statements): [0-9.]+/\1: 0/g' "$CONFIG"
       echo "  Reset: $CONFIG"
@@ -253,10 +253,16 @@ trap on_exit EXIT
 # Ctrl-C should exit the whole script, not just the current subcommand
 trap 'exit 130' INT
 
+# Helper: an app's directory relative to the repository root (apps/web,
+# platform/apps/admin, ...), from app.config.ts's reader.
+app_dir() {
+  ./platform/tooling/node-ts.sh platform/tooling/app-config.ts dir "$1"
+}
+
 # Helper: save coverage artifacts and display summary for an app
 save_coverage() {
   local APP_NAME="$1"
-  local COVERAGE_DIR="apps/$APP_NAME/qa/coverage"
+  local COVERAGE_DIR; COVERAGE_DIR="$(app_dir "$APP_NAME")/qa/coverage"
   local SUMMARY_FILE="$COVERAGE_DIR/coverage-summary.json"
 
   if [ -d "$COVERAGE_DIR" ]; then
@@ -280,7 +286,7 @@ save_coverage() {
 # Helper: save E2E artifacts for an app
 save_e2e_artifacts() {
   local APP_NAME="$1"
-  local APP_DIR="apps/$APP_NAME"
+  local APP_DIR; APP_DIR="$(app_dir "$APP_NAME")"
 
   mkdir -p "$ARTIFACTS_DIR/$APP_NAME"
 
@@ -427,9 +433,9 @@ print_step "Step 7/9: Production Build"
 # See platform/docs/deployment-architecture.md
 #
 # Local origins come from app.config.ts, as APP_CONFIG_* variables.
-_APP_CONFIG_VARS=$(./scripts/node-ts.sh scripts/app-config.ts shell) || exit 1
+_APP_CONFIG_VARS=$(./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell) || exit 1
 eval "$_APP_CONFIG_VARS"
-: "${APP_CONFIG_ORIGIN_WEB:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
+: "${APP_CONFIG_ORIGIN_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
 export CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}"
 export CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}"
 export LANDING_URL="${LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}"
@@ -465,7 +471,7 @@ if [ "$BUILD_FAILED" = true ]; then exit 1; fi
 # ============================================================
 print_step "Step 8/9: Bundle Size"
 BUNDLE_FAILED=false
-for APP_DIR in apps/*/; do
+for APP_DIR in apps/*/ platform/apps/*/; do
   APP_NAME=$(basename "$APP_DIR")
   # Skip apps not included in CI builds (no corresponding workflow)
   case "$APP_NAME" in landing-static) continue ;; esac
@@ -508,7 +514,7 @@ else
     step_start
     echo -e "  ${BOLD}Running E2E tests ($APP)...${NC}"
     E2E_EXIT=0
-    pushd "apps/$APP" > /dev/null
+    pushd "$(app_dir "$APP")" > /dev/null
     PLAYWRIGHT_HTML_OPEN=never bunx playwright test --reporter=list || E2E_EXIT=$?
     popd > /dev/null
     if [ $E2E_EXIT -eq 0 ]; then
@@ -528,7 +534,7 @@ else
     print_warning "Failed E2E reports:"
     for FAILED_APP in "${E2E_FAILED_APPS[@]}"; do
       echo -e "  ${YELLOW}$FAILED_APP${NC}"
-      echo -e "    npx playwright show-report apps/$FAILED_APP/qa/playwright-report"
+      echo -e "    npx playwright show-report $(app_dir "$FAILED_APP")/qa/playwright-report"
       echo -e "    .ci-local-artifacts/$FAILED_APP/playwright-report/index.html"
     done
     exit 1

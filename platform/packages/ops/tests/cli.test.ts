@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "bun";
-const root = fileURLToPath(new URL("../../..", import.meta.url));
+const root = fileURLToPath(new URL("../../../..", import.meta.url));
 const temp = await mkdtemp(resolve(tmpdir(), "ops-cli-tests-"));
 const config = resolve(temp, "ops.json");
 const sha = "a".repeat(40);

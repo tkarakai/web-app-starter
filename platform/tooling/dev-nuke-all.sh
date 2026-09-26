@@ -3,7 +3,7 @@
 # Never match global process names or delete shared Convex state.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 WORKTREES=()
 while IFS= read -r line; do
     case "$line" in

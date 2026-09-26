@@ -13,12 +13,26 @@
  */
 
 /**
- * The starter's apps, keyed by their directory in `apps/`. `apps/demo` is not
- * one of them: it stands in for a separate business app in the starter-upgrade
- * tests, is copied out of the repository to run, and owns its own settings.
+ * The starter's apps, keyed by their directory name. `apps/demo` is not one of
+ * them: it stands in for a separate business app in the starter-upgrade tests,
+ * is copied out of the repository to run, and owns its own settings.
  */
 export const APP_IDS = ["landing", "web", "admin", "storybook", "landing-static"] as const;
 export type AppId = (typeof APP_IDS)[number];
+
+/**
+ * Where each app lives, relative to the repository root. Reference apps are in
+ * `apps/` (app zone); the admin dashboard and the component showcase are
+ * platform apps in `platform/apps/`. Scripts and CI read this through
+ * `platform/tooling/app-config.ts dir <app>` instead of assuming `apps/<app>`.
+ */
+export const APP_DIRS: Readonly<Record<AppId, string>> = {
+  landing: "apps/landing",
+  web: "apps/web",
+  admin: "platform/apps/admin",
+  storybook: "platform/apps/storybook",
+  "landing-static": "apps/landing-static",
+};
 
 /** Colours used by the transactional email templates (`#rgb` or `#rrggbb`). */
 export type EmailPalette = {

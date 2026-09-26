@@ -4,7 +4,7 @@
  *
  * Why this exists
  * ---------------
- * `packages/i18n/messages/*.json` is intentionally shared: starter and application
+ * `platform/packages/i18n/messages/*.json` is intentionally shared: starter and application
  * edits can overlap, while independent edits may merge cleanly. For a conflicted
  * file, blindly concatenating both hunks can produce invalid JSON. The closing
  * brace of a namespace is usually *shared context* outside the conflict, so
@@ -25,11 +25,11 @@
  *
  * Usage
  * -----
- *     ./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts            # every conflicted message file
- *     ./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts --check    # report, change nothing
- *     ./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts packages/i18n/messages/en.json
+ *     ./platform/tooling/node-ts.sh platform/tooling/resolve-i18n-conflicts.ts            # every conflicted message file
+ *     ./platform/tooling/node-ts.sh platform/tooling/resolve-i18n-conflicts.ts --check    # report, change nothing
+ *     ./platform/tooling/node-ts.sh platform/tooling/resolve-i18n-conflicts.ts platform/packages/i18n/messages/en.json
  *
- * See UPGRADING.md, "packages/i18n/messages/*.json", for staging, disagreement
+ * See UPGRADING.md, "platform/packages/i18n/messages/*.json", for staging, disagreement
  * handling and exit-status semantics. Review reported keys even after staging.
  */
 import * as fs from "node:fs";
@@ -41,7 +41,7 @@ import { pathToFileURL } from "node:url";
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type JsonObject = { [key: string]: Json };
 
-const MESSAGES_DIR = "packages/i18n/messages/";
+const MESSAGES_DIR = "platform/packages/i18n/messages/";
 const MISSING = Symbol("missing"); // distinguishes "key absent" from "key present and null"
 
 function git(...args: string[]): string {

@@ -10,7 +10,7 @@ function getEnvValue(name: string, fallback: string): string {
   // Check app-level .env.local first, then root
   for (const envPath of [
     path.join(__dirname, ".env.local"),
-    path.join(__dirname, "../../.env.local"),
+    path.join(__dirname, "../../../.env.local"),
   ]) {
     if (fs.existsSync(envPath)) {
       const content = fs.readFileSync(envPath, "utf-8");
@@ -57,7 +57,7 @@ export default defineConfig({
   webServer: deployedBaseUrl
     ? undefined
     : {
-        command: "../../scripts/dev-start.sh --ci --app=admin",
+        command: "../../tooling/dev-start.sh --ci --app=admin",
         // Playwright discards webServer stdout by default, which turns any CI
         // boot failure into a bare "Exit code: 1" with no diagnostics.
         stdout: "pipe",

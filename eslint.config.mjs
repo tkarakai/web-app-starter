@@ -1,108 +1,13 @@
-import js from "@eslint/js";
-import typescript from "@typescript-eslint/eslint-plugin";
-import typescriptParser from "@typescript-eslint/parser";
-import react from "eslint-plugin-react";
-import reactHooks from "eslint-plugin-react-hooks";
+// ESLint configuration for the whole repository. The rules come from the
+// platform base (platform/config/eslint.base.mjs); add app-specific entries
+// after it.
+import platform from "./platform/config/eslint.base.mjs";
 
 export default [
-  js.configs.recommended,
+  ...platform,
   {
-    ignores: [
-      "node_modules/**",
-      ".ci-local-artifacts/**",
-      "apps/demo/starter-packages/**",
-      "apps/demo/qa/fixtures/starter-releases/**",
-      "platform/packages/starter-sidebar-policy/dist/**",
-      "**/node_modules/**",
-      "**/.next/**",
-      "**/.turbo/**",
-      "**/convex/_generated/**",
-      "**/qa/coverage/**",
-      "**/qa/playwright-report/**",
-      "**/qa/test-results/**",
-      "**/qa/e2e/__screenshots__/**",
-      "**/out/**",
-      ".auto-claude/**",
-    ],
-  },
-  {
-    files: ["**/*.{ts,tsx}"],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module",
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-      globals: {
-        React: "readonly",
-        JSX: "readonly",
-        console: "readonly",
-        process: "readonly",
-        module: "readonly",
-        require: "readonly",
-        __dirname: "readonly",
-        Buffer: "readonly",
-        fetch: "readonly",
-        AbortSignal: "readonly",
-        URL: "readonly",
-        URLSearchParams: "readonly",
-        Headers: "readonly",
-        btoa: "readonly",
-        atob: "readonly",
-        crypto: "readonly",
-        globalThis: "readonly",
-        Request: "readonly",
-        Response: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
-        setInterval: "readonly",
-        clearInterval: "readonly",
-        HTMLElement: "readonly",
-        HTMLDivElement: "readonly",
-        HTMLFormElement: "readonly",
-        HTMLInputElement: "readonly",
-        HTMLButtonElement: "readonly",
-        HTMLHeadingElement: "readonly",
-        HTMLParagraphElement: "readonly",
-        HTMLSpanElement: "readonly",
-        HTMLTextAreaElement: "readonly",
-        HTMLAnchorElement: "readonly",
-        HTMLOListElement: "readonly",
-        HTMLUListElement: "readonly",
-        HTMLLIElement: "readonly",
-        HTMLHRElement: "readonly",
-        KeyboardEvent: "readonly",
-        Event: "readonly",
-        EventTarget: "readonly",
-        Blob: "readonly",
-        BroadcastChannel: "readonly",
-        MessageEvent: "readonly",
-        document: "readonly",
-        window: "readonly",
-      },
-    },
-    plugins: {
-      "@typescript-eslint": typescript,
-      react,
-      "react-hooks": reactHooks,
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      "react/react-in-jsx-scope": "off",
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-      "@typescript-eslint/no-explicit-any": "warn",
-      "no-unused-vars": "off",
-      "no-redeclare": "off",
-    },
-    settings: {
-      react: {
-        version: "detect",
-      },
-    },
+    // The demo's consumed starter package and its release fixtures are
+    // generated artifacts, not source.
+    ignores: ["apps/demo/starter-packages/**", "apps/demo/qa/fixtures/starter-releases/**"],
   },
 ];

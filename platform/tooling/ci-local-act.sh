@@ -2,7 +2,7 @@
 #
 # Run GitHub Actions CI workflows locally using act.
 #
-# Usage: ./scripts/ci-local-act.sh [options]
+# Usage: ./platform/tooling/ci-local-act.sh [options]
 #
 # Options:
 #   -j, --job <name>     Run only a specific job (e.g., lint, test, build)
@@ -13,12 +13,12 @@
 #   -h, --help           Show this help
 #
 # Examples:
-#   ./scripts/ci-local-act.sh              # Run all CI workflows
-#   ./scripts/ci-local-act.sh -w shared    # Run only shared (lint + backend tests)
-#   ./scripts/ci-local-act.sh -w web       # Run only web app CI
-#   ./scripts/ci-local-act.sh -j lint      # Run only the lint job
-#   ./scripts/ci-local-act.sh -q           # Quiet mode with summary
-#   ./scripts/ci-local-act.sh -o           # Offline mode (requires prior online run)
+#   ./platform/tooling/ci-local-act.sh              # Run all CI workflows
+#   ./platform/tooling/ci-local-act.sh -w shared    # Run only shared (lint + backend tests)
+#   ./platform/tooling/ci-local-act.sh -w web       # Run only web app CI
+#   ./platform/tooling/ci-local-act.sh -j lint      # Run only the lint job
+#   ./platform/tooling/ci-local-act.sh -q           # Quiet mode with summary
+#   ./platform/tooling/ci-local-act.sh -o           # Offline mode (requires prior online run)
 #
 # =============================================================================
 # MULTI-WORKFLOW ARCHITECTURE
@@ -63,7 +63,7 @@ DIM='\033[2m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOG_FILE="$PROJECT_DIR/.act-output.log"
 ARTIFACTS_DIR="$PROJECT_DIR/.act-artifacts"
 

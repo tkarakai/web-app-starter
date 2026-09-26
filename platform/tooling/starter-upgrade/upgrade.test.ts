@@ -11,7 +11,7 @@ beforeEach(() => {
   fs.mkdirSync(path.join(u.ROOT, ".ci-local-artifacts"), { recursive: true });
   root = fs.mkdtempSync(path.join(u.ROOT, ".ci-local-artifacts/starter-test-"));
   app = path.join(root, "apps/demo"); releases = path.join(root, "releases");
-  fs.copyFileSync(path.join(u.ROOT, "tsconfig.base.json"), path.join(root, "tsconfig.base.json"));
+  fs.mkdirSync(path.join(root, "platform/config"), { recursive: true }); fs.copyFileSync(path.join(u.ROOT, "platform/config/tsconfig.base.json"), path.join(root, "platform/config/tsconfig.base.json"));
   copyApp(app); fs.cpSync(u.RELEASES, releases, { recursive: true }); seedBaseline(app, releases); linkStarter(app);
 });
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -58,7 +58,7 @@ test("discovery remains usable after normal demo startup in an agent session", a
     const response = await fetch(`${url}/northstar.svg`, { signal: AbortSignal.timeout(30_000) });
     await response.arrayBuffer();
     assert.equal(response.status, 200, output);
-    const discovery = spawnSync(process.execPath, [path.join(u.ROOT, "scripts/starter-upgrade/upgrade.ts"), "discover", "--app", app, "--releases", releases], { encoding: "utf8" });
+    const discovery = spawnSync(process.execPath, [path.join(u.ROOT, "platform/tooling/starter-upgrade/upgrade.ts"), "discover", "--app", app, "--releases", releases], { encoding: "utf8" });
     assert.equal(discovery.status, 0, discovery.stderr);
     assert.deepEqual((JSON.parse(discovery.stdout) as { availableTargets: string[] }).availableTargets, ["1.0.1"]);
     assert.equal(plan().to, "1.0.1");
@@ -176,7 +176,7 @@ test("interrupted copy and removed required action cannot verify", () => {
 });
 test("CLI rejects unknown schemas with machine-readable failure", () => {
   change<u.Manifest>(path.join(app, u.MANIFEST), m => { m.schemaVersion = 999; });
-  const result = spawnSync(process.execPath, [path.join(u.ROOT, "scripts/starter-upgrade/upgrade.ts"), "discover", "--app", app, "--releases", releases], { encoding: "utf8" });
+  const result = spawnSync(process.execPath, [path.join(u.ROOT, "platform/tooling/starter-upgrade/upgrade.ts"), "discover", "--app", app, "--releases", releases], { encoding: "utf8" });
   assert.equal(result.status, 1); assert.equal((JSON.parse(result.stderr) as { status: string }).status, "blocked");
 });
 test("concurrent commands and stale temporary files cannot write", () => {
@@ -186,7 +186,7 @@ test("concurrent commands and stale temporary files cannot write", () => {
 });
 test("workspace or stale installed package cannot pass verification", () => {
   const p = applied(), link = path.join(app, "node_modules", u.PACKAGE);
-  fs.unlinkSync(link); fs.symlinkSync(path.join(u.ROOT, "packages/starter-sidebar-policy"), link);
+  fs.unlinkSync(link); fs.symlinkSync(path.join(u.ROOT, "platform/packages/starter-sidebar-policy"), link);
   assert.throws(() => u.verify(app, releases, p, succeeds), /workspace source/);
   fs.unlinkSync(link); const stale = path.join(app, "node_modules/stale-policy"); fs.cpSync(path.join(releases, "1.0.0", u.BOUNDARY), stale, { recursive: true }); fs.symlinkSync(stale, link);
   assert.throws(() => u.verify(app, releases, p, succeeds), /differs/);
@@ -196,7 +196,7 @@ test("private artifact imports and TypeScript aliases cannot bypass the package 
   assert.throws(() => u.consumerBoundary(app), /package API/);
   fs.unlinkSync(path.join(app, "src/private-import.ts"));
   const config = path.join(app, "tsconfig.json"), value = JSON.parse(fs.readFileSync(config, "utf8")) as { compilerOptions: { paths: Record<string, string[]> } };
-  value.compilerOptions.paths[u.PACKAGE] = [path.join(u.ROOT, "packages/starter-sidebar-policy/src/index.ts")];
+  value.compilerOptions.paths[u.PACKAGE] = [path.join(u.ROOT, "platform/packages/starter-sidebar-policy/src/index.ts")];
   fs.writeFileSync(config, JSON.stringify(value));
   assert.throws(() => u.consumerBoundary(app), /workspace source|alias bypasses/);
 });
@@ -205,7 +205,7 @@ test("demo cannot switch consumption to a workspace dependency", () => {
 });
 test("author boundary and demo ownership pass for the actual repository", () => { assert.equal((checkOwnership() as { status: string }).status, "verified"); });
 test("author package cannot import application source", () => {
-  const author = path.join(root, "packages/starter-sidebar-policy"); fs.cpSync(path.join(u.ROOT, "packages/starter-sidebar-policy"), author, { recursive: true });
+  const author = path.join(root, "platform/packages/starter-sidebar-policy"); fs.cpSync(path.join(u.ROOT, "platform/packages/starter-sidebar-policy"), author, { recursive: true });
   fs.appendFileSync(path.join(author, "src/index.ts"), '\nimport "../../../apps/demo/src/business/dispatch.ts";\n');
   assert.throws(() => authorBoundary(root, path.join(root, "output")), /cannot depend/);
 });

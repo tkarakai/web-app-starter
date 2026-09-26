@@ -1,6 +1,6 @@
 // One-shot, read-only snapshot for the platform-deps skill: last Renovate run, open Renovate PRs,
 // Dependency Dashboard sections, and every HOLD: rule with the registry facts its REMOVE condition needs.
-// Usage: ./scripts/node-ts.sh scripts/renovate-status.ts   (needs an authenticated `gh`)
+// Usage: ./platform/tooling/node-ts.sh platform/tooling/renovate-status.ts   (needs an authenticated `gh`)
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -73,7 +73,7 @@ function lastRun(): Record<string, unknown> {
 }
 
 export async function main(): Promise<number> {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
   const config = JSON.parse(readFileSync(path.join(root, "renovate.json"), "utf8")) as { packageRules?: PackageRule[] };
   const [dashboard] = JSON.parse(gh(["issue", "list", "--state", "open", "--search", "Dependency Dashboard in:title",
     "--json", "number,body", "--limit", "1"])) as { number: number; body: string }[];

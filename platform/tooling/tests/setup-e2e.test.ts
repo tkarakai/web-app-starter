@@ -9,10 +9,10 @@ import { fileURLToPath } from "node:url";
 function fixture(t: TestContext) {
   const root = mkdtempSync(join(tmpdir(), "ensure local deps "));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(join(root, "scripts"));
+  mkdirSync(join(root, "platform/tooling"), { recursive: true });
   mkdirSync(join(root, "bin"));
   for (const name of ["ensure-local-deps.sh", "setup-e2e.sh"]) {
-    copyFileSync(fileURLToPath(new URL(`../${name}`, import.meta.url)), join(root, "scripts", name));
+    copyFileSync(fileURLToPath(new URL(`../${name}`, import.meta.url)), join(root, "platform/tooling", name));
   }
   writeFileSync(join(root, "package.json"), '{"packageManager": "bun@1.4.2"}');
   writeFileSync(join(root, "bin/bun"), '#!/bin/bash\necho 1.4.2\n', { mode: 0o755 });
@@ -27,7 +27,7 @@ function fixture(t: TestContext) {
       writeFileSync(cli, source);
     },
     run(name = "setup-e2e.sh") {
-      return spawnSync("/bin/bash", [join(root, "scripts", name), ...(name === "ensure-local-deps.sh" ? ["--quiet"] : [])], {
+      return spawnSync("/bin/bash", [join(root, "platform/tooling", name), ...(name === "ensure-local-deps.sh" ? ["--quiet"] : [])], {
         cwd: tmpdir(),
         env: { ...process.env, PATH: `${join(root, "bin")}:/usr/bin:/bin`, CI_BUN_VERSION_CHECKED: "1" },
         encoding: "utf8",
@@ -37,7 +37,7 @@ function fixture(t: TestContext) {
   };
 }
 
-for (const location of ["apps/web", "apps/admin", "apps/landing", "apps/landing-static", "apps/storybook", "."]) {
+for (const location of ["apps/web", "platform/apps/admin", "apps/landing", "apps/landing-static", "platform/apps/storybook", "."]) {
   test(`E2E setup installs Chromium using Playwright in ${location}`, (t) => {
     const checkout = fixture(t);
     checkout.install(location, `require("node:fs").writeFileSync("invocation.json", JSON.stringify(process.argv.slice(2)));`);
@@ -64,7 +64,7 @@ test("E2E setup explains missing dependencies", (t) => {
 test("E2E setup installs browsers for every workspace's Playwright version", (t) => {
   const checkout = fixture(t);
   for (const app of ["web", "admin"]) {
-    checkout.install(`apps/${app}`, `require("node:fs").appendFileSync("invocations.txt", "${app}\\n");`);
+    checkout.install(app === "admin" ? "platform/apps/admin" : `apps/${app}`, `require("node:fs").appendFileSync("invocations.txt", "${app}\\n");`);
   }
   const result = checkout.run();
   assert.equal(result.status, 0, result.stderr);

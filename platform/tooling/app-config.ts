@@ -1,11 +1,12 @@
 /**
  * Read `app.config.ts` from shell scripts and CI, which cannot import TypeScript.
  *
- *   ./scripts/node-ts.sh scripts/app-config.ts port web          # 3001
- *   ./scripts/node-ts.sh scripts/app-config.ts origin admin      # http://localhost:3002
- *   ./scripts/node-ts.sh scripts/app-config.ts get identity.productName
- *   eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"   # APP_CONFIG_* variables
- *   ./scripts/node-ts.sh scripts/app-config.ts github-env >> "$GITHUB_ENV"
+ *   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts port web          # 3001
+ *   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts origin admin      # http://localhost:3002
+ *   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts dir admin         # platform/apps/admin
+ *   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts get identity.productName
+ *   eval "$(./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell)"   # APP_CONFIG_* variables
+ *   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts github-env >> "$GITHUB_ENV"
  *
  * The config is validated first, so an invalid value fails the calling script
  * with the list of problems instead of starting anything on a wrong port.
@@ -13,8 +14,9 @@
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import rawAppConfig from "../app.config.ts";
+import rawAppConfig from "../../app.config.ts";
 import {
+  APP_DIRS,
   APP_IDS,
   AppConfigError,
   localOrigin,
@@ -40,6 +42,7 @@ export function configVariables(config: AppConfig): Record<string, string> {
   for (const app of APP_IDS) {
     variables[`APP_CONFIG_PORT_${envSuffix(app)}`] = String(config.runtime.ports[app]);
     variables[`APP_CONFIG_ORIGIN_${envSuffix(app)}`] = localOrigin(config, app);
+    variables[`APP_CONFIG_DIR_${envSuffix(app)}`] = APP_DIRS[app];
   }
   return variables;
 }
@@ -68,6 +71,7 @@ class UsageError extends Error {}
 const USAGE = `Usage: app-config.ts <command>
   port <app>          local port of an app
   origin <app>        http://localhost:<port> of an app
+  dir <app>           directory of an app, relative to the repository root
   get <path>          a single value, e.g. identity.productName
   shell               APP_CONFIG_* assignments for bash eval
   github-env          APP_CONFIG_* lines for $GITHUB_ENV
@@ -82,6 +86,8 @@ export function run(argv: readonly string[], raw: unknown = rawAppConfig): strin
       return String(config.runtime.ports[appArgument(argument)]);
     case "origin":
       return localOrigin(config, appArgument(argument));
+    case "dir":
+      return APP_DIRS[appArgument(argument)];
     case "get": {
       const value = argument ? lookup(config, argument) : undefined;
       if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {

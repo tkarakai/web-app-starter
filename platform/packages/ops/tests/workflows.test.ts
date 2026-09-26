@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { YAML, spawn } from "bun";
 const require = createRequire(import.meta.url);
-const recordOps = require("../../../.github/scripts/record-ops.cjs");
+const recordOps = require("../../../../.github/scripts/record-ops.cjs");
 const sha = "a".repeat(40), old = "b".repeat(40);
 const original = { ...process.env };
 afterEach(() => { process.env = { ...original }; });
@@ -50,7 +50,7 @@ test("invalid SHAs cannot create misleading audit records", async () => {
 interface Step { name?: string; id?: string; run?: string; uses?: string; with?: Record<string, unknown>; if?: string }
 interface Action { runs: { steps: Step[] } }
 async function action(name: string): Promise<Action> {
-  return YAML.parse(await readFile(new URL(`../../../.github/actions/${name}/action.yml`, import.meta.url), "utf8")) as Action;
+  return YAML.parse(await readFile(new URL(`../../../../.github/actions/${name}/action.yml`, import.meta.url), "utf8")) as Action;
 }
 test("deployment rejects incomplete or obsolete artifact identity before downloading", async () => {
   const a = await action("deploy-vercel");
@@ -183,7 +183,7 @@ test("hash resolution reads target configuration before looking up reusable byte
 });
 test("every deployment workflow records failures using workflow-version tooling", async () => {
   for (const kind of ["staging", "production", "rollback"]) {
-    const workflow = YAML.parse(await readFile(new URL(`../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { if?: string; steps?: Step[] }>; permissions: Record<string, string> };
+    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { if?: string; steps?: Step[] }>; permissions: Record<string, string> };
     expect(workflow.permissions.deployments).toBe("write"); expect(workflow.jobs["ops-record"].if).toBe("always()");
     for (const app of ["web", "admin", "landing"]) {
       const steps = workflow.jobs[`deploy-${app}`].steps!;
@@ -195,7 +195,7 @@ test("every deployment workflow records failures using workflow-version tooling"
   }
 });
 test("staging success tags depend directly on every deploy and attestation outcome", async () => {
-  const w = YAML.parse(await readFile(new URL("../../../.github/workflows/cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { needs: string[]; if: string }> };
+  const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { needs: string[]; if: string }> };
   for (const dependency of ["deploy-web", "deploy-admin", "deploy-landing", "attest", "smoke-test"]) expect(w.jobs.record.needs).toContain(dependency);
   expect(w.jobs.record.if).toContain("!contains(needs.*.result, 'failure')");
 });
@@ -208,7 +208,7 @@ test("health remains successful when a later tag write fails", async () => {
 
 test("production and rollback workflow gates resolve annotated tags and reject mismatched targets", async () => {
   for (const kind of ["production", "rollback"]) {
-    const workflow = YAML.parse(await readFile(new URL(`../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: { validate: { steps: Step[] } } };
+    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: { validate: { steps: Step[] } } };
     const step = workflow.jobs.validate.steps.find(s => typeof s.with?.script === "string" && s.with.script.includes("listMatchingRefs"))!;
     const script = String(step.with!.script).replaceAll("${{ inputs.environment }}", "production");
     const execute = new Function("github", "context", "core", `return (async () => { ${script} })()`);
@@ -227,7 +227,7 @@ test("real Turbo hashes reuse web across environments but separate static landin
   const a = await action("build-app");
   const dir = await mkdtemp(resolve(tmpdir(), "ops-hash-test-"));
   const hashes: Record<string, string> = {};
-  const sourceRoot = new URL("../../..", import.meta.url).pathname;
+  const sourceRoot = new URL("../../../..", import.meta.url).pathname;
   const env = { ...process.env };
   for (const name of ["NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_WEB_APP_URL", "NEXT_PUBLIC_CONVEX_SITE_URL", "CONVEX_URL", "APP_ENVIRONMENT"]) delete env[name];
   try {

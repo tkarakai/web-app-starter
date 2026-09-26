@@ -1,5 +1,5 @@
 // Verify every place that names the Node or Bun runtime agrees with the baseline.
-// Usage: ./scripts/node-ts.sh scripts/check-runtime-baseline.ts [ROOT]
+// Usage: ./platform/tooling/node-ts.sh platform/tooling/check-runtime-baseline.ts [ROOT]
 // Policy and the list of locations: platform/docs/dependency-migrations.md#runtime-baseline
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -94,7 +94,7 @@ export function checkRuntimeBaseline(root: string): string[] {
 }
 
 export function main(args: string[]): number {
-  const root = path.resolve(args[0] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), ".."));
+  const root = path.resolve(args[0] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."));
   const errors = checkRuntimeBaseline(root);
   if (errors.length === 0) {
     process.stdout.write("Runtime baseline is consistent.\n");

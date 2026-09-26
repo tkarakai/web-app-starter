@@ -6,7 +6,7 @@
  * Validation runs once, when this module loads; an invalid value throws an
  * `AppConfigError` naming each bad setting.
  */
-import rawAppConfig from "../../../app.config.ts";
+import rawAppConfig from "../../../../app.config.ts";
 import { type AppConfig, type AppId, localOrigin, validateAppConfig } from "./schema.ts";
 
 export const appConfig: AppConfig = validateAppConfig(rawAppConfig);
@@ -17,6 +17,7 @@ export function localAppOrigin(app: AppId): string {
 }
 
 export {
+  APP_DIRS,
   APP_IDS,
   AppConfigError,
   localOrigin,

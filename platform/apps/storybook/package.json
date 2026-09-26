@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "../../scripts/next-dev.sh storybook",
-    "prebuild": "../../scripts/copy-shared-assets.sh",
+    "dev": "../../tooling/next-dev.sh storybook",
+    "prebuild": "../../tooling/copy-shared-assets.sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",

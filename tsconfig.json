@@ -1,10 +1,10 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./platform/config/tsconfig.base.json",
   "include": [],
   "references": [
     { "path": "apps/web" },
     { "path": "apps/landing" },
-    { "path": "apps/admin" },
+    { "path": "platform/apps/admin" },
     { "path": "platform/packages/design-system" },
     { "path": "packages/backend" },
     { "path": "platform/packages/auth" }

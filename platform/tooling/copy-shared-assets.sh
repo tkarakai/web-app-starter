@@ -2,17 +2,17 @@
 #
 # copy-shared-assets.sh
 # Copies the brand icons named in app.config.ts (brand.icons) into each app's
-# public/ directory. Usage: packages/design-system/assets/README.md.
+# public/ directory. Usage: platform/packages/design-system/assets/README.md.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Icon sources from app.config.ts, relative to the repository root.
 APP_CONFIG_VARS=$("${SCRIPT_DIR}/node-ts.sh" "${SCRIPT_DIR}/app-config.ts" shell) || exit 1
 eval "${APP_CONFIG_VARS}"
-: "${APP_CONFIG_ICON_SVG:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
+: "${APP_CONFIG_ICON_SVG:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
 
 # Published file name in public/ -> source. Apps reference the published names.
 ASSETS=(
@@ -47,7 +47,11 @@ done
 copied=0
 
 for app in "${APPS[@]}"; do
-  PUBLIC_DIR="${REPO_ROOT}/apps/${app}/public"
+  # The app's directory from app.config.ts's reader (APP_CONFIG_DIR_<APP>),
+  # e.g. apps/web or platform/apps/admin.
+  dir_var="APP_CONFIG_DIR_$(echo "$app" | tr '[:lower:]-' '[:upper:]_')"
+  APP_DIR="${!dir_var:?missing ${dir_var} from platform/tooling/app-config.ts}"
+  PUBLIC_DIR="${REPO_ROOT}/${APP_DIR}/public"
   mkdir -p "${PUBLIC_DIR}"
 
   for i in "${!ASSETS[@]}"; do
@@ -61,7 +65,7 @@ for app in "${APPS[@]}"; do
     fi
 
     cp "${src}" "${dest}"
-    echo "  + Copied ${asset} to apps/${app}/public/"
+    echo "  + Copied ${asset} to ${APP_DIR}/public/"
     copied=$((copied + 1))
   done
 done

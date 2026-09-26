@@ -3,11 +3,11 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-import rawAppConfig from "../../app.config.ts";
+import rawAppConfig from "../../../app.config.ts";
 import { configVariables, run, shellQuote } from "../app-config.ts";
 import { validateAppConfig } from "../../packages/app-config/src/schema.ts";
 
-const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const config = validateAppConfig(rawAppConfig);
 
 function customised(): typeof rawAppConfig {
@@ -23,6 +23,16 @@ test("port and origin follow runtime.ports", () => {
   assert.equal(run(["port", "web"], customised()), "4101");
   assert.equal(run(["origin", "web"], customised()), "http://localhost:4101");
   assert.equal(run(["port", "landing-static"]), String(config.runtime.ports["landing-static"]));
+});
+
+test("dir names each app's directory relative to the repository root", () => {
+  assert.equal(run(["dir", "web"]), "apps/web");
+  assert.equal(run(["dir", "admin"]), "platform/apps/admin");
+  assert.equal(run(["dir", "storybook"]), "platform/apps/storybook");
+  assert.throws(() => run(["dir", "demo"]), /expected an app name/);
+  const variables = configVariables(config);
+  assert.equal(variables.APP_CONFIG_DIR_LANDING_STATIC, "apps/landing-static");
+  assert.equal(variables.APP_CONFIG_DIR_ADMIN, "platform/apps/admin");
 });
 
 test("get returns single values only", () => {
@@ -60,7 +70,7 @@ test("an invalid config fails before printing anything", () => {
 
 test("the CLI exits 2 on misuse and prints values on success", () => {
   const cli = (...args: string[]) =>
-    spawnSync("./scripts/node-ts.sh", ["scripts/app-config.ts", ...args], { cwd: repoRoot, encoding: "utf8" });
+    spawnSync("./platform/tooling/node-ts.sh", ["platform/tooling/app-config.ts", ...args], { cwd: repoRoot, encoding: "utf8" });
   const ok = cli("port", "admin");
   assert.equal(ok.status, 0, ok.stderr);
   assert.equal(ok.stdout, `${config.runtime.ports.admin}\n`);

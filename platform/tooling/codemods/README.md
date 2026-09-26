@@ -42,8 +42,8 @@ therefore the case that most justifies shipping a codemod.
 
 ## Language
 
-TypeScript, run with `scripts/node-ts.sh` (for example
-`./scripts/node-ts.sh scripts/codemods/v2-authed-ctx-user-id.ts`), which needs Node 22.6+.
+TypeScript, run with `platform/tooling/node-ts.sh` (for example
+`./platform/tooling/node-ts.sh platform/tooling/codemods/v2-authed-ctx-user-id.ts`), which needs Node 22.6+.
 Use only Node built-in modules unless the transform genuinely needs a TypeScript
 AST, so the codemod runs in a downstream repo that has not run `bun install` yet
 after the merge. Shell is fine for a thin wrapper; no other language.

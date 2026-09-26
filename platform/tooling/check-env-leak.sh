@@ -10,7 +10,7 @@
 # It has to be checked against the output.
 #
 # Usage:
-#   scripts/check-env-leak.sh <app> [--warn]
+#   platform/tooling/check-env-leak.sh <app> [--warn]      (from the repository root)
 #
 #     --warn   report leaks but exit 0 (used while the migration is in progress)
 #
@@ -20,6 +20,9 @@ set -euo pipefail
 
 APP="${1:?usage: check-env-leak.sh <app> [--warn]}"
 MODE="${2:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The app's directory (apps/web, platform/apps/admin, ...) from app.config.ts's reader.
+APP_DIR="$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" dir "$APP")"
 
 # Variables whose values differ per environment. An artifact containing any of
 # these values is pinned to the environment it was built for.
@@ -63,7 +66,7 @@ value_of() {
 
 SCAN_PATHS=()
 [ -d ".vercel/output" ] && SCAN_PATHS+=(".vercel/output")
-[ -d "apps/${APP}/.next" ] && SCAN_PATHS+=("apps/${APP}/.next")
+[ -d "${APP_DIR}/.next" ] && SCAN_PATHS+=("${APP_DIR}/.next")
 if [ ${#SCAN_PATHS[@]} -eq 0 ]; then
   echo "::error::No build output found to scan for app '${APP}'"
   exit 1

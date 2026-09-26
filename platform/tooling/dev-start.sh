@@ -9,7 +9,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
@@ -19,7 +19,14 @@ NODE_TS="$SCRIPT_DIR/node-ts.sh"
 # The reader validates the config first, so a bad value stops here.
 APP_CONFIG_VARS=$("$NODE_TS" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
 eval "$APP_CONFIG_VARS"
-: "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
+: "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
+
+# Absolute directory of an app (apps/web, platform/apps/admin, ...), from APP_CONFIG_DIR_<APP>.
+app_dir() {
+    local var
+    var="APP_CONFIG_DIR_$(echo "$1" | tr '[:lower:]-' '[:upper:]_')"
+    echo "$PROJECT_DIR/${!var}"
+}
 
 # ============================================================
 # PARSE ARGUMENTS
@@ -661,13 +668,13 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ -n "$CLOUD_PORT" ] && [ -n "$SITE_PORT" ]; then
         # Update .env.local for each app that needs Convex
         if [ "$START_WEB" = true ]; then
-            update_app_env_urls "$PROJECT_DIR/apps/web/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+            update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
         if [ "$START_ADMIN" = true ]; then
-            update_app_env_urls "$PROJECT_DIR/apps/admin/.env.local" "$CLOUD_PORT" "$SITE_PORT"
+            update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
         if [ "$START_LANDING" = true ]; then
-            update_app_env_urls "$PROJECT_DIR/apps/landing/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
+            update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
         fi
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
@@ -787,7 +794,7 @@ find_available_port() {
 
 start_next_app() {
     local app_name="$1"
-    local app_dir="$PROJECT_DIR/apps/$app_name"
+    local app_dir; app_dir="$(app_dir "$app_name")"
     local log_file="$PROJECT_DIR/.next-${app_name}.log"
     local preferred_port="$2"
 
@@ -943,9 +950,9 @@ fi
 
 if [ "$START_LANDING" = true ]; then
     # Ensure landing's .env.local has the web app URL for cross-app links
-    touch "$PROJECT_DIR/apps/landing/.env.local"
+    touch "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local"
     if [ -n "$WEB_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$WEB_APP_URL"
+        update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$WEB_APP_URL"
         echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
     fi
     start_next_app "landing" "$APP_CONFIG_PORT_LANDING"
@@ -962,7 +969,7 @@ if [ "$START_LANDING" = true ]; then
 
     # Set the landing URL in the web app so auth pages can link back
     if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "$LANDING_APP_URL"
+        update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "LANDING_URL" "$LANDING_APP_URL"
         echo -e "  ${GREEN}✔${NC} LANDING_URL set to $LANDING_APP_URL for web"
     fi
 fi
@@ -983,8 +990,8 @@ if [ "$NEED_CONVEX" = true ]; then
 
     # Seed LANDING_URL for web when landing is not started
     if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
-        if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/apps/web/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "$APP_CONFIG_ORIGIN_LANDING"
+        if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "LANDING_URL" "$APP_CONFIG_ORIGIN_LANDING"
             echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING for web"
         else
             echo -e "  ${GREEN}✔${NC} LANDING_URL already set for web (preserved)"
@@ -993,8 +1000,8 @@ if [ "$NEED_CONVEX" = true ]; then
 
     # Seed NEXT_PUBLIC_WEB_APP_URL for landing when web is not started
     if [ "$START_LANDING" = true ] && [ "$START_WEB" = false ]; then
-        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/apps/landing/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$APP_CONFIG_ORIGIN_WEB"
+        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$APP_CONFIG_ORIGIN_WEB"
             echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to $APP_CONFIG_ORIGIN_WEB for landing"
         else
             echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL already set for landing (preserved)"
@@ -1035,9 +1042,9 @@ fi
 if [ "$NON_INTERACTIVE" = true ]; then
     echo ""
     for app_name in web admin landing storybook; do
-        local_env="$PROJECT_DIR/apps/$app_name/.env.local"
+        local_env="$(app_dir "$app_name")/.env.local"
         if [ -f "$local_env" ]; then
-            echo "[CI MODE] apps/$app_name/.env.local:"
+            echo "[CI MODE] ${local_env#"$PROJECT_DIR/"}:"
             cat "$local_env" 2>/dev/null | sed 's/^/  /' || true
         fi
     done

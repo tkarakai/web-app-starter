@@ -15,7 +15,7 @@ export function seedBaseline(app: string, releases: string): void {
   u.atomicJson(path.join(app, u.LOCK), { schemaVersion: 1, package: u.PACKAGE, release: "1.0.0", releaseDigest: u.fingerprint(release), files: release.files, status: "baseline" });
 }
 export function linkStarter(app: string): void {
-  fs.mkdirSync(path.join(app, "node_modules/@repo"), { recursive: true });
+  fs.mkdirSync(path.join(app, "node_modules", path.dirname(u.PACKAGE)), { recursive: true });
   fs.symlinkSync(path.join(app, u.BOUNDARY), path.join(app, "node_modules", u.PACKAGE), "dir");
 }
 function linkDependencies(source: string, destination: string): void {
@@ -36,7 +36,7 @@ function run(app: string, command: string[], log: string, success = true): void 
   u.requireThat((exit === 0) === success, `Unexpected exit ${exit}; see ${log}`);
 }
 export function cli(app: string, releases: string, command: string, ...args: string[]): object {
-  const result = spawnSync(process.execPath, [path.join(u.ROOT, "scripts/starter-upgrade/upgrade.ts"), command, "--app", app, "--releases", releases, ...args], { encoding: "utf8", timeout: 900_000 });
+  const result = spawnSync(process.execPath, [path.join(u.ROOT, "platform/tooling/starter-upgrade/upgrade.ts"), command, "--app", app, "--releases", releases, ...args], { encoding: "utf8", timeout: 900_000 });
   u.requireThat(result.status === 0, result.stderr || String(result.error));
   return JSON.parse(result.stdout) as object;
 }
@@ -44,7 +44,7 @@ export function main(): void {
   fs.rmSync(SANDBOX, { recursive: true, force: true });
   const app = path.join(SANDBOX, "apps/demo"), releases = path.join(SANDBOX, "releases");
   copyApp(app); fs.cpSync(u.RELEASES, releases, { recursive: true });
-  fs.copyFileSync(path.join(u.ROOT, "tsconfig.base.json"), path.join(SANDBOX, "tsconfig.base.json"));
+  fs.mkdirSync(path.join(SANDBOX, "platform/config"), { recursive: true }); fs.copyFileSync(path.join(u.ROOT, "platform/config/tsconfig.base.json"), path.join(SANDBOX, "platform/config/tsconfig.base.json"));
   fs.writeFileSync(path.join(SANDBOX, "package.json"), '{"private":true}\n');
   linkDependencies(path.join(u.ROOT, "apps/demo/node_modules"), path.join(app, "node_modules"));
   // Local package installation: only this dependency points at the copied package artifact.

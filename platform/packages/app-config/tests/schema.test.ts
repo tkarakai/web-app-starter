@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import rawAppConfig from "../../../app.config";
+import rawAppConfig from "../../../../app.config";
 import { appConfig, localAppOrigin } from "../src/index";
 import {
   APP_IDS,

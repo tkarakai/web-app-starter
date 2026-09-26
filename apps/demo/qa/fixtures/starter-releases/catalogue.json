@@ -10,7 +10,7 @@
       "files": {
         "starter-packages/sidebar-policy/dist/index.d.ts": "713d1c2aef2512e5dd12e2dd62432710b758bec6cd1f01592bbd8a0ae3727744",
         "starter-packages/sidebar-policy/dist/index.js": "25cbf10b4bf59b2eff480cbb2fd030f004ec685b8a439ba9139f18aa0ad0c988",
-        "starter-packages/sidebar-policy/package.json": "c52079fe5b5648c0787cc31f89316f5bb1f5db4a0863ec106325f7505169d775"
+        "starter-packages/sidebar-policy/package.json": "c644b6bc29801fdceded1882e87fe499caeaf177dee1fdb82bbc1b1c94244079"
       },
       "from": [],
       "securityUrgency": "none"
@@ -25,7 +25,7 @@
       "files": {
         "starter-packages/sidebar-policy/dist/index.d.ts": "e0135c55cef05608bcf47a0e9ac573e61d7c9e69a96dd6ad0a752289c55885cb",
         "starter-packages/sidebar-policy/dist/index.js": "7b0f2dd6971daf9b4423fb5a8a448768af1c616c19eff2294953c48ccc2a5d20",
-        "starter-packages/sidebar-policy/package.json": "d80591ffbb67a4d6a0ab1d37e4580e4beeb2afa4e9313c98cf20d25d383d02d7"
+        "starter-packages/sidebar-policy/package.json": "8e8b3f082ea47293317d71d28ae4dbc8a0fccd8d107ea8f788c9e0545ee931ef"
       },
       "from": [
         "1.0.0"

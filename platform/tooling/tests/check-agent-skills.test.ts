@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { checkAgentSkills, parseFrontmatter } from "../check-agent-skills.ts";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 function skill(name: string, description = "Use to do the thing."): string {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n\nSteps.\n`;

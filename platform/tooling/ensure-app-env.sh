@@ -17,14 +17,14 @@
 # files are never touched.
 #
 # Only apps whose .env.example is self-sufficient are seeded — that is, every key
-# has a value once the local URLs are filled in. apps/web and apps/admin deliberately ship empty
+# has a value once the local URLs are filled in. apps/web and platform/apps/admin deliberately ship empty
 # NEXT_PUBLIC_CONVEX_URL / NEXT_PUBLIC_CONVEX_SITE_URL entries, because those are
 # only knowable once `convex dev` has assigned a port; dev-start.sh owns them.
 # Copying an empty value there would swap one build failure for a more confusing
 # one ("CONVEX_SITE_URL is not set"), so those apps are skipped.
 #
 # Usage:
-#   ./scripts/ensure-app-env.sh [--quiet]
+#   ./platform/tooling/ensure-app-env.sh [--quiet]
 #
 
 set -e
@@ -34,12 +34,12 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Local origins from app.config.ts, as APP_CONFIG_* variables.
 APP_CONFIG_VARS=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
 eval "$APP_CONFIG_VARS"
-: "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
+: "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
 
 # The local default for an app's URL key, or nothing.
 config_default() {
@@ -80,7 +80,7 @@ log() {
 
 created=0
 
-for app_dir in "$PROJECT_DIR"/apps/*/; do
+for app_dir in "$PROJECT_DIR"/apps/*/ "$PROJECT_DIR"/platform/apps/*/; do
     [ -d "$app_dir" ] || continue
 
     example="$app_dir.env.example"

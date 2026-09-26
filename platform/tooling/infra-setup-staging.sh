@@ -12,8 +12,8 @@ set -euo pipefail
 #  Based on platform/docs/deployment-runbook.md sections 2a–2e (staging only).
 #
 #  Usage: bun run infra:setup:staging
-#         ./scripts/infra-setup-staging.sh
-#         ./scripts/infra-setup-staging.sh --help
+#         ./platform/tooling/infra-setup-staging.sh
+#         ./platform/tooling/infra-setup-staging.sh --help
 # ============================================================================
 
 # Colors for output (matching dev-start.sh)
@@ -26,7 +26,7 @@ DIM='\033[2m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Timestamped output files
 TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
@@ -46,7 +46,7 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo "Interactive script that sets up Convex, Vercel, and GitHub"
     echo "for the staging environment. Based on the deployment runbook."
     echo ""
-    echo "Usage: ./scripts/infra-setup-staging.sh"
+    echo "Usage: ./platform/tooling/infra-setup-staging.sh"
     echo "       bun run infra:setup:staging"
     echo ""
     echo "The script will:"
@@ -421,7 +421,7 @@ print_summary() {
     echo "    Token:               ${VERCEL_TOKEN:0:8}..."
     echo "    Projects to create:"
     echo "      - $VERCEL_WEB_NAME       (root: apps/web)"
-    echo "      - $VERCEL_ADMIN_NAME     (root: apps/admin)"
+    echo "      - $VERCEL_ADMIN_NAME     (root: platform/apps/admin)"
     echo "      - $VERCEL_LANDING_NAME   (root: apps/landing)"
     echo ""
     echo -e "  ${BOLD}Planned Phase 3 Execution Steps:${NC}"
@@ -545,7 +545,7 @@ step_create_vercel_projects() {
     fi
 
     create_vercel_project "$VERCEL_WEB_NAME" "apps/web" "VERCEL_PROJECT_WEB_STAGING_ID"
-    create_vercel_project "$VERCEL_ADMIN_NAME" "apps/admin" "VERCEL_PROJECT_ADMIN_STAGING_ID"
+    create_vercel_project "$VERCEL_ADMIN_NAME" "platform/apps/admin" "VERCEL_PROJECT_ADMIN_STAGING_ID"
     create_vercel_project "$VERCEL_LANDING_NAME" "apps/landing" "VERCEL_PROJECT_LANDING_STAGING_ID"
 
     record_value "VERCEL_WEB_STAGING_URL" "$VERCEL_WEB_URL"

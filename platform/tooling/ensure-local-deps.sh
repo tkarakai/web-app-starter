@@ -8,7 +8,7 @@
 # and concurrent development across multiple worktrees.
 #
 # Usage:
-#   ./scripts/ensure-local-deps.sh [--quiet]
+#   ./platform/tooling/ensure-local-deps.sh [--quiet]
 #
 # Options:
 #   --quiet    Suppress informational output (only show errors/changes)
@@ -24,7 +24,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 QUIET=false
 if [[ "$1" == "--quiet" ]]; then
@@ -77,7 +77,7 @@ fi
 MUST_BE_LOCAL=(
     "node_modules"
     "apps/web/.next"
-    "apps/admin/.next"
+    "platform/apps/admin/.next"
     "apps/landing/.next"
     ".turbo"
     ".cache"

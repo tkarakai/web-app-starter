@@ -14,7 +14,7 @@ import {
 } from "./model.ts";
 export * from "./model.ts";
 
-export const ROOT = path.resolve(import.meta.dirname, "../..");
+export const ROOT = path.resolve(import.meta.dirname, "../../..");
 export const RELEASES = path.join(ROOT, "apps/demo/qa/fixtures/starter-releases");
 export const ACTIONS: Record<string, string[]> = { "sidebar-finite-width": ["bun", "run", "test:starter-policy"] };
 export const CHECKS: Check[] = [

@@ -1,5 +1,5 @@
 // Verify the platform Agent Skills and the links agents discover them through.
-// Usage: ./scripts/node-ts.sh scripts/check-agent-skills.ts [ROOT]
+// Usage: ./platform/tooling/node-ts.sh platform/tooling/check-agent-skills.ts [ROOT]
 //
 // Skills live once, in platform/agent-skills/<name>/SKILL.md, and are linked as
 // .claude/skills/<name> (Claude Code) and .agents/skills/<name> (Codex), each a relative
@@ -110,7 +110,7 @@ export function checkAgentSkills(root: string): string[] {
 }
 
 export function main(args: string[]): number {
-  const root = path.resolve(args[0] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), ".."));
+  const root = path.resolve(args[0] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."));
   const errors = checkAgentSkills(root);
   if (errors.length === 0) {
     process.stdout.write("Agent skills and their links are consistent.\n");

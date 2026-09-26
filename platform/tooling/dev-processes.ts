@@ -6,7 +6,7 @@
  * kill global "orphans". The legacy .dev-pids file remains for launcher/status
  * compatibility; .dev-processes.json supplies the process start identities.
  *
- * Usage: scripts/node-ts.sh scripts/dev-processes.ts [--root DIR] track NAME PID
+ * Usage: platform/tooling/node-ts.sh platform/tooling/dev-processes.ts [--root DIR] track NAME PID
  *                                                      [--root DIR] running NAME|* PID
  *                                                      [--root DIR] stop [--name NAME]
  *                                                      [--root DIR] list
@@ -222,7 +222,7 @@ function integer(value: string | undefined): number {
 
 export function main(argv: string[]): number {
   const args = [...argv];
-  let root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  let root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
   if (args[0] === "--root") {
     args.shift();
     root = args.shift() ?? "";

@@ -33,7 +33,7 @@ function getEnvValue(name: string): string | undefined {
 
   for (const envPath of [
     path.join(__dirname, "../../../.env.local"),
-    path.join(__dirname, "../../../../../.env.local"),
+    path.join(__dirname, "../../../../../../.env.local"),
   ]) {
     try {
       const content = fs.readFileSync(envPath, "utf-8");

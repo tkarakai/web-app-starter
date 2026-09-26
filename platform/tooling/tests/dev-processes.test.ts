@@ -16,18 +16,19 @@ import { fileURLToPath } from "node:url";
 import * as manager from "../dev-processes.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.resolve(SCRIPTS, "../..");
 const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
-// The dev scripts read ports from app.config.ts through scripts/app-config.ts.
-const CONFIG_FILES = ["app.config.ts", "packages/app-config/src/schema.ts"];
+// The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
+const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
 function install(checkout: string): void {
-  fs.mkdirSync(path.join(checkout, "scripts"), { recursive: true });
-  for (const name of INSTALLED) fs.copyFileSync(path.join(SCRIPTS, name), path.join(checkout, "scripts", name));
+  fs.mkdirSync(path.join(checkout, "platform/tooling"), { recursive: true });
+  for (const name of INSTALLED) fs.copyFileSync(path.join(SCRIPTS, name), path.join(checkout, "platform/tooling", name));
   for (const name of CONFIG_FILES) {
     fs.mkdirSync(path.dirname(path.join(checkout, name)), { recursive: true });
-    fs.copyFileSync(path.join(SCRIPTS, "..", name), path.join(checkout, name));
+    fs.copyFileSync(path.join(ROOT, name), path.join(checkout, name));
   }
   fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module" }));
 }
@@ -52,7 +53,7 @@ async function alive(child: ChildProcess): Promise<boolean> {
 
 function runScript(name: string, args: string[] = [], checkout = root): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawn("bash", [path.join(checkout, "scripts", name), ...args], { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("bash", [path.join(checkout, "platform/tooling", name), ...args], { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "", stderr = "";
     child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
     child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
@@ -258,8 +259,8 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   const outsider = spawnIn(foreign);
   const previous = spawnIn(root);
   track("next-storybook", previous);
-  fs.mkdirSync(path.join(root, "apps/storybook"), { recursive: true });
-  fs.writeFileSync(path.join(root, "scripts/copy-shared-assets.sh"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
+  fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
+  fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
   const bindir = path.join(root, "fake-bin");
   fs.mkdirSync(bindir);
   const fakes: Record<string, string> = {
@@ -269,7 +270,7 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   for (const [name, content] of Object.entries(fakes)) fs.writeFileSync(path.join(bindir, name), content, { mode: 0o755 });
   const log = path.join(root, "start.log");
   const output = fs.openSync(log, "w");
-  const launcher = spawn("bash", [path.join(root, "scripts/dev-start.sh"), "--ci", "--app=storybook"], {
+  const launcher = spawn("bash", [path.join(root, "platform/tooling/dev-start.sh"), "--ci", "--app=storybook"], {
     cwd: root, env: { ...process.env, PATH: bindir + path.delimiter + process.env.PATH },
     stdio: ["ignore", output, output], detached: true,
   });
@@ -289,13 +290,13 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"]]) {
   test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 30_000 }, async () => {
     // Keep the public package scripts and predev helpers real. Only the external
     // server is substituted; this tests command wiring, not Next.js compilation.
-    fs.copyFileSync(path.join(SCRIPTS, "../package.json"), path.join(root, "package.json"));
+    fs.copyFileSync(path.join(ROOT, "package.json"), path.join(root, "package.json"));
     for (const name of ["ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh"]) {
-      fs.copyFileSync(path.join(SCRIPTS, name), path.join(root, "scripts", name));
+      fs.copyFileSync(path.join(SCRIPTS, name), path.join(root, "platform/tooling", name));
     }
-    fs.cpSync(path.join(SCRIPTS, "../packages/design-system/assets"), path.join(root, "packages/design-system/assets"), { recursive: true });
-    fs.mkdirSync(path.join(root, "apps/storybook"), { recursive: true });
-    fs.writeFileSync(path.join(root, "apps/storybook/.env.example"), "SMOKE_TEST_DEFAULT=seeded\n");
+    fs.cpSync(path.join(ROOT, "platform/packages/design-system/assets"), path.join(root, "platform/packages/design-system/assets"), { recursive: true });
+    fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
+    fs.writeFileSync(path.join(root, "platform/apps/storybook/.env.example"), "SMOKE_TEST_DEFAULT=seeded\n");
     // Recreate the isolated workspace layout behind the original predev bug.
     fs.mkdirSync(path.join(root, "apps/web/node_modules/@playwright/test"), { recursive: true });
     const bindir = path.join(root, "fake-bin");
@@ -318,9 +319,9 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"]]) {
         assert.ok(!exited(launcher), logs);
         return logs.includes("[CI MODE] Staying in foreground");
       });
-      assert.ok(fs.existsSync(path.join(root, "apps/storybook/public/icon.svg")));
+      assert.ok(fs.existsSync(path.join(root, "platform/apps/storybook/public/icon.svg")));
       if (args[0] === "dev") {
-        assert.match(fs.readFileSync(path.join(root, "apps/storybook/.env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
+        assert.match(fs.readFileSync(path.join(root, "platform/apps/storybook/.env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
       }
       assert.ok(Object.keys(manager.readRecords(root)).includes("next-storybook"));
     } finally {
