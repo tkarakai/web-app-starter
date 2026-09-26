@@ -126,4 +126,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   betterAuth: import("../platform/betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
+  platform: import("@web-app-starter/convex-platform/_generated/component.js").ComponentApi<"platform">;
 };

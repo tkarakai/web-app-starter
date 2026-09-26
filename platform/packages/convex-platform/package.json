@@ -1,0 +1,29 @@
+{
+  "name": "@web-app-starter/convex-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform data and operations, isolated in a local Convex component.",
+  "exports": {
+    "./convex.config": "./src/component/convex.config.ts",
+    "./constants": "./src/component/auditTrailConstants.ts",
+    "./_generated/component": "./src/component/_generated/component.ts",
+    "./_generated/component.js": "./src/component/_generated/component.ts",
+    "./test": "./src/test.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:convex": "vitest run --config vitest.config.ts",
+    "lint": "eslint src --ignore-pattern \"**/_generated/**\" --max-warnings 0"
+  },
+  "dependencies": {
+    "convex": "^1.45.0",
+    "convex-helpers": "^0.1.111"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "convex-test": "^0.0.58",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.1",
+    "vitest": "^5.0.0"
+  }
+}

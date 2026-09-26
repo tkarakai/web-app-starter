@@ -1,9 +1,6 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "./test.modules";
 import { describe, expect, test } from "vitest";
 
-import schema from "./schema";
-
-const modules = import.meta.glob("./**/*.*s");
 
 const mockUser = {
   _id: "test-user-123" as const,
@@ -13,7 +10,7 @@ const mockUser = {
 };
 
 function createTestEnv() {
-  return convexTest(schema, modules);
+  return createPlatformTest();
 }
 
 describe("tasks", () => {

@@ -33,6 +33,7 @@ export const SEAM_HOOKS: readonly { file: string; hook: string; why: string }[] 
   { file: "packages/backend/convex/schema.ts", hook: "...platformTables", why: "the platform's tables" },
   { file: "packages/backend/convex/http.ts", hook: "registerPlatformRoutes(http)", why: "the platform's HTTP routes" },
   { file: "packages/backend/convex/convex.config.ts", hook: "./platform/betterAuth/convex.config", why: "the Better Auth component" },
+  { file: "packages/backend/convex/convex.config.ts", hook: "app.use(platform)", why: "the platform data component" },
   { file: "tsconfig.json", hook: "platform/config/tsconfig.base.json", why: "the TypeScript base" },
   { file: "eslint.config.mjs", hook: "platform/config/eslint.base.mjs", why: "the ESLint base" },
   { file: "renovate.json", hook: "platform/config/renovate-preset", why: "the Renovate preset" },

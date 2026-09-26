@@ -1,12 +1,9 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "../test.modules";
 import { describe, expect, test } from "vitest";
-import schema from "../schema";
-
-import { modules } from "../test.modules";
 
 describe("rateLimits schema", () => {
   test("rateLimits table exists and accepts records", async () => {
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
 
     await t.run(async (ctx) => {
       await ctx.db.insert("rateLimits", {
@@ -27,7 +24,7 @@ describe("rateLimits schema", () => {
   });
 
   test("rateLimits table has name index", async () => {
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
 
     await t.run(async (ctx) => {
       await ctx.db.insert("rateLimits", {

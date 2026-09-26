@@ -48,28 +48,27 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
    from the backend package:
 
    ```bash
-   cd packages/backend && CONVEX_AGENT_MODE=anonymous bunx convex dev --once
+   cd packages/backend && env -u CONVEX_AGENT_MODE bunx convex dev --once
    ```
 
    This starts a local backend for this checkout, pushes the functions, regenerates and exits.
    Commit everything it regenerates under `convex/_generated/` and
-   `convex/platform/betterAuth/_generated/`, even lines unrelated to your table: generated files are
+   `convex/platform/betterAuth/_generated/` and
+   `platform/packages/convex-platform/src/component/_generated/`, even lines unrelated to your table: generated files are
    committed as generated, never trimmed by hand.
-4. **Tests.** `packages/backend/convex/<table>.test.ts` with convex-test. Pass the module glob
-   (monorepo requirement) and cover: required fields are enforced, the owner index returns only
+4. **Tests.** `packages/backend/convex/<table>.test.ts` with convex-test. Use the shared test factory so scheduled audit writes reach the component, and cover: required fields are enforced, the owner index returns only
    that owner's rows, and each pure helper your module exports.
 
    ```ts
-   import { convexTest } from "convex-test";
+   import { createTestEnv } from "./test.modules";
    import { describe, expect, test } from "vitest";
-   import schema from "./schema";
 
-   const modules = import.meta.glob("./**/*.*s");
+   const t = createTestEnv(); // root module glob + registered platform component
    ```
 
 5. **Audit (optional).** If the action matters for security or support, record it with
    `scheduleAuditEvent` from `./platform/auditTrailHelpers`. Actions are a platform list
-   (`convex/platform/auditTrailConstants.ts`); if none fits, ask the platform maintainers for one
+   (`@web-app-starter/convex-platform/constants`); if none fits, ask the platform maintainers for one
    (`platform/docs/audit-trail-architecture.md`).
 6. **Check.**
 

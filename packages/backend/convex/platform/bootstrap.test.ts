@@ -1,10 +1,7 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "../test.modules";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "../_generated/api";
-import schema from "../schema";
-
-import { modules } from "../test.modules";
 
 const BOOTSTRAP_META = JSON.stringify({
   superpowers: ["coffee-to-code"],
@@ -12,7 +9,7 @@ const BOOTSTRAP_META = JSON.stringify({
 });
 
 function createTestEnv() {
-  return convexTest(schema, modules);
+  return createPlatformTest();
 }
 
 describe("bootstrap", () => {

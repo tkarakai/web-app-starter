@@ -1,14 +1,12 @@
+import { createTestEnv as createPlatformTest } from "../test.modules";
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "../_generated/api";
-import schema from "../schema";
 import { sendAuthEmail } from "./sendAuthEmail";
 
-import { modules } from "../test.modules";
 const recipient = "recipient@example.test";
 const sender = "sender@example.test";
 type Message = { from: string; to: string; subject: string; html: string; text: string };
@@ -66,7 +64,7 @@ describe("Resend email transport", () => {
   }
 
   async function prepareCaller(kind: "auth" | "admin" | "waitlist") {
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
     if (kind === "auth") {
       return {
         send: () => sendAuthEmail({ to: recipient, type: "verification", urlOrCode: "https://web.example.test/verify?token=local" }),

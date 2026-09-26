@@ -1,14 +1,9 @@
-import { convexTest } from "convex-test";
+import { createTestEnv } from "./test.modules";
 import { describe, expect, test } from "vitest";
 import { isEmailVerificationRequired } from "./platform/functions";
-import schema from "./schema";
 import { VALID_THEMES } from "./platform/userProfiles";
 
-const modules = import.meta.glob("./**/*.*s");
 
-function createTestEnv() {
-  return convexTest(schema, modules);
-}
 
 describe("authentication security", () => {
   describe("getCurrentUser graceful degradation", () => {

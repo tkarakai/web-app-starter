@@ -1,15 +1,13 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "../test.modules";
 import { describe, expect, test } from "vitest";
 import { api, components } from "../_generated/api";
-import schema from "../schema";
 import authSchema from "./betterAuth/schema";
 import { evaluatePasswordStrength, validatePasswordStrength } from "./passwordStrength";
-import { modules } from "../test.modules";
 
 const authModules = import.meta.glob("./betterAuth/**/*.*s");
 
 async function resetAccount(role: "admin" | "user", expiresAt = Date.now() + 60_000) {
-  const t = convexTest(schema, modules);
+  const t = createPlatformTest();
   t.registerComponent("betterAuth", authSchema, authModules);
   const email = "orchidquartz@example.com";
   const user = await t.mutation(components.betterAuth.adapter.create, {

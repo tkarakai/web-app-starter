@@ -24,6 +24,18 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** apps consuming audit-trail rows. Audit storage now lives in the
+  `@web-app-starter/convex-platform` component; wrappers remain `api.platform.auditTrail.*`.
+  **What to do:** retain `app.use(platform)` in `convex.config.ts` and add the component
+  workspace dependency to the backend. Run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-audit-trail-type.ts` to replace
+  `Doc<"auditTrail">` with `AuditTrailEvent` from `@repo/backend`, then regenerate with
+  `bun run dev`. Paginated audit views use `convex-helpers/react`; loaded pages are not
+  reactive. Backend tests must register the component (use `convex/test.modules.ts`).
+  Existing constant exports remain compatible. The legacy app table is retained during
+  migration; historical rows need copying before the final schema removes it.
+  **Done when:** codemod `--check`, typecheck, backend tests and the admin audit view pass.
+
 - **Who is affected:** every app. The platform moved under `platform/` (v2 layout). Shared
   packages are in `platform/packages/` and renamed from `@repo/<name>` to
   `@web-app-starter/<name>` (`app-config`, `auth`, `design-patterns`, `design-system`,

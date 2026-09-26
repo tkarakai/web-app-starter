@@ -30,9 +30,14 @@ These concerns belong to separate analysis/monitoring services that read from th
 
 ### Table: `auditTrail`
 
+The table belongs to the `@web-app-starter/convex-platform` component. Read it through
+`api.platform.auditTrail.list`; app database contexts cannot query its storage. Use
+`AuditTrailEvent` from `@repo/backend` for row types. Its `_id` crosses the component
+boundary as an opaque string, not an app `Id<"auditTrail">`.
+
 | Field | Type | Required | Set by | Description |
 |-------|------|----------|--------|-------------|
-| `_id` | `Id<"auditTrail">` | Yes | Convex | Unique identifier (Convex system field) |
+| `_id` | `string` | Yes | Convex | Unique identifier (Convex system field) |
 | `_creationTime` | `number` | Yes | Convex | When the server received/stored the event (Convex system field) |
 | `happenedAt` | `number` | Yes | Caller / Audit trail | When the event occurred. Caller can provide; defaults to `Date.now()` |
 | `authenticatedUserId` | `string?` | No | Audit trail | Better Auth user ID. Auto-injected from session for web events. Null for unauthenticated or system events |
@@ -191,14 +196,15 @@ Validation of caller-provided content (e.g. sanitizing user agent strings, verif
 
 ### Import Pattern
 
-The audit trail is an internal service within the Convex backend package. Other modules consume it via:
+The component owns storage, validation and pagination. App-side wrappers own identity,
+admin authorization and rate limiting. Existing helpers keep their API. App functions consume it via:
 
 ```typescript
 // For types and constants
-import { AUDIT_ACTIONS, AUDIT_STATUSES, type AuditAction, type AuditStatus } from "./auditTrailConstants";
+import { AUDIT_ACTIONS, AUDIT_STATUSES, type AuditAction, type AuditStatus } from "@web-app-starter/convex-platform/constants";
 
 // For the helper functions (in a separate file to avoid circular deps)
-import { scheduleAuditEvent, runAuditEvent } from "./auditTrailHelpers";
+import { scheduleAuditEvent, runAuditEvent } from "./platform/auditTrailHelpers";
 ```
 
 Apps outside the backend package access constants and helpers via:
@@ -206,7 +212,7 @@ Apps outside the backend package access constants and helpers via:
 ```typescript
 import {
   AUDIT_ACTIONS, AUDIT_STATUSES,
-  type AuditAction, type AuditStatus,
+  type AuditAction, type AuditStatus, type AuditTrailEvent,
   scheduleAuditEvent, runAuditEvent,
 } from "@repo/backend";
 ```
@@ -386,4 +392,9 @@ The admin dashboard (`platform/apps/admin`) provides:
 - **Event details** — expandable view showing all fields including oldValue, newValue, meta (JSON-formatted), and truncatedFields
 - **Truncation indicator** — visual indicator when fields were truncated
 
-The admin UI is read-only. It queries via `api.platform.auditTrail.list` which returns empty for non-admin users (safe for reactive subscriptions).
+The admin UI is read-only. It queries via `api.platform.auditTrail.list`, which returns
+an empty page for non-admin users. It uses `usePaginatedQuery` from
+`convex-helpers/react` with the component-compatible paginator. Loaded pages are not
+reactive; refresh the view to see new events. Cursors contain index values and should
+not be logged or exposed to other users. A completely full final page reports
+`isDone: false` until one further request returns an empty page.
