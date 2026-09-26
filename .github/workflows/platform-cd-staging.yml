@@ -194,23 +194,27 @@ jobs:
         id: eval
         run: |
           FORCE="${{ inputs.force_deploy || inputs.git_sha != '' }}"
+          LANDING=false
+          if [[ -f apps/landing/package.json ]] && [[ "$FORCE" == "true" || "${{ steps.filter.outputs.landing }}" == "true" ]]; then
+            LANDING=true
+          fi
 
           if [[ "$FORCE" == "true" ]]; then
             echo "Force deploy requested — deploying all apps"
             echo "web=true" >> "$GITHUB_OUTPUT"
             echo "admin=true" >> "$GITHUB_OUTPUT"
-            echo "landing=true" >> "$GITHUB_OUTPUT"
+            echo "landing=$LANDING" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "any_app=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=${{ steps.filter.outputs.web }}" >> "$GITHUB_OUTPUT"
             echo "admin=${{ steps.filter.outputs.admin }}" >> "$GITHUB_OUTPUT"
-            echo "landing=${{ steps.filter.outputs.landing }}" >> "$GITHUB_OUTPUT"
+            echo "landing=$LANDING" >> "$GITHUB_OUTPUT"
             echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
 
             if [[ "${{ steps.filter.outputs.web }}" == "true" ]] || \
                [[ "${{ steps.filter.outputs.admin }}" == "true" ]] || \
-               [[ "${{ steps.filter.outputs.landing }}" == "true" ]] || \
+               [[ "$LANDING" == "true" ]] || \
                [[ "${{ steps.filter.outputs.backend }}" == "true" ]]; then
               echo "any_app=true" >> "$GITHUB_OUTPUT"
             else

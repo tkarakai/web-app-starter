@@ -10,6 +10,7 @@
 //   --port <app>=<port>       Local port, repeatable (runtime.ports)
 //   --repo <owner/name>       Your GitHub repository, for the Renovate preset link; default: from origin
 //   --remove <apps>           Comma-separated reference apps to delete: landing, landing-static, demo
+//   --remove-sample           Remove projects, tasks and uploads; keep account settings and auth
 //   --no-upstream             Don't add the `upstream` remote
 //   --skip-install            Don't run `bun install` after removing apps
 //   --skip-build              Don't run the build at the end
@@ -47,6 +48,7 @@ export type AdoptOptions = {
   ports?: Record<string, number>;
   repo: string;
   remove?: RemovableApp[];
+  removeSample?: boolean;
   upstream?: boolean;
   install?: boolean;
   build?: boolean;
@@ -177,6 +179,47 @@ export function removeApps(root: string, apps: readonly RemovableApp[], log: (li
   if (verifyText !== undefined) writeFileSync(verify, verifyText);
 }
 
+/** Strip the shipped sample from a fresh checkout, keeping the platform schema hook and account UI. */
+export function removeSample(root: string): void {
+  const at = (file: string): string => path.join(root, file);
+  const backend = "packages/backend/convex/";
+  const dashboard = "apps/web/src/app/[locale]/(dashboard)/dashboard/";
+  const schema = readFileSync(at(`${backend}schema.ts`), "utf8")
+    .replace('import { sampleTables } from "./sampleTables";\n', "")
+    .replace(/ {2}\/\/ Sample domain[^\n]*\n {2}\.\.\.sampleTables,\n/, "");
+  writeFileSync(at(`${backend}schema.ts`), schema);
+  for (const file of ["sampleTables.ts", "projects.ts", "tasks.ts", "files.ts", "projectAccess.ts",
+    "projects.test.ts", "tasks.test.ts", "files.test.ts", "authorization-contract.test.ts"]) {
+    rmSync(at(`${backend}${file}`), { force: true });
+  }
+  for (const file of ["apps/web/src/components/projects", "apps/web/src/lib/projects.ts", "apps/web/qa/tests/projects.test.ts"]) {
+    rmSync(at(file), { recursive: true, force: true });
+  }
+  for (const [template, destination] of [
+    ["app-sidebar.tsx", "apps/web/src/components/app-sidebar.tsx"],
+    ["dashboard-client.tsx", `${dashboard}dashboard-client.tsx`],
+    ["auth-security.test.ts", `${backend}auth-security.test.ts`],
+    ["input-validation.test.ts", `${backend}input-validation.test.ts`],
+    ["localized-controls.test.tsx", "apps/web/qa/tests/localized-controls.test.tsx"],
+  ]) {
+    writeFileSync(at(destination), readFileSync(at(`platform/templates/adopt/${template}.txt`), "utf8"));
+  }
+  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`]) {
+    let content = readFileSync(at(file), "utf8")
+      .replaceAll("@/components/projects/app-sidebar", "@/components/app-sidebar")
+      .replace(/\s*selectedProjectId=\{null\}\n/, "\n")
+      .replaceAll("onSelectProject=", "onNavigateHome=")
+      .replaceAll('td("projects")', 'tc("backToHome")');
+    if (file.endsWith("sessions-client.tsx")) content = content.replace('  const td = useTranslations("dashboard");\n', "");
+    writeFileSync(at(file), content);
+  }
+  for (const file of readdirSync(at("packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {
+    const messages = readJson<Record<string, unknown>>(at(`packages/messages/${file}`));
+    for (const key of ["projects", "tasks", "uploads"]) delete messages[key];
+    writeJson(at(`packages/messages/${file}`), messages);
+  }
+}
+
 /** Link every platform skill into .claude/skills and .agents/skills; drop links to removed skills. */
 export function linkSkills(root: string): string[] {
   const source = path.join(root, "platform/agent-skills");
@@ -233,6 +276,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   const at = (file: string): string => path.join(root, file);
   if (existsSync(at(BASE_FILE))) throw new Error(`${BASE_FILE} exists: this repository is already adopted`);
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error(`--repo must be owner/name (got "${options.repo}")`);
+  if (git(root, ["status", "--porcelain"]) !== "") throw new Error("Adoption needs a clean checkout; commit or preserve your work first");
   const commit = git(root, ["rev-parse", "HEAD"]);
   const version = readFileSync(at("platform/VERSION"), "utf8").trim();
 
@@ -241,7 +285,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
 
   log("2. Root files from platform/templates");
   for (const file of TEMPLATES) {
-    const text = readFileSync(at(`platform/templates/${file}`), "utf8").replaceAll("<Product name>", options.name);
+    const text = readFileSync(at(`platform/templates/${file}`), "utf8").replaceAll("<Product name>", () => options.name);
     writeFileSync(at(file), text);
     log(`  - ${file}`);
   }
@@ -251,11 +295,12 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   log("3. Reference apps");
   const remove = options.remove ?? [];
   if (remove.length === 0) log("  - kept all");
-  if (remove.includes("landing") || remove.includes("demo")) {
-    log("  ! The platform CD workflows still deploy landing, and CI Shared rehearses upgrades on demo.");
-    log("    Until a release makes them optional, those workflow jobs fail without the apps.");
-  }
   removeApps(root, remove, log);
+  if (options.removeSample) {
+    removeSample(root);
+    log("  - removed sample tables, functions and UI; kept account settings, auth and their tests");
+    log("  - bun run dev regenerates the Convex API for the remaining functions");
+  }
   if (remove.length > 0 && options.install !== false) run(root, "bun", ["install"]);
 
   log("4. Platform skills");
@@ -315,6 +360,7 @@ export function parseArgs(argv: readonly string[]): Parsed {
         break;
       }
       case "--remove": parsed.remove = parseRemove(value()); break;
+      case "--remove-sample": parsed.removeSample = true; break;
       case "--no-upstream": parsed.upstream = false; break;
       case "--skip-install": parsed.install = false; break;
       case "--skip-build": parsed.build = false; break;
@@ -354,6 +400,7 @@ async function main(argv: readonly string[]): Promise<number> {
     parsed.cookiePrefix ??= await ask("Auth cookie prefix", slug(parsed.name ?? "app"));
     parsed.repo ??= await ask("Your GitHub repository (owner/name)", defaultRepo);
     parsed.remove ??= parseRemove(await ask(`Reference apps to remove (${REMOVABLE_APPS.join(", ")}; blank keeps all)`) ?? "");
+    parsed.removeSample ??= (await ask("Remove the projects/tasks/uploads sample? (yes/no)", "no")) === "yes";
     rl.close();
   }
   parsed.repo ??= defaultRepo;

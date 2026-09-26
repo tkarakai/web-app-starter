@@ -225,6 +225,7 @@ bun run test:watch
 ## Context Boundaries
 
 - Each file should be self-contained with clear imports
-- Use `@repo/` for cross-package imports, `@/` for app-internal imports
+- Use `@web-app-starter/*` for platform packages, `@repo/backend` and `@repo/messages` for app
+  packages, and `@/` for app-internal imports
 - Document public APIs with JSDoc comments
 - Keep component files under 200 lines

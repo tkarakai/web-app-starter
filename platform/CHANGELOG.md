@@ -17,6 +17,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Adoption preserves literal dollar-sign sequences in configuration values, escapes workflow
   job names correctly, and reads optional configuration files without a separate existence check.
+- Adoption can strip the projects/tasks/uploads sample with `--remove-sample`, keeping account
+  settings, announcements and authentication. It requires a clean checkout before writing.
+- CI, local checks, staging, production and rollback handle removed landing apps and demo;
+  optional-app detection uses the selected source commit, including during rollback.
 
 ### Action required
 

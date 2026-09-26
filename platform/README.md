@@ -305,20 +305,24 @@ Notes:
 
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
-`--port app=N`, `--remove landing,landing-static,demo`, `--yes`):
+`--port app=N`, `--remove landing,landing-static,demo`, `--remove-sample`, `--yes`).
+Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
 2. Replaces the root `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `templates/`, and
    points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`).
 3. Optionally removes the `landing`, `landing-static` and `demo` reference apps and their wiring.
+   `--remove-sample` removes project, task and upload tables, functions, screens and strings,
+   leaving a dashboard shell with account settings, announcements and sign-out.
 4. Links the platform skills into `.claude/skills/` and `.agents/skills/`.
 5. Writes `.platform-base.json` (platform version and commit) and adds the `upstream` remote.
 6. Runs the zone check and a build, and prints what is yours and what is the platform's.
 
-Known gap: the platform's CD workflows still build and deploy `landing`, and CI Shared rehearses
-upgrades on `demo`. Until a release makes them optional, keep those apps if you use the
-platform's CI and CD. Removing the sample domain is manual for now: see
-`packages/backend/convex/sampleTables.ts`.
+CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
+and rollback inspect the selected commit, so removing landing does not require a landing
+Vercel project or block the remaining apps. `bun run dev` regenerates the Convex API after
+sample removal; adoption itself needs no live backend. Automatic update setup is added by
+the update-delivery workflow when available.
 
 ## Sample functionality
 
