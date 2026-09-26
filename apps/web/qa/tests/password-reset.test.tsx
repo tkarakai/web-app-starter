@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@repo/i18n/messages/en.json";
 import hu from "@repo/i18n/messages/hu.json";
@@ -51,6 +51,38 @@ describe("web password reset", () => {
     fireEvent.change(screen.getByLabelText(en.auth.resetPassword.newPassword), { target: { value: "test password" } });
     await screen.findByText(en.auth.resetPassword.invalidTitle);
     expect(mocks.resetPassword).not.toHaveBeenCalled();
+  });
+
+  it.each(["pending", "successful"])("preserves reset state when token invalidates while %s", async (state) => {
+    let resolveReset!: (result: object) => void;
+    mocks.resetPassword.mockReturnValue(new Promise((resolve) => { resolveReset = resolve; }));
+    const form = <NextIntlClientProvider locale="en" messages={en}><ResetPasswordForm token="reset-token" /></NextIntlClientProvider>;
+    const { rerender } = render(form);
+    const password = "a test passphrase that the mocked client accepts";
+    fireEvent.change(screen.getByLabelText(en.auth.resetPassword.newPassword), { target: { value: password } });
+    fireEvent.change(screen.getByLabelText(en.auth.fields.confirmPassword), { target: { value: password } });
+    fireEvent.click(screen.getByRole("button", { name: en.auth.resetPassword.cta }));
+    expect(mocks.resetPassword).toHaveBeenCalledWith({ token: "reset-token", newPassword: password });
+
+    if (state === "successful") {
+      await act(async () => { resolveReset({}); });
+      expect(screen.getByText(en.auth.resetPassword.successTitle)).toBeInTheDocument();
+    }
+
+    mocks.useQuery.mockReturnValue(null);
+    rerender(<NextIntlClientProvider locale="en" messages={en}><ResetPasswordForm token="reset-token" /></NextIntlClientProvider>);
+    expect(screen.queryByText(en.auth.resetPassword.invalidTitle)).not.toBeInTheDocument();
+
+    if (state === "pending") {
+      expect(screen.getByRole("button", { name: en.auth.working })).toBeDisabled();
+      expect(screen.getByLabelText(en.auth.resetPassword.newPassword)).toHaveValue(password);
+      await act(async () => { resolveReset({}); });
+    }
+
+    expect(screen.getByText(en.auth.resetPassword.successTitle)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.auth.resetPassword.signInNow })).toBeEnabled();
+    expect(screen.queryByText(en.auth.resetPassword.invalidTitle)).not.toBeInTheDocument();
+    expect(mocks.resetPassword).toHaveBeenCalledTimes(1);
   });
 
   it("localizes server password-policy failures instead of showing a generic error", async () => {

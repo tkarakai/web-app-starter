@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminForgotPasswordForm } from "@/components/auth/admin-forgot-password-form";
 import { AdminResetPasswordForm } from "@/components/auth/admin-reset-password-form";
@@ -45,6 +45,37 @@ describe("admin password reset", () => {
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "test password" } });
     await screen.findByText("Invalid reset link");
     expect(mocks.resetPassword).not.toHaveBeenCalled();
+  });
+
+  it.each(["pending", "successful"])("preserves reset state when token invalidates while %s", async (state) => {
+    let resolveReset!: (result: object) => void;
+    mocks.resetPassword.mockReturnValue(new Promise((resolve) => { resolveReset = resolve; }));
+    const { rerender } = render(<AdminResetPasswordForm token="reset-token" />);
+    const password = "a sufficiently long test passphrase for the administrator";
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: password } });
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: password } });
+    fireEvent.click(screen.getByRole("button", { name: "Reset password" }));
+    expect(mocks.resetPassword).toHaveBeenCalledWith({ token: "reset-token", newPassword: password });
+
+    if (state === "successful") {
+      await act(async () => { resolveReset({}); });
+      expect(screen.getByText("Password reset")).toBeInTheDocument();
+    }
+
+    mocks.useQuery.mockReturnValue(null);
+    rerender(<AdminResetPasswordForm token="reset-token" />);
+    expect(screen.queryByText("Invalid reset link")).not.toBeInTheDocument();
+
+    if (state === "pending") {
+      expect(screen.getByRole("button", { name: "Resetting..." })).toBeDisabled();
+      expect(screen.getByLabelText("New password")).toHaveValue(password);
+      await act(async () => { resolveReset({}); });
+    }
+
+    expect(screen.getByText("Password reset")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in now" })).toHaveAttribute("href", "/sign-in");
+    expect(screen.queryByText("Invalid reset link")).not.toBeInTheDocument();
+    expect(mocks.resetPassword).toHaveBeenCalledTimes(1);
   });
 
   it.each([

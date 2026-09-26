@@ -45,7 +45,7 @@ export function ResetPasswordForm({
   );
 
   // Missing, expired or consumed reset tokens cannot produce valid feedback.
-  if (!token || (password && strengthResult === null)) {
+  if (!success && !pending && (!token || (password && strengthResult === null))) {
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
         <CardHeader className="space-y-3">

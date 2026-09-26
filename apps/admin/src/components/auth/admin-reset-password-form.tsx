@@ -54,7 +54,7 @@ export function AdminResetPasswordForm({
   );
 
   // Missing, expired or consumed reset tokens cannot produce valid feedback.
-  if (!token || (password && strengthResult === null)) {
+  if (!success && !pending && (!token || (password && strengthResult === null))) {
     return (
       <Card className="w-full max-w-sm">
         <CardHeader>
