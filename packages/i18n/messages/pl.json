@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "Web App Starter",
     "loading": "Ładowanie...",
     "cancel": "Anuluj",
     "save": "Zapisz zmiany",
@@ -489,22 +488,21 @@
     }
   },
   "metadata": {
-    "title": "Web App Starter",
     "description": "Starter Next.js z Convex, Better Auth i Bun."
   },
   "legal": {
     "about": {
       "title": "O nas",
-      "description": "Dowiedz się więcej o Web App Starter i naszej misji.",
+      "description": "Dowiedz się więcej o {productName} i naszej misji.",
       "notice": "To jest zawartość zastępcza. Zastąp ją swoją zawartością przed uruchomieniem.",
       "heading": "O nas",
       "mission": "Nasza Misja",
-      "missionText": "Wierzymy, że programiści powinni spędzać czas na budowaniu funkcji, a nie na konfiguracji infrastruktury. Web App Starter zapewnia gotowy punkt wyjścia dla produkcji z synchronizacją danych w czasie rzeczywistym, przesyłaniem plików i uwierzytelnianiem opartym na sesjach, wszystko już podłączone i gotowe.",
+      "missionText": "Wierzymy, że programiści powinni spędzać czas na budowaniu funkcji, a nie na konfiguracji infrastruktury. {productName} zapewnia gotowy punkt wyjścia dla produkcji z synchronizacją danych w czasie rzeczywistym, przesyłaniem plików i uwierzytelnianiem opartym na sesjach, wszystko już podłączone i gotowe.",
       "whatIncluded": "Co Jest Zawarte",
       "whatIncludedText": "Zestaw startowy zawiera stronę docelową, w pełni uwierzytelnioną aplikację internetową, panel administracyjny i storybook komponentów. Każda aplikacja dzieli ujednolicony system projektowania zbudowany na pierwotnych elementach Radix UI z Tailwind CSS.",
       "openSource": "Kod Otwarty",
       "openSourceText": "Ten projekt ma otwarty kod źródłowy i został zaprojektowany do forku i dostosowania.",
-      "intro": "Web App Starter to kompletna podstawa stosu do budowania nowoczesnych aplikacji internetowych. Łączy Next.js dla frontendu, Convex dla backendu i Better Auth dla bezpiecznego uwierzytelniania — wszystko podłączone i gotowe do wysłania."
+      "intro": "{productName} to kompletna podstawa stosu do budowania nowoczesnych aplikacji internetowych. Łączy Next.js dla frontendu, Convex dla backendu i Better Auth dla bezpiecznego uwierzytelniania — wszystko podłączone i gotowe do wysłania."
     },
     "privacy": {
       "title": "Polityka Prywatności",

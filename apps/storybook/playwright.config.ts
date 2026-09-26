@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { localAppOrigin } from "@repo/app-config";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -30,7 +31,7 @@ export default defineConfig({
     ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
     : [["html", { outputFolder: "qa/playwright-report" }]],
   use: {
-    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3003"),
+    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", localAppOrigin("storybook")),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -46,7 +47,7 @@ export default defineConfig({
     // boot failure into a bare "Exit code: 1" with no diagnostics.
     stdout: "pipe",
     stderr: "pipe",
-    url: getEnvValue("NEXT_PUBLIC_SITE_URL", "http://localhost:3003"),
+    url: getEnvValue("NEXT_PUBLIC_SITE_URL", localAppOrigin("storybook")),
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },

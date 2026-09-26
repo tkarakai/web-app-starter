@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { AnnouncementBanner } from "@repo/design-system";
+import { appConfig } from "@repo/app-config";
 
 const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 
@@ -16,7 +17,15 @@ type AnnouncementBannerHostProps = {
   fixed?: boolean;
 };
 
-export function AnnouncementBannerHost({
+/**
+ * The announcement banner, when `features.announcements` is on in app.config.ts.
+ * Switched off, it renders nothing and never queries for announcements.
+ */
+export function AnnouncementBannerHost(props: AnnouncementBannerHostProps) {
+  return appConfig.features.announcements ? <ActiveAnnouncementBannerHost {...props} /> : null;
+}
+
+function ActiveAnnouncementBannerHost({
   className,
   hideOnDashboard = false,
   fixed = false,

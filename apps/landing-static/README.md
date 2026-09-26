@@ -33,7 +33,7 @@ A fully static, serverless variant of the landing page — built with Next.js `o
 # From the monorepo root
 bun install
 
-# Development (hot reload on port 3004)
+# Development (hot reload on the landing-static port in app.config.ts, default 3004)
 bun run dev:landing-static
 
 # Or from this directory
@@ -63,8 +63,8 @@ The two environment variables that matter:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | Canonical URL of *this* site (used in sitemap, og:url, hreflang tags) | `http://localhost:3004` |
-| `NEXT_PUBLIC_WEB_APP_URL` | URL of the main web app (used in "Get Started" / "Sign In" buttons) | `http://localhost:3001` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical URL of *this* site (used in sitemap, og:url, hreflang tags) | this app's local origin from `app.config.ts` (filled in by `ensure-app-env.sh`) |
+| `NEXT_PUBLIC_WEB_APP_URL` | URL of the main web app (used in "Get Started" / "Sign In" buttons) | the web app's local origin from `app.config.ts` |
 
 ```bash
 NEXT_PUBLIC_SITE_URL=https://www.example.com \
@@ -239,7 +239,7 @@ Since there's no server, rate limiting is handled at the CDN/infrastructure leve
 # Hot-reload dev server (uses Turbopack)
 cd apps/landing-static
 bun run dev
-# → http://localhost:3004
+# → http://localhost:<runtime.ports["landing-static"] in app.config.ts>
 
 # Or from the monorepo root
 bun run dev:landing-static

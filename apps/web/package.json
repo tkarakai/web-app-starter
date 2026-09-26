@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "../../scripts/next-dev.sh web",
     "prebuild": "../../scripts/copy-shared-assets.sh",
     "build": "next build",
     "start": "next start",
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.12.5",
+    "@repo/app-config": "workspace:*",
     "@repo/auth": "workspace:*",
     "@repo/backend": "workspace:*",
     "@repo/design-patterns": "workspace:*",

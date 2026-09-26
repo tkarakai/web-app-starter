@@ -7,6 +7,7 @@ import { useAction } from "convex/react";
 import { ArrowLeft, Download } from "lucide-react";
 
 import { api } from "@repo/backend";
+import { appConfig } from "@repo/app-config";
 import {
   Button,
   Checkbox,
@@ -54,7 +55,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
 
   const handleDownload = () => {
     const content = [
-      `${messages.common.appName} — Admin ${messages.dashboard.twoFactor.backupCodes}`,
+      `${appConfig.identity.productName} — Admin ${messages.dashboard.twoFactor.backupCodes}`,
       "=====================================",
       "",
       messages.dashboard.twoFactor.backupCodesDescription,

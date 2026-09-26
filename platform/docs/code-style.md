@@ -87,8 +87,9 @@ export const createItem = mutation({
 ## CSS / Styling
 
 - User-visible text in web, landing and landing-static belongs in locale messages,
-  including errors, placeholders, accessible labels and metadata. Application names
-  remain localized (`common.appName`). Shared components accept translated labels
+  including errors, placeholders, accessible labels and metadata. The product name is
+  not a message: read `appConfig.identity.productName` (`@repo/app-config`) and pass it
+  to messages that mention it as `{productName}`. Shared components accept translated labels
   through props. Admin remains English-only and reuses existing English catalog
   entries where applicable.
 - Business apps may change translated values and add keys; they preserve required

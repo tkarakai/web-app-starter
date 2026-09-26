@@ -39,7 +39,9 @@ Background: `platform/docs/i18n-architecture.md` (usage, ICU syntax, formatting)
 5. **Backend errors** are codes, not text: a Convex function throws `new Error("BOOKMARK_NOT_FOUND")`;
    the code's message goes under your namespace (e.g. `bookmarks.errors.BOOKMARK_NOT_FOUND`) and
    the web app maps it in `apps/web/src/lib/error-messages.ts`.
-6. **Admin** doesn't use locale routing: import what it needs from `@repo/i18n/messages/en.json`.
+6. **Never write the product name** into a message. Use a `{productName}` argument and pass
+   `appConfig.identity.productName` from `@repo/app-config`: `t("intro", { productName })`.
+7. **Admin** doesn't use locale routing: import what it needs from `@repo/i18n/messages/en.json`.
 
 ## Steps
 

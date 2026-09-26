@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
 
 import { fillStable } from "./helpers/auth";
+import { appConfig } from "@repo/app-config";
+
+const { productName } = appConfig.identity;
 
 test.describe("Admin Sign-In Page", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Admin - Web App Starter");
+    await expect(page).toHaveTitle(`Admin - ${productName}`);
   });
 
   test("displays the sign-in form", async ({ page }) => {

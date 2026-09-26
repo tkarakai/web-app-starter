@@ -1,6 +1,8 @@
 # Shared Assets
 
-This directory contains the starter's shared branding assets.
+This directory contains the starter's default branding assets. Which files the apps actually
+use is set by `brand.icons` in the root `app.config.ts`; point it at your own files to rebrand
+without editing these.
 
 ## App Icon
 
@@ -14,11 +16,17 @@ The SVG is the single source of truth for the shared brand icon assets.
 
 ### How It Works
 
-1. **Source:** Assets are stored here in `packages/design-system/assets/`
-2. **Distribution:** During build (and before dev), `scripts/copy-shared-assets.sh` copies assets to the `public/` directories selected by its `APPS` list. The demo is excluded to preserve its application-owned branding.
+1. **Source:** `brand.icons` in `app.config.ts` names the three source files, relative to the repository root. The defaults are the files in this directory.
+2. **Distribution:** During build (and before dev), `scripts/copy-shared-assets.sh` copies them to the `public/` directories selected by its `APPS` list, as `icon.svg`, `favicon.ico` and `apple-touch-icon.png`. A missing source fails the copy before any app changes. The demo is excluded to preserve its application-owned branding.
 3. **Usage:** Apps reference them in their Next.js metadata configuration
 
-### Updating the Icon
+### Using your own icon
+
+Add your files anywhere in the repository (for example `branding/`), set `brand.icons` in
+`app.config.ts` to their paths, and run `bun run copy-assets`. Generate the raster variants from
+your SVG as below.
+
+### Updating the starter's icon
 
 1. Edit `icon.svg` (the source of truth)
 2. Regenerate the raster variants from the SVG (see below)
@@ -63,11 +71,11 @@ These app layout files reference the shared icons:
 ### Showcase
 
 View the icons at the Storybook app:
-- **Local:** http://localhost:3003/foundations/icons
+- **Local:** `/foundations/icons` on the storybook's local port (`runtime.ports.storybook` in `app.config.ts`)
 - **Section:** Foundations > Icons > App Icon
 
 ## Adding More Shared Assets
 
 1. Add the file to this directory
-2. Add the filename to the `ASSETS` array in `scripts/copy-shared-assets.sh`
+2. Add the published filename to `ASSETS` and its source path to `SOURCES` in `scripts/copy-shared-assets.sh`
 3. Reference it in your apps as `/filename.ext`

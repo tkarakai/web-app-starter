@@ -7,7 +7,7 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 
 | Property | Admin | User |
 |---|---|---|
-| App | Admin app (port 3002) | Web app (port 3001) |
+| App | Admin app | Web app |
 | Sign-in URL | `admin-app/sign-in` | `web-app/sign-in` |
 | Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` (signup flow *is* onboarding) |
 | How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |

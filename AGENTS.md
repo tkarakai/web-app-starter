@@ -15,18 +15,19 @@ trail. Two marketing sites and a component showcase complete it.
 
 ## Apps
 
-| App | Path | Port | Purpose |
-|---|---|---|---|
-| web | `apps/web` | 3001 | The product: auth flows, projects dashboard, account settings |
-| admin | `apps/admin` | 3002 | Admin dashboard: onboarding, users, policy, audit trail |
-| landing | `apps/landing` | 3000 | Marketing site, static export with locale routes |
-| landing-static | `apps/landing-static` | 3004 | Fully static marketing site with client-side i18n |
-| storybook | `apps/storybook` | 3003 | Design-system showcase |
-| demo | `apps/demo` | — | Standalone UI/dispatch demo ([README](apps/demo/README.md)) |
+| App | Path | Purpose |
+|---|---|---|
+| web | `apps/web` | The product: auth flows, projects dashboard, account settings |
+| admin | `apps/admin` | Admin dashboard: onboarding, users, policy, audit trail |
+| landing | `apps/landing` | Marketing site, static export with locale routes |
+| landing-static | `apps/landing-static` | Fully static marketing site with client-side i18n |
+| storybook | `apps/storybook` | Design-system showcase |
+| demo | `apps/demo` | Standalone UI/dispatch demo ([README](apps/demo/README.md)) |
 
 Each app keeps source in `src/` and tests in `qa/` (`qa/tests/` for unit and component tests,
 `qa/e2e/` for Playwright). The backend for all of them is the Convex project in
-`packages/backend/convex/`; the sample domain is `projects`, `tasks` and `files`.
+`packages/backend/convex/`; the sample domain is `projects`, `tasks` and `files`. Their name, ports,
+auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
 ## Our conventions
 

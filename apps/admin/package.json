@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --port 3002",
+    "dev": "../../scripts/next-dev.sh admin --turbopack",
     "prebuild": "../../scripts/copy-shared-assets.sh",
     "build": "next build",
     "start": "next start",
@@ -20,11 +20,13 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.12.5",
+    "@repo/app-config": "workspace:*",
     "@repo/auth": "workspace:*",
     "@repo/backend": "workspace:*",
     "@repo/design-patterns": "workspace:*",
     "@repo/design-system": "workspace:*",
     "@repo/edge-rate-limit": "workspace:*",
+    "@repo/i18n": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "convex": "^1.21.0",
     "lucide-react": "^1.46.0",
@@ -33,8 +35,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "sonner": "^2.0.0",
-    "@repo/i18n": "workspace:*"
+    "sonner": "^2.0.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",

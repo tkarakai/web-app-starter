@@ -61,6 +61,8 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
               - 'scripts/**'
@@ -156,8 +158,8 @@ jobs:
       - name: Build
         run: bunx turbo build --filter=@repo/landing-static...
         env:
-          NEXT_PUBLIC_SITE_URL: "http://localhost:3004"
-          NEXT_PUBLIC_WEB_APP_URL: "http://localhost:3001"
+          NEXT_PUBLIC_SITE_URL: ${{ env.APP_CONFIG_ORIGIN_LANDING_STATIC }}
+          NEXT_PUBLIC_WEB_APP_URL: ${{ env.APP_CONFIG_ORIGIN_WEB }}
 
       - name: Check bundle size
         run: cd apps/landing-static && bun run size
@@ -187,15 +189,15 @@ jobs:
       - name: Build static export
         run: cd apps/landing-static && bun run build
         env:
-          NEXT_PUBLIC_SITE_URL: "http://localhost:3004"
-          NEXT_PUBLIC_WEB_APP_URL: "http://localhost:3001"
+          NEXT_PUBLIC_SITE_URL: ${{ env.APP_CONFIG_ORIGIN_LANDING_STATIC }}
+          NEXT_PUBLIC_WEB_APP_URL: ${{ env.APP_CONFIG_ORIGIN_WEB }}
 
       - name: Run Playwright tests
         run: cd apps/landing-static && bunx playwright test --project=chromium
         env:
           CI: true
-          NEXT_PUBLIC_SITE_URL: "http://localhost:3004"
-          NEXT_PUBLIC_WEB_APP_URL: "http://localhost:3001"
+          NEXT_PUBLIC_SITE_URL: ${{ env.APP_CONFIG_ORIGIN_LANDING_STATIC }}
+          NEXT_PUBLIC_WEB_APP_URL: ${{ env.APP_CONFIG_ORIGIN_WEB }}
 
       - name: Show dev logs on failure
         if: failure()

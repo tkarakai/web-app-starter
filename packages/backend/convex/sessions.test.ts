@@ -2,6 +2,10 @@ import { describe, expect, test } from "vitest";
 
 import { getSessionToken, type SessionInfo } from "./sessions";
 import { parseUserAgent } from "./parseUserAgent";
+import { AUTH_COOKIE_PREFIX } from "@repo/auth/cookies";
+
+/** The cookie prefix from app.config.ts. */
+const P = AUTH_COOKIE_PREFIX;
 
 /**
  * Sessions module tests.
@@ -72,28 +76,28 @@ describe("sessions module", () => {
     });
 
     test("session token is extracted from the HTTP cookie", () => {
-      const cookie = "other=value; better-auth.session_token=my-session-token; another=data";
+      const cookie = `other=value; ${P}.session_token=my-session-token; another=data`;
       expect(getSessionToken(request({ cookie }))).toBe("my-session-token");
     });
 
     test("session token is extracted from the HTTPS (__Secure-) cookie", () => {
-      const cookie = "__Secure-better-auth.session_token=secure-token";
+      const cookie = `__Secure-${P}.session_token=secure-token`;
       expect(getSessionToken(request({ cookie }))).toBe("secure-token");
     });
 
     test("look-alike cookie names are ignored", () => {
       for (const name of [
-        "evil-better-auth.session_token",
-        "better-auth.session_token_x",
-        "xbetter-auth.session_token",
-        "__Host-better-auth.session_token",
+        `evil-${P}.session_token`,
+        `${P}.session_token_x`,
+        `x${P}.session_token`,
+        `__Host-${P}.session_token`,
       ]) {
         expect(getSessionToken(request({ cookie: `${name}=forged` }))).toBeNull();
       }
     });
 
     test("a look-alike before the real cookie does not shadow it", () => {
-      const cookie = "evil-better-auth.session_token=forged; better-auth.session_token=real";
+      const cookie = `evil-${P}.session_token=forged; ${P}.session_token=real`;
       expect(getSessionToken(request({ cookie }))).toBe("real");
     });
 

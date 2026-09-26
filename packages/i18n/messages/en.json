@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "Web App Starter",
     "loading": "Loading...",
     "cancel": "Cancel",
     "save": "Save changes",
@@ -489,22 +488,21 @@
     }
   },
   "metadata": {
-    "title": "Web App Starter",
     "description": "A Next.js starter with Convex, Better Auth, and Bun."
   },
   "legal": {
     "about": {
       "title": "About",
-      "description": "Learn about Web App Starter and our mission.",
+      "description": "Learn about {productName} and our mission.",
       "notice": "This is placeholder content. Replace it with your own before launching.",
       "heading": "About",
       "mission": "Our Mission",
-      "missionText": "We believe developers should spend their time building features, not configuring infrastructure. Web App Starter provides a production-ready starting point with real-time data sync, file uploads, and session-based authentication out of the box.",
+      "missionText": "We believe developers should spend their time building features, not configuring infrastructure. {productName} provides a production-ready starting point with real-time data sync, file uploads, and session-based authentication out of the box.",
       "whatIncluded": "What's Included",
       "whatIncludedText": "The starter kit ships with a landing page, a fully authenticated web application, an admin dashboard, and a component storybook. Each app shares a unified design system built on Radix UI primitives with Tailwind CSS.",
       "openSource": "Open Source",
       "openSourceText": "This project is open source and designed to be forked and customised.",
-      "intro": "Web App Starter is a full-stack starter for building modern web applications. It combines Next.js for the frontend, Convex for the backend, and Better Auth for secure authentication — all wired together and ready to ship."
+      "intro": "{productName} is a full-stack starter for building modern web applications. It combines Next.js for the frontend, Convex for the backend, and Better Auth for secure authentication — all wired together and ready to ship."
     },
     "privacy": {
       "title": "Privacy Policy",

@@ -9,12 +9,22 @@ vi.mock("@repo/i18n/navigation", () => ({
   Link: (props: ComponentProps<"a">) => <a {...props} />,
 }));
 
+// Renaming the owner is an app.config.ts change, not a translation change.
+vi.mock("@repo/app-config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@repo/app-config")>();
+  return {
+    ...original,
+    appConfig: {
+      ...original.appConfig,
+      identity: { ...original.appConfig.identity, legalEntity: "Mon entreprise SARL" },
+    },
+  };
+});
+
 describe("localized footer", () => {
-  it("preserves the application's localized name and legal links", () => {
-    const messages = { ...french, common: { ...french.common, appName: "Mon application" } };
-    render(<NextIntlClientProvider locale="fr" messages={messages}><Footer /></NextIntlClientProvider>);
-    expect(screen.getByText(/Mon application/)).toBeInTheDocument();
-    expect(screen.queryByText(/Web App Starter/)).not.toBeInTheDocument();
+  it("shows the configured legal entity with the localized legal links", () => {
+    render(<NextIntlClientProvider locale="fr" messages={french}><Footer /></NextIntlClientProvider>);
+    expect(screen.getByText(/Mon entreprise SARL/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: french.landing.footer.privacyPolicy })).toHaveAttribute("href", "/privacy");
   });
 });

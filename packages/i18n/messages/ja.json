@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "Web App Starter",
     "loading": "読み込み中...",
     "cancel": "キャンセル",
     "save": "変更を保存",
@@ -489,22 +488,21 @@
     }
   },
   "metadata": {
-    "title": "Web App Starter",
     "description": "Convex、Better Auth、Bunを使ったNext.jsスターター。"
   },
   "legal": {
     "about": {
       "title": "について",
-      "description": "Web App Starterと私たちのミッションについて知りましょう。",
+      "description": "{productName}と私たちのミッションについて知りましょう。",
       "notice": "これはプレースホルダーコンテンツです。起動前に自分のコンテンツで置き換えてください。",
       "heading": "について",
       "mission": "私たちのミッション",
-      "missionText": "開発者は基盤構築ではなく機能開発に時間を費やすべきだと私たちは考えています。Web App Starterは、リアルタイムデータ同期、ファイルアップロード、セッションベースの認証がすべて組み込まれた本番環境対応のスタートポイントを提供します。",
+      "missionText": "開発者は基盤構築ではなく機能開発に時間を費やすべきだと私たちは考えています。{productName}は、リアルタイムデータ同期、ファイルアップロード、セッションベースの認証がすべて組み込まれた本番環境対応のスタートポイントを提供します。",
       "whatIncluded": "含まれる内容",
       "whatIncludedText": "スターターキットには、ランディングページ、完全に認証されたウェブアプリケーション、管理ダッシュボード、およびコンポーネントストーリーブックが含まれています。各アプリはRadix UIプリミティブとTailwind CSSで構築された統一されたデザインシステムを共有しています。",
       "openSource": "オープンソース",
       "openSourceText": "このプロジェクトはオープンソースであり、フォークとカスタマイズが想定されています。",
-      "intro": "Web App Starterは、モダンなウェブアプリケーション構築のための完全なスタック基盤です。フロントエンドのNext.js、バックエンドのConvex、セキュアな認証のBetter Authを統合 — すべて接続済みで発送準備完了です。"
+      "intro": "{productName}は、モダンなウェブアプリケーション構築のための完全なスタック基盤です。フロントエンドのNext.js、バックエンドのConvex、セキュアな認証のBetter Authを統合 — すべて接続済みで発送準備完了です。"
     },
     "privacy": {
       "title": "プライバシーポリシー",

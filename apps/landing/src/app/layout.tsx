@@ -1,7 +1,8 @@
 import "./globals.css";
 
 import { Raleway, Cairo, Heebo } from "next/font/google";
-import { EnvironmentBannerWrapper } from "@repo/design-system";
+import { BrandTokenStyle, EnvironmentBannerWrapper } from "@repo/design-system";
+import { appConfig, tokenOverrideCss } from "@repo/app-config";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -37,7 +38,8 @@ export default function RootLayout({
       className={`${raleway.variable} ${cairo.variable} ${heebo.variable}`}
     >
       <body className="flex min-h-screen flex-col">
-        <EnvironmentBannerWrapper appName="landing" />
+        {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="landing" />}
+        <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
         {children}
       </body>
     </html>

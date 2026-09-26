@@ -11,6 +11,7 @@ import {
 import { SiteHeader } from "@repo/design-patterns";
 import { AuthForm } from "@/components/auth/auth-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
+import { appConfig } from "@repo/app-config";
 
 const LANDING_URL = process.env.LANDING_URL;
 if (!LANDING_URL) {
@@ -60,7 +61,6 @@ async function getOnboardingType(): Promise<OnboardingType> {
 export default async function SignUpPage() {
   const t = await getTranslations("auth.signUp");
   const ts = await getTranslations("auth.signIn");
-  const tc = await getTranslations("common");
   const ti = await getTranslations("auth.invitation");
   const onboardingType = await getOnboardingType();
 
@@ -69,11 +69,11 @@ export default async function SignUpPage() {
       className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
       style={{ background: "var(--glow-cool)" }}
     >
-      <SiteHeader appName={tc("appName")} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />
+      <SiteHeader appName={appConfig.identity.productName} homeHref={LANDING_URL} actions={<LocaleSwitcher />} />
       <div className="mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 pb-16 pt-[calc(6rem+var(--announcement-banner-h,0px))] lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:justify-items-stretch">
         <section className="w-full max-w-md space-y-6 lg:max-w-none">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            {tc("appName")}
+            {appConfig.identity.productName}
           </p>
           <h1 className="text-4xl font-semibold leading-tight">
             {t("pageHeading")}

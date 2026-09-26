@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Alert, AlertDescription, AlertTitle } from "@repo/design-system";
 import { SiteHeader } from "@repo/design-patterns";
 import { LocaleSwitcher } from "./locale-switcher";
+import { appConfig } from "@repo/app-config";
 
 interface ContentPageLayoutProps {
   title: string;
@@ -23,7 +24,7 @@ export function ContentPageLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SiteHeader appName={t("appName")} linkAs={Link} actions={<LocaleSwitcher />} />
+      <SiteHeader appName={appConfig.identity.productName} linkAs={Link} actions={<LocaleSwitcher />} />
       <main className="flex-1 pt-20">
         <div className="mx-auto flex max-w-3xl flex-col px-6 py-8">
           <Link

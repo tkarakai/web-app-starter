@@ -29,23 +29,41 @@ A **Bun workspaces + Turborepo** monorepo:
 
   | Seam | Use it to |
   |---|---|
+  | `app.config.ts` | Set product name, legal entity, support email, local ports, auth cookie prefix, brand and feature switches (`platform-configure`) |
   | `packages/backend/convex/schema.ts` | Add your tables next to the platform's (`platform-add-table`) |
   | `packages/i18n/messages/*.json` | Add your strings in your own namespaces (`platform-add-strings`) |
   | Root `package.json`, `turbo.json`, `renovate.json` | Add scripts, tasks, env declarations, dependency rules |
   | Each app's `.env.example` | Declare the environment variables your code reads |
 
-  Values an app is expected to change (product name, ports, origins, branding) belong in the
-  app's configuration, never as literals in shared code. Where the platform reads a value from
-  app configuration, change it there.
 - **Everything else is yours**, including the reference apps you keep.
+
+## App configuration
+
+The root `app.config.ts` holds every value an app is expected to change: `identity` (product
+name, legal entity, support email), `runtime` (local port per app, Better Auth cookie prefix),
+`brand` (icons, design-token overrides, email palette, `lang` and footer) and `features`
+(`waitlist`, `invitations`, `announcements`, `environmentBanner`). It is validated on load; a bad
+or unknown value stops dev, build and tests with a message naming it. Everything in it is public.
+
+- Never write these values as literals. In TypeScript use `appConfig` (and `localAppOrigin`) from
+  `@repo/app-config`; take cookie names from `@repo/auth/cookies` (`sessionCookieNames()`,
+  `isSessionCookie()`); in shell scripts and CI use `scripts/app-config.ts`
+  (`eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"` gives `APP_CONFIG_*` variables;
+  the `setup-bun` action exports them in CI).
+- The product name is never in `packages/i18n/messages`: messages that mention it take a
+  `{productName}` argument, filled from `appConfig.identity.productName`.
+- Per-deployment values (deployed URLs, Convex URLs) and secrets stay environment variables.
+- Changing `authCookiePrefix` signs every existing user out.
+
+Details: [docs/development.md](docs/development.md#app-configuration-appconfigts).
 
 ## Commands
 
 ```bash
 bun run dev                  # Convex + core apps; seeds admin@admin.com and user@user.com
-bun run dev:web              # Convex + web (3001)     bun run dev:admin      # Convex + admin (3002)
-bun run dev:landing          # landing (3000)          bun run dev:landing-static  # (3004)
-bun run dev:storybook        # storybook (3003)        bun run dev:status / dev:stop / dev:nuke-all
+bun run dev:web              # Convex + web            bun run dev:admin      # Convex + admin
+bun run dev:landing          # landing                 bun run dev:landing-static
+bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
 bun run ci                   # Full local CI: lint, types, tests, build, E2E
 bun run ci:quick             # Same without E2E
@@ -58,7 +76,7 @@ bun run test:e2e             # Playwright E2E (see README "Tests" for browser se
 bun run build                # Production build via Turborepo
 ```
 
-Development servers, ports and seed accounts: [docs/development.md](docs/development.md).
+Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accounts: [docs/development.md](docs/development.md).
 
 ## Conventions
 
@@ -181,6 +199,7 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 
 | Skill | Use it to |
 |---|---|
+| `platform-configure` | Set name, ports, cookie prefix, brand and feature switches in `app.config.ts` |
 | `platform-add-table` | Add an app table: schema, indexes, functions, tests |
 | `platform-add-page` | Add a protected page with a nav entry, strings and tests |
 | `platform-add-strings` | Add translated strings in an app namespace to every locale |

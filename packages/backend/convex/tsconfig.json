@@ -12,6 +12,8 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "types": ["node"],
+    /* @repo/app-config imports app.config.ts with its extension, so Node can load it too. */
+    "allowImportingTsExtensions": true,
 
     /* These compiler options are required by Convex */
     "target": "ESNext",

@@ -8,6 +8,7 @@
  */
 
 import { vi } from "vitest";
+import { localAppOrigin } from "@repo/app-config";
 
 /**
  * Mock user data for testing authenticated scenarios
@@ -135,7 +136,7 @@ export function createMockRequest(options: {
     headers.set("Authorization", `Bearer mock-token-${options.user?.id ?? defaultMockUser.id}`);
   }
 
-  return new Request("http://localhost:3000/api/test", {
+  return new Request(`${localAppOrigin("web")}/api/test`, {
     method: options.method ?? "GET",
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,

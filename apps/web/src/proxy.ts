@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { sessionCookieNames } from "@repo/auth/cookies";
 import createIntlMiddleware from "next-intl/middleware";
 import { defaultLocale, locales } from "@repo/i18n";
 import {
@@ -89,7 +90,7 @@ export function proxy(request: NextRequest) {
 
   // --- Auth redirects (checked before intl to avoid unnecessary rewrites) ---
   const strippedPath = stripLocalePrefix(pathname);
-  const hasSession = hasSessionCookie(request);
+  const hasSession = hasSessionCookie(request, sessionCookieNames());
   const locale = getLocaleFromPath(pathname);
 
   // Unauthenticated users hitting a protected route → sign-in

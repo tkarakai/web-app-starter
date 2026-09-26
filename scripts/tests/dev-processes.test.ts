@@ -16,13 +16,20 @@ import { fileURLToPath } from "node:url";
 import * as manager from "../dev-processes.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
+// The dev scripts read ports from app.config.ts through scripts/app-config.ts.
+const CONFIG_FILES = ["app.config.ts", "packages/app-config/src/schema.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
 function install(checkout: string): void {
   fs.mkdirSync(path.join(checkout, "scripts"), { recursive: true });
   for (const name of INSTALLED) fs.copyFileSync(path.join(SCRIPTS, name), path.join(checkout, "scripts", name));
+  for (const name of CONFIG_FILES) {
+    fs.mkdirSync(path.dirname(path.join(checkout, name)), { recursive: true });
+    fs.copyFileSync(path.join(SCRIPTS, "..", name), path.join(checkout, name));
+  }
+  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module" }));
 }
 
 function spawnIn(directory: string, source?: string): ChildProcess {

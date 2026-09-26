@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "Web App Starter",
     "loading": "Načítání...",
     "cancel": "Zrušit",
     "save": "Uložit změny",
@@ -489,22 +488,21 @@
     }
   },
   "metadata": {
-    "title": "Web App Starter",
     "description": "Starter Next.js s Convex, Better Auth a Bun."
   },
   "legal": {
     "about": {
       "title": "O nás",
-      "description": "Dozvěďte se více o Web App Starter a naší misi.",
+      "description": "Dozvěďte se více o {productName} a naší misi.",
       "notice": "Toto je obsah zástupného symbolu. Před spuštěním ho nahraďte svým vlastním.",
       "heading": "O nás",
       "mission": "Naše mise",
-      "missionText": "Věříme, že by vývojáři měli trávit čas stavbou funkcí, ne konfigurací infrastruktury. Web App Starter poskytuje produkční zahájení s synchronizací dat v reálném čase, nahráváním souborů a ověřováním na základě relací, vše již připojeno a připraveno.",
+      "missionText": "Věříme, že by vývojáři měli trávit čas stavbou funkcí, ne konfigurací infrastruktury. {productName} poskytuje produkční zahájení s synchronizací dat v reálném čase, nahráváním souborů a ověřováním na základě relací, vše již připojeno a připraveno.",
       "whatIncluded": "Co je součástí",
       "whatIncludedText": "Balíček zahájení obsahuje úvodní stránku, plně ověřenou webovou aplikaci, ovládací panel správce a sbírku komponent. Každá aplikace sdílí jednotný design systém vytvořený na primitivech Radix UI s Tailwind CSS.",
       "openSource": "Open Source",
       "openSourceText": "Tento projekt je otevřený zdroj a je navržen k rozštěpení a přizpůsobení.",
-      "intro": "Web App Starter je plnostranná základna pro budování moderních webových aplikací. Kombinuje Next.js pro frontend, Convex pro backend a Better Auth pro bezpečné ověření — vše propojeno a připraveno k odeslání."
+      "intro": "{productName} je plnostranná základna pro budování moderních webových aplikací. Kombinuje Next.js pro frontend, Convex pro backend a Better Auth pro bezpečné ověření — vše propojeno a připraveno k odeslání."
     },
     "privacy": {
       "title": "Zásady ochrany osobních údajů",

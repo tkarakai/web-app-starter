@@ -46,6 +46,7 @@ import {
 } from "@repo/design-system";
 import { normalizeText } from "@/lib/projects";
 import { AppLogo } from "@/components/app-logo";
+import { appConfig } from "@repo/app-config";
 
 type Project = {
   _id: Id<"projects">;
@@ -136,9 +137,9 @@ export function AppSidebar({
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip={tc("appName")} className="font-semibold">
+              <SidebarMenuButton tooltip={appConfig.identity.productName} className="font-semibold">
                 <AppLogo size={20} />
-                <span>{tc("appName")}</span>
+                <span>{appConfig.identity.productName}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
