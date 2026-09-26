@@ -165,11 +165,12 @@ steps:
 docker volume rm act-bun-cache act-playwright-cache act-toolcache
 ```
 
-## Starter release verification
+## Full commit verification
 
-The manual `release-starter.yml` workflow publishes prepared release metadata only
-from main. It calls the existing CI workflows with one resolved `git_sha` and
-`require_e2e: true` for app workflows, forcing E2E even when `SKIP_E2E` is set.
-The publish job depends on every workflow succeeding and checks main again before
-creating the immutable tag. Workflow concurrency includes the caller name so
-ordinary PR or deployment CI cannot cancel release validation. See `VERSIONING.md`.
+Pull-request CI tests the PR head, not the squash-merged commit on main. The manual
+`ci-verify.yml` workflow (**CI Verify Commit**) runs on main only and calls the existing
+CI workflows with the tip's `git_sha` and `require_e2e: true` for app workflows,
+forcing E2E even when `SKIP_E2E` is set. Its final **Verified** job succeeds only
+when every workflow succeeds. Called-workflow concurrency includes the caller name,
+so ordinary PR or deployment CI cannot cancel it. Starter tags are created only on
+a commit with a green run (see "What gets tagged" in `VERSIONING.md`).

@@ -209,7 +209,6 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Hosting on AWS instead of Vercel (`infra/aws`, Floci local emulation) | `docs/aws/deployment-architecture-aws.md`. Replaces Vercel only; hosting Convex on AWS is out of scope |
 | Working on Renovate, dependency-update automation, upgrading better-auth / the Convex auth adapter, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md`; drain the queue with the `deps-update` skill (`.agents/skills/`) |
 | Migrating a dependency major, or changing the Node/Bun runtime baseline | `docs/dependency-migrations.md` and the `deps-major` skill; `bun run check:runtime-baseline`; record decisions on the ticket and in the PR description |
-| Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md`, `scripts/release.sh` and `.github/workflows/release-starter.yml` — prepare in a PR; publish the tested main commit afterward |
 | Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.ts` |
 | Working on starter package upgrades or demo ownership | `apps/demo/README.md` and `UPGRADING.md`; run `check:starter-ownership`, `test:starter-upgrade` and `test:starter-rehearsal` via `bun run`. Do not hand-edit consumed packages or claim unsupported vendoring. |
 | Writing a codemod to ship with a breaking release | `scripts/codemods/README.md` |

@@ -93,57 +93,25 @@ backport is a rewrite.
 
 ## What gets tagged
 
-Release metadata is reviewed in a PR. Tagging happens afterward, on the exact
-merged commit that passes release CI. No release command creates a new commit
-and immediately tags untested content.
+A release's version and notes are reviewed in a pull request like any other
+change: the root `package.json` version and a dated `CHANGELOG.md` section. The
+changelog date records preparation; the GitHub release records publication.
 
-### Prepare the release PR
+Tags are created afterward, only on a commit that is already on `main` and has
+passed every CI workflow, E2E included, on that exact commit (the **CI Verify
+Commit** workflow). No tag is ever placed on untested content, and publishing a
+tag never deploys anything. What that means for your app:
 
-Start with a clean branch and a nonempty `Unreleased` changelog section:
-
-```bash
-./scripts/release.sh 1.0.0 --dry-run
-./scripts/release.sh 1.0.0
-git diff -- package.json CHANGELOG.md
-git add package.json CHANGELOG.md
-git commit -m "chore(release): prepare v1.0.0"
-./scripts/release.sh 1.0.0 --check
-```
-
-The preparation script changes only the root package version and changelog. It
-never commits, tags or pushes. It rejects dirty trees, invalid/backward versions,
-empty release notes and major bumps without action-required notes. Submit these
-changes through the normal PR checks. The changelog date records preparation;
-the GitHub release records actual publication time.
-
-### Publish after the PR merges
-
-In GitHub Actions, run **Starter Release** (`release-starter.yml`) on **main**,
-with version `1.0.0`. This is an explicit maintainer action, separate from merging
-the PR. This workflow is restricted to the starter repository; it is inactive in
-downstream business apps, whose versions and publication process are independent.
-The workflow:
-
-1. Resolves and checks the prepared main commit and release notes.
-2. Runs the existing shared, web, admin, landing, landing-static and Storybook CI
-   against that exact commit. E2E checks are required even if `SKIP_E2E` is set.
-   Shared CI includes the demo package upgrade rehearsal.
-3. Checks that main has not advanced, creates an annotated `v1.0.0` tag, and
-   creates a GitHub release from the prepared notes. It does not deploy apps.
-
-Failure or cancellation prevents publication. If main advances during validation,
-rerun on the new main commit. A retry can reuse a tag only when it already points
-to the same commit; it cannot move a tag or replace an existing release.
-
-### Never tag a PR branch
-
-This repo squash-merges. A feature-branch tag would retain history that the squash
-never puts on main. Downstream apps merging that tag could then import a parallel
-history. Preparation on a feature branch is safe because it creates no tags.
-
-Use isolated temporary repositories for release tests. Never create practice
-`v*` tags in a checkout that shares refs with other worktrees. The behavior tests
-in `scripts/tests/release.test.ts` use disposable repositories.
+- **Tags are immutable.** A published `vX.Y.Z` never moves and its release is never
+  replaced. If a release is wrong, a new version fixes it.
+- **Tags are only on `main`.** This repo squash-merges, so a tag on a feature
+  branch would carry history that `main` never had, and merging it could import a
+  parallel history into your app. No starter tag is placed on a PR branch.
+- **The release notes are the changelog section** for that version, including its
+  **Action required** items.
+- **Your own tags stay yours.** Fetch starter tags under a separate prefix, as
+  [`UPGRADING.md`](./UPGRADING.md) shows, so they never collide with your app's own
+  `v*` tags.
 
 ## Pre-1.0 history
 

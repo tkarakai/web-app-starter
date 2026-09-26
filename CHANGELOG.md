@@ -86,10 +86,9 @@ first supported starting point, not proof of arbitrary pre-release app upgrades.
   hotspots with a prescribed resolution for each, and a procedure written for coding
   agents.
 - `CHANGELOG.md` — this file.
-- `scripts/release.sh` — prepares version/changelog changes for a reviewed PR
-  without committing or tagging. The main-only **Starter Release** workflow runs
-  existing CI against the exact merged commit, requires E2E, then publishes an
-  immutable tag and GitHub release. It does not deploy applications.
+- `.github/workflows/ci-verify.yml` — the main-only **CI Verify Commit** workflow runs
+  existing CI against the exact merged commit and requires E2E. Tags are published
+  only on a commit it has verified; publishing never deploys applications.
 - `scripts/resolve-i18n-conflicts.ts` — resolves conflicted
   `packages/i18n/messages/*.json` by merging parsed objects key by key. Independent key changes can merge cleanly; overlapping changes require review.
   Blindly concatenating conflict hunks can produce invalid JSON.
@@ -102,7 +101,7 @@ first supported starting point, not proof of arbitrary pre-release app upgrades.
   for downstream coding agents.
 
 Release preparation, application adoption and deployment are separate.
-`VERSIONING.md` documents preparation and publication; `UPGRADING.md` describes
+`VERSIONING.md` documents what gets tagged; `UPGRADING.md` describes
 verified source baselines and reviewed application merges. Broader package
 extraction and a full customized-app/schema-migration rehearsal remain follow-up
 work. The existing automated demo rehearsal covers the sidebar package only.

@@ -1,0 +1,80 @@
+name: CI Verify Commit
+
+# Runs every CI workflow, with E2E required, against the exact tip of main.
+# Pull-request CI tests the PR head; a squash merge creates a new commit that
+# no PR run has tested. Tags are created only on a commit with a green run here,
+# matched by the run's head SHA.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-verify-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve commit
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Require main
+        id: resolve
+        run: |
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "Run this workflow on main"; exit 1; }
+          echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+  shared:
+    needs: resolve
+    uses: ./.github/workflows/ci-shared.yml
+    with:
+      git_sha: ${{ needs.resolve.outputs.sha }}
+
+  web:
+    needs: resolve
+    uses: ./.github/workflows/ci-web.yml
+    with:
+      git_sha: ${{ needs.resolve.outputs.sha }}
+      require_e2e: true
+
+  admin:
+    needs: resolve
+    uses: ./.github/workflows/ci-admin.yml
+    with:
+      git_sha: ${{ needs.resolve.outputs.sha }}
+      require_e2e: true
+
+  landing:
+    needs: resolve
+    uses: ./.github/workflows/ci-landing.yml
+    with:
+      git_sha: ${{ needs.resolve.outputs.sha }}
+      require_e2e: true
+
+  landing-static:
+    needs: resolve
+    uses: ./.github/workflows/ci-landing-static.yml
+    with:
+      git_sha: ${{ needs.resolve.outputs.sha }}
+      require_e2e: true
+
+  storybook:
+    needs: resolve
+    uses: ./.github/workflows/ci-storybook.yml
+    with:
+      git_sha: ${{ needs.resolve.outputs.sha }}
+      require_e2e: true
+
+  verified:
+    name: Verified
+    needs: [resolve, shared, web, admin, landing, landing-static, storybook]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report the verified commit
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: echo "All CI, including E2E, passed on $SHA"
