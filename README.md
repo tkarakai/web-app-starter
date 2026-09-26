@@ -7,7 +7,8 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 ## What this starter gives you
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
-- **Six Next.js apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo.
+- **Six Next.js apps**: web, admin, landing, landing-static, storybook and demo.
+- **One configuration file**, `app.config.ts`, for the values an app changes: product name, ports, auth cookie prefix, brand and optional features. See [App configuration](docs/claude/development.md#app-configuration-appconfigts).
 - **Shared packages** for UI, auth, backend, i18n, rate limiting and starter sidebar policy; see [Shared packages](#shared-packages).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
@@ -61,14 +62,14 @@ These are created automatically via `devSeed` and persist across restarts. Subse
 To start only a specific app:
 
 ```bash
-bun run dev:web              # Convex + web app (port 3001)
-bun run dev:admin            # Convex + admin app (port 3002)
-bun run dev:landing          # Landing page only (port 3000, no Convex)
-bun run dev:landing-static   # Static landing page (port 3004, no Convex)
-bun run dev:storybook        # Component storybook (port 3003, no Convex)
+bun run dev:web              # Convex + web app
+bun run dev:admin            # Convex + admin app
+bun run dev:landing          # Landing page only (no Convex)
+bun run dev:landing-static   # Static landing page (no Convex)
+bun run dev:storybook        # Component storybook (no Convex)
 ```
 
-3. Open the apps:
+3. Open the apps on the ports set in `app.config.ts` (`runtime.ports`). The defaults:
    - Web app: `http://localhost:3001`
    - Admin dashboard: `http://localhost:3002`
    - Landing page: `http://localhost:3000`
@@ -138,7 +139,7 @@ These values persist in the local Convex backend between sessions.
 
 ```
 ├── apps/
-│   ├── web/                   # Main web app (@repo/web, port 3001)
+│   ├── web/                   # Main web app (@repo/web)
 │   │   ├── src/
 │   │   │   ├── app/           # Next.js App Router pages
 │   │   │   │   ├── (auth)/    # Authentication routes (grouped)
@@ -149,23 +150,25 @@ These values persist in the local Convex backend between sessions.
 │   │   └── qa/                # Testing artifacts
 │   │       ├── tests/         # Unit + component tests, helpers, fixtures
 │   │       └── e2e/           # Playwright E2E specs
-│   ├── admin/                 # Admin dashboard (@repo/admin, port 3002)
+│   ├── admin/                 # Admin dashboard (@repo/admin)
 │   │   └── src/
-│   ├── landing/               # Dynamic landing page (@repo/landing, port 3000)
+│   ├── landing/               # Dynamic landing page (@repo/landing)
 │   │   └── src/
-│   ├── landing-static/        # Fully static landing page (@repo/landing-static, port 3004)
+│   ├── landing-static/        # Fully static landing page (@repo/landing-static)
 │   │   └── src/
-│   ├── storybook/             # Component storybook (@repo/storybook, port 3003)
+│   ├── storybook/             # Component storybook (@repo/storybook)
 │   │   └── src/
 │   └── demo/                  # Standalone UI/dispatch demo; also tests starter upgrades
 │       └── src/
+├── app.config.ts              # App-owned configuration: name, ports, cookie prefix, brand, features
 ├── packages/
+│   ├── app-config/            # Schema and loader for app.config.ts (@repo/app-config)
 │   ├── backend/               # Convex backend (@repo/backend)
 │   │   ├── convex/            # Schema, queries, mutations, actions
 │   │   │   └── _generated/    # Auto-generated (DO NOT EDIT)
 │   │   └── index.ts           # Main export
 │   ├── auth/                  # Authentication (@repo/auth)
-│   │   └── src/               # client.ts, server.ts, provider.tsx
+│   │   └── src/               # client.ts, server.ts, provider.tsx, cookies.ts, clear-session.ts
 │   ├── design-system/         # Shared UI components (@repo/design-system)
 │   │   ├── src/               # Radix UI + shadcn/ui components
 │   │   └── tokens/            # Design tokens (globals.css)
@@ -200,6 +203,14 @@ These values persist in the local Convex backend between sessions.
 ```
 
 ## Shared packages
+
+### `@repo/app-config` — App configuration
+
+The validated contents of the root `app.config.ts`, for every TypeScript consumer:
+
+```typescript
+import { appConfig, localAppOrigin } from "@repo/app-config";
+```
 
 ### `@repo/design-system` — UI Component Library
 

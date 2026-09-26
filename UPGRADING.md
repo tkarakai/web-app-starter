@@ -231,20 +231,19 @@ git add bun.lock
 The regenerated file is the only one that is actually correct; whichever side you
 checked out is just a starting point `bun install` overwrites.
 
-### Branding strings
+### Branding strings and `app.config.ts`
 
-The application name is localized content, such as `common.appName` in
-`packages/i18n/messages/*.json`. Business apps may change its value per locale.
-Components should look it up through i18n; changing the name then requires no
-component edit. A user-visible name hardcoded in a component is a localization
-bug, not a reason to introduce a single nonlocalized configuration value.
+The product name, legal entity, local ports, auth cookie prefix, brand assets and
+optional feature switches live in the root `app.config.ts`, which your app owns.
+Starter code reads them from there, so a starter release that touches a page,
+script or workflow no longer conflicts with your name, ports or cookie prefix.
+Keep your values when `app.config.ts` itself conflicts; take any new settings the
+release adds (validation names each missing one).
 
-An earlier inventory counted 29 files containing the default name, but combined
-15 locale files, nine UI source files with localization gaps, four E2E files,
-and the backend authenticator issuer. These have different responsibilities.
-E2E assertions may intentionally check literal text for a specified language.
-The backend issuer is a separate authentication identity and must be reviewed
-with its environment labels and authentication behavior in mind.
+The product name is not a translation. Messages that mention it take it as the
+`{productName}` argument, and no locale file contains it. If your locale files
+still carry `common.appName` or your name in prose, move the name to
+`identity.productName` and use `{productName}` in those messages.
 
 Neither changing a translation nor editing the same file guarantees a merge
 conflict. When edits do overlap, preserve application wording, required message

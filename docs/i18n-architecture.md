@@ -11,9 +11,12 @@ The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n libr
 **Scope:** web, landing and landing-static localize their user-visible text.
 Admin remains English-only and imports existing entries from
 `@repo/i18n/messages/en.json` where applicable; it does not need locale routing.
-Application names are translated content (`common.appName`), not a single config
-string. Business apps own their message values and extra keys, preserve required
-starter keys and interpolation parameters, and resolve locale merges on upgrades.
+The product name is not translated content: it is `identity.productName` in the
+root `app.config.ts`. Messages that mention it take it as the `{productName}`
+argument (`t("intro", { productName })`), so renaming the product touches no locale
+file; a test fails if a catalog contains the name. Business apps own their message
+values and extra keys, preserve required starter keys and interpolation parameters,
+and resolve locale merges on upgrades.
 
 `apps/web/qa/tests/message-catalogues.test.ts` checks every supported catalog for
 required keys, ICU syntax and matching interpolation parameters. Run it through
@@ -248,15 +251,15 @@ Use `getTranslations()` from `next-intl/server` (async):
 
 ```tsx
 import { getTranslations } from "next-intl/server";
+import { appConfig } from "@repo/app-config";
 
 export default async function SignInPage() {
   const t = await getTranslations("auth.signIn");
-  const tc = await getTranslations("common");
 
   return (
     <div>
       <h1>{t("pageHeading")}</h1>
-      <p>{tc("appName")}</p>
+      <p>{appConfig.identity.productName}</p>
     </div>
   );
 }
@@ -330,7 +333,7 @@ All translations live in `packages/i18n/messages/en.json`. The file is organized
 
 ```json
 {
-  "common":    { "appName", "loading", "cancel", "save", "saving", "create", "creating", "delete", "signOut", "error" },
+  "common":    { "loading", "cancel", "save", "saving", "create", "creating", "delete", "signOut", "error" },
   "theme":     { "light", "system", "dark", "ariaLabel" },
   "language":  { "label", "ariaLabel" },
   "auth":      { "signIn": {...}, "signUp": {...}, "fields": {...}, "errors": {...}, "badge", "footer", "working" },

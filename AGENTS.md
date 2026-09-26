@@ -5,7 +5,7 @@ This document provides project-specific guidance for AI agents working on this c
 ## Project Overview
 
 This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containing:
-- **Six Next.js 16 apps**: web (port 3001), admin (port 3002), landing (port 3000), landing-static (port 3004), storybook (port 3003), demo
+- **Six Next.js 16 apps**: web, admin, landing, landing-static, storybook, demo. Ports and other app-owned values live in `app.config.ts`
 - **Shared packages**: see [README.md](README.md#shared-packages) for their roles.
 - **Convex** as the backend (database, file storage, API functions)
 - **Better Auth** wired to Convex for authentication
@@ -20,11 +20,11 @@ This is a **monorepo** powered by **Bun workspaces** and **Turborepo**, containi
 ```bash
 # Start development (Convex + core apps via dev-start.sh)
 bun run dev                  # Core apps + dev seed (admin@admin.com / pw: email pasted x 3, user@user.com / useruser)
-bun run dev:web              # Convex + web app only (port 3001)
-bun run dev:admin            # Convex + admin app only (port 3002)
-bun run dev:landing          # Landing page only (port 3000, no Convex)
-bun run dev:landing-static   # Static landing page (port 3004, no Convex)
-bun run dev:storybook        # Component storybook only (port 3003, no Convex)
+bun run dev:web              # Convex + web app only
+bun run dev:admin            # Convex + admin app only
+bun run dev:landing          # Landing page only (no Convex)
+bun run dev:landing-static   # Static landing page (no Convex)
+bun run dev:storybook        # Component storybook only (no Convex)
 bun run dev:stop             # Stop all services
 bun run dev:nuke-all         # Stop verified dev services across this repo’s worktrees
 bun run dev:status           # Show running processes
@@ -59,11 +59,11 @@ bun run infra:setup:staging  # Interactive staging setup (Convex + Vercel + GitH
 
 ```
 apps/
-  web/              Main web app (@repo/web, port 3001) — src/ + qa/ (tests, e2e)
-  admin/            Admin dashboard (@repo/admin, port 3002) — same structure as web
-  landing/          Dynamic landing page (@repo/landing, port 3000) — i18n, SSR
-  landing-static/   Static landing page (@repo/landing-static, port 3004) — fully static export, client-side i18n
-  storybook/        Component storybook (@repo/storybook, port 3003) — src/ (showcase) + qa/ (e2e)
+  web/              Main web app (@repo/web) — src/ + qa/ (tests, e2e)
+  admin/            Admin dashboard (@repo/admin) — same structure as web
+  landing/          Dynamic landing page (@repo/landing) — i18n, SSR
+  landing-static/   Static landing page (@repo/landing-static) — fully static export, client-side i18n
+  storybook/        Component storybook (@repo/storybook) — src/ (showcase) + qa/ (e2e)
   demo/             Standalone UI/dispatch demo, also used for starter upgrade tests (apps/demo/README.md)
 packages/
   backend/          Convex backend (@repo/backend) — convex/ (schema, functions, _generated/ DO NOT EDIT)
@@ -133,6 +133,16 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 | E2E Test | descriptive.spec.ts | `auth-flow.spec.ts` |
 | Convex | camelCase.ts | `launchItems.ts` |
 | Package export | index.ts | `packages/design-system/src/index.ts` |
+
+## App Configuration
+
+`app.config.ts` (root) holds the app-owned values: product name, legal entity, support email,
+local ports, auth cookie prefix, brand (icons, token overrides, email palette/footer) and optional
+feature switches. Starter code reads it and never repeats those values as literals: use
+`appConfig` from `@repo/app-config` in TypeScript, cookie names from `@repo/auth/cookies`, and
+`scripts/app-config.ts` from shell scripts and CI. The product name is passed to translations as
+the `{productName}` argument, never written into `packages/i18n/messages`. Per-deployment values
+and secrets stay environment variables. Details: `docs/claude/development.md`.
 
 ## Environment Variables
 

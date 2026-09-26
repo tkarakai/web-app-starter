@@ -8,12 +8,12 @@
 # Start core apps + Convex (recommended)
 bun run dev                  # Uses scripts/dev-start.sh
 
-# Start a specific app + Convex
-bun run dev:web              # Convex + web app (port 3001)
-bun run dev:admin            # Convex + admin app (port 3002)
-bun run dev:landing          # Landing only (port 3000, no Convex needed)
-bun run dev:landing-static   # Static landing page (port 3004, no Convex)
-bun run dev:storybook        # Component storybook only (port 3003, no Convex)
+# Start a specific app + Convex (ports: runtime.ports in app.config.ts)
+bun run dev:web              # Convex + web app
+bun run dev:admin            # Convex + admin app
+bun run dev:landing          # Landing only (no Convex needed)
+bun run dev:landing-static   # Static landing page (no Convex)
+bun run dev:storybook        # Component storybook only (no Convex)
 
 # Check service status
 bun run dev:status           # Shows running processes
@@ -23,6 +23,39 @@ bun run dev:stop
 ```
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
+
+### App configuration (`app.config.ts`)
+
+The root `app.config.ts` holds every value an app built on the starter is expected to change:
+
+| Group | Values | Read by |
+|-------|--------|---------|
+| `identity` | product name, legal entity, support email | page titles and headers, landing footer, TOTP issuer, email footer, the `{productName}` message argument |
+| `runtime` | local port per app, Better Auth cookie prefix | dev scripts, each app's `dev` script, Playwright configs, CI, `@repo/auth`, both proxies, both `clear-session` routes, Convex `auth.ts` and `sessions.ts` |
+| `brand` | icon sources, design-token overrides, email palette, `lang` and footer | `copy-shared-assets.sh`, `BrandTokenStyle` in each root layout, Convex email templates |
+| `features` | `waitlist`, `invitations`, `announcements`, `environmentBanner` | admin feature controls and navigation, announcement banners, environment banner |
+
+It is validated when loaded (`packages/app-config/src/schema.ts`); an invalid or unknown value
+stops dev, build and tests with a message naming each bad setting. Everything in it is public:
+it is checked in and bundled into client code. Per-deployment values (deployed URLs, Convex URLs)
+and secrets stay environment variables.
+
+How each consumer reads it:
+
+- **TypeScript** (Next.js server, edge and client code, Convex functions, Playwright configs,
+  tests): `import { appConfig, localAppOrigin } from "@repo/app-config"`. Cookie names come from
+  `@repo/auth/cookies` (`sessionCookieNames()`, `isSessionCookie()`), never from string literals.
+- **Shell scripts**: `eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"` defines
+  `APP_CONFIG_PORT_<APP>`, `APP_CONFIG_ORIGIN_<APP>`, `APP_CONFIG_AUTH_COOKIE_PREFIX` and friends.
+  `scripts/app-config.ts port web` prints one value. Apps' `dev` scripts go through
+  `scripts/next-dev.sh <app>`.
+- **GitHub Actions**: the `setup-bun` action exports the same `APP_CONFIG_*` variables to
+  `$GITHUB_ENV`, so later steps use e.g. `APP_ORIGIN: ${{ env.APP_CONFIG_ORIGIN_WEB }}`.
+- **Turborepo**: `app.config.ts` is a `globalDependencies` entry, so changing it invalidates
+  every cached build and test.
+
+Changing the cookie prefix signs every existing user out. `apps/demo` is not configured here: it
+stands in for a separate business app and owns its own settings.
 
 ### Development process isolation
 

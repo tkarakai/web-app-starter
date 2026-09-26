@@ -22,6 +22,54 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `... bunx convex env set EMAIL_FROM <address>` on each hosted deployment.
   **Done when:** `CONVEX_DEPLOY_KEY=<key> bunx convex env get RESEND_API_KEY` prints a value
   for every hosted deployment. Local development is unchanged.
+- **Who is affected:** every app. Values that used to be literals in starter files now come
+  from the new root `app.config.ts`.
+  **What to do:** when merging, set `identity.productName`, `identity.legalEntity`,
+  `identity.supportEmail`, `runtime.ports` and `runtime.authCookiePrefix` in `app.config.ts`
+  to what your app used, then take the starter's side of the files that held them before:
+  app `package.json` `dev` scripts, `playwright.config.ts`, `scripts/dev-start.sh`,
+  `ci-*.yml` env blocks, `@repo/auth`, both `proxy.ts` and `clear-session` routes, and Convex
+  `auth.ts` / `sessions.ts`. If you renamed the product in `packages/i18n/messages`, keep your
+  other wording but drop `common.appName` and `metadata.title` and write `{productName}` where
+  the name appeared (see `UPGRADING.md`, "Branding strings and `app.config.ts`").
+  Code that read `common.appName` should read `appConfig.identity.productName`
+  from `@repo/app-config`. Callers of `hasSessionCookie(request)` now pass the names:
+  `hasSessionCookie(request, sessionCookieNames())` from `@repo/auth/cookies`.
+  **Done when:** `bun run typecheck`, `bun run test` and `bun run test:unit` pass and
+  `git grep -n "<your product name>" -- packages/i18n/messages` finds nothing.
+
+### Added
+
+- `app.config.ts` (root) and `@repo/app-config`: one typed, validated file for the values an app
+  changes — identity (product name, legal entity, support email), runtime (local ports, Better
+  Auth cookie prefix), brand (icon sources, design-token overrides, email palette, `lang` and
+  footer) and feature switches (waitlist, invitations, announcements, environment banner).
+  Invalid or unknown values stop dev, build and tests with a message naming each one. Shell
+  scripts read it through `scripts/app-config.ts`, CI through `APP_CONFIG_*` variables exported
+  by the `setup-bun` action, and each app's `dev` script through `scripts/next-dev.sh`.
+  Turborepo treats it as a global dependency. Guide: `docs/claude/development.md`.
+- `@repo/auth/cookies` (cookie names for the configured prefix) and
+  `@repo/auth/clear-session` (the shared `clear-session` response).
+
+### Changed
+
+- The auth cookie prefix is configurable (`runtime.authCookiePrefix`, default `better-auth`, so
+  existing sessions keep working). It reaches Better Auth (`advanced.cookiePrefix`), the Next.js
+  auth helpers, both proxies, both `clear-session` routes and the Convex sessions API. Two apps on
+  one host (localhost) no longer sign each other out when their prefixes differ.
+- `clear-session` also clears the session cache, account cache, "don't remember" and Convex JWT
+  cookies (and their chunks), and only this app's.
+- The product name is no longer in the locale files: `common.appName` and `metadata.title` are
+  removed from all 15 locales, and the landing "About" copy takes a `{productName}` argument.
+  Page titles, headers, the landing footer (legal entity), the TOTP issuer and email footers read
+  `app.config.ts`.
+- Dev ports, Playwright base URLs, CI origins, `.env.example` local URLs and brand icons
+  (`copy-shared-assets.sh`) follow `app.config.ts`. Local URL keys in the landing and web
+  `.env.example` files are now empty and filled in from the config.
+- Email templates (auth, invitation, admin invitation, verification) take their colours, `lang`
+  and a new footer line from `brand.email`.
+- Root `package.json` declares `"type": "module"`, so Node loads `app.config.ts` as ES modules;
+  `tsconfig.base.json` allows `.ts` import extensions.
 
 ### Security
 
