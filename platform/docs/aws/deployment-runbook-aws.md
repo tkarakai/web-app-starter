@@ -6,7 +6,7 @@ Cloud; hosting Convex on AWS is out of scope (see
 
 - Architecture and trade-offs: [deployment-architecture-aws.md](./deployment-architecture-aws.md)
 - Stack parameters and outputs: [cloudformation-stacks-aws.md](./cloudformation-stacks-aws.md)
-- Script reference: [infra/aws/README.md](../../infra/aws/README.md)
+- Script reference: [infra/aws/README.md](../../../infra/aws/README.md)
 
 Every step ends with a checkpoint. Don't continue past a checkpoint that fails.
 

@@ -5,8 +5,8 @@ Renovate proposes updates, regenerates `bun.lock`, lets the existing CI pipeline
 PRs — but **only for releases that are at least 10 days old**, so we adopt versions that the wider
 ecosystem has already vetted (not yanked, not a fresh supply-chain surprise).
 
-- Config: [`renovate.json`](../renovate.json)
-- Workflow: [`.github/workflows/renovate.yml`](../.github/workflows/renovate.yml)
+- Config: [`renovate.json`](../../renovate.json)
+- Workflow: [`.github/workflows/renovate.yml`](../../.github/workflows/renovate.yml)
 - Compatibility holds: `HOLD:` rules in `renovate.json` (see "Holds" below)
 - Every major decision, and what awaits a vendor-side change: its `deps:*` ticket and the PR that
   lands it
@@ -24,7 +24,7 @@ the repo and we control exactly when it runs; the price is owning the `RENOVATE_
 
 | | |
 |---|---|
-| **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC, as a safety net; dependency work is drained with the [`deps-update` skill](#draining-the-queue). Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
+| **Schedule** | GitHub Actions cron in `renovate.yml` — Monday & Thursday at 06:00 UTC, as a safety net; dependency work is drained with the [`platform-deps` skill](#draining-the-queue). Runs on GitHub's scheduler, which can delay runs 15–60 min under load. |
 | **Manual run** | GitHub → **Actions → Renovate → Run workflow** (`workflow_dispatch`). Pick `debug` log level to troubleshoot. |
 | **Cooldown** | `minimumReleaseAge: "10 days"` + `internalChecksFilter: "strict"` — a new release is held until it has been public for 10 days. Younger releases show as *pending* on the dashboard rather than as open PRs. |
 | **Security fixes** | The cooldown is **shortened to 12 hours for known-vulnerable dependencies**: `vulnerabilityAlerts` (GitHub security alerts) and `osvVulnerabilityAlerts` (OSV database) open fix PRs labeled `security` once the fixed release is 12 hours old. A fix exploited in the wild that our code reaches can be adopted sooner, by the user only. |
@@ -47,22 +47,22 @@ Defined in `renovate.json` → `packageRules`:
   exception: it keeps its own never-automerged group.
 - **Major versions** → **never auto-merged**, and **no PR opens until approved** on the dashboard
   (`dependencyDashboardApproval`; they wait under *Pending Approval*). While [draining the queue](#draining-the-queue),
-  the agent assesses each one with the `deps-major` skill (`.agents/skills/deps-major/`):
+  the agent assesses each one with the `platform-deps` skill's major-ticket procedure:
   it reads every release note, adds user-visible behaviour tests first, trials the upgrade, and
   adopts or rejects it. It merges dev tooling and runtime libraries itself. Majors of the
   sensitive frameworks (`next`, `react`/`react-dom`, `convex`, `better-auth` +
   `@convex-dev/better-auth` + `@better-auth/passkey`, `tailwindcss` + `@tailwindcss/postcss`),
   the runtime baseline, and any security-relevant behaviour change need the user's yes. Every major gets a
-  ticket (a `dependencies` issue with a `deps:*` status label), worked by one `deps-major` run;
+  ticket (a `dependencies` issue with a `deps:*` status label), worked by one major-ticket run;
   independent tickets run in parallel, merged one at a time. Each decision is recorded on the
   ticket and in the PR description. `convex` and `convex-test` majors travel together in the "convex monorepo" group.
 - **Holds** → a major that cannot work yet (an upstream peer range, our runtime floor) is capped
   with `allowedVersions` in a rule whose `description` starts with `HOLD:` and states the
   evidence and the **REMOVE when** condition. Holds are decisions: add or remove them in a
   reviewed PR, never by closing a bot PR silently. Held versions do not appear on the dashboard,
-  so each `deps-update` run re-checks the REMOVE conditions.
+  so each `platform-deps` run re-checks the REMOVE conditions.
 - **Lockfile maintenance** → **off in Renovate**, because it pulls transitive deps to their latest
-  versions and **sidesteps the 10-day cooldown**. Instead, `deps-update` regenerates `bun.lock`
+  versions and **sidesteps the 10-day cooldown**. Instead, `platform-deps` regenerates `bun.lock`
   weekly with `bun install --minimum-release-age=864000`, so transitive deps respect the same age,
   and merges it when CI is green.
 - **GitHub Actions** → Renovate pins all `uses:` references to **commit SHAs**
@@ -77,14 +77,14 @@ Defined in `renovate.json` → `packageRules`:
 
 Renovate and coding agents both merge to `main`, and `main` requires PRs to be up to date, so
 every merge from one side leaves the other side's PRs behind. Drain the dependency queue in one
-supervised run with the `deps-update` skill (`.agents/skills/deps-update/SKILL.md`, usable by any
-agent; `/deps-update` in Claude Code). It always starts with a read-only plan and your decisions,
+supervised run with the `platform-deps` skill (`platform/agent-skills/platform-deps/`, usable by any
+agent; `/platform-deps` in Claude Code). It always starts with a read-only plan and your decisions,
 and acts only after you give the green light. Feature merges are not paused: a merge during the
 run only leaves Renovate PRs behind, and the skill re-requests their rebase. It dispatches Renovate, gets each
 automerge PR rebased and merged in sequence, triages red PRs, re-checks holds, assesses majors with
-`deps-major`, refreshes the lockfile, and stops for a human only where those rules say so.
+its major-ticket procedure, refreshes the lockfile, and stops for a human only where those rules say so.
 The Monday/Thursday cron stays as a safety net that keeps the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
-Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to a `deps-update` run.
+Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to a `platform-deps` run.
 
 ### Handling each PR state
 
@@ -190,7 +190,7 @@ GitHub → repo **Settings → Secrets and variables → Actions → New reposit
 Auto-merge only works when GitHub permits it **and** CI checks are *required* — otherwise Renovate's
 `platformAutomerge` merges as soon as GitHub allows, **before** CI finishes.
 
-The following are already configured on this repo (via `gh api` / Settings):
+Configure these on your repository (via `gh api` or Settings):
 
 1. **Settings → General → Pull Requests → "Allow auto-merge"** — enabled.
 2. **Merge-commit method disabled** — the `main` ruleset requires linear history, so merge commits
@@ -198,13 +198,8 @@ The following are already configured on this repo (via `gh api` / Settings):
    `automergeStrategy: "squash"` to match.
 3. **Required status checks on `main`** — the `*-complete` summary jobs from `ci-shared`, `ci-web`,
    `ci-admin`, `ci-landing`, `ci-landing-static` and `ci-storybook`, with "require branches to be
-   up to date" (enforced by both the legacy branch protection and the `rule01` ruleset — the two
-   are independent copies, so a change to one is not a change to the other).
-
-   `CI Landing Static Complete` and `CI Storybook Complete` were **added on 2026-09-16**, so all
-   six `*-complete` jobs are now required and a regression in any of the five apps can block an
-   automerge. The list lives in **two** places — classic branch protection *and* ruleset `rule01`
-   (id `12113493`) — and both must be updated. Verify both:
+   up to date". If you use both classic branch protection and a ruleset, they are independent
+   copies: a change to one is not a change to the other, so update and verify both:
 
    ```bash
    gh api repos/<owner>/<repo>/branches/main/protection \
@@ -243,7 +238,7 @@ track the upstream limitation until a released fix is verified. For a manual rep
 from the preserved pre-update lockfile with `bun install --minimum-release-age=864000` (10 days),
 then run `bun install --frozen-lockfile` and inspect publication dates of newly resolved versions.
 The age flag does not retroactively reject young versions already recorded in a lockfile.
-This is separate from the weekly lockfile refresh by `deps-update`, which applies the same age
+This is separate from the weekly lockfile refresh by `platform-deps`, which applies the same age
 filter to transitive dependencies.
 
 ## Validating a config change

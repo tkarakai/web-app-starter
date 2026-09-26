@@ -258,7 +258,7 @@ get_convex_urls_from_backend_env() {
 # stay environment-agnostic and can be promoted between environments. landing is
 # a static export (output: "export") with no server at runtime, so it still needs
 # the NEXT_PUBLIC_* form inlined at build time.
-# See docs/deployment-architecture.md
+# See platform/docs/deployment-architecture.md
 update_app_env_urls() {
     local env_file="$1"
     local cloud_port="$2"

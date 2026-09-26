@@ -1,6 +1,6 @@
 # CI Guide
 
-> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
+> Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## Local CI (Pre-Push Checks)
 
@@ -97,18 +97,6 @@ The `ci-local-act.sh` script uses **Docker volumes** to persist downloaded artif
 **Subsequent runs:** Uses cached artifacts from volumes. After a required tool
 version changes, run online again to populate that version before using offline mode.
 
-For Node, `.github/actions/setup-bun/find-node.sh` checks the requested major
-version and runner architecture in `RUNNER_TOOL_CACHE`. A cache miss falls back
-to `actions/setup-node`, including under act. An older cached major does not meet
-the new request. `scripts/tests/setup-node-cache.test.ts` covers this selection.
-
-For Bun under act, `.github/actions/setup-bun/setup-bun-act.sh` reuses a cached
-binary only when its reported version exactly matches the requested version.
-A missing or stale binary triggers installation; download failure or a mismatched
-installed version fails setup before publishing its directory to `GITHUB_PATH`.
-See `scripts/tests/setup-bun-cache.test.ts` for regression coverage. After a Bun
-upgrade, populate the matching binary online before returning to offline mode.
-
 ### Usage
 
 ```bash
@@ -122,28 +110,6 @@ bun run ci:act:offline
 The offline flag (`-o`) adds:
 - `--pull=false` — Don't pull Docker images
 - `--action-offline-mode` — Don't fetch GitHub Actions
-
-### Pattern for Adding New Tools
-
-When introducing a tool that downloads from the internet, create a composite action
-in `.github/actions/<tool-name>/action.yml`. Use
-[setup-bun](../../.github/actions/setup-bun/action.yml) and its
-[act helper](../../.github/actions/setup-bun/setup-bun-act.sh) as the reference for
-version-aware cache reuse, installation failure handling, and path publication.
-
-Then use it in any workflow job:
-```yaml
-steps:
-  - uses: ./.github/actions/setup-toolname
-```
-
-**Key principles:**
-1. Use composite actions to avoid duplicating setup across workflows
-2. Use `if: ${{ !env.ACT }}` for standard GitHub Actions setup steps
-3. Use `if: ${{ env.ACT }}` for act-specific cache-aware setup
-4. Reuse a cached tool only when it satisfies the requested version
-5. Install to a path that's mounted as a Docker volume
-6. Verify successful installation and the requested version before adding the tool to `$GITHUB_PATH`
 
 ### Currently Cached Tools
 
@@ -172,5 +138,5 @@ Pull-request CI tests the PR head, not the squash-merged commit on main. The man
 CI workflows with the tip's `git_sha` and `require_e2e: true` for app workflows,
 forcing E2E even when `SKIP_E2E` is set. Its final **Verified** job succeeds only
 when every workflow succeeds. Called-workflow concurrency includes the caller name,
-so ordinary PR or deployment CI cannot cancel it. Starter tags are created only on
-a commit with a green run (see "What gets tagged" in `VERSIONING.md`).
+so ordinary PR or deployment CI cannot cancel it. Run it on a commit before tagging or
+releasing it.

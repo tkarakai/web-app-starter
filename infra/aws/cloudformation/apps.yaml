@@ -7,7 +7,7 @@ Description: Apps stack (ECS cluster and Fargate services for web and admin).
 #
 # Runtime configuration follows the build-once/promote model on main: the images
 # carry no environment identity, and CONVEX_URL, CONVEX_SITE_URL, LANDING_URL and
-# APP_ENVIRONMENT are read at request time. See docs/deployment-architecture.md
+# APP_ENVIRONMENT are read at request time. See platform/docs/deployment-architecture.md
 
 Parameters:
   ProjectName:

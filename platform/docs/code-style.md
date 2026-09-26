@@ -1,6 +1,6 @@
 # Code Style Guide
 
-> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
+> Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## TypeScript
 

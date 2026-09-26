@@ -1,6 +1,6 @@
 # Testing Guide
 
-> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
+> Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## When to Use Each Test Type
 
@@ -146,33 +146,6 @@ describe("myModule", () => {
 > **When to use this:** Only when the scheduled function can't run in tests. If the scheduled function is a simple mutation/query that works in convex-test, you don't need fake timers — let it run normally.
 
 ## Test Helpers
-
-### Developer command smoke tests
-
-Run `bun run test:dev-scripts` for the Node/TypeScript tests in `scripts/tests/`.
-They run in local CI and the shared GitHub Actions workflow. The process tests
-exercise real `bun dev --app=storybook` and `bun run dev:storybook` entry points,
-using the root package scripts, asset copying, process registration, and shutdown.
-The `bun dev --app=storybook` case also exercises `predev` and verifies environment
-seeding. Next.js is substituted with a fixture process; these checks do not boot
-real Next.js or Convex, prove HTTP readiness, or cover every development command.
-
-`scripts/tests/setup-e2e.test.ts` exercises the setup shell script with fixture
-Playwright CLIs: app-local and hoisted resolution, multiple workspace versions,
-missing dependencies, preserved installer errors and exit status, and dependency
-checks without browser installation. It does not download real browsers or invoke
-the `bun run setup:e2e` package entry point.
-
-Test public commands through Bun when lifecycle hooks matter; invoking the shell
-script directly misses `predev`. Keep fixtures in disposable directories, bound
-startup waits, include logs in failures, and clean up only fixture-owned processes.
-Commands that delete state or access external services need explicit fixtures;
-never execute every package script blindly against a developer's checkout.
-
-Real server smoke coverage remains future work. It should boot each supported dev command in
-a clean checkout, request its expected HTTP route, and verify shutdown releases
-its ports. Test both macOS and Linux, cold and warm generated files, and occupied
-preferred ports. A printed readiness message alone does not prove HTTP readiness.
 
 ### Authentication Mocking (`apps/web/qa/tests/helpers/auth-mock.ts`)
 

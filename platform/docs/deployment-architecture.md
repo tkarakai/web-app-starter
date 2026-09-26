@@ -1,38 +1,10 @@
 # Deployment Architecture
 
-This document explains the design and internals of the CI/CD pipeline — how it works, why it's built this way, and what happens when things fail. For step-by-step operational procedures, see [deployment-runbook.md](./deployment-runbook.md).
+This document explains how the CI/CD pipeline works and what happens when things fail. The pipeline builds everything in GitHub Actions, pushes prebuilt artifacts to Vercel (`vercel deploy --prebuilt`) and deploys Convex separately (`convex deploy`), always before the frontends. Vercel is a hosting target only, with no Git integration. For step-by-step operational procedures, see [deployment-runbook.md](./deployment-runbook.md).
 
 > **Hosting on AWS instead of Vercel:** see [aws/deployment-architecture-aws.md](./aws/deployment-architecture-aws.md).
 > It replaces Vercel only; Convex stays on Convex Cloud either way. It is operated from the CLI
 > and does not change the GitHub CD workflows documented here.
-
-## Why This Architecture
-
-There are several ways to wire up CI/CD with GitHub, Vercel, and Convex. We evaluated the common approaches and chose the one that gives us the most control.
-
-### Alternative: Vercel Git Integration
-
-The most popular approach. You connect your GitHub repo to Vercel, and Vercel triggers builds automatically on every push. Vercel handles CI/CD internally — no GitHub Actions needed for deployment.
-
-**Why we don't use it:** It locks the entire build and deploy pipeline into Vercel. If we ever want to switch hosting providers (e.g., to Cloudflare, Netlify, or self-hosted), we'd have to rebuild the CI/CD pipeline from scratch. By not connecting Vercel to git at all, Vercel is just a hosting target — swappable without touching CI.
-
-### Alternative: Vercel Convex Marketplace Integration
-
-Convex is available as a [Vercel Marketplace](https://vercel.com/marketplace) solution. With this integration, Convex account creation, database management, and billing all go through your Vercel account.
-
-**Why we don't use it:** We want independent control over backend billing and configuration. Keeping Convex and Vercel as separate accounts means we can manage each service's pricing, limits, and settings independently. If we scale one service differently than the other, we're not tied to a bundled plan.
-
-### Our Approach: GitHub Actions as CI/CD Orchestrator
-
-We build everything in GitHub Actions and push prebuilt artifacts to Vercel via `vercel deploy --prebuilt`. Convex is deployed separately via `convex deploy`. Vercel is used purely as a static hosting target.
-
-**What this gives us:**
-- **No vendor lock-in** — if we switch away from Vercel, only the deploy action changes. CI, builds, testing, and Convex deployment are completely unaffected.
-- **Full pipeline control** — we own the build caching, change detection, artifact attestation, and deployment ordering. Nothing is a black box.
-- **Independent backend** — Convex has its own deploy keys, its own billing, and deploys on its own schedule (always before frontends).
-- **Auditability** — every deployment is traceable through git tags, SLSA attestations, and GitHub Actions logs.
-
-The trade-off is more initial setup (see [deployment-runbook.md — One-Time Infrastructure Setup](./deployment-runbook.md#2-one-time-infrastructure-setup)) and maintaining the GitHub Actions workflows ourselves.
 
 ## Architecture
 
@@ -224,15 +196,6 @@ Three consequences, and they are the whole point:
 | `NEXT_PUBLIC_GIT_SHA`, `BUILD_ID`, `DEPLOY_TIMESTAMP`, … | **no** (`passThroughEnv`) | they change every commit; hashing them would defeat reuse entirely |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` for `landing` / `landing-static` | **yes** | these are static exports: the values *are* inlined, so staging and production legitimately produce different artifacts |
 
-Two settings make this work, and breaking either silently breaks reuse:
-
-- **`--framework-inference=false`** when computing the hash. Turborepo's Next.js inference
-  otherwise folds every `NEXT_PUBLIC_*` variable into the hash, including
-  `NEXT_PUBLIC_GIT_SHA` — which moves the hash on every commit. Each app declares what it
-  hashes explicitly instead.
-- **The Vercel CLI is pinned** (`vercel@59.26.0`). On `@latest`, the builder could change
-  under a hash that did not move.
-
 ### Build identity vs deployed commit
 
 A reused artifact reports the commit that **built** it, which is not always the commit being
@@ -285,8 +248,6 @@ Two Vercel-specific settings are architecturally required on all six projects:
 
 - **Root Directory** must be set to `apps/<app>` on each project. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build.
 - **Framework Preset** must be set to **Next.js**. Without it, Vercel's builder detects `@vercel/static-build` from the monorepo root and fails.
-
-**Why separate staging projects instead of Vercel Preview deployments?** Previously, staging used Vercel's Preview deployment feature on shared projects. Each push to `main` created a new preview URL without invalidating the old one, while the staging Convex database was updated in-place. This caused stale preview deployments to serve outdated frontend code against a mutated backend. Dedicated staging projects eliminate this problem — each deploy replaces the previous one and provides a stable URL.
 
 For setup instructions, see [deployment-runbook.md — Create Vercel Projects](./deployment-runbook.md#2b-create-vercel-projects).
 

@@ -74,8 +74,6 @@ The audit trail enforces maximum field lengths. Fields exceeding the limit are *
 | `by_action_status_happenedAt` | `action`, `status`, `happenedAt` | Combined action+status filter |
 | `by_authenticatedUserId_happenedAt` | `authenticatedUserId`, `happenedAt` | Filter by authenticated user |
 
-Indexes serve admin UI filtering needs. They can be adjusted as new filtering requirements emerge — this is not an architectural decision.
-
 ---
 
 ## 3. Entry Points
@@ -109,18 +107,6 @@ The `source` field uses a two-part format: `transport:detail`
 Examples: `server:auth-hook`, `server:admin-mutation`, `server:cron-cleanup`, `web:dashboard`, `web:settings`
 
 The transport prefix is always set by the audit trail based on which entry point was used. This prevents web clients from claiming to be server events.
-
-### Client-Side `postEvent` vs Server-Side Auth Hooks
-
-Better Auth's database hooks (`session.create.after`, `user.update.after`, etc.) already capture many successful auth operations server-side via `insertEvent`. Given this overlap, here is the rationale for when client-side `postEvent` adds value and when it is redundant.
-
-#### What client-side `postEvent` adds
-
-1. **Failure visibility** — Server-side hooks only fire on *successful* operations (e.g. a successful password change triggers `user.update.after`). Client-side `postEvent` in `finally` captures failures too (`failed.wrong_password`, `failed.invalid_code`, `failed.unknown`), which are invisible to hooks.
-
-2. **Client context (`sourceDetail`)** — Client-side events carry the UI origin (`web:settings`, `admin`, `admin-settings`) whereas hooks only know `server:auth-hook`. This distinguishes "admin banned a user from the admin dashboard" from "system operation" in the audit log.
-
-3. **Operations without corresponding hooks** — Not every Better Auth API call has a matching database hook. Admin operations (`banUser`, `unbanUser`, `removeUser`, `setRole`, `revokeSession`, `revokeSessions`) and self-service session revocation may not trigger hooks, making client-side auditing the only coverage.
 
 ---
 
@@ -175,8 +161,6 @@ The admin UI reflects this distinction with a shield icon next to the actor when
 
 Better Auth's `databaseHooks` only fire on **successful** operations (e.g. `session.create.after` fires when a session is created — which only happens on successful login). Failed login attempts don't create sessions, so the hook never fires.
 
-Capturing auth failures requires a custom Better Auth plugin that intercepts responses from auth endpoints (e.g. `/sign-in/email`) and logs failed attempts. This is planned for a follow-up implementation.
-
 ---
 
 ## 5. Validation
@@ -226,8 +210,6 @@ import {
   scheduleAuditEvent, runAuditEvent,
 } from "@repo/backend";
 ```
-
-**Note**: The helpers live in `auditTrailHelpers.ts` (not `auditTrail.ts`) to avoid a circular dependency — `auditTrail.ts` defines `insertEvent`, and `internal.auditTrail.insertEvent` references it back, which breaks module resolution in convex-test.
 
 ### Helper Functions
 
@@ -372,15 +354,6 @@ failed.internal_error    — failure category: internal_error
 
 Both enums are **runtime-enforced** — the audit trail throws if an unknown action or status is received. This catches typos and misuse early.
 
-### Why Centralized?
-
-The enums live in one file (`auditTrailConstants.ts`) for:
-
-- **Discoverability** — one place to see all auditable events and outcomes
-- **Consistency** — naming conventions are visible and reviewable
-- **Type safety** — TypeScript ensures callers use valid values
-- **UI support** — the admin dashboard renders hierarchical dropdowns from these enums
-
 ---
 
 ## 9. Security Model
@@ -401,36 +374,9 @@ A web-based event that appears inappropriate (e.g. a regular user sending an `ad
 
 The audit trail is a **faithful recorder**, not a **gatekeeper**.
 
-### Unauthenticated Event Security
-
-For events without `authenticatedUserId`:
-
-- The `actor` field is **untrusted** — it contains whatever the caller provides (e.g. the email address someone typed into a login form). It could be fabricated.
-- The absence of `authenticatedUserId` is itself meaningful — it signals that no verified session backs this event.
-- The `source` field is always `server:*` for unauthenticated events (they can only come through `insertEvent`), which confirms they originated from server-side code, not from a client.
-- The `meta` field typically captures request context (IP address, user agent) for forensic analysis.
-
-This is a **feature, not a limitation**. The distinction between verified and unverified identity is exactly what security analysis needs.
-
-### Server-Side Security
-
-`insertEvent` is an `internalMutation` — only callable from server-side Convex code. The Convex runtime enforces this; clients cannot call internal functions.
-
 ---
 
-## 10. Indexing Strategy
-
-Indexes are designed around admin UI filtering needs. The current set covers:
-
-- Chronological listing (default)
-- Filter by single field: action, actor, source, status, authenticatedUserId
-- Combined filter: action + status
-
-As new filtering patterns emerge (e.g. resource prefix search, time range + source), new indexes can be added. This is an operational decision, not an architectural one.
-
----
-
-## 11. Admin UI
+## 10. Admin UI
 
 The admin dashboard (`apps/admin`) provides:
 

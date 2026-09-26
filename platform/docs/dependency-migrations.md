@@ -7,8 +7,8 @@ version bump. This document covers the two kinds that are not:
 2. **Runtime-baseline changes**: moving a runtime or platform everything else depends on, such as
    Node or Bun.
 
-Both are normally found in a `deps-update` run and decided with the `deps-major` skill, which
-sets who may merge: the agent for dev tooling and runtime libraries, the user for the sensitive
+Both are normally found in a `platform-deps` run and decided with that skill's major-ticket
+procedure, which sets who may merge: the agent for dev tooling and runtime libraries, the user for the sensitive
 frameworks, the runtime baseline and security-relevant behaviour changes.
 
 ## Migrations
@@ -23,10 +23,10 @@ does not accept the new version yet, that is a **hold** instead (a `HOLD:` rule 
 
 ### Process
 
-1. **Decide and record.** The `deps-major` skill opens a ticket titled `deps: <package> <from> → <to>` containing the
+1. **Decide and record.** The `platform-deps` skill opens a ticket titled `deps: <package> <from> → <to>` containing the
    Renovate PR or dashboard item, the upstream migration guide, the failure evidence, and what is
    affected: which apps and packages, and which user-visible behavior. The decision (*now*, *hold* with a `HOLD:` rule linking the
-   issue, or *never*) follows the `deps-major` skill, and is recorded on the ticket and in the PR description.
+   issue, or *never*) follows the `platform-deps` skill, and is recorded on the ticket and in the PR description.
 2. **Branch.** Work on `deps/<package>-<major>` from `main`. Never commit on `renovate/*`. Apply the
    bump there yourself with `bun add`, respecting the ten-day release age
    (`bun install --minimum-release-age=864000`).
@@ -40,12 +40,7 @@ does not accept the new version yet, that is a **hold** instead (a `HOLD:` rule 
 5. **Validate.** Run `bun run ci` locally (including E2E for anything user-facing), then CI on the PR.
    For the sensitive frameworks listed in `dependency-updates.md`, also check the staging deploy
    after merge.
-6. **Downstream.** This repo is a starter, and business apps merge it (see `VERSIONING.md`). If a
-   downstream app would have to do anything besides merging and running `bun run ci:quick`
-   (renamed exports, changed component props, a peer they must also bump), add an **Action
-   required** entry to `CHANGELOG.md`. Where the change is mechanical, ship a codemod per
-   `scripts/codemods/README.md`.
-7. **Close out.** The PR body links the migration issue and states what was verified. Close the
+6. **Close out.** The PR body links the migration issue and states what was verified. Close the
    Renovate PR with a link to the migration PR. Remove any `HOLD:` rule the migration resolves.
 
 ### Rollback
@@ -95,6 +90,5 @@ Do this as one PR on `deps/node-<major>` (or `deps/bun-<version>`):
 3. Re-check holds whose REMOVE condition mentions the Node floor.
 4. `bun run check:runtime-baseline`, then `bun run ci`.
 5. Update the Vercel project Node settings as part of the merge, and verify the staging deploy
-   before any production promote.
-6. Add a `CHANGELOG.md` **Action required** entry: downstream apps must install the new Node locally
-   and update their own Vercel settings.
+   before any production promote. Tell everyone who works on the app to install the new Node
+   locally.

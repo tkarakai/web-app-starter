@@ -1,24 +1,27 @@
 # Architecture Patterns
 
-> Detailed guide for AI agents. See [AGENTS.md](../../AGENTS.md) for the quick reference.
+> Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## Route Protection (Authentication)
 
-The web app uses a **three-layer** auth system. New protected pages get all three layers automatically by placing them under `src/app/(dashboard)/`.
+The web app uses a **three-layer** auth system. Paths below are relative to `apps/web/`. New protected pages get all three layers by placing them under `src/app/[locale]/(dashboard)/dashboard/`.
 
 | Layer | Where | What it does | Speed |
 |-------|-------|-------------|-------|
 | **Proxy** | `src/proxy.ts` | Cookie-presence check + CSP headers (Edge) | ~1ms |
-| **Layout** | `src/app/(dashboard)/layout.tsx` | Full session validation + user preload (RSC) | ~50ms |
+| **Layout** | `src/app/[locale]/(dashboard)/layout.tsx` | Full session validation + user preload (RSC) | ~50ms |
 | **AuthGuard** | `src/components/auth/auth-guard.tsx` | Client-side session watcher + redirect | Ongoing |
 
-**To add a new protected page:** just create it under `src/app/(dashboard)/`:
+**To add a new protected page:** create it under `src/app/[locale]/(dashboard)/dashboard/`, so its URL
+starts with `/dashboard` (the proxy's protected prefix) and it shares the layout's checks. The
+`platform-add-page` skill walks through it, including the nav entry and strings.
 
 ```
-src/app/(dashboard)/
-  layout.tsx          <- auth check (already exists, shared by all pages)
-  dashboard/page.tsx  <- existing page
-  settings/page.tsx   <- new page -- automatically protected!
+src/app/[locale]/(dashboard)/
+  layout.tsx                   <- auth check (already exists, shared by all pages)
+  dashboard/page.tsx           <- existing page
+  dashboard/settings/page.tsx  <- existing page
+  dashboard/reports/page.tsx   <- new page, protected by all three layers
 ```
 
 **To access the current user** in any client component under `(dashboard)/`:
@@ -34,17 +37,17 @@ export function MyComponent() {
 
 **How the layers work together:**
 
-1. **Proxy** (Edge, instant): Checks for the `better-auth.session_token` cookie. No cookie -> redirect to `/sign-in`. Also redirects authenticated users away from `/sign-in` and `/sign-up` to `/dashboard`. Sets CSP headers with nonce.
+1. **Proxy** (Edge, instant): Checks for the Better Auth session cookie. No cookie -> redirect to `/sign-in`. Also redirects authenticated users away from `/sign-in` and `/sign-up` to `/dashboard`. Sets CSP headers with nonce.
 2. **Layout** (Server Component): Calls `isAuthenticated()` for full session validation, then `preloadAuthQuery(api.auth.getCurrentUser)` to SSR the user data. Catches stale-session errors (e.g. signed out in another tab) and redirects.
 3. **AuthGuard** (Client Component): Subscribes to the Convex user query for real-time updates and watches the Better Auth session. If the session is invalidated while the page is open, redirects immediately.
 
 **Backend safety:** The `getCurrentUser` Convex query returns `null` (not throws) when unauthenticated, so client-side subscriptions degrade gracefully instead of crashing.
 
-**To add a route to proxy protection:** edit the `PROTECTED_PREFIXES` array in `src/proxy.ts`. Auth-page redirects use the `AUTH_ROUTES` array.
+**To protect a route outside `/dashboard` at the proxy:** add its prefix to the `PROTECTED_PREFIXES` array in `src/proxy.ts`. Auth-page redirects use the `AUTH_ROUTES` array.
 
 ## Guest Pages (Auth Pages)
 
-Auth pages (`/sign-in`, `/sign-up`) are wrapped by `GuestGuard` via `src/app/(auth)/layout.tsx`. When a user logs in on another tab:
+Auth pages (`/sign-in`, `/sign-up`) are wrapped by `GuestGuard` via `src/app/[locale]/(auth)/layout.tsx`. When a user logs in on another tab:
 
 1. **BroadcastChannel** (instant): The auth form calls `broadcastAuth()` on success. Other tabs' `GuestGuard` receives the message and redirects to `/dashboard`.
 2. **Visibility fallback**: When the tab becomes visible, `GuestGuard` calls `authClient.getSession()` to check for an active session and redirects if found.
@@ -53,18 +56,18 @@ Auth pages (`/sign-in`, `/sign-up`) are wrapped by `GuestGuard` via `src/app/(au
 
 ## Rate Limiting
 
-The application uses three layers of rate limiting. See `RATE-LIMITING.md` in the project root for the full architecture document.
+The application uses three layers of rate limiting. See [rate-limiting-architecture.md](rate-limiting-architecture.md) for limits, settings and local testing.
 
 | Layer | Scope | Storage | Config |
 |-------|-------|---------|--------|
 | **Better Auth** | Auth endpoints (sign-in, sign-up) | Convex DB (betterAuth component `rateLimit` table) | `packages/backend/convex/auth.ts` — env vars via `convex env set` |
 | **Convex Functions** | All `authedMutation` calls | Convex DB (`rateLimits` table) | `packages/backend/convex/rateLimits.ts` — env vars via `convex env set` |
-| **Edge Proxy** | HTTP page requests (web, admin, landing) | In-memory `Map` (per-instance, capped) | `apps/*/src/proxy.ts` — uses shared `@repo/edge-rate-limit` package |
+| **Edge Proxy** | HTTP page requests (web, admin) | In-memory `Map` (per-instance, capped) | `apps/*/src/proxy.ts` — uses shared `@repo/edge-rate-limit` package |
 
 **Key files:**
 - `packages/backend/convex/rateLimits.ts` — Convex rate limit definitions
 - `packages/backend/convex/functions.ts` — Global mutation rate limit in `authedMutation`
-- `packages/edge-rate-limit/` — Shared edge rate limiter (used by web, admin, and landing proxies)
+- `packages/edge-rate-limit/` — Shared edge rate limiter (used by the web and admin proxies)
 - `apps/web/src/components/auth/auth-form.tsx` — Client-side 429 error handling
 
 > **Note**: `landing-static` is a fully static export and does not use edge rate limiting. Rate limiting for static deployments should be handled at the CDN/hosting layer.

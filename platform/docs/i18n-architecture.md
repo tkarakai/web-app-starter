@@ -6,7 +6,7 @@ This document describes the internationalization (i18n) system architecture. It 
 
 The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n library, purpose-built for Next.js App Router and Server Components. All user-facing strings are extracted into a shared `@repo/i18n` package. The system currently supports **15 languages** across LTR and RTL scripts, with full support for cross-device locale persistence, SEO optimization, multi-script fonts, and RTL layout mirroring. Adding a new language requires only two steps — no code changes.
 
-### Key Design Decisions
+### Scope
 
 **Scope:** web, landing and landing-static localize their user-visible text.
 Admin remains English-only and imports existing entries from
@@ -22,15 +22,6 @@ The web app's `localized-controls.tsx` supplies current-locale labels to shared
 primitives without making the design system depend on i18n. The static landing
 404 reads its URL locale after hydration because static hosting serves one
 `404.html`; its initial HTML uses the English catalog.
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Library | next-intl v4+ | First-class Next.js App Router / RSC support, ICU MessageFormat, built-in formatting, tree-shaking |
-| URL strategy | Always prefix (`/en/...`, `/fr/...`) | Consistent, shareable URLs; SSR can determine locale from URL; SEO-friendly |
-| Shared strings | `@repo/i18n` package | Single source of truth for all apps; messages co-located with config |
-| Shared components | Labels via props (inversion of control) | Packages stay locale-agnostic; no React context dependency |
-| Backend errors | Error codes (UPPER_SNAKE_CASE) | Backend stays locale-agnostic; client maps codes to translations |
-| RTL | Pre-configured, layout-level `dir` attribute | Ready for RTL locales; no code changes needed to enable |
 
 ---
 
@@ -156,20 +147,14 @@ Request
 
 Auth redirects preserve the active locale by extracting it from the URL path before redirecting.
 
-### Landing App (`apps/landing/src/proxy.ts`)
+### Landing apps
 
-```
-Request
-  → next-intl middleware (locale detection, URL rewriting, cookie)
-  → CSP headers
-  → Response
-```
-
-No auth checks needed — the landing page is public.
+`landing` and `landing-static` are static exports (`output: "export"`), so they have no proxy. Every
+locale is pre-rendered under `[locale]/`, and the root page picks a locale in the browser.
 
 ### next-intl Middleware Configuration
 
-Both apps use the same configuration:
+The web app uses this configuration:
 
 ```ts
 import createIntlMiddleware from "next-intl/middleware";
@@ -535,34 +520,7 @@ When a user selects a language:
 
 #### For Authenticated Users (Cross-Device Sync)
 
-The `useProfileSync` hook orchestrates Convex ↔ localStorage synchronization:
-
-```tsx
-export function useProfileSync() {
-  const currentLocale = useLocale();
-  const profile = useQuery(api.userProfiles.get);
-  const setLocale = useMutation(api.userProfiles.setLocale);
-
-  useEffect(() => {
-    // Convex wins over localStorage
-    if (convexLocale) {
-      localStorage.setItem(LOCALE_KEY, convexLocale);
-      return;
-    }
-
-    // Sync localStorage to Convex if Convex is empty
-    if (localStorageLocale && localStorageLocale !== currentLocale) {
-      setLocale({ locale: localStorageLocale });
-      return;
-    }
-
-    // Neither has locale: set Convex to current URL locale
-    if (!convexLocale && !localStorageLocale) {
-      setLocale({ locale: currentLocale });
-    }
-  }, [profile, currentLocale, setLocale]);
-}
-```
+The `useProfileSync` hook keeps the Convex user profile and localStorage in step. The Convex value wins.
 
 **How it works:**
 
@@ -571,19 +529,6 @@ export function useProfileSync() {
 3. User signs out and back in → profile is loaded, Convex locale overwrites localStorage
 4. User on another device → logs in, Convex locale is loaded and synced to localStorage
 5. User opens app in another tab → BroadcastChannel shares the locale change instantly
-
-**Backend schema** (`packages/backend/convex/userProfiles.ts`):
-
-```ts
-userProfiles: defineTable({
-  ownerId: v.string(),
-  locale: v.optional(v.string()),      // Synced from localStorage
-  theme: v.optional(v.string()),       // Reserved for future theme sync
-  timezone: v.optional(v.string()),    // Reserved for future timezone sync
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}).index("by_owner", ["ownerId"]),
-```
 
 **Hook placement:** Called from `DashboardClient` (authenticated dashboard area) to ensure both Convex and i18n contexts are available.
 
@@ -714,83 +659,6 @@ function MyComponent() {
 ### Existing Utilities
 
 `formatBytes()` in `apps/web/src/lib/format.ts` is kept as-is since byte units are universal across locales. For locale-sensitive number formatting, prefer `useFormatter().number()`.
-
----
-
-## Architecture Diagram
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                     @repo/i18n                            │
-│  ┌──────────┐  ┌───────────┐  ┌────────────────┐        │
-│  │ config   │  │ request   │  │ navigation     │        │
-│  │ locales  │  │ getMessage│  │ Link, redirect │        │
-│  │ metadata │  │ Config()  │  │ useRouter      │        │
-│  │ getDir() │  │           │  │                │        │
-│  └──────────┘  └───────────┘  └────────────────┘        │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ messages/en.json, messages/fr.json, ... (15 total) │  │
-│  └────────────────────────────────────────────────────┘  │
-│  ┌─────────────────────┐  ┌───────────────────┐         │
-│  │ hreflang.tsx        │  │ Fonts: Cairo,     │         │
-│  │ (generates alt lang │  │ Heebo, Raleway    │         │
-│  │ links for SEO)      │  │ (conditional load)│         │
-│  └─────────────────────┘  └───────────────────┘         │
-└──────────────────────────────────────────────────────────┘
-           │                           │
-    ┌──────┴──────┐                   │
-    ▼             ▼                   ▼
-┌────────────┐ ┌────────────┐   ┌─────────────────────┐
-│   landing  │ │     web    │   │  @repo/backend      │
-│            │ │            │   │  (Convex)           │
-│ proxy.ts   │ │ proxy.ts   │   │                     │
-│ ├─ intl    │ │ ├─ auth    │   │  userProfiles table:│
-│ │ mdw      │ │ │ checks   │   │  ├─ locale (sync)  │
-│ └─ CSP     │ │ ├─ intl    │   │  ├─ theme (ready)  │
-│            │ │ │ mdw      │   │  └─ timezone       │
-│ [locale]/  │ │ └─ CSP     │   │      (ready)        │
-│ layout     │ │            │   │                     │
-│ ├─ fonts   │ │ [locale]/  │   │ mutations:          │
-│ │ (Cairo,  │ │ layout     │   │ ├─ get              │
-│ │ Heebo,   │ │ ├─ fonts   │   │ ├─ setLocale        │
-│ │ Raleway) │ │ │ (cond.)  │   │ └─ upsert           │
-│ ├─ lang,   │ │ ├─ lang    │   │                     │
-│ │ dir      │ │ ├─ dir     │   │ Error codes:        │
-│ ├─ Meta    │ │ ├─ Meta    │   │ NOT_AUTHENTICATED  │
-│ │ data     │ │ │ data     │   │ PROJECT_NOT_FOUND  │
-│ ├─ hreflang│ │ ├─ hreflang│   │ TASK_NOT_FOUND     │
-│ ├─ Meta    │ │ ├─ Meta    │   │ FILE_NOT_FOUND     │
-│ │ Gen      │ │ │ Gen      │   │ FILE_TOO_LARGE     │
-│ └─ NICP    │ │ └─ NICP    │   └─────────────────────┘
-│            │ │ ├─ Conv    │         │
-│ SEO:       │ │ │ Provider │  error-messages.ts
-│ ├─ Meta    │ │ └─ Auth    │  maps code → i18n key
-│ ├─ href    │ │   Guard    │         │
-│ │ lang     │ │            │         ▼
-│ ├─ site    │ │ useProfile │  ┌──────────────────┐
-│ │ map      │ │ Sync (auth │  │ @repo/design-    │
-│ └─ robots  │ │ area)      │  │ patterns         │
-│            │ │            │  │                  │
-│ (15 locale │ │ Client Cmp │  │ ThemeToggle      │
-│  variants) │ │ useTransl()│  │ (labels prop)    │
-│            │ │            │  │                  │
-│            │ │ Server Cmp │  │ LanguageSelector │
-│            │ │ getTrans() │  │ (locale-agnostic)│
-│            │ │            │  │                  │
-│            │ │ useProfileSync calls:          │
-│            │ │ ├─ useQuery(api.userProfiles.get)
-│            │ │ ├─ useMutation(setLocale)     │
-│            │ │ └─ localStorage ↔ Convex sync │
-│            │ │                  │             │
-└────────────┘ └────────────────────────────────┘
-                                    │
-                                    ▼
-                          ┌──────────────────────┐
-                          │  BroadcastChannel    │
-                          │  (instant sync       │
-                          │   across tabs)       │
-                          └──────────────────────┘
-```
 
 ---
 

@@ -8,7 +8,7 @@
 # so nothing is rebuilt; an image that has aged out is rebuilt from the commit.
 # Convex functions and landing are redeployed from the commit, exactly as
 # cd-rollback.yml does. Schema changes are not undone: a rollback across a
-# schema change needs the procedure in docs/convex-migrations.md.
+# schema change needs the procedure in platform/docs/convex-migrations.md.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 require_cmd git

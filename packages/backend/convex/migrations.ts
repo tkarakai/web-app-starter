@@ -23,7 +23,7 @@
  * 2. Export it (name = CLI identifier)
  * 3. Add it to the `startMigrationsSerially` list in the default export
  *
- * For the full migration workflow (widen/migrate/narrow), see `docs/convex-migrations.md`.
+ * For the full migration workflow (widen/migrate/narrow), see `platform/docs/convex-migrations.md`.
  *
  * @module
  */

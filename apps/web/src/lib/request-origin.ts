@@ -11,7 +11,7 @@ import { headers } from "next/headers";
  * Reading headers opts the caller into dynamic rendering, which is required
  * anyway: a statically prerendered route would bake the origin in at build time.
  *
- * See docs/deployment-architecture.md
+ * See platform/docs/deployment-architecture.md
  */
 export async function getRequestOrigin(): Promise<string> {
   const headersList = await headers();

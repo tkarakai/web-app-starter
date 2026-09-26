@@ -364,11 +364,3 @@ changing them leaves no trace:
   a rejected admin action (`NOT_ADMIN`, `CANNOT_DELETE_CLAIMED`, `ENTRY_NOT_FOUND`) is
   invisible. Compare section 5, where the client emits from a `finally` and failures are
   captured.
-
-### Inconsistencies worth normalising
-
-- `actor` is an email everywhere except `appSettings.set` and the two `adminAuth.ts`
-  policy mutations, which use a user ID.
-- `admin.invitation.sent` uses `admin-invitation:<email>` while `admin.invitation.deleted`
-  uses `admin-invitation:<entryId>`.
-- The web session-revocation UI emits from two components with duplicated logic.

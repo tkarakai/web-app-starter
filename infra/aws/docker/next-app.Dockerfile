@@ -4,7 +4,7 @@
 #
 # The image carries no environment identity: CONVEX_URL, CONVEX_SITE_URL,
 # LANDING_URL and APP_ENVIRONMENT are read at request time (see
-# docs/deployment-architecture.md), so one image serves every environment.
+# platform/docs/deployment-architecture.md), so one image serves every environment.
 #
 # NODE_VERSION and BUN_VERSION must match .node-version and packageManager;
 # scripts/check-runtime-baseline.ts enforces it.

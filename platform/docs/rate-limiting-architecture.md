@@ -14,7 +14,7 @@ Client Request
 │  Layer 3: Edge Proxy                │  ← Per-IP, in-memory, first line of defense
 │  (Next.js proxy.ts)                 │
 │  apps/web/src/proxy.ts              │
-│  apps/landing/src/proxy.ts          │
+│  apps/admin/src/proxy.ts            │
 └──────────────┬──────────────────────┘
                │
   ┌────────────┴────────────┐
@@ -92,9 +92,7 @@ Set via `convex env set <KEY> <VALUE>`:
 
 Token bucket means: tokens accumulate continuously at 30/minute. Users can make up to 10 requests in quick succession (burst), then must wait for tokens to replenish. This allows normal interactive usage while blocking automated abuse.
 
-### Why Not Rate Limit Queries?
-
-Queries are read-only, idempotent, and used by `useQuery` real-time subscriptions. Rate limiting them would break reactive UI updates, causing subscriptions to fail when the user is simply viewing data.
+Queries are not rate limited: they are read-only and back `useQuery` subscriptions, which would break if throttled.
 
 ### Environment Variables
 
@@ -141,32 +139,32 @@ try {
 
 ## Layer 3: Edge Proxy (HTTP Requests)
 
-**Scope**: All HTTP page requests to the web and landing apps (excludes API routes, static assets, and prefetch requests)
+**Scope**: All HTTP page requests to the web and admin apps (excludes API routes, static assets, and prefetch requests)
 
 **How it works**: An in-memory fixed window counter (`Map<ip, {count, resetAt}>`) in the Next.js proxy (Edge Runtime). Checks happen before auth redirects and CSP header generation, so abusive requests are rejected immediately with minimal processing.
 
 **Configuration files**:
 - `apps/web/src/proxy.ts` — Web app proxy integration
-- `apps/landing/src/proxy.ts` — Landing app proxy integration
-- `apps/web/src/lib/edge-rate-limit.ts` — Rate limiter utility (identical copy in landing)
+- `apps/admin/src/proxy.ts` — Admin app proxy integration
+- `@repo/edge-rate-limit` (`packages/edge-rate-limit/`) — the shared rate limiter
+
+The landing apps are static exports with no server-side proxy; rate-limit them at the CDN or hosting layer.
 
 ### Default Limits
 
 | App | Window | Max Requests | Map Size Cap |
 |-----|--------|-------------|-------------|
 | Web | 60s | 200 | 10,000 IPs |
-| Landing | 60s | 300 | 10,000 IPs |
-
-Landing has a higher default because marketing pages typically see higher legitimate traffic (crawlers, social media previews, etc.) and have no auth endpoints.
+| Admin | 60s | 100 | 10,000 IPs |
 
 ### Environment Variables
 
 Set in `.env.local` or deployment config:
 
-| Variable | Default (web) | Default (landing) | Description |
+| Variable | Default (web) | Default (admin) | Description |
 |----------|-------------|-------------------|-------------|
 | `EDGE_RATE_LIMIT_WINDOW` | `60` | `60` | Window in seconds |
-| `EDGE_RATE_LIMIT_MAX` | `200` | `300` | Max requests per window |
+| `EDGE_RATE_LIMIT_MAX` | `200` | `100` | Max requests per window |
 | `EDGE_RATE_LIMIT_MAP_MAX_SIZE` | `10000` | `10000` | Max tracked IPs |
 
 ### Map Size Cap and Fail-Closed Behavior
@@ -177,8 +175,6 @@ The in-memory IP tracker has a configurable maximum size (default 10,000 entries
 1. A cleanup pass runs, evicting expired entries
 2. If the map is still at capacity, **new IPs are rejected with 429** (fail-closed)
 3. Existing tracked IPs continue to be served normally
-
-This is the conservative approach — if we're tracking 10k unique IPs within 60 seconds, something abnormal is happening. Blocking new IPs is safer than allowing potential attackers through.
 
 ### Limitations
 
@@ -201,7 +197,7 @@ This is the conservative approach — if we're tracking 10k unique IPs within 60
 
 ## Response Headers
 
-All successful responses from the web and landing proxies include rate limit headers:
+All successful responses from the web and admin proxies include rate limit headers:
 
 | Header | Description |
 |--------|-------------|
@@ -212,24 +208,6 @@ All successful responses from the web and landing proxies include rate limit hea
 These headers allow clients and monitoring tools to track rate limit status proactively.
 
 ---
-
-## File Reference
-
-| File | Purpose |
-|------|---------|
-| `packages/backend/convex/auth.ts` | Better Auth rate limit config (Layer 1) |
-| `packages/backend/convex/rateLimits.ts` | Convex rate limit definitions (Layer 2) |
-| `packages/backend/convex/functions.ts` | Global mutation rate limit in `authedMutation` (Layer 2) |
-| `packages/backend/convex/schema.ts` | `rateLimitTables` added to schema (Layer 2) |
-| `apps/web/src/proxy.ts` | Web app edge rate limiting (Layer 3) |
-| `apps/landing/src/proxy.ts` | Landing app edge rate limiting (Layer 3) |
-| `apps/web/src/lib/edge-rate-limit.ts` | Edge rate limiter utility |
-| `apps/landing/src/lib/edge-rate-limit.ts` | Edge rate limiter utility (identical copy) |
-| `packages/auth/src/client.ts` | Auth client 429 error logging |
-| `apps/web/src/components/auth/auth-form.tsx` | Auth form rate limit error display |
-| `apps/web/qa/tests/edge-rate-limit.test.ts` | Edge rate limiter unit tests |
-| `apps/web/qa/tests/middleware.test.ts` | Proxy rate limiting integration tests |
-| `packages/backend/convex/rateLimits.test.ts` | Convex rateLimits schema tests |
 
 ---
 

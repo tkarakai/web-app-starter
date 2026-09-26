@@ -45,7 +45,7 @@ export default async function RootLayout({
   ]);
 
   // Read at request time, not build time, so one artifact can serve any
-  // environment. See docs/deployment-architecture.md
+  // environment. See platform/docs/deployment-architecture.md
   const publicConfig = readPublicConfigFromEnv();
 
   return (

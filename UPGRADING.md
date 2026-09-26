@@ -265,7 +265,7 @@ bun run test:convex
 ```
 
 If the starter's release notes mention a **schema migration**, a merge is not enough —
-follow [`docs/convex-migrations.md`](./docs/convex-migrations.md) before deploying.
+follow [`platform/docs/convex-migrations.md`](./platform/docs/convex-migrations.md) before deploying.
 
 ### `packages/i18n/messages/*.json`
 
@@ -326,20 +326,30 @@ check ICU parameters. Typechecking alone does not validate all locale catalogs.
 Also check the target release's required keys and parameters: deleting the same key
 from English and every other locale would evade the current parity test.
 
-### `AGENTS.md`, `CLAUDE.md`, `.claude/commands/`, `README.md`
+### `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.agents/`, `docs/`, `README.md`
 
-Your app rewrote these and the starter keeps editing them.
+Agent instructions come in two layers:
 
-**Resolution: keep yours, then read the starter's diff for anything worth adopting:**
+- **Root `AGENTS.md` and `CLAUDE.md`** are your app's guide. They start from
+  `platform/templates/` and are yours after that.
+- **`platform/AGENTS.md`, `platform/docs/` and `platform/agent-skills/`** are the platform's
+  usage guide and skills. They describe the installed platform version and belong to the release.
 
-```bash
-git diff HEAD...refs/tags/starter/v1.1.0 -- AGENTS.md CLAUDE.md
+**Resolution: keep your root `AGENTS.md`, `CLAUDE.md` and `docs/`; take the release's
+`platform/` directory as it is.** Your root `CLAUDE.md` should import both files:
+
+```text
+@AGENTS.md
+@platform/AGENTS.md
 ```
 
-The starter's conventions now live in `AGENTS.md`; `CLAUDE.md` imports that file.
-Review the commands and warnings for useful changes while preserving your app's
-guidance. Do not replace a customized `CLAUDE.md` with the import until its durable
-instructions have been retained in your app's `AGENTS.md`.
+and your root `AGENTS.md` should open with "Before any task, read `platform/AGENTS.md`."
+Move any platform rules your root file still repeats out of it; `platform/AGENTS.md` now
+carries them and stays current with each upgrade.
+
+Take the release's `.claude/skills/platform-*` and `.agents/skills/platform-*` links as they
+are; keep your own skills and commands. When you come from a release that kept its guides in
+`docs/` and `docs/claude/`, delete those copies: they moved to `platform/docs/`.
 
 ### `packages/backend/convex/_generated/`
 

@@ -7,7 +7,7 @@ workflows.
 
 - Step-by-step procedures: [deployment-runbook-aws.md](./deployment-runbook-aws.md)
 - Stack parameters and outputs: [cloudformation-stacks-aws.md](./cloudformation-stacks-aws.md)
-- Scripts and local emulation: [infra/aws/README.md](../../infra/aws/README.md)
+- Scripts and local emulation: [infra/aws/README.md](../../../infra/aws/README.md)
 
 ## Scope
 

@@ -18,7 +18,7 @@ import type {
  *
  * `CONVEX_URL` and `CONVEX_SITE_URL` are read unprefixed, at request time, so
  * the build carries no environment identity and one artifact can be promoted
- * between environments. See docs/deployment-architecture.md
+ * between environments. See platform/docs/deployment-architecture.md
  */
 const {
   handler,

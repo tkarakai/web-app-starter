@@ -185,7 +185,7 @@ These values persist in the local Convex backend between sessions.
 │   ├── ensure-local-deps.sh   # Dependency setup
 │   └── ensure-branch-tracking.sh # Git utility
 ├── .github/workflows/
-│   ├── ci-shared.yml          # Shared CI (see docs/claude/ci.md)
+│   ├── ci-shared.yml          # Shared CI (see platform/docs/ci.md)
 │   ├── ci-web.yml             # Web app CI: test, build, E2E
 │   ├── ci-admin.yml           # Admin app CI: test, build, E2E
 │   ├── ci-landing.yml         # Landing app CI: test, build, E2E
@@ -229,7 +229,7 @@ import { api } from "@repo/backend";
 
 ### `@repo/i18n` — Internationalization
 
-15-language support (including RTL) via `next-intl`. Provides locale configuration, translation messages, and i18n utilities. See `docs/i18n-architecture.md` for the full architecture.
+15-language support (including RTL) via `next-intl`. Provides locale configuration, translation messages, and i18n utilities. See `platform/docs/i18n-architecture.md` for the full architecture.
 
 ### `@repo/edge-rate-limit` — Edge Rate Limiting
 
@@ -355,7 +355,7 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 - CI runs via Turborepo: `turbo lint`, `turbo typecheck`, `turbo build`, etc.
 - web, admin and landing deploy to Vercel. `infra/aws` hosts them on AWS instead (Convex stays on
   Convex Cloud), with a local target that runs in Docker: see
-  [deployment-architecture-aws.md](docs/aws/deployment-architecture-aws.md).
+  [deployment-architecture-aws.md](platform/docs/aws/deployment-architecture-aws.md).
 
 ## Local vs cloud deployments
 
@@ -447,4 +447,4 @@ CONVEX_SITE_URL=https://<deployment>.convex.site
 
 ### Operations CLI
 
-Start with `bun run ops setup` for guided GitHub/Vercel login and team/project selection; existing `gh` and `vercel` sessions are reused without tokens in ops config. Run `bun run ops` in a terminal for a guided operations console: monitor environments, investigate failures, review and deploy releases, roll back, and explore audit evidence using arrow keys and Enter. Explicit commands such as `ops status`, `ops diagnose RUN`, and `ops verify --run RUN` remain available for scripts; `--watch --until serving` follows a release through workflow success and serving verification. See the [operations CLI guide](docs/ops-cli.md) for setup and the end-to-end walkthrough.
+Start with `bun run ops setup` for guided GitHub/Vercel login and team/project selection; existing `gh` and `vercel` sessions are reused without tokens in ops config. Run `bun run ops` in a terminal for a guided operations console: monitor environments, investigate failures, review and deploy releases, roll back, and explore audit evidence using arrow keys and Enter. Explicit commands such as `ops status`, `ops diagnose RUN`, and `ops verify --run RUN` remain available for scripts; `--watch --until serving` follows a release through workflow success and serving verification. See the [operations CLI guide](platform/docs/ops-cli.md) for setup and the end-to-end walkthrough.

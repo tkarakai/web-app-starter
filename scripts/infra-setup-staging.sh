@@ -9,7 +9,7 @@ set -euo pipefail
 #    - Vercel (3 staging projects + environment variables)
 #    - GitHub (staging environment + secrets + branch protection)
 #
-#  Based on docs/deployment-runbook.md sections 2a–2e (staging only).
+#  Based on platform/docs/deployment-runbook.md sections 2a–2e (staging only).
 #
 #  Usage: bun run infra:setup:staging
 #         ./scripts/infra-setup-staging.sh
@@ -1062,7 +1062,7 @@ print_final_summary() {
     echo "       - $VERCEL_ADMIN_URL"
     echo "       - $VERCEL_LANDING_URL"
     echo ""
-    echo "  See docs/deployment-runbook.md for the full deployment workflow."
+    echo "  See platform/docs/deployment-runbook.md for the full deployment workflow."
     echo ""
 }
 
@@ -1075,7 +1075,7 @@ main() {
 
     echo ""
     echo -e "${BOLD}  Staging Infrastructure Setup${NC}"
-    echo -e "${DIM}  Based on docs/deployment-runbook.md${NC}"
+    echo -e "${DIM}  Based on platform/docs/deployment-runbook.md${NC}"
     echo ""
     log_info "Session log: $LOG_FILE"
     log_info "Record file: $RECORD_FILE"
