@@ -188,6 +188,8 @@ For each Convex project, go to **Deployment Settings → Environment Variables**
 | `PASSKEY_RP_ID` *(optional)* | `staging.yourdomain.com` | `yourdomain.com` |
 | `LANDING_URL` | `https://your-staging-landing.vercel.app` | `https://yourdomain.com` |
 | `BETTER_AUTH_SECRET` | *(generate — see below)* | *(generate — see below)* |
+| `RESEND_API_KEY` | *(your Resend API key)* | *(your Resend API key)* |
+| `EMAIL_FROM` | `noreply@staging.yourdomain.com` | `noreply@yourdomain.com` |
 
 To generate `BETTER_AUTH_SECRET`, run this in your terminal and paste the output:
 
@@ -244,6 +246,8 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 > **How `PASSKEY_RP_ID` works:** Passkeys use a single relying party ID (RP ID). If web/admin must both use passkeys, set `PASSKEY_RP_ID` to a shared parent domain (for example `staging.example.com` for `web.staging.example.com` and `admin.staging.example.com`). With default `*.vercel.app` hostnames, this shared RP setup is generally not viable; use custom domains.
 >
 > **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Without it, the landing app's cross-origin requests to Convex would be blocked.
+>
+> **Why `RESEND_API_KEY` is required here:** Without it, auth and invitation emails fall back to being logged to the console, and that fallback runs only in local development (every `SITE_URL` origin on `http://localhost`; see `packages/backend/convex/developmentOnly.ts`). On a hosted deployment, sending an email without `RESEND_API_KEY` throws `EMAIL_DELIVERY_NOT_CONFIGURED`, so sign-up verification, password reset and invitations fail until it is set.
 
 ### 2d. Configure Vercel Environment Variables
 
@@ -508,7 +512,7 @@ CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
 This will:
 1. Add the email to the `adminEmails` table
 2. Create a waitlist entry and mark it as "invited"
-3. Send an invitation email (or log the token to the Convex dashboard if no `RESEND_API_KEY` is set)
+3. Send an invitation email (requires `RESEND_API_KEY`; without it the invitation action fails with `EMAIL_DELIVERY_NOT_CONFIGURED`; set the key, then resend with `bootstrap:rescue`, passing the same email as both `currentEmail` and `newEmail`)
 
 **Check your email** for the invitation link and complete registration to claim the admin account.
 
