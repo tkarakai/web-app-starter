@@ -47,7 +47,10 @@ the platform's tables and yours live side by side. Background: `platform/docs/co
    cd packages/backend && CONVEX_AGENT_MODE=anonymous bunx convex dev --once
    ```
 
-   Commit the regenerated `convex/_generated/api.d.ts`.
+   This starts a local backend for this checkout, pushes the functions, regenerates and exits.
+   Commit everything it regenerates under `convex/_generated/` and
+   `convex/betterAuth/_generated/`, even lines unrelated to your table: generated files are
+   committed as generated, never trimmed by hand.
 4. **Tests.** `packages/backend/convex/<table>.test.ts` with convex-test. Pass the module glob
    (monorepo requirement) and cover: required fields are enforced, the owner index returns only
    that owner's rows, and each pure helper your module exports.
