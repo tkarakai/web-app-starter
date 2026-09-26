@@ -77,24 +77,22 @@ test.describe("Homepage", () => {
 ## Convex Backend Test Pattern
 
 ```typescript
-// packages/backend/convex/launchItems.test.ts
+// packages/backend/convex/projects.test.ts (the sample domain)
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 
-describe("launchItems", () => {
-  test("returns items for authenticated user", async () => {
+describe("projects", () => {
+  test("stores a project", async () => {
     // IMPORTANT: In monorepos, pass glob as second arg for module discovery
     const t = convexTest(schema, import.meta.glob("./**/*.*s"));
 
     // Seed test data
     await t.run(async (ctx) => {
-      await ctx.db.insert("launchItems", {
-        title: "Test Item",
+      await ctx.db.insert("projects", {
+        name: "Test project",
         description: "Description",
-        status: "idea",
-        priority: 1,
         ownerId: "test-user",
         createdAt: Date.now(),
       });
@@ -102,7 +100,7 @@ describe("launchItems", () => {
 
     // Query and verify
     const items = await t.run(async (ctx) => {
-      return ctx.db.query("launchItems").collect();
+      return ctx.db.query("projects").collect();
     });
 
     expect(items).toHaveLength(1);
@@ -176,59 +174,6 @@ const auth = mockUseAuth({ isAuthenticated: true, user });
 const authCtx = createMockAuthContext(user);
 ```
 
-### Test Fixtures (`apps/web/qa/tests/fixtures/data.ts`)
-
-```typescript
-import {
-  launchItemFixtures,
-  createLaunchItem,
-  createManyLaunchItems,
-  scenarios,
-} from "../qa/tests/fixtures/data";
-
-// Use pre-defined fixtures
-const items = scenarios.multiUser.launchItems;
-
-// Create a custom fixture
-const customItem = createLaunchItem({
-  title: "My Custom Item",
-  status: "building",
-  priority: 2,
-});
-
-// Bulk create for pagination testing
-const manyItems = createManyLaunchItems(50, "owner-id");
-```
-
-### Visual Regression (`apps/web/qa/tests/helpers/visual-regression.ts`)
-
-```typescript
-import {
-  expectPageSnapshot,
-  expectResponsiveSnapshot,
-  expectElementSnapshot,
-  fullVisualTest,
-} from "../qa/tests/helpers/visual-regression";
-
-// Full page screenshot comparison
-await expectPageSnapshot(page, "homepage");
-
-// Responsive viewport testing
-await expectResponsiveSnapshot(page, "dashboard", "mobile");
-await expectResponsiveSnapshot(page, "dashboard", "tablet");
-await expectResponsiveSnapshot(page, "dashboard", "desktop");
-
-// Element-specific screenshot
-const button = page.getByRole("button", { name: "Submit" });
-await expectElementSnapshot(button, "submit-button");
-
-// Full visual test (multiple viewports and themes)
-await fullVisualTest(page, "settings-page", {
-  viewports: ["mobile", "desktop"],
-  themes: ["light", "dark"],
-});
-```
-
 ## TDD Workflow
 
 ### Recommended Approach
@@ -280,6 +225,7 @@ bun run test:watch
 ## Context Boundaries
 
 - Each file should be self-contained with clear imports
-- Use `@repo/` for cross-package imports, `@/` for app-internal imports
+- Use `@web-app-starter/*` for platform packages, `@repo/backend` and `@repo/messages` for app
+  packages, and `@/` for app-internal imports
 - Document public APIs with JSDoc comments
 - Keep component files under 200 lines

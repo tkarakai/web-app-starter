@@ -1,6 +1,6 @@
 # web-app-starter
 
-[![CI Gate](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-gate.yml)
+[![CI Shared](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-shared.yml/badge.svg)](https://github.com/tkarakai/web-app-starter/actions/workflows/ci-shared.yml)
 
 A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn/ui, Convex, and Better Auth into a ready-to-extend starter. It includes six Next.js apps, shared packages for UI, auth, backend, i18n, and rate limiting, and a comprehensive testing and CI setup.
 
@@ -43,6 +43,9 @@ Install the Node and Bun versions specified by `engines` and `packageManager` in
 ```bash
 bun install
 ```
+
+   On a fresh clone that is to become your app, run `bun run adopt` once (see
+   [Adopting the starter](#adopting-the-starter)).
 
 2. Start the development environment:
 
@@ -196,7 +199,7 @@ when you take a newer release. Everything else is yours.
 ├── infra/aws/                 # Optional AWS hosting
 └── .github/
     ├── actions/               # Composite actions (build, deploy, setup)
-    └── workflows/             # ci-*.yml, cd-*.yml, security.yml (see docs/ci.md)
+    └── workflows/             # platform-*.yml (reusable, platform-owned); ci-*, cd-*, security.yml callers (yours; see docs/ci.md)
 ```
 
 ## Shared packages
@@ -298,9 +301,32 @@ Notes:
 - The `SITE_URL` Convex env var must match your app URL for auth redirects to work.
 - Passkeys use a single RP ID. If web/admin are on different hostnames and both must use passkeys, set `PASSKEY_RP_ID` to a shared parent domain (for example `staging.example.com` for `web.staging.example.com` + `admin.staging.example.com`).
 
+## Adopting the starter
+
+`bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
+needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
+`--port app=N`, `--remove landing,landing-static,demo`, `--remove-sample`, `--yes`).
+Start from a clean checkout; adoption refuses to overwrite uncommitted work:
+
+1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
+2. Replaces the root `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `templates/`, and
+   points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`).
+3. Optionally removes the `landing`, `landing-static` and `demo` reference apps and their wiring.
+   `--remove-sample` removes project, task and upload tables, functions, screens and strings,
+   leaving a dashboard shell with account settings, announcements and sign-out.
+4. Links the platform skills into `.claude/skills/` and `.agents/skills/`.
+5. Writes `.platform-base.json` (platform version and commit) and adds the `upstream` remote.
+6. Runs the zone check and a build, and prints what is yours and what is the platform's.
+
+CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
+and rollback inspect the selected commit, so removing landing does not require a landing
+Vercel project or block the remaining apps. `bun run dev` regenerates the Convex API after
+sample removal; adoption itself needs no live backend. Automatic update setup is added by
+the update-delivery workflow when available.
+
 ## Sample functionality
 
-- Launch items are stored in Convex and stream into the dashboard in realtime.
+- Projects and their tasks are stored in Convex and stream into the dashboard in realtime.
 - File uploads use Convex storage and show uploaded assets immediately.
 - Better Auth sessions are used in both the client UI and server-side checks.
 

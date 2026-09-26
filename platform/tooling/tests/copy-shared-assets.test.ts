@@ -31,6 +31,7 @@ function fixture(t: TestContext) {
     copyFileSync(join(repo, name), join(root, name));
   }
   for (const asset of assets) write(`platform/packages/design-system/assets/${asset}`, `shared:${asset}`);
+  for (const app of apps) write(`${app}/package.json`, "{}");
   const run = () => spawnSync("bash", [join(root, "platform/tooling/copy-shared-assets.sh")], { encoding: "utf8", timeout: 10_000 });
   const read = (name: string) => readFileSync(join(root, name), "utf8");
   const configure = (from: string, to: string) => {
@@ -86,4 +87,13 @@ test("an invalid app.config.ts stops the copy", (t) => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /brand\.icons\.svg/);
   assert.equal(existsSync(join(f.root, "apps/web/public/icon.svg")), false);
+});
+
+test("an app removed at adoption gets no assets", (t) => {
+  const f = fixture(t);
+  rmSync(join(f.root, "apps/landing"), { recursive: true, force: true });
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(join(f.root, "apps/landing")), false);
+  assert.equal(f.read("apps/web/public/icon.svg"), "shared:icon.svg");
 });

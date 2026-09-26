@@ -28,7 +28,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
+      should_run: ${{ steps.present.outputs.app == 'true' && (inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run) || 'false' }}
     steps:
       - name: Run all jobs in act
         if: ${{ env.ACT }}
@@ -42,6 +42,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha || github.sha }}
+
+      - name: Check optional app
+        id: present
+        run: |
+          if [ -f apps/landing/package.json ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::landing is not installed; skipping its CI."
+          fi
 
       - name: Detect file changes
         if: ${{ !env.ACT }}

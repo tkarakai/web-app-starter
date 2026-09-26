@@ -13,6 +13,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Adoption preserves literal dollar-sign sequences in configuration values, escapes workflow
+  job names correctly, and reads optional configuration files without a separate existence check.
+- Adoption can strip the projects/tasks/uploads sample with `--remove-sample`, keeping account
+  settings, announcements and authentication. It requires a clean checkout before writing.
+- CI, local checks, staging, production and rollback handle removed landing apps and demo;
+  optional-app detection uses the selected source commit, including during rollback.
+
 ### Action required
 
 - **Who is affected:** every app. The platform moved under `platform/` (v2 layout). Shared
@@ -162,6 +171,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
   recorded patches are listed on every run. Seams must keep their platform hooks
   (`...platformTables`, `registerPlatformRoutes(http)`, the config bases, the Renovate preset).
   Without the file (the product repo) no app code may carry a patch marker.
+- `bun run adopt` (`platform/tooling/adopt.ts`), run once on a fresh clone: sets the product
+  name, support email, auth cookie prefix and ports in `app.config.ts`; replaces the root
+  `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `platform/templates/`; points
+  `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`) and
+  drops the product repo's own `platform/**` rules; optionally removes `landing`,
+  `landing-static` and `demo` with their callers, scripts and build entries (`--remove`); links
+  the platform skills; writes `.platform-base.json` and adds the `upstream` remote; then runs
+  the zone check and a build. Asks for what it needs, or takes flags (`--name`, `--repo`,
+  `--yes`, ...; see the file header). Local CI and the icon copy skip removed apps.
 - Contracts (`bun run test:contracts`; CI Shared's **Contracts** job, on every PR):
   `@web-app-starter/contracts` checks each reference app's `clear-session` route (deletes only
   this app's session cookies, never another app's on the same host), proxy session detection,
@@ -220,6 +238,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   and a new footer line from `brand.email`.
 - Root `package.json` declares `"type": "module"`, so Node loads `app.config.ts` as ES modules;
   `tsconfig.base.json` allows `.ts` import extensions.
+- Docs and skills follow the v2 layout: `platform/AGENTS.md` lists `bun run adopt`,
+  `check:zone`, `test:contracts` and the `platform-patch` skill; `platform/README.md` documents
+  adoption and its known gaps; `platform/docs/testing.md` drops examples for test helpers that
+  no longer exist and uses the sample `projects` table; the README badge and workflow notes name
+  the current workflows.
 
 ### Security
 

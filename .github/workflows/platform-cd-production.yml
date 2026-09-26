@@ -62,7 +62,23 @@ jobs:
   validate:
     name: Validate Deployment
     runs-on: ubuntu-latest
+    outputs:
+      landing: ${{ steps.present.outputs.landing }}
     steps:
+      - name: Check optional apps in the selected commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha }}
+          persist-credentials: false
+      - id: present
+        run: |
+          if [ -f apps/landing/package.json ]; then
+            echo "landing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "landing=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::landing is not installed in the selected commit."
+          fi
+
       - name: Verify confirmation string
         if: inputs.confirm != 'deploy-production'
         run: |
@@ -207,6 +223,7 @@ jobs:
   build-landing:
     name: Resolve Landing Artifact (Production)
     needs: validate
+    if: needs.validate.outputs.landing == 'true'
     runs-on: ubuntu-latest
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
@@ -292,7 +309,14 @@ jobs:
   # ─── Deploy Convex backend (before frontend) ────────────────────
   deploy-convex:
     name: Deploy Convex (Production)
-    needs: [build-web, build-admin, build-landing]
+    needs: [validate, build-web, build-admin, build-landing]
+    if: >-
+      !cancelled() &&
+      needs.validate.result == 'success' &&
+      needs.build-web.result == 'success' &&
+      needs.build-admin.result == 'success' &&
+      (needs.build-landing.result == 'success' ||
+       (needs.validate.outputs.landing == 'false' && needs.build-landing.result == 'skipped'))
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -315,6 +339,10 @@ jobs:
   deploy-web:
     name: Deploy Web (Production)
     needs: [build-web, deploy-convex]
+    if: >-
+      !cancelled() &&
+      needs.build-web.result == 'success' &&
+      needs.deploy-convex.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -356,6 +384,10 @@ jobs:
   deploy-admin:
     name: Deploy Admin (Production)
     needs: [build-admin, deploy-convex]
+    if: >-
+      !cancelled() &&
+      needs.build-admin.result == 'success' &&
+      needs.deploy-convex.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -397,6 +429,10 @@ jobs:
   deploy-landing:
     name: Deploy Landing (Production)
     needs: [build-landing, deploy-convex]
+    if: >-
+      !cancelled() &&
+      needs.build-landing.result == 'success' &&
+      needs.deploy-convex.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
@@ -440,13 +476,14 @@ jobs:
     outputs:
       health: ${{ steps.health.outcome }}
     name: Post-Deploy Verification
-    needs: [deploy-web, deploy-admin, deploy-landing, attest]
+    needs: [validate, deploy-web, deploy-admin, deploy-landing, attest]
     if: >-
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       needs.deploy-web.result == 'success' &&
       needs.deploy-admin.result == 'success' &&
-      needs.deploy-landing.result == 'success'
+      (needs.deploy-landing.result == 'success' ||
+       (needs.validate.outputs.landing == 'false' && needs.deploy-landing.result == 'skipped'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -462,7 +499,7 @@ jobs:
               { name: 'web', url: '${{ needs.deploy-web.outputs.deployment-url }}' },
               { name: 'admin', url: '${{ needs.deploy-admin.outputs.deployment-url }}' },
               { name: 'landing', url: '${{ needs.deploy-landing.outputs.deployment-url }}' },
-            ];
+            ].filter(app => app.name !== 'landing' || '${{ needs.validate.outputs.landing }}' === 'true');
 
             const results = [];
             for (const app of apps) {

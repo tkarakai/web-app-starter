@@ -78,6 +78,10 @@ branch rules require. Change triggers there, never in `platform-*.yml`.
   changed. Lint, typecheck, the zone check and contracts run on every PR.
 - **Actions stay pinned to full commit SHAs** (`bun run check:actions-pinned`, in CI Shared).
   Some accounts refuse unpinned actions.
+- **Removed reference apps are optional.** Landing CI checks the selected commit for its
+  app, and CI Shared skips the demo rehearsal when `apps/demo` is absent. Deploys and
+  rollbacks likewise inspect the selected commit for landing before building, checking
+  credentials or checking health. Web, admin and backend checks remain required.
 
 ### Paid features on private repositories
 

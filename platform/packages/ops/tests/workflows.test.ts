@@ -249,3 +249,38 @@ test("real Turbo hashes reuse web across environments but separate static landin
     expect(hashes["landing/staging"]).not.toBe(hashes["landing/production"]);
   } finally { await rm(dir, { recursive: true, force: true }); }
 }, 30_000);
+
+test("optional app detection reports the selected tree, and staging never requests an absent landing", async () => {
+  const root = await mkdtemp(resolve(tmpdir(), "optional-apps-"));
+  try {
+    for (const present of [false, true]) {
+      if (present) {
+        for (const app of ["landing", "landing-static", "demo"]) {
+          await mkdir(resolve(root, `apps/${app}`), { recursive: true });
+          await writeFile(resolve(root, `apps/${app}/package.json`), "{}");
+        }
+      }
+      for (const kind of ["ci-shared", "ci-landing", "ci-landing-static", "cd-production", "cd-rollback"]) {
+        const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
+        const step = workflow.jobs[kind.startsWith("ci-") ? "changes" : "validate"].steps.find(s => s.id === "present")!;
+        const output = resolve(root, "output"); await writeFile(output, "");
+        const child = spawn(["bash", "-e", "-c", step.run!], { cwd: root, env: { ...process.env, GITHUB_OUTPUT: output }, stdout: "pipe", stderr: "pipe" });
+        expect(await child.exited).toBe(0);
+        expect((await readFile(output, "utf8")).trim().split("=")[1]).toBe(String(present));
+      }
+      const staging = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as { jobs: { changes: { steps: Step[] } } };
+      for (const force of [false, true]) {
+        const script = staging.jobs.changes.steps.find(s => s.id === "eval")!.run!
+          .replaceAll("${{ inputs.force_deploy || inputs.git_sha != '' }}", String(force))
+          .replaceAll("${{ steps.filter.outputs.landing }}", "true")
+          .replace(/\$\{\{ steps\.filter\.outputs\.(web|admin|backend) \}\}/g, "false");
+        const output = resolve(root, "output"); await writeFile(output, "");
+        const child = spawn(["bash", "-e", "-c", script], { cwd: root, env: { ...process.env, GITHUB_OUTPUT: output }, stdout: "pipe", stderr: "pipe" });
+        expect(await child.exited).toBe(0);
+        const values = Object.fromEntries((await readFile(output, "utf8")).trim().split("\n").map(line => line.split("=")));
+        expect(values.landing).toBe(String(present));
+        expect(values.any_app).toBe(String(present || force));
+      }
+    }
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

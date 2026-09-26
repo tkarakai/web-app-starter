@@ -30,6 +30,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
+      demo: ${{ steps.present.outputs.demo }}
       backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
       root: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.root || steps.filter.outputs.root }}
       platform: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.platform || steps.filter.outputs.platform }}
@@ -51,6 +52,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha || github.sha }}
+
+      - name: Check optional demo
+        id: present
+        run: |
+          if [ -f apps/demo/package.json ]; then
+            echo "demo=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "demo=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::demo is not installed; skipping its upgrade rehearsal."
+          fi
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
@@ -167,7 +178,7 @@ jobs:
   starter-upgrade:
     name: Starter Upgrade Rehearsal
     needs: [changes]
-    if: needs.changes.outputs.platform == 'true'
+    if: needs.changes.outputs.platform == 'true' && needs.changes.outputs.demo == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

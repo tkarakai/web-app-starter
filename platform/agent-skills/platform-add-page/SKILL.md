@@ -32,7 +32,7 @@ prefix in `PROTECTED_PREFIXES` in `src/proxy.ts`; prefer staying under `/dashboa
 3. **Shell.** Dashboard pages render inside the app shell: sidebar, header with breadcrumb, and
    the announcement banner. Copy the shell from `src/components/settings/account-client.tsx`
    into `src/components/<name>/<name>-client.tsx` and replace its body with your content
-   component. Breadcrumb: `td("projects")` linking to `/dashboard`, then your page title.
+   component. Keep its home breadcrumb linking to `/dashboard`, then your page title.
 4. **Route.** `src/app/[locale]/(dashboard)/dashboard/<name>/page.tsx` is a Server Component that
    renders the shell component:
 
@@ -44,10 +44,11 @@ prefix in `PROTECTED_PREFIXES` in `src/proxy.ts`; prefer staying under `/dashboa
    }
    ```
 
-5. **Nav entry.** The web app's navigation is `src/components/projects/app-sidebar.tsx`. Add a
-   `DropdownMenuItem` to the user menu next to "Account", with a `lucide-react` icon and a
-   translated label, navigating with `router.push("/dashboard/<name>")` (the proxy keeps the
-   user's locale). A page that belongs with projects goes in the sidebar content instead.
+5. **Nav entry.** Find the `AppSidebar` imported by the settings shell. The sample uses
+   `src/components/projects/app-sidebar.tsx`; after `adopt --remove-sample`, it is
+   `src/components/app-sidebar.tsx`. Add a translated entry next to Settings, following that
+   sidebar's existing `DropdownMenuItem` or `SidebarMenuButton` pattern. Navigate with the
+   locale-aware `Link` or `router` from `@web-app-starter/i18n/navigation`.
 6. **Tests.**
    - A Vitest component test for the content component in `qa/tests/<name>-content.test.tsx`,
      rendered inside `NextIntlClientProvider` with the real catalogue (see `qa/tests/localized-controls.test.tsx`).
