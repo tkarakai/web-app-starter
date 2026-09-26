@@ -11,6 +11,11 @@
 /** A message tree: nested namespaces with string leaves. */
 export type Messages = { [key: string]: string | Messages };
 
+// Not Object.hasOwn: the Convex functions that import this package compile against ES2021.
+function hasKey(tree: Messages, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(tree, key);
+}
+
 function isTree(value: unknown): value is Messages {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -34,14 +39,14 @@ export function deepMerge(base: Messages, patch: Messages): Messages {
 export function mergeMessages(platform: Messages, app: Messages, overrides: Messages = {}): Messages {
   // Overrides apply to platform namespaces only; an app edits its own files directly.
   const platformOverrides = Object.fromEntries(
-    Object.entries(overrides).filter(([namespace]) => Object.hasOwn(platform, namespace)),
+    Object.entries(overrides).filter(([namespace]) => hasKey(platform, namespace)),
   );
   return { ...app, ...deepMerge(platform, platformOverrides) };
 }
 
 /** Top-level namespaces defined by both the platform and the app. */
 export function namespaceClashes(platform: Messages, app: Messages): string[] {
-  return Object.keys(app).filter((namespace) => Object.hasOwn(platform, namespace));
+  return Object.keys(app).filter((namespace) => hasKey(platform, namespace));
 }
 
 /** Dotted paths of every string leaf in a tree. */
