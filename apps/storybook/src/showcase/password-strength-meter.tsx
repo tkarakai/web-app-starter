@@ -7,6 +7,7 @@ import { Label, PasswordInput } from "@repo/design-system";
 import {
   PasswordStrengthMeter,
   getMinPasswordLength,
+  REQUIRED_PASSWORD_SCORE,
   type PasswordStrengthResult,
 } from "@repo/design-system/password-strength";
 import { DemoSection } from "@/components/demo-section";
@@ -114,7 +115,7 @@ function InteractiveDemo() {
   // Simulate server result based on selected score
   const mockResult: PasswordStrengthResult | null = password
     ? {
-        valid: !tooShort && selectedScore >= 4,
+        valid: !tooShort && selectedScore >= REQUIRED_PASSWORD_SCORE,
         score: tooShort ? Math.min(selectedScore, 2) : selectedScore,
         warningKey: selectedScore <= 1 ? "warnings.common" : null,
         suggestionKeys: selectedScore <= 2 ? ["suggestions.anotherWord"] : [],

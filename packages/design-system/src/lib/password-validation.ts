@@ -1,4 +1,4 @@
-export { getMinPasswordLength, type PasswordRole } from "@repo/auth/password-policy";
+export { getMinPasswordLength, REQUIRED_PASSWORD_SCORE, type PasswordRole } from "@repo/auth/password-policy";
 
 /**
  * Format a duration in seconds to a human-readable crack time string.
