@@ -17,7 +17,7 @@ import { createContext, useContext, type PropsWithChildren } from "react";
  * (`NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_BUILD_ID`, ...) are unaffected — they
  * are identical across a promote, so inlining them is correct.
  *
- * See docs/claude/build-once-promote-plan.md
+ * See docs/deployment-architecture.md
  */
 export type PublicConfig = {
   /** Convex deployment URL (`CONVEX_URL`). */

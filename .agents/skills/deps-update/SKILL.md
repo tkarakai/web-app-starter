@@ -12,7 +12,8 @@ Read first:
 - `docs/dependency-updates.md`: Renovate policy, holds, and the PR-state table under
   "Draining the queue".
 - `docs/dependency-migrations.md`: migrations and the runtime-baseline playbook.
-- `docs/dependency-log.md`: past decisions, and what is *Awaiting external preconditions*.
+- Closed and `deps:held` tickets (`gh issue list --label dependencies --state all`): past
+  decisions, and what is *Awaiting external preconditions*.
 
 Majors are worked one ticket at a time by the `deps-major` skill. Load it only to work a ticket.
 
@@ -98,7 +99,7 @@ upstream part is met. Decide everything else yourself and report it.
 
 | Decision | Options, and what you then do |
 |---|---|
-| Ticket `deps:awaiting-user` | **Adopt**: merge its PR. **Hold** or **Reject**: rework its PR as `deps-major` step 7 describes (revert the bump, keep the tests, add the `HOLD:` rule and log entry), label the ticket `deps:held` or `deps:rejected`, merge. **Ask me next run**: leave it. |
+| Ticket `deps:awaiting-user` | **Adopt**: merge its PR. **Hold** or **Reject**: rework its PR as `deps-major` step 7 describes (revert the bump, keep the tests, add the `HOLD:` rule and decision record), label the ticket `deps:held` or `deps:rejected`, merge. **Ask me next run**: leave it. |
 | Auth-stack PR | **Merge**: bring it up to date, merge it. **Leave open**. |
 | Exploited security fix inside twelve hours | **Adopt now** · **Wait** for twelve hours |
 | Precondition met upstream | **Done**: remove `deps:held` from its ticket (open one if missing) and work it. **Remind me next run**. |
@@ -163,7 +164,7 @@ Otherwise carry out the answers and steps 3–7.
      `deps:held`; the ticket's PR lifts the hold.
    - Validate any `renovate.json` edit with
      `npx --yes --package renovate renovate-config-validator renovate.json`.
-   - For each item *Awaiting external preconditions* in `docs/dependency-log.md`: when its
+   - For each `deps:held` ticket *Awaiting external preconditions*: when its
      upstream part is met, it is a decision; otherwise only list it in the report.
 5. **Tickets, one `deps-major` run each.** Every *Pending Approval* major gets a ticket; open the
    missing ones. Never tick dashboard boxes: `deps-major` bumps on a `deps/` branch. Work every
@@ -186,8 +187,7 @@ Otherwise carry out the answers and steps 3–7.
    titled `chore(deps): refresh lockfile` and merge it.
 7. **Close out.**
    - Ask the decisions still open (interactive only), and carry out the answers.
-   - Record the run in `docs/dependency-log.md`: one line per merged Renovate PR, the lockfile
-     refresh, and any holds added or lifted (tickets carry their own entries). Open it as a
-     docs-only PR titled `chore(deps): log <date> run`, and merge it.
+   - Record the run in the report: one line per merged Renovate PR, the lockfile refresh, and any
+     holds added or lifted (tickets and their PRs carry their own records).
    - Dispatch one last Renovate run so the dashboard is current.
    - Report the merged PRs, the PRs and tickets left open and why, and the holds re-checked.

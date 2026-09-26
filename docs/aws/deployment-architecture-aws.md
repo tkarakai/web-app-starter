@@ -68,7 +68,7 @@ bucket and invalidating CloudFront. It can't create a VPC, a role or a service d
 ## Build once, promote
 
 web and admin read their environment at request time, not at build time
-([build-once-promote-plan.md](../claude/build-once-promote-plan.md)). The AWS path relies on that:
+([promotion](../deployment-architecture.md#promotion-build-once-deploy-twice)). The AWS path relies on that:
 
 - One image per app per commit, tagged with the commit SHA, built from `git archive` of that
   commit (never the working tree), for the architecture in `apps.json` (`ARM64` by default).

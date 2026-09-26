@@ -64,7 +64,7 @@ apps/
   landing/          Dynamic landing page (@repo/landing, port 3000) — i18n, SSR
   landing-static/   Static landing page (@repo/landing-static, port 3004) — fully static export, client-side i18n
   storybook/        Component storybook (@repo/storybook, port 3003) — src/ (showcase) + qa/ (e2e)
-  demo/             Standalone UI/dispatch demo, also used for starter upgrade tests (docs/starter-upgrades.md)
+  demo/             Standalone UI/dispatch demo, also used for starter upgrade tests (apps/demo/README.md)
 packages/
   backend/          Convex backend (@repo/backend) — convex/ (schema, functions, _generated/ DO NOT EDIT)
   auth/             Authentication (@repo/auth) — src/ (client.ts, server.ts, provider.tsx)
@@ -167,7 +167,7 @@ the environment, so they are identical across a promote and inlining them is cor
 > `EnvironmentBannerWrapper` enumerates *every* `NEXT_PUBLIC_*` variable present in `process.env`,
 > and the legacy names are still set on the Vercel projects during the dual-name migration. Nothing
 > in `web` or `admin` reads them any more — they are displayed because they exist, not because they
-> are used. Deleting them is phase 5 of `docs/claude/build-once-promote-plan.md`.
+> are used.
 
 > **`SITE_URL` is Convex's, not the apps'.** It holds a comma-separated list of trusted origins
 > (`packages/backend/convex/auth.ts`), set via `convex env set`. `web` and `admin` derive their own
@@ -202,19 +202,17 @@ Read these guides when working on specific areas. They contain detailed patterns
 | Writing new components, Convex functions, or styling | `docs/claude/code-style.md` |
 | Working on auth, rate limiting, route protection, or React patterns | `docs/claude/architecture.md` |
 | Setting up dev environment, debugging issues, or need detailed command reference | `docs/claude/development.md` |
-| Working on auth E2E tests, upgrading better-auth / the Convex auth adapter, Renovate / dependency automation, or E2E in CI | `docs/claude/auth-e2e-and-upgrade-plan.md` — **active work tracker; steps 1–8 merged, start at step 9** |
+| Working on auth E2E tests or E2E in CI | `docs/claude/testing.md` and `docs/claude/ci.md` |
 | Working on i18n, locales, translations, or RTL support | `docs/i18n-architecture.md` |
 | Changing database schemas, running migrations, or deploying schema changes | `docs/convex-migrations.md` |
-| Working on the deploy pipeline, environment variables, or build-once/promote | `docs/claude/build-once-promote-plan.md` — **active work tracker; phases 1–4 and 6 done, start at phase 5** |
+| Working on the deploy pipeline, environment variables, or build-once/promote | `docs/deployment-architecture.md` ("Artifacts are content-addressed", "Promotion") and `docs/deployment-runbook.md` |
 | Hosting on AWS instead of Vercel (`infra/aws`, Floci local emulation) | `docs/aws/deployment-architecture-aws.md`. Replaces Vercel only; hosting Convex on AWS is out of scope |
-| Working on Renovate, dependency-update automation, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md`; drain the queue with the `deps-update` skill (`.agents/skills/`) |
-| Migrating a dependency major, or changing the Node/Bun runtime baseline | `docs/dependency-migrations.md` and the `deps-major` skill; `bun run check:runtime-baseline`; decisions go in `docs/dependency-log.md` |
+| Working on Renovate, dependency-update automation, upgrading better-auth / the Convex auth adapter, or the `RENOVATE_TOKEN` secret | `docs/dependency-updates.md`; drain the queue with the `deps-update` skill (`.agents/skills/`) |
+| Migrating a dependency major, or changing the Node/Bun runtime baseline | `docs/dependency-migrations.md` and the `deps-major` skill; `bun run check:runtime-baseline`; record decisions on the ticket and in the PR description |
 | Cutting a starter release, or changing the versioning/LTS/breaking-change policy | `VERSIONING.md`, `scripts/release.sh` and `.github/workflows/release-starter.yml` — prepare in a PR; publish the tested main commit afterward |
 | Helping a business app take a newer starter release, or editing the upgrade process | `UPGRADING.md`, `CHANGELOG.md`, `scripts/resolve-i18n-conflicts.ts` |
-| Working on starter package upgrades or demo ownership | `docs/starter-upgrades.md`; run `check:starter-ownership`, `test:starter-upgrade` and `test:starter-rehearsal` via `bun run`. Do not hand-edit consumed packages or claim unsupported vendoring. |
+| Working on starter package upgrades or demo ownership | `apps/demo/README.md` and `UPGRADING.md`; run `check:starter-ownership`, `test:starter-upgrade` and `test:starter-rehearsal` via `bun run`. Do not hand-edit consumed packages or claim unsupported vendoring. |
 | Writing a codemod to ship with a breaking release | `scripts/codemods/README.md` |
-| Working on how starter releases reach downstream business apps long-term (consumed packages, editable-copy registry, Convex Components) | `docs/starter-versioning-strategy.md` — **Merge-by-tag and one local package upgrade are implemented; broader isolation/distribution remains follow-up** |
-
 ## Resources
 
 - [Next.js 16 Docs](https://nextjs.org/docs)
