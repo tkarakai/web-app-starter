@@ -88,6 +88,16 @@ jobs:
       - name: Check agent skills and their links
         run: bun run check:agent-skills
 
+      # Platform-zone edits must be recorded patches; seams keep the platform hooks.
+      # An adopted app compares against the release commit in .platform-base.json.
+      - name: Zone check
+        run: |
+          if [[ -f .platform-base.json ]]; then
+            base="$(jq -r .commit .platform-base.json)"
+            git cat-file -e "${base}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base"
+          fi
+          bun run check:zone
+
       - name: Check message files (platform and app, overrides)
         run: bun run check:i18n
 

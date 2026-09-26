@@ -145,6 +145,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
   shared dependency without touching `platform/`. To use it, make your root `renovate.json`
   extend `local>your-owner/your-repo//platform/config/renovate-preset` and keep only your own
   rules there. Guide: `platform/docs/dependency-updates.md`.
+- Zone check (`bun run check:zone`, `platform/tooling/check-zone.ts`; a step of CI Shared's
+  lint job), `.platform-base.json` and the `platform-patch` skill. With a `.platform-base.json`
+  (`version`, release `commit`, `patches`), every platform-zone file that differs from the
+  release commit must be a recorded patch carrying a `PLATFORM-PATCH: <reason>` comment;
+  recorded patches are listed on every run. Seams must keep their platform hooks
+  (`...platformTables`, `registerPlatformRoutes(http)`, the config bases, the Renovate preset).
+  Without the file (the product repo) no app code may carry a patch marker.
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
 - `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and

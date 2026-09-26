@@ -28,6 +28,10 @@ A **Bun workspaces + Turborepo** monorepo:
   `UPGRADING.md`, `VERSIONING.md`, `VERSION`, licences). In the backend,
   `packages/backend/convex/platform/` holds the platform's Convex functions, tables
   (`platformTables`), HTTP routes and Better Auth component.
+- **The zone check (`bun run check:zone`, in CI) enforces this.** In an adopted app, every zone
+  file that differs from the release commit in `.platform-base.json` must be a recorded patch
+  (a `PLATFORM-PATCH: <reason>` comment plus an entry in `patches`); the `platform-patch` skill
+  makes one and drafts the request to us. It also fails when a seam loses a platform hook.
 - **Seams** are the files where your app meets the platform. Edit them, and keep the platform's
   entries intact:
 
