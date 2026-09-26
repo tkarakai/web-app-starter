@@ -30,7 +30,7 @@ export class OpsService {
     return new OpsError("CONFIG_MISSING",
       `Configuration missing: Vercel project mappings are missing for ${missing.join(", ")}. Live deployment state was not queried for these targets.`,
       `Run bun run ops setup --config ${JSON.stringify(this.configPath)} for guided login, team discovery and project mapping.\n` +
-      `Manual setup: create ${this.configPath} from ops.config.example.json, then run gh auth login and vercel login.\n` +
+      `Manual setup: create ${this.configPath} from platform/templates/ops.config.example.json, then run gh auth login and vercel login.\n` +
       "Run bun run ops teams to find teamId, then bun run ops projects --team TEAM_ID to find project IDs.\n" +
       "Fill apps.<app>.projects.<environment>.id for the missing targets, then rerun the command. CI can supply VERCEL_TOKEN via a secret manager.\n" +
       "See platform/docs/ops-cli.md for the setup walkthrough.",

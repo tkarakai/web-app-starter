@@ -57,7 +57,7 @@ When the config file is missing or has invalid/incomplete local settings, intera
 
 To repair a file directly, run `bun run ops setup --config PATH` (or omit `--config` for `ops.config.json`). You do not need to delete it first. Invalid-file errors in noninteractive commands include the repair command.
 
-For manual configuration, copy `ops.config.example.json` to the git-ignored `ops.config.json` and edit:
+For manual configuration, copy `platform/templates/ops.config.example.json` to the git-ignored `ops.config.json` and edit:
 
 - `repository`: GitHub `owner/repository`.
 - `workflowRef`: branch containing the deployment workflows, normally `main`.
