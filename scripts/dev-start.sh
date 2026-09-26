@@ -14,6 +14,7 @@ PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
 NODE_TS="$SCRIPT_DIR/node-ts.sh"
+source "$SCRIPT_DIR/dev-dashboard.sh"
 
 # Ports and local origins come from app.config.ts (APP_CONFIG_* variables).
 # The reader validates the config first, so a bad value stops here.
@@ -185,12 +186,6 @@ update_env_var() {
     fi
 
     mv "$temp_file" "$env_file"
-}
-
-# Extract local Dashboard URL from Convex log
-extract_dashboard_url() {
-    local log_file="$1"
-    grep -o 'http://127\.0\.0\.1:[0-9]*/?d=[^ ]*' "$log_file" | head -1
 }
 
 # Return the first startup-fatal line emitted by Convex, if any.
@@ -673,7 +668,7 @@ if [ "$NEED_CONVEX" = true ]; then
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi
 
-    DASHBOARD_URL=$(extract_dashboard_url "$PROJECT_DIR/.convex-dev.log")
+    DASHBOARD_URL=$(get_dashboard_url)
 
     echo -e "${GREEN}✔ Convex ready (PID: $CONVEX_PID)${NC}"
     echo -e "  ${BLUE}Deployment:${NC} $DEPLOYMENT_NAME"
