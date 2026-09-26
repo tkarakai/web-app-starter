@@ -1,46 +1,44 @@
----
-name: deps-major
-description: Use to work one dependency upgrade ticket (a major, a migration, or a security fix that needs a major) from research to adopted, held or rejected. Called by deps-update.
----
-
 # Work one major-upgrade ticket
+
+Part of the `platform-deps` skill: the queue procedure in `../SKILL.md` sends each major here.
+The rules there still apply, above all: never edit a file under `platform/`.
 
 Work **exactly one ticket** per run: research the upgrade, then carry it through: tests, trial,
 code changes, and a verdict of adopted, held, or rejected. The default is to keep dependencies
 modern and do the work a migration needs, unless it would change the app.
 **Never change app functionality for the sake of an upgrade.**
 
-Mechanics (scope, validation, downstream notes) are in `docs/dependency-migrations.md`; this
-skill decides and does the work.
+Mechanics (scope, validation) are in `platform/docs/dependency-migrations.md`; this procedure
+decides and does the work.
 
 ## Which ticket
 
-- **Given a ticket** (e.g. `/deps-major #136`), or started by `deps-update` with one: work it.
+- **Given a ticket** (e.g. `/platform-deps ticket #136`), or started by the queue procedure with one: work it.
   Read it first and continue from its evidence.
 - **Given a package**: find the open ticket whose title names it, and retitle it if the target
   version changed. If there is none, open one (see *Tickets*). If no newer eligible version
   exists, say so and stop.
 - **Given nothing**: list the open tickets (`gh issue list --label dependencies --state open`) and
   the *Pending Approval* majors without a ticket (`bun run renovate:status`). The user **must
-  pick one**, in the decision format of `deps-update`; never pick for them, and do nothing until
+  pick one**, in the decision format of `../SKILL.md`; never pick for them, and do nothing until
   they do. Picking an item without a ticket opens one. If the list is empty, say so and stop.
 
 ## How it runs
 
-**Announce before acting**, as in `deps-update`: say which ticket you are working and whether it
+**Announce before acting**, as in `../SKILL.md`: say which ticket you are working and whether it
 changes anything.
 
 **Asking.** Steps 1–4 change no code; they only update the ticket. Run directly, a **high-risk**
 ticket (anything *Who decides* sends to the user) is asked about once, **before merging**, with
-the trial results; other tickets need no questions. Started by `deps-update`, its green light
+the trial results; other tickets need no questions. Started by the queue procedure, its green light
 covers the run, and a high-risk ticket stops at its PR, labelled `deps:awaiting-user`.
 
 **If unsure.** Interactive and run directly: when the rules and the repo do not settle
-something, ask, in the decision format of `deps-update`; never ask what they already answer.
+something, ask, in the decision format of `../SKILL.md`; never ask what they already answer.
 As a subagent or non-interactive: take the conservative option (do not merge, do not hold
 silently), write the question into the ticket, label it `deps:awaiting-user`, and stop.
 
-**As a subagent** (started by `deps-update` for one ticket, in its own worktree): you cannot ask
+**As a subagent** (started by the queue procedure for one ticket, in its own worktree): you cannot ask
 the user anything. Never merge: push the `deps/` branch, open the PR, and report the verdict.
 
 **Alongside Renovate.** Bump on the `deps/` branch; never tick the dashboard box. Renovate drops
@@ -59,7 +57,7 @@ package's own repository, at a pinned version, with its diff reviewed.
 Every major gets a ticket: an issue titled `deps: <package> <from> → <to>` with the label
 `dependencies` (older tickets titled `migrate: …` are the same thing). Open it yourself, without
 asking. It holds the open work: usage, breaking changes that hit us, behaviour to prove
-unchanged, downstream impact, evidence so far, and "Work this with the `deps-major` skill". Keep
+unchanged, evidence so far, and "Work this with the `platform-deps` skill". Keep
 it updated as evidence comes in. The `HOLD:` rule and the `deps/` PR link it.
 
 Its state is at most one status label (create a missing one with `gh label create <name>`):
@@ -90,7 +88,7 @@ latest patch. Without an LTS, use the latest stable version that meets the relea
 move needs a vendor-side change (e.g. a Vercel project's Node setting), add an *Awaiting
 external preconditions* section to the ticket naming that change, label the ticket `deps:held`,
 and stop.
-`deps-update` asks the user once the upstream part is met, and their "Done" resumes the ticket.
+The queue procedure asks the user once the upstream part is met, and their "Done" resumes the ticket.
 
 **Never force peers.** No `--force`, no overrides that ignore a peer range. If peers are not
 ready, it is a hold.
@@ -150,13 +148,12 @@ High-risk, so the user decides, whatever the tier:
    sizes stay within the size-limit budgets, and nothing in the diff or the release notes
    suggests a slowdown. If the app turns out broken, reject; some changes can only be judged by
    trying them.
-7. **Verdict and PR.** Every verdict ends in one PR, with the decision record (step 8). If downstream
-   apps must act, add a `CHANGELOG.md` **Action required** entry (see `dependency-migrations.md`).
+7. **Verdict and PR.** Every verdict ends in one PR, with the decision record (step 8).
    As a subagent, never merge: the parent does.
    - **Adopt**: title `chore(deps): <package> <from> → <to>`, body `Closes #<ticket>` and the
      evidence. Merge it with `gh pr merge <n> --squash` once checks are green and the branch is
      up to date (merge `main` into it if behind). On a high-risk ticket, not before the user's
-     yes (run directly: ask; under `deps-update`: label `deps:awaiting-user` and stop).
+     yes (run directly: ask; under the queue procedure: label `deps:awaiting-user` and stop).
    - **Hold or reject**: revert only the bump; keep the new tests. The PR carries the tests, a
      `HOLD:` rule in `renovate.json` whose description links the ticket, and the decision record; body
      `Refs #<ticket>`, so the ticket stays open. Label the ticket `deps:held` or `deps:rejected`.
@@ -165,5 +162,5 @@ High-risk, so the user decides, whatever the tier:
    tests added, CI run, the ticket, and when to revisit. Rejections and rollbacks need the
    evidence.
 
-Hand back to `deps-update` a short verdict: the ticket, the decision, the tier, a one-line reason,
+Hand back to the queue procedure a short verdict: the ticket, the decision, the tier, a one-line reason,
 the PR, and whether the user must decide.

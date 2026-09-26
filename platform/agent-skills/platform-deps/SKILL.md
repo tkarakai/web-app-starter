@@ -1,6 +1,6 @@
 ---
-name: deps-update
-description: Use to update dependencies, process Renovate PRs, the Dependency Dashboard, or pending majors.
+name: platform-deps
+description: Use to update the app's dependencies - Renovate PRs, the Dependency Dashboard, pending majors, holds and the lockfile refresh - or to work one major-upgrade ticket. Never edits platform/.
 ---
 
 # Update dependencies
@@ -8,14 +8,24 @@ description: Use to update dependencies, process Renovate PRs, the Dependency Da
 Bring `main` up to date with every eligible dependency update. Decide what the rules let you
 decide, and get the user's decision on the rest.
 
+**Stay out of the platform zone.** Never edit a file under `platform/`. A dependency declared
+there arrives with a platform upgrade, not with this skill. If an update can only land by
+changing a platform file, it is a **hold**: record the reason and the REMOVE condition ("the
+platform release that moves it") on its ticket.
+
+**Decisions are recorded in the repository you work in**: on the `deps:*` ticket and in the PR
+description that lands, holds or rejects the change. Nowhere else.
+
 Read first:
-- `docs/dependency-updates.md`: Renovate policy, holds, and the PR-state table under
+- `platform/docs/dependency-updates.md`: Renovate policy, holds, and the PR-state table under
   "Draining the queue".
-- `docs/dependency-migrations.md`: migrations and the runtime-baseline playbook.
+- `platform/docs/dependency-migrations.md`: migrations and the runtime-baseline playbook.
 - Closed and `deps:held` tickets (`gh issue list --label dependencies --state all`): past
   decisions, and what is *Awaiting external preconditions*.
 
-Majors are worked one ticket at a time by the `deps-major` skill. Load it only to work a ticket.
+Majors are worked one ticket at a time with [references/major-ticket.md](references/major-ticket.md).
+Read it only to work a ticket. If the user names a ticket or a package to upgrade (e.g.
+`/platform-deps ticket #136`), skip the queue and go straight to that procedure.
 
 **No merge freeze.** Other agents and people keep merging while this runs; nothing is paused or
 locked. A feature merge only leaves PRs `BEHIND`, which the steps below handle.
@@ -28,7 +38,7 @@ or issue, opening or merging a PR), say in one line what it is and why.
 
 **Plan first, then the green light.** Every run starts with the read-only plan phase. Show the
 plan, ask the decisions, and end with one **green light** question. Act only after the green
-light. If the user gave it up front (e.g. `/deps-update green light`), still show the plan and
+light. If the user gave it up front (e.g. `/platform-deps green light`), still show the plan and
 ask the decisions, but skip that question.
 
 **If unsure.** Interactive: when the rules and the repo do not settle something, ask, in the
@@ -37,7 +47,7 @@ do the plan phase, print the plan and the open decisions, and stop without chang
 
 **Hard rules.** Never push commits to a `renovate/*` branch. Never use GitHub's *Update branch*.
 Never tick a dashboard box under *PR Edited (Blocked)* or *Pending Status Checks*. Merge a major
-only as its `deps-major` verdict allows; anything sent to the user needs their explicit yes in
+only as its major-ticket verdict allows; anything sent to the user needs their explicit yes in
 this session. Never force-push. Never bypass the release age: ten days, or twelve hours for a
 security fix.
 
@@ -99,7 +109,7 @@ upstream part is met. Decide everything else yourself and report it.
 
 | Decision | Options, and what you then do |
 |---|---|
-| Ticket `deps:awaiting-user` | **Adopt**: merge its PR. **Hold** or **Reject**: rework its PR as `deps-major` step 7 describes (revert the bump, keep the tests, add the `HOLD:` rule and decision record), label the ticket `deps:held` or `deps:rejected`, merge. **Ask me next run**: leave it. |
+| Ticket `deps:awaiting-user` | **Adopt**: merge its PR. **Hold** or **Reject**: rework its PR as step 7 of the major-ticket procedure describes (revert the bump, keep the tests, add the `HOLD:` rule and decision record), label the ticket `deps:held` or `deps:rejected`, merge. **Ask me next run**: leave it. |
 | Auth-stack PR | **Merge**: bring it up to date, merge it. **Leave open**. |
 | Exploited security fix inside twelve hours | **Adopt now** · **Wait** for twelve hours |
 | Precondition met upstream | **Done**: remove `deps:held` from its ticket (open one if missing) and work it. **Remind me next run**. |
@@ -109,7 +119,7 @@ upstream part is met. Decide everything else yourself and report it.
 Dispatch nothing and edit no PR, issue or file. Run `bun run renovate:status`, say when that run
 finished, and require `repositoryResult: "done"`. Work through steps 1 and 3–6 below and say
 what you *would* do. Classify each ticket from the ticket and the snapshot only: package,
-expected tier, codebase-wide or not, and order. The research happens when `deps-major` works it.
+expected tier, codebase-wide or not, and order. The research happens when the ticket is worked.
 Then present, in this order:
 
 1. **Report**: status tables, for information.
@@ -166,20 +176,20 @@ Otherwise carry out the answers and steps 3–7.
      `npx --yes --package renovate renovate-config-validator renovate.json`.
    - For each `deps:held` ticket *Awaiting external preconditions*: when its
      upstream part is met, it is a decision; otherwise only list it in the report.
-5. **Tickets, one `deps-major` run each.** Every *Pending Approval* major gets a ticket; open the
-   missing ones. Never tick dashboard boxes: `deps-major` bumps on a `deps/` branch. Work every
+5. **Tickets, one major-ticket run each.** Every *Pending Approval* major gets a ticket; open the
+   missing ones. Never tick dashboard boxes: the major-ticket procedure bumps on a `deps/` branch. Work every
    open ticket without a `deps:held`, `deps:rejected` or `deps:awaiting-user` label:
    - **Codebase-wide first, alone**: `typescript`, the runtime baseline (Node, Bun,
      `@types/node`), `react`/`react-dom`/`next`, and lint tooling (`eslint` and its plugins).
      One at a time, each merged before the next starts.
    - **Then the rest in parallel** if the harness has subagents (in Claude Code: the Agent tool,
-     each in its own worktree), at most three at once. Tell each: "Run the `deps-major` skill on
+     each in its own worktree), at most three at once. Tell each: "Follow `platform/agent-skills/platform-deps/references/major-ticket.md` on
      ticket #N as a subagent: push your `deps/` branch, open the PR, do not merge, and report
      the verdict." Without subagents, work them one after another yourself.
    - **Merge one at a time yourself**, then bring the next `deps/` branch up to date.
    - A ticket that ends `deps:awaiting-user` becomes a decision in the close-out. One too large
      for this run stays open with its progress; say it can be worked later or in parallel with
-     `/deps-major #<ticket>`.
+     `/platform-deps ticket #<ticket>`.
 6. **Lockfile refresh.** Renovate's lockfile maintenance is off because it ignores the release
    age for transitive dependencies. If no `chore(deps): refresh lockfile` commit on `main` is
    newer than seven days, refresh on `deps/lockfile-<date>`: delete `bun.lock`, run
