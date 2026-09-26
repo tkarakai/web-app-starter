@@ -57,12 +57,13 @@ export function slug(name: string): string {
   return name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";
 }
 
-function replaceOnce(text: string, pattern: RegExp, replacement: string, what: string): string {
+function replaceOnce(text: string, pattern: RegExp, replacement: string | ((match: string, indent: string) => string), what: string): string {
   const matches = text.match(new RegExp(pattern.source, `${pattern.flags.replace("g", "")}g`));
   if (matches?.length !== 1) {
     throw new Error(`app.config.ts: expected one ${what} (${pattern}), found ${matches?.length ?? 0}. Set it by hand and rerun with its current value`);
   }
-  return text.replace(pattern, replacement);
+  // Replacement strings interpret $&, $`, $' and $n. User values must stay literal.
+  return text.replace(pattern, typeof replacement === "string" ? () => replacement : replacement);
 }
 
 /** Set name, support email, cookie prefix and ports in the text of app.config.ts. */
@@ -72,12 +73,11 @@ export function setAppConfig(text: string, options: Pick<AdoptOptions, "name" | 
     out = replaceOnce(out, /^const supportEmail = .*;$/m, `const supportEmail = ${JSON.stringify(options.supportEmail)};`, "supportEmail");
   }
   const prefix = options.cookiePrefix ?? slug(options.name);
-  out = replaceOnce(out, /^(\s*)authCookiePrefix: .*,$/m, `$1authCookiePrefix: ${JSON.stringify(prefix)},`, "authCookiePrefix");
+  out = replaceOnce(out, /^(\s*)authCookiePrefix: .*,$/m, (_match, indent) => `${indent}authCookiePrefix: ${JSON.stringify(prefix)},`, "authCookiePrefix");
   for (const [app, port] of Object.entries(options.ports ?? {})) {
     if (!(PORT_APPS as readonly string[]).includes(app)) throw new Error(`--port: unknown app "${app}" (one of ${PORT_APPS.join(", ")})`);
     const key = app.includes("-") ? `"${app}"` : app;
-    const escaped = key.replace(/[-"]/g, (c) => `\\${c}`);
-    out = replaceOnce(out, new RegExp(`^(\\s*)${escaped}: \\d+,$`, "m"), `$1${key}: ${port},`, `ports.${app}`);
+    out = replaceOnce(out, new RegExp(`^(\\s*)${key}: \\d+,$`, "m"), (_match, indent) => `${indent}${key}: ${port},`, `ports.${app}`);
   }
   return out;
 }
@@ -116,7 +116,7 @@ export function removeWorkflowJob(text: string, job: string): string {
     }
     out.push(line);
   }
-  const escaped = job.replace(/-/g, "\\-");
+  const escaped = job.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return out.join("\n")
     .replace(new RegExp(`(needs: \\[[^\\]]*?), ${escaped}(?=[,\\]])`, "g"), "$1")
     .replace(new RegExp(`(needs: \\[)${escaped}, `, "g"), "$1")
@@ -125,6 +125,15 @@ export function removeWorkflowJob(text: string, job: string): string {
 
 function readJson<T>(file: string): T {
   return JSON.parse(readFileSync(file, "utf8")) as T;
+}
+
+function readOptional(file: string): string | undefined {
+  try {
+    return readFileSync(file, "utf8");
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") return undefined;
+    throw error;
+  }
 }
 
 function writeJson(file: string, value: unknown): void {
@@ -136,11 +145,12 @@ export function removeApps(root: string, apps: readonly RemovableApp[], log: (li
   if (apps.length === 0) return;
   const at = (file: string): string => path.join(root, file);
   const pkg = readJson<{ scripts?: Record<string, string> }>(at("package.json"));
-  const tsconfigText = existsSync(at("tsconfig.json")) ? readFileSync(at("tsconfig.json"), "utf8") : undefined;
-  const turbo = existsSync(at("turbo.json")) ? readJson<{ tasks?: Record<string, unknown> }>(at("turbo.json")) : undefined;
+  const tsconfigText = readOptional(at("tsconfig.json"));
+  const turboText = readOptional(at("turbo.json"));
+  const turbo = turboText === undefined ? undefined : JSON.parse(turboText) as { tasks?: Record<string, unknown> };
   let tsconfig = tsconfigText;
   const verify = at(".github/workflows/ci-verify.yml");
-  let verifyText = existsSync(verify) ? readFileSync(verify, "utf8") : undefined;
+  let verifyText = readOptional(verify);
 
   for (const app of apps) {
     rmSync(at(`apps/${app}`), { recursive: true, force: true });

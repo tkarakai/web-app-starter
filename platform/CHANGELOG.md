@@ -13,6 +13,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Adoption preserves literal dollar-sign sequences in configuration values, escapes workflow
+  job names correctly, and reads optional configuration files without a separate existence check.
+
 ### Action required
 
 - **Who is affected:** every app. The platform moved under `platform/` (v2 layout). Shared

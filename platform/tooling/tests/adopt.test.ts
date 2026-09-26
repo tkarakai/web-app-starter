@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { adopt, parseArgs, removeWorkflowJob, repoFromUrl, rewriteRenovate, setAppConfig, slug } from "../adopt.ts";
 import { checkZone } from "../check-zone.ts";
@@ -33,6 +33,28 @@ test("setAppConfig sets name, email, cookie prefix and ports in the real app.con
   assert.match(out, /^\s+"landing-static": 4004,$/m);
   assert.match(out, /^\s+admin: 3002,$/m);
   assert.throws(() => setAppConfig(read("app.config.ts"), { name: "x", ports: { nope: 1 } }), /unknown app/);
+});
+
+test("generated config loads user strings literally, including replacement metacharacters", async (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), "adopt-config-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const name = 'Acme $& $` $\' $1 \\ "Tasks"';
+  write(root, "app.config.ts", setAppConfig(read("app.config.ts"), {
+    name, supportEmail: "help+$&@acme.test", ports: { web: 4001, "landing-static": 4004 },
+  }));
+  const { default: config } = await import(pathToFileURL(path.join(root, "app.config.ts")).href);
+  assert.equal(config.identity.productName, name);
+  assert.equal(config.identity.legalEntity, name);
+  assert.equal(config.identity.supportEmail, "help+$&@acme.test");
+  assert.equal(config.runtime.ports.web, 4001);
+  assert.equal(config.runtime.ports["landing-static"], 4004);
+  assert.equal(config.runtime.ports.admin, 3002);
+});
+
+test("workflow job names with regex syntax cannot remove another dependency", () => {
+  const workflow = "jobs:\n  app.web:\n    runs-on: ubuntu-latest\n  verify:\n    needs: [shared, appXweb, app.web]\n";
+  assert.equal(removeWorkflowJob(workflow, "app.web"),
+    "jobs:\n  verify:\n    needs: [shared, appXweb]\n");
 });
 
 test("rewriteRenovate points the preset at the app's repo and drops product-only rules", () => {
