@@ -1,6 +1,6 @@
 "use client";
 
-import { PasswordInput } from "@/components/ui/localized-controls";
+import { PasswordInput } from "./localized-controls";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -10,9 +10,9 @@ import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited, isConvexRateLimited } from "@web-app-starter/auth/client";
-import { broadcastAuth } from "@/lib/auth-broadcast";
-import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
-import { redirectWithUserLocale } from "@/lib/auth-locale";
+import { broadcastAuth } from "../lib/auth-broadcast";
+import { EMAIL_VERIFICATION_CALLBACK_URL } from "../lib/auth-callbacks";
+import { redirectWithUserLocale } from "../lib/auth-locale";
 import {
   Button,
   Card,

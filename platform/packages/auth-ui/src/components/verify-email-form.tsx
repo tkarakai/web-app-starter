@@ -8,9 +8,9 @@ import { useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited } from "@web-app-starter/auth/client";
-import { broadcastAuth } from "@/lib/auth-broadcast";
-import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
-import { redirectWithUserLocale } from "@/lib/auth-locale";
+import { broadcastAuth } from "../lib/auth-broadcast";
+import { EMAIL_VERIFICATION_CALLBACK_URL } from "../lib/auth-callbacks";
+import { redirectWithUserLocale } from "../lib/auth-locale";
 import {
   Button,
   Card,

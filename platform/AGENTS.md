@@ -91,6 +91,7 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 |---|---|
 | `@web-app-starter/design-system` | `import { Button, cn } from "@web-app-starter/design-system"`; styles: `@web-app-starter/design-system/styles/globals.css` |
 | `@web-app-starter/auth` | `@web-app-starter/auth/client` (`authClient`), `@web-app-starter/auth/server` (`auth`, `isAuthenticated`, ...), `@web-app-starter/auth/provider` |
+| `@web-app-starter/auth-ui` | Auth pages and their logic. Root: `useAuthUser`, `useSignOut`, `AuthGuard`, `GuestGuard`, `LocaleSwitcher`, `ConvexErrorToast`, the auth forms; `/views`: default pages and layouts (`SignInView`, `ProtectedLayout`, ...); `/proxy`: `authRedirect`; `/routes/auth`, `/routes/clear-session`: route handlers. Web's auth route files re-export these ([docs/architecture.md](docs/architecture.md)) |
 | `@repo/backend` | `import { api } from "@repo/backend"`: platform functions are `api.platform.<module>`, app functions `api.<module>` |
 | `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
 | `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |

@@ -37,7 +37,7 @@ const originalBC = globalThis.BroadcastChannel;
 globalThis.BroadcastChannel = MockBroadcastChannel;
 
 // Dynamic import so the module picks up the mock
-const { broadcastAuth, onAuthBroadcast } = await import("../../src/lib/auth-broadcast");
+const { broadcastAuth, onAuthBroadcast } = await import("../../../../platform/packages/auth-ui/src/lib/auth-broadcast");
 
 describe("broadcastAuth", () => {
   beforeEach(() => {

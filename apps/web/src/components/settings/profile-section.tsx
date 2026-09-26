@@ -31,7 +31,7 @@ import {
 } from "@web-app-starter/design-system";
 import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
-import { useAuthUser } from "@/components/auth/auth-guard";
+import { useAuthUser } from "@web-app-starter/auth-ui";
 
 const AVATAR_COLORS = [
   "#3b82f6",

@@ -3,10 +3,10 @@
 import * as React from "react";
 
 import { authClient } from "@web-app-starter/auth/client";
-import { onAuthBroadcast } from "@/lib/auth-broadcast";
+import { onAuthBroadcast } from "../lib/auth-broadcast";
 
 /**
- * Wraps unauthenticated pages (sign-in).
+ * Wraps unauthenticated pages (sign-in, sign-up).
  * Redirects to /dashboard when the user becomes authenticated,
  * e.g. after logging in on another tab.
  *

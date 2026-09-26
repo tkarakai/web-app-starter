@@ -5,6 +5,7 @@ import messages from "@web-app-starter/i18n/messages/en.json";
 import * as React from "react";
 import { useQuery } from "convex/react";
 import Link from "next/link";
+import { useSignOut } from "@web-app-starter/auth-ui";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronRight,
@@ -21,7 +22,6 @@ import {
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { api } from "@repo/backend";
-import { authClient } from "@web-app-starter/auth/client";
 import { appConfig } from "@web-app-starter/app-config";
 import {
   Avatar,
@@ -100,13 +100,7 @@ export function AdminSidebar({
     .slice(0, 2)
     .toUpperCase();
 
-  const handleSignOut = () => {
-    authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => router.push("/sign-in"),
-      },
-    });
-  };
+  const handleSignOut = useSignOut("/sign-in");
 
   const isItemActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);

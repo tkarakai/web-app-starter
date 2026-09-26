@@ -1,6 +1,6 @@
 "use client";
 
-import { PasswordInput } from "@/components/ui/localized-controls";
+import { PasswordInput } from "./localized-controls";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";

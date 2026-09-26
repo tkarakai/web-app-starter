@@ -63,6 +63,26 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `bun run dev` (or `bunx convex dev --once`). Data is unaffected: table names are unchanged.
   **Done when:** the codemod's `--check` exits 0, `ls packages/backend/convex/*.ts` lists no
   moved module, and `bun run typecheck` and `bun run test:convex` pass.
+- **Who is affected:** apps that kept the web app's auth pages (every app built on
+  `apps/web`). The auth routes, their logic and default views moved from `apps/web` to the new
+  platform package `@web-app-starter/auth-ui`: sign-in, sign-up, forgot and reset password,
+  verify email and invitation sign-up pages; the guest, public and protected (dashboard)
+  layouts; `/forbidden`; the `api/auth/[...all]` and `api/auth/clear-session` handlers; the
+  session-cookie part of `proxy.ts` (`authRedirect`); `AuthGuard`/`useAuthUser`, `GuestGuard`,
+  `broadcastAuth`, `LocaleSwitcher`, `ConvexErrorToast` and the sign-in locale action. Deleted
+  from `apps/web/src`: `components/auth/*`, `components/ui/locale-switcher.tsx`,
+  `components/convex-error-toast.tsx`, `lib/auth-*.ts`, `lib/error-messages.ts` (unused) and
+  `app/actions.ts`. `ConvexErrorToast` now takes the app's own codes as `appErrorKeys`.
+  **What to do:** take the starter's route files under `apps/web/src/app/` (each is a one-line
+  re-export) and `proxy.ts`, add `@web-app-starter/auth-ui` to your app's dependencies and
+  `transpilePackages`, and run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-auth-ui.ts`: it rewrites imports
+  of the moved modules (`@/components/auth/*`, `@/components/ui/locale-switcher`,
+  `@/components/convex-error-toast`, `@/lib/auth-*`) to `@web-app-starter/auth-ui`, and leaves
+  alone any module you still have a local copy of. If you had customised an auth page, keep your page file and
+  build it from the package's `AuthPageShell` and forms instead of the old local components.
+  **Done when:** `test ! -e apps/web/src/components/auth`, and `bun run typecheck`,
+  `bun run test:unit` and the auth E2E suite (`bun run test:e2e`) pass.
 - **Who is affected:** apps whose hosted (staging or production) Convex deployment has no
   `RESEND_API_KEY`. Auth and invitation emails there used to be written to the Convex logs;
   they now fail with `EMAIL_DELIVERY_NOT_CONFIGURED`.
@@ -100,6 +120,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
+- `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and
+  default views, shared by the web app and (for its equivalents) admin, and
+  `platform/tooling/codemods/v2-auth-ui.ts`, the codemod for its imports.
 - `platform/tooling/codemods/v2-convex-platform.ts`: the codemod for the Convex
   `convex/platform/` move (idempotent; `--check` for CI).
 - `platform/VERSION` (the installed platform version), `platform/templates/README.md` and

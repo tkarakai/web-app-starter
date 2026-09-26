@@ -1,6 +1,6 @@
 "use client";
 
-import { PasskeyUnsupportedAlert, PasswordInput, OtpInput } from "@/components/ui/localized-controls";
+import { PasskeyUnsupportedAlert, PasswordInput, OtpInput } from "./localized-controls";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -10,9 +10,9 @@ import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited, isConvexRateLimited } from "@web-app-starter/auth/client";
-import { broadcastAuth } from "@/lib/auth-broadcast";
-import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
-import { redirectWithUserLocale } from "@/lib/auth-locale";
+import { broadcastAuth } from "../lib/auth-broadcast";
+import { EMAIL_VERIFICATION_CALLBACK_URL } from "../lib/auth-callbacks";
+import { redirectWithUserLocale } from "../lib/auth-locale";
 
 const PREFERRED_METHOD_KEY = "signInPreferredMethod";
 

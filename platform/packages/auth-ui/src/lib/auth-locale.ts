@@ -2,7 +2,7 @@
 
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { defaultLocale, persistLocale } from "@web-app-starter/i18n";
-import { getAuthUserLocaleAction } from "@/app/actions";
+import { getAuthUserLocaleAction } from "../actions";
 
 /**
  * Get the current locale from the URL (the browser's current preference at auth page).

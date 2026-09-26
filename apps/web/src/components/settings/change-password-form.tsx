@@ -16,7 +16,7 @@ import {
   toast,
 } from "@web-app-starter/design-system";
 import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@web-app-starter/design-system/password-strength";
-import { useAuthUser } from "@/components/auth/auth-guard";
+import { useAuthUser } from "@web-app-starter/auth-ui";
 
 export function ChangePasswordForm() {
   const tcp = useTranslations("dashboard.changePassword");

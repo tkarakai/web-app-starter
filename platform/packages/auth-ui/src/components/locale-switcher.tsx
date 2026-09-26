@@ -8,7 +8,7 @@ import { LanguageSelector } from "@web-app-starter/design-patterns";
 import { useNetworkStatus } from "@web-app-starter/design-system";
 import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
 import { api } from "@repo/backend";
-import { useAuthUser } from "@/components/auth/auth-guard";
+import { useAuthUser } from "./auth-guard";
 
 interface LocaleSwitcherProps {
   className?: string;

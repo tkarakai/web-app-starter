@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { api } from "@repo/backend";
 import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@web-app-starter/auth/client";
-import { broadcastAuth } from "@/lib/auth-broadcast";
+import { broadcastAuth } from "@web-app-starter/auth-ui";
 
 const PREFERRED_METHOD_KEY = "adminSignInPreferredMethod";
 

@@ -1,12 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { sessionCookieNames } from "@web-app-starter/auth/cookies";
+import { authRedirect, stripLocalePrefix, WEB_AUTH_ROUTES } from "@web-app-starter/auth-ui/proxy";
 import createIntlMiddleware from "next-intl/middleware";
 import { defaultLocale, locales } from "@web-app-starter/i18n";
 import {
   checkEdgeRateLimit,
   positiveInt,
   getClientIp,
-  hasSessionCookie,
   rateLimitResponse,
   setRateLimitHeaders,
   type EdgeRateLimitConfig,
@@ -24,53 +23,6 @@ const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   maxMapSize: positiveInt(process.env.EDGE_RATE_LIMIT_MAP_MAX_SIZE, 10000),
 };
 
-/** Routes that require authentication (matched against the locale-stripped path). */
-const PROTECTED_PREFIXES = ["/dashboard"];
-
-/**
- * Auth routes that authenticated users should skip (redirected to dashboard).
- * Note: /verify-email is intentionally excluded — authenticated but unverified
- * users must be able to reach it without being bounced back to /dashboard.
- */
-const AUTH_ROUTES = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password"];
-
-/**
- * Extract the pathname without the locale prefix so auth rules
- * work the same regardless of which locale is active.
- */
-function stripLocalePrefix(pathname: string): string {
-  for (const locale of locales) {
-    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
-      return pathname.slice(`/${locale}`.length) || "/";
-    }
-  }
-  return pathname;
-}
-
-/**
- * Detect the locale from the URL path (first segment).
- * Falls back to `defaultLocale` when the segment isn't a known locale.
- */
-function getLocaleFromPath(pathname: string): string {
-  const match = pathname.match(/^\/([^/]+)/);
-  if (match && (locales as readonly string[]).includes(match[1])) {
-    return match[1];
-  }
-  return defaultLocale;
-}
-
-/**
- * Get the user's preferred locale from the NEXT_LOCALE cookie.
- * Falls back to null if not set.
- */
-function getLocaleFromCookie(request: NextRequest): string | null {
-  const locale = request.cookies.get("NEXT_LOCALE")?.value;
-  if (locale && (locales as readonly string[]).includes(locale)) {
-    return locale;
-  }
-  return null;
-}
-
 export function proxy(request: NextRequest) {
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
@@ -80,7 +32,6 @@ export function proxy(request: NextRequest) {
     return rateLimitResponse(RATE_LIMIT_CONFIG, rl);
   }
 
-  // --- Auth redirects ---
   const { pathname } = request.nextUrl;
 
   // Skip locale handling for API routes
@@ -89,26 +40,14 @@ export function proxy(request: NextRequest) {
   }
 
   // --- Auth redirects (checked before intl to avoid unnecessary rewrites) ---
-  const strippedPath = stripLocalePrefix(pathname);
-  const hasSession = hasSessionCookie(request, sessionCookieNames());
-  const locale = getLocaleFromPath(pathname);
-
-  // Unauthenticated users hitting a protected route → sign-in
-  // Respect the NEXT_LOCALE cookie (user's preferred locale from before logout)
-  if (
-    PROTECTED_PREFIXES.some((prefix) => strippedPath.startsWith(prefix)) &&
-    !hasSession
-  ) {
-    const preferredLocale = getLocaleFromCookie(request) || locale;
-    return NextResponse.redirect(new URL(`/${preferredLocale}/sign-in`, request.url));
-  }
-
-  // Authenticated users hitting auth pages → dashboard
-  // UNLESS they're coming from a session clear (prevents redirect loop when session is stale)
-  const isSessionCleared = request.nextUrl.searchParams.has("session_cleared");
-  if (AUTH_ROUTES.includes(strippedPath) && hasSession && !isSessionCleared) {
-    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
-  }
+  const redirect = authRedirect(request, {
+    protectedPrefixes: ["/dashboard"],
+    authRoutes: WEB_AUTH_ROUTES,
+    locales,
+    defaultLocale,
+  });
+  if (redirect) return redirect;
+  const strippedPath = stripLocalePrefix(pathname, locales);
 
   // --- CSP headers ---
   const nonce = btoa(crypto.randomUUID());
