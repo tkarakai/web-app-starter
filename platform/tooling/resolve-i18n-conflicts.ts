@@ -4,8 +4,11 @@
  *
  * Why this exists
  * ---------------
- * `platform/packages/i18n/messages/*.json` is intentionally shared: starter and application
- * edits can overlap, while independent edits may merge cleanly. For a conflicted
+ * The app's messages (`packages/messages/*.json`, which start from the reference app's)
+ * are merged on upgrade like any app file, and so are the platform's
+ * (`platform/packages/i18n/messages/*.json`) when a release is merged rather than taken
+ * wholesale. Starter and application edits can overlap, while independent edits may
+ * merge cleanly. For a conflicted
  * file, blindly concatenating both hunks can produce invalid JSON. The closing
  * brace of a namespace is usually *shared context* outside the conflict, so
  * concatenating both sides interleaves the bodies of two different objects and
@@ -41,7 +44,7 @@ import { pathToFileURL } from "node:url";
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type JsonObject = { [key: string]: Json };
 
-const MESSAGES_DIR = "platform/packages/i18n/messages/";
+const MESSAGES_DIRS = ["platform/packages/i18n/messages/", "packages/messages/"];
 const MISSING = Symbol("missing"); // distinguishes "key absent" from "key present and null"
 
 function git(...args: string[]): string {
@@ -51,7 +54,7 @@ function git(...args: string[]): string {
 export function conflictedMessageFiles(): string[] {
   return git("diff", "--name-only", "--diff-filter=U")
     .split("\n")
-    .filter((line) => line.startsWith(MESSAGES_DIR) && line.endsWith(".json"));
+    .filter((line) => MESSAGES_DIRS.some((dir) => line.startsWith(dir)) && line.endsWith(".json"));
 }
 
 /** Read one merge stage: 1 = base, 2 = ours, 3 = theirs. undefined if absent. */

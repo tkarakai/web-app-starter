@@ -68,7 +68,7 @@ const observabilityItems = [
 
 const configureItems = [
   { label: "Features", href: "/configure/features", icon: SlidersHorizontal },
-  { label: messages.dashboard.security, href: "/configure/security", icon: ShieldCheck },
+  { label: "Security", href: "/configure/security", icon: ShieldCheck },
   { label: "Integrations", href: "/configure/integrations", icon: PlugZap },
 ];
 

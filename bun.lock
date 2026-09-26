@@ -53,6 +53,7 @@
       "name": "@repo/landing",
       "version": "0.1.0",
       "dependencies": {
+        "@repo/messages": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
         "@web-app-starter/design-patterns": "workspace:*",
         "@web-app-starter/design-system": "workspace:*",
@@ -87,6 +88,7 @@
       "name": "@repo/landing-static",
       "version": "0.1.0",
       "dependencies": {
+        "@repo/messages": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
         "@web-app-starter/design-patterns": "workspace:*",
         "@web-app-starter/design-system": "workspace:*",
@@ -124,6 +126,7 @@
       "dependencies": {
         "@convex-dev/better-auth": "0.12.5",
         "@repo/backend": "workspace:*",
+        "@repo/messages": "workspace:*",
         "@types/qrcode": "^1.5.6",
         "@web-app-starter/app-config": "workspace:*",
         "@web-app-starter/auth": "workspace:*",
@@ -187,6 +190,13 @@
         "convex-test": "^0.0.58",
         "typescript": "6.0.3",
         "vitest": "^5.0.0",
+      },
+    },
+    "packages/messages": {
+      "name": "@repo/messages",
+      "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "6.0.3",
       },
     },
     "platform/apps/admin": {
@@ -370,6 +380,8 @@
       "name": "@web-app-starter/i18n",
       "version": "0.0.0",
       "dependencies": {
+        "@repo/messages": "workspace:*",
+        "@web-app-starter/app-config": "workspace:*",
         "next-intl": "^4.8.2",
       },
       "devDependencies": {
@@ -878,6 +890,8 @@
     "@repo/landing": ["@repo/landing@workspace:apps/landing"],
 
     "@repo/landing-static": ["@repo/landing-static@workspace:apps/landing-static"],
+
+    "@repo/messages": ["@repo/messages@workspace:packages/messages"],
 
     "@repo/storybook": ["@repo/storybook@workspace:platform/apps/storybook"],
 

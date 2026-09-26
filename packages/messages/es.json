@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Tu punto de partida.",
+    "headingLine2": "Construye desde aquí.",
+    "description": "Autenticación, base de datos, sincronización en tiempo real y carga de archivos — todo conectado y listo.",
+    "getStarted": "Comenzar",
+    "signIn": "Iniciar sesión",
+    "footer": {
+      "about": "Acerca de",
+      "privacyPolicy": "Política de privacidad",
+      "termsOfService": "Términos de servicio"
+    },
+    "waitlist": {
+      "title": "Unirse a la lista de espera",
+      "description": "Solicite acceso uniéndose a la lista de espera.",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "usted@ejemplo.es",
+      "superpowersLabel": "¿Cuál es tu superpoder?",
+      "superpowersPlaceholder": "Elige tus superpoderes",
+      "excitementLabel": "¿Qué tan emocionado estás?",
+      "excitementPlaceholder": "Cuéntanos cómo te sientes",
+      "roleLabel": "Tu rol (opcional)",
+      "rolePlaceholder": "Selecciona tu rol",
+      "companyLabel": "Empresa (opcional)",
+      "companyPlaceholder": "Acme S.A.",
+      "useCaseLabel": "¿Qué piensas construir? (opcional)",
+      "useCasePlaceholder": "Un portal de clientes, una herramienta interna…",
+      "roles": {
+        "founder": "Fundador/a",
+        "engineering": "Ingeniería",
+        "product": "Producto",
+        "design": "Diseño",
+        "agency": "Agencia",
+        "other": "Otro"
+      },
+      "selectedCount": "{count} seleccionado(s)",
+      "submit": "Unirse a la lista",
+      "submitting": "Registrando...",
+      "successTitle": "¡Está en la lista!",
+      "successDescription": "Le enviaremos una invitación cuando sea su turno.",
+      "alreadySignedUp": "¿Ya tiene una cuenta?",
+      "signIn": "Iniciar sesión",
+      "superpowers": {
+        "coffee-to-code": "Convertir café en código",
+        "pixel-perfect": "Hacer que los píxeles sean perfectos",
+        "bug-whisperer": "Susurrador de bugs",
+        "spreadsheet-wizard": "Magia con hojas de cálculo",
+        "inbox-zero": "Bandeja de entrada vacía todos los días",
+        "parallel-parking": "Aparcar en paralelo al primer intento",
+        "remembering-names": "Recordar el nombre de todos",
+        "never-burning-toast": "Nunca quemar las tostadas",
+        "explaining-tech": "Explicar la tecnología a los padres",
+        "finding-restaurants": "Encontrar los mejores restaurantes",
+        "staying-calm": "Mantener la calma en reuniones largas",
+        "other": "Algo completamente diferente"
+      },
+      "excitement": {
+        "take-my-money": "¡Toma mi dinero!",
+        "cant-wait": "No puedo esperar a probarlo",
+        "cautiously-optimistic": "Cautelosamente optimista",
+        "just-browsing": "Solo estoy mirando",
+        "friend-made-me": "Un amigo me obligó a registrarme"
+      },
+      "errors": {
+        "waitlistNotEnabled": "La lista de espera no está aceptando registros en este momento. Inténtelo de nuevo más tarde.",
+        "invalidEmail": "Por favor, introduzca una dirección de correo electrónico válida.",
+        "rateLimited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
+        "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
+      }
+    },
+    "fallback": {
+      "title": "El registro no está disponible temporalmente",
+      "description": "No podemos conectar con nuestros servicios en este momento y seguiremos intentándolo en segundo plano. Aún puedes iniciar sesión en una cuenta existente.",
+      "bookDemo": "Reservar una demo",
+      "contact": "Contáctanos"
+    }
+  },
+  "dashboard": {
+    "projects": "Proyectos",
+    "noProjects": "Aún no hay proyectos",
+    "noProjectsDescription": "Crea un proyecto para empezar.",
+    "projectNotFound": "Proyecto no encontrado",
+    "projectNotFoundDescription": "Este proyecto puede haber sido eliminado.",
+    "tabs": {
+      "tasks": "Tareas",
+      "attachments": "Adjuntos"
+    },
+    "security": "Seguridad",
+    "sessions": {
+      "title": "Sesiones activas",
+      "description": "Gestiona tus sesiones activas en todos los dispositivos. Puedes cerrar sesión en cualquier dispositivo que no reconozcas.",
+      "currentSession": "Este dispositivo",
+      "otherSessions": "Otros dispositivos",
+      "current": "Actual",
+      "lastActive": "Activo {time}",
+      "noOtherSessions": "No hay otras sesiones activas. Solo tienes sesión iniciada en este dispositivo.",
+      "revokeAll": "Cerrar todas las demás",
+      "revokeAllTitle": "¿Cerrar sesión en todos los demás dispositivos?",
+      "revokeAllDescription": "Se cerrará tu sesión en todos los demás dispositivos y navegadores. Solo tu sesión actual permanecerá activa.",
+      "revokeAllConfirm": "Cerrar todas",
+      "revokeTitle": "¿Cerrar sesión en este dispositivo?",
+      "revokeDescription": "Esto finalizará la sesión de {device}. Deberá iniciar sesión de nuevo para acceder a la cuenta.",
+      "backToDashboard": "Volver al panel",
+      "loadError": "No se pudieron cargar las sesiones.",
+      "revokeError": "No se pudo cerrar la sesión.",
+      "revokeAllError": "No se pudieron cerrar las sesiones."
+    },
+    "account": "Ajustes",
+    "profile": {
+      "title": "Perfil",
+      "description": "Gestiona la información de tu perfil y tus preferencias.",
+      "name": "Nombre para mostrar",
+      "namePlaceholder": "Tu nombre",
+      "email": "Correo electrónico",
+      "emailReadonly": "Contacta con soporte para cambiar tu correo electrónico.",
+      "avatarColor": "Color del avatar",
+      "saved": "Perfil actualizado.",
+      "language": "Idioma",
+      "timezone": "Zona horaria",
+      "timezonePlaceholder": "Selecciona tu zona horaria",
+      "timezoneSearch": "Buscar zonas horarias...",
+      "timezoneDetected": "Detectada",
+      "noTimezoneResults": "No se encontró zona horaria.",
+      "theme": "Tema"
+    },
+    "changePassword": {
+      "title": "Cambiar contraseña",
+      "currentPassword": "Contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "revokeOtherSessions": "Cerrar sesión en todos los demás dispositivos",
+      "cta": "Actualizar contraseña",
+      "success": "Contraseña actualizada correctamente.",
+      "errorCurrentPassword": "La contraseña actual es incorrecta."
+    },
+    "twoFactor": {
+      "title": "Autenticación en dos pasos",
+      "description": "Añade una capa extra de seguridad a tu cuenta.",
+      "enabled": "2FA está activado",
+      "disabled": "2FA no está activado",
+      "enable": "Activar 2FA",
+      "disable": "Desactivar 2FA",
+      "enterPassword": "Introduce tu contraseña para continuar.",
+      "scanQrCode": "Escanea este código QR con tu aplicación de autenticación (p. ej. Google Authenticator, Authy).",
+      "manualEntry": "¿No puedes escanear? Introduce esta clave manualmente",
+      "manualEntryDescription": "Abre tu aplicación de autenticación, elige \"Añadir cuenta\", luego selecciona \"Introducir clave de configuración\" y pega la clave a continuación.",
+      "secretKey": "Clave secreta",
+      "copied": "Copiado al portapapeles",
+      "enterCode": "Introduce el código de 6 dígitos de tu aplicación de autenticación para verificar la configuración.",
+      "verify": "Verificar",
+      "backupCodes": "Códigos de respaldo",
+      "backupCodesDescription": "Guarda estos códigos en un lugar seguro. Cada código solo se puede usar una vez.",
+      "viewBackupCodes": "Ver códigos de respaldo",
+      "regenerateBackupCodes": "Regenerar códigos de respaldo",
+      "disableConfirm": "¿Estás seguro de que quieres desactivar 2FA?",
+      "regenerateConfirm": "Esto reemplazará sus códigos de respaldo existentes. Los códigos no utilizados dejarán de funcionar.",
+      "codePlaceholder": "000000",
+      "requiredNotice": "La política de tu cuenta exige autenticación de dos factores. Completa la configuración para continuar."
+    },
+    "passkeys": {
+      "title": "Claves de acceso",
+      "description": "Añade y administra claves de acceso para iniciar sesión más rápido y con protección contra el phishing.",
+      "policy": "Política: {policy}",
+      "disabled": "Desactivado",
+      "optional": "Opcional",
+      "required": "Obligatorio",
+      "disabledDescription": "El inicio de sesión con clave de acceso está desactivado para tu cuenta.",
+      "nameLabel": "Nombre de la nueva clave de acceso (opcional)",
+      "namePlaceholder": "Mi portátil",
+      "add": "Añadir clave de acceso",
+      "adding": "Añadiendo...",
+      "empty": "Todavía no hay claves de acceso.",
+      "unnamed": "Clave de acceso sin nombre",
+      "singleDevice": "Clave vinculada al dispositivo",
+      "multiDevice": "Clave sincronizada",
+      "rename": "Renombrar clave de acceso {name}",
+      "remove": "Eliminar clave de acceso {name}",
+      "name": "Nombre de la clave de acceso",
+      "loadError": "No se pudieron cargar las claves de acceso.",
+      "addError": "No se pudo añadir la clave de acceso.",
+      "renameError": "No se pudo renombrar la clave de acceso.",
+      "deleteError": "No se pudo eliminar la clave de acceso.",
+      "added": "Clave de acceso añadida.",
+      "renamed": "Clave de acceso actualizada.",
+      "deleted": "Clave de acceso eliminada.",
+      "unsupportedTitle": "Este dispositivo o navegador no admite claves de acceso.",
+      "unsupportedDescription": "Inicia sesión desde un dispositivo o navegador compatible para configurar una clave de acceso.",
+      "requiredNotice": "La política de tu cuenta exige una clave de acceso. Añade una para continuar.",
+      "signInRequired": "Tu cuenta requiere iniciar sesión con una clave de acceso."
+    }
+  },
+  "projects": {
+    "newProject": "Nuevo proyecto",
+    "createProject": "Crear proyecto",
+    "createFirst": "Crea tu primer proyecto",
+    "noProjects": "Sin proyectos",
+    "editProject": "Editar proyecto",
+    "deleteProject": "Eliminar proyecto",
+    "deleteConfirmTitle": "¿Eliminar proyecto?",
+    "deleteConfirmDescription": "Esto eliminará permanentemente “{name}” y todas sus tareas. Esta acción no se puede deshacer.",
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "Nombre del proyecto",
+      "description": "Descripción",
+      "descriptionPlaceholder": "¿De qué trata este proyecto?"
+    }
+  },
+  "tasks": {
+    "title": "Tareas",
+    "addTask": "Añadir tarea",
+    "newTask": "Nueva tarea",
+    "editTask": "Editar tarea",
+    "deleteTask": "Eliminar tarea",
+    "confirmDelete": "Confirmar eliminación",
+    "createTask": "Crear tarea",
+    "noTasks": "Aún no hay tareas. Añade una para empezar.",
+    "noTasksSummary": "Aún no hay tareas",
+    "progress": "{doneCount} de {totalCount} tareas completadas",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Estado",
+      "todo": "Pendiente",
+      "inProgress": "En progreso",
+      "done": "Hecho",
+      "all": "Todas"
+    },
+    "fields": {
+      "title": "Título",
+      "titlePlaceholder": "¿Qué hay que hacer?",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Añadir detalles...",
+      "deadline": "Fecha límite",
+      "deadlinePlaceholder": "Sin fecha límite",
+      "clearDeadline": "Eliminar fecha límite"
+    },
+    "deadline": {
+      "overdue": "Atrasada",
+      "dueToday": "Vence hoy"
+    },
+    "aria": {
+      "changeStatus": "Cambiar estado desde {status}"
+    },
+    "count": "{count, plural, =0 {Aún no hay tareas} one {# tarea} other {# tareas}}"
+  },
+  "uploads": {
+    "title": "Adjuntos",
+    "addFile": "Añadir archivo",
+    "uploading": "Subiendo...",
+    "processing": "Procesando",
+    "view": "Ver",
+    "deleteFile": "Eliminar archivo",
+    "emptyState": "Sube archivos para ver el flujo de almacenamiento de Convex.",
+    "errors": {
+      "tooLarge": "Archivo demasiado grande (máx. 1MB)",
+      "uploadFailed": "La subida falló. Inténtalo de nuevo.",
+      "generic": "La subida falló."
+    },
+    "count": "{count, plural, =0 {Sin adjuntos} one {# adjunto} other {# adjuntos}}"
+  },
+  "metadata": {
+    "description": "Un starter de Next.js con Convex, Better Auth y Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Acerca de",
+      "description": "Aprende sobre {productName} y nuestra misión.",
+      "notice": "Este es contenido de marcador de posición. Reemplázalo con tu propio contenido antes de lanzar.",
+      "heading": "Acerca de",
+      "mission": "Nuestra Misión",
+      "missionText": "Creemos que los desarrolladores deben pasar su tiempo construyendo funciones, no configurando infraestructura. {productName} proporciona un punto de partida listo para producción con sincronización de datos en tiempo real, carga de archivos y autenticación basada en sesiones, todo ya conectado y listo.",
+      "whatIncluded": "Qué está Incluido",
+      "whatIncludedText": "El kit de inicio incluye una página de aterrizaje, una aplicación web completamente autenticada, un panel de administración y un storybook de componentes. Cada aplicación comparte un sistema de diseño unificado construido sobre primitivos de Radix UI con Tailwind CSS.",
+      "openSource": "Código Abierto",
+      "openSourceText": "Este proyecto es de código abierto y está diseñado para ser bifurcado y personalizado.",
+      "intro": "{productName} es una base de pila completa para construir aplicaciones web modernas. Combina Next.js para el frontend, Convex para el backend y Better Auth para autenticación segura — todo conectado y listo para enviar."
+    },
+    "privacy": {
+      "title": "Política de Privacidad",
+      "description": "Cómo recopilamos, usamos y protegemos tus datos.",
+      "notice": "Esta es una política de privacidad de plantilla. Personalízala para tu aplicación específica y jurisdicción antes de lanzar.",
+      "heading": "Política de Privacidad",
+      "lastUpdated": "Última actualización: {date}"
+    },
+    "terms": {
+      "title": "Términos de Servicio",
+      "description": "Las reglas y directrices para usar nuestro servicio.",
+      "notice": "Estos son términos de servicio de plantilla. Personalízalos para tu aplicación específica y jurisdicción antes de lanzar.",
+      "heading": "Términos de Servicio",
+      "lastUpdated": "Última actualización: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Proyecto no encontrado.",
+    "taskNotFound": "Tarea no encontrada.",
+    "fileNotFound": "Archivo no encontrado en el almacenamiento.",
+    "fileTooLarge": "Archivo demasiado grande (máx. 1 MB).",
+    "uploadNotFound": "Subida no encontrada."
+  }
+}

@@ -2,6 +2,9 @@
 
 import messages from "@web-app-starter/i18n/messages/en.json";
 
+// Admin is English-only; these strings are the admin's own, not the web app's.
+const BACKUP_CODES_DESCRIPTION = "Save these codes in a safe place. Each code can only be used once.";
+
 import * as React from "react";
 import { useAction } from "convex/react";
 import { ArrowLeft, Download } from "lucide-react";
@@ -55,10 +58,10 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
 
   const handleDownload = () => {
     const content = [
-      `${appConfig.identity.productName} — Admin ${messages.dashboard.twoFactor.backupCodes}`,
+      `${appConfig.identity.productName} — Admin Backup codes`,
       "=====================================",
       "",
-      messages.dashboard.twoFactor.backupCodesDescription,
+      BACKUP_CODES_DESCRIPTION,
       "",
       ...codes,
       "",
@@ -118,7 +121,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
           <CopyableField
             value={codes.join("\n")}
             rows={10}
-            onCopied={() => toast.success(messages.dashboard.twoFactor.copied)}
+            onCopied={() => toast.success("Copied to clipboard")}
             onCopyError={() => toast.error("Failed to copy.")}
           />
 

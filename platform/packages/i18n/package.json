@@ -2,14 +2,19 @@
   "name": "@web-app-starter/i18n",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
     "./request": "./src/request.ts",
     "./navigation": "./src/navigation.ts",
-    "./messages/*": "./messages/*"
+    "./messages/*": "./messages/*",
+    "./merge": "./src/merge.ts",
+    "./messages": "./src/messages.ts"
   },
   "dependencies": {
+    "@repo/messages": "workspace:*",
+    "@web-app-starter/app-config": "workspace:*",
     "next-intl": "^4.8.2"
   },
   "peerDependencies": {

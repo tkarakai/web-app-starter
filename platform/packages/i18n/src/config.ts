@@ -1,11 +1,30 @@
-/** Supported locales — add new locales here and provide a matching messages/*.json file. */
-export const locales = [
+import { appConfig } from "@web-app-starter/app-config";
+
+/**
+ * Every locale the platform translates its own strings into (platform/packages/i18n/messages).
+ * Apps choose which of them they ship with `i18n.locales` in app.config.ts.
+ */
+export const allLocales = [
   "en", "cs", "de", "es", "fr", "it", "hu", "nl", "pl",
   "pt", "ru", "zh", "ja", "ar", "he",
 ] as const;
-export type Locale = (typeof locales)[number];
+export type Locale = (typeof allLocales)[number];
 
 export const defaultLocale: Locale = "en";
+
+/** Check a locale list against the supported set; throws naming any unknown locale. */
+export function selectLocales(requested: readonly string[]): readonly Locale[] {
+  const unknown = requested.filter((locale) => !(allLocales as readonly string[]).includes(locale));
+  if (unknown.length > 0) {
+    throw new Error(
+      `app.config.ts i18n.locales: unsupported locale(s) ${unknown.join(", ")}; supported: ${allLocales.join(", ")}`,
+    );
+  }
+  return requested as readonly Locale[];
+}
+
+/** The locales this app ships: `i18n.locales` from app.config.ts, in that order. */
+export const locales: readonly Locale[] = selectLocales(appConfig.i18n.locales);
 
 /** Metadata for each locale used in the language selector UI. */
 export const localeMetadata: Record<

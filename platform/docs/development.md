@@ -34,6 +34,7 @@ The root `app.config.ts` holds every value an app built on the starter is expect
 | `runtime` | local port per app, Better Auth cookie prefix | dev scripts, each app's `dev` script, Playwright configs, CI, `@web-app-starter/auth`, both proxies, both `clear-session` routes, Convex `auth.ts` and `sessions.ts` |
 | `brand` | icon sources, design-token overrides, email palette, `lang` and footer | `copy-shared-assets.sh`, `BrandTokenStyle` in each root layout, Convex email templates |
 | `features` | `waitlist`, `invitations`, `announcements`, `environmentBanner` | admin feature controls and navigation, announcement banners, environment banner |
+| `i18n` | `locales` | the locales every app routes, lists and loads app messages for (`@web-app-starter/i18n` `locales`); `bun run check:i18n` |
 
 It is validated when loaded (`platform/packages/app-config/src/schema.ts`); an invalid or unknown value
 stops dev, build and tests with a message naming each bad setting. Everything in it is public:

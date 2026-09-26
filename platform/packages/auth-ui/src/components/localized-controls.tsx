@@ -22,6 +22,6 @@ export function OtpInput(props: ComponentProps<typeof BaseOtpInput>): ReactEleme
 }
 
 export function PasskeyUnsupportedAlert(props: ComponentProps<typeof BasePasskeyUnsupportedAlert>): ReactElement {
-  const t = useTranslations("dashboard.passkeys");
+  const t = useTranslations("auth.passkeys");
   return <BasePasskeyUnsupportedAlert title={t("unsupportedTitle")} description={t("unsupportedDescription")} {...props} />;
 }

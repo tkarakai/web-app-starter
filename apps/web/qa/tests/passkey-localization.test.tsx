@@ -1,8 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import french from "@web-app-starter/i18n/messages/fr.json";
+import platformFrench from "@web-app-starter/i18n/messages/fr.json";
+import appFrench from "@repo/messages/fr.json";
 import { PasskeySection } from "@/components/settings/passkey-section";
+
+// Platform and app namespaces, as the app loads them.
+const french = { ...platformFrench, ...appFrench };
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),

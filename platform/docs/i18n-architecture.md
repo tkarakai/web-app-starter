@@ -9,22 +9,50 @@ The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n libr
 ### Scope
 
 **Scope:** web, landing and landing-static localize their user-visible text.
-Admin remains English-only and imports existing entries from
-`@web-app-starter/i18n/messages/en.json` where applicable; it does not need locale routing.
+Admin remains English-only and imports platform entries from
+`@web-app-starter/i18n/messages/en.json` where applicable (never app namespaces); it does not
+need locale routing.
 The product name is not translated content: it is `identity.productName` in the
 root `app.config.ts`. Messages that mention it take it as the `{productName}`
 argument (`t("intro", { productName })`), so renaming the product touches no locale
-file; a test fails if a catalog contains the name. Business apps own their message
-values and extra keys, preserve required starter keys and interpolation parameters,
-and resolve locale merges on upgrades.
+file; a test fails if a catalog contains the name.
 
-`apps/web/qa/tests/message-catalogues.test.ts` checks every supported catalog for
-required keys, ICU syntax and matching interpolation parameters. Run it through
-`bun run --cwd apps/web test`. Locale values may differ, and extra keys are allowed.
-The web app's `localized-controls.tsx` supplies current-locale labels to shared
+`bun run check:i18n` (CI runs it) checks key parity of the platform and app files, namespace
+ownership and stale overrides (see "Message ownership" below).
+`apps/web/qa/tests/message-catalogues.test.ts` checks every shipped catalog, as merged, for ICU
+syntax and matching interpolation parameters. Run it through `bun run --cwd apps/web test`.
+The web app's `localized-controls.tsx` and `@web-app-starter/auth-ui` supply current-locale labels to shared
 primitives without making the design system depend on i18n. The static landing
 404 reads its URL locale after hydration because static hosting serves one
 `404.html`; its initial HTML uses the English catalog.
+
+---
+
+## Message ownership: platform and app files
+
+Each top-level namespace has exactly one owner, and the loader merges them at request time
+(`loadMessages(locale)` in `platform/packages/i18n/src/messages.ts`, used by
+`@web-app-starter/i18n/request`):
+
+| File | Owner | Holds |
+|---|---|---|
+| `platform/packages/i18n/messages/<locale>.json` | Platform (never edited in an app) | `common`, `theme`, `language`, `offline`, `auth`, `errors`, `passwordStrength`, `forbidden`, `timezones`, in all 15 supported locales |
+| `packages/messages/<locale>.json` (`@repo/messages`) | App | The app's namespaces: in the reference apps `metadata`, `landing`, `legal`, `dashboard`, `projects`, `tasks`, `uploads`, `sampleErrors`. Needed only for the locales the app ships |
+| `packages/messages/overrides.json` | App | App wording for platform strings: `{ "<locale>": { "<platform namespace>": { ... } } }`, deep-merged over the platform's messages, one string at a time |
+
+- **Adding an app string touches no platform file**: it goes into the app's own namespace in
+  `packages/messages/` (the `platform-add-strings` skill).
+- **Locale subset.** `i18n.locales` in `app.config.ts` lists the locales the apps ship (a subset of
+  `allLocales` that includes `en`); routing, the language selector and the checks follow it. The
+  platform keeps translating its own strings into all 15.
+- **Validation** (`bun run check:i18n`, `platform/tooling/check-i18n.ts`): platform files match the
+  English keys; every shipped locale has an app file with the app's English keys; no app
+  namespace has a platform namespace's name; every override names an existing platform string in
+  a shipped locale. A stale override (the platform renamed or removed the key, usually in an
+  upgrade) is reported with its path; at runtime it would be ignored.
+- **Merging is pure** (`@web-app-starter/i18n/merge`: `mergeMessages`, `deepMerge`,
+  `namespaceClashes`, `staleOverrides`), so tests and tools share it. Component tests render with
+  both catalogues: `{ ...platformFr, ...appFr }`.
 
 ---
 
@@ -34,11 +62,13 @@ primitives without making the design system depend on i18n. The static landing
 platform/packages/i18n/                     # @web-app-starter/i18n
 ├── src/
 │   ├── index.ts                   # Re-exports config types and utilities
-│   ├── config.ts                  # Locale list, metadata, RTL detection
+│   ├── config.ts                  # Supported locales, the app's subset, metadata, RTL detection
+│   ├── messages.ts                # loadMessages(): platform + app (@repo/messages) + overrides
+│   ├── merge.ts                   # Pure merge and validation helpers
 │   ├── request.ts                 # next-intl getRequestConfig() for server
 │   └── navigation.ts             # Typed Link, redirect, usePathname, useRouter
 ├── messages/
-│   └── en.json                    # English translations (source of truth)
+│   └── <locale>.json              # Platform namespaces, 15 locales (en is the source of truth)
 ├── package.json
 └── tsconfig.json
 ```
@@ -47,10 +77,12 @@ platform/packages/i18n/                     # @web-app-starter/i18n
 
 | Export Path | Contents |
 |-------------|----------|
-| `@web-app-starter/i18n` | `locales`, `defaultLocale`, `localeMetadata`, `getLocaleDirection`, `Locale` type |
+| `@web-app-starter/i18n` | `allLocales`, `locales` (the app's subset), `defaultLocale`, `localeMetadata`, `getLocaleDirection`, `selectLocales`, `Locale` type, merge helpers |
+| `@web-app-starter/i18n/messages` | `loadMessages(locale)`, `platformMessages` |
+| `@web-app-starter/i18n/merge` | `mergeMessages`, `deepMerge`, `namespaceClashes`, `staleOverrides` (no imports; safe in tools) |
 | `@web-app-starter/i18n/request` | Server-side request configuration for next-intl |
 | `@web-app-starter/i18n/navigation` | `Link`, `redirect`, `usePathname`, `useRouter`, `getPathname` |
-| `@web-app-starter/i18n/messages/*` | Direct access to JSON message files |
+| `@web-app-starter/i18n/messages/*` | Direct access to the platform's JSON message files (app files: `@repo/messages/*.json`) |
 
 ---
 
@@ -314,7 +346,7 @@ This pattern keeps shared packages locale-agnostic while allowing full translati
 
 ## Translation File Structure
 
-All translations live in `platform/packages/i18n/messages/en.json`. The file is organized by domain namespace:
+Translations are split by owner (see "Message ownership"): platform namespaces in `platform/packages/i18n/messages/<locale>.json`, app namespaces in `packages/messages/<locale>.json`. Merged, English is organized by domain namespace:
 
 ```json
 {
@@ -327,8 +359,9 @@ All translations live in `platform/packages/i18n/messages/en.json`. The file is 
   "projects":  { "newProject", "editProject", "deleteConfirmTitle", "deleteConfirmDescription", "fields": {...} },
   "tasks":     { "title", "addTask", "status": {...}, "fields": {...}, "aria": {...}, "progress", "count" },
   "uploads":   { "title", "addFile", "uploading", "errors": {...}, "count" },
-  "errors":    { "NOT_AUTHENTICATED", "PROJECT_NOT_FOUND", "TASK_NOT_FOUND", ... },
-  "metadata":  { "title", "description" }
+  "errors":    { "NOT_AUTHENTICATED", "convex": { "rateLimited", "notAuthenticated", "connectionLost", "serverError" } },
+  "sampleErrors": { "projectNotFound", "taskNotFound", "fileNotFound", "fileTooLarge", "uploadNotFound" },
+  "metadata":  { "description" }
 }
 ```
 
@@ -399,35 +432,28 @@ throw new Error("UPLOAD_NOT_FOUND");
 
 ### Client-Side Error Mapping
 
-`apps/web/src/lib/error-messages.ts` maps error codes to translation keys:
+`ConvexErrorToast` (`@web-app-starter/auth-ui`) turns Convex error codes into toasts. The platform's
+codes (`RATE_LIMITED`, `NOT_AUTHENTICATED`, `CONNECTION_LOST`, `SERVER_ERROR`) map to
+`errors.convex.*`; the app passes its own codes as `appErrorKeys`, mapped to keys in its own
+namespaces (`apps/web/src/lib/app-error-keys.ts`):
 
 ```ts
-const ERROR_CODE_MAP: Record<string, string> = {
-  NOT_AUTHENTICATED: "errors.NOT_AUTHENTICATED",
-  PROJECT_NOT_FOUND: "errors.PROJECT_NOT_FOUND",
-  TASK_NOT_FOUND:    "errors.TASK_NOT_FOUND",
-  FILE_NOT_FOUND:    "errors.FILE_NOT_FOUND",
-  FILE_TOO_LARGE:    "errors.FILE_TOO_LARGE",
-  UPLOAD_NOT_FOUND:  "errors.UPLOAD_NOT_FOUND",
+export const APP_ERROR_KEYS = {
+  PROJECT_NOT_FOUND: "sampleErrors.projectNotFound",
+  TASK_NOT_FOUND:    "sampleErrors.taskNotFound",
+  // ...
 };
-
-export function getErrorMessageKey(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return ERROR_CODE_MAP[message] ?? "common.error";
-}
+// <ConvexErrorToast appErrorKeys={APP_ERROR_KEYS} />
 ```
 
-Usage in components:
+Components that handle an error themselves look the key up the same way:
 
 ```tsx
-const t = useTranslations();
+import { errorMessageKey } from "@web-app-starter/auth-ui";
 
-try {
-  await mutation(args);
-} catch (error) {
-  const key = getErrorMessageKey(error);
-  toast.error(t(key)); // Translated error message
-}
+const t = useTranslations();
+const key = errorMessageKey(code, APP_ERROR_KEYS) ?? "errors.convex.serverError";
+toast.error(t(key));
 ```
 
 ---
@@ -463,7 +489,7 @@ interface LanguageSelectorProps {
 
 ### LocaleSwitcher Wrapper
 
-`apps/web/src/components/ui/locale-switcher.tsx` wraps `LanguageSelector` with navigation logic:
+`LocaleSwitcher` (`@web-app-starter/auth-ui`, `platform/packages/auth-ui/src/components/locale-switcher.tsx`) wraps `LanguageSelector` with navigation logic:
 
 ```tsx
 "use client";
@@ -606,19 +632,23 @@ All locales are configured in `platform/packages/i18n/src/config.ts` with metada
 
 ## Adding a New Language
 
-To add a new language (e.g., French):
+**Shipping a supported locale in your app** (one of the 15): add it to `i18n.locales` in
+`app.config.ts` and add `packages/messages/<locale>.json` with your namespaces translated (and
+its loader line in `packages/messages/index.ts`). `bun run check:i18n` lists any missing key.
+
+**Adding a locale to the platform** (platform maintainers):
 
 ### Step 1: Create the translation file
 
-Copy `platform/packages/i18n/messages/en.json` to `platform/packages/i18n/messages/fr.json` and translate all values.
+Copy `platform/packages/i18n/messages/en.json` to `platform/packages/i18n/messages/fr.json` and translate all values, and add its loader to `platformMessages` in `platform/packages/i18n/src/messages.ts`.
 
 ### Step 2: Register the locale
 
-In `platform/packages/i18n/src/config.ts`:
+In `platform/packages/i18n/src/config.ts`, add it to `allLocales` and `localeMetadata`:
 
 ```diff
--export const locales = ["en"] as const;
-+export const locales = ["en", "fr"] as const;
+-export const allLocales = ["en"] as const;
++export const allLocales = ["en", "fr"] as const;
 
  export const localeMetadata: Record<Locale, { name: string; nativeName: string; dir: "ltr" | "rtl" }> = {
    en: { name: "English", nativeName: "English", dir: "ltr" },

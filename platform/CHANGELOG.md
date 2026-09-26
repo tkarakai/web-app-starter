@@ -83,6 +83,26 @@ version. Release-specific compatibility and deployment steps are listed explicit
   build it from the package's `AuthPageShell` and forms instead of the old local components.
   **Done when:** `test ! -e apps/web/src/components/auth`, and `bun run typecheck`,
   `bun run test:unit` and the auth E2E suite (`bun run test:e2e`) pass.
+- **Who is affected:** every app that added or changed strings in
+  `platform/packages/i18n/messages/*.json`. Messages are split by owner and merged at load:
+  the platform's files keep only platform namespaces (`common`, `theme`, `language`, `offline`,
+  `auth`, `errors`, `passwordStrength`, `forbidden`, `timezones`); app namespaces live in the new
+  app-owned package `packages/messages/` (`@repo/messages`, `<locale>.json`), and app wording for
+  platform strings in `packages/messages/overrides.json`. The reference app's namespaces
+  (`metadata`, `landing`, `legal`, `dashboard`, `projects`, `tasks`, `uploads`) moved there; the
+  sample-domain error strings moved from `errors` to `sampleErrors`, and the auth forms' passkey
+  strings gained a platform copy under `auth.passkeys`. `app.config.ts` gains a required
+  `i18n.locales` (the locales you ship, including `en`); `locales` from `@web-app-starter/i18n` is
+  now that subset and `allLocales` the full set.
+  **What to do:** take the starter's `platform/packages/i18n/messages/` wholesale. Move each of
+  your own namespaces from your old copies of those files into `packages/messages/<locale>.json`;
+  where you had changed a platform string, put the new wording in `overrides.json` under
+  `{ "<locale>": { "<namespace>": { ... } } }`. Add `i18n: { locales: [...] }` to `app.config.ts`,
+  add `@repo/messages` to each Next app's dependencies and `transpilePackages`, and in component
+  tests render with `{ ...platformMessages, ...appMessages }`. Code that read
+  `errors.convex.projectNotFound` (etc.) or `errors.PROJECT_NOT_FOUND` reads `sampleErrors.*`.
+  **Done when:** `bun run check:i18n` passes (it names missing keys, namespace clashes and
+  stale overrides) and `bun run --cwd apps/web test` passes.
 - **Who is affected:** apps whose hosted (staging or production) Convex deployment has no
   `RESEND_API_KEY`. Auth and invitation emails there used to be written to the Convex logs;
   they now fail with `EMAIL_DELIVERY_NOT_CONFIGURED`.
@@ -123,6 +143,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and
   default views, shared by the web app and (for its equivalents) admin, and
   `platform/tooling/codemods/v2-auth-ui.ts`, the codemod for its imports.
+- `bun run check:i18n` (`platform/tooling/check-i18n.ts`, run in CI): message key parity,
+  namespace ownership and stale-override validation; `loadMessages`, `mergeMessages` and
+  `staleOverrides` in `@web-app-starter/i18n`; `i18n.locales` in `app.config.ts` to ship a subset
+  of the 15 locales.
 - `platform/tooling/codemods/v2-convex-platform.ts`: the codemod for the Convex
   `convex/platform/` move (idempotent; `--check` for CI).
 - `platform/VERSION` (the installed platform version), `platform/templates/README.md` and

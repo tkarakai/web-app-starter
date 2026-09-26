@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Je startlijn.",
+    "headingLine2": "Bouw vanaf hier.",
+    "description": "Authenticatie, database, realtime synchronisatie en bestandsuploads — aangesloten en klaar.",
+    "getStarted": "Aan de slag",
+    "signIn": "Inloggen",
+    "footer": {
+      "about": "Over ons",
+      "privacyPolicy": "Privacybeleid",
+      "termsOfService": "Servicevoorwaarden"
+    },
+    "waitlist": {
+      "title": "Aanmelden voor de wachtlijst",
+      "description": "Vraag toegang aan door u aan te melden voor de wachtlijst.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "u@voorbeeld.nl",
+      "superpowersLabel": "Wat is jouw superkracht?",
+      "superpowersPlaceholder": "Kies je superkrachten",
+      "excitementLabel": "Hoe enthousiast ben je?",
+      "excitementPlaceholder": "Vertel ons hoe je je voelt",
+      "roleLabel": "Je rol (optioneel)",
+      "rolePlaceholder": "Kies je rol",
+      "companyLabel": "Bedrijf (optioneel)",
+      "companyPlaceholder": "Acme B.V.",
+      "useCaseLabel": "Wat wil je bouwen? (optioneel)",
+      "useCasePlaceholder": "Een klantportaal, een interne tool…",
+      "roles": {
+        "founder": "Oprichter",
+        "engineering": "Engineering",
+        "product": "Product",
+        "design": "Design",
+        "agency": "Bureau",
+        "other": "Anders"
+      },
+      "selectedCount": "{count} geselecteerd",
+      "submit": "Aanmelden",
+      "submitting": "Bezig met aanmelden...",
+      "successTitle": "U staat op de lijst!",
+      "successDescription": "We sturen u een uitnodiging wanneer u aan de beurt bent.",
+      "alreadySignedUp": "Heeft u al een account?",
+      "signIn": "Inloggen",
+      "superpowers": {
+        "coffee-to-code": "Koffie omzetten in code",
+        "pixel-perfect": "Pixels perfect maken",
+        "bug-whisperer": "Bug-fluisteraar",
+        "spreadsheet-wizard": "Spreadsheet-tovenarij",
+        "inbox-zero": "Elke dag een lege inbox",
+        "parallel-parking": "Inparkeren in één keer",
+        "remembering-names": "Ieders naam onthouden",
+        "never-burning-toast": "Nooit je toast laten aanbranden",
+        "explaining-tech": "Technologie uitleggen aan je ouders",
+        "finding-restaurants": "De beste restaurants vinden",
+        "staying-calm": "Kalm blijven in lange vergaderingen",
+        "other": "Iets heel anders"
+      },
+      "excitement": {
+        "take-my-money": "Neem mijn geld!",
+        "cant-wait": "Kan niet wachten om het te proberen",
+        "cautiously-optimistic": "Voorzichtig optimistisch",
+        "just-browsing": "Ik kijk alleen even rond",
+        "friend-made-me": "Een vriend heeft me aangemeld"
+      },
+      "errors": {
+        "waitlistNotEnabled": "De wachtlijst accepteert momenteel geen aanmeldingen. Probeer het later opnieuw.",
+        "invalidEmail": "Voer een geldig e-mailadres in.",
+        "rateLimited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+        "generic": "Er is iets misgegaan. Probeer het opnieuw."
+      }
+    },
+    "fallback": {
+      "title": "Registreren is tijdelijk niet beschikbaar",
+      "description": "We kunnen onze diensten op dit moment niet bereiken en blijven het op de achtergrond proberen. Je kunt nog steeds inloggen op een bestaand account.",
+      "bookDemo": "Demo boeken",
+      "contact": "Contact opnemen"
+    }
+  },
+  "dashboard": {
+    "projects": "Projecten",
+    "noProjects": "Nog geen projecten",
+    "noProjectsDescription": "Maak een project aan om te beginnen.",
+    "projectNotFound": "Project niet gevonden",
+    "projectNotFoundDescription": "Dit project is mogelijk verwijderd.",
+    "tabs": {
+      "tasks": "Taken",
+      "attachments": "Bijlagen"
+    },
+    "security": "Beveiliging",
+    "sessions": {
+      "title": "Actieve sessies",
+      "description": "Beheer je actieve sessies op alle apparaten. Je kunt elke sessie uitloggen die je niet herkent.",
+      "currentSession": "Dit apparaat",
+      "otherSessions": "Andere apparaten",
+      "current": "Huidig",
+      "lastActive": "Actief {time}",
+      "noOtherSessions": "Geen andere actieve sessies. Je bent alleen op dit apparaat ingelogd.",
+      "revokeAll": "Alle anderen uitloggen",
+      "revokeAllTitle": "Alle andere apparaten uitloggen?",
+      "revokeAllDescription": "Dit logt je uit op alle andere apparaten en browsers. Alleen je huidige sessie blijft actief.",
+      "revokeAllConfirm": "Alles uitloggen",
+      "revokeTitle": "Dit apparaat uitloggen?",
+      "revokeDescription": "Dit beëindigt de sessie voor {device}. Er moet opnieuw worden ingelogd om toegang te krijgen tot het account.",
+      "backToDashboard": "Terug naar dashboard",
+      "loadError": "Sessies laden is mislukt.",
+      "revokeError": "Sessie beëindigen is mislukt.",
+      "revokeAllError": "Sessies beëindigen is mislukt."
+    },
+    "account": "Instellingen",
+    "profile": {
+      "title": "Profiel",
+      "description": "Beheer je profielgegevens en voorkeuren.",
+      "name": "Weergavenaam",
+      "namePlaceholder": "Je naam",
+      "email": "E-mail",
+      "emailReadonly": "Neem contact op met support om je e-mail te wijzigen.",
+      "avatarColor": "Avatarkleur",
+      "saved": "Profiel bijgewerkt.",
+      "language": "Taal",
+      "timezone": "Tijdzone",
+      "timezonePlaceholder": "Selecteer je tijdzone",
+      "timezoneSearch": "Tijdzones zoeken...",
+      "timezoneDetected": "Gedetecteerd",
+      "noTimezoneResults": "Geen tijdzone gevonden.",
+      "theme": "Thema"
+    },
+    "changePassword": {
+      "title": "Wachtwoord wijzigen",
+      "currentPassword": "Huidig wachtwoord",
+      "newPassword": "Nieuw wachtwoord",
+      "confirmPassword": "Bevestig nieuw wachtwoord",
+      "revokeOtherSessions": "Alle andere apparaten uitloggen",
+      "cta": "Wachtwoord bijwerken",
+      "success": "Wachtwoord succesvol bijgewerkt.",
+      "errorCurrentPassword": "Huidig wachtwoord is onjuist."
+    },
+    "twoFactor": {
+      "title": "Tweefactorauthenticatie",
+      "description": "Voeg een extra beveiligingslaag toe aan je account.",
+      "enabled": "2FA is ingeschakeld",
+      "disabled": "2FA is niet ingeschakeld",
+      "enable": "2FA inschakelen",
+      "disable": "2FA uitschakelen",
+      "enterPassword": "Voer je wachtwoord in om door te gaan.",
+      "scanQrCode": "Scan deze QR-code met je authenticator-app (bijv. Google Authenticator, Authy).",
+      "manualEntry": "Kun je niet scannen? Voer deze sleutel handmatig in",
+      "manualEntryDescription": "Open je authenticator-app, kies \"Account toevoegen\", selecteer vervolgens \"Instelsleutel invoeren\" en plak de onderstaande sleutel.",
+      "secretKey": "Geheime sleutel",
+      "copied": "Gekopieerd naar klembord",
+      "enterCode": "Voer de 6-cijferige code van je authenticator-app in om de instelling te verifiëren.",
+      "verify": "Verifiëren",
+      "backupCodes": "Backupcodes",
+      "backupCodesDescription": "Bewaar deze codes op een veilige plek. Elke code kan maar één keer worden gebruikt.",
+      "viewBackupCodes": "Backupcodes bekijken",
+      "regenerateBackupCodes": "Backupcodes opnieuw genereren",
+      "disableConfirm": "Weet je zeker dat je 2FA wilt uitschakelen?",
+      "regenerateConfirm": "Dit vervangt uw bestaande back-upcodes. Ongebruikte codes werken niet meer.",
+      "codePlaceholder": "000000",
+      "requiredNotice": "Je accountbeleid vereist tweefactorauthenticatie. Voltooi de instellingen om door te gaan."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Voeg passkeys toe en beheer ze voor sneller inloggen met bescherming tegen phishing.",
+      "policy": "Beleid: {policy}",
+      "disabled": "Uitgeschakeld",
+      "optional": "Optioneel",
+      "required": "Verplicht",
+      "disabledDescription": "Inloggen met een passkey is uitgeschakeld voor je account.",
+      "nameLabel": "Naam van nieuwe passkey (optioneel)",
+      "namePlaceholder": "Mijn laptop",
+      "add": "Passkey toevoegen",
+      "adding": "Toevoegen...",
+      "empty": "Nog geen passkeys geregistreerd.",
+      "unnamed": "Naamloze passkey",
+      "singleDevice": "Apparaatgebonden passkey",
+      "multiDevice": "Gesynchroniseerde passkey",
+      "rename": "Passkey {name} hernoemen",
+      "remove": "Passkey {name} verwijderen",
+      "name": "Passkeynaam",
+      "loadError": "Passkeys laden is mislukt.",
+      "addError": "Passkey toevoegen is mislukt.",
+      "renameError": "Passkey hernoemen is mislukt.",
+      "deleteError": "Passkey verwijderen is mislukt.",
+      "added": "Passkey toegevoegd.",
+      "renamed": "Passkey bijgewerkt.",
+      "deleted": "Passkey verwijderd.",
+      "unsupportedTitle": "Dit apparaat of deze browser ondersteunt geen passkeys.",
+      "unsupportedDescription": "Log in vanaf een apparaat of browser met passkeyondersteuning om er een in te stellen.",
+      "requiredNotice": "Je accountbeleid vereist een passkey. Voeg er een toe om door te gaan.",
+      "signInRequired": "Voor je account moet je inloggen met een passkey."
+    }
+  },
+  "projects": {
+    "newProject": "Nieuw project",
+    "createProject": "Project aanmaken",
+    "createFirst": "Maak je eerste project aan",
+    "noProjects": "Geen projecten",
+    "editProject": "Project bewerken",
+    "deleteProject": "Project verwijderen",
+    "deleteConfirmTitle": "Project verwijderen?",
+    "deleteConfirmDescription": "Dit verwijdert “{name}” en alle bijbehorende taken permanent. Deze actie kan niet ongedaan worden gemaakt.",
+    "fields": {
+      "name": "Naam",
+      "namePlaceholder": "Projectnaam",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Waar gaat dit project over?"
+    }
+  },
+  "tasks": {
+    "title": "Taken",
+    "addTask": "Taak toevoegen",
+    "newTask": "Nieuwe taak",
+    "editTask": "Taak bewerken",
+    "deleteTask": "Taak verwijderen",
+    "confirmDelete": "Verwijdering bevestigen",
+    "createTask": "Taak aanmaken",
+    "noTasks": "Nog geen taken. Voeg er een toe om te beginnen.",
+    "noTasksSummary": "Nog geen taken",
+    "progress": "{doneCount} van {totalCount} taken klaar",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Status",
+      "todo": "Te doen",
+      "inProgress": "Bezig",
+      "done": "Klaar",
+      "all": "Alles"
+    },
+    "fields": {
+      "title": "Titel",
+      "titlePlaceholder": "Wat moet er gedaan worden?",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Details toevoegen...",
+      "deadline": "Deadline",
+      "deadlinePlaceholder": "Geen deadline",
+      "clearDeadline": "Deadline verwijderen"
+    },
+    "deadline": {
+      "overdue": "Achterstallig",
+      "dueToday": "Vandaag verlopen"
+    },
+    "aria": {
+      "changeStatus": "Status wijzigen van {status}"
+    },
+    "count": "{count, plural, =0 {Geen taken} one {# taak} other {# taken}}"
+  },
+  "uploads": {
+    "title": "Bijlagen",
+    "addFile": "Bestand toevoegen",
+    "uploading": "Uploaden...",
+    "processing": "Verwerken",
+    "view": "Bekijken",
+    "deleteFile": "Bestand verwijderen",
+    "emptyState": "Upload bestanden om de Convex-bestandsopslag in actie te zien.",
+    "errors": {
+      "tooLarge": "Bestand te groot (max. 1 MB)",
+      "uploadFailed": "Upload mislukt. Probeer het opnieuw.",
+      "generic": "Upload mislukt."
+    },
+    "count": "{count, plural, =0 {Geen bijlagen} one {# bijlage} other {# bijlagen}}"
+  },
+  "metadata": {
+    "description": "Een Next.js-starter met Convex, Better Auth en Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Over ons",
+      "description": "Meer informatie over {productName} en onze missie.",
+      "notice": "Dit is placeholder-inhoud. Vervang dit door je eigen inhoud voordat je start.",
+      "heading": "Over ons",
+      "mission": "Onze Missie",
+      "missionText": "Wij geloven dat ontwikkelaars hun tijd moeten besteden aan het bouwen van functies, niet aan het configureren van infrastructuur. {productName} biedt een productieklaar startpunt met real-time data synchronisatie, bestandsuploads en sessie-gebaseerde authenticatie, alles al aangesloten en klaar.",
+      "whatIncluded": "Wat is Inbegrepen",
+      "whatIncludedText": "De starterkit wordt geleverd met een landingspagina, een volledig geverifieerde webapplicatie, een admin-dashboard en een component-storybook. Elke app deelt een uniform designsysteem gebouwd op Radix UI-primitieven met Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Dit project is open source en is ontworpen om te worden geforkt en aangepast.",
+      "intro": "{productName} is een volledige stack-basis voor het bouwen van moderne webapplicaties. Het combineert Next.js voor de frontend, Convex voor de backend en Better Auth voor veilige authenticatie — alles aangesloten en klaar om te verzenden."
+    },
+    "privacy": {
+      "title": "Privacybeleid",
+      "description": "Hoe we je gegevens verzamelen, gebruiken en beschermen.",
+      "notice": "Dit is een privacybeleidssjabloon. Pas dit aan voor je specifieke toepassing en rechtsgebied voordat je start.",
+      "heading": "Privacybeleid",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    },
+    "terms": {
+      "title": "Servicevoorwaarden",
+      "description": "De regels en richtlijnen voor het gebruik van onze service.",
+      "notice": "Dit is een sjabloon van servicevoorwaarden. Pas dit aan voor je specifieke toepassing en rechtsgebied voordat je start.",
+      "heading": "Servicevoorwaarden",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Project niet gevonden.",
+    "taskNotFound": "Taak niet gevonden.",
+    "fileNotFound": "Bestand niet gevonden in opslag.",
+    "fileTooLarge": "Bestand te groot (max. 1 MB).",
+    "uploadNotFound": "Upload niet gevonden."
+  }
+}

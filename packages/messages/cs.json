@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Vaše startovní čára.",
+    "headingLine2": "Stavějte odsud.",
+    "description": "Autentizace, databáze, synchronizace v reálném čase a nahrávání souborů — propojeno a připraveno.",
+    "getStarted": "Začít",
+    "signIn": "Přihlásit se",
+    "footer": {
+      "about": "O nás",
+      "privacyPolicy": "Zásady ochrany osobních údajů",
+      "termsOfService": "Podmínky služby"
+    },
+    "waitlist": {
+      "title": "Připojit se na čekací listinu",
+      "description": "Požádejte o přístup připojením se na čekací listinu.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "vy@priklad.cz",
+      "superpowersLabel": "Jaká je tvoje superschopnost?",
+      "superpowersPlaceholder": "Vyber si své superschopnosti",
+      "excitementLabel": "Jak moc se těšíš?",
+      "excitementPlaceholder": "Řekni nám, jak se cítíš",
+      "roleLabel": "Vaše role (nepovinné)",
+      "rolePlaceholder": "Vyberte svou roli",
+      "companyLabel": "Společnost (nepovinné)",
+      "companyPlaceholder": "Acme s.r.o.",
+      "useCaseLabel": "Co plánujete vytvořit? (nepovinné)",
+      "useCasePlaceholder": "Zákaznický portál, interní nástroj…",
+      "roles": {
+        "founder": "Zakladatel",
+        "engineering": "Vývoj",
+        "product": "Produkt",
+        "design": "Design",
+        "agency": "Agentura",
+        "other": "Jiné"
+      },
+      "selectedCount": "{count} vybráno",
+      "submit": "Připojit se na listinu",
+      "submitting": "Zapisování...",
+      "successTitle": "Jste na seznamu!",
+      "successDescription": "Pošleme vám pozvánku, až na vás přijde řada.",
+      "alreadySignedUp": "Již máte účet?",
+      "signIn": "Přihlásit se",
+      "superpowers": {
+        "coffee-to-code": "Přeměna kávy na kód",
+        "pixel-perfect": "Dokonalé pixely",
+        "bug-whisperer": "Zaříkávač bugů",
+        "spreadsheet-wizard": "Kouzelník tabulek",
+        "inbox-zero": "Prázdná schránka každý den",
+        "parallel-parking": "Podélné parkování na první pokus",
+        "remembering-names": "Pamatuji si jména všech",
+        "never-burning-toast": "Nikdy nespálím toast",
+        "explaining-tech": "Vysvětlování techniky rodičům",
+        "finding-restaurants": "Hledání nejlepších restaurací",
+        "staying-calm": "Klid i na dlouhých poradách",
+        "other": "Něco úplně jiného"
+      },
+      "excitement": {
+        "take-my-money": "Vezměte si moje peníze!",
+        "cant-wait": "Nemůžu se dočkat",
+        "cautiously-optimistic": "Opatrný optimismus",
+        "just-browsing": "Jen se rozhlížím",
+        "friend-made-me": "Kamarád mě donutil se přihlásit"
+      },
+      "errors": {
+        "waitlistNotEnabled": "Čekací listina momentálně nepřijímá registrace. Zkuste to prosím později.",
+        "invalidEmail": "Zadejte prosím platnou e-mailovou adresu.",
+        "rateLimited": "Příliš mnoho požadavků. Počkejte chvíli a zkuste to znovu.",
+        "generic": "Něco se pokazilo. Zkuste to prosím znovu."
+      }
+    },
+    "fallback": {
+      "title": "Registrace je dočasně nedostupná",
+      "description": "Momentálně se nemůžeme spojit s našimi službami a budeme to na pozadí zkoušet znovu. Do existujícího účtu se přihlásit můžete.",
+      "bookDemo": "Domluvit ukázku",
+      "contact": "Kontaktujte nás"
+    }
+  },
+  "dashboard": {
+    "projects": "Projekty",
+    "noProjects": "Zatím žádné projekty",
+    "noProjectsDescription": "Vytvořte projekt a začněte.",
+    "projectNotFound": "Projekt nenalezen",
+    "projectNotFoundDescription": "Tento projekt mohl být smazán.",
+    "tabs": {
+      "tasks": "Úkoly",
+      "attachments": "Přílohy"
+    },
+    "security": "Zabezpečení",
+    "sessions": {
+      "title": "Aktivní relace",
+      "description": "Spravujte své aktivní relace na všech zařízeních. Můžete se odhlásit z jakékoli relace, kterou nepoznáváte.",
+      "currentSession": "Toto zařízení",
+      "otherSessions": "Ostatní zařízení",
+      "current": "Aktuální",
+      "lastActive": "Aktivní {time}",
+      "noOtherSessions": "Žádné další aktivní relace. Jste přihlášeni pouze na tomto zařízení.",
+      "revokeAll": "Odhlásit ze všech ostatních",
+      "revokeAllTitle": "Odhlásit ze všech ostatních zařízení?",
+      "revokeAllDescription": "Budete odhlášeni ze všech ostatních zařízení a prohlížečů. Aktivní zůstane pouze vaše aktuální relace.",
+      "revokeAllConfirm": "Odhlásit ze všech",
+      "revokeTitle": "Odhlásit toto zařízení?",
+      "revokeDescription": "Tím ukončíte relaci pro {device}. Pro přístup k účtu se bude muset znovu přihlásit.",
+      "backToDashboard": "Zpět na přehled",
+      "loadError": "Nepodařilo se načíst relace.",
+      "revokeError": "Nepodařilo se ukončit relaci.",
+      "revokeAllError": "Nepodařilo se ukončit relace."
+    },
+    "account": "Nastavení",
+    "profile": {
+      "title": "Profil",
+      "description": "Spravujte informace o svém profilu a předvolby.",
+      "name": "Zobrazované jméno",
+      "namePlaceholder": "Vaše jméno",
+      "email": "E-mail",
+      "emailReadonly": "Pro změnu e-mailu kontaktujte podporu.",
+      "avatarColor": "Barva avatara",
+      "saved": "Profil aktualizován.",
+      "language": "Jazyk",
+      "timezone": "Časové pásmo",
+      "timezonePlaceholder": "Vyberte časové pásmo",
+      "timezoneSearch": "Hledat časová pásma...",
+      "timezoneDetected": "Zjištěno",
+      "noTimezoneResults": "Časové pásmo nenalezeno.",
+      "theme": "Motiv"
+    },
+    "changePassword": {
+      "title": "Změna hesla",
+      "currentPassword": "Aktuální heslo",
+      "newPassword": "Nové heslo",
+      "confirmPassword": "Potvrďte nové heslo",
+      "revokeOtherSessions": "Odhlásit ze všech ostatních zařízení",
+      "cta": "Aktualizovat heslo",
+      "success": "Heslo bylo úspěšně aktualizováno.",
+      "errorCurrentPassword": "Aktuální heslo je nesprávné."
+    },
+    "twoFactor": {
+      "title": "Dvoufaktorové ověření",
+      "description": "Přidejte k účtu další vrstvu zabezpečení.",
+      "enabled": "2FA je zapnuto",
+      "disabled": "2FA není zapnuto",
+      "enable": "Zapnout 2FA",
+      "disable": "Vypnout 2FA",
+      "enterPassword": "Pro pokračování zadejte heslo.",
+      "scanQrCode": "Naskenujte tento QR kód pomocí autentizační aplikace (např. Google Authenticator, Authy).",
+      "manualEntry": "Nejde naskenovat? Zadejte tento klíč ručně",
+      "manualEntryDescription": "Otevřete svou autentizační aplikaci, zvolte „Přidat účet“ a poté vyberte „Zadat klíč nastavení“ a vložte klíč níže.",
+      "secretKey": "Tajný klíč",
+      "copied": "Zkopírováno do schránky",
+      "enterCode": "Zadejte 6místný kód z autentizační aplikace pro ověření nastavení.",
+      "verify": "Ověřit",
+      "backupCodes": "Záložní kódy",
+      "backupCodesDescription": "Uložte si tyto kódy na bezpečné místo. Každý kód lze použít pouze jednou.",
+      "viewBackupCodes": "Zobrazit záložní kódy",
+      "regenerateBackupCodes": "Vygenerovat nové záložní kódy",
+      "disableConfirm": "Opravdu chcete vypnout 2FA?",
+      "regenerateConfirm": "Tímto nahradíte své stávající záložní kódy. Nepoužité kódy přestanou fungovat.",
+      "codePlaceholder": "000000",
+      "requiredNotice": "Zásady účtu vyžadují dvoufaktorové ověření. Dokončete nastavení, abyste mohli pokračovat."
+    },
+    "passkeys": {
+      "title": "Přístupové klíče",
+      "description": "Přidávejte a spravujte přístupové klíče pro rychlejší přihlašování odolné proti phishingu.",
+      "policy": "Zásada: {policy}",
+      "disabled": "Zakázáno",
+      "optional": "Volitelné",
+      "required": "Povinné",
+      "disabledDescription": "Přihlášení přístupovým klíčem je pro váš účet zakázáno.",
+      "nameLabel": "Název nového přístupového klíče (volitelné)",
+      "namePlaceholder": "Můj notebook",
+      "add": "Přidat přístupový klíč",
+      "adding": "Přidávání...",
+      "empty": "Zatím nemáte žádné přístupové klíče.",
+      "unnamed": "Nepojmenovaný přístupový klíč",
+      "singleDevice": "Klíč vázaný na zařízení",
+      "multiDevice": "Synchronizovaný klíč",
+      "rename": "Přejmenovat přístupový klíč {name}",
+      "remove": "Smazat přístupový klíč {name}",
+      "name": "Název přístupového klíče",
+      "loadError": "Nepodařilo se načíst přístupové klíče.",
+      "addError": "Nepodařilo se přidat přístupový klíč.",
+      "renameError": "Nepodařilo se přejmenovat přístupový klíč.",
+      "deleteError": "Nepodařilo se smazat přístupový klíč.",
+      "added": "Přístupový klíč byl přidán.",
+      "renamed": "Přístupový klíč byl aktualizován.",
+      "deleted": "Přístupový klíč byl odstraněn.",
+      "unsupportedTitle": "Toto zařízení nebo prohlížeč nepodporuje přístupové klíče.",
+      "unsupportedDescription": "Pro nastavení klíče se přihlaste ze zařízení nebo prohlížeče, který přístupové klíče podporuje.",
+      "requiredNotice": "Zásady účtu vyžadují přístupový klíč. Přidejte jej, abyste mohli pokračovat.",
+      "signInRequired": "Váš účet vyžaduje přihlášení přístupovým klíčem."
+    }
+  },
+  "projects": {
+    "newProject": "Nový projekt",
+    "createProject": "Vytvořit projekt",
+    "createFirst": "Vytvořte svůj první projekt",
+    "noProjects": "Žádné projekty",
+    "editProject": "Upravit projekt",
+    "deleteProject": "Smazat projekt",
+    "deleteConfirmTitle": "Smazat projekt?",
+    "deleteConfirmDescription": "Toto trvale smaže “{name}” a všechny související úkoly. Tuto akci nelze vrátit zpět.",
+    "fields": {
+      "name": "Název",
+      "namePlaceholder": "Název projektu",
+      "description": "Popis",
+      "descriptionPlaceholder": "O čem je tento projekt?"
+    }
+  },
+  "tasks": {
+    "title": "Úkoly",
+    "addTask": "Přidat úkol",
+    "newTask": "Nový úkol",
+    "editTask": "Upravit úkol",
+    "deleteTask": "Smazat úkol",
+    "confirmDelete": "Potvrdit smazání",
+    "createTask": "Vytvořit úkol",
+    "noTasks": "Zatím žádné úkoly. Přidejte první.",
+    "noTasksSummary": "Zatím žádné úkoly",
+    "progress": "{doneCount} z {totalCount} úkolů hotovo",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Stav",
+      "todo": "K vyřízení",
+      "inProgress": "Probíhá",
+      "done": "Hotovo",
+      "all": "Vše"
+    },
+    "fields": {
+      "title": "Název",
+      "titlePlaceholder": "Co je potřeba udělat?",
+      "description": "Popis",
+      "descriptionPlaceholder": "Přidat podrobnosti...",
+      "deadline": "Termín",
+      "deadlinePlaceholder": "Bez termínu",
+      "clearDeadline": "Odstranit termín"
+    },
+    "deadline": {
+      "overdue": "Po termínu",
+      "dueToday": "Splatné dnes"
+    },
+    "aria": {
+      "changeStatus": "Změnit stav z {status}"
+    },
+    "count": "{count, plural, =0 {Žádné úkoly} one {# úkol} few {# úkoly} other {# úkolů}}"
+  },
+  "uploads": {
+    "title": "Přílohy",
+    "addFile": "Přidat soubor",
+    "uploading": "Nahrávání...",
+    "processing": "Zpracování",
+    "view": "Zobrazit",
+    "deleteFile": "Smazat soubor",
+    "emptyState": "Nahrajte soubory a uvidíte ukládání souborů Convex v akci.",
+    "errors": {
+      "tooLarge": "Soubor je příliš velký (max. 1 MB)",
+      "uploadFailed": "Nahrávání selhalo. Zkuste to znovu.",
+      "generic": "Nahrávání selhalo."
+    },
+    "count": "{count, plural, =0 {Žádné přílohy} one {# příloha} few {# přílohy} other {# příloh}}"
+  },
+  "metadata": {
+    "description": "Starter Next.js s Convex, Better Auth a Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "O nás",
+      "description": "Dozvěďte se více o {productName} a naší misi.",
+      "notice": "Toto je obsah zástupného symbolu. Před spuštěním ho nahraďte svým vlastním.",
+      "heading": "O nás",
+      "mission": "Naše mise",
+      "missionText": "Věříme, že by vývojáři měli trávit čas stavbou funkcí, ne konfigurací infrastruktury. {productName} poskytuje produkční zahájení s synchronizací dat v reálném čase, nahráváním souborů a ověřováním na základě relací, vše již připojeno a připraveno.",
+      "whatIncluded": "Co je součástí",
+      "whatIncludedText": "Balíček zahájení obsahuje úvodní stránku, plně ověřenou webovou aplikaci, ovládací panel správce a sbírku komponent. Každá aplikace sdílí jednotný design systém vytvořený na primitivech Radix UI s Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Tento projekt je otevřený zdroj a je navržen k rozštěpení a přizpůsobení.",
+      "intro": "{productName} je plnostranná základna pro budování moderních webových aplikací. Kombinuje Next.js pro frontend, Convex pro backend a Better Auth pro bezpečné ověření — vše propojeno a připraveno k odeslání."
+    },
+    "privacy": {
+      "title": "Zásady ochrany osobních údajů",
+      "description": "Jak shromažďujeme, používáme a chráníme vaše údaje.",
+      "notice": "Toto je šablona zásad ochrany osobních údajů. Přizpůsobte ji svému konkrétnímu použití a právnímu prostředí před spuštěním.",
+      "heading": "Zásady ochrany osobních údajů",
+      "lastUpdated": "Poslední aktualizace: {date}"
+    },
+    "terms": {
+      "title": "Podmínky služby",
+      "description": "Pravidla a pokyny pro používání naší služby.",
+      "notice": "Toto je šablona podmínek služby. Přizpůsobte ji svému konkrétnímu použití a právnímu prostředí před spuštěním.",
+      "heading": "Podmínky služby",
+      "lastUpdated": "Poslední aktualizace: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Projekt nenalezen.",
+    "taskNotFound": "Úkol nenalezen.",
+    "fileNotFound": "Soubor nenalezen v úložišti.",
+    "fileTooLarge": "Soubor je příliš velký (max 1 MB).",
+    "uploadNotFound": "Nahrávání nenalezeno."
+  }
+}

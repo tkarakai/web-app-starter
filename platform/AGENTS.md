@@ -36,7 +36,7 @@ A **Bun workspaces + Turborepo** monorepo:
   | `app.config.ts` | Set product name, legal entity, support email, local ports, auth cookie prefix, brand and feature switches (`platform-configure`) |
   | `packages/backend/convex/schema.ts` | Add your tables after the `...platformTables` hook (`platform-add-table`) |
   | `packages/backend/convex/http.ts`, `convex.config.ts`, `auth.config.ts` | Add your HTTP routes after `registerPlatformRoutes(http)`, your components after the platform's |
-  | `platform/packages/i18n/messages/*.json` | Add your strings in your own namespaces (`platform-add-strings`). The one file set under `platform/` you edit, until app message files arrive |
+  | `packages/messages/*.json`, `overrides.json` (`@repo/messages`) | Add your strings in your own namespaces, and reword platform strings in `overrides.json` (`platform-add-strings`). Never edit `platform/packages/i18n/messages/` |
   | Root `package.json`, `turbo.json`, `tsconfig.json`, `eslint.config.mjs`, `renovate.json` | Add scripts, tasks, env declarations, lint and dependency rules; `tsconfig` and ESLint extend `platform/config/` |
   | Each app's `.env.example` | Declare the environment variables your code reads |
 
@@ -47,7 +47,8 @@ A **Bun workspaces + Turborepo** monorepo:
 The root `app.config.ts` holds every value an app is expected to change: `identity` (product
 name, legal entity, support email), `runtime` (local port per app, Better Auth cookie prefix),
 `brand` (icons, design-token overrides, email palette, `lang` and footer) and `features`
-(`waitlist`, `invitations`, `announcements`, `environmentBanner`). It is validated on load; a bad
+(`waitlist`, `invitations`, `announcements`, `environmentBanner`) and `i18n` (`locales`: the
+locales the apps ship, a subset of the platform's 15 that includes `en`). It is validated on load; a bad
 or unknown value stops dev, build and tests with a message naming it. Everything in it is public.
 
 - Never write these values as literals. In TypeScript use `appConfig` (and `localAppOrigin`) from
@@ -55,7 +56,7 @@ or unknown value stops dev, build and tests with a message naming it. Everything
   `isSessionCookie()`); in shell scripts and CI use `platform/tooling/app-config.ts`
   (`eval "$(./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell)"` gives `APP_CONFIG_*` variables;
   the `setup-bun` action exports them in CI).
-- The product name is never in `platform/packages/i18n/messages`: messages that mention it take a
+- The product name is never in a message file (`packages/messages`, `platform/packages/i18n/messages`): messages that mention it take a
   `{productName}` argument, filled from `appConfig.identity.productName`.
 - Per-deployment values (deployed URLs, Convex URLs) and secrets stay environment variables.
 - Changing `authCookiePrefix` signs every existing user out.

@@ -1,10 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
-import arabic from "@web-app-starter/i18n/messages/ar.json";
-import french from "@web-app-starter/i18n/messages/fr.json";
+import platformArabic from "@web-app-starter/i18n/messages/ar.json";
+import appArabic from "@repo/messages/ar.json";
+import platformFrench from "@web-app-starter/i18n/messages/fr.json";
+import appFrench from "@repo/messages/fr.json";
 import { PasswordInput, CopyableField, PasskeyUnsupportedAlert, OtpInput, TimezoneSelector, Breadcrumb } from "@/components/ui/localized-controls";
 import { DeadlineInput } from "@/components/projects/deadline-input";
+
+// Platform and app namespaces, as the app loads them.
+const arabic = { ...platformArabic, ...appArabic };
+const french = { ...platformFrench, ...appFrench };
 
 describe("localized shared controls", () => {
   it("uses the active catalog for password, clipboard and unsupported-passkey text", () => {
@@ -21,7 +27,7 @@ describe("localized shared controls", () => {
     expect(screen.getByRole("button", { name: arabic.common.hidePassword })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: arabic.common.copy })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: arabic.common.breadcrumb })).toBeInTheDocument();
-    expect(screen.getByText(arabic.dashboard.passkeys.unsupportedTitle)).toBeInTheDocument();
+    expect(screen.getByText(arabic.auth.passkeys.unsupportedTitle)).toBeInTheDocument();
     expect(screen.queryByText("Passkeys aren't supported on this device or browser.")).not.toBeInTheDocument();
   });
 

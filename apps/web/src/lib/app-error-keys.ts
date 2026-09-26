@@ -3,9 +3,9 @@
  * own codes (rate limits, sessions, connection) are handled by `ConvexErrorToast`.
  */
 export const APP_ERROR_KEYS: Readonly<Record<string, string>> = {
-  PROJECT_NOT_FOUND: "errors.convex.projectNotFound",
-  TASK_NOT_FOUND: "errors.convex.taskNotFound",
-  FILE_NOT_FOUND: "errors.convex.fileNotFound",
-  FILE_TOO_LARGE: "errors.convex.fileTooLarge",
-  UPLOAD_NOT_FOUND: "errors.convex.uploadNotFound",
+  PROJECT_NOT_FOUND: "sampleErrors.projectNotFound",
+  TASK_NOT_FOUND: "sampleErrors.taskNotFound",
+  FILE_NOT_FOUND: "sampleErrors.fileNotFound",
+  FILE_TOO_LARGE: "sampleErrors.fileTooLarge",
+  UPLOAD_NOT_FOUND: "sampleErrors.uploadNotFound",
 };

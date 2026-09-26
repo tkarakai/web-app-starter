@@ -111,6 +111,15 @@ export type AppConfig = {
    * keeps receiving starter fixes) but is hidden from the product.
    */
   features: FeatureSwitches;
+  i18n: {
+    /**
+     * Locales the apps ship, as language tags from the platform's supported set
+     * (`allLocales` in `@web-app-starter/i18n`). Must include "en", the fallback. The
+     * platform keeps translating its own strings into every supported locale; your app
+     * messages only need the locales listed here.
+     */
+    locales: string[];
+  };
 };
 
 /** Thrown when `app.config.ts` holds an invalid value. Lists every problem at once. */
@@ -302,6 +311,27 @@ function validateEmail(brand: Obj, issues: Issues): AppConfig["brand"]["email"] 
   };
 }
 
+function validateLocales(i18n: Obj, issues: Issues): string[] {
+  const raw = i18n.locales;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    issues.push(`i18n.locales: must be a non-empty array of language tags (got ${show(raw)})`);
+    return [];
+  }
+  const locales: string[] = [];
+  raw.forEach((value: unknown, index: number) => {
+    const path = `i18n.locales[${index}]`;
+    if (typeof value !== "string" || !LANGUAGE_TAG.pattern.test(value)) {
+      issues.push(`${path}: ${LANGUAGE_TAG.hint} (got ${show(value)})`);
+    } else if (locales.includes(value)) {
+      issues.push(`${path}: "${value}" is listed twice`);
+    } else {
+      locales.push(value);
+    }
+  });
+  if (!locales.includes("en")) issues.push(`i18n.locales: must include "en", the fallback locale`);
+  return locales;
+}
+
 /**
  * Check a raw config and return it typed. Throws an {@link AppConfigError}
  * listing every invalid or unknown value, so one run shows all mistakes.
@@ -310,7 +340,7 @@ export function validateAppConfig(input: unknown): AppConfig {
   const issues: Issues = [];
   if (!isObject(input)) issues.push("app.config.ts must export an object");
   const root = isObject(input) ? input : {};
-  rejectUnknownKeys(root, ["identity", "runtime", "brand", "features"], "config", issues);
+  rejectUnknownKeys(root, ["identity", "runtime", "brand", "features", "i18n"], "config", issues);
 
   const identity = objectAt(root, "identity", "identity", issues);
   rejectUnknownKeys(identity, ["productName", "legalEntity", "supportEmail"], "identity", issues);
@@ -322,6 +352,8 @@ export function validateAppConfig(input: unknown): AppConfig {
   rejectUnknownKeys(icons, ["svg", "ico", "appleTouchIcon"], "brand.icons", issues);
   const features = objectAt(root, "features", "features", issues);
   rejectUnknownKeys(features, FEATURE_KEYS, "features", issues);
+  const i18n = objectAt(root, "i18n", "i18n", issues);
+  rejectUnknownKeys(i18n, ["locales"], "i18n", issues);
 
   const config: AppConfig = {
     identity: {
@@ -362,6 +394,9 @@ export function validateAppConfig(input: unknown): AppConfig {
       invitations: bool(features, "invitations", "features.invitations", issues),
       announcements: bool(features, "announcements", "features.announcements", issues),
       environmentBanner: bool(features, "environmentBanner", "features.environmentBanner", issues),
+    },
+    i18n: {
+      locales: validateLocales(i18n, issues),
     },
   };
 

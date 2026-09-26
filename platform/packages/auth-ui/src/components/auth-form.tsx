@@ -82,7 +82,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const { landingUrl } = usePublicConfig();
   const locale = useLocale();
   const t = useTranslations("auth");
-  const tpk = useTranslations("dashboard.passkeys");
+  const tpk = useTranslations("auth.passkeys");
   const tps = useTranslations("passwordStrength");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

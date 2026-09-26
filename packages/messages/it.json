@@ -1,0 +1,300 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Il tuo punto di partenza.",
+    "headingLine2": "Costruisci da qui.",
+    "description": "Autenticazione, database, sincronizzazione in tempo reale e caricamento file — tutto collegato e pronto.",
+    "getStarted": "Inizia",
+    "signIn": "Accedi",
+    "footer": {
+      "about": "Chi Siamo",
+      "privacyPolicy": "Informativa sulla privacy",
+      "termsOfService": "Termini di servizio"
+    },
+    "waitlist": {
+      "title": "Iscriviti alla lista d'attesa",
+      "description": "Richiedi l'accesso iscrivendoti alla lista d'attesa.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "tu@esempio.it",
+      "superpowersLabel": "Qual è il tuo superpotere?",
+      "superpowersPlaceholder": "Scegli i tuoi superpoteri",
+      "excitementLabel": "Quanto sei entusiasta?",
+      "excitementPlaceholder": "Dicci come ti senti",
+      "roleLabel": "Il tuo ruolo (facoltativo)",
+      "rolePlaceholder": "Seleziona il tuo ruolo",
+      "companyLabel": "Azienda (facoltativo)",
+      "companyPlaceholder": "Acme S.r.l.",
+      "useCaseLabel": "Cosa pensi di realizzare? (facoltativo)",
+      "useCasePlaceholder": "Un portale clienti, uno strumento interno…",
+      "roles": {
+        "founder": "Fondatore/Fondatrice",
+        "engineering": "Ingegneria",
+        "product": "Prodotto",
+        "design": "Design",
+        "agency": "Agenzia",
+        "other": "Altro"
+      },
+      "selectedCount": "{count} selezionato/i",
+      "submit": "Iscriviti alla lista",
+      "submitting": "Iscrizione...",
+      "successTitle": "Sei nella lista!",
+      "successDescription": "Ti invieremo un invito quando sarà il tuo turno.",
+      "alreadySignedUp": "Hai già un account?",
+      "signIn": "Accedi",
+      "superpowers": {
+        "coffee-to-code": "Trasformare il caffè in codice",
+        "pixel-perfect": "Rendere i pixel perfetti",
+        "bug-whisperer": "Sussurratore di bug",
+        "spreadsheet-wizard": "Magia dei fogli di calcolo",
+        "inbox-zero": "Posta in arrivo vuota ogni giorno",
+        "parallel-parking": "Parcheggio parallelo al primo colpo",
+        "remembering-names": "Ricordare il nome di tutti",
+        "never-burning-toast": "Non bruciare mai il toast",
+        "explaining-tech": "Spiegare la tecnologia ai genitori",
+        "finding-restaurants": "Trovare i ristoranti migliori",
+        "staying-calm": "Restare calmi nelle riunioni infinite",
+        "other": "Qualcosa di completamente diverso"
+      },
+      "excitement": {
+        "take-my-money": "Prendi i miei soldi!",
+        "cant-wait": "Non vedo l'ora di provarlo",
+        "cautiously-optimistic": "Cautamente ottimista",
+        "just-browsing": "Sto solo dando un'occhiata",
+        "friend-made-me": "Un amico mi ha costretto a iscrivermi"
+      },
+      "errors": {
+        "waitlistNotEnabled": "La lista d'attesa non accetta iscrizioni al momento. Riprova più tardi.",
+        "invalidEmail": "Inserisci un indirizzo e-mail valido.",
+        "rateLimited": "Troppe richieste. Attendi un momento e riprova.",
+        "generic": "Qualcosa è andato storto. Riprova."
+      }
+    },
+    "fallback": {
+      "title": "La registrazione è temporaneamente non disponibile",
+      "description": "Al momento non riusciamo a raggiungere i nostri servizi e continueremo a riprovare in background. Puoi comunque accedere a un account esistente.",
+      "bookDemo": "Prenota una demo",
+      "contact": "Contattaci"
+    }
+  },
+  "dashboard": {
+    "projects": "Progetti",
+    "noProjects": "Nessun progetto ancora",
+    "noProjectsDescription": "Crea un progetto per iniziare.",
+    "projectNotFound": "Progetto non trovato",
+    "projectNotFoundDescription": "Questo progetto potrebbe essere stato eliminato.",
+    "tabs": {
+      "tasks": "Attività",
+      "attachments": "Allegati"
+    },
+    "security": "Sicurezza",
+    "sessions": {
+      "title": "Sessioni attive",
+      "description": "Gestisci le tue sessioni attive su tutti i dispositivi. Puoi disconnettere qualsiasi sessione che non riconosci.",
+      "currentSession": "Questo dispositivo",
+      "otherSessions": "Altri dispositivi",
+      "current": "Corrente",
+      "lastActive": "Attivo {time}",
+      "noOtherSessions": "Nessun'altra sessione attiva. Sei connesso solo su questo dispositivo.",
+      "revokeAll": "Disconnetti tutti gli altri",
+      "revokeAllTitle": "Disconnettere tutti gli altri dispositivi?",
+      "revokeAllDescription": "Questo ti disconnetterà da tutti gli altri dispositivi e browser. Solo la sessione corrente rimarrà attiva.",
+      "revokeAllConfirm": "Disconnetti tutti",
+      "revokeTitle": "Disconnettere questo dispositivo?",
+      "revokeDescription": "Questo terminerà la sessione per {device}. Sarà necessario accedere di nuovo per utilizzare l'account.",
+      "backToDashboard": "Torna alla dashboard",
+      "loadError": "Impossibile caricare le sessioni.",
+      "revokeError": "Impossibile terminare la sessione.",
+      "revokeAllError": "Impossibile terminare le sessioni."
+    },
+    "account": "Impostazioni",
+    "profile": {
+      "title": "Profilo",
+      "description": "Gestisci le informazioni del tuo profilo e le preferenze.",
+      "name": "Nome visualizzato",
+      "namePlaceholder": "Il tuo nome",
+      "email": "E-mail",
+      "emailReadonly": "Contatta il supporto per cambiare la tua e-mail.",
+      "avatarColor": "Colore avatar",
+      "saved": "Profilo aggiornato.",
+      "language": "Lingua",
+      "timezone": "Fuso orario",
+      "timezonePlaceholder": "Seleziona il tuo fuso orario",
+      "timezoneSearch": "Cerca fusi orari...",
+      "timezoneDetected": "Rilevato",
+      "noTimezoneResults": "Nessun fuso orario trovato.",
+      "theme": "Tema"
+    },
+    "changePassword": {
+      "title": "Cambia password",
+      "currentPassword": "Password attuale",
+      "newPassword": "Nuova password",
+      "confirmPassword": "Conferma nuova password",
+      "revokeOtherSessions": "Disconnetti tutti gli altri dispositivi",
+      "cta": "Aggiorna password",
+      "success": "Password aggiornata con successo.",
+      "errorCurrentPassword": "La password attuale non è corretta."
+    },
+    "twoFactor": {
+      "title": "Autenticazione a due fattori",
+      "description": "Aggiungi un ulteriore livello di sicurezza al tuo account.",
+      "enabled": "2FA è attivata",
+      "disabled": "2FA non è attivata",
+      "enable": "Attiva 2FA",
+      "disable": "Disattiva 2FA",
+      "enterPassword": "Inserisci la tua password per continuare.",
+      "scanQrCode": "Scansiona questo codice QR con la tua app di autenticazione (es. Google Authenticator, Authy).",
+      "manualEntry": "Non riesci a scansionare? Inserisci questa chiave manualmente",
+      "manualEntryDescription": "Apri la tua app di autenticazione, scegli \"Aggiungi account\", quindi seleziona \"Inserisci chiave di configurazione\" e incolla la chiave qui sotto.",
+      "secretKey": "Chiave segreta",
+      "copied": "Copiato negli appunti",
+      "enterCode": "Inserisci il codice a 6 cifre dalla tua app di autenticazione per verificare la configurazione.",
+      "verify": "Verifica",
+      "backupCodes": "Codici di backup",
+      "backupCodesDescription": "Salva questi codici in un luogo sicuro. Ogni codice può essere usato una sola volta.",
+      "viewBackupCodes": "Visualizza codici di backup",
+      "regenerateBackupCodes": "Rigenera codici di backup",
+      "disableConfirm": "Sei sicuro di voler disattivare la 2FA?",
+      "regenerateConfirm": "Questo sostituirà i tuoi codici di backup esistenti. I codici non utilizzati non funzioneranno più.",
+      "codePlaceholder": "000000",
+      "requiredNotice": "Il criterio del tuo account richiede l’autenticazione a due fattori. Completa la configurazione per continuare."
+    },
+    "passkeys": {
+      "title": "Passkey",
+      "description": "Aggiungi e gestisci le passkey per un accesso più rapido e resistente al phishing.",
+      "policy": "Criterio: {policy}",
+      "disabled": "Disabilitato",
+      "optional": "Facoltativo",
+      "required": "Obbligatorio",
+      "disabledDescription": "L’accesso con passkey è disabilitato per il tuo account.",
+      "nameLabel": "Nome della nuova passkey (facoltativo)",
+      "namePlaceholder": "Il mio portatile",
+      "add": "Aggiungi passkey",
+      "adding": "Aggiunta in corso...",
+      "empty": "Nessuna passkey registrata.",
+      "unnamed": "Passkey senza nome",
+      "singleDevice": "Passkey legata al dispositivo",
+      "multiDevice": "Passkey sincronizzata",
+      "rename": "Rinomina passkey {name}",
+      "remove": "Elimina passkey {name}",
+      "name": "Nome della passkey",
+      "loadError": "Impossibile caricare le passkey.",
+      "addError": "Impossibile aggiungere la passkey.",
+      "renameError": "Impossibile rinominare la passkey.",
+      "deleteError": "Impossibile eliminare la passkey.",
+      "added": "Passkey aggiunta.",
+      "renamed": "Passkey aggiornata.",
+      "deleted": "Passkey rimossa.",
+      "unsupportedTitle": "Questo dispositivo o browser non supporta le passkey.",
+      "unsupportedDescription": "Accedi da un dispositivo o browser compatibile per configurare una passkey.",
+      "requiredNotice": "Il criterio del tuo account richiede una passkey. Aggiungine una per continuare.",
+      "signInRequired": "Il tuo account richiede l’accesso con passkey."
+    }
+  },
+  "projects": {
+    "newProject": "Nuovo progetto",
+    "createProject": "Crea progetto",
+    "createFirst": "Crea il tuo primo progetto",
+    "noProjects": "Nessun progetto",
+    "editProject": "Modifica progetto",
+    "deleteProject": "Elimina progetto",
+    "deleteConfirmTitle": "Eliminare il progetto?",
+    "deleteConfirmDescription": "Questo eliminerà definitivamente “{name}” e tutte le sue attività. Questa azione non può essere annullata.",
+    "fields": {
+      "name": "Nome",
+      "namePlaceholder": "Nome del progetto",
+      "description": "Descrizione",
+      "descriptionPlaceholder": "Di cosa tratta questo progetto?"
+    }
+  },
+  "tasks": {
+    "title": "Attività",
+    "addTask": "Aggiungi attività",
+    "newTask": "Nuova attività",
+    "editTask": "Modifica attività",
+    "deleteTask": "Elimina attività",
+    "confirmDelete": "Conferma eliminazione",
+    "createTask": "Crea attività",
+    "noTasks": "Nessuna attività ancora. Aggiungine una per iniziare.",
+    "noTasksSummary": "Nessuna attività ancora",
+    "progress": "{doneCount} di {totalCount} attività completate",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Stato",
+      "todo": "Da fare",
+      "inProgress": "In corso",
+      "done": "Completato",
+      "all": "Tutte"
+    },
+    "fields": {
+      "title": "Titolo",
+      "titlePlaceholder": "Cosa bisogna fare?",
+      "description": "Descrizione",
+      "descriptionPlaceholder": "Aggiungi dettagli...",
+      "deadline": "Scadenza",
+      "deadlinePlaceholder": "Nessuna scadenza",
+      "clearDeadline": "Rimuovi scadenza"
+    },
+    "deadline": {
+      "overdue": "Scaduta",
+      "dueToday": "Scade oggi"
+    },
+    "aria": {
+      "changeStatus": "Cambia stato da {status}"
+    },
+    "count": "{count, plural, =0 {Nessuna attività} one {# attività} other {# attività}}"
+  },
+  "uploads": {
+    "title": "Allegati",
+    "addFile": "Aggiungi file",
+    "uploading": "Caricamento...",
+    "processing": "Elaborazione",
+    "view": "Visualizza",
+    "deleteFile": "Elimina file",
+    "emptyState": "Carica file per vedere il flusso di archiviazione Convex.",
+    "errors": {
+      "tooLarge": "File troppo grande (max 1 MB)",
+      "uploadFailed": "Caricamento fallito. Riprova.",
+      "generic": "Caricamento fallito."
+    },
+    "count": "{count, plural, =0 {Nessun allegato} one {# allegato} other {# allegati}}"
+  },
+  "metadata": {
+    "description": "Uno starter Next.js con Convex, Better Auth e Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Chi Siamo",
+      "description": "Scopri {productName} e la nostra missione.",
+      "notice": "Questo è contenuto segnaposto. Sostituiscilo con il tuo contenuto prima del lancio.",
+      "heading": "Chi Siamo",
+      "mission": "La Nostra Missione",
+      "missionText": "Crediamo che i sviluppatori dovrebbero dedicare il loro tempo alla costruzione di funzionalità, non alla configurazione dell'infrastruttura. {productName} fornisce un punto di partenza pronto per la produzione con sincronizzazione dati in tempo reale, caricamenti di file e autenticazione basata su sessioni, tutto già collegato e pronto.",
+      "whatIncluded": "Cosa è Incluso",
+      "whatIncludedText": "Il kit di avvio include una pagina di atterraggio, un'applicazione web completamente autenticata, un dashboard di amministrazione e uno storybook di componenti. Ogni app condivide un sistema di design unificato costruito su primitive Radix UI con Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Questo progetto è open source ed è progettato per essere biforcato e personalizzato.",
+      "intro": "{productName} è una base full-stack per costruire applicazioni web moderne. Combina Next.js per il frontend, Convex per il backend e Better Auth per l'autenticazione sicura — tutto collegato e pronto per il lancio."
+    },
+    "privacy": {
+      "title": "Informativa sulla Privacy",
+      "description": "Come raccogliamo, utilizziamo e proteggiamo i tuoi dati.",
+      "notice": "Questa è una politica sulla privacy template. Personalizzala per la tua applicazione specifica e la tua giurisdizione prima del lancio.",
+      "heading": "Informativa sulla Privacy",
+      "lastUpdated": "Ultimo aggiornamento: {date}"
+    },
+    "terms": {
+      "title": "Termini di Servizio",
+      "description": "Le regole e le linee guida per l'utilizzo del nostro servizio.",
+      "notice": "Questi sono termini di servizio template. Personalizzali per la tua applicazione specifica e la tua giurisdizione prima del lancio.",
+      "heading": "Termini di Servizio",
+      "lastUpdated": "Ultimo aggiornamento: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Progetto non trovato.",
+    "taskNotFound": "Attività non trovata.",
+    "fileNotFound": "File non trovato nell'archivio.",
+    "fileTooLarge": "File troppo grande (max 1 MB).",
+    "uploadNotFound": "Caricamento non trovato."
+  }
+}
