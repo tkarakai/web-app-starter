@@ -241,6 +241,10 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   log("3. Reference apps");
   const remove = options.remove ?? [];
   if (remove.length === 0) log("  - kept all");
+  if (remove.includes("landing") || remove.includes("demo")) {
+    log("  ! The platform CD workflows still deploy landing, and CI Shared rehearses upgrades on demo.");
+    log("    Until a release makes them optional, those workflow jobs fail without the apps.");
+  }
   removeApps(root, remove, log);
   if (remove.length > 0 && options.install !== false) run(root, "bun", ["install"]);
 

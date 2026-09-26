@@ -229,6 +229,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   and a new footer line from `brand.email`.
 - Root `package.json` declares `"type": "module"`, so Node loads `app.config.ts` as ES modules;
   `tsconfig.base.json` allows `.ts` import extensions.
+- Docs and skills follow the v2 layout: `platform/AGENTS.md` lists `bun run adopt`,
+  `check:zone`, `test:contracts` and the `platform-patch` skill; `platform/README.md` documents
+  adoption and its known gaps; `platform/docs/testing.md` drops examples for test helpers that
+  no longer exist and uses the sample `projects` table; the README badge and workflow notes name
+  the current workflows.
 
 ### Security
 

@@ -23,8 +23,9 @@
 # =============================================================================
 # MULTI-WORKFLOW ARCHITECTURE
 # =============================================================================
-# CI is split into 5 independent workflows:
-#   - ci-shared.yml:    Lint, typecheck, backend tests (run once across all packages)
+# CI is split into 5 independent workflows. Each ci-<name>.yml is a thin app-owned
+# caller of the platform's reusable platform-ci-<name>.yml, which holds the jobs:
+#   - ci-shared.yml:    Lint, typecheck, backend tests, contracts (once across all packages)
 #   - ci-web.yml:       Web app tests, build, E2E
 #   - ci-admin.yml:     Admin app tests, build, E2E
 #   - ci-landing.yml:   Landing app tests, build, E2E

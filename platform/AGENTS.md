@@ -28,7 +28,7 @@ A **Bun workspaces + Turborepo** monorepo:
   `UPGRADING.md`, `VERSIONING.md`, `VERSION`, licences). In the backend,
   `packages/backend/convex/platform/` holds the platform's Convex functions, tables
   (`platformTables`), HTTP routes and Better Auth component.
-- **The zone check (`bun run check:zone`, in CI) enforces this.** In an adopted app, every zone
+- **The zone check (`bun run check:zone`, in CI) enforces this.** In an adopted app (`bun run adopt`, once on a fresh clone, writes `.platform-base.json`), every zone
   file that differs from the release commit in `.platform-base.json` must be a recorded patch
   (a `PLATFORM-PATCH: <reason>` comment plus an entry in `patches`); the `platform-patch` skill
   makes one and drafts the request to us. It also fails when a seam loses a platform hook.
@@ -84,6 +84,9 @@ bun run test:unit            # Vitest component tests
 bun run test:convex          # Convex backend tests
 bun run test:e2e             # Playwright E2E (see README "Tests" for browser setup)
 bun run build                # Production build via Turborepo
+bun run check:zone           # Platform edits are recorded patches; seams keep their hooks
+bun run test:contracts       # Session isolation, endpoint authorization, headers, env
+bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 
 Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accounts: [docs/development.md](docs/development.md).
@@ -215,6 +218,7 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 | `platform-add-page` | Add a protected page with a nav entry, strings and tests |
 | `platform-add-strings` | Add translated strings in an app namespace to every locale |
 | `platform-deps` | Update the app's dependencies (Renovate queue, majors, lockfile) |
+| `platform-patch` | Change platform code you can't wait for: mark and record the patch, draft the request |
 | `platform-pr-review` | Review a pull request and comment |
 | `platform-pr-respond` | Address review comments on a pull request |
 

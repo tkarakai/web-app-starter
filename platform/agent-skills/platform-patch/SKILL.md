@@ -16,7 +16,8 @@ exception, not the way to build features: most needs are met by a seam or `app.c
 - Can the app do it in its own code, next to the platform (a wrapper, its own route, its own
   table, an override in `packages/messages/overrides.json`)? Then do that.
 - Is this the product repo (no `.platform-base.json`)? Then it is platform work: change the
-  platform properly. Reference apps never carry patches.
+  platform properly. Reference apps never carry patches. (An app clone that never ran
+  `bun run adopt` has no `.platform-base.json` either: run it first, then patch.)
 
 Only when none applies, patch.
 
