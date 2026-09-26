@@ -41,11 +41,18 @@ Phases 0, 1, 3 and 4 can run in parallel. Phase 2 needs Phase 1 (layer 3 must ex
 
 | # | Task | Repo | Size | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
-| 0.1 | **Settle open PRs.** Merge #150 (endpoint authorization contract), which becomes the first contract (§10). Close or park #149 (dependency comparison in the old starter-upgrade machinery, out of scope per decision 24). Review #148 (app-owned branding icons) against the configuration seam; merge if it fits, otherwise fold it into 3.1 | P | S | — | No open PR conflicts with Phase 5 paths |
-| 0.2 | **Upstream lifeor2-client's improvements.** Cookie-prefix option in `@repo/auth`, threaded through `server.ts`, backend `auth.ts` and `sessions.ts`, `edge-rate-limit`, both `proxy.ts` and both `clear-session` routes. Exact cookie matching in `hasSessionCookie`. `developmentOnly` guards on mock email and dev seed. Tests for each | P | M | — | Tests pass; a fresh trial merge into lifeor2-client shows those files no longer conflict |
-| 0.3 | **Merge this branch** (`tkarakai/upgradeability`: the design, plan, brainstorms and case study) into `main`, so the plan is visible to all worktrees. The docs move to the maintainer repo in 1.2 | P | S | — | On `main` |
+| 0.1 | **Upstream lifeor2-client's improvements.** Cookie-prefix option in `@repo/auth`, threaded through `server.ts`, backend `auth.ts` and `sessions.ts`, `edge-rate-limit`, both `proxy.ts` and both `clear-session` routes. Exact cookie matching in `hasSessionCookie`. `developmentOnly` guards on mock email and dev seed. Tests for each | P | M | — | Tests pass; a fresh trial merge into lifeor2-client shows those files no longer conflict |
+| 0.2 | **Merge this branch** (`tkarakai/upgradeability`: the design, plan, brainstorms and case study) into `main`, so the plan is visible to all worktrees. The docs move to the maintainer repo in 1.2 | P | S | — | On `main` |
 
-**Checkpoint 0:** open PRs resolved; lifeor2-client's improvements are platform code.
+**Checkpoint 0:** lifeor2-client's improvements are platform code.
+
+**Open pull requests:** none (confirmed 2026-09-25). The three that were open are closed and unmerged; their branches still exist on `origin`:
+
+| PR | Branch | Use in this plan |
+| --- | --- | --- |
+| #150 endpoint authorization contract | `tkarakai/starter-auth-contract-tests` | Starting point for the endpoint-authorization contract in 5.11 |
+| #148 app-owned branding icon overrides | `tkarakai/starter-branding-overrides` | Input to the brand part of 3.1 and 3.2 |
+| #149 offline dependency snapshot comparison | `tkarakai/starter-dependency-plan` | Not used: it extends the old starter-upgrade machinery (decision 24) |
 
 ## Phase 1: Maintainer repo and workspace
 
@@ -79,7 +86,7 @@ This phase is docs and skills only, on `main`. `platform/` starts to exist here,
 
 | # | Task | Repo | Size | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
-| 3.1 | **`app.config.ts`**: identity (name, legal entity, support email, URLs), runtime (ports, cookie prefix, origins), brand (logos, token overrides, email palette and footer), switches (waitlist, invitations, announcements, environment banner). Typed, validated at load | P | M | 0.2 | One module; schema-validated; unit tests |
+| 3.1 | **`app.config.ts`**: identity (name, legal entity, support email, URLs), runtime (ports, cookie prefix, origins), brand (logos, token overrides, email palette and footer), switches (waitlist, invitations, announcements, environment banner). Typed, validated at load | P | M | 0.1 | One module; schema-validated; unit tests |
 | 3.2 | **Read it everywhere.** Dev scripts and `dev-start.sh` ports; Playwright configs; CI env blocks; auth cookie prefix; TOTP issuer in `auth.ts`; page metadata; email templates (colours, footer, `lang`); `copy-shared-assets.sh` icons | P | L | 3.1 | Changing name, ports or cookie prefix in `app.config.ts` alone produces a working build with dev, E2E and CI following; `grep` finds no hard-coded product name or port outside it |
 | 3.3 | **Product name out of message files**, passed as a message argument; remove `appName` from all 15 locales | P | S | 3.1 | Renaming the product touches no locale file |
 | 3.4 | **`platform-configure` skill** | P | S | 3.2, 2.3 | An agent sets name, ports and cookie prefix via the skill with no other file edits |
@@ -112,7 +119,7 @@ The order matters: paths first, then the things that depend on them.
 | 5.8 | **Reusable workflows.** `platform-*.yml` (CI, CD, security) plus thin callers. Paid features conditional (CodeQL, dependency review, attestations, environment protections) with visible notices. Platform suite runs when `platform/**` changes. Check that actions stay SHA-pinned | P | L | 5.1 | CI green; a private-repo run on GitHub Free skips the paid features cleanly (tested on a scratch private repo) |
 | 5.9 | **Renovate preset** in `platform/config/` with `ignorePaths: ["platform/**"]`; platform packages declare ranges | P | S | 5.1 | Renovate dry run proposes no change under `platform/` |
 | 5.10 | **Zone check, `.platform-base.json`, `PLATFORM-PATCH`**: a tool and a CI job; a `platform-patch` skill | P | M | 5.4 | An unrecorded edit under `platform/` fails CI; a recorded one passes and is listed |
-| 5.11 | **Contracts job:** session and cookie isolation (would have caught lifeor2's `clear-session` revert), endpoint authorization (#150), headers, env check. Runs on every PR | P | M | 5.5 | Contracts run against the reference apps; a deliberately reverted cookie fix fails |
+| 5.11 | **Contracts job:** session and cookie isolation (would have caught lifeor2's `clear-session` revert), endpoint authorization (revived from closed #150, branch `tkarakai/starter-auth-contract-tests`), headers, env check. Runs on every PR | P | M | 5.5 | Contracts run against the reference apps; a deliberately reverted cookie fix fails |
 | 5.12 | **`bun run adopt`** (§9) | P | M | 5.4, 5.10, 3.1 | On a fresh clone: set values, swap templates, optionally strip the sample and landings, link skills, write the base record; then zone check and build pass |
 | 5.13 | **Update skills and docs for new paths**: the Phase 2 skills, `platform/AGENTS.md`, `platform/docs/` | P | S | 5.1–5.12 | Skill example tasks pass again on the new layout |
 
@@ -188,7 +195,6 @@ lifeor2-client forked before the new layout, so its first move to v2.0.0 is a **
 
 | Item | Resolved in |
 | --- | --- |
-| Whether #148 fits the configuration seam | 0.1 |
 | Unresolved security-review findings | 1.3 |
 | Component or `convex/platform/` only | 4.2 |
 | Legal wording of the licences | 9.4 |

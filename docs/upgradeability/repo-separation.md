@@ -49,7 +49,7 @@ The [case study](case-study-lifeor2-client.md) has the full analysis.
 | # | Decision | Why |
 | --- | --- | --- |
 | 1 | Two repos: a public product repo and a private maintainer repo | Buyers should never see how the starter is planned, audited or released. Release tooling and upgrade tests also need a home that doesn't ship |
-| 2 | Keep the current `web-app-starter` repo as the product repo | Keeps its CI, deployments, Renovate, open PRs and lifeor2-client's merge base. Cost: old maintainer material stays in public history |
+| 2 | Keep the current `web-app-starter` repo as the product repo | Keeps its CI, deployments, Renovate, issue and PR history, and lifeor2-client's merge base. Cost: old maintainer material stays in public history |
 | 3 | Zone rule: `platform/` directories and `platform-*` files | "Platform" names the lasting relationship: fixes and features keep arriving. "Starter" implies you start from it once and move on. A single rule is easy for agents to hold and for CI to check. The `platform-*` form exists because some tools pin locations (Convex, GitHub workflows, agent skills) |
 | 4 | Buyer, evaluator and app developer are one audience, at two moments | Before adoption they read the repo as a product; after, the root is theirs. The adopt step flips the few files that care |
 | 5 | The web dashboard and sample domain are reference code, owned by the app after adoption | Apps replace their UI; the starter shouldn't keep pushing changes into it |
@@ -351,7 +351,7 @@ Before adoption, the root describes the starter for an evaluator; after it, the 
 Contracts are black-box tests of platform behaviour. They exercise HTTP and Convex function calls, not UI, so they survive an app replacing its screens. They run in every app's CI, on every PR.
 
 - **Auth:** sign-in, session expiry, clear-session, banned user, admin blocked from the web app, MFA enforcement, and session and cookie isolation.
-- **Endpoint authorization** for every platform function (open PR #150 is the first).
+- **Endpoint authorization** for every platform function (closed, unmerged PR #150 is the starting point).
 - **Security headers, rate limits, origin checks.**
 - **Required environment variables** present and valid.
 - **Advisory check:** the installed platform version isn't affected by a known advisory at `high` or above.
