@@ -1,3 +1,4 @@
+import { migrationTableValidator, migrationPhaseValidator } from "./migrationTables";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -84,6 +85,9 @@ export const adminInvitationsFields = {
   };
 
 export default defineSchema({
+  migrationState: defineTable({ name: v.string(), deployment: v.string(), phase: migrationPhaseValidator, startedAt: v.number(), verifiedAt: v.optional(v.number()), completedAt: v.optional(v.number()) }).index("by_name", ["name"]),
+  migrationProgress: defineTable({ table: migrationTableValidator, cursor: v.union(v.string(), v.null()), complete: v.boolean() }).index("by_table", ["table"]),
+  migrationRows: defineTable({ table: migrationTableValidator, legacyId: v.string(), componentId: v.string(), legacyCreationTime: v.number(), snapshot: v.string(), publishAt: v.optional(v.number()), unpublishAt: v.optional(v.number()), sourcePublishJobId: v.optional(v.string()), sourceUnpublishJobId: v.optional(v.string()), schedulesActivated: v.boolean() }).index("by_table_legacy", ["table", "legacyId"]).index("by_table", ["table"]).index("by_table_activated", ["table", "schedulesActivated"]),
   adminEmails: defineTable({ email: v.string() }).index("by_email", ["email"]),
   adminInvitations: defineTable(adminInvitationsFields)
     .index("by_email", ["email"])

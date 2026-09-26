@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./functions";
 import type { Id } from "./_generated/dataModel";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 

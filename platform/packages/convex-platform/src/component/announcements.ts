@@ -1,9 +1,11 @@
+import { mutation as scheduledMutation } from "./_generated/server";
+import { migrationInProgress } from "./migrationGuard";
 import { v } from "convex/values";
 
 import { api } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import {
   assertMaxLength,
@@ -649,7 +651,7 @@ export const getActiveInternal = query({
   },
 });
 
-export const handleScheduledStart = mutation({
+export const handleScheduledStart = scheduledMutation({
   args: {
     announcementId: v.id("announcements"),
     expectedScheduleStart: v.number(),
@@ -657,6 +659,12 @@ export const handleScheduledStart = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (await migrationInProgress(ctx)) {
+      const jobId = await ctx.scheduler.runAfter(1000, api.announcements.handleScheduledStart, args);
+      await ctx.db.patch(args.announcementId, { publishJobId: jobId });
+      return;
+    }
+
     const announcement = await ctx.db.get(args.announcementId);
     if (!announcement) return;
 
@@ -730,7 +738,9 @@ export const handleScheduledStart = mutation({
       .filter(
         (row) =>
           row.scheduleStart === announcement.scheduleStart &&
-          row.publishJobId !== undefined &&
+          // A migrated job can resume after the winner has already fired. Keep
+          // that live winner in the tie-break so a delayed loser cannot replace it.
+          (row.publishJobId !== undefined || row.isLive) &&
           (row.scheduleEnd === undefined || row.scheduleEnd > now)
       )
       .sort(compareAnnouncementRecency);
@@ -776,13 +786,19 @@ export const handleScheduledStart = mutation({
   },
 });
 
-export const handleScheduledEnd = mutation({
+export const handleScheduledEnd = scheduledMutation({
   args: {
     announcementId: v.id("announcements"),
     expectedScheduleEnd: v.number(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (await migrationInProgress(ctx)) {
+      const jobId = await ctx.scheduler.runAfter(1000, api.announcements.handleScheduledEnd, args);
+      await ctx.db.patch(args.announcementId, { unpublishJobId: jobId });
+      return;
+    }
+
     const announcement = await ctx.db.get(args.announcementId);
     if (!announcement) return;
 

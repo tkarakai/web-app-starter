@@ -49,6 +49,8 @@ A **Bun workspaces + Turborepo** monorepo:
 
 - **Everything else is yours**, including the reference apps you keep.
 
+Existing deployments upgrading to v2 must complete the [component data migration](docs/component-data-migration.md) before deploying its backend or apps. The deploy guard refuses unmigrated legacy data; fresh empty apps need no copy.
+
 ## App configuration
 
 The root `app.config.ts` holds every value an app is expected to change: `identity` (product

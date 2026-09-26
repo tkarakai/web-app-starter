@@ -1,6 +1,6 @@
 /** Protected admin addresses. Only the installing app can call these functions. */
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./functions";
 
 export const adminEmailValidator = v.object({
   _id: v.id("adminEmails"),

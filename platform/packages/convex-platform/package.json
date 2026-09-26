@@ -13,7 +13,8 @@
     "./securityPolicies": "./src/component/securityPolicies.ts",
     "./onboardingType": "./src/component/onboardingType.ts",
     "./waitlist-validation": "./src/component/waitlistValidation.ts",
-    "./token-hash": "./src/component/tokenHash.ts"
+    "./token-hash": "./src/component/tokenHash.ts",
+    "./migration": "./src/component/migrationTypes.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

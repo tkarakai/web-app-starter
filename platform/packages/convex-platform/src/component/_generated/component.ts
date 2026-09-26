@@ -602,6 +602,253 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    migration: {
+      activateSchedules: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<string>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        },
+        Name
+      >;
+      begin: FunctionReference<
+        "mutation",
+        "internal",
+        { deployment: string },
+        "copying" | "verified" | "activating" | "complete",
+        Name
+      >;
+      countPage: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          receipts: boolean;
+          table:
+            | "announcements"
+            | "appSettings"
+            | "adminEmails"
+            | "waitlistEntries"
+            | "invitationTokens"
+            | "adminInvitations"
+            | "auditTrail";
+        },
+        { continueCursor: string; count: number; isDone: boolean },
+        Name
+      >;
+      getState: FunctionReference<
+        "query",
+        "internal",
+        {},
+        null | {
+          completedAt?: number;
+          deployment: string;
+          phase: "copying" | "verified" | "activating" | "complete";
+          startedAt: number;
+          verifiedAt?: number;
+        },
+        Name
+      >;
+      markVerified: FunctionReference<"mutation", "internal", {}, null, Name>;
+      progress: FunctionReference<
+        "query",
+        "internal",
+        {
+          table:
+            | "announcements"
+            | "appSettings"
+            | "adminEmails"
+            | "waitlistEntries"
+            | "invitationTokens"
+            | "adminInvitations"
+            | "auditTrail";
+        },
+        { complete: boolean; cursor: string | null },
+        Name
+      >;
+      verifyRows: FunctionReference<
+        "query",
+        "internal",
+        {
+          legacyIds: Array<string>;
+          table:
+            | "announcements"
+            | "appSettings"
+            | "adminEmails"
+            | "waitlistEntries"
+            | "invitationTokens"
+            | "adminInvitations"
+            | "auditTrail";
+        },
+        Array<{
+          componentId?: string;
+          exists: boolean;
+          fieldsMatch: boolean;
+          legacyCreationTime?: number;
+          legacyId: string;
+          sourceSnapshot?: string;
+        }>,
+        Name
+      >;
+    };
+    migrationImport: {
+      copy: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          batch:
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  action: string;
+                  actor: string;
+                  authenticatedUserId?: string;
+                  happenedAt: number;
+                  meta?: string;
+                  newValue?: string;
+                  oldValue?: string;
+                  reason?: string;
+                  resource: string;
+                  source: string;
+                  status: string;
+                  truncatedFields?: string;
+                }>;
+                table: "auditTrail";
+              }
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  key: string;
+                  updatedAt: number;
+                  updatedBy?: string;
+                  value: string;
+                }>;
+                table: "appSettings";
+              }
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  email: string;
+                }>;
+                table: "adminEmails";
+              }
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  claimedAt?: number;
+                  createdAt: number;
+                  email: string;
+                  invitationExpiresAt?: number;
+                  invitedAt?: number;
+                  meta: string;
+                  status: "waiting" | "invited" | "claimed";
+                }>;
+                table: "waitlistEntries";
+              }
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  claimStartedAt?: number;
+                  claimedAt?: number;
+                  createdAt: number;
+                  email: string;
+                  expiresAt: number;
+                  revokedAt?: number;
+                  status: "sent" | "claiming" | "claimed" | "revoked";
+                  token: string;
+                  waitlistEntryId: string;
+                }>;
+                table: "invitationTokens";
+              }
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  claimedAt?: number;
+                  createdAt: number;
+                  email: string;
+                  invitationExpiresAt?: number;
+                  invitedAt: number;
+                  onboardingStep?: number;
+                  status: "invited" | "claimed" | "completed";
+                  token?: string;
+                }>;
+                table: "adminInvitations";
+              }
+            | {
+                rows: Array<{
+                  _creationTime: number;
+                  _id: string;
+                  bannerText: string;
+                  callToActionName?: string;
+                  callToActionUrl?: string;
+                  createdAt: number;
+                  createdBy?: string;
+                  isArchived?: boolean;
+                  isLive: boolean;
+                  learnMoreContent?: string;
+                  learnMoreName?: string;
+                  name: string;
+                  pendingPublishAt?: number;
+                  pendingUnpublishAt?: number;
+                  publishJobId?: string;
+                  scheduleEnd?: number;
+                  scheduleStart?: number;
+                  unpublishJobId?: string;
+                  updatedAt: number;
+                  updatedBy?: string;
+                }>;
+                table: "announcements";
+              };
+          complete: boolean;
+          nextCursor: string;
+        },
+        { inserted: number; skipped: number },
+        Name
+      >;
+      restartTable: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          table:
+            | "announcements"
+            | "appSettings"
+            | "adminEmails"
+            | "waitlistEntries"
+            | "invitationTokens"
+            | "adminInvitations"
+            | "auditTrail";
+        },
+        null,
+        Name
+      >;
+    };
     waitlist: {
       invite: FunctionReference<
         "mutation",

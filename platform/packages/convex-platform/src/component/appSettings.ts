@@ -3,7 +3,7 @@ import { appSettingsFields } from "./schema";
 const settingValueValidator = v.union(v.string(), v.number(), v.boolean(), v.null(), v.object({ subject: v.string(), html: v.string(), text: v.string() }));
 type SettingValue = Infer<typeof settingValueValidator>;
 
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./functions";
 import type { Doc } from "./_generated/dataModel";
 type EmailTemplate = { subject: string; html: string; text: string };
 import type { AuditAction } from "./auditTrailConstants";

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation } from "./functions";
 /** Trusted host seed operations; callers enforce dev/E2E guards. */
 export const prepare = mutation({
   args: { email: v.string(), meta: v.string(), token: v.string(), ttlMs: v.number() },
