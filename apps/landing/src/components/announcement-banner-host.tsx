@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 
 import { AnnouncementBanner } from "@repo/design-system";
+import { appConfig } from "@repo/app-config";
 
 const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 const ANNOUNCEMENT_ENDPOINT_PATH = "/api/announcements/active";
@@ -28,7 +29,15 @@ type ActiveAnnouncement = {
   learnMoreContent?: string;
 };
 
+/**
+ * The announcement banner, when `features.announcements` is on in app.config.ts.
+ * Switched off, it renders nothing and never polls for announcements.
+ */
 export function AnnouncementBannerHost() {
+  return appConfig.features.announcements ? <ActiveAnnouncementBannerHost /> : null;
+}
+
+function ActiveAnnouncementBannerHost() {
   const t = useTranslations("common");
   const [announcement, setAnnouncement] = React.useState<ActiveAnnouncement | null>(
     null

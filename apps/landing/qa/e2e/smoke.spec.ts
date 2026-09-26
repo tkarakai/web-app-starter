@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { appConfig } from "@repo/app-config";
+
+const { productName } = appConfig.identity;
 
 test.describe("Landing Homepage", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Web App Starter");
+    await expect(page).toHaveTitle(`${productName}`);
   });
 
   test("displays main heading", async ({ page }) => {

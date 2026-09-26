@@ -1,5 +1,3 @@
-import messages from "@repo/i18n/messages/en.json";
-
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Raleway } from "next/font/google";
@@ -8,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { ConvexClientProvider } from "@repo/auth/provider";
 import {
+  BrandTokenStyle,
   EnvironmentBannerWrapper,
   OfflineBanner,
   PublicConfigProvider,
@@ -15,6 +14,7 @@ import {
 import { readPublicConfigFromEnv } from "@repo/design-system/server";
 import { getToken } from "@repo/auth/server";
 import { ConvexErrorToast } from "@/components/convex-error-toast";
+import { appConfig, tokenOverrideCss } from "@repo/app-config";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -23,8 +23,8 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: `Admin - ${messages.common.appName}`,
-  description: `Administration panel for ${messages.common.appName}.`,
+  title: `Admin - ${appConfig.identity.productName}`,
+  description: `Administration panel for ${appConfig.identity.productName}.`,
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -52,7 +52,8 @@ export default async function RootLayout({
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
-          <EnvironmentBannerWrapper appName="admin" />
+          {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="admin" />}
+          <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
           <OfflineBanner />
           <PublicConfigProvider value={publicConfig}>
             <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>

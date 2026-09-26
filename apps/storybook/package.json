@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3003",
+    "dev": "../../scripts/next-dev.sh storybook",
     "prebuild": "../../scripts/copy-shared-assets.sh",
     "build": "next build",
     "start": "next start",
@@ -13,6 +13,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@repo/app-config": "workspace:*",
     "@repo/design-patterns": "workspace:*",
     "@repo/design-system": "workspace:*",
     "lucide-react": "^1.46.0",

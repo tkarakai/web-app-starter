@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { appConfig } from "@repo/app-config";
 import { notFound } from "next/navigation";
 import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
@@ -8,6 +9,9 @@ import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { DocumentLocale } from "@/components/document-locale";
 import { Footer } from "@/components/footer";
+
+// Titles use the product name from app.config.ts; it is not a translation.
+const { productName } = appConfig.identity;
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -25,8 +29,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: {
-      template: `%s | ${t("title")}`,
-      default: t("title"),
+      template: `%s | ${productName}`,
+      default: productName,
     },
     description: t("description"),
     metadataBase: new URL(siteUrl),
@@ -45,13 +49,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: locale,
       url: canonicalUrl,
-      siteName: t("title"),
-      title: t("title"),
+      siteName: productName,
+      title: productName,
       description: t("description"),
     },
     twitter: {
       card: "summary_large_image",
-      title: t("title"),
+      title: productName,
       description: t("description"),
     },
   };

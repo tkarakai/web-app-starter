@@ -1,3 +1,5 @@
+import { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } from "@repo/auth/cookies";
+
 import { httpAction } from "./_generated/server";
 import { createAuth } from "./auth";
 import { parseUserAgent } from "./parseUserAgent";
@@ -70,29 +72,21 @@ export type SessionInfo = {
 // Helper: extract session token from request
 // ---------------------------------------------------------------------------
 
-/** Better Auth's session cookie names (HTTP and HTTPS), matched exactly. */
-const SESSION_COOKIE_NAMES: readonly string[] = [
-  "better-auth.session_token",
-  "__Secure-better-auth.session_token",
-];
-
-export function getSessionToken(request: Request): string | null {
+/**
+ * The session token of a request: a Bearer token, or else the session cookie
+ * named exactly for the cookie prefix in app.config.ts (HTTP or HTTPS form), so
+ * a look-alike such as `evil-better-auth.session_token` is ignored.
+ */
+export function getSessionToken(
+  request: Request,
+  prefix: string = AUTH_COOKIE_PREFIX,
+): string | null {
   // Check Authorization header first
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     return authHeader.slice(7);
   }
-  // Check cookie: the first one whose name is exactly a session cookie name,
-  // so a look-alike such as `evil-better-auth.session_token` is ignored.
-  const cookies = request.headers.get("cookie") ?? "";
-  for (const part of cookies.split(";")) {
-    const eq = part.indexOf("=");
-    if (eq === -1) continue;
-    const name = part.slice(0, eq).trim();
-    const value = part.slice(eq + 1).trim();
-    if (SESSION_COOKIE_NAMES.includes(name) && value) return value;
-  }
-  return null;
+  return sessionTokenFromCookieHeader(request.headers.get("cookie"), prefix);
 }
 
 // ---------------------------------------------------------------------------

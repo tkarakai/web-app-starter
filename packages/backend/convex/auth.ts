@@ -6,6 +6,8 @@ import { betterAuth } from "better-auth";
 import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
+import { appConfig } from "@repo/app-config";
+import { AUTH_COOKIE_PREFIX, SESSION_COOKIE_NAME } from "@repo/auth/cookies";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -247,7 +249,7 @@ const passwordStrengthPlugin = (
         const cookieHeader = request.headers.get("cookie");
         if (cookieHeader) {
           const cookieName = (ctx as { authCookies?: { sessionToken?: { name?: string } } })
-            .authCookies?.sessionToken?.name ?? "better-auth.session_token";
+            .authCookies?.sessionToken?.name ?? SESSION_COOKIE_NAME;
           const match = cookieHeader
             .split(";")
             .map((c) => c.trim())
@@ -315,12 +317,13 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
   },
 );
 
-/** Build a TOTP issuer name that includes environment context.
- *  - Production: "Web App Starter"
- *  - Staging:    "Web App Starter (STAGING)"
- *  - Dev:        "Web App Starter (DEV: branch-name)" */
-function getTotpIssuer(siteUrl: string): string {
-  const base = "Web App Starter";
+/** Build a TOTP issuer name that includes environment context, from the
+ *  product name in app.config.ts:
+ *  - Production: "<product>"
+ *  - Staging:    "<product> (STAGING)"
+ *  - Dev:        "<product> (DEV: branch-name)" */
+export function getTotpIssuer(siteUrl: string): string {
+  const base = appConfig.identity.productName;
   const isDev = process.env.DEV_SEED_ENABLED === "true";
   const isLocalhost = siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1");
 
@@ -822,6 +825,8 @@ export const createAuthOptions = (
     // limits via convex-helpers' token-bucket system, which is OCC-safe.
     rateLimit: { enabled: false },
     advanced: {
+      // Must match `cookiePrefix` in @repo/auth/server; both read app.config.ts.
+      cookiePrefix: AUTH_COOKIE_PREFIX,
       ipAddress: {
         ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
       },

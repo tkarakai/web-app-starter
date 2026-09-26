@@ -2,6 +2,8 @@
 // Email template types, defaults, and rendering
 // ---------------------------------------------------------------------------
 
+import { appConfig, type EmailPalette } from "@repo/app-config";
+
 /** Shape of a stored email template (subject + HTML + plain text). */
 export type EmailTemplate = {
   subject: string;
@@ -91,50 +93,75 @@ export function escapeHtml(str: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Brand: palette, language and footer from app.config.ts (brand.email)
+// ---------------------------------------------------------------------------
+
+/** Email colours, from `brand.email.palette` in app.config.ts. */
+export const EMAIL_PALETTE: EmailPalette = appConfig.brand.email.palette;
+
+/** `lang` of every email: the language the templates are written in. */
+export const EMAIL_LANG: string = appConfig.brand.email.lang;
+
+/** Plain-text footer appended to every email. */
+export const EMAIL_FOOTER_TEXT: string = appConfig.brand.email.footerText;
+
+/** Footer row closing the card of every HTML email. */
+export const EMAIL_FOOTER_HTML = `          <tr>
+            <td style="padding: 0 36px 28px;">
+              <p style="margin: 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5;">${escapeHtml(EMAIL_FOOTER_TEXT)}</p>
+            </td>
+          </tr>`;
+
+/** Add the footer to an email's plain-text part. */
+export function withTextFooter<T extends { text: string }>(email: T): T {
+  return { ...email, text: `${email.text}\n\n${EMAIL_FOOTER_TEXT}` };
+}
+
+// ---------------------------------------------------------------------------
 // Default invitation email template
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_EMAIL_TEMPLATE: EmailTemplate = {
   subject: "You're invited — let's get you set up",
   html: `<!DOCTYPE html>
-<html lang="en">
+<html lang="${EMAIL_LANG}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>You're Invited</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: ${EMAIL_PALETTE.background}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${EMAIL_PALETTE.background}; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: ${EMAIL_PALETTE.surface}; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <!-- Header accent -->
           <tr>
-            <td style="height: 4px; background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);"></td>
+            <td style="height: 4px; background: linear-gradient(135deg, ${EMAIL_PALETTE.accent} 0%, ${EMAIL_PALETTE.accentGradientEnd} 100%);"></td>
           </tr>
           <!-- Content -->
           <tr>
             <td style="padding: 40px 36px 32px;">
-              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: #18181b; line-height: 1.3;">
+              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: ${EMAIL_PALETTE.heading}; line-height: 1.3;">
                 You're invited!
               </h1>
-              <p style="margin: 0 0 16px; font-size: 15px; color: #3f3f46; line-height: 1.6;">
+              <p style="margin: 0 0 16px; font-size: 15px; color: ${EMAIL_PALETTE.text}; line-height: 1.6;">
                 Hi {{recipient_name}},
               </p>
-              <p style="margin: 0 0 28px; font-size: 15px; color: #3f3f46; line-height: 1.6;">
+              <p style="margin: 0 0 28px; font-size: 15px; color: ${EMAIL_PALETTE.text}; line-height: 1.6;">
                 We're excited to have you on board. Click the button below to create your account and get started.
               </p>
               <!-- CTA Button -->
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 28px;">
                 <tr>
-                  <td style="border-radius: 8px; background-color: #18181b;">
-                    <a href="{{invitation_link}}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
+                  <td style="border-radius: 8px; background-color: ${EMAIL_PALETTE.accent};">
+                    <a href="{{invitation_link}}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: ${EMAIL_PALETTE.accentText}; text-decoration: none; border-radius: 8px;">
                       Accept invitation
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin: 0; font-size: 13px; color: #71717a; line-height: 1.5;">
+              <p style="margin: 0; font-size: 13px; color: ${EMAIL_PALETTE.mutedText}; line-height: 1.5;">
                 This invitation expires in {{expiry_days}} days. If you didn't request this, you can safely ignore this email.
               </p>
             </td>
@@ -142,20 +169,21 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplate = {
           <!-- Divider -->
           <tr>
             <td style="padding: 0 36px;">
-              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 0;">
+              <hr style="border: none; border-top: 1px solid ${EMAIL_PALETTE.border}; margin: 0;">
             </td>
           </tr>
           <!-- Fallback URL -->
           <tr>
             <td style="padding: 20px 36px 32px;">
-              <p style="margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.5;">
+              <p style="margin: 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5;">
                 If the button doesn't work, copy and paste this URL into your browser:
               </p>
-              <p style="margin: 6px 0 0; font-size: 12px; color: #a1a1aa; line-height: 1.5; word-break: break-all;">
+              <p style="margin: 6px 0 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5; word-break: break-all;">
                 {{invitation_link}}
               </p>
             </td>
           </tr>
+${EMAIL_FOOTER_HTML}
         </table>
       </td>
     </tr>
@@ -170,7 +198,9 @@ We're excited to have you on board. Visit the link below to create your account 
 
 {{invitation_link}}
 
-This invitation expires in {{expiry_days}} days. If you didn't request this, you can safely ignore this email.`,
+This invitation expires in {{expiry_days}} days. If you didn't request this, you can safely ignore this email.
+
+${EMAIL_FOOTER_TEXT}`,
 };
 
 // ---------------------------------------------------------------------------
@@ -180,41 +210,41 @@ This invitation expires in {{expiry_days}} days. If you didn't request this, you
 export const DEFAULT_VERIFICATION_EMAIL_TEMPLATE: EmailTemplate = {
   subject: "Verify your email address",
   html: `<!DOCTYPE html>
-<html lang="en">
+<html lang="${EMAIL_LANG}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verify your email</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: ${EMAIL_PALETTE.background}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${EMAIL_PALETTE.background}; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: ${EMAIL_PALETTE.surface}; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <!-- Header accent -->
           <tr>
-            <td style="height: 4px; background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);"></td>
+            <td style="height: 4px; background: linear-gradient(135deg, ${EMAIL_PALETTE.accent} 0%, ${EMAIL_PALETTE.accentGradientEnd} 100%);"></td>
           </tr>
           <!-- Content -->
           <tr>
             <td style="padding: 40px 36px 32px;">
-              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: #18181b; line-height: 1.3;">
+              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: ${EMAIL_PALETTE.heading}; line-height: 1.3;">
                 Verify your email
               </h1>
-              <p style="margin: 0 0 28px; font-size: 15px; color: #3f3f46; line-height: 1.6;">
+              <p style="margin: 0 0 28px; font-size: 15px; color: ${EMAIL_PALETTE.text}; line-height: 1.6;">
                 Thanks for signing up! Please verify your email address by clicking the button below:
               </p>
               <!-- CTA Button -->
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 28px;">
                 <tr>
-                  <td style="border-radius: 8px; background-color: #18181b;">
-                    <a href="{{verification_link}}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
+                  <td style="border-radius: 8px; background-color: ${EMAIL_PALETTE.accent};">
+                    <a href="{{verification_link}}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: ${EMAIL_PALETTE.accentText}; text-decoration: none; border-radius: 8px;">
                       Verify email
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin: 0; font-size: 13px; color: #71717a; line-height: 1.5;">
+              <p style="margin: 0; font-size: 13px; color: ${EMAIL_PALETTE.mutedText}; line-height: 1.5;">
                 This link is valid for {{link_expiry}}. If you didn't create an account, you can safely ignore this email.
               </p>
             </td>
@@ -222,20 +252,21 @@ export const DEFAULT_VERIFICATION_EMAIL_TEMPLATE: EmailTemplate = {
           <!-- Divider -->
           <tr>
             <td style="padding: 0 36px;">
-              <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 0;">
+              <hr style="border: none; border-top: 1px solid ${EMAIL_PALETTE.border}; margin: 0;">
             </td>
           </tr>
           <!-- Fallback URL -->
           <tr>
             <td style="padding: 20px 36px 32px;">
-              <p style="margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.5;">
+              <p style="margin: 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5;">
                 If the button doesn't work, copy and paste this URL into your browser:
               </p>
-              <p style="margin: 6px 0 0; font-size: 12px; color: #a1a1aa; line-height: 1.5; word-break: break-all;">
+              <p style="margin: 6px 0 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5; word-break: break-all;">
                 {{verification_link}}
               </p>
             </td>
           </tr>
+${EMAIL_FOOTER_HTML}
         </table>
       </td>
     </tr>
@@ -248,7 +279,9 @@ Thanks for signing up! Please verify your email address by visiting:
 
 {{verification_link}}
 
-This link is valid for {{link_expiry}}. If you didn't create an account, you can safely ignore this email.`,
+This link is valid for {{link_expiry}}. If you didn't create an account, you can safely ignore this email.
+
+${EMAIL_FOOTER_TEXT}`,
 };
 
 // ---------------------------------------------------------------------------

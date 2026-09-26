@@ -144,6 +144,8 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
             admin:
               - 'apps/admin/**'
@@ -153,6 +155,8 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
             landing:
               - 'apps/landing/**'
@@ -160,12 +164,16 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
             backend:
               - 'packages/backend/**'
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
 
       - name: Evaluate changes

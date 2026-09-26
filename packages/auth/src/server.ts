@@ -12,6 +12,7 @@ import type {
   FunctionReference,
   FunctionReturnType,
 } from "convex/server";
+import { AUTH_COOKIE_PREFIX } from "./cookies";
 
 /**
  * Next.js server helpers that proxy auth requests to the Convex deployment.
@@ -19,12 +20,16 @@ import type {
  * `CONVEX_URL` and `CONVEX_SITE_URL` are read unprefixed, at request time, so
  * the build carries no environment identity and one artifact can be promoted
  * between environments. See docs/deployment-architecture.md
+ *
+ * `cookiePrefix` must match the backend's `advanced.cookiePrefix`; both come
+ * from `runtime.authCookiePrefix` in app.config.ts.
  */
 const {
   handler,
   getToken,
   isAuthenticated,
 } = convexBetterAuthNextJs({
+  cookiePrefix: AUTH_COOKIE_PREFIX,
   convexUrl: process.env.CONVEX_URL!,
   convexSiteUrl: process.env.CONVEX_SITE_URL!,
 });

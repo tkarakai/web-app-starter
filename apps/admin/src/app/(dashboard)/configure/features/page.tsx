@@ -1,7 +1,12 @@
+import { appConfig } from "@repo/app-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/design-system";
 import { InviteOnlyFeatureCard } from "@/components/features/invite-only-feature-card";
 import { SignupFeatureCard } from "@/components/features/signup-feature-card";
 import { WaitlistFeatureCard } from "@/components/features/waitlist-feature-card";
+
+// Optional platform features switched off in app.config.ts (`features`) are
+// not offered here. Their code stays in place and keeps receiving fixes.
+const { invitations, waitlist } = appConfig.features;
 
 export default function FeaturesPage() {
   return (
@@ -21,8 +26,8 @@ export default function FeaturesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <InviteOnlyFeatureCard />
-            <WaitlistFeatureCard />
+            {invitations && <InviteOnlyFeatureCard />}
+            {waitlist && <WaitlistFeatureCard />}
             <SignupFeatureCard />
           </CardContent>
         </Card>

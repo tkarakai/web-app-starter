@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
 import { _resetStore } from "@repo/edge-rate-limit";
+import { localAppOrigin } from "@repo/app-config";
 
 // Fresh rate limit store per test
 beforeEach(() => {
@@ -17,7 +18,7 @@ function createRequest(
   headers: Record<string, string> = {}
 ): NextRequest {
   ipCounter += 1;
-  const url = `http://localhost:3001${path}`;
+  const url = `${localAppOrigin("web")}${path}`;
   const req = new NextRequest(url, {
     headers: {
       "x-forwarded-for":

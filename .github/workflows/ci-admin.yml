@@ -63,6 +63,8 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
               - 'scripts/**'
@@ -159,7 +161,7 @@ jobs:
         env:
           CONVEX_URL: "https://placeholder.convex.cloud"
           CONVEX_SITE_URL: "https://placeholder.convex.site"
-          APP_ORIGIN: "http://localhost:3002"
+          APP_ORIGIN: ${{ env.APP_CONFIG_ORIGIN_ADMIN }}
 
       - name: Check bundle size
         run: cd apps/admin && bun run size

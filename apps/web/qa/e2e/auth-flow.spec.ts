@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 
 import { appCookieDomain, fillStable, submitEmailStep } from "./helpers/auth";
+import { sessionCookieNames } from "@repo/auth/cookies";
+
+// Session cookie names for the prefix in app.config.ts.
+const [SESSION] = sessionCookieNames();
 
 /**
  * Authentication Flow E2E Tests
@@ -129,7 +133,7 @@ test.describe("Auth Route Guards", () => {
     // will trigger the redirect to /dashboard.
     await context.addCookies([
       {
-        name: "better-auth.session_token",
+        name: SESSION,
         value: "fake-session-token",
         domain: appCookieDomain(),
         path: "/",
@@ -160,7 +164,7 @@ test.describe("Auth Route Guards", () => {
   }) => {
     await context.addCookies([
       {
-        name: "better-auth.session_token",
+        name: SESSION,
         value: "fake-session-token",
         domain: appCookieDomain(),
         path: "/",

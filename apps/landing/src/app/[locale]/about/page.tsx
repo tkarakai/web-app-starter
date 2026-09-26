@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { appConfig } from "@repo/app-config";
 
 import { ContentPageLayout } from "@/components/content-page-layout";
+
+// The product name is an argument, not part of the translations: renaming the
+// product in app.config.ts touches no locale file.
+const { productName } = appConfig.identity;
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -13,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: t("title"),
-    description: t("description"),
+    description: t("description", { productName }),
   };
 }
 
@@ -25,10 +30,10 @@ export default async function AboutPage({ params }: Props) {
 
   return (
     <ContentPageLayout title={t("heading")} notice={t("notice")}>
-      <p>{t("intro")}</p>
+      <p>{t("intro", { productName })}</p>
 
       <h2 className="text-lg font-semibold text-foreground">{t("mission")}</h2>
-      <p>{t("missionText")}</p>
+      <p>{t("missionText", { productName })}</p>
 
       <h2 className="text-lg font-semibold text-foreground">
         {t("whatIncluded")}

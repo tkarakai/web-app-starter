@@ -1,5 +1,6 @@
 import "./globals.css";
-import { EnvironmentBannerWrapper } from "@repo/design-system";
+import { BrandTokenStyle, EnvironmentBannerWrapper } from "@repo/design-system";
+import { appConfig, tokenOverrideCss } from "@repo/app-config";
 
 /**
  * Root layout — provides the required html/body shell for Next.js 16 static export.
@@ -14,7 +15,8 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
-        <EnvironmentBannerWrapper appName="landing-static" />
+        {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="landing-static" />}
+        <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
         {children}
       </body>
     </html>

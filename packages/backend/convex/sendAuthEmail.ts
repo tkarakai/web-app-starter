@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 
 import { assertMockEmailAllowed } from "./developmentOnly";
+import { EMAIL_FOOTER_HTML, EMAIL_LANG, EMAIL_PALETTE, withTextFooter } from "./emailTemplates";
 
 // ---------------------------------------------------------------------------
 // Auth email sender — Resend when configured, console.log fallback for dev
@@ -44,7 +45,7 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
   const { subject, html, text } =
     type === "custom"
       ? { subject: opts.subject, html: opts.html, text: opts.text }
-      : buildEmailContent(type, opts.urlOrCode, opts.linkExpiry);
+      : withTextFooter(buildEmailContent(type, opts.urlOrCode, opts.linkExpiry));
 
   const urlOrCode = type !== "custom" ? opts.urlOrCode : undefined;
   const apiKey = process.env.RESEND_API_KEY;
@@ -152,7 +153,7 @@ function buildEmailContent(
           "Your verification code",
           `<p style="${pStyle}">Use the code below to verify your identity:</p>` +
             `<div style="text-align: center; margin: 28px 0;">` +
-            `<span style="display: inline-block; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #18181b; background: #f4f4f5; padding: 16px 32px; border-radius: 8px;">${escapeHtml(urlOrCode)}</span>` +
+            `<span style="display: inline-block; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: ${EMAIL_PALETTE.heading}; background: ${EMAIL_PALETTE.background}; padding: 16px 32px; border-radius: 8px;">${escapeHtml(urlOrCode)}</span>` +
             `</div>` +
             `<p style="${smallStyle}">This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.</p>`,
         ),
@@ -169,9 +170,9 @@ function buildEmailContent(
 // ---------------------------------------------------------------------------
 
 const pStyle =
-  "margin: 0 0 16px; font-size: 15px; color: #3f3f46; line-height: 1.6;";
+  `margin: 0 0 16px; font-size: 15px; color: ${EMAIL_PALETTE.text}; line-height: 1.6;`;
 const smallStyle =
-  "margin: 0; font-size: 13px; color: #71717a; line-height: 1.5;";
+  `margin: 0; font-size: 13px; color: ${EMAIL_PALETTE.mutedText}; line-height: 1.5;`;
 
 function escapeHtml(str: string): string {
   return str
@@ -185,46 +186,47 @@ function escapeHtml(str: string): string {
 function ctaButton(label: string, url: string): string {
   return (
     `<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 28px;">` +
-    `<tr><td style="border-radius: 8px; background-color: #18181b;">` +
-    `<a href="${escapeHtml(url)}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">` +
+    `<tr><td style="border-radius: 8px; background-color: ${EMAIL_PALETTE.accent};">` +
+    `<a href="${escapeHtml(url)}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: ${EMAIL_PALETTE.accentText}; text-decoration: none; border-radius: 8px;">` +
     `${escapeHtml(label)}</a></td></tr></table>`
   );
 }
 
 function fallbackUrl(url: string): string {
   return (
-    `<hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0 16px;">` +
-    `<p style="margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.5;">` +
+    `<hr style="border: none; border-top: 1px solid ${EMAIL_PALETTE.border}; margin: 24px 0 16px;">` +
+    `<p style="margin: 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5;">` +
     `If the button doesn't work, copy and paste this URL into your browser:</p>` +
-    `<p style="margin: 6px 0 0; font-size: 12px; color: #a1a1aa; line-height: 1.5; word-break: break-all;">` +
+    `<p style="margin: 6px 0 0; font-size: 12px; color: ${EMAIL_PALETTE.subtleText}; line-height: 1.5; word-break: break-all;">` +
     `${escapeHtml(url)}</p>`
   );
 }
 
 function wrapHtml(title: string, body: string): string {
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${EMAIL_LANG}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: ${EMAIL_PALETTE.background}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${EMAIL_PALETTE.background}; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: ${EMAIL_PALETTE.surface}; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <tr>
-            <td style="height: 4px; background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);"></td>
+            <td style="height: 4px; background: linear-gradient(135deg, ${EMAIL_PALETTE.accent} 0%, ${EMAIL_PALETTE.accentGradientEnd} 100%);"></td>
           </tr>
           <tr>
             <td style="padding: 40px 36px 32px;">
-              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: #18181b; line-height: 1.3;">
+              <h1 style="margin: 0 0 24px; font-size: 22px; font-weight: 700; color: ${EMAIL_PALETTE.heading}; line-height: 1.3;">
                 ${escapeHtml(title)}
               </h1>
               ${body}
             </td>
           </tr>
+${EMAIL_FOOTER_HTML}
         </table>
       </td>
     </tr>

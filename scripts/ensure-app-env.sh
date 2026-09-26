@@ -11,11 +11,13 @@
 # build then fails the moment a route reads a required variable, which is easy to
 # hit through `bun run build` or `bun run test:e2e` since turbo builds every app.
 #
-# Values come from the app's own checked-in .env.example, which holds the right
-# localhost port for that app. Existing .env.local files are never touched.
+# Values come from the app's own checked-in .env.example. Local URLs are not in
+# the examples: an empty URL key listed in config_default below is filled with
+# the app's local origin from the ports in app.config.ts. Existing .env.local
+# files are never touched.
 #
 # Only apps whose .env.example is self-sufficient are seeded — that is, every key
-# already has a value. apps/web and apps/admin deliberately ship empty
+# has a value once the local URLs are filled in. apps/web and apps/admin deliberately ship empty
 # NEXT_PUBLIC_CONVEX_URL / NEXT_PUBLIC_CONVEX_SITE_URL entries, because those are
 # only knowable once `convex dev` has assigned a port; dev-start.sh owns them.
 # Copying an empty value there would swap one build failure for a more confusing
@@ -33,6 +35,37 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Local origins from app.config.ts, as APP_CONFIG_* variables.
+APP_CONFIG_VARS=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
+eval "$APP_CONFIG_VARS"
+: "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
+
+# The local default for an app's URL key, or nothing.
+config_default() {
+    case "$1:$2" in
+        web:LANDING_URL)                          echo "$APP_CONFIG_ORIGIN_LANDING" ;;
+        landing:NEXT_PUBLIC_SITE_URL)             echo "$APP_CONFIG_ORIGIN_LANDING" ;;
+        landing-static:NEXT_PUBLIC_SITE_URL)      echo "$APP_CONFIG_ORIGIN_LANDING_STATIC" ;;
+        landing:NEXT_PUBLIC_WEB_APP_URL|landing-static:NEXT_PUBLIC_WEB_APP_URL)
+                                                  echo "$APP_CONFIG_ORIGIN_WEB" ;;
+    esac
+}
+
+# Print an .env.example with its empty local-URL keys filled in.
+fill_example() {
+    local app_name="$1" example="$2" line key value
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=[[:space:]]*$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value=$(config_default "$app_name" "$key")
+            if [ -n "$value" ]; then
+                line="$key=$value"
+            fi
+        fi
+        printf '%s\n' "$line"
+    done < "$example"
+}
 
 QUIET=false
 if [[ "$1" == "--quiet" ]]; then
@@ -62,13 +95,15 @@ for app_dir in "$PROJECT_DIR"/apps/*/; do
         continue
     fi
 
-    # Skip apps whose example leaves keys blank — dev-start.sh fills those in.
-    if grep -qE '^[A-Za-z_][A-Za-z0-9_]*=[[:space:]]*$' "$example"; then
+    filled=$(fill_example "$app_name" "$example")
+
+    # Skip apps whose example still leaves keys blank — dev-start.sh fills those in.
+    if grep -qE '^[A-Za-z_][A-Za-z0-9_]*=[[:space:]]*$' <<< "$filled"; then
         log "  ${YELLOW}—${NC} Skipped ${app_name}: .env.example needs values from dev-start.sh"
         continue
     fi
 
-    cp "$example" "$local_env"
+    printf '%s\n' "$filled" > "$local_env"
     created=$((created + 1))
     log "  ${GREEN}✔${NC} Created ${app_name}/.env.local from .env.example"
 done

@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
   env: {
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
-  transpilePackages: ["@repo/design-system", "@repo/auth", "@repo/backend", "@repo/edge-rate-limit", "@repo/i18n"],
+  transpilePackages: ["@repo/app-config", "@repo/design-system", "@repo/auth", "@repo/backend", "@repo/edge-rate-limit", "@repo/i18n"],
   headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
   outputFileTracingRoot: monorepoRoot,
   turbopack: {

@@ -4,16 +4,16 @@ import { Link } from "@repo/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 import { Separator } from "@repo/design-system";
+import { appConfig } from "@repo/app-config";
 
 export function Footer() {
   const t = useTranslations("landing.footer");
-  const tc = useTranslations("common");
 
   return (
     <footer className="w-full">
       <Separator />
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-6 py-8 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-        <p>&copy; {new Date().getFullYear()} {tc("appName")}</p>
+        <p>&copy; {new Date().getFullYear()} {appConfig.identity.legalEntity}</p>
         <nav className="flex gap-6">
           <Link
             href="/about"

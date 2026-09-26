@@ -1,3 +1,4 @@
+import { localAppOrigin } from "@repo/app-config";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -5,10 +6,11 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["convex/**/*.test.ts"],
+    // Local origins, as dev-start.sh sets them on a local backend (app.config.ts ports).
     env: {
-      SITE_URL: "http://localhost:3001",
-      ADMIN_SITE_URL: "http://localhost:3002",
-      LANDING_URL: "http://localhost:3000",
+      SITE_URL: localAppOrigin("web"),
+      ADMIN_SITE_URL: localAppOrigin("admin"),
+      LANDING_URL: localAppOrigin("landing"),
     },
     server: {
       deps: {

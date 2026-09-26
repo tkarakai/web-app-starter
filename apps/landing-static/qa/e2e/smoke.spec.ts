@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { appConfig } from "@repo/app-config";
+
+const { productName } = appConfig.identity;
 
 /**
  * Paths are locale-prefixed and carry a trailing slash.
@@ -14,7 +17,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Landing Static Homepage", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/en/");
-    await expect(page).toHaveTitle("Web App Starter");
+    await expect(page).toHaveTitle(`${productName}`);
   });
 
   test("displays main heading", async ({ page }) => {
@@ -67,13 +70,13 @@ test.describe("Footer", () => {
 test.describe("Legal Pages", () => {
   test("about page loads with correct heading", async ({ page }) => {
     await page.goto("/en/about/");
-    await expect(page).toHaveTitle("About | Web App Starter");
+    await expect(page).toHaveTitle(`About | ${productName}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("About");
   });
 
   test("privacy page loads with correct heading", async ({ page }) => {
     await page.goto("/en/privacy/");
-    await expect(page).toHaveTitle("Privacy Policy | Web App Starter");
+    await expect(page).toHaveTitle(`Privacy Policy | ${productName}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "Privacy Policy",
     );
@@ -81,7 +84,7 @@ test.describe("Legal Pages", () => {
 
   test("terms page loads with correct heading", async ({ page }) => {
     await page.goto("/en/terms/");
-    await expect(page).toHaveTitle("Terms of Service | Web App Starter");
+    await expect(page).toHaveTitle(`Terms of Service | ${productName}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "Terms of Service",
     );

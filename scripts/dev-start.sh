@@ -15,6 +15,12 @@ CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
 NODE_TS="$SCRIPT_DIR/node-ts.sh"
 
+# Ports and local origins come from app.config.ts (APP_CONFIG_* variables).
+# The reader validates the config first, so a bad value stops here.
+APP_CONFIG_VARS=$("$NODE_TS" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
+eval "$APP_CONFIG_VARS"
+: "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (scripts/app-config.ts printed nothing)}"
+
 # ============================================================
 # PARSE ARGUMENTS
 # ============================================================
@@ -729,7 +735,7 @@ if [ "$NEED_CONVEX" = true ]; then
     # the apps are up, below. Give it a provisional local value until then.
     EXISTING_SITE_URL=$(cd "$CONVEX_DIR" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
     if [ -z "$EXISTING_SITE_URL" ] || [ "$EXISTING_SITE_URL" = "undefined" ]; then
-        (cd "$CONVEX_DIR" && bunx convex env set SITE_URL "http://localhost:3001" > /dev/null 2>&1) || true
+        (cd "$CONVEX_DIR" && bunx convex env set SITE_URL "$APP_CONFIG_ORIGIN_WEB" > /dev/null 2>&1) || true
     fi
     SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run devSeed:seed 2>&1) || true
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
@@ -911,13 +917,13 @@ LANDING_APP_URL=""
 APP_URLS=""  # Comma-separated list of all app URLs for Better Auth
 
 if [ "$START_WEB" = true ]; then
-    start_next_app "web" 3001
+    start_next_app "web" "$APP_CONFIG_PORT_WEB"
     WEB_APP_URL="$LAST_APP_URL"
     APP_URLS="$LAST_APP_URL"
 fi
 
 if [ "$START_ADMIN" = true ]; then
-    start_next_app "admin" 3002
+    start_next_app "admin" "$APP_CONFIG_PORT_ADMIN"
     ADMIN_APP_URL="$LAST_APP_URL"
     if [ -n "$APP_URLS" ]; then
         APP_URLS="$APP_URLS,$LAST_APP_URL"
@@ -942,7 +948,7 @@ if [ "$START_LANDING" = true ]; then
         update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$WEB_APP_URL"
         echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
     fi
-    start_next_app "landing" 3000
+    start_next_app "landing" "$APP_CONFIG_PORT_LANDING"
     LANDING_APP_URL="$LAST_APP_URL"
 
     # Sync LANDING_URL to Convex so CORS allows the landing origin
@@ -962,7 +968,7 @@ if [ "$START_LANDING" = true ]; then
 fi
 
 if [ "$START_STORYBOOK" = true ]; then
-    start_next_app "storybook" 3003
+    start_next_app "storybook" "$APP_CONFIG_PORT_STORYBOOK"
 fi
 
 # ============================================================
@@ -978,8 +984,8 @@ if [ "$NEED_CONVEX" = true ]; then
     # Seed LANDING_URL for web when landing is not started
     if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
         if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/apps/web/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "http://localhost:3000"
-            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to http://localhost:3000 for web"
+            update_env_var "$PROJECT_DIR/apps/web/.env.local" "LANDING_URL" "$APP_CONFIG_ORIGIN_LANDING"
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING for web"
         else
             echo -e "  ${GREEN}✔${NC} LANDING_URL already set for web (preserved)"
         fi
@@ -988,8 +994,8 @@ if [ "$NEED_CONVEX" = true ]; then
     # Seed NEXT_PUBLIC_WEB_APP_URL for landing when web is not started
     if [ "$START_LANDING" = true ] && [ "$START_WEB" = false ]; then
         if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/apps/landing/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "http://localhost:3001"
-            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to http://localhost:3001 for landing"
+            update_env_var "$PROJECT_DIR/apps/landing/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$APP_CONFIG_ORIGIN_WEB"
+            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to $APP_CONFIG_ORIGIN_WEB for landing"
         else
             echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL already set for landing (preserved)"
         fi
@@ -997,15 +1003,15 @@ if [ "$NEED_CONVEX" = true ]; then
 
     # Seed ADMIN_SITE_URL in Convex when admin is not started
     if [ "$START_ADMIN" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "http://localhost:3002" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL defaulted to http://localhost:3002 in Convex"
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "$APP_CONFIG_ORIGIN_ADMIN" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL defaulted to $APP_CONFIG_ORIGIN_ADMIN in Convex"
         fi
     fi
 
     # Seed LANDING_URL in Convex when landing is not started
     if [ "$START_LANDING" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "http://localhost:3000" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to http://localhost:3000 in Convex"
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$APP_CONFIG_ORIGIN_LANDING" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING in Convex"
         fi
     fi
 fi

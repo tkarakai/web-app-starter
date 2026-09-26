@@ -2,6 +2,7 @@
   "name": "web-app-starter",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "packageManager": "bun@1.4.2",
   "engines": {
     "node": "24.x"
@@ -57,7 +58,7 @@
     "typecheck:dev-scripts": "tsc -p scripts/tsconfig.json",
     "check:runtime-baseline": "./scripts/node-ts.sh scripts/check-runtime-baseline.ts",
     "renovate:status": "./scripts/node-ts.sh scripts/renovate-status.ts",
-    "lint:dev-scripts": "eslint scripts/check-runtime-baseline.ts scripts/renovate-status.ts scripts/dev-processes.ts scripts/resolve-i18n-conflicts.ts scripts/staging-log.ts scripts/tests --max-warnings 0",
+    "lint:dev-scripts": "eslint scripts/app-config.ts scripts/check-runtime-baseline.ts scripts/renovate-status.ts scripts/dev-processes.ts scripts/resolve-i18n-conflicts.ts scripts/staging-log.ts scripts/tests --max-warnings 0",
     "test:starter-upgrade": "./scripts/node-ts.sh --test scripts/starter-upgrade/*.test.ts",
     "test:starter-rehearsal": "./scripts/node-ts.sh scripts/starter-upgrade/rehearse.ts",
     "starter-upgrade": "./scripts/node-ts.sh scripts/starter-upgrade/upgrade.ts",

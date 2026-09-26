@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { sessionCookieNames } from "@repo/auth/cookies";
 import {
   checkEdgeRateLimit,
   positiveInt,
@@ -37,7 +38,7 @@ export function proxy(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
-  const hasSession = hasSessionCookie(request);
+  const hasSession = hasSessionCookie(request, sessionCookieNames());
 
   // Unauthenticated users hitting a protected route → sign-in
   if (

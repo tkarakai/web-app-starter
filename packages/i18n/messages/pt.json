@@ -1,6 +1,5 @@
 {
   "common": {
-    "appName": "Web App Starter",
     "loading": "Carregando...",
     "cancel": "Cancelar",
     "save": "Salvar alterações",
@@ -489,22 +488,21 @@
     }
   },
   "metadata": {
-    "title": "Web App Starter",
     "description": "Um starter de Next.js com Convex, Better Auth e Bun."
   },
   "legal": {
     "about": {
       "title": "Sobre",
-      "description": "Saiba mais sobre Web App Starter e nossa missão.",
+      "description": "Saiba mais sobre {productName} e nossa missão.",
       "notice": "Este é um conteúdo de espaço reservado. Substitua-o pelo seu próprio conteúdo antes de lançar.",
       "heading": "Sobre",
       "mission": "Nossa Missão",
-      "missionText": "Acreditamos que os desenvolvedores devem dedicar seu tempo à construção de recursos, não à configuração de infraestrutura. Web App Starter fornece um ponto de partida pronto para produção com sincronização de dados em tempo real, uploads de arquivo e autenticação baseada em sessão, tudo já conectado e pronto.",
+      "missionText": "Acreditamos que os desenvolvedores devem dedicar seu tempo à construção de recursos, não à configuração de infraestrutura. {productName} fornece um ponto de partida pronto para produção com sincronização de dados em tempo real, uploads de arquivo e autenticação baseada em sessão, tudo já conectado e pronto.",
       "whatIncluded": "O Que Está Incluído",
       "whatIncludedText": "O kit de inicialização vem com uma página de destino, um aplicativo web totalmente autenticado, um painel de administração e um livro de componentes. Cada aplicativo compartilha um sistema de design unificado construído em primitivos do Radix UI com Tailwind CSS.",
       "openSource": "Código Aberto",
       "openSourceText": "Este projeto é código aberto e foi projetado para ser bifurcado e personalizado.",
-      "intro": "Web App Starter é uma base de pilha completa para construir aplicativos web modernos. Combina Next.js para o frontend, Convex para o backend e Better Auth para autenticação segura — tudo conectado e pronto para enviar."
+      "intro": "{productName} é uma base de pilha completa para construir aplicativos web modernos. Combina Next.js para o frontend, Convex para o backend e Better Auth para autenticação segura — tudo conectado e pronto para enviar."
     },
     "privacy": {
       "title": "Política de Privacidade",

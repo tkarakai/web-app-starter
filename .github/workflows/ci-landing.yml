@@ -59,6 +59,8 @@ jobs:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
+              - 'app.config.ts'
+              - 'packages/app-config/**'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
               - 'scripts/**'
@@ -151,8 +153,8 @@ jobs:
       - name: Build
         run: bunx turbo build --filter=@repo/landing...
         env:
-          NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
-          NEXT_PUBLIC_WEB_APP_URL: "http://localhost:3001"
+          NEXT_PUBLIC_SITE_URL: ${{ env.APP_CONFIG_ORIGIN_LANDING }}
+          NEXT_PUBLIC_WEB_APP_URL: ${{ env.APP_CONFIG_ORIGIN_WEB }}
           NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
 
       - name: Check bundle size
