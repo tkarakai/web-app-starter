@@ -3,10 +3,12 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { createAuth } from "./auth";
+import { isLocalDevelopment } from "./developmentOnly";
 
 // ---------------------------------------------------------------------------
 // Dev-only seed data — hardcoded credentials for local development.
-// Gated behind DEV_SEED_ENABLED env var (set by dev-start.sh).
+// Gated behind DEV_SEED_ENABLED env var (set by dev-start.sh) and refused
+// outside local development (see developmentOnly.ts).
 // ---------------------------------------------------------------------------
 
 const DEV_USERS = [
@@ -130,10 +132,19 @@ export const finalizeDevToken = internalMutation({
 export const seed = internalAction({
   args: {},
   handler: async (ctx) => {
-    // Guard: only run when explicitly enabled
+    // Guard: only run when explicitly enabled, and only in local development.
+    // DEV_SEED_ENABLED alone is not enough: these accounts have hard-coded
+    // passwords, so a stray flag on a hosted deployment must not create them.
     if (process.env.DEV_SEED_ENABLED !== "true") {
       console.log("[devSeed] DEV_SEED_ENABLED is not 'true', skipping");
       return;
+    }
+    if (!isLocalDevelopment()) {
+      throw new Error(
+        "DEV_SEED_NOT_LOCAL: the dev seed runs only in local development " +
+          "(every SITE_URL origin on http://localhost). Refusing to create " +
+          "accounts with hard-coded passwords on this deployment.",
+      );
     }
 
     // Idempotent: skip if already seeded

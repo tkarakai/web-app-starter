@@ -105,7 +105,7 @@ export const initialize = internalMutation({
     return {
       success: true,
       email: args.email,
-      message: `Invitation sent to ${args.email}. Check inbox (or Convex dashboard logs if no RESEND_API_KEY).`,
+      message: `Invitation sent to ${args.email}. Check inbox (in local development without RESEND_API_KEY, the Convex logs).`,
     };
   },
 });
@@ -221,7 +221,7 @@ export const rescue = internalMutation({
       changed: emailChanged,
       message: emailChanged
         ? `Admin email updated from ${args.currentEmail} to ${args.newEmail}. New invitation sent.`
-        : `Invitation resent to ${args.newEmail}. Check inbox (or Convex dashboard logs if no RESEND_API_KEY).`,
+        : `Invitation resent to ${args.newEmail}. Check inbox (in local development without RESEND_API_KEY, the Convex logs).`,
     };
   },
 });
@@ -288,7 +288,7 @@ export const status = internalQuery({
     } else if (tokenStatus === "claiming") {
       hint = "Signup is in progress. The admin is currently completing registration.";
     } else {
-      hint = "Invitation is active. Check inbox (or Convex dashboard logs in dev).";
+      hint = "Invitation is active. Check inbox (in local development without RESEND_API_KEY, the Convex logs).";
     }
 
     return {

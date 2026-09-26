@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import { assertMockEmailAllowed } from "./developmentOnly";
+
 // ---------------------------------------------------------------------------
 // Auth email sender — Resend when configured, console.log fallback for dev
 // ---------------------------------------------------------------------------
@@ -34,7 +36,8 @@ type SendAuthEmailOptions =
 
 /**
  * Send an authentication email via Resend (if RESEND_API_KEY is set)
- * or fall back to a formatted console.log for local development.
+ * or fall back to a formatted console.log in local development only
+ * (anywhere else it throws; see developmentOnly.ts).
  */
 export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
   const { to, type } = opts;
@@ -46,6 +49,7 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
   const urlOrCode = type !== "custom" ? opts.urlOrCode : undefined;
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
+    assertMockEmailAllowed();
     // Development fallback — log to server console with clear formatting
     console.log(
       `\n` +

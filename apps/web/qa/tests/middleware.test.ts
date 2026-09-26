@@ -63,6 +63,15 @@ describe("proxy", () => {
 
       expect(response.status).toBe(200);
     });
+
+    it("redirects /en/dashboard to sign-in when only a look-alike cookie is set", () => {
+      for (const name of ["evil-better-auth.session_token", "better-auth.session_token_x"]) {
+        const response = proxy(createRequest("/en/dashboard", { [name]: "token-123" }));
+
+        expect(response.status).toBe(307);
+        expect(new URL(response.headers.get("location")!).pathname).toBe("/en/sign-in");
+      }
+    });
   });
 
   describe("auth routes (unauthenticated)", () => {
