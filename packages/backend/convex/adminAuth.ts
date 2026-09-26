@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { components } from "./_generated/api";
-import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { scheduleAuditEvent } from "./platform/auditTrailHelpers";
 import { authedMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
 

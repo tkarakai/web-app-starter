@@ -154,6 +154,9 @@ export default defineSchema(
     .index("by_scheduleEnd", ["scheduleEnd"])
     .index("by_updatedAt", ["updatedAt"]),
 
+  // SPIKE (expand/contract): LEGACY. New audit events live in the platform
+  // component (`components.platform`). This table is read only by
+  // `platform/migrateAuditTrail.ts` and is dropped in a later release.
   auditTrail: defineTable({
     happenedAt: v.number(),
     authenticatedUserId: v.optional(v.string()),

@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, internalQuery, query } from "./_generated/server";
-import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { scheduleAuditEvent } from "./platform/auditTrailHelpers";
 import {
   authedMutation,
   authedQuery,

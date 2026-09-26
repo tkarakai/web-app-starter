@@ -37,7 +37,7 @@ function getRecordId(record: PasskeyRecord, index: number): string {
 
 export function AdminPasskeySection() {
   const { supported: passkeySupported } = usePasskeySupport();
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
   const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
     key: "userPasskeyPolicy",
   });

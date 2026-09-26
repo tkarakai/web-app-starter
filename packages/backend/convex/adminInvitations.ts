@@ -4,7 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
-import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { scheduleAuditEvent } from "./platform/auditTrailHelpers";
 import { authedMutation } from "./functions";
 import { sha256Hex } from "./tokenHash";
 

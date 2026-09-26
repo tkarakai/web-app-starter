@@ -4,8 +4,8 @@ import { internalQuery, query, type QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { EmailTemplate } from "./emailTemplates";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE } from "./emailTemplates";
-import type { AuditAction } from "./auditTrailConstants";
-import { scheduleAuditEvent } from "./auditTrailHelpers";
+import type { AuditAction } from "@repo/convex-platform/constants";
+import { scheduleAuditEvent } from "./platform/auditTrailHelpers";
 import { authedMutation, authedQuery } from "./functions";
 import { isOnboardingType, parseOnboardingType } from "./onboardingType";
 import {

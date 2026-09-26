@@ -43,7 +43,7 @@ export function PasskeySection() {
   const t = useTranslations("dashboard.passkeys");
   const tc = useTranslations("common");
   const { supported: passkeySupported } = usePasskeySupport();
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
   const userPasskeyPolicy = useQuery(api.appSettings.getPublic, {
     key: "userPasskeyPolicy",
   });

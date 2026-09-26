@@ -9,9 +9,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@repo/design-system";
-import type { Doc } from "@repo/backend";
+import type { AuditTrailEvent } from "@repo/backend";
 
-type AuditEvent = Doc<"auditTrail">;
+type AuditEvent = AuditTrailEvent;
 
 function tryParseJson(value: string): unknown {
   try {

@@ -2,13 +2,13 @@
  * Helper functions for business service developers to create audit trail events.
  *
  * Separated from auditTrail.ts to avoid circular dependency:
- * auditTrail.ts defines `insertEvent`, and `internal.auditTrail.insertEvent`
+ * auditTrail.ts defines `insertEvent`, and `internal.platform.auditTrail.insertEvent`
  * references it — importing `internal` in the same file creates a cycle.
  */
 
-import type { AuditAction, AuditStatus } from "./auditTrailConstants";
-import type { ActionCtx, MutationCtx } from "./_generated/server";
-import { internal } from "./_generated/api";
+import type { AuditAction, AuditStatus } from "@repo/convex-platform/constants";
+import type { ActionCtx, MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 
 // ---------------------------------------------------------------------------
 // InsertEvent args type
@@ -41,7 +41,7 @@ export async function scheduleAuditEvent(
   event: InsertEventArgs,
 ): Promise<void> {
   try {
-    await ctx.scheduler.runAfter(0, internal.auditTrail.insertEvent, event);
+    await ctx.scheduler.runAfter(0, internal.platform.auditTrail.insertEvent, event);
   } catch (error) {
     console.error("Failed to schedule audit event:", error);
   }
@@ -58,7 +58,7 @@ export async function runAuditEvent(
   event: InsertEventArgs,
 ): Promise<void> {
   try {
-    await actionCtx.runMutation(internal.auditTrail.insertEvent, event);
+    await actionCtx.runMutation(internal.platform.auditTrail.insertEvent, event);
   } catch (error) {
     console.error("Failed to run audit event:", error);
   }

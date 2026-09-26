@@ -101,7 +101,7 @@ export function UserSessionsDialog({
   onOpenChange,
   user,
 }: UserSessionsDialogProps) {
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
   const [sessions, setSessions] = React.useState<AdminSession[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [revokeTarget, setRevokeTarget] = React.useState<AdminSession | null>(null);

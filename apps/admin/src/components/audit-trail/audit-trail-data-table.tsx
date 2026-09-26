@@ -6,7 +6,9 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { usePaginatedQuery } from "convex/react";
+// SPIKE: the component uses the convex-helpers paginator, which does not grow
+// pages reactively; the convex-helpers hook pins page ends with `endCursor`.
+import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "@repo/backend";
 
 import {
@@ -39,7 +41,7 @@ export function AuditTrailDataTable() {
   }, [filterAction, filterSource, filterStatus]);
 
   const { results, status, loadMore } = usePaginatedQuery(
-    api.auditTrail.list,
+    api.platform.auditTrail.list,
     queryArgs,
     { initialNumItems: INITIAL_NUM_ITEMS },
   );

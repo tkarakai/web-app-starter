@@ -60,7 +60,7 @@ export function ProfileSection() {
   const userProfile = useQuery(api.userProfiles.get) ?? null;
   const upsertProfile = useMutation(api.userProfiles.upsert);
   const setLocale = useMutation(api.userProfiles.setLocale);
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   const [name, setName] = React.useState(authUser?.name ?? "");
   const [avatarColor, setAvatarColor] = React.useState<string>("");

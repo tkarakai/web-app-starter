@@ -25,7 +25,7 @@ export function ChangePasswordForm() {
   const tps = useTranslations("passwordStrength");
 
   const authUser = useAuthUser();
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");

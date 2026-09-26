@@ -72,7 +72,7 @@ export function AdminOnboardingWizard() {
   const claimInvitation = useMutation(api.adminInvitations.claimInvitation);
   const advanceOnboardingStep = useMutation(api.adminInvitations.advanceOnboardingStep);
   const completeOnboarding = useMutation(api.adminInvitations.completeOnboarding);
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   // Token validation (only when token is present)
   const tokenResult = useQuery(

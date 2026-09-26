@@ -9,10 +9,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@repo/design-system";
-import type { Doc } from "@repo/backend";
+import type { AuditTrailEvent } from "@repo/backend";
 import { EventDetails } from "./event-details";
 
-type AuditEvent = Doc<"auditTrail">;
+type AuditEvent = AuditTrailEvent;
 
 function formatRelativeTime(ms: number): string {
   const seconds = Math.floor((Date.now() - ms) / 1000);

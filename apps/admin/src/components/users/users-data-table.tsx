@@ -73,7 +73,7 @@ const SEARCH_DEBOUNCE = 300;
 export function UsersDataTable() {
   const authUser = useAuthUser();
   const currentUserId = authUser?.id;
-  const postAuditEvent = useMutation(api.auditTrail.postEvent);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
 
   // Protected admin emails (from adminEmails table) — these users cannot be banned/deleted/demoted.
   const protectedEmailsList = useQuery(api.adminEmails.listProtected);

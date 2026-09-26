@@ -2,8 +2,8 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
-import type { AuditStatus } from "./auditTrailConstants";
-import { scheduleAuditEvent } from "./auditTrailHelpers";
+import type { AuditStatus } from "@repo/convex-platform/constants";
+import { scheduleAuditEvent } from "./platform/auditTrailHelpers";
 import { authedQuery } from "./functions";
 import { rateLimit } from "./rateLimits";
 import { sha256Hex } from "./tokenHash";

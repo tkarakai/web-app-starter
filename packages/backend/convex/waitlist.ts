@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
-import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { scheduleAuditEvent } from "./platform/auditTrailHelpers";
 import { parseOnboardingType, isWaitlistOnboarding } from "./onboardingType";
 import {
   authedMutation,
