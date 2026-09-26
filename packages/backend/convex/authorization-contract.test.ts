@@ -1,16 +1,14 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "./test.modules";
 import type { GenericDatabaseWriter, SystemDataModel } from "convex/server";
 import { describe, expect, test } from "vitest";
 
 import { api, components } from "./_generated/api";
 import authSchema from "./platform/betterAuth/schema";
-import schema from "./schema";
 
-const modules = import.meta.glob("./**/*.*s");
 const authModules = import.meta.glob("./platform/betterAuth/**/*.*s");
 
 async function createFixture() {
-  const t = convexTest(schema, modules);
+  const t = createPlatformTest();
   // Use this application's local component schema and adapter, including its
   // custom fields, rather than mocking getAuth or the ownership helper.
   t.registerComponent("betterAuth", authSchema, authModules);

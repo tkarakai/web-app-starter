@@ -1,13 +1,10 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "./test.modules";
 import { describe, expect, test } from "vitest";
 
 import { ALLOWED_CONTENT_TYPES } from "./files";
-import schema from "./schema";
-
-const modules = import.meta.glob("./**/*.*s");
 
 function createTestEnv() {
-  return convexTest(schema, modules);
+  return createPlatformTest();
 }
 
 describe("files", () => {

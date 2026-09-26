@@ -76,17 +76,23 @@ test.describe("Homepage", () => {
 
 ## Convex Backend Test Pattern
 
+Use `createTestEnv` from `convex/test.modules.ts` so every test registers the platform
+component. If you construct your own `convexTest(schema, modules)`, call
+`registerPlatform(t)` from `@web-app-starter/convex-platform/test` before invoking any
+function that writes audit events, including scheduled writes. Register Better Auth
+separately when the test creates real sessions. Component storage tests live in
+`platform/packages/convex-platform/src/component/` and run with `bun run test:convex`.
+
 ```typescript
 // packages/backend/convex/projects.test.ts (the sample domain)
-import { convexTest } from "convex-test";
+import { createTestEnv } from "./test.modules";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
 
 describe("projects", () => {
   test("stores a project", async () => {
-    // IMPORTANT: In monorepos, pass glob as second arg for module discovery
-    const t = convexTest(schema, import.meta.glob("./**/*.*s"));
+    // Includes the platform component and the root module glob.
+    const t = createTestEnv();
 
     // Seed test data
     await t.run(async (ctx) => {

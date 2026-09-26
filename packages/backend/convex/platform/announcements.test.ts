@@ -1,14 +1,11 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "../test.modules";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { internal } from "../_generated/api";
-import schema from "../schema";
+import { components, internal } from "../_generated/api";
 import { localAppOrigin } from "@web-app-starter/app-config";
 
-import { modules } from "../test.modules";
-
 function createTestEnv() {
-  return convexTest(schema, modules);
+  return createPlatformTest();
 }
 
 async function createScheduledJobId(t: ReturnType<typeof createTestEnv>) {
@@ -454,7 +451,9 @@ describe("announcements", () => {
     });
 
     const actions = await t.run(async (ctx) => {
-      const rows = await ctx.db.query("auditTrail").collect();
+      const { page: rows } = await ctx.runQuery(components.platform.auditTrail.list, {
+        paginationOpts: { numItems: 100, cursor: null },
+      });
       return rows
         .sort((a, b) => a.happenedAt - b.happenedAt)
         .map((row) => row.action);

@@ -1,16 +1,13 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "./test.modules";
 import { describe, expect, test } from "vitest";
 
 import { ALLOWED_CONTENT_TYPES } from "./files";
 import { isEmailVerificationRequired } from "./platform/functions";
 import { requireProjectAccess } from "./projectAccess";
-import schema from "./schema";
 import { VALID_THEMES } from "./platform/userProfiles";
 
-const modules = import.meta.glob("./**/*.*s");
-
 function createTestEnv() {
-  return convexTest(schema, modules);
+  return createPlatformTest();
 }
 
 describe("authentication security", () => {

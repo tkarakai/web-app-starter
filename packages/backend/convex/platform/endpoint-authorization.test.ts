@@ -1,3 +1,4 @@
+import { createTestEnv as createPlatformTest, modules } from "../test.modules";
 // Contract: endpoint authorization for every public platform function.
 //
 // Every public query, mutation and action under convex/platform/ is listed in ACCESS with who
@@ -9,13 +10,10 @@
 //   - "public" functions are callable by anyone and are only checked for being classified.
 // Refusal errors must name the reason (REFUSAL), so a function that merely fails on the
 // generated arguments is not mistaken for one that checks its caller.
-import { convexTest } from "convex-test";
 import { makeFunctionReference } from "convex/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { components } from "../_generated/api";
-import schema from "../schema";
-import { modules } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 
 type Access = "public" | "user" | "admin";
@@ -88,8 +86,8 @@ async function seed(t: ReturnType<typeof emulator>): Promise<void> {
     await ctx.db.insert("waitlistEntries", { email: "seed@example.test", meta: "{}", status: "waiting", createdAt: now });
     await ctx.db.insert("adminInvitations", { email: "seed@example.test", status: "invited", invitedAt: now, createdAt: now });
     await ctx.db.insert("announcements", { name: "seed", bannerText: "seed", isLive: false, createdAt: now, updatedAt: now });
-    await ctx.db.insert("auditTrail", {
-      happenedAt: now, actor: "seed", source: "seed", action: "seed", resource: "seed", status: "success",
+    await ctx.runMutation(components.platform.auditTrail.insertEvent, {
+      happenedAt: now, actor: "seed", source: "server:seed", action: "auth.sign_in", resource: "seed", status: "succeeded",
     });
   });
 }
@@ -167,7 +165,7 @@ async function platformFunctions(): Promise<PlatformFunction[]> {
 }
 
 function emulator() {
-  const t = convexTest(schema, modules);
+  const t = createPlatformTest();
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./betterAuth/**/*.*s"));
   return t;
 }

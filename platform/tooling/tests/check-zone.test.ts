@@ -20,7 +20,9 @@ function git(root: string, ...args: string[]): string {
 function release(): { root: string; commit: string } {
   const root = mkdtempSync(path.join(tmpdir(), "zone-"));
   git(root, "init", "-q");
-  for (const { file, hook } of SEAM_HOOKS) write(root, file, `// seam\n${hook}\n`);
+  const seams = new Map<string, string[]>();
+  for (const { file, hook } of SEAM_HOOKS) seams.set(file, [...(seams.get(file) ?? []), hook]);
+  for (const [file, hooks] of seams) write(root, file, `// seam\n${hooks.join("\n")}\n`);
   write(root, "platform/packages/auth/src/cookies.ts", "export const prefix = \"app\";\n");
   write(root, "packages/backend/convex/platform/users.ts", "export const users = 1;\n");
   write(root, ".github/workflows/platform-ci.yml", "name: ci\n");

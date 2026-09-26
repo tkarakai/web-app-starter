@@ -1,10 +1,10 @@
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 
-import schema from "../schema";
-import { internal } from "../_generated/api";
+import schema from "./schema";
+import { api } from "./_generated/api";
 
-import { modules } from "../test.modules";
+const modules = import.meta.glob("./**/*.ts");
 
 function createTestEnv() {
   return convexTest(schema, modules);
@@ -27,7 +27,7 @@ function makeDoc(overrides: Record<string, unknown> = {}) {
 function makeInsertArgs(overrides: Record<string, unknown> = {}) {
   return {
     actor: "user@test.com",
-    sourceDetail: "test",
+    source: "server:test",
     action: "auth.sign_in",
     resource: "session:abc123",
     status: "succeeded",
@@ -251,8 +251,8 @@ describe("auditTrail", () => {
     test("creates event with server: source prefix", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
-        sourceDetail: "auth-hook",
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
+        source: "server:auth-hook",
       }));
 
       const results = await t.run(async (ctx) => {
@@ -266,7 +266,7 @@ describe("auditTrail", () => {
     test("uses provided happenedAt", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         happenedAt: 12345,
       }));
 
@@ -281,7 +281,7 @@ describe("auditTrail", () => {
       const t = createTestEnv();
       const before = Date.now();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs());
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs());
 
       const results = await t.run(async (ctx) => {
         return ctx.db.query("auditTrail").collect();
@@ -293,7 +293,7 @@ describe("auditTrail", () => {
     test("stores authenticatedUserId when provided", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         authenticatedUserId: "user-abc",
       }));
 
@@ -307,7 +307,7 @@ describe("auditTrail", () => {
     test("authenticatedUserId is undefined when not provided", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs());
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs());
 
       const results = await t.run(async (ctx) => {
         return ctx.db.query("auditTrail").collect();
@@ -319,7 +319,7 @@ describe("auditTrail", () => {
     test("includes optional fields only when provided", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs());
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs());
 
       const results = await t.run(async (ctx) => {
         return ctx.db.query("auditTrail").collect();
@@ -334,7 +334,7 @@ describe("auditTrail", () => {
     test("stores optional fields when provided", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         oldValue: "old",
         newValue: "new",
         reason: "test",
@@ -355,7 +355,7 @@ describe("auditTrail", () => {
       const t = createTestEnv();
 
       await expect(
-        t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+        t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
           action: "unknown.action",
         })),
       ).rejects.toThrow("UNKNOWN_AUDIT_ACTION");
@@ -365,20 +365,17 @@ describe("auditTrail", () => {
       const t = createTestEnv();
 
       await expect(
-        t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+        t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
           status: "unknown_status",
         })),
       ).rejects.toThrow("UNKNOWN_AUDIT_STATUS");
     });
 
-    test("rejects unknown source transport", async () => {
+    test("stores an explicit server source", async () => {
       const t = createTestEnv();
 
-      // insertEvent always prepends "server:", so this tests buildAuditEvent directly
-      // To test invalid transport, we'd need to bypass insertEvent — but the architecture
-      // prevents this. Instead, verify that known transports work.
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
-        sourceDetail: "test-detail",
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
+        source: "server:test-detail",
       }));
 
       const results = await t.run(async (ctx) => {
@@ -391,7 +388,7 @@ describe("auditTrail", () => {
     test("truncates fields exceeding max length", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         oldValue: "x".repeat(15_000),
         reason: "y".repeat(3_000),
       }));
@@ -408,7 +405,7 @@ describe("auditTrail", () => {
     test("does not set truncatedFields when no fields are truncated", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         oldValue: "short value",
       }));
 
@@ -424,9 +421,9 @@ describe("auditTrail", () => {
     test("creates event without authenticatedUserId (unauthenticated)", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         actor: "visitor@example.com",
-        sourceDetail: "waitlist",
+        source: "server:waitlist",
         action: "waitlist.joined",
         resource: "waitlist-entry:abc123",
         status: "succeeded",
@@ -455,7 +452,7 @@ describe("auditTrail", () => {
       ];
 
       for (const action of waitlistActions) {
-        await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+        await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
           action,
         }));
       }
@@ -476,7 +473,7 @@ describe("auditTrail", () => {
       ];
 
       for (const status of failureStatuses) {
-        await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+        await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
           status,
         }));
       }
@@ -491,9 +488,9 @@ describe("auditTrail", () => {
     test("unauthenticated event with failure status and reason", async () => {
       const t = createTestEnv();
 
-      await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      await t.mutation(api.auditTrail.insertEvent, makeInsertArgs({
         actor: "visitor@example.com",
-        sourceDetail: "waitlist-token",
+        source: "server:waitlist-token",
         action: "waitlist.token.claimed",
         resource: "invitation-token:xyz",
         status: "failed.expired",
@@ -507,6 +504,117 @@ describe("auditTrail", () => {
       expect(results[0].authenticatedUserId).toBeUndefined();
       expect(results[0].status).toBe("failed.expired");
       expect(results[0].reason).toBe("TOKEN_EXPIRED");
+    });
+  });
+  describe("list (convex-helpers paginator)", () => {
+    async function seed(t: ReturnType<typeof createTestEnv>) {
+      await t.run(async (ctx) => {
+        for (let i = 0; i < 25; i++) {
+          await ctx.db.insert(
+            "auditTrail",
+            makeDoc({
+              happenedAt: 1000 + i,
+              action: i % 2 === 0 ? "auth.sign_in" : "auth.sign_out",
+              status: i % 3 === 0 ? "failed.wrong_password" : "succeeded",
+              actor: i % 5 === 0 ? "alice@test.com" : "bob@test.com",
+              source: i % 4 === 0 ? "web:settings" : "server:auth-hook",
+            }),
+          );
+        }
+      });
+    }
+
+    test("pages through everything in reverse chronological order", async () => {
+      const t = createTestEnv();
+      await seed(t);
+      const seen: number[] = [];
+      let cursor: string | null = null;
+      let pages = 0;
+      for (;;) {
+        const result: {
+          page: { happenedAt: number }[];
+          isDone: boolean;
+          continueCursor: string;
+        } = await t.query(api.auditTrail.list, {
+          paginationOpts: { numItems: 10, cursor },
+        });
+        pages++;
+        seen.push(...result.page.map((d) => d.happenedAt));
+        if (result.isDone) break;
+        cursor = result.continueCursor;
+      }
+      expect(pages).toBe(3);
+      expect(seen).toHaveLength(25);
+      expect(seen).toEqual([...seen].sort((a, b) => b - a));
+      expect(new Set(seen).size).toBe(25);
+    });
+
+    test("combines an indexed filter with post-filters conjunctively", async () => {
+      const t = createTestEnv();
+      await seed(t);
+      const result = await t.query(api.auditTrail.list, {
+        paginationOpts: { numItems: 50, cursor: null },
+        filterAction: "auth.sign_in",
+        filterActor: "alice@test.com",
+        filterSource: "web:settings",
+      });
+      // i even, i % 5 === 0, i % 4 === 0 → i ∈ {0, 20}
+      expect(result.page.map((d) => d.happenedAt)).toEqual([1020, 1000]);
+      expect(result.isDone).toBe(true);
+    });
+
+    test("action + status uses the compound index", async () => {
+      const t = createTestEnv();
+      await seed(t);
+      const result = await t.query(api.auditTrail.list, {
+        paginationOpts: { numItems: 50, cursor: null },
+        filterAction: "auth.sign_in",
+        filterStatus: "failed.wrong_password",
+      });
+      // i even and i % 3 === 0 → 0, 6, 12, 18, 24
+      expect(result.page.map((d) => d.happenedAt)).toEqual([
+        1024, 1018, 1012, 1006, 1000,
+      ]);
+    });
+
+    test("post-filtered pages still return a full page when more rows match", async () => {
+      const t = createTestEnv();
+      await seed(t);
+      const first = await t.query(api.auditTrail.list, {
+        paginationOpts: { numItems: 2, cursor: null },
+        filterStatus: "succeeded",
+        filterActor: "bob@test.com",
+      });
+      expect(first.page).toHaveLength(2);
+      expect(first.isDone).toBe(false);
+      const second = await t.query(api.auditTrail.list, {
+        paginationOpts: { numItems: 2, cursor: first.continueCursor },
+        filterStatus: "succeeded",
+        filterActor: "bob@test.com",
+      });
+      expect(second.page[0].happenedAt).toBeLessThan(
+        first.page[1].happenedAt,
+      );
+    });
+  });
+
+  describe("importLegacyEvents", () => {
+    test("is idempotent by legacyId", async () => {
+      const t = createTestEnv();
+      const events = [1, 2, 3].map((i) => ({
+        ...makeDoc({ happenedAt: i }),
+        legacyId: `legacy-${i}`,
+        legacyCreationTime: i,
+      }));
+      const first = await t.mutation(api.auditTrail.importLegacyEvents, { events });
+      const second = await t.mutation(api.auditTrail.importLegacyEvents, { events });
+      expect(first).toEqual({ inserted: 3, skipped: 0 });
+      expect(second).toEqual({ inserted: 0, skipped: 3 });
+      const count = await t.query(api.auditTrail.countPage, {
+        cursor: null,
+        numItems: 100,
+      });
+      expect(count).toMatchObject({ total: 3, migrated: 3, isDone: true });
     });
   });
 });

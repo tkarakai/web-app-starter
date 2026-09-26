@@ -23,7 +23,8 @@
     "better-auth": "1.6.33",
     "convex": "1.45.0",
     "convex-helpers": "^0.1.111",
-    "resend": "^6.28.0"
+    "resend": "^6.28.0",
+    "@web-app-starter/convex-platform": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.4",

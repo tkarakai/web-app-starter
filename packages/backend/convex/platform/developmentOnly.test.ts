@@ -1,4 +1,4 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "../test.modules";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "../_generated/api";
@@ -7,11 +7,9 @@ import {
   assertMockEmailAllowed,
   isLocalDevelopment,
 } from "./developmentOnly";
-import schema from "../schema";
 import { appConfig } from "@web-app-starter/app-config";
 import { sendAuthEmail } from "./sendAuthEmail";
 
-import { modules } from "../test.modules";
 const recipient = "recipient@example.test";
 const WEB_PORT = appConfig.runtime.ports.web;
 const ADMIN_PORT = appConfig.runtime.ports.admin;
@@ -80,7 +78,7 @@ describe("mock email", () => {
       return () =>
         sendAuthEmail({ to: recipient, type: "magic-link", urlOrCode: "https://web.example.test/?token=secret" });
     }
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
     const now = Date.now();
     if (kind === "admin") {
       const adminInvitationId = await t.run((ctx) =>
@@ -122,7 +120,7 @@ describe("devSeed", () => {
   test("refuses to run outside local development even with DEV_SEED_ENABLED=true", async () => {
     vi.stubEnv("DEV_SEED_ENABLED", "true");
     vi.stubEnv("SITE_URL", "https://app.example.com");
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
 
     await expect(t.action(internal.platform.devSeed.seed, {})).rejects.toThrow("DEV_SEED_NOT_LOCAL");
 
@@ -137,7 +135,7 @@ describe("devSeed", () => {
   test("refuses to run on a deployment without SITE_URL", async () => {
     vi.stubEnv("DEV_SEED_ENABLED", "true");
     vi.stubEnv("SITE_URL", undefined);
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
 
     await expect(t.action(internal.platform.devSeed.seed, {})).rejects.toThrow("DEV_SEED_NOT_LOCAL");
   });
@@ -145,7 +143,7 @@ describe("devSeed", () => {
   test("still skips quietly when DEV_SEED_ENABLED is not set", async () => {
     vi.stubEnv("DEV_SEED_ENABLED", undefined);
     vi.stubEnv("SITE_URL", `http://localhost:${WEB_PORT}`);
-    const t = convexTest(schema, modules);
+    const t = createPlatformTest();
 
     await expect(t.action(internal.platform.devSeed.seed, {})).resolves.toBeNull();
     expect(await t.query(internal.platform.devSeed.isSeeded, {})).toBe(false);
