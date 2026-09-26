@@ -51,6 +51,10 @@ packages/starter-sidebar-policy/dist/
 .backpass/
 .backpassrc.json
 
+# Local, per-checkout agent instructions (Claude Code and Codex)
+CLAUDE.local.md
+AGENTS.override.md
+
 # Auto Claude data directory
 .auto-claude/
 
