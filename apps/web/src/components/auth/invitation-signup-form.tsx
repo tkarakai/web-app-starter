@@ -1,5 +1,7 @@
 "use client";
 
+import { usePasswordStrength } from "@repo/backend/password-strength";
+
 import { PasswordInput } from "@/components/ui/localized-controls";
 
 import * as React from "react";
@@ -24,7 +26,7 @@ import {
   Label,
   Skeleton,
 } from "@repo/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+import { PasswordStrengthMeter, getMinPasswordLength } from "@repo/design-system/password-strength";
 
 export function InvitationSignupForm({ token }: { token?: string }) {
   const router = useRouter();
@@ -52,17 +54,10 @@ export function InvitationSignupForm({ token }: { token?: string }) {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Throttled password for server-side strength evaluation (at most once per 500ms)
-  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
-  const strengthResult = useQuery(
-    api.passwordStrength.evaluate,
-    throttledPassword && tokenValidation?.valid
-      ? { password: throttledPassword, email: tokenValidation.email, role: "user" as const }
-      : "skip",
+  const { result: strengthResult, valid: isPasswordValid } = usePasswordStrength(
+    password,
+    tokenValidation?.valid ? { email: tokenValidation.email, role: "user" } : "skip",
   );
-  React.useEffect(() => {
-    if (strengthResult !== undefined) notifyResolved();
-  }, [strengthResult, notifyResolved]);
 
   // Session conflict detection
   const [sessionConflict, setSessionConflict] = React.useState<{
@@ -195,7 +190,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
       return;
     }
 
-    if (!strengthResult?.valid) {
+    if (!isPasswordValid) {
       setError(tps("strengthRequirement"));
       return;
     }
@@ -292,7 +287,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("fields.passwordSignUpPlaceholder")}
               required
-              minLength={12}
+              minLength={getMinPasswordLength("user")}
             />
             <PasswordStrengthMeter result={strengthResult} password={password} t={tps} />
           </div>
@@ -306,7 +301,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder={t("fields.confirmPasswordPlaceholder")}
               required
-              minLength={12}
+              minLength={getMinPasswordLength("user")}
             />
           </div>
           {error ? (

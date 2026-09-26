@@ -7,7 +7,8 @@
     "./config": "./src/config.ts",
     "./request": "./src/request.ts",
     "./navigation": "./src/navigation.ts",
-    "./messages/*": "./messages/*"
+    "./messages/*": "./messages/*",
+    "./password-strength": "./src/password-strength.ts"
   },
   "dependencies": {
     "next-intl": "^4.8.2"

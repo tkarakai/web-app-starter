@@ -37,6 +37,7 @@ export function useThrottledPasswordCheck(
   password: string,
 ): [throttledPassword: string, notifyResolved: () => void] {
   const [sentPassword, setSentPassword] = useState("");
+  const sentPasswordRef = useRef("");
 
   // --- refs (never trigger re-renders) ---
   const queueRef = useRef<string | null>(null);
@@ -65,6 +66,10 @@ export function useThrottledPasswordCheck(
     // 3. Ready to send
     const pwd = queueRef.current;
     queueRef.current = null;
+    // Returning to the already evaluated value does not trigger a new query.
+    // Do not wait for a notification that can never arrive.
+    if (pwd === sentPasswordRef.current) return;
+    sentPasswordRef.current = pwd;
     lastCallTimeRef.current = Date.now();
     pendingRef.current = true;
     setSentPassword(pwd);
@@ -82,6 +87,7 @@ export function useThrottledPasswordCheck(
         timerRef.current = null;
       }
       setSentPassword("");
+      sentPasswordRef.current = "";
       return;
     }
 
