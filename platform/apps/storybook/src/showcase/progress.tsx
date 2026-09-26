@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Progress } from "@repo/design-system";
+import { Progress } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function ProgressShowcase() {

@@ -9,7 +9,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { authClient, isAuthRateLimited, isConvexRateLimited } from "@repo/auth/client";
+import { authClient, isAuthRateLimited, isConvexRateLimited } from "@web-app-starter/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
@@ -55,8 +55,8 @@ import {
   SlideTransition,
   usePasskeySupport,
   usePublicConfig,
-} from "@repo/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+} from "@web-app-starter/design-system";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@web-app-starter/design-system/password-strength";
 
 type AuthMode = "sign-in" | "sign-up";
 type PasskeyPolicy = "disabled" | "optional" | "required";

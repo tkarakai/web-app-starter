@@ -1,6 +1,6 @@
-import { SiteHeader } from "@repo/design-patterns";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { AdminForgotPasswordForm } from "@/components/auth/admin-forgot-password-form";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 export default function ForgotPasswordPage() {
   return (

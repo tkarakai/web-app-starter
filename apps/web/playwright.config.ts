@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { localAppOrigin } from "@repo/app-config";
+import { localAppOrigin } from "@web-app-starter/app-config";
 import * as fs from "fs";
 import * as path from "path";
 

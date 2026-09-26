@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 
 const COLUMN_LABELS: Record<string, string> = {

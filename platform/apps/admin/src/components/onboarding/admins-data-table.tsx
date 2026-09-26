@@ -40,7 +40,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { ConfirmationDialog } from "../users/confirmation-dialog";
 import { InviteAdminDialog } from "./invite-admin-dialog";
 

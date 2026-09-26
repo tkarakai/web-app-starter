@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient, formatAuthError } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -15,12 +15,12 @@ import {
   CardTitle,
   Label,
   PasswordInput,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import {
   PasswordStrengthMeter,
   useThrottledPasswordCheck,
   type PasswordStrengthTranslateFn,
-} from "@repo/design-system/password-strength";
+} from "@web-app-starter/design-system/password-strength";
 
 // Plain-English translation function for PasswordStrengthMeter.
 // The admin app has no i18n, so we provide direct English strings for all

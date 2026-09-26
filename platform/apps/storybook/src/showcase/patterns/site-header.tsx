@@ -1,7 +1,7 @@
 "use client";
 
-import { SiteHeader } from "@repo/design-patterns";
-import { Button } from "@repo/design-system";
+import { SiteHeader } from "@web-app-starter/design-patterns";
+import { Button } from "@web-app-starter/design-system";
 import { Globe } from "lucide-react";
 import { DemoSection } from "@/components/demo-section";
 

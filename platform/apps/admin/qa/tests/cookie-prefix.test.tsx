@@ -7,8 +7,8 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@repo/app-config", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@repo/app-config")>();
+vi.mock("@web-app-starter/app-config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@web-app-starter/app-config")>();
   return {
     ...original,
     appConfig: {

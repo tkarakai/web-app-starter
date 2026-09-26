@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { AnnouncementBanner, Button } from "@repo/design-system";
+import { AnnouncementBanner, Button } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const LEARN_MORE_HTML = `

@@ -1,13 +1,13 @@
 "use client";
 
-import messages from "@repo/i18n/messages/en.json";
+import messages from "@web-app-starter/i18n/messages/en.json";
 
 import * as React from "react";
 import { useAction } from "convex/react";
 import { ArrowLeft, Download } from "lucide-react";
 
 import { api } from "@repo/backend";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 import {
   Button,
   Checkbox,
@@ -16,7 +16,7 @@ import {
   Label,
   SlideTransition,
   toast,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 interface BackupCodesStepProps {
   /** Backup codes from TOTP verification (empty on resume flow) */

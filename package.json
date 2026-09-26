@@ -12,7 +12,7 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "bun run --cwd packages/starter-sidebar-policy build",
+    "postinstall": "bun run --cwd platform/packages/starter-sidebar-policy build",
     "predev": "./scripts/ensure-local-deps.sh --quiet && ./scripts/ensure-app-env.sh --quiet && ./scripts/copy-shared-assets.sh",
     "dev": "./scripts/dev-start.sh",
     "dev:ci": "./scripts/dev-start.sh --ci",
@@ -66,9 +66,9 @@
     "check:starter-ownership": "./scripts/node-ts.sh scripts/starter-upgrade/check-ownership.ts",
     "typecheck:starter-upgrade": "tsc -p scripts/starter-upgrade/tsconfig.json",
     "lint:starter-upgrade": "eslint scripts/starter-upgrade --max-warnings 0",
-    "ops": "bun packages/ops/src/cli.ts",
-    "test:ops": "bun test packages/ops/tests packages/paper-roll/tests",
-    "typecheck:ops": "bun run --cwd packages/ops typecheck"
+    "ops": "bun platform/packages/ops/src/cli.ts",
+    "test:ops": "bun test platform/packages/ops/tests platform/packages/paper-roll/tests",
+    "typecheck:ops": "bun run --cwd platform/packages/ops typecheck"
   },
   "overrides": {
     "react": "19.3.0",

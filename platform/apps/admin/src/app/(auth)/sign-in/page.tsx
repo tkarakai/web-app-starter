@@ -1,6 +1,6 @@
-import { SiteHeader } from "@repo/design-patterns";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { AdminSignInForm } from "@/components/auth/admin-sign-in-form";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 export default function SignInPage() {
   return (

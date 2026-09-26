@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, Info, Terminal } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@repo/design-system";
+import { Alert, AlertDescription, AlertTitle } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function AlertShowcase() {

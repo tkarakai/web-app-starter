@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { createTranslator } from "next-intl";
 import { parse, TYPE, type MessageFormatElement } from "@formatjs/icu-messageformat-parser";
-import { locales } from "@repo/i18n/config";
-import { appConfig } from "@repo/app-config";
+import { locales } from "@web-app-starter/i18n/config";
+import { appConfig } from "@web-app-starter/app-config";
 
 type Messages = { [key: string]: string | Messages };
 
@@ -16,7 +16,7 @@ function flatten(messages: Messages, prefix = ""): Record<string, string> {
 }
 
 function load(locale: string): Messages {
-  return JSON.parse(readFileSync(new URL(`../../../../packages/i18n/messages/${locale}.json`, import.meta.url), "utf8")) as Messages;
+  return JSON.parse(readFileSync(new URL(`../../../../platform/packages/i18n/messages/${locale}.json`, import.meta.url), "utf8")) as Messages;
 }
 
 function argumentsOf(message: string): string[] {

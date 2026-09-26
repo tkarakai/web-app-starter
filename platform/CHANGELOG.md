@@ -38,19 +38,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `identity.supportEmail`, `runtime.ports` and `runtime.authCookiePrefix` in `app.config.ts`
   to what your app used, then take the starter's side of the files that held them before:
   app `package.json` `dev` scripts, `playwright.config.ts`, `scripts/dev-start.sh`,
-  `ci-*.yml` env blocks, `@repo/auth`, both `proxy.ts` and `clear-session` routes, and Convex
+  `ci-*.yml` env blocks, `@web-app-starter/auth`, both `proxy.ts` and `clear-session` routes, and Convex
   `auth.ts` / `sessions.ts`. If you renamed the product in `packages/i18n/messages`, keep your
   other wording but drop `common.appName` and `metadata.title` and write `{productName}` where
   the name appeared (see `UPGRADING.md`, "Branding strings and `app.config.ts`").
   Code that read `common.appName` should read `appConfig.identity.productName`
-  from `@repo/app-config`. Callers of `hasSessionCookie(request)` now pass the names:
-  `hasSessionCookie(request, sessionCookieNames())` from `@repo/auth/cookies`.
+  from `@web-app-starter/app-config`. Callers of `hasSessionCookie(request)` now pass the names:
+  `hasSessionCookie(request, sessionCookieNames())` from `@web-app-starter/auth/cookies`.
   **Done when:** `bun run typecheck`, `bun run test` and `bun run test:unit` pass and
   `git grep -n "<your product name>" -- packages/i18n/messages` finds nothing.
 
 ### Added
 
-- `app.config.ts` (root) and `@repo/app-config`: one typed, validated file for the values an app
+- `app.config.ts` (root) and `@web-app-starter/app-config`: one typed, validated file for the values an app
   changes — identity (product name, legal entity, support email), runtime (local ports, Better
   Auth cookie prefix), brand (icon sources, design-token overrides, email palette, `lang` and
   footer) and feature switches (waitlist, invitations, announcements, environment banner).
@@ -58,8 +58,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   scripts read it through `scripts/app-config.ts`, CI through `APP_CONFIG_*` variables exported
   by the `setup-bun` action, and each app's `dev` script through `scripts/next-dev.sh`.
   Turborepo treats it as a global dependency. Guide: `platform/docs/development.md`.
-- `@repo/auth/cookies` (cookie names for the configured prefix) and
-  `@repo/auth/clear-session` (the shared `clear-session` response).
+- `@web-app-starter/auth/cookies` (cookie names for the configured prefix) and
+  `@web-app-starter/auth/clear-session` (the shared `clear-session` response).
 
 ### Changed
 
@@ -98,7 +98,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `DEV_SEED_ENABLED=true`. `dev-start.sh` gives a fresh backend a provisional local `SITE_URL`
   before seeding.
 - The session cookie is matched by exact name (`better-auth.session_token` or
-  `__Secure-better-auth.session_token`) in `hasSessionCookie` (`@repo/edge-rate-limit`) and in
+  `__Secure-better-auth.session_token`) in `hasSessionCookie` (`@web-app-starter/edge-rate-limit`) and in
   the Convex sessions API, instead of by suffix or substring, so look-alike cookies such as
   `evil-better-auth.session_token` no longer count as a session.
 
@@ -129,7 +129,7 @@ first supported starting point, not proof of arbitrary pre-release app upgrades.
 - Waitlist: optional **Your role**, **Company** and **What do you plan to build?** fields on the landing
   form, shown as Role and Company / Use case columns in admin. Stored in the entry's `meta`; the backend
   validates them only when present, so existing clients keep working. New `landing.waitlist.*` keys in all 15 locales.
-- Versioned `@repo/starter-sidebar-policy`, consumed through immutable local
+- Versioned `@web-app-starter/starter-sidebar-policy`, consumed through immutable local
   package artifacts. Demo-owned release fixtures live under `apps/demo/qa/fixtures/`.
   This does not publish a registry package or change operations.
 - TypeScript/Node upgrade commands in `scripts/starter-upgrade/upgrade.ts`:
@@ -198,7 +198,7 @@ work. The existing automated demo rehearsal covers the sidebar package only.
   calculations instead of allowing invalid CSS/state/cookies. Ordinary sizing and
   snapping behavior is preserved; editable visual components share a pure policy.
   Affected areas: design-system sidebar sizing and the demo's consumed
-  `@repo/starter-sidebar-policy` (1.0.0 -> 1.0.1). Security urgency: none.
+  `@web-app-starter/starter-sidebar-policy` (1.0.0 -> 1.0.1). Security urgency: none.
 - Demo builds no longer overwrite app-owned branding with copied starter icons or
   require a Google Fonts request. Other apps keep their existing asset behavior.
 

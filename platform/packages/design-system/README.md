@@ -1,4 +1,4 @@
-# @repo/design-system
+# @web-app-starter/design-system
 
 Shared UI components, design tokens, and utilities for all apps in the monorepo.
 
@@ -6,18 +6,18 @@ Shared UI components, design tokens, and utilities for all apps in the monorepo.
 
 | Export path | What it provides |
 |---|---|
-| `@repo/design-system` | React components (Button, Card, Input, etc.), `cn()` utility, hooks |
-| `@repo/design-system/styles/globals.css` | Design tokens (CSS custom properties) and global styles |
-| `@repo/design-system/tailwind.config` | Shared Tailwind CSS v4 configuration |
+| `@web-app-starter/design-system` | React components (Button, Card, Input, etc.), `cn()` utility, hooks |
+| `@web-app-starter/design-system/styles/globals.css` | Design tokens (CSS custom properties) and global styles |
+| `@web-app-starter/design-system/tailwind.config` | Shared Tailwind CSS v4 configuration |
 
 ## Quick start
 
 ```tsx
 // Import components
-import { Button, Card, Badge, cn } from "@repo/design-system";
+import { Button, Card, Badge, cn } from "@web-app-starter/design-system";
 
 // Import global styles (in your root layout)
-import "@repo/design-system/styles/globals.css";
+import "@web-app-starter/design-system/styles/globals.css";
 ```
 
 ## Design tokens

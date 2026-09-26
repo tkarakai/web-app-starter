@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "./_generated/api";
 import schema from "./schema";
-import { localAppOrigin } from "@repo/app-config";
+import { localAppOrigin } from "@web-app-starter/app-config";
 
 const modules = import.meta.glob("./**/*.*s");
 

@@ -10,7 +10,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type ProviderState = "connected" | "not_connected" | "not_implemented";
 

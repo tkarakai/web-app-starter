@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { NextRequest } from "next/server";
-import { checkEdgeRateLimit, getClientIp, _resetStore } from "@repo/edge-rate-limit";
+import { checkEdgeRateLimit, getClientIp, _resetStore } from "@web-app-starter/edge-rate-limit";
 
 beforeEach(() => {
   _resetStore();

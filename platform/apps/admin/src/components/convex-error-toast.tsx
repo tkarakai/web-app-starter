@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   ConvexErrorHandler,
   type ConvexErrorInfo,
-} from "@repo/auth/error-handler";
+} from "@web-app-starter/auth/error-handler";
 
 /** Friendly English messages for known error codes. */
 const FRIENDLY_MESSAGES: Record<string, string> = {

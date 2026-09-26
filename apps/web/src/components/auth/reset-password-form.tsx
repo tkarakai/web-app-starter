@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { authClient, isAuthRateLimited } from "@repo/auth/client";
+import { authClient, isAuthRateLimited } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -19,8 +19,8 @@ import {
   CardTitle,
   Label,
   Separator,
-} from "@repo/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+} from "@web-app-starter/design-system";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@web-app-starter/design-system/password-strength";
 
 export function ResetPasswordForm({
   token,

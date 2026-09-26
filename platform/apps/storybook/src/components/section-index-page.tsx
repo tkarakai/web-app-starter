@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Separator } from "@repo/design-system";
+import { Separator } from "@web-app-starter/design-system";
 
 interface SectionItem {
   name: string;

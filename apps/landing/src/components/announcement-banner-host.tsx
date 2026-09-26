@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 
-import { AnnouncementBanner } from "@repo/design-system";
-import { appConfig } from "@repo/app-config";
+import { AnnouncementBanner } from "@web-app-starter/design-system";
+import { appConfig } from "@web-app-starter/app-config";
 
 const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 const ANNOUNCEMENT_ENDPOINT_PATH = "/api/announcements/active";

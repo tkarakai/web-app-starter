@@ -5,8 +5,8 @@
     { "path": "apps/web" },
     { "path": "apps/landing" },
     { "path": "apps/admin" },
-    { "path": "packages/design-system" },
+    { "path": "platform/packages/design-system" },
     { "path": "packages/backend" },
-    { "path": "packages/auth" }
+    { "path": "platform/packages/auth" }
   ]
 }

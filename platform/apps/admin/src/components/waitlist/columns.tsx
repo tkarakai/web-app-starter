@@ -25,7 +25,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { TokenViewerDialog } from "./token-viewer-dialog";
 import type { WaitlistEntry } from "./waitlist-actions-context";
 import { useWaitlistActions } from "./waitlist-actions-context";

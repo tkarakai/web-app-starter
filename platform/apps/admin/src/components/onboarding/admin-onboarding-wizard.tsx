@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
   SlideTransition,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { Clock, KeyRound, Download, ShieldCheck, UserCog } from "lucide-react";
 
 import { CreateAccountStep } from "./steps/create-account-step";

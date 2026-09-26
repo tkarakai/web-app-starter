@@ -11,7 +11,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 interface LocaleOption {
   code: string;

@@ -7,11 +7,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@repo/design-system";
-import { SiteHeader } from "@repo/design-patterns";
+} from "@web-app-starter/design-system";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { AuthForm } from "@/components/auth/auth-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 const LANDING_URL = process.env.LANDING_URL;
 if (!LANDING_URL) {

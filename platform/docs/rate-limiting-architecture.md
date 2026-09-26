@@ -146,7 +146,7 @@ try {
 **Configuration files**:
 - `apps/web/src/proxy.ts` — Web app proxy integration
 - `apps/admin/src/proxy.ts` — Admin app proxy integration
-- `@repo/edge-rate-limit` (`packages/edge-rate-limit/`) — the shared rate limiter
+- `@web-app-starter/edge-rate-limit` (`packages/edge-rate-limit/`) — the shared rate limiter
 
 The landing apps are static exports with no server-side proxy; rate-limit them at the CDN or hosting layer.
 

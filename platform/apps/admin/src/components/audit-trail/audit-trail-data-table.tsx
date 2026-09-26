@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
   TooltipProvider,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { columns } from "./columns";
 import { FilterBar } from "./filter-bar";
 

@@ -7,8 +7,8 @@ description: Use to set the app's product name, legal entity, support email, loc
 
 Every value an app is expected to change lives in the root **`app.config.ts`**, and nowhere
 else. The platform reads it everywhere it needs one of these values: TypeScript through
-`@repo/app-config`, shell scripts and CI through `scripts/app-config.ts`, Better Auth and the
-proxies through `@repo/auth/cookies`. So a configuration change is an edit to `app.config.ts`
+`@web-app-starter/app-config`, shell scripts and CI through `scripts/app-config.ts`, Better Auth and the
+proxies through `@web-app-starter/auth/cookies`. So a configuration change is an edit to `app.config.ts`
 and **no other file**. If a change seems to need another file, stop: either the value isn't
 configuration (see "Not here" below) or the platform has a gap to report.
 

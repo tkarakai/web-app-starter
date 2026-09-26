@@ -9,7 +9,7 @@ import {
   SlidersHorizontal,
   Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/design-system";
+import { Card, CardContent, CardHeader, CardTitle } from "@web-app-starter/design-system";
 
 const dashboardSections = [
   {

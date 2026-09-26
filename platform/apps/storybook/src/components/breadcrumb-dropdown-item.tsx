@@ -12,7 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 interface BreadcrumbSibling {
   label: string;

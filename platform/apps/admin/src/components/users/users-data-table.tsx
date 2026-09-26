@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
   TooltipProvider,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 import { banUser, unbanUser, removeUser, setUserRole } from "@/lib/admin-api";
 import { useUsers } from "@/hooks/use-users";

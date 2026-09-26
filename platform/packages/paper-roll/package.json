@@ -1,5 +1,5 @@
 {
-  "name": "@repo/paper-roll",
+  "name": "@web-app-starter/paper-roll",
   "version": "0.1.0",
   "private": true,
   "type": "module",

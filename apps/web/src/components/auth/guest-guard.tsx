@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import { onAuthBroadcast } from "@/lib/auth-broadcast";
 
 /**

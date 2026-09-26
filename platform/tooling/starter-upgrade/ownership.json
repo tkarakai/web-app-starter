@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "consumedPackage": "@repo/starter-sidebar-policy",
+  "consumedPackage": "@web-app-starter/starter-sidebar-policy",
   "vendoring": "unsupported",
   "legacyMixed": ["packages/backend", "packages/i18n", "packages/design-system", "packages/design-patterns"],
   "fixtureDigests": {

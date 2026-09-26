@@ -24,7 +24,7 @@ export function formatPrice(amount) {
 ## React Components
 
 - Use **function components** exclusively (no class components)
-- Use **Radix UI primitives** from `@repo/design-system` for accessibility
+- Use **Radix UI primitives** from `@web-app-starter/design-system` for accessibility
 - Shared components go in `packages/design-system/src/`, app-specific in `apps/<app>/src/components/`
 - Use package imports for shared code, path aliases for app-internal code
 
@@ -32,8 +32,8 @@ export function formatPrice(amount) {
 // App component: apps/web/src/components/launchpad/item-card.tsx
 "use client";
 
-import { Button } from "@repo/design-system";            // Shared UI
-import { cn } from "@repo/design-system";                 // Utility from shared package
+import { Button } from "@web-app-starter/design-system";            // Shared UI
+import { cn } from "@web-app-starter/design-system";                 // Utility from shared package
 import { api } from "@repo/backend";           // Convex API
 import { useMutation } from "convex/react";
 
@@ -88,7 +88,7 @@ export const createItem = mutation({
 
 - User-visible text in web, landing and landing-static belongs in locale messages,
   including errors, placeholders, accessible labels and metadata. The product name is
-  not a message: read `appConfig.identity.productName` (`@repo/app-config`) and pass it
+  not a message: read `appConfig.identity.productName` (`@web-app-starter/app-config`) and pass it
   to messages that mention it as `{productName}`. Shared components accept translated labels
   through props. Admin remains English-only and reuses existing English catalog
   entries where applicable.
@@ -97,12 +97,12 @@ export const createItem = mutation({
   Language-specific E2E tests may assert literal expected text.
 
 - Use **Tailwind CSS v4** utility classes
-- Use `cn()` utility from `@repo/design-system` for conditional classes
+- Use `cn()` utility from `@web-app-starter/design-system` for conditional classes
 - Follow **mobile-first** responsive design
 - Use **CSS variables** for theming (`--foreground`, `--background`, etc.)
 
 ```typescript
-import { cn } from "@repo/design-system";
+import { cn } from "@web-app-starter/design-system";
 
 <div className={cn(
   "flex items-center gap-2 p-4",

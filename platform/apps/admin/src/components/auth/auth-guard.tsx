@@ -6,7 +6,7 @@ import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
 import type { Preloaded } from "convex/react";
 
 import type { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 
 type AuthUser = {
   id?: string;

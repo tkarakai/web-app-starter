@@ -13,7 +13,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
 

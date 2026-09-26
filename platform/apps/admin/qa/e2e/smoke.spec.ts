@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { fillStable } from "./helpers/auth";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 const { productName } = appConfig.identity;
 

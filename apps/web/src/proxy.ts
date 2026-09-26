@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { sessionCookieNames } from "@repo/auth/cookies";
+import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 import createIntlMiddleware from "next-intl/middleware";
-import { defaultLocale, locales } from "@repo/i18n";
+import { defaultLocale, locales } from "@web-app-starter/i18n";
 import {
   checkEdgeRateLimit,
   positiveInt,
@@ -10,7 +10,7 @@ import {
   rateLimitResponse,
   setRateLimitHeaders,
   type EdgeRateLimitConfig,
-} from "@repo/edge-rate-limit";
+} from "@web-app-starter/edge-rate-limit";
 
 const intlMiddleware = createIntlMiddleware({
   locales,

@@ -12,7 +12,7 @@
  * Dependency-free apart from the config, so edge code and Convex functions can
  * import it too.
  */
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 /** The configured prefix (`better-auth` unless the app changed it). */
 export const AUTH_COOKIE_PREFIX: string = appConfig.runtime.authCookiePrefix;

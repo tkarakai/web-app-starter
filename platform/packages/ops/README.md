@@ -1,4 +1,4 @@
-# @repo/ops
+# @web-app-starter/ops
 
 Run `bun run ops --help` from the repository root. See [the operations CLI guide](../../platform/docs/ops-cli.md) for configuration, commands, the JSON contract, and a staging-to-production walkthrough.
 

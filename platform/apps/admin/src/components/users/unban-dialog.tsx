@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 import { BanDetailsCard } from "./ban-details-card";
 

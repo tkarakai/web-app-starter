@@ -1,5 +1,5 @@
 {
-  "name": "@repo/auth",
+  "name": "@web-app-starter/auth",
   "version": "0.0.0",
   "private": true,
   "exports": {
@@ -13,7 +13,7 @@
   "dependencies": {
     "@better-auth/passkey": "1.6.33",
     "@convex-dev/better-auth": "0.12.5",
-    "@repo/app-config": "workspace:*",
+    "@web-app-starter/app-config": "workspace:*",
     "better-auth": "1.6.33",
     "convex": "1.45.0"
   },

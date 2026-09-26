@@ -6,7 +6,7 @@ import { useQuery } from "convex/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { api } from "@repo/backend";
-import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@repo/auth/client";
+import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@web-app-starter/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 
 const PREFERRED_METHOD_KEY = "adminSignInPreferredMethod";
@@ -52,7 +52,7 @@ import {
   Separator,
   SlideTransition,
   usePasskeySupport,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type PasskeyPolicy = "disabled" | "optional" | "required";
 type SignInStep = 0 | 1 | 2; // 0=email, 1=auth method, 2=TOTP

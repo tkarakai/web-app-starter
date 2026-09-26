@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Label, PasswordInput } from "@repo/design-system";
+import { Label, PasswordInput } from "@web-app-starter/design-system";
 import {
   PasswordStrengthMeter,
   type PasswordStrengthResult,
-} from "@repo/design-system/password-strength";
+} from "@web-app-starter/design-system/password-strength";
 import { DemoSection } from "@/components/demo-section";
 
 /** Simple pass-through translate function for storybook (no i18n). */

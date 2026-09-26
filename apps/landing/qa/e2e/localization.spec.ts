@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import french from "@repo/i18n/messages/fr.json";
-import arabic from "@repo/i18n/messages/ar.json";
-import { appConfig } from "@repo/app-config";
+import french from "@web-app-starter/i18n/messages/fr.json";
+import arabic from "@web-app-starter/i18n/messages/ar.json";
+import { appConfig } from "@web-app-starter/app-config";
 
 for (const [locale, messages] of [["fr", french], ["ar", arabic]] as const) {
   test(`${locale} legal pages render translated content and footer`, async ({ page }) => {

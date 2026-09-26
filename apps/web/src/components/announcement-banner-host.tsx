@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { AnnouncementBanner } from "@repo/design-system";
-import { appConfig } from "@repo/app-config";
+import { AnnouncementBanner } from "@web-app-starter/design-system";
+import { appConfig } from "@web-app-starter/app-config";
 
 const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 

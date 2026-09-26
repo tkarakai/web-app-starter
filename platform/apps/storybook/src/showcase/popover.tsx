@@ -7,7 +7,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function PopoverShowcase() {

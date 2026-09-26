@@ -48,7 +48,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 import { EmailHtmlPreview } from "./email-html-preview";
 import {

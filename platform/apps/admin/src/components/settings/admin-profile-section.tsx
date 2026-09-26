@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -13,7 +13,7 @@ import {
   Input,
   Label,
   toast,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 
 export function AdminProfileSection() {

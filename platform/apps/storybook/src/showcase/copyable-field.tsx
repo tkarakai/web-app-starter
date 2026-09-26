@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyableField, toast } from "@repo/design-system";
+import { CopyableField, toast } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const SAMPLE_SECRET_KEY = "JBSWY3DPEHPK3PXP4GRTHM7UNZAVKZLF";

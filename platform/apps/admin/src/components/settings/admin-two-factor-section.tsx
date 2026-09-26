@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ChevronDown, Copy, ShieldCheck, ShieldOff } from "lucide-react";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,7 @@ import {
   Separator,
   toast,
   usePublicConfig,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type Step =
   | "idle"

@@ -12,7 +12,7 @@ import {
   DialogTitle,
   Input,
   Label,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type InviteAdminDialogProps = {
   open: boolean;

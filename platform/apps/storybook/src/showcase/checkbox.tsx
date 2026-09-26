@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, Label } from "@repo/design-system";
+import { Checkbox, Label } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function CheckboxShowcase() {

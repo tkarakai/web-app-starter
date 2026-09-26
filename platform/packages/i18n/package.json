@@ -1,5 +1,5 @@
 {
-  "name": "@repo/i18n",
+  "name": "@web-app-starter/i18n",
   "version": "0.0.0",
   "private": true,
   "exports": {

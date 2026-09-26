@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@repo/auth/client";
-import { ThemeToggle } from "@repo/design-patterns";
+import { authClient } from "@web-app-starter/auth/client";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
 import {
   Avatar,
   AvatarFallback,
@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { LogOut } from "lucide-react";
 
 export function OnboardingProfileMenu() {

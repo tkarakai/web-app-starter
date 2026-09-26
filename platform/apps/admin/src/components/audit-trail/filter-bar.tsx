@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type FilterBarProps = {
   filterAction: string;

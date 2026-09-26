@@ -1,6 +1,6 @@
-import { SiteHeader } from "@repo/design-patterns";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { AdminResetPasswordForm } from "@/components/auth/admin-reset-password-form";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 type Props = {
   searchParams: Promise<{ token?: string; error?: string }>;

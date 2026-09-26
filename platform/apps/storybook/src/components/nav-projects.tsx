@@ -21,7 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 export function NavProjects({
   projects,

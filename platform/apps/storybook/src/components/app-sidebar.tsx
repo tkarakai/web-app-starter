@@ -28,8 +28,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from "@repo/design-system";
-import { ThemeToggle } from "@repo/design-patterns";
+} from "@web-app-starter/design-system";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
 
 import { NavMain } from "@/components/nav-main";
 import { SidebarTitle } from "@/components/team-switcher";

@@ -31,7 +31,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
 import { DeadlineInput } from "./deadline-input";

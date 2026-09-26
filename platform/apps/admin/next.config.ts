@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
-import { getGitBranch } from "@repo/design-system/build-utils";
+import { getGitBranch } from "@web-app-starter/design-system/build-utils";
 
 const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
   env: {
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
-  transpilePackages: ["@repo/app-config", "@repo/design-system", "@repo/auth", "@repo/backend", "@repo/edge-rate-limit"],
+  transpilePackages: ["@web-app-starter/app-config", "@web-app-starter/design-system", "@web-app-starter/auth", "@repo/backend", "@web-app-starter/edge-rate-limit"],
   headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
   outputFileTracingRoot: monorepoRoot,
   turbopack: {

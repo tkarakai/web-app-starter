@@ -37,7 +37,7 @@ let mockSession: { isPending: boolean; data: { user: { name: string; email: stri
   data: { user: { name: "Test User", email: "test@example.com" }, session: {} },
 };
 const mockListUserPasskeys = vi.fn(async () => ({ data: [{ id: "pk-1" }] }));
-vi.mock("@repo/auth/client", () => ({
+vi.mock("@web-app-starter/auth/client", () => ({
   authClient: {
     useSession: () => mockSession,
     passkey: {

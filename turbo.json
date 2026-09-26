@@ -115,7 +115,7 @@
         "APP_ENVIRONMENT"
       ]
     },
-    "@repo/starter-sidebar-policy#build": {
+    "@web-app-starter/starter-sidebar-policy#build": {
       "outputs": ["dist/**"]
     },
     "@repo/landing#build": {

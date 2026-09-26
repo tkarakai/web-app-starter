@@ -6,8 +6,8 @@ import { betterAuth } from "better-auth";
 import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
-import { appConfig } from "@repo/app-config";
-import { AUTH_COOKIE_PREFIX, SESSION_COOKIE_NAME } from "@repo/auth/cookies";
+import { appConfig } from "@web-app-starter/app-config";
+import { AUTH_COOKIE_PREFIX, SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -825,7 +825,7 @@ export const createAuthOptions = (
     // limits via convex-helpers' token-bucket system, which is OCC-safe.
     rateLimit: { enabled: false },
     advanced: {
-      // Must match `cookiePrefix` in @repo/auth/server; both read app.config.ts.
+      // Must match `cookiePrefix` in @web-app-starter/auth/server; both read app.config.ts.
       cookiePrefix: AUTH_COOKIE_PREFIX,
       ipAddress: {
         ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],

@@ -13,7 +13,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { PasskeySection } from "@/components/settings/passkey-section";
 import { TwoFactorSection } from "@/components/settings/two-factor-section";

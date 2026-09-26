@@ -54,13 +54,13 @@ jobs:
             landing:
               - 'apps/landing/**'
             design-system:
-              - 'packages/design-system/**'
+              - 'platform/packages/design-system/**'
             root:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
               - 'app.config.ts'
-              - 'packages/app-config/**'
+              - 'platform/packages/app-config/**'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
               - 'scripts/**'

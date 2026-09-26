@@ -12,7 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 import { ColumnSelector } from "./column-selector";
 

@@ -37,7 +37,7 @@ work.
 ## Use it
 
 ```ts
-import { PaperRoll } from "@repo/paper-roll";
+import { PaperRoll } from "@web-app-starter/paper-roll";
 
 const roll = new PaperRoll();
 roll.write({ title: "Workspace", lines: ["Choose a task to begin."] });

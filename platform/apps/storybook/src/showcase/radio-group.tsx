@@ -1,6 +1,6 @@
 "use client";
 
-import { Label, RadioGroup, RadioGroupItem } from "@repo/design-system";
+import { Label, RadioGroup, RadioGroupItem } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function RadioGroupShowcase() {

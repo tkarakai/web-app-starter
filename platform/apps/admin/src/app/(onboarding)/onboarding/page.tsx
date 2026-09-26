@@ -1,7 +1,7 @@
-import { SiteHeader } from "@repo/design-patterns";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { AdminOnboardingWizard } from "@/components/onboarding/admin-onboarding-wizard";
 import { OnboardingProfileMenu } from "@/components/onboarding/onboarding-profile-menu";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 export default function OnboardingPage() {
   return (

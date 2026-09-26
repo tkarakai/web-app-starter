@@ -141,7 +141,7 @@ function nonNegativeInt(value: string | undefined): number {
  * Quick cookie-presence check (Edge-compatible, no backend call).
  *
  * True when a cookie is named exactly one of `sessionCookieNames` — the app's
- * session token names, `sessionCookieNames()` from `@repo/auth/cookies`, which
+ * session token names, `sessionCookieNames()` from `@web-app-starter/auth/cookies`, which
  * follow the cookie prefix in `app.config.ts`. Exact matching means a
  * look-alike such as `evil-better-auth.session_token`, or another app's session
  * on the same host, does not count as a session.

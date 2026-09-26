@@ -10,7 +10,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import {
   categoryOrder,
   categoryToSlug,

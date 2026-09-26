@@ -3,8 +3,8 @@ import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
-import { BrandTokenStyle, EnvironmentBannerWrapper } from "@repo/design-system";
-import { appConfig, tokenOverrideCss } from "@repo/app-config";
+import { BrandTokenStyle, EnvironmentBannerWrapper } from "@web-app-starter/design-system";
+import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -14,7 +14,7 @@ const raleway = Raleway({
 
 export const metadata: Metadata = {
   title: "Component Storybook",
-  description: "Interactive component showcase for the @repo/design-system design system.",
+  description: "Interactive component showcase for the @web-app-starter/design-system design system.",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

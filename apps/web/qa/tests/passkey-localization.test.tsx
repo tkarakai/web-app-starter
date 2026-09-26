@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import french from "@repo/i18n/messages/fr.json";
+import french from "@web-app-starter/i18n/messages/fr.json";
 import { PasskeySection } from "@/components/settings/passkey-section";
 
 const mocks = vi.hoisted(() => ({
@@ -15,14 +15,14 @@ vi.mock("convex/react", () => ({
   useQuery: () => "optional",
   useMutation: () => mocks.audit,
 }));
-vi.mock("@repo/auth/client", () => ({
+vi.mock("@web-app-starter/auth/client", () => ({
   authClient: {
     getSession: async () => ({ data: { user: { role: "user" } } }),
     passkey: { listUserPasskeys: mocks.list, addPasskey: mocks.add },
   },
 }));
-vi.mock("@repo/design-system", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@repo/design-system")>(),
+vi.mock("@web-app-starter/design-system", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@web-app-starter/design-system")>(),
   usePasskeySupport: () => ({ supported: true }),
   toast: { error: mocks.error, success: vi.fn() },
 }));

@@ -8,14 +8,14 @@ import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Checkbox,
   Label,
   toast,
-} from "@repo/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@repo/design-system/password-strength";
+} from "@web-app-starter/design-system";
+import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@web-app-starter/design-system/password-strength";
 import { useAuthUser } from "@/components/auth/auth-guard";
 
 export function ChangePasswordForm() {

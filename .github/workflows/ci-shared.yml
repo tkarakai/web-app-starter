@@ -65,7 +65,7 @@ jobs:
               - 'bun.lock'
               - 'turbo.json'
               - 'app.config.ts'
-              - 'packages/app-config/**'
+              - 'platform/packages/app-config/**'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
               - 'scripts/**'
@@ -92,7 +92,7 @@ jobs:
         run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
 
       - name: Test ops CLI
-        if: hashFiles('packages/ops/package.json') != ''
+        if: hashFiles('platform/packages/ops/package.json') != ''
         run: bun run test:ops
 
       - name: Run TypeScript check

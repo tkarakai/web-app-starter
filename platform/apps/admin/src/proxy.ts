@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { sessionCookieNames } from "@repo/auth/cookies";
+import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 import {
   checkEdgeRateLimit,
   positiveInt,
@@ -8,7 +8,7 @@ import {
   rateLimitResponse,
   setRateLimitHeaders,
   type EdgeRateLimitConfig,
-} from "@repo/edge-rate-limit";
+} from "@web-app-starter/edge-rate-limit";
 
 const RATE_LIMIT_CONFIG: EdgeRateLimitConfig = {
   windowSeconds: positiveInt(process.env.EDGE_RATE_LIMIT_WINDOW, 60),

@@ -4,9 +4,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 
-import { LanguageSelector } from "@repo/design-patterns";
-import { useNetworkStatus } from "@repo/design-system";
-import { locales, localeMetadata, persistLocale, type Locale } from "@repo/i18n";
+import { LanguageSelector } from "@web-app-starter/design-patterns";
+import { useNetworkStatus } from "@web-app-starter/design-system";
+import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
 import { api } from "@repo/backend";
 import { useAuthUser } from "@/components/auth/auth-guard";
 

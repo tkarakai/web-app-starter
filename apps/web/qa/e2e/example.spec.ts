@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 const { productName } = appConfig.identity;
 

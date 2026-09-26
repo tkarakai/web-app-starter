@@ -13,9 +13,9 @@ A **Bun workspaces + Turborepo** monorepo:
 
 - **Next.js 16** apps on **React 19** (App Router, Server Components), **TypeScript** strict mode
 - **Convex** backend (database, file storage, API functions) in `packages/backend`
-- **Better Auth** wired to Convex (`@repo/auth`)
-- **Radix UI + shadcn/ui** primitives and **Tailwind CSS v4** (`@repo/design-system`)
-- **Internationalization** via `@repo/i18n` and next-intl: 15 languages including RTL
+- **Better Auth** wired to Convex (`@web-app-starter/auth`)
+- **Radix UI + shadcn/ui** primitives and **Tailwind CSS v4** (`@web-app-starter/design-system`)
+- **Internationalization** via `@web-app-starter/i18n` and next-intl: 15 languages including RTL
 
 ## The platform zone
 
@@ -46,7 +46,7 @@ name, legal entity, support email), `runtime` (local port per app, Better Auth c
 or unknown value stops dev, build and tests with a message naming it. Everything in it is public.
 
 - Never write these values as literals. In TypeScript use `appConfig` (and `localAppOrigin`) from
-  `@repo/app-config`; take cookie names from `@repo/auth/cookies` (`sessionCookieNames()`,
+  `@web-app-starter/app-config`; take cookie names from `@web-app-starter/auth/cookies` (`sessionCookieNames()`,
   `isSessionCookie()`); in shell scripts and CI use `scripts/app-config.ts`
   (`eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"` gives `APP_CONFIG_*` variables;
   the `setup-bun` action exports them in CI).
@@ -84,11 +84,11 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 
 | Package | Import |
 |---|---|
-| `@repo/design-system` | `import { Button, cn } from "@repo/design-system"`; styles: `@repo/design-system/styles/globals.css` |
-| `@repo/auth` | `@repo/auth/client` (`authClient`), `@repo/auth/server` (`auth`, `isAuthenticated`, ...), `@repo/auth/provider` |
+| `@web-app-starter/design-system` | `import { Button, cn } from "@web-app-starter/design-system"`; styles: `@web-app-starter/design-system/styles/globals.css` |
+| `@web-app-starter/auth` | `@web-app-starter/auth/client` (`authClient`), `@web-app-starter/auth/server` (`auth`, `isAuthenticated`, ...), `@web-app-starter/auth/provider` |
 | `@repo/backend` | `import { api } from "@repo/backend"` |
-| `@repo/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
-| `@repo/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
+| `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
+| `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
 
 Within an app, `@/` is an alias for its `src/`. It is app-internal only; use `@repo/` names across
 packages.

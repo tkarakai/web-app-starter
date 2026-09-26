@@ -23,7 +23,7 @@ import {
   Label,
   Skeleton,
   Switch,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { EmailVerificationTemplateEditor } from "./email-verification-template-editor";
 
 type Scope = "admin" | "user";

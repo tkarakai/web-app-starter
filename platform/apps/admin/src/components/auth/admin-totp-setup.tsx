@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import { authClient, formatAuthError } from "@repo/auth/client";
+import { authClient, formatAuthError } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -14,7 +14,7 @@ import {
   Input,
   Label,
   PasswordInput,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type Step = "password" | "uri" | "verify" | "backup";
 

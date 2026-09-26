@@ -58,7 +58,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   cn,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type AnnouncementFormState = {
   name: string;

@@ -8,7 +8,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { Doc } from "@repo/backend";
 import { EventDetails } from "./event-details";
 

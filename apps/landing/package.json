@@ -19,10 +19,10 @@
     "size:check": "size-limit --json"
   },
   "dependencies": {
-    "@repo/app-config": "workspace:*",
-    "@repo/design-patterns": "workspace:*",
-    "@repo/design-system": "workspace:*",
-    "@repo/i18n": "workspace:*",
+    "@web-app-starter/app-config": "workspace:*",
+    "@web-app-starter/design-patterns": "workspace:*",
+    "@web-app-starter/design-system": "workspace:*",
+    "@web-app-starter/i18n": "workspace:*",
     "lucide-react": "^1.46.0",
     "next": "^16.3.3",
     "next-intl": "^4.8.2",

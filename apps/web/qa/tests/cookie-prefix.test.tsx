@@ -8,8 +8,8 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@repo/app-config", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@repo/app-config")>();
+vi.mock("@web-app-starter/app-config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@web-app-starter/app-config")>();
   return {
     ...original,
     appConfig: {
@@ -28,7 +28,7 @@ vi.mock("next-intl/middleware", async () => {
 
 const { proxy } = await import("../../src/proxy");
 const { GET: clearSession } = await import("../../src/app/api/auth/clear-session/route");
-const { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } = await import("@repo/auth/cookies");
+const { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } = await import("@web-app-starter/auth/cookies");
 
 const cookieJar = vi.hoisted(() => ({ names: [] as string[] }));
 vi.mock("next/headers", () => ({

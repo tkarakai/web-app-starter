@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import { cn } from "@repo/design-system";
+import { cn } from "@web-app-starter/design-system";
 
 const defaultLabels = {
   light: "Light theme",

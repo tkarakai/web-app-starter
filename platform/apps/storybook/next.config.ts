@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
-import { getGitBranch } from "@repo/design-system/build-utils";
+import { getGitBranch } from "@web-app-starter/design-system/build-utils";
 
 const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 

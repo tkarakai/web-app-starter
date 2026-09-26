@@ -1,5 +1,5 @@
 {
-  "name": "@repo/design-system",
+  "name": "@web-app-starter/design-system",
   "version": "0.0.0",
   "private": true,
   "exports": {
@@ -11,7 +11,7 @@
     "./tailwind.config": "./tailwind.config.ts"
   },
   "dependencies": {
-    "@repo/starter-sidebar-policy": "workspace:*",
+    "@web-app-starter/starter-sidebar-policy": "workspace:*",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "1.46.0",

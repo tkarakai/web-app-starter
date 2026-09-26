@@ -1,5 +1,5 @@
 {
-  "name": "@repo/starter-sidebar-policy",
+  "name": "@web-app-starter/starter-sidebar-policy",
   "version": "1.0.1",
   "private": true,
   "type": "module",

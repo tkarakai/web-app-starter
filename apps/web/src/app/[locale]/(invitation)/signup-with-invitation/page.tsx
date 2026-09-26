@@ -1,9 +1,9 @@
 import { getTranslations } from "next-intl/server";
 
-import { SiteHeader } from "@repo/design-patterns";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { InvitationSignupForm } from "@/components/auth/invitation-signup-form";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 const LANDING_URL = process.env.LANDING_URL;
 if (!LANDING_URL) {

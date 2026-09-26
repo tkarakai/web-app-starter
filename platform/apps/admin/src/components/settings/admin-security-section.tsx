@@ -12,7 +12,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { AdminChangePasswordForm } from "@/components/settings/admin-change-password-form";
 import { AdminPasskeySection } from "@/components/settings/admin-passkey-section";
 import { AdminSessionsList } from "@/components/settings/admin-sessions-list";

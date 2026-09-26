@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { Info } from "lucide-react";
 
 import { api } from "@repo/backend";
-import { Alert, AlertTitle } from "@repo/design-system";
+import { Alert, AlertTitle } from "@web-app-starter/design-system";
 import {
   getOnboardingPolicyLabel,
   normalizeOnboardingPolicy,

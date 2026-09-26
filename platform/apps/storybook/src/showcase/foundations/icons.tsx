@@ -126,7 +126,7 @@ export default function IconsShowcase() {
     <>
       <DemoSection
         title="App Icon"
-        description="The shared brand icon used across all applications. Managed in @repo/design-system/assets/ and automatically copied to each app's public directory during build."
+        description="The shared brand icon used across all applications. Managed in @web-app-starter/design-system/assets/ and automatically copied to each app's public directory during build."
       >
         <div className="space-y-6">
           {/* SVG icon at different sizes */}

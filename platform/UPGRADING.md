@@ -13,7 +13,7 @@ with the discovery commands below. Until then, record the exact starter source
 commit in bootstrap notes; preparation is not publication or application adoption.
 
 The standalone `apps/demo` also demonstrates one package-based upgrade:
-`@repo/starter-sidebar-policy`, consumed from immutable local package artifacts.
+`@web-app-starter/starter-sidebar-policy`, consumed from immutable local package artifacts.
 Its normal dashboard, editable UI and business behavior remain application-owned.
 [`apps/demo/README.md`](./apps/demo/README.md) describes the executable
 ownership contract and its limits. `bun run test:starter-rehearsal` tests an upgrade

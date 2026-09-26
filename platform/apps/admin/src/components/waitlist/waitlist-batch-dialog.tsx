@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   Progress,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { WaitlistEntry } from "./waitlist-actions-context";
 
 type BatchResult = {

@@ -4,17 +4,17 @@ import { Raleway } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
-import { ConvexClientProvider } from "@repo/auth/provider";
+import { ConvexClientProvider } from "@web-app-starter/auth/provider";
 import {
   BrandTokenStyle,
   EnvironmentBannerWrapper,
   OfflineBanner,
   PublicConfigProvider,
-} from "@repo/design-system";
-import { readPublicConfigFromEnv } from "@repo/design-system/server";
-import { getToken } from "@repo/auth/server";
+} from "@web-app-starter/design-system";
+import { readPublicConfigFromEnv } from "@web-app-starter/design-system/server";
+import { getToken } from "@web-app-starter/auth/server";
 import { ConvexErrorToast } from "@/components/convex-error-toast";
-import { appConfig, tokenOverrideCss } from "@repo/app-config";
+import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
 const raleway = Raleway({
   subsets: ["latin"],

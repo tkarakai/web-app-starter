@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "package": "@repo/starter-sidebar-policy",
+  "package": "@web-app-starter/starter-sidebar-policy",
   "ownership": {
     "src/": "application",
     "starter-packages/sidebar-policy/": "consumed",

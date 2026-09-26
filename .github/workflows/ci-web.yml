@@ -56,15 +56,15 @@ jobs:
             backend:
               - 'packages/backend/**'
             design-system:
-              - 'packages/design-system/**'
+              - 'platform/packages/design-system/**'
             auth:
-              - 'packages/auth/**'
+              - 'platform/packages/auth/**'
             root:
               - 'package.json'
               - 'bun.lock'
               - 'turbo.json'
               - 'app.config.ts'
-              - 'packages/app-config/**'
+              - 'platform/packages/app-config/**'
               - 'tsconfig.base.json'
               - 'eslint.config.mjs'
               - 'scripts/**'

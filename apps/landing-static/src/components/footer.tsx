@@ -1,10 +1,10 @@
 "use client";
 
-import { Link } from "@repo/i18n/navigation";
+import { Link } from "@web-app-starter/i18n/navigation";
 import { useTranslations } from "next-intl";
 
-import { Separator } from "@repo/design-system";
-import { appConfig } from "@repo/app-config";
+import { Separator } from "@web-app-starter/design-system";
+import { appConfig } from "@web-app-starter/app-config";
 
 export function Footer() {
   const t = useTranslations("landing.footer");

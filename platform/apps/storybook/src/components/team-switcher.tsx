@@ -4,7 +4,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 export function SidebarTitle() {
   return (

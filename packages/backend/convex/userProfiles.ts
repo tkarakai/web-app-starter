@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { locales } from "@repo/i18n";
+import { locales } from "@web-app-starter/i18n";
 import { authedMutation, authedQuery, assertMaxLength } from "./functions";
 
 export const VALID_THEMES = ["light", "dark", "system"] as const;

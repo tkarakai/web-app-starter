@@ -1,4 +1,4 @@
-import { cn } from "@repo/design-system";
+import { cn } from "@web-app-starter/design-system";
 
 interface SiteHeaderProps {
   /** App name displayed next to the icon */

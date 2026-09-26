@@ -5,7 +5,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { WaitlistDataTable } from "@/components/waitlist/waitlist-data-table";
 import { OnboardingModeNote } from "@/components/onboarding/onboarding-mode-note";
 import { AdminsDataTable } from "@/components/onboarding/admins-data-table";

@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Check, KeyRound } from "lucide-react";
 
-import { authClient } from "@repo/auth/client";
-import { Button, Input, Label, PasskeyUnsupportedAlert, toast, usePasskeySupport } from "@repo/design-system";
+import { authClient } from "@web-app-starter/auth/client";
+import { Button, Input, Label, PasskeyUnsupportedAlert, toast, usePasskeySupport } from "@web-app-starter/design-system";
 
 interface PasskeyStepProps {
   onComplete: (added: boolean) => Promise<void>;

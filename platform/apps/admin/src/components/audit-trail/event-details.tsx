@@ -8,7 +8,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { Doc } from "@repo/backend";
 
 type AuditEvent = Doc<"auditTrail">;

@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
-import { _resetStore } from "@repo/edge-rate-limit";
-import { sessionCookieNames } from "@repo/auth/cookies";
-import { localAppOrigin } from "@repo/app-config";
+import { _resetStore } from "@web-app-starter/edge-rate-limit";
+import { sessionCookieNames } from "@web-app-starter/auth/cookies";
+import { localAppOrigin } from "@web-app-starter/app-config";
 
 // Session cookie names for the prefix in app.config.ts.
 const [SESSION, SECURE_SESSION] = sessionCookieNames();

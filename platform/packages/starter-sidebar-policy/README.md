@@ -11,8 +11,8 @@ bun run check:starter-ownership
 
 The demo consumes the built immutable local package in its own
 `starter-packages/sidebar-policy/`, not this authoring workspace. Its public
-export map permits only `@repo/starter-sidebar-policy`, not internal file imports.
-Inside the starter, `@repo/design-system` imports this package through its
+export map permits only `@web-app-starter/starter-sidebar-policy`, not internal file imports.
+Inside the starter, `@web-app-starter/design-system` imports this package through its
 workspace dependency, so web and admin use the same code the demo receives. The
 root `postinstall` script builds `dist/` so that import works without a separate
 build step. The rest of the design system is not certified as an isolated,

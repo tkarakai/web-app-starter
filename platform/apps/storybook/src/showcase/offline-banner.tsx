@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { WifiOff } from "lucide-react";
-import { cn, Button } from "@repo/design-system";
+import { cn, Button } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 /**

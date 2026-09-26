@@ -40,8 +40,8 @@ Background: `platform/docs/i18n-architecture.md` (usage, ICU syntax, formatting)
    the code's message goes under your namespace (e.g. `bookmarks.errors.BOOKMARK_NOT_FOUND`) and
    the web app maps it in `apps/web/src/lib/error-messages.ts`.
 6. **Never write the product name** into a message. Use a `{productName}` argument and pass
-   `appConfig.identity.productName` from `@repo/app-config`: `t("intro", { productName })`.
-7. **Admin** doesn't use locale routing: import what it needs from `@repo/i18n/messages/en.json`.
+   `appConfig.identity.productName` from `@web-app-starter/app-config`: `t("intro", { productName })`.
+7. **Admin** doesn't use locale routing: import what it needs from `@web-app-starter/i18n/messages/en.json`.
 
 ## Steps
 
@@ -58,7 +58,7 @@ Background: `platform/docs/i18n-architecture.md` (usage, ICU syntax, formatting)
 5. In component tests, render with the real catalogue so a missing key fails:
 
    ```tsx
-   import en from "@repo/i18n/messages/en.json";
+   import en from "@web-app-starter/i18n/messages/en.json";
    render(<NextIntlClientProvider locale="en" messages={en}><HelpContent /></NextIntlClientProvider>);
    ```
 

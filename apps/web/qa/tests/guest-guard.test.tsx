@@ -14,7 +14,7 @@ vi.mock("@/lib/auth-broadcast", () => ({
 }));
 
 const mockGetSession = vi.fn();
-vi.mock("@repo/auth/client", () => ({
+vi.mock("@web-app-starter/auth/client", () => ({
   authClient: {
     getSession: () => mockGetSession(),
   },

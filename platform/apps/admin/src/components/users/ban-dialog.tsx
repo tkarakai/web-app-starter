@@ -13,7 +13,7 @@ import {
   Input,
   Label,
   Textarea,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 import { useEscapeConfirm } from "@/hooks/use-escape-confirm";
 

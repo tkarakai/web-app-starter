@@ -1,7 +1,7 @@
 "use client";
 
-import { localAppOrigin } from "@repo/app-config";
-import { EnvironmentBanner } from "@repo/design-system";
+import { localAppOrigin } from "@web-app-starter/app-config";
+import { EnvironmentBanner } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const sampleEnvVars: Record<string, string> = {

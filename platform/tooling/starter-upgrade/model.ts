@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 export const SCHEMA = 1;
-export const PACKAGE = "@repo/starter-sidebar-policy";
+export const PACKAGE = "@web-app-starter/starter-sidebar-policy";
 export const BOUNDARY = "starter-packages/sidebar-policy/";
 export const MANIFEST = "starter-upgrade.json";
 export const LOCK = "starter-upgrade.lock.json";

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -13,7 +13,7 @@ import {
   CardTitle,
   Input,
   Label,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 function getAndClearPrefillEmail(): string {
   try {

@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
   TooltipProvider,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type {
   WaitlistAction,
   WaitlistEntry,

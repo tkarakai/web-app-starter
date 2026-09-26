@@ -15,7 +15,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 - Tailwind v4 + shadcn/ui styling with a bold, modern interface.
 - Sample launch dashboard with realtime updates and file uploads.
 - Multi-tier testing: Bun unit tests, Vitest component tests, Convex backend tests, Playwright E2E.
-- Internationalization (15 languages including RTL) via `@repo/i18n` and `next-intl`.
+- Internationalization (15 languages including RTL) via `@web-app-starter/i18n` and `next-intl`.
 - Local CI checks that mirror GitHub Actions, with offline Docker mode via `act`.
 
 ## Stack
@@ -26,7 +26,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 - Bun
 - [Turborepo](https://turbo.build/repo/docs)
 - [Tailwind CSS](https://tailwindcss.com/docs/installation/framework-guides/nextjs)
-- [shadcn/ui](https://ui.shadcn.com/docs/installation/next) components (in `@repo/design-system`)
+- [shadcn/ui](https://ui.shadcn.com/docs/installation/next) components (in `@web-app-starter/design-system`)
 - [Convex](https://docs.convex.dev/home)
 - [Better Auth](https://better-auth.com/docs/integrations/next) ([Convex integration](https://better-auth.com/docs/integrations/convex))
 
@@ -162,22 +162,22 @@ These values persist in the local Convex backend between sessions.
 │       └── src/
 ├── app.config.ts              # App-owned configuration: name, ports, cookie prefix, brand, features
 ├── packages/
-│   ├── app-config/            # Schema and loader for app.config.ts (@repo/app-config)
+│   ├── app-config/            # Schema and loader for app.config.ts (@web-app-starter/app-config)
 │   ├── backend/               # Convex backend (@repo/backend)
 │   │   ├── convex/            # Schema, queries, mutations, actions
 │   │   │   └── _generated/    # Auto-generated (DO NOT EDIT)
 │   │   └── index.ts           # Main export
-│   ├── auth/                  # Authentication (@repo/auth)
+│   ├── auth/                  # Authentication (@web-app-starter/auth)
 │   │   └── src/               # client.ts, server.ts, provider.tsx, cookies.ts, clear-session.ts
-│   ├── design-system/         # Shared UI components (@repo/design-system)
+│   ├── design-system/         # Shared UI components (@web-app-starter/design-system)
 │   │   ├── src/               # Radix UI + shadcn/ui components
 │   │   └── tokens/            # Design tokens (globals.css)
-│   ├── i18n/                  # Internationalization (@repo/i18n)
+│   ├── i18n/                  # Internationalization (@web-app-starter/i18n)
 │   │   ├── messages/          # Translation files (15 languages)
 │   │   └── src/               # i18n config and utilities
-│   ├── edge-rate-limit/       # Shared edge rate limiting (@repo/edge-rate-limit)
+│   ├── edge-rate-limit/       # Shared edge rate limiting (@web-app-starter/edge-rate-limit)
 │   ├── starter-sidebar-policy/ # Versioned sidebar sizing policy
-│   └── design-patterns/       # Design patterns (@repo/design-patterns)
+│   └── design-patterns/       # Design patterns (@web-app-starter/design-patterns)
 ├── scripts/
 │   ├── dev-start.sh           # Start dev environment (Convex + apps)
 │   ├── dev-stop.sh            # Stop all services
@@ -204,30 +204,30 @@ These values persist in the local Convex backend between sessions.
 
 ## Shared packages
 
-### `@repo/app-config` — App configuration
+### `@web-app-starter/app-config` — App configuration
 
 The validated contents of the root `app.config.ts`, for every TypeScript consumer:
 
 ```typescript
-import { appConfig, localAppOrigin } from "@repo/app-config";
+import { appConfig, localAppOrigin } from "@web-app-starter/app-config";
 ```
 
-### `@repo/design-system` — UI Component Library
+### `@web-app-starter/design-system` — UI Component Library
 
 Shared Radix UI + shadcn/ui components used by all apps. Import components:
 
 ```typescript
-import { Button, Input, Avatar } from "@repo/design-system";
+import { Button, Input, Avatar } from "@web-app-starter/design-system";
 ```
 
-### `@repo/auth` — Authentication
+### `@web-app-starter/auth` — Authentication
 
 Better Auth + Convex integration, exported as client/server/provider:
 
 ```typescript
-import { authClient } from "@repo/auth/client";
-import { auth } from "@repo/auth/server";
-import { AuthProvider } from "@repo/auth/provider";
+import { authClient } from "@web-app-starter/auth/client";
+import { auth } from "@web-app-starter/auth/server";
+import { AuthProvider } from "@web-app-starter/auth/provider";
 ```
 
 ### `@repo/backend` — Convex Backend
@@ -238,19 +238,19 @@ Convex schema, queries, mutations, and actions. Import the API:
 import { api } from "@repo/backend";
 ```
 
-### `@repo/i18n` — Internationalization
+### `@web-app-starter/i18n` — Internationalization
 
 15-language support (including RTL) via `next-intl`. Provides locale configuration, translation messages, and i18n utilities. See `platform/docs/i18n-architecture.md` for the full architecture.
 
-### `@repo/edge-rate-limit` — Edge Rate Limiting
+### `@web-app-starter/edge-rate-limit` — Edge Rate Limiting
 
 Shared edge rate limiter used by web, admin, and landing app proxies. Provides per-IP rate limiting at the edge layer.
 
-### `@repo/design-patterns` — Design Patterns
+### `@web-app-starter/design-patterns` — Design Patterns
 
 Shared design patterns and utilities.
 
-### `@repo/starter-sidebar-policy` — Sidebar Sizing
+### `@web-app-starter/starter-sidebar-policy` — Sidebar Sizing
 
 Shared sizing policy used by the design system and the standalone demo. See the
 [package guide](packages/starter-sidebar-policy/README.md) for consumption and
@@ -346,8 +346,8 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 - Keep server/client boundaries explicit. Client components include `"use client"`.
 - Use Convex for all APIs (queries/mutations/actions). Next.js API routes are only for auth proxying.
 - Prefer small, composable components with single responsibilities.
-- Import shared packages by name: `@repo/design-system`, `@repo/auth/client`, `@repo/backend`.
-- UI components live in `@repo/design-system`. App-specific components live in `apps/<app>/src/components/`.
+- Import shared packages by name: `@web-app-starter/design-system`, `@web-app-starter/auth/client`, `@repo/backend`.
+- UI components live in `@web-app-starter/design-system`. App-specific components live in `apps/<app>/src/components/`.
 
 ### Testing
 - Bun unit tests for pure functions and utilities (`apps/web/qa/tests/*.test.ts`).

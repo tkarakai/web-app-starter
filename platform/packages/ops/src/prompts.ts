@@ -1,4 +1,4 @@
-import { PaperRoll, PaperRollError } from "@repo/paper-roll";
+import { PaperRoll, PaperRollError } from "@web-app-starter/paper-roll";
 import { OpsError, redact } from "./errors";
 
 export interface SelectOptions {

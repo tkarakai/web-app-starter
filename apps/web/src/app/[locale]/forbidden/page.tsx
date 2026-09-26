@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
-import { Button } from "@repo/design-system";
-import { fetchAuthQuery } from "@repo/auth/server";
+import { Button } from "@web-app-starter/design-system";
+import { fetchAuthQuery } from "@web-app-starter/auth/server";
 import { api } from "@repo/backend";
 
 export default async function ForbiddenPage() {

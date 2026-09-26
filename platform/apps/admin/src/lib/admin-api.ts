@@ -1,5 +1,5 @@
 import type { AuditAction, AuditStatus } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 
 // ---------------------------------------------------------------------------
 // Audit event callback type — callers pass useMutation(api.auditTrail.postEvent)

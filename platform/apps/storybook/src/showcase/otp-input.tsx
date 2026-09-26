@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { OtpInput, toast } from "@repo/design-system";
+import { OtpInput, toast } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function OtpInputShowcase() {

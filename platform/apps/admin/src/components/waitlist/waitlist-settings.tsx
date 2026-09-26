@@ -17,7 +17,7 @@ import {
   Label,
   Skeleton,
   Switch,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import {
   getOnboardingChangeCopy,
   type OnboardingPolicy,

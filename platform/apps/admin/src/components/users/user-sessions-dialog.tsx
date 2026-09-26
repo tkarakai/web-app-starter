@@ -41,7 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   parseUserAgent,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminSession, AdminUser } from "@/lib/admin-api";
 import { listUserSessions, revokeAllSessions, revokeSession } from "@/lib/admin-api";
 

@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { Card, CardContent, Skeleton } from "@repo/design-system";
+import { Card, CardContent, Skeleton } from "@web-app-starter/design-system";
 import { IntegrationProviderCard } from "@/components/configure/integration-provider-card";
 
 export function IntegrationsDashboard() {

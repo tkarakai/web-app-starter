@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { StyledQrCode } from "@repo/design-system";
+import { StyledQrCode } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const SAMPLE_URL = "https://example.com";

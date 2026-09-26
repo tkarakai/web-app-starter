@@ -7,7 +7,7 @@ import { useQuery } from "convex/react";
 import type { Preloaded } from "convex/react";
 
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 
 type AuthUser = {
   name?: string;

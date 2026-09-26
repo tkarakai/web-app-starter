@@ -4,13 +4,13 @@ This document describes the internationalization (i18n) system architecture. It 
 
 ## Overview
 
-The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n library, purpose-built for Next.js App Router and Server Components. All user-facing strings are extracted into a shared `@repo/i18n` package. The system currently supports **15 languages** across LTR and RTL scripts, with full support for cross-device locale persistence, SEO optimization, multi-script fonts, and RTL layout mirroring. Adding a new language requires only two steps — no code changes.
+The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n library, purpose-built for Next.js App Router and Server Components. All user-facing strings are extracted into a shared `@web-app-starter/i18n` package. The system currently supports **15 languages** across LTR and RTL scripts, with full support for cross-device locale persistence, SEO optimization, multi-script fonts, and RTL layout mirroring. Adding a new language requires only two steps — no code changes.
 
 ### Scope
 
 **Scope:** web, landing and landing-static localize their user-visible text.
 Admin remains English-only and imports existing entries from
-`@repo/i18n/messages/en.json` where applicable; it does not need locale routing.
+`@web-app-starter/i18n/messages/en.json` where applicable; it does not need locale routing.
 The product name is not translated content: it is `identity.productName` in the
 root `app.config.ts`. Messages that mention it take it as the `{productName}`
 argument (`t("intro", { productName })`), so renaming the product touches no locale
@@ -31,7 +31,7 @@ primitives without making the design system depend on i18n. The static landing
 ## Package Structure
 
 ```
-packages/i18n/                     # @repo/i18n
+packages/i18n/                     # @web-app-starter/i18n
 ├── src/
 │   ├── index.ts                   # Re-exports config types and utilities
 │   ├── config.ts                  # Locale list, metadata, RTL detection
@@ -47,10 +47,10 @@ packages/i18n/                     # @repo/i18n
 
 | Export Path | Contents |
 |-------------|----------|
-| `@repo/i18n` | `locales`, `defaultLocale`, `localeMetadata`, `getLocaleDirection`, `Locale` type |
-| `@repo/i18n/request` | Server-side request configuration for next-intl |
-| `@repo/i18n/navigation` | `Link`, `redirect`, `usePathname`, `useRouter`, `getPathname` |
-| `@repo/i18n/messages/*` | Direct access to JSON message files |
+| `@web-app-starter/i18n` | `locales`, `defaultLocale`, `localeMetadata`, `getLocaleDirection`, `Locale` type |
+| `@web-app-starter/i18n/request` | Server-side request configuration for next-intl |
+| `@web-app-starter/i18n/navigation` | `Link`, `redirect`, `usePathname`, `useRouter`, `getPathname` |
+| `@web-app-starter/i18n/messages/*` | Direct access to JSON message files |
 
 ---
 
@@ -161,7 +161,7 @@ The web app uses this configuration:
 
 ```ts
 import createIntlMiddleware from "next-intl/middleware";
-import { locales, defaultLocale } from "@repo/i18n";
+import { locales, defaultLocale } from "@web-app-starter/i18n";
 
 const intlMiddleware = createIntlMiddleware({
   locales,
@@ -181,7 +181,7 @@ Each app's `[locale]/layout.tsx` follows the same pattern:
 ```tsx
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
-import { getLocaleDirection } from "@repo/i18n";
+import { getLocaleDirection } from "@web-app-starter/i18n";
 
 export async function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -215,7 +215,7 @@ Key aspects:
 Each app has a thin `src/i18n/request.ts` file that re-exports the shared config:
 
 ```ts
-export { default } from "@repo/i18n/request";
+export { default } from "@web-app-starter/i18n/request";
 ```
 
 This is referenced by the next-intl plugin in `next.config.ts`:
@@ -236,7 +236,7 @@ Use `getTranslations()` from `next-intl/server` (async):
 
 ```tsx
 import { getTranslations } from "next-intl/server";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 export default async function SignInPage() {
   const t = await getTranslations("auth.signIn");
@@ -274,7 +274,7 @@ export function TaskList() {
 
 ### Shared Package Components (Inversion of Control)
 
-Components in `@repo/design-patterns` cannot access `NextIntlClientProvider` context. They accept translated strings as props with English fallback defaults:
+Components in `@web-app-starter/design-patterns` cannot access `NextIntlClientProvider` context. They accept translated strings as props with English fallback defaults:
 
 ```tsx
 // packages/design-patterns/src/theme-toggle.tsx
@@ -436,7 +436,7 @@ try {
 
 ### Component Design
 
-`LanguageSelector` lives in `@repo/design-patterns` as a pure presentation component with no i18n dependency:
+`LanguageSelector` lives in `@web-app-starter/design-patterns` as a pure presentation component with no i18n dependency:
 
 ```tsx
 interface LanguageSelectorProps {
@@ -469,8 +469,8 @@ interface LanguageSelectorProps {
 "use client";
 import { useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
-import { LanguageSelector } from "@repo/design-patterns";
-import { locales, localeMetadata, type Locale } from "@repo/i18n";
+import { LanguageSelector } from "@web-app-starter/design-patterns";
+import { locales, localeMetadata, type Locale } from "@web-app-starter/i18n";
 
 export function LocaleSwitcher({ className }: { className?: string }) {
   const locale = useLocale();
@@ -696,7 +696,7 @@ export async function generateMetadata({ params }): Promise<Metadata> {
 
 ### Alternate Language Links (hreflang)
 
-The `HreflangLinks` component in `@repo/i18n` generates SEO-friendly alternate language links for all 15 supported locales plus an `x-default` fallback:
+The `HreflangLinks` component in `@web-app-starter/i18n` generates SEO-friendly alternate language links for all 15 supported locales plus an `x-default` fallback:
 
 ```tsx
 <head>

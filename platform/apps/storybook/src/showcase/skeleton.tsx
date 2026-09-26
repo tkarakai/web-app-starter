@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@repo/design-system";
+import { Skeleton } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function SkeletonShowcase() {

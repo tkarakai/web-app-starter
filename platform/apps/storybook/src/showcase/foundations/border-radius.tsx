@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@repo/design-system";
+import { Button } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const radiusSizes = [

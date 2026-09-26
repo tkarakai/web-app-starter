@@ -1,6 +1,6 @@
 "use client";
 
-import messages from "@repo/i18n/messages/en.json";
+import messages from "@web-app-starter/i18n/messages/en.json";
 
 import * as React from "react";
 import { useQuery } from "convex/react";
@@ -19,10 +19,10 @@ import {
   Users,
 } from "lucide-react";
 
-import { ThemeToggle } from "@repo/design-patterns";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
-import { appConfig } from "@repo/app-config";
+import { authClient } from "@web-app-starter/auth/client";
+import { appConfig } from "@web-app-starter/app-config";
 import {
   Avatar,
   AvatarFallback,
@@ -46,7 +46,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type AdminSidebarProps = React.ComponentProps<typeof Sidebar> & {
   displayName: string;

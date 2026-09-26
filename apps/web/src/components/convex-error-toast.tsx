@@ -2,11 +2,11 @@
 
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "@repo/design-system";
+import { toast } from "@web-app-starter/design-system";
 import {
   ConvexErrorHandler,
   type ConvexErrorInfo,
-} from "@repo/auth/error-handler";
+} from "@web-app-starter/auth/error-handler";
 
 /** Map Convex error codes to i18n keys under the "errors.convex" namespace. */
 const I18N_KEY_MAP: Record<string, string> = {

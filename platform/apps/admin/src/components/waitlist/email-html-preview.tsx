@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@repo/design-system";
+import { cn } from "@web-app-starter/design-system";
 
 import { renderPreview } from "@/lib/email-template-constants";
 

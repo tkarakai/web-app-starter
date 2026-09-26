@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Collapsible,
@@ -16,7 +16,7 @@ import {
   PasswordInput,
   StyledQrCode,
   toast,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type TotpPhase = "password-prompt" | "enabling" | "qr-code" | "verify";
 

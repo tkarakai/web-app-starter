@@ -43,7 +43,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import type { AdminSession } from "@/lib/admin-api";
 import {
   fetchUsers,
@@ -51,7 +51,7 @@ import {
   revokeSession,
   revokeAllSessions,
 } from "@/lib/admin-api";
-import { parseUserAgent } from "@repo/design-system";
+import { parseUserAgent } from "@web-app-starter/design-system";
 
 /** Debounce delay for search (ms). */
 const SEARCH_DEBOUNCE = 300;

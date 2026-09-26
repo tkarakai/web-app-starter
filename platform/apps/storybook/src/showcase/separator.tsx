@@ -1,6 +1,6 @@
 "use client";
 
-import { Separator } from "@repo/design-system";
+import { Separator } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function SeparatorShowcase() {

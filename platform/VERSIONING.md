@@ -13,7 +13,7 @@ We publish **git tags**, `vMAJOR.MINOR.PATCH`, on `main`. The repo is the unit o
 versioning for merge-by-tag upgrades; `.starter-version` records that baseline.
 Most workspace packages remain private and unversioned independently.
 
-One explicit exception is `@repo/starter-sidebar-policy`, versioned independently
+One explicit exception is `@web-app-starter/starter-sidebar-policy`, versioned independently
 at `1.0.1` for the [demo package upgrade](./apps/demo/README.md). The immutable
 local package fixtures `1.0.0` and `1.0.1` identify package content and a supported
 upgrade transition, not published registry releases or starter git tags. They do

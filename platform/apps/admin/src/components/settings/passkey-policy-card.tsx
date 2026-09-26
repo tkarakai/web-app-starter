@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type Scope = "admin" | "user";
 type PasskeyPolicy = "disabled" | "optional" | "required";

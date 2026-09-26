@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Check } from "lucide-react";
 
-import { cn } from "@repo/design-system";
+import { cn } from "@web-app-starter/design-system";
 
 interface OnboardingStepIndicatorProps {
   /** 0-indexed current step (-1 means no step is active yet, e.g. intro screen) */

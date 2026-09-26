@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Button, Card, CardContent, CardDescription, CardTitle } from "@repo/design-system";
+import { Button, Card, CardContent, CardDescription, CardTitle } from "@web-app-starter/design-system";
 
 import { WaitlistSection } from "./waitlist-section";
 

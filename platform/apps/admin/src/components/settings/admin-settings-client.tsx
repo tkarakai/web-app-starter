@@ -10,7 +10,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { AdminProfileSection } from "@/components/settings/admin-profile-section";
 import { AdminSecuritySection } from "@/components/settings/admin-security-section";
 

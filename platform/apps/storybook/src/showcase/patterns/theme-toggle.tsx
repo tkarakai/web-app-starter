@@ -1,6 +1,6 @@
 "use client";
 
-import { ThemeToggle } from "@repo/design-patterns";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Button,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function ThemeToggleShowcase() {

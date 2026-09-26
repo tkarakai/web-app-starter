@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Separator } from "@repo/design-system";
+import { Separator } from "@web-app-starter/design-system";
 import {
   foundationRegistry,
   slugToFoundationCategory,

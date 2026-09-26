@@ -4,19 +4,19 @@ import * as React from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Checkbox,
   Label,
   PasswordInput,
   toast,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import {
   PasswordStrengthMeter,
   useThrottledPasswordCheck,
   type PasswordStrengthTranslateFn,
-} from "@repo/design-system/password-strength";
+} from "@web-app-starter/design-system/password-strength";
 import { useAuthUser } from "@/components/auth/auth-guard";
 
 // Plain-English translation function for PasswordStrengthMeter.

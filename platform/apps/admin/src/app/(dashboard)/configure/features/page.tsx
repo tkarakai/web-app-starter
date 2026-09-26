@@ -1,5 +1,5 @@
-import { appConfig } from "@repo/app-config";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/design-system";
+import { appConfig } from "@web-app-starter/app-config";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@web-app-starter/design-system";
 import { InviteOnlyFeatureCard } from "@/components/features/invite-only-feature-card";
 import { SignupFeatureCard } from "@/components/features/signup-feature-card";
 import { WaitlistFeatureCard } from "@/components/features/waitlist-feature-card";

@@ -9,7 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 const DEMO_LOCALES = [

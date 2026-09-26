@@ -31,7 +31,7 @@ The root `app.config.ts` holds every value an app built on the starter is expect
 | Group | Values | Read by |
 |-------|--------|---------|
 | `identity` | product name, legal entity, support email | page titles and headers, landing footer, TOTP issuer, email footer, the `{productName}` message argument |
-| `runtime` | local port per app, Better Auth cookie prefix | dev scripts, each app's `dev` script, Playwright configs, CI, `@repo/auth`, both proxies, both `clear-session` routes, Convex `auth.ts` and `sessions.ts` |
+| `runtime` | local port per app, Better Auth cookie prefix | dev scripts, each app's `dev` script, Playwright configs, CI, `@web-app-starter/auth`, both proxies, both `clear-session` routes, Convex `auth.ts` and `sessions.ts` |
 | `brand` | icon sources, design-token overrides, email palette, `lang` and footer | `copy-shared-assets.sh`, `BrandTokenStyle` in each root layout, Convex email templates |
 | `features` | `waitlist`, `invitations`, `announcements`, `environmentBanner` | admin feature controls and navigation, announcement banners, environment banner |
 
@@ -43,8 +43,8 @@ and secrets stay environment variables.
 How each consumer reads it:
 
 - **TypeScript** (Next.js server, edge and client code, Convex functions, Playwright configs,
-  tests): `import { appConfig, localAppOrigin } from "@repo/app-config"`. Cookie names come from
-  `@repo/auth/cookies` (`sessionCookieNames()`, `isSessionCookie()`), never from string literals.
+  tests): `import { appConfig, localAppOrigin } from "@web-app-starter/app-config"`. Cookie names come from
+  `@web-app-starter/auth/cookies` (`sessionCookieNames()`, `isSessionCookie()`), never from string literals.
 - **Shell scripts**: `eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"` defines
   `APP_CONFIG_PORT_<APP>`, `APP_CONFIG_ORIGIN_<APP>`, `APP_CONFIG_AUTH_COOKIE_PREFIX` and friends.
   `scripts/app-config.ts port web` prints one value. Apps' `dev` scripts go through

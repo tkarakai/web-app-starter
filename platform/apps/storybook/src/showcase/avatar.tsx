@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@repo/design-system";
+import { Avatar, AvatarFallback, AvatarImage } from "@web-app-starter/design-system";
 import { DemoSection } from "@/components/demo-section";
 
 export default function AvatarShowcase() {

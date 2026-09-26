@@ -8,7 +8,7 @@ import { useAction } from "convex/react";
 import { ChevronDown, Copy, ShieldCheck, ShieldOff } from "lucide-react";
 
 import { api } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,7 @@ import {
   type OtpInputHandle,
   Separator,
   toast,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type Step = "idle" | "password-enable" | "totp-uri" | "verify-code" | "backup-codes" | "password-disable" | "password-regenerate";
 

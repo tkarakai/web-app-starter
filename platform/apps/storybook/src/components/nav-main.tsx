@@ -18,7 +18,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   useSidebar,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 interface NavItem {
   title: string;

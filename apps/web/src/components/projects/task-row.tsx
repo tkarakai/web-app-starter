@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { getDeadlineUrgency, type DeadlineUrgency } from "@/lib/format";
 import { normalizeText, type TaskStatus } from "@/lib/projects";

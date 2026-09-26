@@ -5,15 +5,15 @@
  * them as literals, so renaming the product, moving a port or changing the
  * auth cookie prefix is an edit here and nowhere else.
  *
- * - Validated when loaded (`packages/app-config/src/schema.ts`): an invalid
+ * - Validated when loaded (`platform/packages/app-config/src/schema.ts`): an invalid
  *   value stops dev, build and tests with a message naming the setting.
  * - Everything here is public: it is checked in and bundled into client code.
  *   Per-deployment values (deployed URLs, Convex URLs) and secrets stay
  *   environment variables; see platform/AGENTS.md "Environment variables".
- * - Consumers: import `appConfig` from `@repo/app-config` in TypeScript; shell
+ * - Consumers: import `appConfig` from `@web-app-starter/app-config` in TypeScript; shell
  *   scripts and CI use `scripts/app-config.ts` (see platform/docs/development.md).
  */
-import type { AppConfig } from "./packages/app-config/src/schema.ts";
+import type { AppConfig } from "./platform/packages/app-config/src/schema.ts";
 
 const productName = "Web App Starter";
 const supportEmail = "support@example.com";
@@ -41,11 +41,11 @@ const appConfig = {
 
   brand: {
     icons: {
-      svg: "packages/design-system/assets/icon.svg",
-      ico: "packages/design-system/assets/favicon.ico",
-      appleTouchIcon: "packages/design-system/assets/apple-touch-icon.png",
+      svg: "platform/packages/design-system/assets/icon.svg",
+      ico: "platform/packages/design-system/assets/favicon.ico",
+      appleTouchIcon: "platform/packages/design-system/assets/apple-touch-icon.png",
     },
-    // CSS custom properties from packages/design-system/tokens/, e.g.
+    // CSS custom properties from platform/packages/design-system/tokens/, e.g.
     // { "--primary": "oklch(0.55 0.2 260)" }.
     tokenOverrides: {},
     email: {

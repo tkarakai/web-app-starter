@@ -48,7 +48,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 import {
   VERIFICATION_TEMPLATE_VARIABLES,
