@@ -53,6 +53,37 @@ describe("web password reset", () => {
     expect(mocks.resetPassword).not.toHaveBeenCalled();
   });
 
+  it("rejects mismatched passwords after strength evaluation succeeds", async () => {
+    render(<NextIntlClientProvider locale="en" messages={en}>
+      <ResetPasswordForm token="reset-token" />
+    </NextIntlClientProvider>);
+    fireEvent.change(screen.getByLabelText(en.auth.resetPassword.newPassword), {
+      target: { value: "Xq7!vTn3Mk9wRp2Z" },
+    });
+    fireEvent.change(screen.getByLabelText(en.auth.fields.confirmPassword), {
+      target: { value: "Bd4#hLm8Yt6kQs1W" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en.auth.resetPassword.cta }));
+
+    expect(await screen.findByText(en.auth.errors.passwordMismatch)).toBeInTheDocument();
+    expect(mocks.resetPassword).not.toHaveBeenCalled();
+  });
+
+  it("shows rate-limit feedback when reset returns HTTP 429", async () => {
+    mocks.resetPassword.mockResolvedValue({ error: { status: 429, message: "Rate limit exceeded" } });
+    render(<NextIntlClientProvider locale="en" messages={en}>
+      <ResetPasswordForm token="reset-token" />
+    </NextIntlClientProvider>);
+    const password = "Xq7!vTn3Mk9wRp2Z";
+    fireEvent.change(screen.getByLabelText(en.auth.resetPassword.newPassword), { target: { value: password } });
+    fireEvent.change(screen.getByLabelText(en.auth.fields.confirmPassword), { target: { value: password } });
+    fireEvent.click(screen.getByRole("button", { name: en.auth.resetPassword.cta }));
+
+    expect(await screen.findByText(en.auth.errors.rateLimited)).toBeInTheDocument();
+    expect(mocks.resetPassword).toHaveBeenCalledWith({ token: "reset-token", newPassword: password });
+    expect(screen.getByRole("button", { name: en.auth.resetPassword.cta })).toBeEnabled();
+  });
+
   it.each(["pending", "successful"])("preserves reset state when token invalidates while %s", async (state) => {
     let resolveReset!: (result: object) => void;
     mocks.resetPassword.mockReturnValue(new Promise((resolve) => { resolveReset = resolve; }));
