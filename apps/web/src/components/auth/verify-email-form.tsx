@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { authClient, isAuthRateLimited } from "@repo/auth/client";
+import { authClient, isAuthRateLimited } from "@web-app-starter/auth/client";
 import { broadcastAuth } from "@/lib/auth-broadcast";
 import { EMAIL_VERIFICATION_CALLBACK_URL } from "@/lib/auth-callbacks";
 import { redirectWithUserLocale } from "@/lib/auth-locale";
@@ -22,7 +22,7 @@ import {
   Label,
   Separator,
   parseUserAgent,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 function formatDeviceName(userAgent: string | null | undefined, t: ReturnType<typeof useTranslations>): string {
   const parsed = parseUserAgent(userAgent);

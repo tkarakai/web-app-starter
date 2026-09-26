@@ -1,4 +1,4 @@
-import { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } from "@repo/auth/cookies";
+import { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } from "@web-app-starter/auth/cookies";
 
 import { httpAction } from "./_generated/server";
 import { createAuth } from "./auth";

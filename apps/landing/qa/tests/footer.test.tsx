@@ -2,16 +2,16 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import french from "@repo/i18n/messages/fr.json";
+import french from "@web-app-starter/i18n/messages/fr.json";
 import { Footer } from "@/components/footer";
 
-vi.mock("@repo/i18n/navigation", () => ({
+vi.mock("@web-app-starter/i18n/navigation", () => ({
   Link: (props: ComponentProps<"a">) => <a {...props} />,
 }));
 
 // Renaming the owner is an app.config.ts change, not a translation change.
-vi.mock("@repo/app-config", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@repo/app-config")>();
+vi.mock("@web-app-starter/app-config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@web-app-starter/app-config")>();
   return {
     ...original,
     appConfig: {

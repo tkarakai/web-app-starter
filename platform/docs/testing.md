@@ -36,7 +36,7 @@ describe("myFunction", () => {
 // apps/web/qa/tests/button.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { Button } from "@repo/design-system";
+import { Button } from "@web-app-starter/design-system";
 
 describe("Button", () => {
   it("renders with text", () => {
@@ -261,7 +261,7 @@ bun run test:watch
 | **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
 | **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
-| **Shared UI** | Add component in `packages/design-system/src/`, export from index.ts |
+| **Shared UI** | Add component in `platform/packages/design-system/src/`, export from index.ts |
 
 ## Context Boundaries
 

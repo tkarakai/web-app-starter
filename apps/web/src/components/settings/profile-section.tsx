@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
 import {
@@ -28,9 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
-} from "@repo/design-system";
-import { ThemeToggle } from "@repo/design-patterns";
-import { locales, localeMetadata, persistLocale, type Locale } from "@repo/i18n";
+} from "@web-app-starter/design-system";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
+import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
 import { useAuthUser } from "@/components/auth/auth-guard";
 
 const AVATAR_COLORS = [

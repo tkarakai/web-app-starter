@@ -72,7 +72,7 @@ web and admin read their environment at request time, not at build time
 
 - One image per app per commit, tagged with the commit SHA, built from `git archive` of that
   commit (never the working tree), for the architecture in `apps.json` (`ARM64` by default).
-- The image build runs `scripts/check-env-leak.sh` against placeholder Convex URLs, so an
+- The image build runs `platform/tooling/check-env-leak.sh` against placeholder Convex URLs, so an
   image that inlined environment identity fails to build.
 - The same image runs in staging and production. Promoting to production means deploying the
   tag staging runs.

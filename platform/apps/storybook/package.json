@@ -1,0 +1,34 @@
+{
+  "name": "@repo/storybook",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "../../tooling/next-dev.sh storybook",
+    "prebuild": "../../tooling/copy-shared-assets.sh",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "@web-app-starter/app-config": "workspace:*",
+    "@web-app-starter/design-patterns": "workspace:*",
+    "@web-app-starter/design-system": "workspace:*",
+    "lucide-react": "^1.46.0",
+    "next": "^16.3.3",
+    "next-themes": "^0.4.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.1.4",
+    "@types/node": "24.13.4",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "tailwindcss": "^4.1.4",
+    "typescript": "6.0.3"
+  }
+}

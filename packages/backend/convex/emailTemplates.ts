@@ -2,7 +2,7 @@
 // Email template types, defaults, and rendering
 // ---------------------------------------------------------------------------
 
-import { appConfig, type EmailPalette } from "@repo/app-config";
+import { appConfig, type EmailPalette } from "@web-app-starter/app-config";
 
 /** Shape of a stored email template (subject + HTML + plain text). */
 export type EmailTemplate = {

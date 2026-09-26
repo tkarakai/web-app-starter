@@ -13,7 +13,7 @@ database migrations or codemods for this transition.
 
 Do not regenerate old fixtures to make a test pass. Add a version for a new
 package release, its required regression action and explicit supported starting
-versions. `scripts/starter-upgrade/ownership.json` pins release metadata;
+versions. `platform/tooling/starter-upgrade/ownership.json` pins release metadata;
 `bun run check:starter-ownership` checks the current author package build against
 the latest artifact and validates the demo's real dependency separately.
 

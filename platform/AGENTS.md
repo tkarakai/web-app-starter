@@ -13,17 +13,19 @@ A **Bun workspaces + Turborepo** monorepo:
 
 - **Next.js 16** apps on **React 19** (App Router, Server Components), **TypeScript** strict mode
 - **Convex** backend (database, file storage, API functions) in `packages/backend`
-- **Better Auth** wired to Convex (`@repo/auth`)
-- **Radix UI + shadcn/ui** primitives and **Tailwind CSS v4** (`@repo/design-system`)
-- **Internationalization** via `@repo/i18n` and next-intl: 15 languages including RTL
+- **Better Auth** wired to Convex (`@web-app-starter/auth`)
+- **Radix UI + shadcn/ui** primitives and **Tailwind CSS v4** (`@web-app-starter/design-system`)
+- **Internationalization** via `@web-app-starter/i18n` and next-intl: 15 languages including RTL
 
 ## The platform zone
 
 - **`platform/` is platform-owned.** Anything under a directory named `platform/`, and any file
   named `platform-*` (including `.claude/skills/platform-*` and `.agents/skills/platform-*`), is
-  replaced wholesale on upgrade. Don't edit it: your change would be lost. Today the zone holds
-  this guide, `platform/docs/` and `platform/agent-skills/`; platform code moves into it in a
-  later release.
+  replaced wholesale on upgrade. Don't edit it: your change would be lost. It holds the
+  `@web-app-starter/*` packages (`platform/packages/`), the admin dashboard and component
+  showcase (`platform/apps/`), dev and CI tooling (`platform/tooling/`), config bases
+  (`platform/config/`), docs, skills, templates, and the release files (`CHANGELOG.md`,
+  `UPGRADING.md`, `VERSIONING.md`, `VERSION`, licences).
 - **Seams** are the files where your app meets the platform. Edit them, and keep the platform's
   entries intact:
 
@@ -31,8 +33,8 @@ A **Bun workspaces + Turborepo** monorepo:
   |---|---|
   | `app.config.ts` | Set product name, legal entity, support email, local ports, auth cookie prefix, brand and feature switches (`platform-configure`) |
   | `packages/backend/convex/schema.ts` | Add your tables next to the platform's (`platform-add-table`) |
-  | `packages/i18n/messages/*.json` | Add your strings in your own namespaces (`platform-add-strings`) |
-  | Root `package.json`, `turbo.json`, `renovate.json` | Add scripts, tasks, env declarations, dependency rules |
+  | `platform/packages/i18n/messages/*.json` | Add your strings in your own namespaces (`platform-add-strings`). The one file set under `platform/` you edit, until app message files arrive |
+  | Root `package.json`, `turbo.json`, `tsconfig.json`, `eslint.config.mjs`, `renovate.json` | Add scripts, tasks, env declarations, lint and dependency rules; `tsconfig` and ESLint extend `platform/config/` |
   | Each app's `.env.example` | Declare the environment variables your code reads |
 
 - **Everything else is yours**, including the reference apps you keep.
@@ -46,11 +48,11 @@ name, legal entity, support email), `runtime` (local port per app, Better Auth c
 or unknown value stops dev, build and tests with a message naming it. Everything in it is public.
 
 - Never write these values as literals. In TypeScript use `appConfig` (and `localAppOrigin`) from
-  `@repo/app-config`; take cookie names from `@repo/auth/cookies` (`sessionCookieNames()`,
-  `isSessionCookie()`); in shell scripts and CI use `scripts/app-config.ts`
-  (`eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"` gives `APP_CONFIG_*` variables;
+  `@web-app-starter/app-config`; take cookie names from `@web-app-starter/auth/cookies` (`sessionCookieNames()`,
+  `isSessionCookie()`); in shell scripts and CI use `platform/tooling/app-config.ts`
+  (`eval "$(./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell)"` gives `APP_CONFIG_*` variables;
   the `setup-bun` action exports them in CI).
-- The product name is never in `packages/i18n/messages`: messages that mention it take a
+- The product name is never in `platform/packages/i18n/messages`: messages that mention it take a
   `{productName}` argument, filled from `appConfig.identity.productName`.
 - Per-deployment values (deployed URLs, Convex URLs) and secrets stay environment variables.
 - Changing `authCookiePrefix` signs every existing user out.
@@ -84,14 +86,14 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 
 | Package | Import |
 |---|---|
-| `@repo/design-system` | `import { Button, cn } from "@repo/design-system"`; styles: `@repo/design-system/styles/globals.css` |
-| `@repo/auth` | `@repo/auth/client` (`authClient`), `@repo/auth/server` (`auth`, `isAuthenticated`, ...), `@repo/auth/provider` |
+| `@web-app-starter/design-system` | `import { Button, cn } from "@web-app-starter/design-system"`; styles: `@web-app-starter/design-system/styles/globals.css` |
+| `@web-app-starter/auth` | `@web-app-starter/auth/client` (`authClient`), `@web-app-starter/auth/server` (`auth`, `isAuthenticated`, ...), `@web-app-starter/auth/provider` |
 | `@repo/backend` | `import { api } from "@repo/backend"` |
-| `@repo/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
-| `@repo/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
+| `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
+| `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
 
-Within an app, `@/` is an alias for its `src/`. It is app-internal only; use `@repo/` names across
-packages.
+Within an app, `@/` is an alias for its `src/`. It is app-internal only; across packages import
+by package name (`@web-app-starter/*` for the platform, `@repo/backend` for the backend).
 
 ### File naming
 
@@ -122,7 +124,7 @@ packages.
 - Edit `packages/backend/convex/_generated/`; Convex generates it.
 - Use `npm` or `yarn`; Bun is the package manager.
 - Add Python or other scripting languages. Scripts are TypeScript run on Node through
-  `scripts/node-ts.sh` (Node 22.6+); shell wrappers are fine.
+  `platform/tooling/node-ts.sh` (Node 22.6+); shell wrappers are fine.
 - Use `turbo dev`; `bun run dev` manages ports, Convex and `.env.local`.
 - Test Server Components with Vitest; use Playwright E2E.
 - Commit `.env.local`; `.env.example` is the template.
@@ -190,7 +192,7 @@ environment-specific and silently breaks artifact reuse
 | Deploying, promoting, rolling back, or adding env vars | [docs/deployment-architecture.md](docs/deployment-architecture.md), [docs/deployment-runbook.md](docs/deployment-runbook.md), [docs/ops-cli.md](docs/ops-cli.md) |
 | Hosting on AWS instead of Vercel (`infra/aws`) | [docs/aws/deployment-architecture-aws.md](docs/aws/deployment-architecture-aws.md); Convex stays on Convex Cloud |
 | Updating dependencies, Renovate, or the Node/Bun baseline | [docs/dependency-updates.md](docs/dependency-updates.md), [docs/dependency-migrations.md](docs/dependency-migrations.md) |
-| Taking a newer platform release | `UPGRADING.md` and `CHANGELOG.md` at the repository root |
+| Taking a newer platform release | `platform/UPGRADING.md` and `platform/CHANGELOG.md` |
 
 ## Skills
 

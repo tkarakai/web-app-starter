@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { getSessionToken, type SessionInfo } from "./sessions";
 import { parseUserAgent } from "./parseUserAgent";
-import { AUTH_COOKIE_PREFIX } from "@repo/auth/cookies";
+import { AUTH_COOKIE_PREFIX } from "@web-app-starter/auth/cookies";
 
 /** The cookie prefix from app.config.ts. */
 const P = AUTH_COOKIE_PREFIX;

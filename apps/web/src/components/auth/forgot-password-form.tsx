@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Button,
   Card,
@@ -16,7 +16,7 @@ import {
   Input,
   Label,
   Separator,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 function getAndClearPrefillEmail(): string {
   try {

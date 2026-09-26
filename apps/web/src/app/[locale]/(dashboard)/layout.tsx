@@ -5,7 +5,7 @@ import {
   preloadAuthQuery,
   fetchAuthQuery,
   isAuthenticated,
-} from "@repo/auth/server";
+} from "@web-app-starter/auth/server";
 import { AuthGuard } from "@/components/auth/auth-guard";
 
 export default async function DashboardLayout({

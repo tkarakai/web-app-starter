@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
-import arabic from "@repo/i18n/messages/ar.json";
-import french from "@repo/i18n/messages/fr.json";
+import arabic from "@web-app-starter/i18n/messages/ar.json";
+import french from "@web-app-starter/i18n/messages/fr.json";
 import { PasswordInput, CopyableField, PasskeyUnsupportedAlert, OtpInput, TimezoneSelector, Breadcrumb } from "@/components/ui/localized-controls";
 import { DeadlineInput } from "@/components/projects/deadline-input";
 

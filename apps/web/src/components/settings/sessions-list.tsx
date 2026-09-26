@@ -13,7 +13,7 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +29,8 @@ import {
   Card,
   CardContent,
   Skeleton,
-} from "@repo/design-system";
-import { parseUserAgent } from "@repo/design-system";
+} from "@web-app-starter/design-system";
+import { parseUserAgent } from "@web-app-starter/design-system";
 
 type Session = {
   id: string;

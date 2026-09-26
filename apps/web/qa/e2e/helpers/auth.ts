@@ -2,7 +2,7 @@
  * Authenticated E2E helpers.
  *
  * These drive the real sign-in UI against the real Convex backend that
- * `scripts/dev-start.sh --ci --app=web` boots for Playwright. Nothing here is
+ * `platform/tooling/dev-start.sh --ci --app=web` boots for Playwright. Nothing here is
  * mocked — that is the point. The Better Auth <-> Convex adapter integration has
  * no other behavioural coverage, so these helpers are what stands between a
  * breaking adapter upgrade and production.

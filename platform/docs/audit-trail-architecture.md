@@ -378,7 +378,7 @@ The audit trail is a **faithful recorder**, not a **gatekeeper**.
 
 ## 10. Admin UI
 
-The admin dashboard (`apps/admin`) provides:
+The admin dashboard (`platform/apps/admin`) provides:
 
 - **Paginated listing** — reverse chronological, 50 items per page, load-more pagination
 - **Filtering** — by action, source, status (hierarchical dropdown rendering)

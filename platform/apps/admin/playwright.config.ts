@@ -1,0 +1,69 @@
+import { defineConfig, devices } from "@playwright/test";
+import { localAppOrigin } from "@web-app-starter/app-config";
+import * as fs from "fs";
+import * as path from "path";
+
+/**
+ * Read a value from .env.local (updated by dev-start.sh with actual ports)
+ */
+function getEnvValue(name: string, fallback: string): string {
+  // Check app-level .env.local first, then root
+  for (const envPath of [
+    path.join(__dirname, ".env.local"),
+    path.join(__dirname, "../../../.env.local"),
+  ]) {
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf-8");
+      const match = content.match(new RegExp(`^${name}=(.*)`, "m"));
+      if (match) return match[1].trim();
+    }
+  }
+  return fallback;
+}
+
+// E2E_BASE_URL points the suite at an already-deployed app (e.g. the local AWS
+// stack: E2E_BASE_URL=http://admin.localhost:8080) instead of starting a dev server.
+const deployedBaseUrl = process.env.E2E_BASE_URL || undefined;
+
+export default defineConfig({
+  testDir: "./qa/e2e",
+  outputDir: "./qa/test-results",
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: process.env.CI
+    ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
+    : [["html", { outputFolder: "qa/playwright-report" }]],
+  updateSnapshots: "missing",
+  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.01,
+      threshold: 0.2,
+    },
+  },
+  use: {
+    baseURL: deployedBaseUrl ?? getEnvValue("APP_ORIGIN", localAppOrigin("admin")),
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+  webServer: deployedBaseUrl
+    ? undefined
+    : {
+        command: "../../tooling/dev-start.sh --ci --app=admin",
+        // Playwright discards webServer stdout by default, which turns any CI
+        // boot failure into a bare "Exit code: 1" with no diagnostics.
+        stdout: "pipe",
+        stderr: "pipe",
+        url: getEnvValue("APP_ORIGIN", localAppOrigin("admin")),
+        reuseExistingServer: !process.env.CI,
+        timeout: 180 * 1000,
+      },
+});

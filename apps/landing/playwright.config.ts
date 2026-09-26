@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { localAppOrigin } from "@repo/app-config";
+import { localAppOrigin } from "@web-app-starter/app-config";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -51,7 +51,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "../../scripts/dev-start.sh --ci --app=landing",
+    command: "../../platform/tooling/dev-start.sh --ci --app=landing",
     // Playwright discards webServer stdout by default, which turns any CI
     // boot failure into a bare "Exit code: 1" with no diagnostics.
     stdout: "pipe",

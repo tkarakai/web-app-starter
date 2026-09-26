@@ -1,0 +1,22 @@
+{
+  "name": "@web-app-starter/design-patterns",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@web-app-starter/design-system": "workspace:*",
+    "lucide-react": "1.46.0",
+    "next-themes": "^0.4.6"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}

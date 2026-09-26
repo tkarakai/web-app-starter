@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { NextRequest } from "next/server";
 
 import { proxy } from "../../src/proxy";
-import { _resetStore } from "@repo/edge-rate-limit";
-import { localAppOrigin } from "@repo/app-config";
+import { _resetStore } from "@web-app-starter/edge-rate-limit";
+import { localAppOrigin } from "@web-app-starter/app-config";
 
 // Fresh rate limit store per test
 beforeEach(() => {

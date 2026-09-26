@@ -186,7 +186,7 @@ Emitters:
   `passkey-section.tsx` under `apps/web/src/components/settings/`, plus
   `sessions-client.tsx` under `apps/web/src/app/[locale]/(dashboard)/dashboard/settings/sessions/`
 - Admin: `admin-sessions-list.tsx`, `admin-passkey-section.tsx` under
-  `apps/admin/src/components/settings/`
+  `platform/apps/admin/src/components/settings/`
 
 > The web session UI is emitted from two places — `sessions-list.tsx` and
 > `sessions-client.tsx` — with identical action/resource shapes. Worth collapsing.
@@ -198,13 +198,13 @@ password case more precisely.
 
 ## 5. Admin user management
 
-`source`: `web:admin`. Emitted from the shared helpers in `apps/admin/src/lib/admin-api.ts`
+`source`: `web:admin`. Emitted from the shared helpers in `platform/apps/admin/src/lib/admin-api.ts`
 (`banUser`, `unbanUser`, `removeUser`, `setUserRole`, `revokeSession`, `revokeAllSessions`),
 each taking `postAuditEvent` as a callback from the calling component.
 
 Callers: `users-data-table.tsx`, `user-sessions-dialog.tsx` (under
-`apps/admin/src/components/users/`) and `session-viewer.tsx` (under
-`apps/admin/src/components/sessions/`).
+`platform/apps/admin/src/components/users/`) and `session-viewer.tsx` (under
+`platform/apps/admin/src/components/sessions/`).
 
 All emit from a `finally`, so both success and failure are recorded. Failure statuses are
 mapped from the auth API error: `failed.validation_error`, `failed.unauthorized`,
@@ -309,7 +309,7 @@ rather than an email. **Neither is called from the admin UI** — the UI uses
 
 `source`: `web:admin-onboarding`, `resource`: `admin-invitation:<email>`, `status`:
 `succeeded`. Emitted from
-`apps/admin/src/components/onboarding/admin-onboarding-wizard.tsx`.
+`platform/apps/admin/src/components/onboarding/admin-onboarding-wizard.tsx`.
 
 | Step | `action` |
 |---|---|

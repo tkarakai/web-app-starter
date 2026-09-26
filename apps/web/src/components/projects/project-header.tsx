@@ -27,7 +27,7 @@ import {
   Input,
   Label,
   Textarea,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
 
 type ProjectHeaderProps = {

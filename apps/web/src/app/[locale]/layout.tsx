@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { appConfig, tokenOverrideCss } from "@repo/app-config";
+import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Raleway } from "next/font/google";
@@ -14,12 +14,12 @@ import {
   EnvironmentBannerWrapper,
   OfflineBanner,
   PublicConfigProvider,
-} from "@repo/design-system";
-import { readPublicConfigFromEnv } from "@repo/design-system/server";
+} from "@web-app-starter/design-system";
+import { readPublicConfigFromEnv } from "@web-app-starter/design-system/server";
 import { getRequestOrigin } from "@/lib/request-origin";
-import { ConvexClientProvider } from "@repo/auth/provider";
-import { getToken } from "@repo/auth/server";
-import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@repo/i18n";
+import { ConvexClientProvider } from "@web-app-starter/auth/provider";
+import { getToken } from "@web-app-starter/auth/server";
+import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@web-app-starter/i18n";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ConvexErrorToast } from "@/components/convex-error-toast";
 

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { locales } from "@repo/i18n";
+import { locales } from "@web-app-starter/i18n";
 
 export const dynamic = "force-static";
 

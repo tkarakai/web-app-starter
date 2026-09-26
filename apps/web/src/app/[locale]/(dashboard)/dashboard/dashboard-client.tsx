@@ -21,7 +21,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { useProfileSync } from "@/hooks/useProfileSync";
 import { AppSidebar } from "@/components/projects/app-sidebar";

@@ -8,7 +8,7 @@ import {
   isLocalDevelopment,
 } from "./developmentOnly";
 import schema from "./schema";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 import { sendAuthEmail } from "./sendAuthEmail";
 
 const modules = import.meta.glob("./**/*.*s");

@@ -1,7 +1,7 @@
 "use client";
 
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { defaultLocale, persistLocale } from "@repo/i18n";
+import { defaultLocale, persistLocale } from "@web-app-starter/i18n";
 import { getAuthUserLocaleAction } from "@/app/actions";
 
 /**

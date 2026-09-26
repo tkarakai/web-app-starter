@@ -1,13 +1,13 @@
 "use client";
 
-import { Link } from "@repo/i18n/navigation";
+import { Link } from "@web-app-starter/i18n/navigation";
 import { ArrowLeft, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Alert, AlertDescription, AlertTitle } from "@repo/design-system";
-import { SiteHeader } from "@repo/design-patterns";
+import { Alert, AlertDescription, AlertTitle } from "@web-app-starter/design-system";
+import { SiteHeader } from "@web-app-starter/design-patterns";
 import { LocaleSwitcher } from "./locale-switcher";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 interface ContentPageLayoutProps {
   title: string;

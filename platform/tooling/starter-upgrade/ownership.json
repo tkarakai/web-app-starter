@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "consumedPackage": "@web-app-starter/starter-sidebar-policy",
+  "vendoring": "unsupported",
+  "legacyMixed": ["packages/backend", "platform/packages/i18n", "platform/packages/design-system", "platform/packages/design-patterns"],
+  "fixtureDigests": {
+    "1.0.0": "f7817c9753dfa02f91fd7bc8c7a8f942c5a72027502a037dd59f7acd776ad184",
+    "1.0.1": "49ee1ac1861e57e48756d56bced832d30d4e966a47e3e93b8aa9d333dd5ecb22"
+  }
+}

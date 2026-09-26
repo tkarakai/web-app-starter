@@ -15,7 +15,7 @@ import {
   Sidebar as BaseSidebar,
   SidebarRail as BaseSidebarRail,
   SidebarTrigger as BaseSidebarTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 // Shared primitives accept labels; the app supplies its current locale.
 export function PasswordInput(props: ComponentProps<typeof BasePasswordInput>): ReactElement {

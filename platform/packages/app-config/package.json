@@ -1,0 +1,19 @@
+{
+  "name": "@web-app-starter/app-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "test": "bun test tests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests --max-warnings 0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.6",
+    "typescript": "6.0.3"
+  }
+}

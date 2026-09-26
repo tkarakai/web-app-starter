@@ -9,7 +9,7 @@ import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Badge,
   Button,
@@ -18,7 +18,7 @@ import {
   Separator,
   toast,
   usePasskeySupport,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type PasskeyPolicy = "disabled" | "optional" | "required";
 

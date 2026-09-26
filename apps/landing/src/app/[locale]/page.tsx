@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { setRequestLocale } from "next-intl/server";
 
-import { Badge } from "@repo/design-system";
+import { Badge } from "@web-app-starter/design-system";
 import { SiteHeader } from "@/components/site-header";
 import { HeroCta } from "@/components/hero-cta";
 

@@ -8,12 +8,12 @@ import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
-import { ThemeToggle } from "@repo/design-patterns";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { LocaleSwitcher } from "@/components/ui/locale-switcher";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
+import { authClient } from "@web-app-starter/auth/client";
 import {
   Avatar,
   AvatarFallback,
@@ -43,10 +43,10 @@ import {
   SidebarMenuItem,
   Textarea,
   useSidebar,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
 import { AppLogo } from "@/components/app-logo";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 type Project = {
   _id: Id<"projects">;

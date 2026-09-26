@@ -1,7 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [
-    "app.config.ts"
+    "app.config.ts",
+    "platform/config/tsconfig.base.json"
   ],
   "tasks": {
     "build": {
@@ -115,7 +116,7 @@
         "APP_ENVIRONMENT"
       ]
     },
-    "@repo/starter-sidebar-policy#build": {
+    "@web-app-starter/starter-sidebar-policy#build": {
       "outputs": ["dist/**"]
     },
     "@repo/landing#build": {

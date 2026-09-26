@@ -63,10 +63,29 @@ runs:
       shell: bash
       run: bun add -g vercel@59.26.0
 
+    # This action can run from a newer workflow commit than the source it builds
+    # (deploy jobs check the tooling out at the workflow commit), so it supports
+    # both layouts: v2 (platform apps in platform/apps/, tooling in
+    # platform/tooling/) and v1 (every app in apps/, tooling in scripts/).
+    - name: Resolve app directory and tooling
+      id: layout
+      shell: bash
+      run: |
+        if [ -d "platform/apps/${{ inputs.app }}" ]; then
+          APP_DIR="platform/apps/${{ inputs.app }}"
+        else
+          APP_DIR="apps/${{ inputs.app }}"
+        fi
+        if [ -d platform/tooling ]; then TOOLING=platform/tooling; else TOOLING=scripts; fi
+        [ -d "$APP_DIR" ] || { echo "::error::No directory for app ${{ inputs.app }}"; exit 1; }
+        echo "app-dir=$APP_DIR" >> "$GITHUB_OUTPUT"
+        echo "tooling=$TOOLING" >> "$GITHUB_OUTPUT"
+
     # Run all Vercel commands from the monorepo root to avoid the Turbopack
     # path-doubling bug (https://github.com/vercel/next.js/issues/88579).
-    # The Vercel project must have Root Directory set to "apps/<app>" so the
-    # builder knows which app to build.
+    # The builder learns which app to build from the project's Root Directory;
+    # "Point the build at the app directory" below sets it from this checkout,
+    # so the build does not depend on the Vercel project setting.
     - name: Create Vercel project link
       shell: bash
       run: |
@@ -84,6 +103,21 @@ runs:
         vercel pull --yes \
           --environment=${{ inputs.environment }} \
           --token="$VERCEL_TOKEN"
+
+    # `vercel build` reads the Root Directory from the pulled .vercel/project.json.
+    # Override it with the app's directory in this checkout, so a project whose
+    # setting still names the pre-v2 path (apps/admin) builds the right app.
+    - name: Point the build at the app directory
+      shell: bash
+      env:
+        APP_DIR: ${{ steps.layout.outputs.app-dir }}
+      run: |
+        CONFIGURED=$(jq -r '.settings.rootDirectory // ""' .vercel/project.json)
+        if [ "$CONFIGURED" != "$APP_DIR" ]; then
+          echo "::notice::Vercel project Root Directory is '${CONFIGURED}'; building ${APP_DIR}. Set the project's Root Directory to '${APP_DIR}' (platform/docs/deployment-runbook.md)."
+          jq --arg dir "$APP_DIR" '.settings.rootDirectory = $dir' .vercel/project.json > .vercel/project.json.tmp
+          mv .vercel/project.json.tmp .vercel/project.json
+        fi
 
     - name: Compute build-input hash
       id: meta
@@ -167,7 +201,7 @@ runs:
     - name: Copy shared assets to app public directory
       if: steps.resolve.outputs.found != 'true'
       shell: bash
-      run: ./scripts/copy-shared-assets.sh
+      run: ./${{ steps.layout.outputs.tooling }}/copy-shared-assets.sh
 
     - name: Build with Vercel
       if: steps.resolve.outputs.found != 'true'
@@ -194,26 +228,27 @@ runs:
     - name: Check artifact is promotable
       if: steps.resolve.outputs.found != 'true'
       shell: bash
-      run: ./scripts/check-env-leak.sh "${{ inputs.app }}" --warn
+      run: ./${{ steps.layout.outputs.tooling }}/check-env-leak.sh "${{ inputs.app }}" --warn
 
     - name: Package artifact
       if: steps.resolve.outputs.found != 'true'
       shell: bash
       run: |
         TARBALL="${{ steps.meta.outputs.tarball }}"
+        APP_DIR="${{ steps.layout.outputs.app-dir }}"
         CHECKSUM="${{ steps.meta.outputs.checksum-file }}"
 
         # Include both .vercel/output and the app's .next/ build output.
         # The serverless functions in .vercel/output reference files in
-        # apps/<app>/.next/ via .nft.json trace files — both are needed
+        # <app dir>/.next/ via .nft.json trace files — both are needed
         # for vercel deploy --prebuilt to succeed.
         # cache/ is build cache and dev/ is `next dev` output; neither is read by
         # `vercel deploy --prebuilt`. dev/ never exists on a fresh CI checkout, but
         # excluding it keeps a local run of this action honest about artifact size.
         tar -czf "${TARBALL}" \
-          --exclude="apps/${{ inputs.app }}/.next/cache" \
-          --exclude="apps/${{ inputs.app }}/.next/dev" \
-          .vercel/output "apps/${{ inputs.app }}/.next"
+          --exclude="${APP_DIR}/.next/cache" \
+          --exclude="${APP_DIR}/.next/dev" \
+          .vercel/output "${APP_DIR}/.next"
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
         echo "### Build Artifact: ${{ inputs.app }} (built with ${{ inputs.environment }} config)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 import { ContentPageLayout } from "@/components/content-page-layout";
 

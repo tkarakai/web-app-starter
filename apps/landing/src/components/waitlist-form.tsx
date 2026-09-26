@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Link } from "@repo/i18n/navigation";
+import { Link } from "@web-app-starter/i18n/navigation";
 import {
   Button,
   Card,
@@ -22,7 +22,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 const SUPERPOWERS = [
   "coffee-to-code",

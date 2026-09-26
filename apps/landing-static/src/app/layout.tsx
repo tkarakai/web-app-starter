@@ -1,6 +1,6 @@
 import "./globals.css";
-import { BrandTokenStyle, EnvironmentBannerWrapper } from "@repo/design-system";
-import { appConfig, tokenOverrideCss } from "@repo/app-config";
+import { BrandTokenStyle, EnvironmentBannerWrapper } from "@web-app-starter/design-system";
+import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
 /**
  * Root layout — provides the required html/body shell for Next.js 16 static export.

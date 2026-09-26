@@ -57,7 +57,7 @@ Complete these steps once, in order.
 > ```bash
 > bun run infra:setup:staging
 > ```
-> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `scripts/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
+> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `platform/tooling/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
 
 ### 2a. Create Convex Projects
 
@@ -103,10 +103,10 @@ Choose **either** the dashboard or CLI approach.
    | Project Name | Root Directory | Framework Preset | Environment |
    |--------------|----------------|------------------|-------------|
    | `my-app-web` | `apps/web` | **Next.js** | Production |
-   | `my-app-admin` | `apps/admin` | **Next.js** | Production |
+   | `my-app-admin` | `platform/apps/admin` | **Next.js** | Production |
    | `my-app-landing` | `apps/landing` | **Next.js** | Production |
    | `my-app-web-staging` | `apps/web` | **Next.js** | Staging |
-   | `my-app-admin-staging` | `apps/admin` | **Next.js** | Staging |
+   | `my-app-admin-staging` | `platform/apps/admin` | **Next.js** | Staging |
    | `my-app-landing-staging` | `apps/landing` | **Next.js** | Staging |
 
    > **Important:** Both Root Directory and Framework Preset are required on all six projects. The CI/CD build runs `vercel build` from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579). **Root Directory** tells the `@vercel/next` builder which app to build. **Framework Preset = Next.js** ensures the correct builder is used (without it, Vercel falls back to `@vercel/static-build` and fails).
@@ -175,7 +175,7 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 
 Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
 
-In this repo, the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
+In this repo, the **web app** (`apps/web`) and **admin app** (`platform/apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
 
 **Option A — Convex Dashboard (recommended for one-time setup):**
 
@@ -433,7 +433,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Two Convex projects created: staging and production (step 2a)
 - [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
 - [ ] Six Vercel projects created: 3 staging + 3 production (step 2b)
-- [ ] Vercel Root Directory set to `apps/<app>` on all 6 projects (step 2b)
+- [ ] Vercel Root Directory set to the app directory on all 6 projects (`apps/web`, `apps/landing`, `platform/apps/admin`; step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
 - [ ] Convex environment variables set: `SITE_URL`, `ADMIN_SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)
