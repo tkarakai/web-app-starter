@@ -12,11 +12,11 @@
     "./password-policy": "./src/password-policy.ts"
   },
   "dependencies": {
-    "@better-auth/passkey": "1.6.33",
-    "@convex-dev/better-auth": "0.12.5",
+    "@better-auth/passkey": ">=1.6.33 <1.7.0",
+    "@convex-dev/better-auth": "^0.12.5",
     "@web-app-starter/app-config": "workspace:*",
-    "better-auth": "1.6.33",
-    "convex": "1.45.0"
+    "better-auth": ">=1.6.33 <1.7.0",
+    "convex": "^1.45.0"
   },
   "peerDependencies": {
     "next": "^16.3.3",
@@ -24,8 +24,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "typescript": "6.0.3"
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^6.0.3"
   }
 }

@@ -138,6 +138,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- `platform/config/renovate-preset.json`: the platform's Renovate policy (cooldown, grouping,
+  automerge, holds) as a preset. It ignores the platform zone (`platform/**`,
+  `.github/workflows/platform-*.yml`, `.github/actions/**`), so Renovate never edits it in your
+  app. Platform manifests now declare ranges (floors) instead of exact pins, so you can raise a
+  shared dependency without touching `platform/`. To use it, make your root `renovate.json`
+  extend `local>your-owner/your-repo//platform/config/renovate-preset` and keep only your own
+  rules there. Guide: `platform/docs/dependency-updates.md`.
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
 - `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and
