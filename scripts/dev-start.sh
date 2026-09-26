@@ -723,6 +723,14 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ -n "$CURRENT_GIT_BRANCH" ]; then
         (cd "$CONVEX_DIR" && bunx convex env set GIT_BRANCH "$CURRENT_GIT_BRANCH" > /dev/null 2>&1) || true
     fi
+    # The seed (and the console fallback for auth emails) runs only when every
+    # SITE_URL origin is loopback HTTP (convex/developmentOnly.ts). A fresh
+    # backend, as in CI, has no SITE_URL yet: the real origins are synced once
+    # the apps are up, below. Give it a provisional local value until then.
+    EXISTING_SITE_URL=$(cd "$CONVEX_DIR" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
+    if [ -z "$EXISTING_SITE_URL" ] || [ "$EXISTING_SITE_URL" = "undefined" ]; then
+        (cd "$CONVEX_DIR" && bunx convex env set SITE_URL "http://localhost:3001" > /dev/null 2>&1) || true
+    fi
     SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run devSeed:seed 2>&1) || true
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
         echo -e "  ${GREEN}✔${NC} Dev users already exist"
