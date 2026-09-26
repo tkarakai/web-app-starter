@@ -7,6 +7,7 @@ import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
+import { getMinPasswordLength } from "@web-app-starter/auth/password-policy";
 import { AUTH_COOKIE_PREFIX, SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
 
 import { components, internal } from "../_generated/api";
@@ -300,7 +301,7 @@ const passwordStrengthPlugin = (
     if (!result.valid) {
       return {
         response: new Response(
-          JSON.stringify({ error: { message: result.reason } }),
+          JSON.stringify({ code: "PASSWORD_TOO_WEAK", message: result.reason }),
           { status: 400, headers: { "Content-Type": "application/json" } },
         ),
       };
@@ -534,7 +535,7 @@ export const createAuthOptions = (
     },
     emailAndPassword: {
       enabled: true,
-      minPasswordLength: 12,
+      minPasswordLength: getMinPasswordLength("user"),
       // requireEmailVerification is kept false here so Better Auth does not
       // block sign-ins at the protocol level. Enforcement is done at the
       // app level (dashboard layout + AuthGuard) so the admin toggle works

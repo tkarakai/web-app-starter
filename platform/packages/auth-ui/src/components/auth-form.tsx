@@ -1,5 +1,7 @@
 "use client";
 
+import { usePasswordStrength } from "../lib/use-password-strength";
+
 import { PasskeyUnsupportedAlert, PasswordInput, OtpInput } from "./localized-controls";
 
 import * as React from "react";
@@ -56,7 +58,7 @@ import {
   usePasskeySupport,
   usePublicConfig,
 } from "@web-app-starter/design-system";
-import { PasswordStrengthMeter, useThrottledPasswordCheck } from "@web-app-starter/design-system/password-strength";
+import { PasswordStrengthMeter, getMinPasswordLength } from "@web-app-starter/design-system/password-strength";
 
 type AuthMode = "sign-in" | "sign-up";
 type PasskeyPolicy = "disabled" | "optional" | "required";
@@ -91,17 +93,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
 
-  // Throttled password for server-side strength evaluation (at most once per 500ms)
-  const [throttledPassword, notifyResolved] = useThrottledPasswordCheck(password);
-  const strengthResult = useQuery(
-    api.platform.passwordStrength.evaluate,
-    throttledPassword
-      ? { password: throttledPassword, email, role: "user" as const }
-      : "skip",
+  const { result: strengthResult, valid: isPasswordValid } = usePasswordStrength(
+    password,
+    mode === "sign-up" ? { email, role: "user" } : "skip",
   );
-  React.useEffect(() => {
-    if (strengthResult !== undefined) notifyResolved();
-  }, [strengthResult, notifyResolved]);
 
   // Multi-step sign-in state
   const [step, setStep] = React.useState<SignInStep>(0);
@@ -403,7 +398,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
-    if (!strengthResult?.valid) {
+    if (!isPasswordValid) {
       setError(tps("strengthRequirement"));
       return;
     }
@@ -518,7 +513,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
-                minLength={12}
+                minLength={getMinPasswordLength("user")}
               />
               <PasswordStrengthMeter result={strengthResult} password={password} t={tps} />
             </div>
@@ -531,7 +526,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
-                minLength={12}
+                minLength={getMinPasswordLength("user")}
               />
             </div>
             {error ? (

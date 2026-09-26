@@ -15,4 +15,5 @@ export { broadcastAuth, onAuthBroadcast } from "./lib/auth-broadcast";
 export { EMAIL_VERIFICATION_CALLBACK_URL } from "./lib/auth-callbacks";
 export { redirectWithUserLocale } from "./lib/auth-locale";
 export { parseOnboardingStatus, type OnboardingType } from "./lib/onboarding";
+export { usePasswordStrength } from "./lib/use-password-strength";
 export { useSignOut } from "./lib/use-sign-out";

@@ -16,6 +16,7 @@
     "@web-app-starter/app-config": "workspace:*",
     "@web-app-starter/design-patterns": "workspace:*",
     "@web-app-starter/design-system": "workspace:*",
+    "@web-app-starter/i18n": "workspace:*",
     "lucide-react": "^1.46.0",
     "next": "^16.3.3",
     "next-themes": "^0.4.6",

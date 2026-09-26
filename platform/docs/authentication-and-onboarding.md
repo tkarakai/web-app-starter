@@ -11,7 +11,7 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 | Sign-in URL | `admin-app/sign-in` | `web-app/sign-in` |
 | Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` (signup flow *is* onboarding) |
 | How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |
-| Password required | Yes (40 char min, score 4) | Yes (15 char min, score 4) |
+| Password required | Yes — see §5 | Yes — see §5 |
 | 2FA (TOTP) | Mandatory — cannot access dashboard without it | Admin-configurable: optional or mandatory |
 | Passkey | Optional (recommended) | Optional (if enabled by admin) |
 | Magic link sign-in | Not available | Admin-configurable: enabled or disabled |
@@ -68,11 +68,14 @@ When a user enables 2FA (voluntarily or because it's mandatory), the same Better
 
 ## 5. Password Policy
 
-Both admins and users must have passwords. The policies differ by account type:
+Both admins and users must have passwords. The shared policy is defined in
+[`platform/packages/auth/src/password-policy.ts`](../packages/auth/src/password-policy.ts):
+`getMinPasswordLength` supplies the minimum for each account type and
+`REQUIRED_PASSWORD_SCORE` supplies the required zxcvbn-ts score. The current values are:
 
 | Rule | Admin | User |
 |---|---|---|
-| Minimum length | 40 characters | 15 characters |
+| Minimum length | 40 characters | 12 characters |
 | zxcvbn-ts score | 4 (maximum) | 4 (maximum) |
 | Breached password check (HIBP) | Yes | Yes |
 | Complexity requirements (uppercase, symbols, etc.) | None — per NIST SP 800-63B-4 | None |
@@ -133,7 +136,7 @@ For users, sign-up *is* onboarding. The flow is simpler than admin onboarding be
 
 ### 7.1 Step 1 — Create Account (email + password)
 
-User enters their email and creates a password (15 char min, score 4). See §5 for enforcement.
+User enters their email and creates a password that meets the shared policy in §5.
 
 On submit, Better Auth's `signUp.email()` creates the credential account and sends a verification email (if email verification is enabled by admin policy).
 
@@ -411,7 +414,21 @@ Same as admin flow — backup codes, then email recovery with forced TOTP re-set
 
 #### Forgot password
 
-Standard Better Auth password reset flow via email link. If the user has 2FA enabled, the reset flow requires TOTP verification before allowing a new password.
+Admins and users reset passwords through a Better Auth email link. Reset requests
+include an absolute return URL: admin requests return to the admin app, while web
+requests retain the requesting origin and selected locale.
+
+The reset forms do not request TOTP verification before replacing the password.
+The reset token identifies the account; the backend resolves its email and account
+type so strength feedback uses the same context and policy as Settings/Security,
+including when an admin token is opened in the web reset form. Invalid or expired
+tokens cannot fall back to a client-provided policy. The backend also enforces the
+password policy when the reset is submitted and returns an actionable error for a
+weak password.
+
+On success, the form keeps its confirmation visible when consuming the token
+invalidates the strength query, then directs the user to sign in. Password reset
+does not disable the account's existing two-factor authentication.
 
 #### Account issues
 

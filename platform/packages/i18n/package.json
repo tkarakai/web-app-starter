@@ -10,7 +10,8 @@
     "./navigation": "./src/navigation.ts",
     "./messages/*": "./messages/*",
     "./merge": "./src/merge.ts",
-    "./messages": "./src/messages.ts"
+    "./messages": "./src/messages.ts",
+    "./password-strength": "./src/password-strength.ts"
   },
   "dependencies": {
     "@repo/messages": "workspace:*",

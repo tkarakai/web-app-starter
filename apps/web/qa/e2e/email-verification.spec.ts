@@ -1,16 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-import { fillStable } from "./helpers/auth";
-
-/**
- * The reset form's submit button is gated on a password *strength* check
- * (`reset-password-form.tsx`: `disabled={pending || !isPasswordValid}`), so a
- * weak password leaves it disabled and any click waits out the test timeout.
- * The minimum is 12 characters, not 8.
- */
-const STRONG_PASSWORD = "Xq7!vTn3Mk9wRp2Z";
-const OTHER_STRONG_PASSWORD = "Bd4#hLm8Yt6kQs1W";
-
 /**
  * Email Verification Flow E2E Tests
  *
@@ -77,6 +66,8 @@ test.describe("Verify Email Page", () => {
 });
 
 test.describe("Reset Password Page", () => {
+  // Submission feedback with controlled responses lives in password-reset.test.tsx.
+  // Real emailed-token reset and replay flows live in auth-password.spec.ts.
   test("page loads without authentication", async ({ page }) => {
     const context = page.context();
     await context.clearCookies();
@@ -102,11 +93,11 @@ test.describe("Reset Password Page", () => {
     expect(hasInvalidState).toBe(true);
   });
 
-  test("shows reset form when token param is provided", async ({ page }) => {
+  test("shows empty reset fields before token evaluation", async ({ page }) => {
     await page.goto("/en/reset-password?token=test-token-123");
     await page.waitForLoadState("networkidle");
 
-    // With a token, should show the password reset form
+    // Token validation begins when a password is entered.
     const passwordInput = page.locator("#new-password");
     const confirmInput = page.locator("#confirm-new-password");
 
@@ -117,102 +108,28 @@ test.describe("Reset Password Page", () => {
     await expect(passwordInput).toHaveAttribute("type", "password");
     await expect(confirmInput).toHaveAttribute("type", "password");
 
-    // Both should have minLength=8
+    // Until evaluation returns the owner policy, fields use the user minimum.
     await expect(passwordInput).toHaveAttribute("minLength", "12");
     await expect(confirmInput).toHaveAttribute("minLength", "12");
   });
 
-  test("shows error on password mismatch", async ({ page }) => {
-    await page.goto("/en/reset-password?token=test-token-123");
+  test("rejects an unknown token when password evaluation runs", async ({ page }) => {
+    await page.goto("/en/reset-password?token=unknown-reset-token");
     await page.waitForLoadState("networkidle");
-
-    await fillStable(page, "#new-password", STRONG_PASSWORD);
-    await fillStable(page, "#confirm-new-password", OTHER_STRONG_PASSWORD);
-    await page.locator('form:has(#new-password) button[type="submit"]').click();
-
-    // Should show password mismatch error
-    const errorBox = page.locator(".rounded-md.border.bg-muted");
-    await expect(errorBox).toBeVisible({ timeout: 5000 });
-  });
-
-  test("shows rate limit error when server returns 429", async ({ page }) => {
-    await page.goto("/en/reset-password?token=test-token-123");
-    await page.waitForLoadState("networkidle");
-
-    await page.route("**/api/auth/reset-password", async (route) => {
-      await route.fulfill({
-        status: 429,
-        contentType: "application/json",
-        body: JSON.stringify({ error: { message: "Rate limit exceeded", status: 429 } }),
-      });
-    });
-
-    await fillStable(page, "#new-password", STRONG_PASSWORD);
-    await fillStable(page, "#confirm-new-password", STRONG_PASSWORD);
-    await page.locator('form:has(#new-password) button[type="submit"]').click();
-
-    const errorBox = page.locator(".rounded-md.border.bg-muted");
-    await expect(errorBox).toBeVisible({ timeout: 10000 });
-    const errorText = await errorBox.textContent();
-    expect(errorText).toContain("Too many attempts");
+    // Fill once: evaluation removes the inputs as soon as it rejects the token.
+    await page.locator("#new-password").fill("Xq7!vTn3Mk9wRp2Z");
+    await expect(page.getByText("Invalid Reset Link", { exact: true })).toBeVisible();
+    await expect(page.locator("#new-password")).toHaveCount(0);
+    await expect(page.locator("#confirm-new-password")).toHaveCount(0);
   });
 
   test("shows expired token error", async ({ page }) => {
     await page.goto("/en/reset-password?token=expired-token&error=EXPIRED");
     await page.waitForLoadState("networkidle");
-
-    // Should show token expired/invalid state
-    const content = await page.content();
-    const hasExpiredState =
-      content.includes("expired") ||
-      content.includes("invalid") ||
-      content.includes("Expired") ||
-      content.includes("Invalid");
-    expect(hasExpiredState).toBe(true);
-  });
-
-  test("shows success state after successful password reset", async ({ page }) => {
-    await page.goto("/en/reset-password?token=valid-token");
-    await page.waitForLoadState("networkidle");
-
-    // Mock the reset-password endpoint to return success
-    await page.route("**/api/auth/reset-password", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ status: true }),
-      });
-    });
-
-    await fillStable(page, "#new-password", STRONG_PASSWORD);
-    await fillStable(page, "#confirm-new-password", STRONG_PASSWORD);
-    await page.locator('form:has(#new-password) button[type="submit"]').click();
-
-    // Should show success state with a "Sign in" button
-    await page.waitForTimeout(1000);
-    const signInButton = page.locator("button", { hasText: /sign.?in/i });
-    await expect(signInButton).toBeVisible({ timeout: 10000 });
-  });
-
-  test("submit button is disabled while request is pending", async ({ page }) => {
-    await page.goto("/en/reset-password?token=valid-token");
-    await page.waitForLoadState("networkidle");
-
-    await page.route("**/api/auth/reset-password", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ status: true }),
-      });
-    });
-
-    await fillStable(page, "#new-password", STRONG_PASSWORD);
-    await fillStable(page, "#confirm-new-password", STRONG_PASSWORD);
-    await page.locator('form:has(#new-password) button[type="submit"]').click();
-
-    const submitButton = page.locator('form:has(#new-password) button[type="submit"]');
-    await expect(submitButton).toBeDisabled();
+    await page.locator("#new-password").fill("Xq7!vTn3Mk9wRp2Z");
+    await expect(page.getByText("Invalid Reset Link", { exact: true })).toBeVisible();
+    await expect(page.getByText("This password reset link has expired. Please request a new one.", { exact: true })).toBeVisible();
+    await expect(page.locator("#new-password")).toHaveCount(0);
   });
 });
 

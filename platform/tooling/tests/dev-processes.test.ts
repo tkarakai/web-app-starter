@@ -17,7 +17,7 @@ import * as manager from "../dev-processes.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
 const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts"];
 
@@ -51,9 +51,9 @@ async function alive(child: ChildProcess): Promise<boolean> {
   return !exited(child);
 }
 
-function runScript(name: string, args: string[] = [], checkout = root): Promise<{ status: number | null; stdout: string; stderr: string }> {
+function runScript(name: string, args: string[] = [], checkout = root, env = process.env): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawn("bash", [path.join(checkout, "platform/tooling", name), ...args], { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("bash", [path.join(checkout, "platform/tooling", name), ...args], { env, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "", stderr = "";
     child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
     child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
@@ -102,6 +102,46 @@ afterEach(async () => {
   }
   fs.rmSync(temp, { recursive: true, force: true });
 });
+
+for (const scenario of [
+  { label: "current dashboard URL without a startup log", url: "http://127.0.0.1:6790/", code: "0" },
+  { label: "an alternate dashboard port", url: "http://127.0.0.1:6792/", code: "0" },
+  { label: "an unavailable dashboard", url: "", code: "0" },
+  { label: "a failed dashboard lookup", url: "", code: "1" },
+]) {
+  test(`status handles ${scenario.label}`, async () => {
+    const backend = path.join(root, "packages/backend");
+    fs.mkdirSync(backend, { recursive: true });
+    const bin = path.join(root, "bin");
+    fs.mkdirSync(bin);
+    const invocation = path.join(root, "dashboard-command");
+    fs.writeFileSync(path.join(bin, "bunx"), `#!/bin/bash
+printf '%s\\n' "$PWD" "$@" > "$DASHBOARD_TEST_INVOCATION"
+printf '%s\\n' "$DASHBOARD_TEST_URL"
+echo 'diagnostic output' >&2
+exit "$DASHBOARD_TEST_CODE"
+`, { mode: 0o755 });
+    const convex = spawnIn(root);
+    track("convex", convex);
+    const result = await runScript("dev-status.sh", [], root, {
+      ...process.env,
+      PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+      DASHBOARD_TEST_INVOCATION: invocation,
+      DASHBOARD_TEST_URL: scenario.url,
+      DASHBOARD_TEST_CODE: scenario.code,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, "");
+    assert.equal(fs.readFileSync(invocation, "utf8"), `${backend}\nconvex\ndashboard\n--no-open\n`);
+    if (scenario.url) {
+      assert.ok(result.stdout.includes("Convex UI"));
+      assert.ok(result.stdout.includes(scenario.url));
+    } else {
+      assert.ok(!result.stdout.includes("Convex UI"));
+    }
+    assert.ok(!result.stdout.includes("diagnostic output"));
+  });
+}
 
 test("stop owned tree preserves unrelated backend", async () => {
   const outsider = spawnIn(foreign);
