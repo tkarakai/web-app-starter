@@ -13,9 +13,9 @@ Background: `platform/docs/i18n-architecture.md` (usage, ICU syntax, formatting)
 
 ## Where strings live
 
-- `packages/i18n/messages/<locale>.json`, one file per locale: `en` (the source of truth), `ar`,
+- `platform/packages/i18n/messages/<locale>.json`, one file per locale: `en` (the source of truth), `ar`,
   `cs`, `de`, `es`, `fr`, `he`, `hu`, `it`, `ja`, `nl`, `pl`, `pt`, `ru`, `zh`. The list is
-  `locales` in `packages/i18n/src/config.ts`.
+  `locales` in `platform/packages/i18n/src/config.ts`.
 - Each file is one JSON object of **namespaces** (`common`, `auth`, `dashboard`, ...), nested
   objects of keys. Components read a namespace with `useTranslations("<namespace>")` (client) or
   `await getTranslations("<namespace>")` (server).
@@ -45,7 +45,7 @@ Background: `platform/docs/i18n-architecture.md` (usage, ICU syntax, formatting)
 
 ## Steps
 
-1. Write the English strings in `packages/i18n/messages/en.json` under your namespace.
+1. Write the English strings in `platform/packages/i18n/messages/en.json` under your namespace.
 2. Add the same keys, translated, to the other 14 files.
 3. Check the JSON parses and the catalogue test passes:
 
@@ -101,4 +101,4 @@ Background: `platform/docs/i18n-architecture.md` (usage, ICU syntax, formatting)
 ```
 
 …and likewise for the remaining locales. **Done when** `bun run --cwd apps/web test` passes and
-`git diff --stat packages/i18n/messages` shows all 15 files changed.
+`git diff --stat platform/packages/i18n/messages` shows all 15 files changed.

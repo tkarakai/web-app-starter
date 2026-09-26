@@ -18,10 +18,10 @@ trail. Two marketing sites and a component showcase complete it.
 | App | Path | Purpose |
 |---|---|---|
 | web | `apps/web` | The product: auth flows, projects dashboard, account settings |
-| admin | `apps/admin` | Admin dashboard: onboarding, users, policy, audit trail |
+| admin | `platform/apps/admin` | Admin dashboard: onboarding, users, policy, audit trail |
 | landing | `apps/landing` | Marketing site, static export with locale routes |
 | landing-static | `apps/landing-static` | Fully static marketing site with client-side i18n |
-| storybook | `apps/storybook` | Design-system showcase |
+| storybook | `platform/apps/storybook` | Design-system showcase |
 | demo | `apps/demo` | Standalone UI/dispatch demo ([README](apps/demo/README.md)) |
 
 Each app keeps source in `src/` and tests in `qa/` (`qa/tests/` for unit and component tests,
@@ -37,5 +37,5 @@ auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
 ## Upgrading the platform
 
-An app built from this repository takes newer platform releases with `UPGRADING.md`; read
-`CHANGELOG.md` for the release you are taking.
+An app built from this repository takes newer platform releases with `platform/UPGRADING.md`;
+read `platform/CHANGELOG.md` for the release you are taking.

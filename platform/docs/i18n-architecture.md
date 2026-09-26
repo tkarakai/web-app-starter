@@ -31,7 +31,7 @@ primitives without making the design system depend on i18n. The static landing
 ## Package Structure
 
 ```
-packages/i18n/                     # @web-app-starter/i18n
+platform/packages/i18n/                     # @web-app-starter/i18n
 ├── src/
 │   ├── index.ts                   # Re-exports config types and utilities
 │   ├── config.ts                  # Locale list, metadata, RTL detection
@@ -56,7 +56,7 @@ packages/i18n/                     # @web-app-starter/i18n
 
 ## Locale Configuration
 
-### `packages/i18n/src/config.ts`
+### `platform/packages/i18n/src/config.ts`
 
 ```ts
 export const locales = ["en"] as const;
@@ -92,7 +92,7 @@ All routes include a locale prefix. There is no unprefixed default.
 
 ### Navigation Primitives
 
-`packages/i18n/src/navigation.ts` creates locale-aware replacements for Next.js navigation:
+`platform/packages/i18n/src/navigation.ts` creates locale-aware replacements for Next.js navigation:
 
 ```ts
 import { createNavigation } from "next-intl/navigation";
@@ -277,7 +277,7 @@ export function TaskList() {
 Components in `@web-app-starter/design-patterns` cannot access `NextIntlClientProvider` context. They accept translated strings as props with English fallback defaults:
 
 ```tsx
-// packages/design-patterns/src/theme-toggle.tsx
+// platform/packages/design-patterns/src/theme-toggle.tsx
 const defaultLabels = {
   light: "Light theme",
   system: "System theme",
@@ -314,7 +314,7 @@ This pattern keeps shared packages locale-agnostic while allowing full translati
 
 ## Translation File Structure
 
-All translations live in `packages/i18n/messages/en.json`. The file is organized by domain namespace:
+All translations live in `platform/packages/i18n/messages/en.json`. The file is organized by domain namespace:
 
 ```json
 {
@@ -600,7 +600,7 @@ The application currently supports **15 languages** across LTR and RTL scripts:
 | `ru` | Russian | Русский | LTR | Raleway |
 | `zh` | Chinese (Simplified) | 简体中文 | LTR | Raleway |
 
-All locales are configured in `packages/i18n/src/config.ts` with metadata and direction detection.
+All locales are configured in `platform/packages/i18n/src/config.ts` with metadata and direction detection.
 
 ---
 
@@ -610,11 +610,11 @@ To add a new language (e.g., French):
 
 ### Step 1: Create the translation file
 
-Copy `packages/i18n/messages/en.json` to `packages/i18n/messages/fr.json` and translate all values.
+Copy `platform/packages/i18n/messages/en.json` to `platform/packages/i18n/messages/fr.json` and translate all values.
 
 ### Step 2: Register the locale
 
-In `packages/i18n/src/config.ts`:
+In `platform/packages/i18n/src/config.ts`:
 
 ```diff
 -export const locales = ["en"] as const;

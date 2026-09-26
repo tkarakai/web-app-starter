@@ -64,7 +64,7 @@ if (choice.kind === "selected" && choice.value === "count") {
 }
 ```
 
-Run a complete read-only example with `bun run --cwd packages/paper-roll demo`.
+Run a complete read-only example with `bun run --cwd platform/packages/paper-roll demo`.
 It browses the current directory and has no connection to ops or cloud providers.
 
 ## API boundaries
@@ -103,7 +103,7 @@ navigation or exit confirmation. The caller owns the confirmation and exit polic
 The application owns routing, Back/Home destinations, data access, confirmations,
 retries, authorization, persistence, and success criteria. Nothing in the library
 knows about repositories, deployments, environments, or what a successful action
-means. `packages/ops/src/prompts.ts` is an example domain adapter.
+means. `platform/packages/ops/src/prompts.ts` is an example domain adapter.
 
 ## Constraints
 
@@ -140,9 +140,9 @@ means. `packages/ops/src/prompts.ts` is an example domain adapter.
 ## Development
 
 ```sh
-bun run --cwd packages/paper-roll test
-bun run --cwd packages/paper-roll typecheck
-bun run --cwd packages/paper-roll lint
+bun run --cwd platform/packages/paper-roll test
+bun run --cwd platform/packages/paper-roll typecheck
+bun run --cwd platform/packages/paper-roll lint
 ```
 
 The ops test command also includes this package's transcript and interaction tests.

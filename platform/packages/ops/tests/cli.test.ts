@@ -11,7 +11,7 @@ const sha = "a".repeat(40);
 await writeFile(config, JSON.stringify({ repository: "team/repo", workflowRef: "main", apps: { web: { projects: { staging: { id: "prj_1", domain: "staging.example.com" } } } } }));
 afterAll(async () => { await rm(temp, { recursive: true, force: true }); });
 async function run(args: string[], mode = "success", useConfig = true, json = true, configPath = config) {
-  const proc = spawn([process.execPath, "--preload", resolve(root, "packages/ops/tests/fixture-preload.ts"), resolve(root, "packages/ops/src/cli.ts"), ...args, ...(useConfig ? ["--config", configPath] : ["--repo", "team/repo"]), ...(json ? ["--json"] : [])], {
+  const proc = spawn([process.execPath, "--preload", resolve(root, "platform/packages/ops/tests/fixture-preload.ts"), resolve(root, "platform/packages/ops/src/cli.ts"), ...args, ...(useConfig ? ["--config", configPath] : ["--repo", "team/repo"]), ...(json ? ["--json"] : [])], {
     cwd: useConfig ? root : temp, env: { ...process.env, GH_TOKEN: "fixture-token", VERCEL_TOKEN: "fixture-vercel", OPS_TEST_MODE: mode }, stdout: "pipe", stderr: "pipe",
   });
   const [stdout, stderr, exitCode] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);

@@ -146,9 +146,9 @@ jobs:
               - 'turbo.json'
               - 'app.config.ts'
               - 'platform/packages/app-config/**'
-              - 'tsconfig.base.json'
+              - 'platform/config/**'
             admin:
-              - 'apps/admin/**'
+              - 'platform/apps/admin/**'
               - 'packages/backend/**'
               - 'platform/packages/design-system/**'
               - 'platform/packages/auth/**'
@@ -157,7 +157,7 @@ jobs:
               - 'turbo.json'
               - 'app.config.ts'
               - 'platform/packages/app-config/**'
-              - 'tsconfig.base.json'
+              - 'platform/config/**'
             landing:
               - 'apps/landing/**'
               - 'platform/packages/design-system/**'
@@ -166,7 +166,7 @@ jobs:
               - 'turbo.json'
               - 'app.config.ts'
               - 'platform/packages/app-config/**'
-              - 'tsconfig.base.json'
+              - 'platform/config/**'
             backend:
               - 'packages/backend/**'
               - 'package.json'
@@ -174,7 +174,7 @@ jobs:
               - 'turbo.json'
               - 'app.config.ts'
               - 'platform/packages/app-config/**'
-              - 'tsconfig.base.json'
+              - 'platform/config/**'
 
       - name: Evaluate changes
         id: eval

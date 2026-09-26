@@ -25,5 +25,5 @@ naming, review rules. Delete this section if you have none yet.>
 
 ## Upgrading the platform
 
-Platform releases replace `platform/` and touch a few seams. Follow `UPGRADING.md` and read
-`CHANGELOG.md` for the release you are taking.
+Platform releases replace `platform/` and touch a few seams. Follow `platform/UPGRADING.md`
+and read `platform/CHANGELOG.md` for the release you are taking.

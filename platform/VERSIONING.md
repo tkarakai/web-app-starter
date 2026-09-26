@@ -14,7 +14,7 @@ versioning for merge-by-tag upgrades; `.starter-version` records that baseline.
 Most workspace packages remain private and unversioned independently.
 
 One explicit exception is `@web-app-starter/starter-sidebar-policy`, versioned independently
-at `1.0.1` for the [demo package upgrade](./apps/demo/README.md). The immutable
+at `1.0.1` for the [demo package upgrade](../apps/demo/README.md). The immutable
 local package fixtures `1.0.0` and `1.0.1` identify package content and a supported
 upgrade transition, not published registry releases or starter git tags. They do
 not start a new starter LTS window. Add a new package version for changed artifact
@@ -52,7 +52,7 @@ Each action-required item states, in this order:
 3. **How to tell you are done** — the check that goes from red to green.
 
 Where the change is mechanical, the action-required item invokes a **codemod** shipped
-in the same release under `scripts/codemods/` — see that directory's `README.md` for
+in the same release under `platform/tooling/codemods/` — see that directory's `README.md` for
 the contract. Describing a rename and asking every downstream team to perform it is
 not a migration path.
 
@@ -94,7 +94,7 @@ backport is a rewrite.
 ## What gets tagged
 
 A release's version and notes are reviewed in a pull request like any other
-change: the root `package.json` version and a dated `CHANGELOG.md` section. The
+change: the platform version in `platform/VERSION` and a dated `platform/CHANGELOG.md` section. The
 changelog date records preparation; the GitHub release records publication.
 
 Tags are created afterward, only on a commit that is already on `main` and has

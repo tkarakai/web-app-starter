@@ -25,7 +25,7 @@ export function formatPrice(amount) {
 
 - Use **function components** exclusively (no class components)
 - Use **Radix UI primitives** from `@web-app-starter/design-system` for accessibility
-- Shared components go in `packages/design-system/src/`, app-specific in `apps/<app>/src/components/`
+- Shared components go in `platform/packages/design-system/src/`, app-specific in `apps/<app>/src/components/`
 - Use package imports for shared code, path aliases for app-internal code
 
 ```typescript

@@ -63,12 +63,12 @@ unless the name, slug, category, or description should change.
 bun run dev:storybook    # starts on runtime.ports.storybook in app.config.ts
 
 # Or directly
-cd apps/storybook && bun run dev
+cd platform/apps/storybook && bun run dev
 ```
 
 ## Testing
 
 ```bash
-cd apps/storybook && bun run test:e2e       # headless
-cd apps/storybook && bun run test:e2e:ui    # interactive Playwright UI
+cd platform/apps/storybook && bun run test:e2e       # headless
+cd platform/apps/storybook && bun run test:e2e:ui    # interactive Playwright UI
 ```

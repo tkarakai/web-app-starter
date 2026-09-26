@@ -14,7 +14,7 @@ Client Request
 │  Layer 3: Edge Proxy                │  ← Per-IP, in-memory, first line of defense
 │  (Next.js proxy.ts)                 │
 │  apps/web/src/proxy.ts              │
-│  apps/admin/src/proxy.ts            │
+│  platform/apps/admin/src/proxy.ts            │
 └──────────────┬──────────────────────┘
                │
   ┌────────────┴────────────┐
@@ -145,8 +145,8 @@ try {
 
 **Configuration files**:
 - `apps/web/src/proxy.ts` — Web app proxy integration
-- `apps/admin/src/proxy.ts` — Admin app proxy integration
-- `@web-app-starter/edge-rate-limit` (`packages/edge-rate-limit/`) — the shared rate limiter
+- `platform/apps/admin/src/proxy.ts` — Admin app proxy integration
+- `@web-app-starter/edge-rate-limit` (`platform/packages/edge-rate-limit/`) — the shared rate limiter
 
 The landing apps are static exports with no server-side proxy; rate-limit them at the CDN or hosting layer.
 

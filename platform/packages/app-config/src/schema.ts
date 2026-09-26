@@ -3,7 +3,7 @@
  *
  * This file is platform code; `app.config.ts` is the app-owned seam that holds
  * the values. It has no imports on purpose: the dev-script reader
- * (`scripts/app-config.ts`) loads it with Node's type stripping, which only
+ * (`platform/tooling/app-config.ts`) loads it with Node's type stripping, which only
  * resolves explicit `.ts` paths, while Next.js, Convex and Playwright load it
  * through their bundlers. A file with no imports works in all of them.
  *
@@ -94,7 +94,7 @@ export type AppConfig = {
     };
     /**
      * Design-token overrides: CSS custom properties from
-     * `packages/design-system/tokens/`, set on `:root` in every app, e.g.
+     * `platform/packages/design-system/tokens/`, set on `:root` in every app, e.g.
      * `{ "--primary": "oklch(0.55 0.2 260)" }`. Empty keeps the design system's values.
      */
     tokenOverrides: Record<string, string>;

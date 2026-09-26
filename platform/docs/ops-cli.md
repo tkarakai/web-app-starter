@@ -6,7 +6,7 @@ The ops CLI joins GitHub workflow runs, CI statuses, artifacts and deployment re
 
 Run **`bun run ops` with no arguments in a terminal** to open a persistent guided console. `bun run ops console --config PATH` opens it explicitly with another configuration. Arrow keys move the selection, Enter selects, and Escape goes back; visible Back and Home choices are available throughout. At Home, Escape asks whether to exit, with **Keep using ops** selected by default. Escape again cancels exit and restores the previous home selection, so repeated Escape presses cannot close the console. Ctrl-C or the explicit Quit choice closes the local console without cancelling remote work. Blank text input cancels a selection/confirmation.
 
-The console uses a paper-roll layout: a selected action stays with its resulting output, and a horizontal line closes that output before the next choices. Named sections remain in scrollback. Loading headers animate until results arrive; live monitoring updates only the open section. Follow-up questions stay with the selected action, without inserting a separator between the choice and its output. The reusable terminal library is [`@web-app-starter/paper-roll`](../../packages/paper-roll/README.md); ops owns the workflows, confirmations and provider calls.
+The console uses a paper-roll layout: a selected action stays with its resulting output, and a horizontal line closes that output before the next choices. Named sections remain in scrollback. Loading headers animate until results arrive; live monitoring updates only the open section. Follow-up questions stay with the selected action, without inserting a separator between the choice and its output. The reusable terminal library is [`@web-app-starter/paper-roll`](../packages/paper-roll/README.md); ops owns the workflows, confirmations and provider calls.
 
 After confirming a deployment or rollback, the console automatically opens **Watching**. No menu choice is required to continue: it locates the accepted request, follows the pinned workflow attempt, then checks intended serving state. The screen shows phase counts, active/failed jobs (not just the first jobs returned), and its last update time. **Enter** opens optional deployment actions; **Return to live watch** or Escape from those actions returns to watching. Escape from the watch screen leaves local monitoring; remote work continues. Completion and failure automatically produce an explicit result screen. **Watch again** retries observation only, never dispatch. The Home **Watch** entry reconnects to the saved operation. A resume command is available under actions for use in another terminal; the console never selects it automatically.
 
@@ -198,7 +198,7 @@ Vercel deployments carry explicit ops metadata linking their selected source, or
 ```sh
 bun run test:ops
 bun run typecheck:ops
-bun run --cwd packages/ops lint
+bun run --cwd platform/packages/ops lint
 ```
 
 The tests include scripted console journeys (navigation, confirmation, save-before-write and resume), exact serving identity and unchanged-app baselines, workflow tag-resolution gates, mocked provider errors/pagination, subprocess CLI integration, dispatch-to-watch completion, partial results, timeout/failure exits, and audit recording after partial deployment. They do not deploy infrastructure. Shared CI runs this suite when the checked-out source contains the CLI. Real end-to-end deployment testing additionally requires the new workflows on GitHub and correctly configured GitHub environments and provider secrets.

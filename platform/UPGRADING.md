@@ -15,7 +15,7 @@ commit in bootstrap notes; preparation is not publication or application adoptio
 The standalone `apps/demo` also demonstrates one package-based upgrade:
 `@web-app-starter/starter-sidebar-policy`, consumed from immutable local package artifacts.
 Its normal dashboard, editable UI and business behavior remain application-owned.
-[`apps/demo/README.md`](./apps/demo/README.md) describes the executable
+[`apps/demo/README.md`](../apps/demo/README.md) describes the executable
 ownership contract and its limits. `bun run test:starter-rehearsal` tests an upgrade
 on a copy without live services. Other starter areas still use merge-by-tag.
 
@@ -79,7 +79,7 @@ upgrade, and an application upgrade is not a deployment.
 Within these responsibilities, files may be **consumed starter code**,
 **application-owned**, **generated**, or eventually **intentionally vendored**
 (editable starter copies with a supported origin/update contract). See the
-[ownership table](./apps/demo/README.md#where-to-make-changes).
+[ownership table](../apps/demo/README.md#where-to-make-changes).
 The sidebar policy is the only proven package boundary today. Backend schemas,
 locale content and much shared UI still mix concerns; we do not claim otherwise.
 Vendoring is not supported yet, and no demo file is labeled both managed and
@@ -264,9 +264,9 @@ bun run test:convex
 ```
 
 If the starter's release notes mention a **schema migration**, a merge is not enough —
-follow [`platform/docs/convex-migrations.md`](./platform/docs/convex-migrations.md) before deploying.
+follow [`platform/docs/convex-migrations.md`](./docs/convex-migrations.md) before deploying.
 
-### `packages/i18n/messages/*.json`
+### `platform/packages/i18n/messages/*.json`
 
 The 15 locale files are intentionally customizable. The starter expects its
 message keys and interpolation parameters to remain available; business apps may
@@ -280,7 +280,7 @@ keys and message parameters are checked. Do not blindly concatenate conflict
 hunks with an editor's "keep both sides" action.
 
 ```bash
-./scripts/node-ts.sh scripts/resolve-i18n-conflicts.ts
+./platform/tooling/node-ts.sh platform/tooling/resolve-i18n-conflicts.ts
 ```
 
 It reads the three merge stages from git, merges the *parsed objects* key by key,
@@ -421,11 +421,11 @@ If you are an agent performing this upgrade, the procedure is:
 5. For files not on the list, consult an app's ownership manifest first if it has
    one. Consumed starter code must match the declared release; editable UI
    and app-owned code must not be blindly overwritten. For legacy areas with no
-   manifest, review starter changes in platform code (`packages/`, `scripts/`,
+   manifest, review starter changes in platform code (`packages/`, `platform/tooling/`,
    `.github/`) and preserve business changes in app code. Path location alone is
    not permission to discard a downstream customization.
 6. Do the action-required items, including running any codemod the release ships in
-   `scripts/codemods/`.
+   `platform/tooling/codemods/`.
 7. `bun install`, then `bun run ci:quick`. Do not report success on a merge you have
    not health-checked.
 8. Run each release's *done when* check literally, as written, and paste the output.
@@ -449,7 +449,7 @@ cannot be completed, stop and say which and why.
 
 ## Verification evidence and limits
 
-Locale merging has automated tests in `scripts/tests/resolve-i18n-conflicts.test.ts`.
+Locale merging has automated tests in `platform/tooling/tests/resolve-i18n-conflicts.test.ts`.
 They use isolated Git repositories and include refusal paths and overlapping
 application translations. Run them through `bun run test:dev-scripts`.
 
@@ -476,7 +476,7 @@ tags.
 | Verify | Run the sidebar regression check, business tests, typecheck and production build | All pass; an invalid width now falls back to the 16rem default. |
 | Audit and compare | Recheck the saved logs and output hashes, and compare app source | The dashboard builds; editable UI, business rules, tests, configuration and branding are unchanged. |
 
-See [the demo rehearsal guide](./apps/demo/README.md#test-a-starter-upgrade)
+See [the demo rehearsal guide](../apps/demo/README.md#test-a-starter-upgrade)
 for evidence locations. A skipped required check, a changed
 source file, a locally edited package or an outdated build stops the upgrade
 from being reported as verified.

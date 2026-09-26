@@ -29,7 +29,7 @@
  *     ./platform/tooling/node-ts.sh platform/tooling/resolve-i18n-conflicts.ts --check    # report, change nothing
  *     ./platform/tooling/node-ts.sh platform/tooling/resolve-i18n-conflicts.ts platform/packages/i18n/messages/en.json
  *
- * See UPGRADING.md, "platform/packages/i18n/messages/*.json", for staging, disagreement
+ * See platform/UPGRADING.md, "platform/packages/i18n/messages/*.json", for staging, disagreement
  * handling and exit-status semantics. Review reported keys even after staging.
  */
 import * as fs from "node:fs";

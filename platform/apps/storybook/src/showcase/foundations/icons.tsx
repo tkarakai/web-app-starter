@@ -170,7 +170,7 @@ export default function IconsShowcase() {
               <p>
                 <strong className="text-foreground">Source:</strong>{" "}
                 <code className="rounded bg-background px-1 py-0.5">
-                  packages/design-system/assets/
+                  platform/packages/design-system/assets/
                 </code>
               </p>
               <p>
@@ -182,7 +182,7 @@ export default function IconsShowcase() {
               <p>
                 <strong className="text-foreground">Build script:</strong>{" "}
                 <code className="rounded bg-background px-1 py-0.5">
-                  scripts/copy-shared-assets.sh
+                  platform/tooling/copy-shared-assets.sh
                 </code>
               </p>
               <p className="pt-1">

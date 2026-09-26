@@ -44,16 +44,16 @@ bun run ci:act:quick          # Quiet mode, summary only
 bun run ci:act:offline        # Offline mode (after caches are populated)
 
 # Run a specific workflow
-./scripts/ci-local-act.sh -w shared    # Shared workflow (checks listed below)
-./scripts/ci-local-act.sh -w web       # Just web app CI
-./scripts/ci-local-act.sh -w admin     # Just admin app CI
-./scripts/ci-local-act.sh -w landing   # Just landing app CI
-./scripts/ci-local-act.sh -w storybook # Just storybook app CI
+./platform/tooling/ci-local-act.sh -w shared    # Shared workflow (checks listed below)
+./platform/tooling/ci-local-act.sh -w web       # Just web app CI
+./platform/tooling/ci-local-act.sh -w admin     # Just admin app CI
+./platform/tooling/ci-local-act.sh -w landing   # Just landing app CI
+./platform/tooling/ci-local-act.sh -w storybook # Just storybook app CI
 
 # Run a specific job
-./scripts/ci-local-act.sh -j lint      # Just linting
-./scripts/ci-local-act.sh -l           # List available jobs
-./scripts/ci-local-act.sh -o           # Offline mode
+./platform/tooling/ci-local-act.sh -j lint      # Just linting
+./platform/tooling/ci-local-act.sh -l           # List available jobs
+./platform/tooling/ci-local-act.sh -o           # Offline mode
 ```
 
 **CI is split into 5 independent workflows** that `ci-local-act.sh` runs sequentially:

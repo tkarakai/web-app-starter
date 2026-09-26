@@ -11,7 +11,7 @@
  *   Per-deployment values (deployed URLs, Convex URLs) and secrets stay
  *   environment variables; see platform/AGENTS.md "Environment variables".
  * - Consumers: import `appConfig` from `@web-app-starter/app-config` in TypeScript; shell
- *   scripts and CI use `scripts/app-config.ts` (see platform/docs/development.md).
+ *   scripts and CI use `platform/tooling/app-config.ts` (see platform/docs/development.md).
  */
 import type { AppConfig } from "./platform/packages/app-config/src/schema.ts";
 

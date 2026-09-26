@@ -63,9 +63,9 @@ jobs:
               - 'turbo.json'
               - 'app.config.ts'
               - 'platform/packages/app-config/**'
-              - 'tsconfig.base.json'
+              - 'platform/config/**'
               - 'eslint.config.mjs'
-              - 'scripts/**'
+              - 'platform/tooling/**'
 
       - name: Evaluate changes
         if: ${{ !env.ACT }}

@@ -15,6 +15,27 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** every app. The platform moved under `platform/` (v2 layout). Shared
+  packages are in `platform/packages/` and renamed from `@repo/<name>` to
+  `@web-app-starter/<name>` (`app-config`, `auth`, `design-patterns`, `design-system`,
+  `edge-rate-limit`, `i18n`, `ops`, `paper-roll`, `starter-sidebar-policy`); `@repo/backend`
+  and the apps keep their names. The admin dashboard and the component showcase moved to
+  `platform/apps/admin` and `platform/apps/storybook`; dev and CI scripts from `scripts/` to
+  `platform/tooling/`; `CHANGELOG.md`, `UPGRADING.md`, `VERSIONING.md`, `README.md` and
+  `COMMERCIAL-LICENSE.md` to `platform/` (the root keeps a short README and the evaluation
+  `LICENSE`); `tsconfig.base.json` and the ESLint rules to `platform/config/`.
+  **What to do:** run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-platform-packages.ts` from the
+  repository root, then `bun install`. It rewrites imports, package names, dependencies and
+  paths to the moved packages in your app code, and prints every file it changes. Point your
+  app `tsconfig.json` files at `platform/config/tsconfig.base.json` and your root
+  `eslint.config.mjs` at `platform/config/eslint.base.mjs` (see the starter's root files).
+  Replace `scripts/` with `platform/tooling/` in your own scripts and workflows; the root
+  `package.json` commands (`bun run dev`, `bun run ci`, ...) are unchanged. If you deploy the
+  admin app to Vercel, set its projects' **Root Directory** to `platform/apps/admin`; until
+  then the build uses the checkout's directory and the deploy warns.
+  **Done when:** `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-platform-packages.ts --check`
+  exits 0 and `bun run typecheck`, `bun run lint` and `bun run build` pass.
 - **Who is affected:** apps whose hosted (staging or production) Convex deployment has no
   `RESEND_API_KEY`. Auth and invitation emails there used to be written to the Convex logs;
   they now fail with `EMAIL_DELIVERY_NOT_CONFIGURED`.
@@ -50,6 +71,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
+  move (idempotent; `--check` for CI).
+- `platform/VERSION` (the installed platform version), `platform/templates/README.md` and
+  `platform/templates/LICENSE` (draft, pending legal review), and
+  `platform/tooling/app-config.ts dir <app>` / `APP_CONFIG_DIR_<APP>` for an app's directory.
 - `app.config.ts` (root) and `@web-app-starter/app-config`: one typed, validated file for the values an app
   changes — identity (product name, legal entity, support email), runtime (local ports, Better
   Auth cookie prefix), brand (icon sources, design-token overrides, email palette, `lang` and
@@ -101,6 +127,18 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `__Secure-better-auth.session_token`) in `hasSessionCookie` (`@web-app-starter/edge-rate-limit`) and in
   the Convex sessions API, instead of by suffix or substring, so look-alike cookies such as
   `evil-better-auth.session_token` no longer count as a session.
+- The Vercel build action takes the app's directory from the checkout and overrides the
+  project's pulled Root Directory with it; the deploy action warns about, and works around, a
+  Root Directory that is not in the checkout. Both also build or deploy commits from before
+  the v2 layout.
+- `packages/backend/convex/_generated/` is regenerated from the current functions (it was missing
+  `developmentOnly`).
+
+### Removed
+
+- `lighthouserc.json`: nothing ran it (no Lighthouse CI dependency, script or workflow) and it
+  pointed at a port and route that no longer matched any app.
+- `.eslintrc.cjs`: ESLint 9 uses the flat config only, so the file was ignored.
 
 ## [1.0.0] - 2026-09-25
 
@@ -214,7 +252,7 @@ when `bun install --minimum-release-age=864000` and `bun run ci:quick` pass.
 **Package adoption is optional.** Existing web/admin/backend consumers continue
 using merge-by-tag; no database migration or operations change is introduced.
 Demo-derived apps must preserve their dashboard, editable UI and branding when
-merging these changes. Follow [the package upgrade guide](./apps/demo/README.md)
+merging these changes. Follow [the package upgrade guide](../apps/demo/README.md)
 only when adopting this explicit ownership/dependency contract. Keep the manifest,
 package artifact, lock and required tests together. Done when
 `bun run check:starter-ownership`, `bun run test:starter-upgrade` and

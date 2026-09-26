@@ -50,6 +50,6 @@ through the author workspace source. When replacing a local package manually,
 refresh Bun's cache with `bun install --force --frozen-lockfile`; normal installs
 use the checked-in version. Upgrade verification checks the installed bytes too.
 
-[`UPGRADING.md`](../../UPGRADING.md) explains the complete procedure. Releases are prepared by starter authors, upgrades are
+[`UPGRADING.md`](../../platform/UPGRADING.md) explains the complete procedure. Releases are prepared by starter authors, upgrades are
 reviewed application PRs, and operations deploys the resulting approved commit.
 None of the upgrade commands deploys or changes the operations tooling.

@@ -6,7 +6,7 @@
 
 ```bash
 # Start core apps + Convex (recommended)
-bun run dev                  # Uses scripts/dev-start.sh
+bun run dev                  # Uses platform/tooling/dev-start.sh
 
 # Start a specific app + Convex (ports: runtime.ports in app.config.ts)
 bun run dev:web              # Convex + web app
@@ -35,7 +35,7 @@ The root `app.config.ts` holds every value an app built on the starter is expect
 | `brand` | icon sources, design-token overrides, email palette, `lang` and footer | `copy-shared-assets.sh`, `BrandTokenStyle` in each root layout, Convex email templates |
 | `features` | `waitlist`, `invitations`, `announcements`, `environmentBanner` | admin feature controls and navigation, announcement banners, environment banner |
 
-It is validated when loaded (`packages/app-config/src/schema.ts`); an invalid or unknown value
+It is validated when loaded (`platform/packages/app-config/src/schema.ts`); an invalid or unknown value
 stops dev, build and tests with a message naming each bad setting. Everything in it is public:
 it is checked in and bundled into client code. Per-deployment values (deployed URLs, Convex URLs)
 and secrets stay environment variables.
@@ -45,10 +45,11 @@ How each consumer reads it:
 - **TypeScript** (Next.js server, edge and client code, Convex functions, Playwright configs,
   tests): `import { appConfig, localAppOrigin } from "@web-app-starter/app-config"`. Cookie names come from
   `@web-app-starter/auth/cookies` (`sessionCookieNames()`, `isSessionCookie()`), never from string literals.
-- **Shell scripts**: `eval "$(./scripts/node-ts.sh scripts/app-config.ts shell)"` defines
-  `APP_CONFIG_PORT_<APP>`, `APP_CONFIG_ORIGIN_<APP>`, `APP_CONFIG_AUTH_COOKIE_PREFIX` and friends.
-  `scripts/app-config.ts port web` prints one value. Apps' `dev` scripts go through
-  `scripts/next-dev.sh <app>`.
+- **Shell scripts**: `eval "$(./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell)"` defines
+  `APP_CONFIG_PORT_<APP>`, `APP_CONFIG_ORIGIN_<APP>`, `APP_CONFIG_DIR_<APP>` (the app's directory,
+  e.g. `platform/apps/admin`), `APP_CONFIG_AUTH_COOKIE_PREFIX` and friends.
+  `platform/tooling/app-config.ts port web` (or `dir admin`) prints one value. Apps' `dev` scripts go through
+  `platform/tooling/next-dev.sh <app>`.
 - **GitHub Actions**: the `setup-bun` action exports the same `APP_CONFIG_*` variables to
   `$GITHUB_ENV`, so later steps use e.g. `APP_ORIGIN: ${{ env.APP_CONFIG_ORIGIN_WEB }}`.
 - **Turborepo**: `app.config.ts` is a `globalDependencies` entry, so changing it invalidates
@@ -59,7 +60,7 @@ stands in for a separate business app and owns its own settings.
 
 ### Development process isolation
 
-See [Development process isolation](../../README.md#development-process-isolation)
+See [Development process isolation](../README.md#development-process-isolation)
 for launcher requirements, process ownership checks and safe stop commands.
 
 ### Dev Seed Accounts
@@ -137,7 +138,7 @@ cd apps/web && bunx vitest --version
 cd apps/web && bunx vitest run --reporter=verbose
 ```
 
-**Playwright browser not installed:** Follow the [E2E setup instructions](../../README.md#tests).
+**Playwright browser not installed:** Follow the [E2E setup instructions](../README.md#tests).
 
 **Convex sync issues:**
 ```bash

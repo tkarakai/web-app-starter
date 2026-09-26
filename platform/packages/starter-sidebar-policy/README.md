@@ -5,7 +5,7 @@ repository. It exports a default width, clamping and snapping functions. It has
 no dependency on application code, editable UI or other starter workspaces.
 
 ```bash
-bun run --cwd packages/starter-sidebar-policy build
+bun run --cwd platform/packages/starter-sidebar-policy build
 bun run check:starter-ownership
 ```
 
@@ -26,5 +26,5 @@ release artifact. Update the demo's installed artifact/baseline deliberately and
 run its full upgrade rehearsal before releasing. Registry publication is not
 configured.
 
-See [the demo README](../../apps/demo/README.md) and [UPGRADING.md](../../UPGRADING.md)
+See [the demo README](../../../apps/demo/README.md) and [UPGRADING.md](../../UPGRADING.md)
 for the ownership rules and required evidence.

@@ -17,10 +17,13 @@ dist
 .dev-processes-*
 *.tsbuildinfo
 
-# Generated shared assets (copied by scripts/copy-shared-assets.sh)
+# Generated shared assets (copied by platform/tooling/copy-shared-assets.sh)
 apps/*/public/icon.svg
 apps/*/public/apple-touch-icon.png
 apps/*/public/favicon.ico
+platform/apps/*/public/icon.svg
+platform/apps/*/public/apple-touch-icon.png
+platform/apps/*/public/favicon.ico
 
 # Test coverage reports
 **/qa/coverage/
@@ -33,7 +36,8 @@ apps/*/public/favicon.ico
 
 # Local starter upgrade plans/logs (CI retains evidence as artifacts)
 apps/*/.starter-upgrade/
-packages/starter-sidebar-policy/dist/
+platform/apps/*/.starter-upgrade/
+platform/packages/starter-sidebar-policy/dist/
 
 # Built package bytes are intentional, immutable inputs to the demo and its tests.
 !apps/demo/starter-packages/sidebar-policy/dist/

@@ -261,7 +261,7 @@ bun run test:watch
 | **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
 | **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
-| **Shared UI** | Add component in `packages/design-system/src/`, export from index.ts |
+| **Shared UI** | Add component in `platform/packages/design-system/src/`, export from index.ts |
 
 ## Context Boundaries
 

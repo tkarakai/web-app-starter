@@ -67,7 +67,7 @@ scripts build from commits, never from uncommitted changes. Run the E2E suites a
 ```bash
 export E2E_CONVEX_LOG=$PWD/infra/aws/local/.state/convex.log CONVEX_SITE_URL=http://convex.localhost.floci.io:3311
 E2E_BASE_URL=http://web.app.localhost:8080 bun run --cwd apps/web test:e2e
-E2E_BASE_URL=http://admin.app.localhost:8080 bun run --cwd apps/admin test:e2e
+E2E_BASE_URL=http://admin.app.localhost:8080 bun run --cwd platform/apps/admin test:e2e
 ```
 
 `bun run aws:local:up --iam` does the same with IAM enforcement on, deploying as a user that holds

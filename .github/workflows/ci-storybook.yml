@@ -54,7 +54,7 @@ jobs:
         with:
           filters: |
             storybook:
-              - 'apps/storybook/**'
+              - 'platform/apps/storybook/**'
             design-system:
               - 'platform/packages/design-system/**'
             root:
@@ -63,9 +63,9 @@ jobs:
               - 'turbo.json'
               - 'app.config.ts'
               - 'platform/packages/app-config/**'
-              - 'tsconfig.base.json'
+              - 'platform/config/**'
               - 'eslint.config.mjs'
-              - 'scripts/**'
+              - 'platform/tooling/**'
 
       - name: Evaluate changes
         if: ${{ !env.ACT }}
@@ -113,10 +113,10 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-playwright
         with:
-          working-directory: apps/storybook
+          working-directory: platform/apps/storybook
 
       - name: Run Playwright tests
-        run: cd apps/storybook && bunx playwright test --project=chromium
+        run: cd platform/apps/storybook && bunx playwright test --project=chromium
         env:
           CI: true
 
@@ -132,7 +132,7 @@ jobs:
         continue-on-error: true
         with:
           name: playwright-report-storybook
-          path: apps/storybook/qa/playwright-report/
+          path: platform/apps/storybook/qa/playwright-report/
           retention-days: 7
 
       - name: Save job outputs (act)
@@ -140,7 +140,7 @@ jobs:
         run: |
           JOB_DIR="/act-artifacts/storybook/e2e"
           mkdir -p "$JOB_DIR/artifacts"
-          [ -d "apps/storybook/qa/playwright-report" ] && cp -r "apps/storybook/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-storybook" 2>/dev/null || true
+          [ -d "platform/apps/storybook/qa/playwright-report" ] && cp -r "platform/apps/storybook/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-storybook" 2>/dev/null || true
 
   # ============================================================
   # SUMMARY

@@ -8,7 +8,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
 - **Six Next.js apps**: web, admin, landing, landing-static, storybook and demo.
-- **One configuration file**, `app.config.ts`, for the values an app changes: product name, ports, auth cookie prefix, brand and optional features. See [App configuration](platform/docs/development.md#app-configuration-appconfigts).
+- **One configuration file**, `app.config.ts`, for the values an app changes: product name, ports, auth cookie prefix, brand and optional features. See [App configuration](docs/development.md#app-configuration-appconfigts).
 - **Shared packages** for UI, auth, backend, i18n, rate limiting and starter sidebar policy; see [Shared packages](#shared-packages).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
 - Better Auth wired to Convex, including Next.js route handlers and client hooks.
@@ -36,7 +36,7 @@ in `bun.lock`; root overrides take precedence over workspace version ranges.
 ## Quick start
 
 Install the Node and Bun versions specified by `engines` and `packageManager` in
-[package.json](package.json) before running these commands.
+[package.json](../package.json) before running these commands.
 
 1. Install dependencies:
 
@@ -98,7 +98,7 @@ This lists verified development services across this repository’s worktrees an
 
 ### Development process isolation
 
-The launcher requires Node.js 22.6 or newer (it runs `scripts/dev-processes.ts` through `scripts/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+The launcher requires Node.js 22.6 or newer (it runs `platform/tooling/dev-processes.ts` through `platform/tooling/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
 
 - `bun run dev:stop` stops verified services in this checkout.
 - `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.
@@ -137,69 +137,55 @@ These values persist in the local Convex backend between sessions.
 
 ## Project structure
 
+Anything under `platform/` is the platform zone: owned by the starter and replaced as a whole
+when you take a newer release. Everything else is yours.
+
 ```
-├── apps/
+├── README.md  LICENSE         # Short entry point; evaluation licence until adoption
+├── AGENTS.md  CLAUDE.md       # App guide for coding agents (layer 1)
+├── app.config.ts              # App-owned configuration: name, ports, cookie prefix, brand, features
+├── package.json  turbo.json  tsconfig.json  eslint.config.mjs  # Thin; extend platform/config/
+├── apps/                      # Reference apps (app zone)
 │   ├── web/                   # Main web app (@repo/web)
 │   │   ├── src/
 │   │   │   ├── app/           # Next.js App Router pages
-│   │   │   │   ├── (auth)/    # Authentication routes (grouped)
-│   │   │   │   ├── (dashboard)/ # Dashboard routes (grouped)
-│   │   │   │   └── api/auth/  # Auth API route handler
 │   │   │   ├── components/    # React components (auth, launchpad, ui)
 │   │   │   └── lib/           # Utility functions and helpers
-│   │   └── qa/                # Testing artifacts
+│   │   └── qa/
 │   │       ├── tests/         # Unit + component tests, helpers, fixtures
 │   │       └── e2e/           # Playwright E2E specs
-│   ├── admin/                 # Admin dashboard (@repo/admin)
-│   │   └── src/
 │   ├── landing/               # Dynamic landing page (@repo/landing)
-│   │   └── src/
 │   ├── landing-static/        # Fully static landing page (@repo/landing-static)
-│   │   └── src/
-│   ├── storybook/             # Component storybook (@repo/storybook)
-│   │   └── src/
 │   └── demo/                  # Standalone UI/dispatch demo; also tests starter upgrades
-│       └── src/
-├── app.config.ts              # App-owned configuration: name, ports, cookie prefix, brand, features
 ├── packages/
-│   ├── app-config/            # Schema and loader for app.config.ts (@web-app-starter/app-config)
-│   ├── backend/               # Convex backend (@repo/backend)
-│   │   ├── convex/            # Schema, queries, mutations, actions
-│   │   │   └── _generated/    # Auto-generated (DO NOT EDIT)
-│   │   └── index.ts           # Main export
-│   ├── auth/                  # Authentication (@web-app-starter/auth)
-│   │   └── src/               # client.ts, server.ts, provider.tsx, cookies.ts, clear-session.ts
-│   ├── design-system/         # Shared UI components (@web-app-starter/design-system)
-│   │   ├── src/               # Radix UI + shadcn/ui components
-│   │   └── tokens/            # Design tokens (globals.css)
-│   ├── i18n/                  # Internationalization (@web-app-starter/i18n)
-│   │   ├── messages/          # Translation files (15 languages)
-│   │   └── src/               # i18n config and utilities
-│   ├── edge-rate-limit/       # Shared edge rate limiting (@web-app-starter/edge-rate-limit)
-│   ├── starter-sidebar-policy/ # Versioned sidebar sizing policy
-│   └── design-patterns/       # Design patterns (@web-app-starter/design-patterns)
-├── scripts/
-│   ├── dev-start.sh           # Start dev environment (Convex + apps)
-│   ├── dev-stop.sh            # Stop all services
-│   ├── dev-nuke-all.sh        # Kill ALL dev processes across all worktrees
-│   ├── dev-status.sh          # Show running services
-│   ├── ci-local.sh            # Native CI checks (bun run ci)
-│   ├── ci-local-act.sh        # Docker-based CI via act
-│   ├── ensure-local-deps.sh   # Dependency setup
-│   └── ensure-branch-tracking.sh # Git utility
-├── .github/workflows/
-│   ├── ci-shared.yml          # Shared CI (see platform/docs/ci.md)
-│   ├── ci-web.yml             # Web app CI: test, build, E2E
-│   ├── ci-admin.yml           # Admin app CI: test, build, E2E
-│   ├── ci-landing.yml         # Landing app CI: test, build, E2E
-│   ├── ci-storybook.yml       # Storybook CI: build, E2E (non-blocking)
-│   ├── ci-gate.yml            # CI gate: aggregates all CI results
-│   ├── cd-staging.yml         # Deploy to staging
-│   ├── cd-production.yml      # Deploy to production
-│   ├── cd-rollback.yml        # Rollback deployment
-│   └── security.yml           # CodeQL, dependency audit, secrets scan
-├── turbo.json                 # Turborepo task configuration
-└── package.json               # Root workspace definition
+│   └── backend/               # Convex backend (@repo/backend)
+│       └── convex/            # Schema, queries, mutations, actions; _generated/ is generated
+├── platform/                  # Platform zone
+│   ├── AGENTS.md              # Platform rules for coding agents (layer 2)
+│   ├── README.md              # This file
+│   ├── CHANGELOG.md  UPGRADING.md  VERSIONING.md  VERSION
+│   ├── LICENSE  COMMERCIAL-LICENSE.md
+│   ├── apps/
+│   │   ├── admin/             # Admin dashboard (@repo/admin)
+│   │   └── storybook/         # Component showcase (@repo/storybook)
+│   ├── packages/              # @web-app-starter/* packages
+│   │   ├── app-config/        # Schema and loader for app.config.ts
+│   │   ├── auth/              # Better Auth client, server, provider, cookies, clear-session
+│   │   ├── design-system/     # Radix UI + shadcn/ui components, tokens, brand assets
+│   │   ├── design-patterns/   # Composite UI patterns
+│   │   ├── i18n/              # Locale config, navigation, messages (15 languages)
+│   │   ├── edge-rate-limit/   # Edge rate limiting for proxies
+│   │   ├── ops/  paper-roll/  # Operations CLI and its terminal UI
+│   │   └── starter-sidebar-policy/ # Versioned sidebar sizing policy
+│   ├── agent-skills/          # Platform skills (linked from .claude/skills and .agents/skills)
+│   ├── config/                # tsconfig and ESLint bases
+│   ├── docs/                  # Platform usage docs
+│   ├── templates/             # Starting points for app-owned files (README, LICENSE, AGENTS.md, ...)
+│   └── tooling/               # Dev scripts, local CI, E2E setup, codemods, upgrade tooling
+├── infra/aws/                 # Optional AWS hosting
+└── .github/
+    ├── actions/               # Composite actions (build, deploy, setup)
+    └── workflows/             # ci-*.yml, cd-*.yml, security.yml (see docs/ci.md)
 ```
 
 ## Shared packages
@@ -254,7 +240,7 @@ Shared design patterns and utilities.
 
 Shared sizing policy used by the design system and the standalone demo. See the
 [package guide](packages/starter-sidebar-policy/README.md) for consumption and
-release instructions, and [the demo guide](apps/demo/README.md) to run the app.
+release instructions, and [the demo guide](../apps/demo/README.md) to run the app.
 
 ## Run against cloud Convex + Better Auth
 
@@ -264,7 +250,7 @@ release instructions, and [the demo guide](apps/demo/README.md) to run the app.
 2. Set your local `.env.local` to the cloud values:
 
 ```env
-# apps/web and apps/admin — read unprefixed at request time, so one build can be
+# apps/web and platform/apps/admin — read unprefixed at request time, so one build can be
 # promoted between environments. Neither needs a site-URL variable: both derive
 # their origin from the request Host header.
 CONVEX_DEPLOYMENT=dev:<your-deployment>
@@ -327,7 +313,7 @@ workspace's Playwright CLI, including a hoisted root install, without fetching a
 different Playwright version. Installer output and failure status are preserved;
 setup stops at the first failure. Avoid package runners that could fetch a newer
 CLI: its browser build may not match the installed version. GitHub Actions uses
-the dedicated [setup-playwright action](.github/actions/setup-playwright/action.yml).
+the dedicated [setup-playwright action](../.github/actions/setup-playwright/action.yml).
 
 > **WARNING**: Always use `bun run test` (with `run`), never bare `bun test`. Bare `bun test` picks up all test files and fails because some require Vitest's DOM environment.
 
@@ -366,7 +352,7 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 - CI runs via Turborepo: `turbo lint`, `turbo typecheck`, `turbo build`, etc.
 - web, admin and landing deploy to Vercel. `infra/aws` hosts them on AWS instead (Convex stays on
   Convex Cloud), with a local target that runs in Docker: see
-  [deployment-architecture-aws.md](platform/docs/aws/deployment-architecture-aws.md).
+  [deployment-architecture-aws.md](docs/aws/deployment-architecture-aws.md).
 
 ## Local vs cloud deployments
 
@@ -438,7 +424,7 @@ CONVEX_URL=http://127.0.0.1:<cloud-port>
 CONVEX_SITE_URL=http://127.0.0.1:<site-port>
 ```
 
-Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment. These examples are for `apps/web` and `apps/admin`, which read the unprefixed names at request time and need no site-URL variable. `apps/landing` and `apps/landing-static` are static exports and use the `NEXT_PUBLIC_` forms instead.
+Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment. These examples are for `apps/web` and `platform/apps/admin`, which read the unprefixed names at request time and need no site-URL variable. `apps/landing` and `apps/landing-static` are static exports and use the `NEXT_PUBLIC_` forms instead.
 
 ### Example: hybrid (local app + cloud Convex)
 
@@ -458,4 +444,4 @@ CONVEX_SITE_URL=https://<deployment>.convex.site
 
 ### Operations CLI
 
-Start with `bun run ops setup` for guided GitHub/Vercel login and team/project selection; existing `gh` and `vercel` sessions are reused without tokens in ops config. Run `bun run ops` in a terminal for a guided operations console: monitor environments, investigate failures, review and deploy releases, roll back, and explore audit evidence using arrow keys and Enter. Explicit commands such as `ops status`, `ops diagnose RUN`, and `ops verify --run RUN` remain available for scripts; `--watch --until serving` follows a release through workflow success and serving verification. See the [operations CLI guide](platform/docs/ops-cli.md) for setup and the end-to-end walkthrough.
+Start with `bun run ops setup` for guided GitHub/Vercel login and team/project selection; existing `gh` and `vercel` sessions are reused without tokens in ops config. Run `bun run ops` in a terminal for a guided operations console: monitor environments, investigate failures, review and deploy releases, roll back, and explore audit evidence using arrow keys and Enter. Explicit commands such as `ops status`, `ops diagnose RUN`, and `ops verify --run RUN` remain available for scripts; `--watch --until serving` follows a release through workflow success and serving verification. See the [operations CLI guide](docs/ops-cli.md) for setup and the end-to-end walkthrough.

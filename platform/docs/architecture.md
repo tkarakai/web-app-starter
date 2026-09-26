@@ -62,12 +62,12 @@ The application uses three layers of rate limiting. See [rate-limiting-architect
 |-------|-------|---------|--------|
 | **Better Auth** | Auth endpoints (sign-in, sign-up) | Convex DB (betterAuth component `rateLimit` table) | `packages/backend/convex/auth.ts` — env vars via `convex env set` |
 | **Convex Functions** | All `authedMutation` calls | Convex DB (`rateLimits` table) | `packages/backend/convex/rateLimits.ts` — env vars via `convex env set` |
-| **Edge Proxy** | HTTP page requests (web, admin) | In-memory `Map` (per-instance, capped) | `apps/*/src/proxy.ts` — uses shared `@web-app-starter/edge-rate-limit` package |
+| **Edge Proxy** | HTTP page requests (web, admin) | In-memory `Map` (per-instance, capped) | `apps/web/src/proxy.ts`, `platform/apps/admin/src/proxy.ts` — use the shared `@web-app-starter/edge-rate-limit` package |
 
 **Key files:**
 - `packages/backend/convex/rateLimits.ts` — Convex rate limit definitions
 - `packages/backend/convex/functions.ts` — Global mutation rate limit in `authedMutation`
-- `packages/edge-rate-limit/` — Shared edge rate limiter (used by the web and admin proxies)
+- `platform/packages/edge-rate-limit/` — Shared edge rate limiter (used by the web and admin proxies)
 - `apps/web/src/components/auth/auth-form.tsx` — Client-side 429 error handling
 
 > **Note**: `landing-static` is a fully static export and does not use edge rate limiting. Rate limiting for static deployments should be handled at the CDN/hosting layer.
