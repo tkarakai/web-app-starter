@@ -40,7 +40,7 @@ describe("bootstrap", () => {
       expect(result.email).toBe("admin@example.com");
 
       // Verify admin email was created
-      const adminEmails = await t.run(async (ctx) => {
+      const adminEmails = await runPlatform(async (ctx) => {
         return ctx.db.query("adminEmails").collect();
       });
       expect(adminEmails).toHaveLength(1);
@@ -61,9 +61,10 @@ describe("bootstrap", () => {
 
     test("throws BOOTSTRAP_ALREADY_INITIALIZED if adminEmails already has an entry", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       // Pre-seed an admin email
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         await ctx.db.insert("adminEmails", { email: "existing@example.com" });
       });
 
@@ -158,7 +159,7 @@ describe("bootstrap", () => {
       expect(result.email).toBe("correct@example.com");
 
       // Verify admin email updated
-      const adminEmails = await t.run(async (ctx) => {
+      const adminEmails = await runPlatform(async (ctx) => {
         return ctx.db.query("adminEmails").collect();
       });
       expect(adminEmails).toHaveLength(1);
@@ -244,8 +245,9 @@ describe("bootstrap", () => {
 
     test("throws BOOTSTRAP_MULTIPLE_ADMINS if multiple admin emails exist", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         await ctx.db.insert("adminEmails", { email: "admin1@example.com" });
         await ctx.db.insert("adminEmails", { email: "admin2@example.com" });
       });
@@ -561,9 +563,10 @@ describe("bootstrap", () => {
 
     test("hints to rescue when waitlist entry is missing", async () => {
       const t = createTestEnv();
+      const runPlatform = platformRunner(t);
 
       // Insert admin email directly without a waitlist entry
-      await t.run(async (ctx) => {
+      await runPlatform(async (ctx) => {
         await ctx.db.insert("adminEmails", { email: "admin@example.com" });
       });
 

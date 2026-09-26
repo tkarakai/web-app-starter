@@ -31,12 +31,12 @@ describe("invitation app boundaries", () => {
     await admin.mutation(api.platform.adminInvitations.invite, { email });
     const page = await admin.query(api.platform.adminInvitations.list, { paginationOpts: { cursor: null, numItems: 10 } });
     expect(page.page).toHaveLength(1);
-    expect(await t.run(ctx => ctx.db.query("adminEmails").collect())).toEqual([]);
+    expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
     await t.mutation(internal.platform.adminInvitations.setToken, { adminInvitationId: page.page[0]._id, tokenHash: sha256Hex("secret"), expiresAt: Date.now() + 3600_000 });
     await expect(t.mutation(api.platform.adminInvitations.claimInvitation, { token: "wrong" })).rejects.toThrow("TOKEN_NOT_FOUND");
-    expect(await t.run(ctx => ctx.db.query("adminEmails").collect())).toEqual([]);
+    expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
     await t.mutation(api.platform.adminInvitations.claimInvitation, { token: "secret" });
-    expect(await t.run(ctx => ctx.db.query("adminEmails").collect())).toMatchObject([{ email }]);
+    expect(await t.query(components.platform.adminEmails.list, {})).toMatchObject([{ email }]);
     expect(await t.query(internal.platform.adminInvitations.hasValidAdminInvitation, { email })).toBe(true);
     expect(await t.run(ctx => ctx.db.query("adminInvitations").collect())).toEqual([]);
   });
@@ -46,7 +46,7 @@ describe("invitation app boundaries", () => {
     const meta = JSON.stringify({ superpowers: ["coffee-to-code"], excitement: ["cant-wait"] });
     await expect(t.mutation(internal.platform.waitlist.join, { email: "buyer@example.test", meta })).rejects.toThrow("WAITLIST_NOT_ENABLED");
     await admin.mutation(api.platform.appSettings.set, { key: "onboardingType", value: "publicWaitlist" });
-    await t.run(ctx => ctx.db.insert("adminEmails", { email: "admin@example.test" }));
+    await t.mutation(components.platform.adminEmails.ensure, { email: "admin@example.test" });
     for (const email of ["buyer@example.test", "admin@example.test"]) await t.mutation(internal.platform.waitlist.join, { email, meta, clientIp: email });
     const args = { paginationOpts: { cursor: null, numItems: 1 } };
     expect((await member.query(api.platform.waitlist.list, args)).page).toEqual([]);

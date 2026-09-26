@@ -29,7 +29,7 @@ export { scheduleAuditEvent, runAuditEvent } from "./convex/platform/auditTrailH
 export type { InsertEventArgs } from "./convex/platform/auditTrailHelpers";
 
 import type { FunctionReturnType } from "convex/server";
-import type { api } from "./convex/_generated/api";
+import type { api, internal } from "./convex/_generated/api";
 /** Audit row returned by the platform wrapper; component IDs are strings. */
 export type AuditTrailEvent = FunctionReturnType<typeof api.platform.auditTrail.list>["page"][number];
 
@@ -40,3 +40,5 @@ export type Announcement = Omit<NonNullable<FunctionReturnType<typeof api.platfo
 export type WaitlistEntry = Omit<FunctionReturnType<typeof api.platform.waitlist.list>["page"][number], "invitationExpired">;
 export type AdminInvitation = Omit<FunctionReturnType<typeof api.platform.adminInvitations.list>["page"][number], "invitationExpired">;
 export type InvitationToken = NonNullable<FunctionReturnType<typeof api.platform.waitlistTokens.listByEntry>>[number];
+
+export type AdminEmail = FunctionReturnType<typeof internal.platform.adminEmails.list>[number];

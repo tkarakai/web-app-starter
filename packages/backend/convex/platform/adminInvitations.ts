@@ -73,17 +73,8 @@ export const validateToken = query({
 export const claimInvitation = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const result = await ctx.runMutation(components.platform.adminInvitations.claimInvitation, args);
-    // Add email to adminEmails so the auth hook auto-promotes to admin on
-    // signup. This only happens after token validation — proving possession.
-    const existingAdmin = await ctx.db
-      .query("adminEmails")
-      .withIndex("by_email", (q) => q.eq("email", result.email))
-      .first();
-    if (!existingAdmin) {
-      await ctx.db.insert("adminEmails", { email: result.email });
-    }
-    },
+    await ctx.runMutation(components.platform.adminInvitations.claimInvitation, args);
+  },
 });
 
 export const advanceOnboardingStep = mutation({

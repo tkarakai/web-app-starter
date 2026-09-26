@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as adminEmails from "../adminEmails.js";
 import type * as adminInvitations from "../adminInvitations.js";
 import type * as announcements from "../announcements.js";
 import type * as appSettings from "../appSettings.js";
@@ -32,6 +33,7 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  adminEmails: typeof adminEmails;
   adminInvitations: typeof adminInvitations;
   announcements: typeof announcements;
   appSettings: typeof appSettings;

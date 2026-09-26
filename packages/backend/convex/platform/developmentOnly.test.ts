@@ -128,7 +128,7 @@ describe("devSeed", () => {
     await expect(t.action(internal.platform.devSeed.seed, {})).rejects.toThrow("DEV_SEED_NOT_LOCAL");
 
     const created = {
-      adminEmails: await t.run(ctx => ctx.db.query("adminEmails").collect()),
+      adminEmails: await runPlatform(ctx => ctx.db.query("adminEmails").collect()),
       waitlistEntries: await runPlatform(ctx => ctx.db.query("waitlistEntries").collect()),
     };
     expect(created).toEqual({ adminEmails: [], waitlistEntries: [] });

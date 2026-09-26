@@ -27,10 +27,10 @@ A **Bun workspaces + Turborepo** monorepo:
   (`platform/config/`), docs, skills, templates, and the release files (`CHANGELOG.md`,
   `UPGRADING.md`, `VERSIONING.md`, `VERSION`, licences). In the backend,
   `packages/backend/convex/platform/` holds the platform's Convex functions, tables
-  (`platformTables`), HTTP routes and Better Auth component. Audit, settings, announcement, waitlist and invitation storage live in the
+  (`platformTables`), HTTP routes and Better Auth component. Audit, settings, announcement, waitlist, invitation and protected-admin storage live in the
   `@web-app-starter/convex-platform` component installed by `convex.config.ts`; its public
   wrappers remain `api.platform.<module>.*`. Use `AuditTrailEvent`, `Announcement`, `WaitlistEntry`,
-  `InvitationToken` and `AdminInvitation` from `@repo/backend` for component rows (their IDs are opaque strings), and the shared `convex/test.modules.ts` factory for backend tests.
+  `InvitationToken`, `AdminInvitation` and `AdminEmail` from `@repo/backend` for component rows (their IDs are opaque strings), and the shared `convex/test.modules.ts` factory for backend tests.
 - **The zone check (`bun run check:zone`, in CI) enforces this.** In an adopted app (`bun run adopt`, once on a fresh clone, writes `.platform-base.json`), every zone
   file that differs from the release commit in `.platform-base.json` must be a recorded patch
   (a `PLATFORM-PATCH: <reason>` comment plus an entry in `patches`); the `platform-patch` skill

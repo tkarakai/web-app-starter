@@ -60,13 +60,7 @@ export const setupDevUser = internalMutation({
     // Admin email entry (triggers auto-promotion in databaseHook).
     // Skip if already exists (idempotent for retries after partial failure).
     if (args.isAdmin) {
-      const existing = await ctx.db
-        .query("adminEmails")
-        .withIndex("by_email", (q) => q.eq("email", args.email))
-        .first();
-      if (!existing) {
-        await ctx.db.insert("adminEmails", { email: args.email });
-      }
+      await ctx.runMutation(components.platform.adminEmails.ensure, { email: args.email });
     }
 
     await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["dev-seed"], excitement: ["dev-seed"] }), token: `dev-seed-${args.email}`, ttlMs: 365 * 24 * 60 * 60_000 });

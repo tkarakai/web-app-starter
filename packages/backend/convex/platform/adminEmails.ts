@@ -1,10 +1,11 @@
+import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { authComponent } from "./auth";
 
 export const list = internalQuery({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("adminEmails").collect();
+    return await ctx.runQuery(components.platform.adminEmails.list, {});
   },
 });
 
@@ -33,7 +34,7 @@ export const listProtected = query({
       return [];
     }
 
-    const rows = await ctx.db.query("adminEmails").collect();
+    const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
     return rows.map((r) => r.email);
   },
 });
