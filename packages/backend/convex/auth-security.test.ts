@@ -1,3 +1,4 @@
+import { components } from "./_generated/api";
 import { createTestEnv as createPlatformTest } from "./test.modules";
 import { describe, expect, test } from "vitest";
 
@@ -46,10 +47,9 @@ describe("email verification policy fallback", () => {
     const t = createTestEnv();
 
     const required = await t.run(async (ctx) => {
-      await ctx.db.insert("appSettings", {
+      await ctx.runMutation(components.platform.appSettings.putRaw, {
         key: "emailVerificationRequired",
         value: "false",
-        updatedAt: Date.now(),
       });
 
       return await isEmailVerificationRequired(ctx, { role: "admin" });
@@ -62,15 +62,13 @@ describe("email verification policy fallback", () => {
     const t = createTestEnv();
 
     const required = await t.run(async (ctx) => {
-      await ctx.db.insert("appSettings", {
+      await ctx.runMutation(components.platform.appSettings.putRaw, {
         key: "emailVerificationRequired",
         value: "false",
-        updatedAt: Date.now(),
       });
-      await ctx.db.insert("appSettings", {
+      await ctx.runMutation(components.platform.appSettings.putRaw, {
         key: "adminEmailVerificationRequired",
         value: "true",
-        updatedAt: Date.now(),
       });
 
       return await isEmailVerificationRequired(ctx, { role: "admin" });

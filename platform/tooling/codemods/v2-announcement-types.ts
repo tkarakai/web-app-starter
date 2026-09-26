@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * v2: audit events live in the platform component, outside the app data model.
- * Replace Doc<"auditTrail"> with the backend's exported AuditTrailEvent type.
+ * v2: announcements live in the platform component, outside the app data model.
+ * Replace Doc<"announcements"> with the exported Announcement type and
+ * Id<"announcements"> with string: component IDs are opaque across the boundary.
  * Only bindings imported from @repo/backend or the configured Convex data model
  * qualify; app types with the same name are left alone. Keeps Doc for other tables.
  *
  * Run from the repository root, with no install needed:
- *   ./platform/tooling/node-ts.sh platform/tooling/codemods/v2-audit-trail-type.ts
+ *   ./platform/tooling/node-ts.sh platform/tooling/codemods/v2-announcement-types.ts
  *   [--check] [--convex-dir packages/backend/convex] [ROOT]
  * Idempotent. --check writes nothing and exits 1 if changes are needed.
  */
@@ -25,17 +26,22 @@ export function rewriteText(text: string, file: string, root: string, convexDir 
     const model = path.resolve(path.dirname(file), source).replace(/\.(?:ts|js)$/, "");
     if (source !== "@repo/backend" && model !== path.resolve(root, convexDir, "_generated/dataModel")) continue;
     const parts = specifiers.split(",");
-    const doc = parts.find((s) => /^\s*(?:type\s+)?Doc(?:\s+as\s+[\w$]+)?\s*$/.test(s));
-    if (!doc) continue;
-    const local = /\bas\s+([\w$]+)/.exec(doc)?.[1] ?? "Doc";
-    const usage = new RegExp(`(?<![\\w$.])${escape(local)}\\s*<\\s*(["'])auditTrail\\1\\s*>`, "g");
-    const updated = result.replace(usage, 'import("@repo/backend").AuditTrailEvent');
-    if (updated === result) continue;
-    result = updated;
-    // Remove only an unused Doc import; other imported names and other table uses stay.
-    if (!new RegExp(`(?<![\\w$])${escape(local)}(?![\\w$])`).test(result.replace(match[0], ""))) {
-      const remaining = parts.filter((s) => s !== doc && s.trim()).join(",");
-      result = result.replace(match[0], () => remaining ? match[0].replace(specifiers, () => remaining) : "");
+    let currentImport = match[0];
+    for (const binding of ["Doc", "Id"]) {
+      const doc = parts.find((s) => new RegExp(`^\\s*(?:type\\s+)?${binding}(?:\\s+as\\s+[\\w$]+)?\\s*$`).test(s));
+      if (!doc) continue;
+      const local = /\bas\s+([\w$]+)/.exec(doc)?.[1] ?? binding;
+      const usage = new RegExp(`(?<![\\w$.])${escape(local)}\\s*<\\s*(["'])announcements\\1\\s*>`, "g");
+      const updated = result.replace(usage, binding === "Id" ? "string" : 'import("@repo/backend").Announcement');
+      if (updated === result) continue;
+      result = updated;
+      if (!new RegExp(`(?<![\\w$])${escape(local)}(?![\\w$])`).test(result.replace(currentImport, ""))) {
+        parts.splice(parts.indexOf(doc), 1);
+        const remaining = parts.filter((s) => s.trim()).join(",");
+        const nextImport = remaining ? match[0].replace(specifiers, () => remaining) : "";
+        result = result.replace(currentImport, () => nextImport);
+        currentImport = nextImport;
+      }
     }
   }
   return result;

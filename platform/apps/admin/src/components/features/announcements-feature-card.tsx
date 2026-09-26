@@ -18,7 +18,6 @@ import {
 import { toast } from "sonner";
 
 import { api } from "@repo/backend";
-import type { Id } from "@repo/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -276,14 +275,14 @@ export function AnnouncementsFeatureCard() {
 
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editorMode, setEditorMode] = React.useState<"create" | "edit">("create");
-  const [editingId, setEditingId] = React.useState<Id<"announcements"> | null>(
+  const [editingId, setEditingId] = React.useState<string | null>(
     null
   );
   const [form, setForm] = React.useState<AnnouncementFormState>(emptyFormState);
   const [submitting, setSubmitting] = React.useState(false);
 
   const [deleteTarget, setDeleteTarget] = React.useState<{
-    id: Id<"announcements">;
+    id: string;
     name: string;
   } | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -292,7 +291,7 @@ export function AnnouncementsFeatureCard() {
     learnMoreName?: string;
     learnMoreContent?: string;
   } | null>(null);
-  const [actionPendingId, setActionPendingId] = React.useState<Id<"announcements"> | null>(
+  const [actionPendingId, setActionPendingId] = React.useState<string | null>(
     null
   );
 
@@ -445,7 +444,7 @@ export function AnnouncementsFeatureCard() {
     }
   };
 
-  const handlePublishNow = async (announcementId: Id<"announcements">) => {
+  const handlePublishNow = async (announcementId: string) => {
     setActionPendingId(announcementId);
     try {
       await publishNow({ announcementId });
@@ -457,7 +456,7 @@ export function AnnouncementsFeatureCard() {
     }
   };
 
-  const handleUnpublishNow = async (announcementId: Id<"announcements">) => {
+  const handleUnpublishNow = async (announcementId: string) => {
     setActionPendingId(announcementId);
     try {
       await unpublishNow({ announcementId });
@@ -469,7 +468,7 @@ export function AnnouncementsFeatureCard() {
     }
   };
 
-  const handleArchive = async (announcementId: Id<"announcements">) => {
+  const handleArchive = async (announcementId: string) => {
     setActionPendingId(announcementId);
     try {
       await archiveAnnouncement({ announcementId });

@@ -82,10 +82,10 @@ async function seed(t: ReturnType<typeof emulator>): Promise<void> {
   const now = Date.now();
   await t.run(async (ctx) => {
     await ctx.db.insert("adminEmails", { email: "seed-admin@example.test" });
-    await ctx.db.insert("appSettings", { key: SAMPLE_STRING, value: "\"seeded\"", updatedAt: now });
+    await ctx.runMutation(components.platform.appSettings.putRaw, { key: SAMPLE_STRING, value: "\"seeded\"" });
     await ctx.db.insert("waitlistEntries", { email: "seed@example.test", meta: "{}", status: "waiting", createdAt: now });
     await ctx.db.insert("adminInvitations", { email: "seed@example.test", status: "invited", invitedAt: now, createdAt: now });
-    await ctx.db.insert("announcements", { name: "seed", bannerText: "seed", isLive: false, createdAt: now, updatedAt: now });
+    await ctx.runMutation(components.platform.announcements.create, { name: "seed", bannerText: "seed", identity: { userId: "seed", actor: "seed" } });
     await ctx.runMutation(components.platform.auditTrail.insertEvent, {
       happenedAt: now, actor: "seed", source: "server:seed", action: "auth.sign_in", resource: "seed", status: "succeeded",
     });

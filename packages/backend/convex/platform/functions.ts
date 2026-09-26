@@ -1,3 +1,4 @@
+import { components } from "../_generated/api";
 import {
   customCtx,
   customMutation,
@@ -19,10 +20,7 @@ async function getBooleanSetting(
   key: string,
   defaultValue: boolean,
 ): Promise<boolean> {
-  const setting = await ctx.db
-    .query("appSettings")
-    .withIndex("by_key", (q) => q.eq("key", key))
-    .unique();
+  const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: key });
 
   if (!setting) return defaultValue;
 
@@ -39,10 +37,7 @@ export async function isEmailVerificationRequired(
 ): Promise<boolean> {
   const scope = getPolicyScopeFromRole(user.role);
   const scopedKey = getEmailVerificationRequiredKey(scope);
-  const scoped = await ctx.db
-    .query("appSettings")
-    .withIndex("by_key", (q) => q.eq("key", scopedKey))
-    .unique();
+  const scoped = await ctx.runQuery(components.platform.appSettings.getRaw, { key: scopedKey });
 
   if (scoped) {
     try {
@@ -131,17 +126,4 @@ export const authedMutation = customMutation(
   }),
 );
 
-/** Maximum lengths for user-supplied string fields (defense against resource exhaustion). */
-export const MAX_NAME_LENGTH = 255;
-export const MAX_DESCRIPTION_LENGTH = 5000;
-
-/** Throw if a string exceeds the allowed length. */
-export function assertMaxLength(
-  value: string | undefined,
-  maxLength: number,
-  fieldName: string,
-): void {
-  if (value !== undefined && value.length > maxLength) {
-    throw new Error(`${fieldName}_TOO_LONG`);
-  }
-}
+export { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, assertMaxLength } from "@web-app-starter/convex-platform/validation";

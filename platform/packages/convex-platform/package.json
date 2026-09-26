@@ -8,7 +8,10 @@
     "./constants": "./src/component/auditTrailConstants.ts",
     "./_generated/component": "./src/component/_generated/component.ts",
     "./_generated/component.js": "./src/component/_generated/component.ts",
-    "./test": "./src/test.ts"
+    "./test": "./src/test.ts",
+    "./validation": "./src/component/inputLimits.ts",
+    "./securityPolicies": "./src/component/securityPolicies.ts",
+    "./onboardingType": "./src/component/onboardingType.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

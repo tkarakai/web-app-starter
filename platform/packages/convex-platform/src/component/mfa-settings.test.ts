@@ -1,9 +1,11 @@
-import { createTestEnv as createPlatformTest } from "../test.modules";
+import { convexTest } from "convex-test";
+import schema from "./schema";
+const modules = import.meta.glob("./**/*.ts");
 import { describe, expect, test } from "vitest";
 
 
 function createTestEnv() {
-  return createPlatformTest();
+  return convexTest(schema, modules);
 }
 
 describe("MFA settings (emailMfaRequired)", () => {

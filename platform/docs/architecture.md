@@ -146,3 +146,21 @@ export function MyComponent() {
   return <ItemList items={items} onCreate={handleCreate} />;
 }
 ```
+
+## Platform data component
+
+`@web-app-starter/convex-platform` owns audit events, app settings and announcements. The
+app installs it with `app.use(platform)` in `packages/backend/convex/convex.config.ts`. Keep
+that hook. App code calls the existing `api.platform.auditTrail`, `api.platform.appSettings`
+and `api.platform.announcements` wrappers; those wrappers check identity, permissions and
+rate limits. Direct `ctx.db` access from app code cannot reach component data.
+
+Announcement scheduling, cancellation, tie-breaking and audit writes run inside the
+component. The wrapper renders announcement URL variables from the app environment and
+combines stored email templates with the app-branded defaults. The component needs no new
+environment variables. Client announcement IDs are strings; use the exported `Announcement`
+type from `@repo/backend` for row data. Never cast them to the app data model’s IDs.
+
+For backend tests, use the shared factory in `convex/test.modules.ts`; see [testing](testing.md).
+The legacy app tables remain during the data-migration transition, but new writes and reads
+use the component. Historical rows must be migrated before the old schema is removed.
