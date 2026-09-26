@@ -32,3 +32,6 @@ import type { FunctionReturnType } from "convex/server";
 import type { api } from "./convex/_generated/api";
 /** Audit row returned by the platform wrapper; component IDs are strings. */
 export type AuditTrailEvent = FunctionReturnType<typeof api.platform.auditTrail.list>["page"][number];
+
+/** Announcement storage shape exposed by wrappers; IDs are component strings. */
+export type Announcement = Omit<NonNullable<FunctionReturnType<typeof api.platform.announcements.list>>[number], "isActiveNow" | "isPublishNowEligible" | "status">;

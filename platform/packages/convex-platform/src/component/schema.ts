@@ -16,7 +16,33 @@ export const auditTrailFields = {
   truncatedFields: v.optional(v.string()),
 };
 
+export const appSettingsFields = { key: v.string(), value: v.string(), updatedAt: v.number(), updatedBy: v.optional(v.string()) };
+
+export const announcementFields = {
+    name: v.string(),
+    bannerText: v.string(),
+    callToActionName: v.optional(v.string()),
+    callToActionUrl: v.optional(v.string()),
+    learnMoreName: v.optional(v.string()),
+    learnMoreContent: v.optional(v.string()),
+    scheduleStart: v.optional(v.number()),
+    scheduleEnd: v.optional(v.number()),
+    publishJobId: v.optional(v.id("_scheduled_functions")),
+    unpublishJobId: v.optional(v.id("_scheduled_functions")),
+    isLive: v.boolean(),
+    isArchived: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+};
+
 export default defineSchema({
+  appSettings: defineTable(appSettingsFields).index("by_key", ["key"]),
+  announcements: defineTable(announcementFields)
+    .index("by_isLive", ["isLive"])
+    .index("by_scheduleEnd", ["scheduleEnd"])
+    .index("by_updatedAt", ["updatedAt"]),
   auditTrail: defineTable({
     ...auditTrailFields,
     // Set only on rows copied from the app's legacy `auditTrail` table.

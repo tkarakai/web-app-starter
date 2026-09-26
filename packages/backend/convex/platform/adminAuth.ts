@@ -29,10 +29,7 @@ export const getMfaPolicy = authedQuery({
   handler: async (ctx) => {
     requireAdmin(ctx.user as Record<string, unknown>);
 
-    const setting = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", "emailMfaRequired"))
-      .unique();
+    const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailMfaRequired" });
 
     return {
       mfaRequired: setting ? JSON.parse(setting.value) === true : false,
@@ -51,28 +48,7 @@ export const setMfaPolicy = authedMutation({
 
     const key = "emailMfaRequired";
     const value = JSON.stringify(args.required);
-    let oldValue: string | undefined;
-
-    const existing = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", key))
-      .unique();
-
-    if (existing) {
-      oldValue = existing.value;
-      await ctx.db.patch(existing._id, {
-        value,
-        updatedAt: Date.now(),
-        updatedBy: ctx.ownerId,
-      });
-    } else {
-      await ctx.db.insert("appSettings", {
-        key,
-        value,
-        updatedAt: Date.now(),
-        updatedBy: ctx.ownerId,
-      });
-    }
+    const { previousValue: oldValue } = await ctx.runMutation(components.platform.appSettings.putRaw, { key, value, updatedBy: ctx.ownerId });
 
     await scheduleAuditEvent(ctx, {
       actor: ctx.ownerId,
@@ -96,10 +72,7 @@ export const getEmailVerificationPolicy = authedQuery({
   handler: async (ctx) => {
     requireAdmin(ctx.user as Record<string, unknown>);
 
-    const setting = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", "emailVerificationRequired"))
-      .unique();
+    const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailVerificationRequired" });
 
     return {
       emailVerificationRequired: setting ? JSON.parse(setting.value) === true : true,
@@ -118,28 +91,7 @@ export const setEmailVerificationPolicy = authedMutation({
 
     const key = "emailVerificationRequired";
     const value = JSON.stringify(args.required);
-    let oldValue: string | undefined;
-
-    const existing = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", key))
-      .unique();
-
-    if (existing) {
-      oldValue = existing.value;
-      await ctx.db.patch(existing._id, {
-        value,
-        updatedAt: Date.now(),
-        updatedBy: ctx.ownerId,
-      });
-    } else {
-      await ctx.db.insert("appSettings", {
-        key,
-        value,
-        updatedAt: Date.now(),
-        updatedBy: ctx.ownerId,
-      });
-    }
+    const { previousValue: oldValue } = await ctx.runMutation(components.platform.appSettings.putRaw, { key, value, updatedBy: ctx.ownerId });
 
     await scheduleAuditEvent(ctx, {
       actor: ctx.ownerId,

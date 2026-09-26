@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { createAuth } from "./auth";
 import { isLocalDevelopment } from "./developmentOnly";
@@ -28,10 +28,7 @@ const SEED_SENTINEL_KEY = "devSeedCompleted";
 export const isSeeded = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const sentinel = await ctx.db
-      .query("appSettings")
-      .withIndex("by_key", (q) => q.eq("key", SEED_SENTINEL_KEY))
-      .first();
+    const sentinel = await ctx.runQuery(components.platform.appSettings.getRaw, { key: SEED_SENTINEL_KEY });
     return sentinel !== null;
   },
 });
@@ -43,10 +40,9 @@ export const isSeeded = internalQuery({
 export const markSeeded = internalMutation({
   args: {},
   handler: async (ctx) => {
-    await ctx.db.insert("appSettings", {
+    await ctx.runMutation(components.platform.appSettings.putRaw, {
       key: SEED_SENTINEL_KEY,
       value: "true",
-      updatedAt: Date.now(),
     });
   },
 });

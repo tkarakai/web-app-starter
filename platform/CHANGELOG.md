@@ -24,6 +24,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** apps consuming announcements or reading platform settings directly.
+  Settings and announcements now live in the platform component. Existing public API paths
+  and authorization rules are preserved; announcement IDs cross the boundary as strings.
+  **What to do:** run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-announcement-types.ts` for
+  `Doc<"announcements">` / `Id<"announcements">` usages, then regenerate the Convex API.
+  Read settings through `api.platform.appSettings.*` (or the internal wrappers from backend
+  code), never through the app database. URL rendering and branded email defaults remain
+  in the app wrappers. Old rows remain available for the staged data migration.
+  **Done when:** codemod `--check`, typecheck, backend tests and admin flows pass.
+  Scheduled announcements now use the component scheduler and clear their own completed
+  job reference without trying to cancel the running job.
+
 - **Who is affected:** apps consuming audit-trail rows. Audit storage now lives in the
   `@web-app-starter/convex-platform` component; wrappers remain `api.platform.auditTrail.*`.
   **What to do:** retain `app.use(platform)` in `convex.config.ts` and add the component

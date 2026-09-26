@@ -1,21 +1,22 @@
-import { createTestEnv as createPlatformTest } from "../test.modules";
+import { convexTest } from "convex-test";
+import schema from "./schema";
+const modules = import.meta.glob("./**/*.ts");
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { components, internal } from "../_generated/api";
-import { localAppOrigin } from "@web-app-starter/app-config";
+import { api } from "./_generated/api";
 
 function createTestEnv() {
-  return createPlatformTest();
+  return convexTest(schema, modules);
 }
 
 async function createScheduledJobId(t: ReturnType<typeof createTestEnv>) {
   return t.run(async (ctx) => {
     return ctx.scheduler.runAfter(
       86_400_000,
-      internal.platform.auditTrail.insertEvent,
+      api.auditTrail.insertEvent,
       {
         actor: "system",
-        sourceDetail: "test-suite",
+        source: "server:test-suite",
         action: "announcement.created",
         resource: "announcement:test",
         status: "succeeded",
@@ -66,7 +67,7 @@ describe("announcements", () => {
       });
     });
 
-    const result = await t.query(internal.platform.announcements.getActiveInternal, {});
+    const result = await t.query(api.announcements.getActiveInternal, {});
     expect(result?.name).toBe("active");
     expect(result?.bannerText).toBe("Active now");
   });
@@ -97,11 +98,11 @@ describe("announcements", () => {
       });
     });
 
-    const result = await t.query(internal.platform.announcements.getActiveInternal, {});
+    const result = await t.query(api.announcements.getActiveInternal, {});
     expect(result?.name).toBe("active");
   });
 
-  test("replaces learn more template variables", async () => {
+  test("returns raw template variables for the app wrapper to render", async () => {
     const t = createTestEnv();
     const now = Date.now();
 
@@ -118,9 +119,9 @@ describe("announcements", () => {
       });
     });
 
-    const result = await t.query(internal.platform.announcements.getActiveInternal, {});
-    expect(result?.learnMoreContent).toContain(localAppOrigin("landing"));
-    expect(result?.learnMoreContent).toContain(localAppOrigin("web"));
+    const result = await t.query(api.announcements.getActiveInternal, {});
+    expect(result?.learnMoreContent).toContain("{{landingPageUrl}}");
+    expect(result?.learnMoreContent).toContain("{{webAppUrl}}");
   });
 
   test("scheduled publish keeps only the most recently updated announcement", async () => {
@@ -165,7 +166,7 @@ describe("announcements", () => {
       });
     });
 
-    await t.mutation(internal.platform.announcements.handleScheduledStart, {
+    await t.mutation(api.announcements.handleScheduledStart, {
       announcementId: olderId,
       expectedScheduleStart: scheduleStart,
       expectedScheduleEnd: undefined,
@@ -181,7 +182,7 @@ describe("announcements", () => {
     expect(newer?.publishJobId).toBeDefined();
     expect(currentlyLive?.isLive).toBe(true);
 
-    await t.mutation(internal.platform.announcements.handleScheduledStart, {
+    await t.mutation(api.announcements.handleScheduledStart, {
       announcementId: newerId,
       expectedScheduleStart: scheduleStart,
       expectedScheduleEnd: undefined,
@@ -229,12 +230,12 @@ describe("announcements", () => {
       });
     });
 
-    await t.mutation(internal.platform.announcements.handleScheduledEnd, {
+    await t.mutation(api.announcements.handleScheduledEnd, {
       announcementId: liveId,
       expectedScheduleEnd: scheduleEnd,
     });
 
-    await t.mutation(internal.platform.announcements.handleScheduledEnd, {
+    await t.mutation(api.announcements.handleScheduledEnd, {
       announcementId: nonLiveId,
       expectedScheduleEnd: scheduleEnd,
     });
@@ -270,13 +271,13 @@ describe("announcements", () => {
       });
     });
 
-    await t.mutation(internal.platform.announcements.handleScheduledStart, {
+    await t.mutation(api.announcements.handleScheduledStart, {
       announcementId: id,
       expectedScheduleStart: now - 1000,
       expectedScheduleEnd: now + 20_000,
     });
 
-    await t.mutation(internal.platform.announcements.handleScheduledEnd, {
+    await t.mutation(api.announcements.handleScheduledEnd, {
       announcementId: id,
       expectedScheduleEnd: now - 1000,
     });
@@ -319,7 +320,7 @@ describe("announcements", () => {
       });
     });
 
-    await t.mutation(internal.platform.announcements.publishNowInternal, {
+    await t.mutation(api.announcements.publishNowInternal, {
       announcementId: targetId,
     });
 
@@ -360,13 +361,13 @@ describe("announcements", () => {
     });
 
     await expect(
-      t.mutation(internal.platform.announcements.publishNowInternal, {
+      t.mutation(api.announcements.publishNowInternal, {
         announcementId: futureStartId,
       })
     ).rejects.toThrow("PUBLISH_NOW_NOT_ALLOWED");
 
     await expect(
-      t.mutation(internal.platform.announcements.publishNowInternal, {
+      t.mutation(api.announcements.publishNowInternal, {
         announcementId: endedId,
       })
     ).rejects.toThrow("PUBLISH_NOW_NOT_ALLOWED");
@@ -399,7 +400,7 @@ describe("announcements", () => {
       });
     });
 
-    await t.mutation(internal.platform.announcements.unpublishNowInternal, {
+    await t.mutation(api.announcements.unpublishNowInternal, {
       announcementId: liveId,
     });
 
@@ -409,7 +410,7 @@ describe("announcements", () => {
     expect(liveAfter?.unpublishJobId).toBeUndefined();
 
     await expect(
-      t.mutation(internal.platform.announcements.unpublishNowInternal, {
+      t.mutation(api.announcements.unpublishNowInternal, {
         announcementId: draftId,
       })
     ).rejects.toThrow("ANNOUNCEMENT_NOT_LIVE");
@@ -439,10 +440,10 @@ describe("announcements", () => {
       });
     });
 
-    await t.mutation(internal.platform.announcements.publishNowInternal, {
+    await t.mutation(api.announcements.publishNowInternal, {
       announcementId: targetId,
     });
-    await t.mutation(internal.platform.announcements.unpublishNowInternal, {
+    await t.mutation(api.announcements.unpublishNowInternal, {
       announcementId: targetId,
     });
 
@@ -451,7 +452,7 @@ describe("announcements", () => {
     });
 
     const actions = await t.run(async (ctx) => {
-      const { page: rows } = await ctx.runQuery(components.platform.auditTrail.list, {
+      const { page: rows } = await ctx.runQuery(api.auditTrail.list, {
         paginationOpts: { numItems: 100, cursor: null },
       });
       return rows
@@ -499,7 +500,7 @@ describe("announcements", () => {
       });
     });
 
-    const rows = await t.query(internal.platform.announcements.getAdminListInternal, {});
+    const rows = await t.query(api.announcements.getAdminListInternal, {});
     expect(rows.map((row) => row.name)).toEqual([
       "no-start",
       "start-later",
@@ -566,7 +567,7 @@ describe("announcements", () => {
       });
     });
 
-    const rows = await t.query(internal.platform.announcements.getAdminListInternal, {});
+    const rows = await t.query(api.announcements.getAdminListInternal, {});
     const statuses = new Map(rows.map((row) => [row.name, row.status]));
 
     expect(statuses.get("live-now")).toBe("live_now");
@@ -600,15 +601,54 @@ describe("announcements", () => {
       });
     });
 
-    const defaultRows = await t.query(internal.platform.announcements.getAdminListInternal, {});
+    const defaultRows = await t.query(api.announcements.getAdminListInternal, {});
     expect(defaultRows.map((row) => row.name)).toEqual(["active"]);
 
-    const withArchivedRows = await t.query(internal.platform.announcements.getAdminListInternal, {
+    const withArchivedRows = await t.query(api.announcements.getAdminListInternal, {
       includeArchived: true,
     });
     expect(withArchivedRows.map((row) => row.name).sort()).toEqual([
       "active",
       "archived",
     ]);
+  });
+});
+
+// Exercise the real component scheduler, rather than calling its handlers directly.
+describe("announcement job lifecycle", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-01-01T00:00:00Z")); });
+  afterEach(() => vi.useRealTimers());
+
+  test("created jobs publish and unpublish once inside component storage", async () => {
+    const t = createTestEnv();
+    const now = Date.now();
+    await t.mutation(api.announcements.create, {
+      identity: { userId: "admin", actor: "admin@example.test" },
+      name: "Scheduled", bannerText: "Hello", scheduleStart: now + 1000, scheduleEnd: now + 3000,
+    });
+    expect(await t.query(api.announcements.getActivePublic, {})).toBeNull();
+    await vi.advanceTimersByTimeAsync(1000);
+    await t.finishInProgressScheduledFunctions();
+    expect(await t.query(api.announcements.getActivePublic, {})).toMatchObject({ name: "Scheduled", isLive: true });
+    await vi.advanceTimersByTimeAsync(2000);
+    await t.finishInProgressScheduledFunctions();
+    expect(await t.query(api.announcements.getActivePublic, {})).toBeNull();
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const events = await t.query(api.auditTrail.list, { paginationOpts: { numItems: 100, cursor: null } });
+    expect(events.page.filter(row => row.action === "announcement.published")).toHaveLength(1);
+    expect(events.page.filter(row => row.action === "announcement.unpublished")).toHaveLength(1);
+  });
+
+  test("archiving cancels pending component jobs", async () => {
+    const t = createTestEnv();
+    const identity = { userId: "admin", actor: "admin@example.test" };
+    const { id } = await t.mutation(api.announcements.create, {
+      identity, name: "Cancelled", bannerText: "Hidden", scheduleStart: Date.now() + 1000,
+    });
+    await t.mutation(api.announcements.archive, { identity, announcementId: id });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await t.query(api.announcements.getActivePublic, {})).toBeNull();
+    const events = await t.query(api.auditTrail.list, { paginationOpts: { numItems: 100, cursor: null } });
+    expect(events.page.some(row => row.action === "announcement.published")).toBe(false);
   });
 });
