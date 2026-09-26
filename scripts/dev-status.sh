@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
+source "$SCRIPT_DIR/dev-dashboard.sh"
 
 # ============================================================
 # HELPER FUNCTIONS
@@ -36,13 +37,6 @@ get_convex_ports() {
         local cloud_port=$(grep -o '"cloud":[0-9]*' "$config_file" | grep -o '[0-9]*')
         local site_port=$(grep -o '"site":[0-9]*' "$config_file" | grep -o '[0-9]*')
         echo "$cloud_port $site_port"
-    fi
-}
-
-get_dashboard_url() {
-    local log_file="$PROJECT_DIR/.convex-dev.log"
-    if [ -f "$log_file" ]; then
-        grep -o 'http://127\.0\.0\.1:[0-9]*/?d=[^ ]*' "$log_file" | head -1
     fi
 }
 
@@ -144,7 +138,7 @@ if [ -n "$CONVEX_PID" ]; then
         fi
         DASHBOARD_URL=$(get_dashboard_url)
         if [ -n "$DASHBOARD_URL" ]; then
-            printf "  %-12s  ${DIM}%-6s${NC}  ${BLUE}%s${NC}\n" "Dashboard" "" "$DASHBOARD_URL"
+            printf "  %-12s  ${DIM}%-6s${NC}  ${BLUE}%s${NC}\n" "Convex UI" "" "$DASHBOARD_URL"
         fi
     else
         printf "  %-12s  ${RED}%-6s${NC}  %-30s  %s\n" "Convex API" "dead" "-" "$CONVEX_PID"
@@ -164,7 +158,7 @@ if [ -n "$CONVEX_PID" ] && is_running "$CONVEX_PID"; then
 fi
 if [ -n "$LOG_FILES" ]; then
     echo ""
-    echo -e "  ${YELLOW}Logs:${NC} tail -f$LOG_FILES"
+    echo -e "  ${YELLOW}Logs:${NC} tail -f ${LOG_FILES# }"
 fi
 
 echo ""
