@@ -30,41 +30,41 @@ jobs:
 
   shared:
     needs: resolve
-    uses: ./.github/workflows/ci-shared.yml
+    uses: ./.github/workflows/platform-ci-shared.yml
     with:
       git_sha: ${{ needs.resolve.outputs.sha }}
 
   web:
     needs: resolve
-    uses: ./.github/workflows/ci-web.yml
+    uses: ./.github/workflows/platform-ci-web.yml
     with:
       git_sha: ${{ needs.resolve.outputs.sha }}
       require_e2e: true
 
   admin:
     needs: resolve
-    uses: ./.github/workflows/ci-admin.yml
+    uses: ./.github/workflows/platform-ci-admin.yml
     with:
       git_sha: ${{ needs.resolve.outputs.sha }}
       require_e2e: true
 
   landing:
     needs: resolve
-    uses: ./.github/workflows/ci-landing.yml
+    uses: ./.github/workflows/platform-ci-landing.yml
     with:
       git_sha: ${{ needs.resolve.outputs.sha }}
       require_e2e: true
 
   landing-static:
     needs: resolve
-    uses: ./.github/workflows/ci-landing-static.yml
+    uses: ./.github/workflows/platform-ci-landing-static.yml
     with:
       git_sha: ${{ needs.resolve.outputs.sha }}
       require_e2e: true
 
   storybook:
     needs: resolve
-    uses: ./.github/workflows/ci-storybook.yml
+    uses: ./.github/workflows/platform-ci-storybook.yml
     with:
       git_sha: ${{ needs.resolve.outputs.sha }}
       require_e2e: true

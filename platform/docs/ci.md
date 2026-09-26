@@ -63,6 +63,38 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 4. `ci-landing.yml` — Landing app: same checks (no Convex dependency)
 5. `ci-storybook.yml` — Storybook app: build, E2E (non-blocking, not required for merge)
 
+### Reusable platform workflows and thin callers
+
+The logic lives in the platform zone as reusable workflows, `platform-*.yml`
+(`platform-ci-shared`, `-ci-web`, `-ci-admin`, `-ci-landing`, `-ci-landing-static`,
+`-ci-storybook`, `-security`, `-cd-staging`, `-cd-production`, `-cd-rollback`), and the
+composite actions in `.github/actions/`. They are replaced on platform upgrade. The app owns thin
+callers with the familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): triggers, the
+permissions they grant, `secrets: inherit` for deploys, and the `CI <App> Complete` job that
+branch rules require. Change triggers there, never in `platform-*.yml`.
+
+- **The platform unit suite** (dev-script and ops tests, the starter upgrade rehearsal) runs in
+  CI Shared only when `platform/**`, `.github/**`, `apps/demo/**`, `package.json` or `bun.lock`
+  changed. Lint, typecheck, the zone check and contracts run on every PR.
+- **Actions stay pinned to full commit SHAs** (`bun run check:actions-pinned`, in CI Shared).
+  Some accounts refuse unpinned actions.
+
+### Paid features on private repositories
+
+Every workflow runs on GitHub Free with a private repository. Features that GitHub gives free
+only to public repositories run when the repository is public or a repository variable turns
+them on (Settings → Secrets and variables → Actions → Variables); otherwise their job is
+skipped and a **Paid feature skipped** notice explains why (`.github/actions/paid-feature`).
+
+| Feature | Where | Enable on a private repository |
+|---|---|---|
+| CodeQL, dependency review | `platform-security.yml` | GitHub Code Security, then `PLATFORM_CODE_SECURITY=true` |
+| Build provenance attestations | `platform-cd-staging.yml`, `platform-cd-production.yml` | Organisation on Enterprise Cloud, then `PLATFORM_ATTESTATIONS=true` (user-owned private repositories can't). A failed attestation never fails a deploy |
+| Production approval (required reviewers) | `production` environment | Enterprise (private repositories), then `PLATFORM_ENVIRONMENT_PROTECTION=true`. Informational: without it the `confirm` input is the only gate |
+
+Deploy jobs name the `staging` and `production` environments but read only repository-level
+secrets, so they work on every plan.
+
 Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling both GitHub Actions and act-specific cache-aware setup automatically.
 
 **Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation) and bind-mount mode (`-b`) to make composite actions visible to act.

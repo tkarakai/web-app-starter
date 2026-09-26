@@ -138,6 +138,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Reusable platform workflows, `.github/workflows/platform-*.yml` (CI for each app, security,
+  staging and production deploys, rollback), with the app-owned `ci-*.yml`, `cd-*.yml` and
+  `security.yml` as thin callers that keep their names, triggers and `CI <App> Complete`
+  checks. Features GitHub gives free only to public repositories (CodeQL, dependency review,
+  build attestations, production approval) skip with a visible notice on a private repository
+  unless `PLATFORM_CODE_SECURITY`, `PLATFORM_ATTESTATIONS` or `PLATFORM_ENVIRONMENT_PROTECTION`
+  is `true`. The platform unit suite runs only when the platform changed.
+  `bun run check:actions-pinned` (in CI) requires full commit SHAs for every action.
+  **If you edited these workflows:** move your trigger and permission changes to the callers
+  and take the platform's `platform-*.yml`. Guide: `platform/docs/ci.md`.
 - `platform/config/renovate-preset.json`: the platform's Renovate policy (cooldown, grouping,
   automerge, holds) as a preset. It ignores the platform zone (`platform/**`,
   `.github/workflows/platform-*.yml`, `.github/actions/**`), so Renovate never edits it in your
