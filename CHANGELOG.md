@@ -13,6 +13,31 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Action required
+
+- **Who is affected:** apps whose hosted (staging or production) Convex deployment has no
+  `RESEND_API_KEY`. Auth and invitation emails there used to be written to the Convex logs;
+  they now fail with `EMAIL_DELIVERY_NOT_CONFIGURED`.
+  **What to do:** `CONVEX_DEPLOY_KEY=<key> bunx convex env set RESEND_API_KEY <key>` and
+  `... bunx convex env set EMAIL_FROM <address>` on each hosted deployment.
+  **Done when:** `CONVEX_DEPLOY_KEY=<key> bunx convex env get RESEND_API_KEY` prints a value
+  for every hosted deployment. Local development is unchanged.
+
+### Security
+
+- Mock email and the dev seed run only in local development
+  (`packages/backend/convex/developmentOnly.ts`: every `SITE_URL` origin must be plain HTTP on
+  `localhost`, `*.localhost`, `127.0.0.1` or `[::1]`). Without `RESEND_API_KEY`, `sendAuthEmail`
+  and the waitlist and admin invitation actions log to the console locally and throw
+  `EMAIL_DELIVERY_NOT_CONFIGURED` elsewhere, instead of writing live links and tokens to hosted
+  logs. `devSeed:seed` throws `DEV_SEED_NOT_LOCAL` outside local development even with
+  `DEV_SEED_ENABLED=true`. `dev-start.sh` gives a fresh backend a provisional local `SITE_URL`
+  before seeding.
+- The session cookie is matched by exact name (`better-auth.session_token` or
+  `__Secure-better-auth.session_token`) in `hasSessionCookie` (`@repo/edge-rate-limit`) and in
+  the Convex sessions API, instead of by suffix or substring, so look-alike cookies such as
+  `evil-better-auth.session_token` no longer count as a session.
+
 ## [1.0.0] - 2026-09-25
 
 First tagged release. The baseline: the starter as it exists today, with a version

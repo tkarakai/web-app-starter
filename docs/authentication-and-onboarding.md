@@ -503,7 +503,7 @@ The `invite` mutation:
    - Generates a 32-byte crypto-random token (64 hex chars)
    - Stores only the token's SHA-256 hash + expiry (default 7 days, configurable via `invitationTokenExpiryDays` in `appSettings`) on the invitation row
    - Builds onboarding URL: `{ADMIN_SITE_URL}/onboarding?token={token}` (`ADMIN_SITE_URL` is required)
-   - Sends an HTML email via Resend (or logs the URL to console in dev when no `RESEND_API_KEY` is set)
+   - Sends an HTML email via Resend (or, in local development only, logs the URL to the console when no `RESEND_API_KEY` is set; elsewhere a missing key throws `EMAIL_DELIVERY_NOT_CONFIGURED`)
 
 Authentication emails (`sendAuthEmail`) and both admin and user invitation actions
 throw when Resend returns an API or transport error. For invitations, the email
