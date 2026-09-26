@@ -1,0 +1,123 @@
+name: Platform Security
+
+on:
+  workflow_call:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  # Paid features: CodeQL and dependency review are free on public repositories and need
+  # GitHub Code Security on private ones. They run when the repository is public or the
+  # repository variable PLATFORM_CODE_SECURITY is "true" (platform/docs/ci.md), and are
+  # otherwise skipped with a visible notice, so the workflow works on GitHub Free.
+  paid-features:
+    name: Paid Features
+    runs-on: ubuntu-latest
+    outputs:
+      code_security: ${{ steps.gate.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/actions
+      - id: gate
+        uses: ./.github/actions/paid-feature
+        with:
+          feature: CodeQL and dependency review
+          enabled: ${{ vars.PLATFORM_CODE_SECURITY }}
+          variable: PLATFORM_CODE_SECURITY
+
+  codeql:
+    name: CodeQL Analysis
+    needs: paid-features
+    if: needs.paid-features.outputs.code_security == 'true'
+    runs-on: ubuntu-latest
+    # Don't fail the workflow if Advanced Security is not enabled
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          category: "/language:javascript-typescript"
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run npm audit
+        run: |
+          echo "## Dependency Audit Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Run audit and capture output
+          npm audit --audit-level=high 2>&1 | tee audit-output.txt || true
+          # Extract vulnerability counts if available
+          if grep -q "found 0 vulnerabilities" audit-output.txt; then
+            echo "✅ No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Vulnerabilities detected - review audit output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@288a8a8643a2c5a36b81d231c550dccfa0beeb64 # main
+        continue-on-error: true
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  dependency-review:
+    name: Dependency Review
+    needs: paid-features
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && needs.paid-features.outputs.code_security == 'true'
+    # Don't fail the workflow if Advanced Security is not enabled
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # Only deny GPL-3.0 for runtime dependencies
+          # AGPL-3.0 removed since our only AGPL dep (TruffleHog) is a CI tool
+          deny-licenses: GPL-3.0

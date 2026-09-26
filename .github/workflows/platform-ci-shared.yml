@@ -1,0 +1,237 @@
+name: Platform CI Shared
+
+on:
+  workflow_call:
+    inputs:
+      git_sha:
+        description: Source commit to test
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: ci-shared-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+# =============================================================================
+# Shared CI checks that span ALL packages (not app-specific).
+# - Lint & typecheck (turbo runs across all workspaces)
+# - Convex backend tests (package-level, not per-app)
+# =============================================================================
+
+jobs:
+  # ============================================================
+  # CHANGE DETECTION
+  # ============================================================
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
+      root: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.root || steps.filter.outputs.root }}
+      platform: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.platform || steps.filter.outputs.platform }}
+    steps:
+      # In act (local CI), git worktrees use a .git file pointing to the main
+      # repo which doesn't exist inside the container. Skip change detection
+      # and run all jobs instead.
+      - name: Run all jobs in act
+        if: ${{ env.ACT }}
+        id: act-all
+        run: |
+          echo "Running in act — skipping change detection, all jobs will run"
+          echo "backend=true" >> "$GITHUB_OUTPUT"
+          echo "root=true" >> "$GITHUB_OUTPUT"
+          echo "platform=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: ${{ !env.ACT }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+
+      - name: Detect file changes
+        if: ${{ !env.ACT }}
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'packages/backend/**'
+            root:
+              - 'package.json'
+              - 'bun.lock'
+              - 'turbo.json'
+              - 'app.config.ts'
+              - 'platform/packages/app-config/**'
+              - 'platform/config/**'
+              - 'eslint.config.mjs'
+              - 'platform/tooling/**'
+            # The platform unit suite and upgrade rehearsal: platform code, its
+            # workflows, the demo app it rehearses on, and the dependency set.
+            platform:
+              - 'platform/**'
+              - '.github/**'
+              - 'apps/demo/**'
+              - 'package.json'
+              - 'bun.lock'
+
+  # ============================================================
+  # LINT & TYPECHECK (always runs)
+  # ============================================================
+  lint:
+    name: Lint & Typecheck
+    needs: [changes]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+
+      - name: Check runtime baseline (Node/Bun versions agree)
+        run: bun run check:runtime-baseline
+
+      - name: Check agent skills and their links
+        run: bun run check:agent-skills
+
+      - name: Check actions are pinned to commit SHAs
+        run: bun run check:actions-pinned
+
+      # Platform-zone edits must be recorded patches; seams keep the platform hooks.
+      # An adopted app compares against the release commit in .platform-base.json.
+      - name: Zone check
+        run: |
+          if [[ -f .platform-base.json ]]; then
+            base="$(jq -r .commit .platform-base.json)"
+            git cat-file -e "${base}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base"
+          fi
+          bun run check:zone
+
+      - name: Check message files (platform and app, overrides)
+        run: bun run check:i18n
+
+      # Platform unit suite: only when the platform (or what it depends on) changed.
+      - name: Check development scripts and process isolation
+        if: needs.changes.outputs.platform == 'true'
+        run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
+
+      - name: Test ops CLI
+        if: needs.changes.outputs.platform == 'true' && hashFiles('platform/packages/ops/package.json') != ''
+        run: bun run test:ops
+
+      - name: Run TypeScript check
+        run: bunx turbo typecheck
+
+      - name: Run ESLint
+        run: bunx turbo lint
+
+  # ============================================================
+  # BACKEND TESTS (if backend changed)
+  # ============================================================
+  test-convex:
+    name: Backend Tests (Convex)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.root == 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+
+      - name: Run Convex tests
+        run: bunx turbo test:convex
+
+  # ============================================================
+  # CONTRACTS (every PR): session and cookie isolation, security
+  # headers and env declarations per reference app; authorization
+  # of every platform Convex function; the app's own contracts.
+  # ============================================================
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+
+      - name: Run contracts
+        run: bun run test:contracts
+
+  # Local starter package contract and a rehearsal using the real demo app.
+  starter-upgrade:
+    name: Starter Upgrade Rehearsal
+    needs: [changes]
+    if: needs.changes.outputs.platform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+        with:
+          node-version: "24"
+      - name: Typecheck and lint starter scripts
+        run: bun run typecheck:starter-upgrade && bun run lint:starter-upgrade
+      - name: Check starter ownership and exercise upgrade contracts
+        run: bun run check:starter-ownership && bun run test:starter-upgrade
+      - name: Rehearse real demo baseline to target
+        run: bun run test:starter-rehearsal
+      - name: Retain plan and executable evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: starter-upgrade-evidence
+          include-hidden-files: true
+          path: |
+            .ci-local-artifacts/starter-upgrade/*.json
+            .ci-local-artifacts/starter-upgrade/*.log
+            .ci-local-artifacts/starter-upgrade/apps/demo/starter-upgrade.lock.json
+            .ci-local-artifacts/starter-upgrade/apps/demo/.starter-upgrade/*.json
+            .ci-local-artifacts/starter-upgrade/apps/demo/.starter-upgrade/*.log
+            .ci-local-artifacts/starter-upgrade/apps/demo/.next/server/app/dashboard.html
+
+  # ============================================================
+  # SUMMARY
+  # ============================================================
+  ci-shared-complete:
+    name: CI Shared Complete
+    runs-on: ubuntu-latest
+    needs: [lint, test-convex, contracts, starter-upgrade]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Convex: ${{ needs.test-convex.result }}"
+          echo "Starter upgrade rehearsal: ${{ needs.starter-upgrade.result }}"
+          echo "Contracts: ${{ needs.contracts.result }}"
+
+          if [[ "${{ needs.contracts.result }}" != "success" ]]; then
+            echo "Contracts failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.starter-upgrade.result }}" != "success" && "${{ needs.starter-upgrade.result }}" != "skipped" ]]; then
+            echo "Starter upgrade rehearsal failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.lint.result }}" != "success" ]]; then
+            echo "Lint failed"
+            exit 1
+          fi
+
+          CONVEX="${{ needs.test-convex.result }}"
+          if [[ "$CONVEX" != "success" && "$CONVEX" != "skipped" ]]; then
+            echo "test-convex failed with: $CONVEX"
+            exit 1
+          fi
+
+          echo "All shared CI jobs passed"

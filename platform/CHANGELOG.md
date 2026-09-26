@@ -138,6 +138,38 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Reusable platform workflows, `.github/workflows/platform-*.yml` (CI for each app, security,
+  staging and production deploys, rollback), with the app-owned `ci-*.yml`, `cd-*.yml` and
+  `security.yml` as thin callers that keep their names, triggers and `CI <App> Complete`
+  checks. Features GitHub gives free only to public repositories (CodeQL, dependency review,
+  build attestations, production approval) skip with a visible notice on a private repository
+  unless `PLATFORM_CODE_SECURITY`, `PLATFORM_ATTESTATIONS` or `PLATFORM_ENVIRONMENT_PROTECTION`
+  is `true`. The platform unit suite runs only when the platform changed.
+  `bun run check:actions-pinned` (in CI) requires full commit SHAs for every action.
+  **If you edited these workflows:** move your trigger and permission changes to the callers
+  and take the platform's `platform-*.yml`. Guide: `platform/docs/ci.md`.
+- `platform/config/renovate-preset.json`: the platform's Renovate policy (cooldown, grouping,
+  automerge, holds) as a preset. It ignores the platform zone (`platform/**`,
+  `.github/workflows/platform-*.yml`, `.github/actions/**`), so Renovate never edits it in your
+  app. Platform manifests now declare ranges (floors) instead of exact pins, so you can raise a
+  shared dependency without touching `platform/`. To use it, make your root `renovate.json`
+  extend `local>your-owner/your-repo//platform/config/renovate-preset` and keep only your own
+  rules there. Guide: `platform/docs/dependency-updates.md`.
+- Zone check (`bun run check:zone`, `platform/tooling/check-zone.ts`; a step of CI Shared's
+  lint job), `.platform-base.json` and the `platform-patch` skill. With a `.platform-base.json`
+  (`version`, release `commit`, `patches`), every platform-zone file that differs from the
+  release commit must be a recorded patch carrying a `PLATFORM-PATCH: <reason>` comment;
+  recorded patches are listed on every run. Seams must keep their platform hooks
+  (`...platformTables`, `registerPlatformRoutes(http)`, the config bases, the Renovate preset).
+  Without the file (the product repo) no app code may carry a patch marker.
+- Contracts (`bun run test:contracts`; CI Shared's **Contracts** job, on every PR):
+  `@web-app-starter/contracts` checks each reference app's `clear-session` route (deletes only
+  this app's session cookies, never another app's on the same host), proxy session detection,
+  CSP and security headers, and required environment declarations; the backend's
+  `endpoint-authorization.test.ts` requires every public platform Convex function to be
+  classified `public`, `user` or `admin` and checks anonymous and non-admin callers are refused;
+  `authorization-contract.test.ts` covers the sample domain's ownership rules. Guide:
+  `platform/docs/testing.md`, "Contracts".
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
 - `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and

@@ -74,7 +74,12 @@ function lastRun(): Record<string, unknown> {
 
 export async function main(): Promise<number> {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-  const config = JSON.parse(readFileSync(path.join(root, "renovate.json"), "utf8")) as { packageRules?: PackageRule[] };
+  // Holds live in the platform preset; the root renovate.json may add the app's own.
+  const read = (file: string) => JSON.parse(readFileSync(path.join(root, file), "utf8")) as { packageRules?: PackageRule[] };
+  const config = { packageRules: [
+    ...(read("platform/config/renovate-preset.json").packageRules ?? []),
+    ...(read("renovate.json").packageRules ?? []),
+  ] };
   const [dashboard] = JSON.parse(gh(["issue", "list", "--state", "open", "--search", "Dependency Dashboard in:title",
     "--json", "number,body", "--limit", "1"])) as { number: number; body: string }[];
   const prs = JSON.parse(gh(["pr", "list", "--state", "open", "--search", "head:renovate/", "--json",

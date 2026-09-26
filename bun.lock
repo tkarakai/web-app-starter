@@ -205,7 +205,7 @@
       "name": "@repo/admin",
       "version": "0.1.0",
       "dependencies": {
-        "@convex-dev/better-auth": "0.12.5",
+        "@convex-dev/better-auth": "^0.12.5",
         "@repo/backend": "workspace:*",
         "@tanstack/react-table": "^8.21.3",
         "@web-app-starter/app-config": "workspace:*",
@@ -231,16 +231,16 @@
         "@tailwindcss/postcss": "^4.1.4",
         "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.2",
-        "@types/node": "24.13.4",
+        "@types/node": "^24.13.4",
         "@types/qrcode": "^1.5.6",
         "@types/react": "^19.1.2",
         "@types/react-dom": "^19.1.2",
-        "@vitejs/plugin-react": "5.2.0",
+        "@vitejs/plugin-react": "^5.2.0",
         "@vitest/coverage-v8": "^5.0.0",
         "happy-dom": "^20.3.7",
         "size-limit": "^13.0.0",
         "tailwindcss": "^4.1.4",
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
         "vitest": "^5.0.0",
       },
     },
@@ -261,11 +261,11 @@
       "devDependencies": {
         "@playwright/test": "^1.58.2",
         "@tailwindcss/postcss": "^4.1.4",
-        "@types/node": "24.13.4",
+        "@types/node": "^24.13.4",
         "@types/react": "^19.1.2",
         "@types/react-dom": "^19.1.2",
         "tailwindcss": "^4.1.4",
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
       },
     },
     "platform/packages/app-config": {
@@ -273,23 +273,23 @@
       "version": "0.0.0",
       "devDependencies": {
         "@types/bun": "^1.3.6",
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
       },
     },
     "platform/packages/auth": {
       "name": "@web-app-starter/auth",
       "version": "0.0.0",
       "dependencies": {
-        "@better-auth/passkey": "1.6.33",
-        "@convex-dev/better-auth": "0.12.5",
+        "@better-auth/passkey": ">=1.6.33 <1.7.0",
+        "@convex-dev/better-auth": "^0.12.5",
         "@web-app-starter/app-config": "workspace:*",
-        "better-auth": "1.6.33",
-        "convex": "1.45.0",
+        "better-auth": ">=1.6.33 <1.7.0",
+        "convex": "^1.45.0",
       },
       "devDependencies": {
-        "@types/react": "19.3.0",
-        "@types/react-dom": "19.3.0",
-        "typescript": "6.0.3",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "next": "^16.3.3",
@@ -301,7 +301,7 @@
       "name": "@web-app-starter/auth-ui",
       "version": "0.0.0",
       "dependencies": {
-        "@convex-dev/better-auth": "0.12.5",
+        "@convex-dev/better-auth": "^0.12.5",
         "@repo/backend": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
         "@web-app-starter/auth": "workspace:*",
@@ -309,15 +309,15 @@
         "@web-app-starter/design-system": "workspace:*",
         "@web-app-starter/edge-rate-limit": "workspace:*",
         "@web-app-starter/i18n": "workspace:*",
-        "convex": "1.45.0",
-        "lucide-react": "1.46.0",
+        "convex": "^1.45.0",
+        "lucide-react": "^1.46.0",
         "next-intl": "^4.8.2",
         "next-themes": "^0.4.6",
       },
       "devDependencies": {
-        "@types/react": "19.3.0",
-        "@types/react-dom": "19.3.0",
-        "typescript": "6.0.3",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "next": "^16.3.3",
@@ -325,18 +325,30 @@
         "react-dom": "^19.0.0",
       },
     },
+    "platform/packages/contracts": {
+      "name": "@web-app-starter/contracts",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^24.13.4",
+        "@web-app-starter/app-config": "workspace:*",
+        "@web-app-starter/auth": "workspace:*",
+        "next": "^16.3.3",
+        "typescript": "^6.0.3",
+        "vitest": "^5.0.0",
+      },
+    },
     "platform/packages/design-patterns": {
       "name": "@web-app-starter/design-patterns",
       "version": "0.0.0",
       "dependencies": {
         "@web-app-starter/design-system": "workspace:*",
-        "lucide-react": "1.46.0",
+        "lucide-react": "^1.46.0",
         "next-themes": "^0.4.6",
       },
       "devDependencies": {
-        "@types/react": "19.3.0",
-        "@types/react-dom": "19.3.0",
-        "typescript": "6.0.3",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "react": "^19.0.0",
@@ -349,21 +361,21 @@
       "dependencies": {
         "@web-app-starter/auth": "workspace:*",
         "@web-app-starter/starter-sidebar-policy": "workspace:*",
-        "class-variance-authority": "0.7.1",
-        "clsx": "2.1.1",
-        "lucide-react": "1.46.0",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "lucide-react": "^1.46.0",
         "qrcode": "^1.5.4",
         "radix-ui": "^1.4.1",
         "sonner": "^2.0.0",
-        "tailwind-merge": "3.7.0",
+        "tailwind-merge": "^3.7.0",
       },
       "devDependencies": {
         "@types/qrcode": "^1.5.6",
-        "@types/react": "19.3.0",
-        "@types/react-dom": "19.3.0",
-        "tailwindcss": "4.3.3",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "tailwindcss": "^4.3.3",
         "tw-animate-css": "^1.4.0",
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "react": "^19.0.0",
@@ -374,7 +386,7 @@
       "name": "@web-app-starter/edge-rate-limit",
       "version": "0.0.0",
       "devDependencies": {
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "next": "^16.3.3",
@@ -389,8 +401,8 @@
         "next-intl": "^4.8.2",
       },
       "devDependencies": {
-        "@types/react": "19.3.0",
-        "typescript": "6.0.3",
+        "@types/react": "^19.3.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "next": "^16.3.3",
@@ -408,7 +420,7 @@
       },
       "devDependencies": {
         "@types/bun": "^1.3.6",
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
       },
     },
     "platform/packages/paper-roll": {
@@ -417,7 +429,7 @@
       "devDependencies": {
         "@types/bun": "^1.3.6",
         "@types/node": "^24.13.4",
-        "typescript": "6.0.3",
+        "typescript": "^6.0.3",
       },
     },
     "platform/packages/starter-sidebar-policy": {
@@ -1146,6 +1158,8 @@
     "@web-app-starter/auth": ["@web-app-starter/auth@workspace:platform/packages/auth"],
 
     "@web-app-starter/auth-ui": ["@web-app-starter/auth-ui@workspace:platform/packages/auth-ui"],
+
+    "@web-app-starter/contracts": ["@web-app-starter/contracts@workspace:platform/packages/contracts"],
 
     "@web-app-starter/design-patterns": ["@web-app-starter/design-patterns@workspace:platform/packages/design-patterns"],
 

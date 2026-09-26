@@ -1,0 +1,49 @@
+name: Paid feature gate
+description: >-
+  Decide whether a GitHub feature that is free only on public repositories (code scanning,
+  dependency review, artifact attestations) can run here: yes on a public repository, or when
+  the repository variable that enables it is "true". Otherwise emit a visible notice, so the
+  workflow still passes on GitHub Free with a private repository. See platform/docs/ci.md.
+
+inputs:
+  feature:
+    description: What is skipped, for the notice (e.g. "CodeQL and dependency review")
+    required: true
+  enabled:
+    description: The value of the enabling repository variable (pass vars.PLATFORM_*)
+    required: false
+    default: ""
+  variable:
+    description: The name of the enabling repository variable, for the notice
+    required: true
+  token:
+    description: Token to read the repository's visibility
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  enabled:
+    description: '"true" when the feature can run'
+    value: ${{ steps.gate.outputs.enabled }}
+
+runs:
+  using: composite
+  steps:
+    - id: gate
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        FEATURE: ${{ inputs.feature }}
+        ENABLED: ${{ inputs.enabled }}
+        VARIABLE: ${{ inputs.variable }}
+      run: |
+        # github.event has no repository on schedule events, so ask the API.
+        visibility="$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility 2>/dev/null || echo unknown)"
+        if [[ "$visibility" == "public" || "$ENABLED" == "true" ]]; then
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+        else
+          msg="$FEATURE skipped: this $visibility repository has not enabled it. Once the plan allows it, set the repository variable $VARIABLE=true (platform/docs/ci.md)."
+          echo "::notice title=Paid feature skipped::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
+        fi

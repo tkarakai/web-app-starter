@@ -183,7 +183,7 @@ test("hash resolution reads target configuration before looking up reusable byte
 });
 test("every deployment workflow records failures using workflow-version tooling", async () => {
   for (const kind of ["staging", "production", "rollback"]) {
-    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { if?: string; steps?: Step[] }>; permissions: Record<string, string> };
+    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { if?: string; steps?: Step[] }>; permissions: Record<string, string> };
     expect(workflow.permissions.deployments).toBe("write"); expect(workflow.jobs["ops-record"].if).toBe("always()");
     for (const app of ["web", "admin", "landing"]) {
       const steps = workflow.jobs[`deploy-${app}`].steps!;
@@ -195,7 +195,7 @@ test("every deployment workflow records failures using workflow-version tooling"
   }
 });
 test("staging success tags depend directly on every deploy and attestation outcome", async () => {
-  const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { needs: string[]; if: string }> };
+  const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { needs: string[]; if: string }> };
   for (const dependency of ["deploy-web", "deploy-admin", "deploy-landing", "attest", "smoke-test"]) expect(w.jobs.record.needs).toContain(dependency);
   expect(w.jobs.record.if).toContain("!contains(needs.*.result, 'failure')");
 });
@@ -208,7 +208,7 @@ test("health remains successful when a later tag write fails", async () => {
 
 test("production and rollback workflow gates resolve annotated tags and reject mismatched targets", async () => {
   for (const kind of ["production", "rollback"]) {
-    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: { validate: { steps: Step[] } } };
+    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: { validate: { steps: Step[] } } };
     const step = workflow.jobs.validate.steps.find(s => typeof s.with?.script === "string" && s.with.script.includes("listMatchingRefs"))!;
     const script = String(step.with!.script).replaceAll("${{ inputs.environment }}", "production");
     const execute = new Function("github", "context", "core", `return (async () => { ${script} })()`);
