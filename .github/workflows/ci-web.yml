@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       require_e2e:
-        description: Require every E2E job for release verification
+        description: Require every E2E job for full commit verification
         type: boolean
         default: false
       git_sha:
@@ -321,7 +321,7 @@ jobs:
           # E2E must succeed or be skipped (skipped for draft PRs)
           E2E="${{ needs.e2e.result }}"
           if [[ "${{ inputs.require_e2e }}" == "true" && "$E2E" != "success" ]]; then
-            echo "Release verification requires successful E2E tests"
+            echo "Full commit verification requires successful E2E tests"
             exit 1
           fi
           if [[ "$E2E" != "success" && "$E2E" != "skipped" ]]; then

@@ -7,8 +7,8 @@ The general mechanism is git. You merge a starter tag into your app, resolve
 conflicts once, and run the health check. The starter generally ships source rather than published packages. See [`VERSIONING.md`](./VERSIONING.md) for what the
 version numbers promise and [`CHANGELOG.md`](./CHANGELOG.md) for each release.
 
-**First release:** this revision prepares `v1.0.0`. It becomes available only after
-the main-only Starter Release workflow publishes the tag. Verify availability
+**First release:** this revision prepares `v1.0.0`. It becomes available only once
+its tag is published on `main`. Verify availability
 with the discovery commands below. Until then, record the exact starter source
 commit in bootstrap notes; preparation is not publication or application adoption.
 
@@ -439,8 +439,7 @@ cannot be completed, stop and say which and why.
 
 ## Verification evidence and limits
 
-Release preparation and locale merging have automated tests in
-`scripts/tests/release.test.ts` and `scripts/tests/resolve-i18n-conflicts.test.ts`.
+Locale merging has automated tests in `scripts/tests/resolve-i18n-conflicts.test.ts`.
 They use isolated Git repositories and include refusal paths and overlapping
 application translations. Run them through `bun run test:dev-scripts`.
 
