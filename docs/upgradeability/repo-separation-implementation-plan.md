@@ -41,10 +41,10 @@ Phases 0, 1, 3 and 4 can run in parallel. Phase 2 needs Phase 1 (layer 3 must ex
 
 | # | Task | Repo | Size | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
-| 0.1 | **Upstream lifeor2-client's improvements.** Cookie-prefix option in `@repo/auth`, threaded through `server.ts`, backend `auth.ts` and `sessions.ts`, `edge-rate-limit`, both `proxy.ts` and both `clear-session` routes. Exact cookie matching in `hasSessionCookie`. `developmentOnly` guards on mock email and dev seed. Tests for each | P | M | — | Tests pass; a fresh trial merge into lifeor2-client shows those files no longer conflict |
+| 0.1 | **Adopt lifeor2-client's fixes into the starter.** Implemented in `web-app-starter`; lifeor2-client's code is only the reference and isn't changed. (a) Exact session-cookie matching in `hasSessionCookie` instead of the loose `endsWith`. (b) `developmentOnly` guards so mock email (`sendAuthEmail`, `waitlistActions`, `adminInvitationActions`) and the dev seed can't run outside local development. Tests for each. The third lifeor2 change, a configurable cookie prefix, is a configuration value and is built once in 3.1–3.2 | P | S | — | Tests pass; a regression test shows mock email refusing to run in a non-local environment |
 | 0.2 | **Merge this branch** (`tkarakai/upgradeability`: the design, plan, brainstorms and case study) into `main`, so the plan is visible to all worktrees. The docs move to the maintainer repo in 1.2 | P | S | — | On `main` |
 
-**Checkpoint 0:** lifeor2-client's improvements are platform code.
+**Checkpoint 0:** lifeor2-client's two fixes are starter code. lifeor2-client keeps its own copies until it moves to v2.0.0 (Phase 10), where they're replaced by the starter's versions.
 
 **Open pull requests:** none (confirmed 2026-09-25). The three that were open are closed and unmerged; their branches still exist on `origin`:
 
@@ -86,8 +86,8 @@ This phase is docs and skills only, on `main`. `platform/` starts to exist here,
 
 | # | Task | Repo | Size | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
-| 3.1 | **`app.config.ts`**: identity (name, legal entity, support email, URLs), runtime (ports, cookie prefix, origins), brand (logos, token overrides, email palette and footer), switches (waitlist, invitations, announcements, environment banner). Typed, validated at load | P | M | 0.1 | One module; schema-validated; unit tests |
-| 3.2 | **Read it everywhere.** Dev scripts and `dev-start.sh` ports; Playwright configs; CI env blocks; auth cookie prefix; TOTP issuer in `auth.ts`; page metadata; email templates (colours, footer, `lang`); `copy-shared-assets.sh` icons | P | L | 3.1 | Changing name, ports or cookie prefix in `app.config.ts` alone produces a working build with dev, E2E and CI following; `grep` finds no hard-coded product name or port outside it |
+| 3.1 | **`app.config.ts`**: identity (name, legal entity, support email, URLs), runtime (ports, cookie prefix, origins), brand (logos, token overrides, email palette and footer), switches (waitlist, invitations, announcements, environment banner). Typed, validated at load | P | M | — | One module; schema-validated; unit tests |
+| 3.2 | **Read it everywhere.** Dev scripts and `dev-start.sh` ports; Playwright configs; CI env blocks; auth cookie prefix (the lifeor2-client change: `@repo/auth` server helpers, backend `auth.ts` and `sessions.ts`, `edge-rate-limit`, both `proxy.ts`, both `clear-session` routes); TOTP issuer in `auth.ts`; page metadata; email templates (colours, footer, `lang`); `copy-shared-assets.sh` icons | P | L | 3.1 | Changing name, ports or cookie prefix in `app.config.ts` alone produces a working build with dev, E2E and CI following; `grep` finds no hard-coded product name or port outside it |
 | 3.3 | **Product name out of message files**, passed as a message argument; remove `appName` from all 15 locales | P | S | 3.1 | Renaming the product touches no locale file |
 | 3.4 | **`platform-configure` skill** | P | S | 3.2, 2.3 | An agent sets name, ports and cookie prefix via the skill with no other file edits |
 | 3.5 | **Measure:** redo the lifeor2-client trial merge against the new `main` | M | S | 3.2 | The 9 value-related conflicts no longer occur; recorded in the evidence log |
@@ -179,7 +179,7 @@ lifeor2-client forked before the new layout, so its first move to v2.0.0 is a **
 | # | Task | Repo | Size | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
 | 10.1 | Migration guide for pre-v2 apps: run the rename codemod, map old paths to new, move app values into `app.config.ts`, move app strings to app namespaces, adopt the templates, write `.platform-base.json` | P | M | 9.5 | Guide published in `platform/UPGRADING.md` |
-| 10.2 | Migrate lifeor2-client on a branch, following only the guide and skills | lifeor2-client | M | 10.1 | Its build, tests and session-isolation test pass; data migration done |
+| 10.2 | Migrate lifeor2-client on a branch, following only the guide and skills. Its own versions of the cookie prefix, cookie matching and dev-only guards are removed in favour of the starter's | lifeor2-client | M | 10.1 | Its build, tests and session-isolation test pass with no local copies of those changes; data migration done |
 | 10.3 | Install the update workflow in lifeor2-client; the next release arrives as a tested PR | lifeor2-client | S | 10.2, 7.6 | First automatic update PR received |
 | 10.4 | Evidence-log entry: conflicts, silent breaks, time, interventions, compared with the case study | M | S | 10.2 | Recorded |
 
