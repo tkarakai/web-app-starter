@@ -15,7 +15,7 @@ commit in bootstrap notes; preparation is not publication or application adoptio
 The standalone `apps/demo` also demonstrates one package-based upgrade:
 `@repo/starter-sidebar-policy`, consumed from immutable local package artifacts.
 Its normal dashboard, editable UI and business behavior remain application-owned.
-[`docs/starter-upgrades.md`](./docs/starter-upgrades.md) describes the executable
+[`apps/demo/README.md`](./apps/demo/README.md) describes the executable
 ownership contract and its limits. `bun run test:starter-rehearsal` tests an upgrade
 on a copy without live services. Other starter areas still use merge-by-tag.
 
@@ -79,7 +79,7 @@ upgrade, and an application upgrade is not a deployment.
 Within these responsibilities, files may be **consumed starter code**,
 **application-owned**, **generated**, or eventually **intentionally vendored**
 (editable starter copies with a supported origin/update contract). See the
-[ownership table and transition rules](./docs/starter-upgrades.md#ownership-who-may-change-each-file).
+[ownership table](./apps/demo/README.md#where-to-make-changes).
 The sidebar policy is the only proven package boundary today. Backend schemas,
 locale content and much shared UI still mix concerns; we do not claim otherwise.
 Vendoring is not supported yet, and no demo file is labeled both managed and
@@ -468,8 +468,8 @@ tags.
 | Verify | Run the sidebar regression check, business tests, typecheck and production build | All pass; an invalid width now falls back to the 16rem default. |
 | Audit and compare | Recheck the saved logs and output hashes, and compare app source | The dashboard builds; editable UI, business rules, tests, configuration and branding are unchanged. |
 
-See [the demo rehearsal guide](./docs/starter-upgrades.md#the-real-demo-rehearsal)
-for evidence locations and CI retention. A skipped required check, a changed
+See [the demo rehearsal guide](./apps/demo/README.md#test-a-starter-upgrade)
+for evidence locations. A skipped required check, a changed
 source file, a locally edited package or an outdated build stops the upgrade
 from being reported as verified.
 

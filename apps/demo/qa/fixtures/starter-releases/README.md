@@ -19,4 +19,4 @@ the latest artifact and validates the demo's real dependency separately.
 
 Generated rehearsal logs and copied apps belong under
 `.ci-local-artifacts/starter-upgrade/`, not in this directory. See
-[the upgrade guide](../../../../../docs/starter-upgrades.md).
+[the demo README](../../../README.md#test-a-starter-upgrade).

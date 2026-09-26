@@ -258,7 +258,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 > from staging to production. A `NEXT_PUBLIC_*` name would be inlined into the bundle at build time
 > and pin the artifact to the environment that built it. Do not add `NEXT_PUBLIC_CONVEX_URL` (or the
 > other prefixed names) to a web or admin project — nothing reads them, and their presence is what
-> the leak guard reports. See [claude/build-once-promote-plan.md](./claude/build-once-promote-plan.md).
+> the leak guard reports. See [Promotion](./deployment-architecture.md#promotion-build-once-deploy-twice).
 >
 > Neither app needs a site-URL variable at all: both derive their origin from the request `Host`
 > header. (`SITE_URL` is Convex's own variable, a comma-separated trusted-origin list — unrelated.)

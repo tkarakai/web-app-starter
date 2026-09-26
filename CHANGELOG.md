@@ -47,7 +47,7 @@ first supported starting point, not proof of arbitrary pre-release app upgrades.
 ### Added
 
 - Licensing: `LICENSE` (evaluation licence: free to evaluate, commercial licence required for
-  production), `COMMERCIAL-LICENSE.md` (Starter / Pro / Team tiers) and `TERMS-OF-SALE.md`.
+  production), and `COMMERCIAL-LICENSE.md` (Starter / Pro / Team tiers).
   **Downstream apps:** these files arrive with the merge and are your copy of the licence terms; keep them.
 - Admin → Configure → Integrations shows live provider status instead of "Not yet implemented":
   Resend reports connected / not connected from `RESEND_API_KEY` and `EMAIL_FROM`; providers with
@@ -74,7 +74,7 @@ first supported starting point, not proof of arbitrary pre-release app upgrades.
 - Deterministic author/package/export/consumer ownership checks and a real demo
   rehearsal that reproduces a sidebar failure, upgrades, then runs interaction
   tests, typecheck and a production build. CI retains the evidence.
-- `docs/starter-upgrades.md` explains ownership and current limitations.
+- `apps/demo/README.md` explains ownership and current limitations.
   `UPGRADING.md` separately teaches starter releases, application upgrade PRs
   and operations deployment. Existing mixed packages are not claimed as isolated;
   starter vendoring remains unsupported pending a copy contract. Operations
@@ -151,7 +151,7 @@ when `bun install --minimum-release-age=864000` and `bun run ci:quick` pass.
 **Package adoption is optional.** Existing web/admin/backend consumers continue
 using merge-by-tag; no database migration or operations change is introduced.
 Demo-derived apps must preserve their dashboard, editable UI and branding when
-merging these changes. Follow [the package upgrade guide](./docs/starter-upgrades.md)
+merging these changes. Follow [the package upgrade guide](./apps/demo/README.md)
 only when adopting this explicit ownership/dependency contract. Keep the manifest,
 package artifact, lock and required tests together. Done when
 `bun run check:starter-ownership`, `bun run test:starter-upgrade` and

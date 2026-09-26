@@ -51,7 +51,7 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "The auth stack moves together. @convex-dev/better-auth pins its own nested copy of better-auth, so bumping better-auth alone upgrades nothing the adapter actually runs, and it breaks the build — dependabot PRs #74 and #77 both failed exactly this way. Never automerged: the 1.4 -> 1.6 move also needed convex/betterAuth/schema.ts reconciled by hand. See docs/claude/auth-e2e-and-upgrade-plan.md step 7.",
+      "description": "The auth stack moves together. @convex-dev/better-auth pins its own nested copy of better-auth, so bumping better-auth alone upgrades nothing the adapter actually runs, and it breaks the build — dependabot PRs #74 and #77 both failed exactly this way. Never automerged: the 1.4 -> 1.6 move also needed convex/betterAuth/schema.ts reconciled by hand.",
       "matchPackageNames": ["better-auth", "@better-auth/**", "@convex-dev/better-auth"],
       "groupName": "auth stack",
       "automerge": false

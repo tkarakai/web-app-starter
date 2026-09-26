@@ -270,9 +270,6 @@ they have no server at runtime and cannot read runtime configuration at all — 
 benefit from content addressing: repeated deploys to the *same* environment reuse the
 artifact when nothing changed.
 
-For the full rationale, the measurements behind it and the remaining work, see
-[claude/build-once-promote-plan.md](./claude/build-once-promote-plan.md).
-
 ## Vercel Project Architecture
 
 Six separate Vercel projects — three for staging and three for production:

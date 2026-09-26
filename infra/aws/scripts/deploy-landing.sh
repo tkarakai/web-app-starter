@@ -4,7 +4,7 @@
 #   deploy-landing.sh --env <local|staging|production> [--sha <commit>] [--profile <p>]
 #
 # landing is a static export, so unlike web/admin its URLs are inlined at build
-# time and it is rebuilt per environment (see docs/claude/build-once-promote-plan.md).
+# time and it is rebuilt per environment (see docs/deployment-architecture.md).
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 require_cmd aws

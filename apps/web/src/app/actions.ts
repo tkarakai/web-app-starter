@@ -18,7 +18,7 @@ export async function getAuthUserLocaleAction(): Promise<string | null> {
     // The URL is passed explicitly. Left implicit, convex/nextjs falls back to
     // process.env.NEXT_PUBLIC_CONVEX_URL, which Next.js inlines at build time —
     // that would pin the artifact to one environment.
-    // See docs/claude/build-once-promote-plan.md
+    // See docs/deployment-architecture.md
     const locale = await fetchQuery(
       api.userProfiles.getLocale,
       {},
