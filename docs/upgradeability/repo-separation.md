@@ -2,7 +2,7 @@
 
 **Status:** authoritative design, 2026-09-25. Replaces the repo-separation drafts v1–v4 (recoverable from git history, commit `ce04f4f`).
 **Background:** [brainstorm v2](brainstorm-v2.md) (the wider upgradeability thinking) and the [lifeor2-client case study](case-study-lifeor2-client.md) (evidence from the first real app).
-**Implementation:** [implementation-plan.md](implementation-plan.md).
+**Implementation:** [repo-separation-implementation-plan.md](repo-separation-implementation-plan.md).
 
 ## 1. Summary
 
