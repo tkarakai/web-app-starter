@@ -259,6 +259,11 @@ app_dir() {
   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts dir "$1"
 }
 
+# Helper: whether an app is present (bun run adopt --remove can delete landing).
+app_present() {
+  [ -d "$(app_dir "$1")" ]
+}
+
 # Helper: save coverage artifacts and display summary for an app
 save_coverage() {
   local APP_NAME="$1"
@@ -351,6 +356,7 @@ else
 fi
 PHASE_FAILED=false
 for APP in web admin landing; do
+  app_present "$APP" || continue
   step_start
   if turbo test --filter=@repo/$APP; then
     print_success "Bun tests passed ($APP)"
@@ -371,6 +377,7 @@ if [ "$PHASE_FAILED" = true ]; then exit 1; fi
 print_step "Step 4/9: Component Tests + Coverage (Vitest)"
 COVERAGE_PASSED=true
 for APP in web admin landing; do
+  app_present "$APP" || continue
   step_start
   if turbo test:coverage --filter=@repo/$APP; then
     print_success "Coverage tests passed ($APP)"
@@ -445,6 +452,7 @@ export NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-$APP_CONFIG_ORIGIN_LA
 export NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
 BUILD_FAILED=false
 for APP in web admin landing storybook; do
+  app_present "$APP" || continue
   # Set per-app site URL (each app runs on a different port)
   case "$APP" in
     web)     _SITE_URL="$APP_CONFIG_ORIGIN_WEB" ;;
@@ -497,6 +505,7 @@ if [ "$BUNDLE_FAILED" = true ]; then exit 1; fi
 if [ "$SKIP_E2E" = true ]; then
   print_warning "Skipping E2E tests (--skip-e2e flag)"
   for APP in web admin landing storybook; do
+    app_present "$APP" || continue
     step_start
     step_end "$APP: E2E (Playwright)" "skip"
   done
@@ -511,6 +520,7 @@ else
   E2E_FAILED_APPS=()
 
   for APP in web admin landing storybook; do
+    app_present "$APP" || continue
     step_start
     echo -e "  ${BOLD}Running E2E tests ($APP)...${NC}"
     E2E_EXIT=0

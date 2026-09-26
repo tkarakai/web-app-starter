@@ -51,6 +51,8 @@ for app in "${APPS[@]}"; do
   # e.g. apps/web or platform/apps/admin.
   dir_var="APP_CONFIG_DIR_$(echo "$app" | tr '[:lower:]-' '[:upper:]_')"
   APP_DIR="${!dir_var:?missing ${dir_var} from platform/tooling/app-config.ts}"
+  # An app removed at adoption (bun run adopt --remove) gets no assets.
+  [[ -d "${REPO_ROOT}/${APP_DIR}" ]] || continue
   PUBLIC_DIR="${REPO_ROOT}/${APP_DIR}/public"
   mkdir -p "${PUBLIC_DIR}"
 

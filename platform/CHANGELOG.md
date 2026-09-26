@@ -162,6 +162,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
   recorded patches are listed on every run. Seams must keep their platform hooks
   (`...platformTables`, `registerPlatformRoutes(http)`, the config bases, the Renovate preset).
   Without the file (the product repo) no app code may carry a patch marker.
+- `bun run adopt` (`platform/tooling/adopt.ts`), run once on a fresh clone: sets the product
+  name, support email, auth cookie prefix and ports in `app.config.ts`; replaces the root
+  `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `platform/templates/`; points
+  `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`) and
+  drops the product repo's own `platform/**` rules; optionally removes `landing`,
+  `landing-static` and `demo` with their callers, scripts and build entries (`--remove`); links
+  the platform skills; writes `.platform-base.json` and adds the `upstream` remote; then runs
+  the zone check and a build. Asks for what it needs, or takes flags (`--name`, `--repo`,
+  `--yes`, ...; see the file header). Local CI and the icon copy skip removed apps.
 - Contracts (`bun run test:contracts`; CI Shared's **Contracts** job, on every PR):
   `@web-app-starter/contracts` checks each reference app's `clear-session` route (deletes only
   this app's session cookies, never another app's on the same host), proxy session detection,
