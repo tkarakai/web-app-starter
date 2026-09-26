@@ -145,6 +145,20 @@ describe("myModule", () => {
 
 > **When to use this:** Only when the scheduled function can't run in tests. If the scheduled function is a simple mutation/query that works in convex-test, you don't need fake timers — let it run normally.
 
+## Contracts
+
+Contracts are black-box tests of platform behaviour: HTTP handlers and Convex calls, not UI, so
+they survive an app replacing its screens. `bun run test:contracts` runs them, and CI's
+**Contracts** job runs them on every PR.
+
+| Contract | Where | Checks |
+|---|---|---|
+| Session and cookie isolation, security headers, environment | `platform/packages/contracts/tests/http.test.ts`, per app in `APPS` (web, admin) | `clear-session` deletes exactly this app's session cookies (never another app's on the same host); the proxy treats only this app's cookie as a session; nonce CSP and `next.config` security headers; required runtime variables in `.env.example` and `turbo.json` |
+| Endpoint authorization | `packages/backend/convex/platform/endpoint-authorization.test.ts` | Every public platform function is classified `public`, `user` or `admin` in `ACCESS`, and `user`/`admin` functions refuse anonymous callers, `admin` ones non-admins. A new platform function fails until classified |
+| The app's own | `packages/backend/convex/*contract*.test.ts` (sample: `authorization-contract.test.ts`) | The sample domain's ownership rules: anonymous and non-owner reads and writes are refused and leave records and stored bytes unchanged |
+
+Name your own backend contracts `*contract*.test.ts` so `test:contracts` picks them up.
+
 ## Test Helpers
 
 ### Authentication Mocking (`apps/web/qa/tests/helpers/auth-mock.ts`)

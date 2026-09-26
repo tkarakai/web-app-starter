@@ -152,6 +152,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
   recorded patches are listed on every run. Seams must keep their platform hooks
   (`...platformTables`, `registerPlatformRoutes(http)`, the config bases, the Renovate preset).
   Without the file (the product repo) no app code may carry a patch marker.
+- Contracts (`bun run test:contracts`; CI Shared's **Contracts** job, on every PR):
+  `@web-app-starter/contracts` checks each reference app's `clear-session` route (deletes only
+  this app's session cookies, never another app's on the same host), proxy session detection,
+  CSP and security headers, and required environment declarations; the backend's
+  `endpoint-authorization.test.ts` requires every public platform Convex function to be
+  classified `public`, `user` or `admin` and checks anonymous and non-admin callers are refused;
+  `authorization-contract.test.ts` covers the sample domain's ownership rules. Guide:
+  `platform/docs/testing.md`, "Contracts".
 - `platform/tooling/codemods/v2-platform-packages.ts`: the codemod for the package rename and
   move (idempotent; `--check` for CI).
 - `@web-app-starter/auth-ui` (`platform/packages/auth-ui`): the auth pages, their logic and

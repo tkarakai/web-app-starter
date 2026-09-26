@@ -131,6 +131,24 @@ jobs:
       - name: Run Convex tests
         run: bunx turbo test:convex
 
+  # ============================================================
+  # CONTRACTS (every PR): session and cookie isolation, security
+  # headers and env declarations per reference app; authorization
+  # of every platform Convex function; the app's own contracts.
+  # ============================================================
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: ./.github/actions/setup-bun
+
+      - name: Run contracts
+        run: bun run test:contracts
+
   # Local starter package contract and a rehearsal using the real demo app.
   starter-upgrade:
     name: Starter Upgrade Rehearsal
@@ -169,7 +187,7 @@ jobs:
   ci-shared-complete:
     name: CI Shared Complete
     runs-on: ubuntu-latest
-    needs: [lint, test-convex, starter-upgrade]
+    needs: [lint, test-convex, contracts, starter-upgrade]
     if: always()
     steps:
       - name: Check all jobs passed
@@ -177,6 +195,12 @@ jobs:
           echo "Lint: ${{ needs.lint.result }}"
           echo "Convex: ${{ needs.test-convex.result }}"
           echo "Starter upgrade rehearsal: ${{ needs.starter-upgrade.result }}"
+          echo "Contracts: ${{ needs.contracts.result }}"
+
+          if [[ "${{ needs.contracts.result }}" != "success" ]]; then
+            echo "Contracts failed"
+            exit 1
+          fi
 
           if [[ "${{ needs.starter-upgrade.result }}" != "success" ]]; then
             echo "Starter upgrade rehearsal failed"

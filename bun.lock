@@ -325,6 +325,18 @@
         "react-dom": "^19.0.0",
       },
     },
+    "platform/packages/contracts": {
+      "name": "@web-app-starter/contracts",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^24.13.4",
+        "@web-app-starter/app-config": "workspace:*",
+        "@web-app-starter/auth": "workspace:*",
+        "next": "^16.3.3",
+        "typescript": "^6.0.3",
+        "vitest": "^5.0.0",
+      },
+    },
     "platform/packages/design-patterns": {
       "name": "@web-app-starter/design-patterns",
       "version": "0.0.0",
@@ -1146,6 +1158,8 @@
     "@web-app-starter/auth": ["@web-app-starter/auth@workspace:platform/packages/auth"],
 
     "@web-app-starter/auth-ui": ["@web-app-starter/auth-ui@workspace:platform/packages/auth-ui"],
+
+    "@web-app-starter/contracts": ["@web-app-starter/contracts@workspace:platform/packages/contracts"],
 
     "@web-app-starter/design-patterns": ["@web-app-starter/design-patterns@workspace:platform/packages/design-patterns"],
 
