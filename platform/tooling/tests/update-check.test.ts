@@ -44,10 +44,10 @@ test("installed baseline is read-only; newest publication supplies cumulative ad
  const root=fs.mkdtempSync(path.join(os.tmpdir(),"update-check-"));const file=path.join(root,".platform-base.json"),before=JSON.stringify({version:"2.0.0",commit:"a".repeat(40),patches:[]});fs.writeFileSync(file,before);
  const urls:string[]=[];
  try {
-  const result=await checkUpdates({root,repo:"owner/repo",read:async url=>{urls.push(url);return url.includes("api.github.com")?JSON.stringify([row("v3.0.0",{published_at:"2026-09-25T00:00:00Z"}),row("v2.1.0")]):manifest([advisory()]);}});
+  const result=await checkUpdates({root,repo:"owner/repo",read:async url=>{urls.push(url);return new URL(url).hostname === "api.github.com"?JSON.stringify([row("v3.0.0",{published_at:"2026-09-25T00:00:00Z"}),row("v2.1.0")]):manifest([advisory()]);}});
   assert.equal(result.latest?.version,"3.0.0");assert.equal(result.advisoryRelease?.version,"2.1.0");assert.equal(result.target?.version,"2.1.0");assert.equal(result.severity,"high");assert.match(urls[1],/\/v2\.1\.0\/advisories.json$/);
   assert.equal(fs.readFileSync(file,"utf8"),before);assert.deepEqual(fs.readdirSync(root),[".platform-base.json"]);
-  await assert.rejects(()=>checkUpdates({root,read:async url=>url.includes("api.github.com")?JSON.stringify([row("v2.1.0")]):"bad JSON"}));
+  await assert.rejects(()=>checkUpdates({root,read:async url=>new URL(url).hostname === "api.github.com"?JSON.stringify([row("v2.1.0")]):"bad JSON"}));
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 test("unadopted product checkouts need no network; missing release data is explicit",async()=>{
@@ -76,7 +76,7 @@ test("the actual contracts command exits nonzero for high and zero with a medium
  try{
   fs.writeFileSync(path.join(root,".platform-base.json"),JSON.stringify({version:"2.0.0",commit:"a".repeat(40)}));
   const stub=path.join(root,"fetch.mjs");
-  fs.writeFileSync(stub,`globalThis.fetch = async url => new Response(JSON.stringify(String(url).includes("api.github.com") ? ${JSON.stringify([row("v2.1.0")])} : {schemaVersion:1,advisories:[{...${JSON.stringify(advisory())},severity:process.env.FIXTURE_SEVERITY}]}));`);
+  fs.writeFileSync(stub,`globalThis.fetch = async url => new Response(JSON.stringify(new URL(String(url)).hostname === "api.github.com" ? ${JSON.stringify([row("v2.1.0")])} : {schemaVersion:1,advisories:[{...${JSON.stringify(advisory())},severity:process.env.FIXTURE_SEVERITY}]}));`);
   for(const severity of ["high","medium"]){
    const result=spawnSync(process.execPath,["--import",stub,fileURLToPath(new URL("../update-check.ts",import.meta.url)),"--root",root,"--advisories"],{encoding:"utf8",env:{...process.env,FIXTURE_SEVERITY:severity}});
    assert.equal(result.status,severity==="high"?1:0,result.stderr);assert.match(result.stderr,new RegExp(severity==="high"?"::error::":"::warning::"));
