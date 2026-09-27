@@ -29,3 +29,14 @@ test("conflicting overrides and unknown customized keys stop before writing any 
   write("packages/messages/fr.json", { dashboard: { sessions: { customKey: "Custom" } } });
   assert.throws(() => migrate(root), /No platform translation/); assert.equal(fs.readFileSync(file, "utf8"), before);
 }));
+test("prototype-related message keys are rejected without mutating shared objects or files", () => fixture((root, write) => {
+  write("packages/messages/overrides.json", {});
+  for (const key of ["__proto__", "constructor", "prototype"]) {
+    const malicious = JSON.parse(`{"${key}":{"polluted":"value"}}`);
+    write("platform/packages/i18n/messages/en.json", { accountSecurity: { passkeys: malicious } });
+    write("packages/messages/en.json", { dashboard: { passkeys: malicious } });
+    assert.throws(() => migrate(root), /Unsafe message key/);
+    assert.equal(Object.hasOwn(Object.prototype, "polluted"), false);
+    assert.equal(fs.readFileSync(path.join(root, "packages/messages/overrides.json"), "utf8"), "{}");
+  }
+}));

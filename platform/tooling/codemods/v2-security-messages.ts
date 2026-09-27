@@ -20,6 +20,7 @@ function read(file: string, optional = false): Tree {
 function transfer(source: Tree, defaults: Tree, destination: Tree, label: string): boolean {
   let changed = false;
   for (const [key, value] of Object.entries(source)) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") throw new Error("Unsafe message key: " + label + "." + key);
     const target = defaults[key];
     if (typeof value === "string" && typeof target === "string") {
       if (value === target) continue;
