@@ -177,8 +177,11 @@ export async function expectSignedOut(page: Page): Promise<void> {
 export async function signOut(page: Page): Promise<void> {
   await page.bringToFront();
   await page.goto("/en/dashboard");
-  await page.locator('[data-slot="sidebar-footer"] button').first().click();
-  await page.getByRole("menuitem").last().click();
+  const account = page.locator('[data-slot="sidebar-footer"] button').first();
+  const opensMenu = await account.getAttribute("aria-haspopup") === "menu";
+  await account.click();
+  // Adoption without the sample has a direct sign-out button in this same footer.
+  if (opensMenu) await page.getByRole("menuitem").last().click();
   await page.waitForURL((url) => !url.pathname.includes("/dashboard"), { timeout: 15_000 });
 }
 

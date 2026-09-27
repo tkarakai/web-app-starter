@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -223,7 +224,7 @@ test("production and rollback workflow gates resolve annotated tags and reject m
     }
   }
 });
-test("real Turbo hashes reuse web across environments but separate static landing builds", async () => {
+async function realTurboHashes(app: "web" | "landing"): Promise<Record<string, string>> {
   const a = await action("build-app");
   const dir = await mkdtemp(resolve(tmpdir(), "ops-hash-test-"));
   const hashes: Record<string, string> = {};
@@ -234,7 +235,7 @@ test("real Turbo hashes reuse web across environments but separate static landin
     for (const environment of ["staging", "production"]) {
       const file = resolve(dir, `${environment}.env`);
       await writeFile(file, `NEXT_PUBLIC_SITE_URL=https://${environment}.example.com\nNEXT_PUBLIC_WEB_APP_URL=https://web-${environment}.example.com\nNEXT_PUBLIC_CONVEX_SITE_URL=https://backend-${environment}.example.com\nCONVEX_URL=https://backend-${environment}.example.com\nAPP_ENVIRONMENT=${environment}\n`);
-      for (const app of ["web", "landing"]) {
+      {
         const output = resolve(dir, `${app}-${environment}.txt`);
         const script = a.runs.steps.find(s => s.id === "meta")!.run!
           .replace('.vercel/.env.${{ inputs.environment }}.local', file)
@@ -245,9 +246,15 @@ test("real Turbo hashes reuse web across environments but separate static landin
         hashes[`${app}/${environment}`] = (await readFile(output, "utf8")).match(/^input-hash=(.+)$/m)![1];
       }
     }
-    expect(hashes["web/staging"]).toBe(hashes["web/production"]);
-    expect(hashes["landing/staging"]).not.toBe(hashes["landing/production"]);
+    return hashes;
   } finally { await rm(dir, { recursive: true, force: true }); }
+}
+test("real Turbo hashes reuse web across environments", async () => {
+  const hashes = await realTurboHashes("web"); expect(hashes["web/staging"]).toBe(hashes["web/production"]);
+}, 30_000);
+const landingHashTest = existsSync(new URL("../../../../apps/landing/package.json", import.meta.url)) ? test : test.skip;
+landingHashTest("real Turbo hashes separate optional static landing builds", async () => {
+  const hashes = await realTurboHashes("landing"); expect(hashes["landing/staging"]).not.toBe(hashes["landing/production"]);
 }, 30_000);
 
 test("optional app detection reports the selected tree, and staging never requests an absent landing", async () => {

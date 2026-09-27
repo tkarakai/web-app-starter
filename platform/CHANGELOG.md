@@ -13,7 +13,24 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- `bun run platform:upgrade` plans and applies published platform releases on a dedicated
+  branch, preserving app code and merging declared seams. The target release supplies the tool;
+  intermediate codemods run in order. JSON/Markdown reports record review gates, bounded
+  diagnostics, verification and recovery. The installed baseline advances only after all
+  required checks pass; pending E2E, secrets, patches and data migrations keep the update pending.
+  See [UPGRADING.md](UPGRADING.md).
+
 ### Fixed
+
+- Auth browser tests support the direct sign-out button in apps adopted without the sample.
+
+- Root E2E runs app suites in sequence, so one app finishing cannot stop the shared local
+  development processes while another app is still testing.
+
+- Ops tests retain the web hash check and skip only the optional landing hash check when an
+  adopted app removed that landing, so full upgrade verification works in stripped apps.
 
 - Adoption preserves literal dollar-sign sequences in configuration values, escapes workflow
   job names correctly, and reads optional configuration files without a separate existence check.

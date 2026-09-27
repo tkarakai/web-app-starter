@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "runtime": {
+    "nodeMajor": 24,
+    "bun": "1.4.2"
+  },
+  "seams": [
+    {
+      "id": "root.github.actions.build-app.action.yml",
+      "path": ".github/actions/build-app/action.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.deploy-convex.action.yml",
+      "path": ".github/actions/deploy-convex/action.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.deploy-vercel.action.yml",
+      "path": ".github/actions/deploy-vercel/action.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.paid-feature.action.yml",
+      "path": ".github/actions/paid-feature/action.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.setup-bun.action.yml",
+      "path": ".github/actions/setup-bun/action.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.setup-bun.find-node.sh",
+      "path": ".github/actions/setup-bun/find-node.sh",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.setup-bun.setup-bun-act.sh",
+      "path": ".github/actions/setup-bun/setup-bun-act.sh",
+      "hooks": []
+    },
+    {
+      "id": "root.github.actions.setup-playwright.action.yml",
+      "path": ".github/actions/setup-playwright/action.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.gitignore",
+      "path": ".gitignore",
+      "hooks": []
+    },
+    {
+      "id": "root.node-version",
+      "path": ".node-version",
+      "hooks": []
+    },
+    {
+      "id": "app.config.ts",
+      "path": "app.config.ts",
+      "hooks": []
+    },
+    {
+      "id": "apps.demo.next.config.ts",
+      "path": "apps/demo/next.config.ts",
+      "hooks": [],
+      "optionalApp": "apps/demo"
+    },
+    {
+      "id": "apps.demo.package.json",
+      "path": "apps/demo/package.json",
+      "hooks": [],
+      "optionalApp": "apps/demo"
+    },
+    {
+      "id": "apps.demo.tsconfig.json",
+      "path": "apps/demo/tsconfig.json",
+      "hooks": [],
+      "optionalApp": "apps/demo"
+    },
+    {
+      "id": "apps.landing-static..env.example",
+      "path": "apps/landing-static/.env.example",
+      "hooks": [],
+      "optionalApp": "apps/landing-static"
+    },
+    {
+      "id": "apps.landing-static.next.config.ts",
+      "path": "apps/landing-static/next.config.ts",
+      "hooks": [],
+      "optionalApp": "apps/landing-static"
+    },
+    {
+      "id": "apps.landing-static.package.json",
+      "path": "apps/landing-static/package.json",
+      "hooks": [],
+      "optionalApp": "apps/landing-static"
+    },
+    {
+      "id": "apps.landing-static.tsconfig.json",
+      "path": "apps/landing-static/tsconfig.json",
+      "hooks": [],
+      "optionalApp": "apps/landing-static"
+    },
+    {
+      "id": "apps.landing..env.example",
+      "path": "apps/landing/.env.example",
+      "hooks": [],
+      "optionalApp": "apps/landing"
+    },
+    {
+      "id": "apps.landing.next.config.ts",
+      "path": "apps/landing/next.config.ts",
+      "hooks": [],
+      "optionalApp": "apps/landing"
+    },
+    {
+      "id": "apps.landing.package.json",
+      "path": "apps/landing/package.json",
+      "hooks": [],
+      "optionalApp": "apps/landing"
+    },
+    {
+      "id": "apps.landing.tsconfig.json",
+      "path": "apps/landing/tsconfig.json",
+      "hooks": [],
+      "optionalApp": "apps/landing"
+    },
+    {
+      "id": "apps.web..env.example",
+      "path": "apps/web/.env.example",
+      "hooks": [],
+      "optionalApp": "apps/web"
+    },
+    {
+      "id": "apps.web.next.config.ts",
+      "path": "apps/web/next.config.ts",
+      "hooks": [],
+      "optionalApp": "apps/web"
+    },
+    {
+      "id": "apps.web.package.json",
+      "path": "apps/web/package.json",
+      "hooks": [],
+      "optionalApp": "apps/web"
+    },
+    {
+      "id": "apps.web.tsconfig.json",
+      "path": "apps/web/tsconfig.json",
+      "hooks": [],
+      "optionalApp": "apps/web"
+    },
+    {
+      "id": "eslint.config.mjs",
+      "path": "eslint.config.mjs",
+      "hooks": [
+        "platform/config/eslint.base.mjs"
+      ]
+    },
+    {
+      "id": "package.json",
+      "path": "package.json",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend..env.example",
+      "path": "packages/backend/.env.example",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex._generated.api.d.ts",
+      "path": "packages/backend/convex/_generated/api.d.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex._generated.api.js",
+      "path": "packages/backend/convex/_generated/api.js",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex._generated.datamodel.d.ts",
+      "path": "packages/backend/convex/_generated/dataModel.d.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex._generated.server.d.ts",
+      "path": "packages/backend/convex/_generated/server.d.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex._generated.server.js",
+      "path": "packages/backend/convex/_generated/server.js",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex.auth.config.ts",
+      "path": "packages/backend/convex/auth.config.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex.convex.config.ts",
+      "path": "packages/backend/convex/convex.config.ts",
+      "hooks": [
+        "./platform/betterAuth/convex.config",
+        "app.use(platform)"
+      ]
+    },
+    {
+      "id": "packages.backend.convex.http.ts",
+      "path": "packages/backend/convex/http.ts",
+      "hooks": [
+        "registerPlatformRoutes(http)"
+      ]
+    },
+    {
+      "id": "packages.backend.convex.schema.ts",
+      "path": "packages/backend/convex/schema.ts",
+      "hooks": [
+        "...platformTables"
+      ]
+    },
+    {
+      "id": "packages.backend.convex.test.modules.ts",
+      "path": "packages/backend/convex/test.modules.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.convex.tsconfig.json",
+      "path": "packages/backend/convex/tsconfig.json",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.index.ts",
+      "path": "packages/backend/index.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.backend.package.json",
+      "path": "packages/backend/package.json",
+      "hooks": []
+    },
+    {
+      "id": "packages.messages.index.ts",
+      "path": "packages/messages/index.ts",
+      "hooks": []
+    },
+    {
+      "id": "packages.messages.package.json",
+      "path": "packages/messages/package.json",
+      "hooks": []
+    },
+    {
+      "id": "renovate.json",
+      "path": "renovate.json",
+      "hooks": [
+        "platform/config/renovate-preset"
+      ]
+    },
+    {
+      "id": "tsconfig.json",
+      "path": "tsconfig.json",
+      "hooks": [
+        "platform/config/tsconfig.base.json"
+      ]
+    },
+    {
+      "id": "turbo.json",
+      "path": "turbo.json",
+      "hooks": []
+    }
+  ],
+  "releases": [
+    {
+      "version": "2.0.0",
+      "previous": null,
+      "supportedBaseline": ">=2.0.0 <3.0.0",
+      "codemods": [],
+      "migrations": [],
+      "env": [],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": []
+    }
+  ]
+}

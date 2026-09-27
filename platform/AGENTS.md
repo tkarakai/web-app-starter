@@ -51,6 +51,11 @@ A **Bun workspaces + Turborepo** monorepo:
 
 Existing deployments upgrading to v2 must complete the [component data migration](docs/component-data-migration.md) before deploying its backend or apps. The deploy guard refuses unmigrated legacy data; fresh empty apps need no copy.
 
+For a published platform update, follow [UPGRADING.md](UPGRADING.md):
+`bun run platform:upgrade --to vX.Y.Z --dry-run --report upgrade-report.json`, then
+`--resume upgrade-report.json`. Review gates are specific to the plan; the installed baseline
+advances only after all required checks pass. Keep pending updates as drafts.
+
 ## App configuration
 
 The root `app.config.ts` holds every value an app is expected to change: `identity` (product
@@ -91,6 +96,7 @@ bun run test:e2e             # Playwright E2E (see README "Tests" for browser se
 bun run build                # Production build via Turborepo
 bun run check:zone           # Platform edits are recorded patches; seams keep their hooks
 bun run test:contracts       # Session isolation, endpoint authorization, headers, env
+bun run platform:upgrade --help # Plan/apply/resume a published platform release
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -95,7 +95,13 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
     write(root, file, read(file));
   }
   cpSync(path.join(REPO, "platform/templates"), path.join(root, "platform/templates"), { recursive: true });
-  for (const skill of ["platform-configure", "platform-deps"]) write(root, `platform/agent-skills/${skill}/SKILL.md`, "---\n");
+  for (const skill of ["platform-configure", "platform-deps"]) {
+    write(root, `platform/agent-skills/${skill}/SKILL.md`, "---\n");
+    for (const directory of [".agents/skills", ".claude/skills"]) {
+      mkdirSync(path.join(root, directory), { recursive: true });
+      symlinkSync(`../../platform/agent-skills/${skill}`, path.join(root, directory, skill));
+    }
+  }
   write(root, "apps/landing/package.json", "{}");
   write(root, "apps/web/package.json", "{}");
   git(root, "init", "-q");

@@ -103,3 +103,9 @@ test("a seam without its platform hook fails", () => {
   write(root, "packages/backend/convex/schema.ts", "export default {};\n");
   assert.match(checkZone(root).errors.join("\n"), /schema\.ts: keep "\.\.\.platformTables"/);
 });
+
+test("adopted app: an untracked platform file cannot escape the zone check", () => {
+  const { root, commit } = release(); adopt(root, commit);
+  write(root, "platform/untracked.ts", "export const bypass = true;\n");
+  assert.match(checkZone(root).errors.join("\n"), /platform\/untracked\.ts: platform-zone edit is not a recorded patch/);
+});

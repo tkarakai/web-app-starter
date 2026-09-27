@@ -18,12 +18,15 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { isZonePath } from "./platform-upgrade/ownership.ts";
+import { MANIFEST, parseManifest } from "./platform-upgrade/metadata.ts";
+export { isZonePath } from "./platform-upgrade/ownership.ts";
 
 export const BASE_FILE = ".platform-base.json";
 export const MARKER = "PLATFORM-PATCH:";
 
 export type Patch = { path: string; reason: string };
-export type PlatformBase = { version: string; commit: string; patches: Patch[] };
+export type PlatformBase = { version: string; commit: string; patches: Patch[]; earlyCommits?: string[] };
 
 // Files whose format has no comments: a patch there is recorded in .platform-base.json only.
 const NO_COMMENTS = new Set([".json", ".lock", ".png", ".ico", ".svg", ".jpg", ".webp", ".woff2"]);
@@ -39,11 +42,6 @@ export const SEAM_HOOKS: readonly { file: string; hook: string; why: string }[] 
   { file: "renovate.json", hook: "platform/config/renovate-preset", why: "the Renovate preset" },
 ];
 
-export function isZonePath(file: string): boolean {
-  const segments = file.split("/");
-  return segments.some((segment, index) =>
-    (segment === "platform" && index < segments.length - 1) || segment.startsWith("platform-"));
-}
 
 export function parseBase(text: string): PlatformBase | string {
   let raw: unknown;
@@ -66,7 +64,8 @@ export function parseBase(text: string): PlatformBase | string {
       return `${BASE_FILE}: patches[${index}] needs a "path" and a non-empty "reason"`;
     }
   }
-  return { version: base.version, commit: base.commit, patches: patches as Patch[] };
+  if (base.earlyCommits !== undefined && (!Array.isArray(base.earlyCommits) || !base.earlyCommits.every(commit => typeof commit === "string" && /^[0-9a-f]{7,40}$/.test(commit)))) return `${BASE_FILE}: earlyCommits must contain commit IDs`;
+  return { version: base.version, commit: base.commit, patches: patches as Patch[], ...(base.earlyCommits ? { earlyCommits: base.earlyCommits } : {}) };
 }
 
 function git(root: string, args: string[]): string {
@@ -75,7 +74,17 @@ function git(root: string, args: string[]): string {
 
 export function checkSeams(root: string): string[] {
   const errors: string[] = [];
-  for (const { file, hook, why } of SEAM_HOOKS) {
+  let hooks = [...SEAM_HOOKS];
+  const manifestPath = path.join(root, MANIFEST);
+  if (existsSync(manifestPath)) {
+    try {
+      const seams = parseManifest(readFileSync(manifestPath, "utf8")).seams
+        .filter(seam => !seam.optionalApp || existsSync(path.join(root, seam.optionalApp)));
+      for (const seam of seams) if (!existsSync(path.join(root, seam.path))) errors.push(`${seam.path}: required seam is missing (${seam.id})`);
+      hooks = seams.flatMap(seam => seam.hooks.map(hook => ({ file: seam.path, hook, why: seam.id })));
+    } catch (error) { return ["Invalid release seam definitions: " + (error as Error).message]; }
+  }
+  for (const { file, hook, why } of hooks) {
     const full = path.join(root, file);
     if (!existsSync(full)) errors.push(`${file}: seam is missing (it must contain "${hook}" for ${why})`);
     else if (!readFileSync(full, "utf8").includes(hook)) errors.push(`${file}: keep "${hook}" (${why})`);
@@ -85,11 +94,12 @@ export function checkSeams(root: string): string[] {
 
 export type ZoneResult = { errors: string[]; warnings: string[]; patches: Patch[]; mode: "adopted" | "product" };
 
-export function checkZone(root: string): ZoneResult {
+export function checkZone(root: string, options: { baseFile?: string } = {}): ZoneResult {
   const errors = checkSeams(root);
   const warnings: string[] = [];
-  const baseFile = path.join(root, BASE_FILE);
+  const baseFile = options.baseFile ? path.resolve(options.baseFile) : path.join(root, BASE_FILE);
 
+  if (options.baseFile && !existsSync(baseFile)) return { errors: [...errors, "Candidate baseline is missing: " + baseFile], warnings, patches: [], mode: "adopted" };
   if (!existsSync(baseFile)) {
     // Product repo: no app code may carry a patch marker.
     let marked: string[];
@@ -113,8 +123,10 @@ export function checkZone(root: string): ZoneResult {
     return { errors, warnings, patches: base.patches, mode: "adopted" };
   }
 
-  const changed = git(root, ["diff", "--name-only", "--no-renames", base.commit, "--"])
-    .split("\n").filter((file) => file !== "" && isZonePath(file));
+  const changed = [...new Set([
+    ...git(root, ["diff", "--name-only", "--no-renames", "-z", base.commit, "--"]).split("\0"),
+    ...git(root, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0"),
+  ].filter(file => file !== "" && isZonePath(file)))];
   const recorded = new Map(base.patches.map((patch) => [patch.path, patch]));
   for (const file of changed) {
     if (!recorded.has(file)) {
@@ -135,8 +147,13 @@ export function checkZone(root: string): ZoneResult {
 }
 
 export function main(argv: readonly string[], out: (line: string) => void = (line) => process.stdout.write(`${line}\n`)): number {
-  const root = path.resolve(argv[0] ?? ".");
-  const { errors, warnings, patches, mode } = checkZone(root);
+  let root = path.resolve("."); let baseFile: string | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--base-file") { baseFile = argv[++i]; if (!baseFile) { out("error: --base-file needs a path"); return 1; } }
+    else if (argv[i].startsWith("--")) { out("error: unknown option " + argv[i]); return 1; }
+    else root = path.resolve(argv[i]);
+  }
+  const { errors, warnings, patches, mode } = checkZone(root, { baseFile });
   for (const error of errors) out(`error: ${error}`);
   for (const warning of warnings) out(`warning: ${warning}`);
   if (mode === "product") out(`No ${BASE_FILE}: product repository, platform edits are platform work.`);
