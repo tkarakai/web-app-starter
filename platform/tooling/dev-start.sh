@@ -525,11 +525,11 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ "$NON_INTERACTIVE" = true ]; then
         echo "[CI MODE] Convex state dir: $CONVEX_STATE_DIR"
         echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev (from $CONVEX_DIR)"
-        (cd "$CONVEX_DIR" && CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
+        (cd "$CONVEX_DIR" && CONVEX_VERBOSE=1 bash "$SCRIPT_DIR/dev-convex.sh" > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
         echo "[CI MODE] Convex process started with PID: $CONVEX_PID"
     else
-        (cd "$CONVEX_DIR" && CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
+        (cd "$CONVEX_DIR" && bash "$SCRIPT_DIR/dev-convex.sh" > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
     fi
     "$NODE_TS" "$PROCESS_HELPER" track convex "$CONVEX_PID"

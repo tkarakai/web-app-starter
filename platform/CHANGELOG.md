@@ -39,6 +39,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Anonymous Convex backends started with `CI=true` use a bounded, overridable five-second
+  execution budget, avoiding spurious query timeouts on small private-repository runners.
+
 - Auth browser tests support the direct sign-out button in apps adopted without the sample.
 
 - Root E2E runs app suites in sequence, so one app finishing cannot stop the shared local

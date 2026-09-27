@@ -26,6 +26,12 @@ starter upgrade checks use the root scripts):
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
+With `CI=true`, the dev harness gives its anonymous local Convex backend a five-second query
+execution budget. This avoids one-second wall-clock timeouts while small shared runners compile
+Next.js. Set `DATABASE_UDF_USER_TIMEOUT_SECONDS` explicitly to use a different local budget.
+Interactive development keeps Convex's default; hosted deployments and browser assertions are
+unchanged.
+
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
 
 > **Note**: Security checks (CodeQL, dependency audit, secrets scan), Lighthouse audits, and CI gate are only run in GitHub Actions CI, not locally.
