@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { migrate, transform } from "../codemods/v2-ci-callers.ts";
+const caller = "name: App CI\non:\n  pull_request:\n    branches: [main]\njobs:\n  platform:\n    uses: ./.github/workflows/platform-ci-web.yml\n";
+test("private callers gain explicit reads and ready events, preserving other choices idempotently", () => {
+  const result = transform(caller);
+  assert.match(result, /permissions:\n {2}contents: read\n {2}pull-requests: read/);
+  assert.match(result, /types: \[opened, synchronize, reopened, ready_for_review\]/);
+  assert.match(result, /branches: \[main\]/); assert.equal(transform(result), result);
+  for (const value of ["read-all", "write-all"]) assert.match(transform(caller.replace("jobs:", "permissions: " + value + "\njobs:")), new RegExp("permissions: " + value));
+  const custom = transform(caller.replace("jobs:", "permissions:\n  contents: write\n  actions: read\njobs:").replace("    branches:", "    types: [opened, labeled]\n    branches:"));
+  assert.match(custom, /contents: write/); assert.match(custom, /actions: read/); assert.match(custom, /types: \[opened, labeled, ready_for_review\]/);
+  assert.equal(transform(custom), custom);
+});
+test("check is read-only and denied permissions prevent every pending write", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ci-callers-")); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const dir = path.join(root, ".github/workflows"); fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "ci-web.yml"), caller);
+  fs.writeFileSync(path.join(dir, "ci-business.yml"), caller.replace("platform-ci-web.yml", "business.yml"));
+  fs.writeFileSync(path.join(dir, "ci-verify.yml"), caller.replace("  pull_request:\n    branches: [main]", "  workflow_dispatch:"));
+  assert.deepEqual(migrate(root, true), [".github/workflows/ci-web.yml"]); assert.equal(fs.readFileSync(path.join(dir, "ci-web.yml"), "utf8"), caller);
+  fs.writeFileSync(path.join(dir, "ci-z.yml"), caller.replace("jobs:", "permissions:\n  pull-requests: none\njobs:"));
+  assert.throws(() => migrate(root), /explicitly denies/); assert.equal(fs.readFileSync(path.join(dir, "ci-web.yml"), "utf8"), caller);
+  fs.unlinkSync(path.join(dir, "ci-z.yml")); migrate(root); assert.deepEqual(migrate(root, true), []);
+  const outside = path.join(root, "outside.yml"); fs.writeFileSync(outside, caller);
+  fs.symlinkSync(outside, path.join(dir, "ci-linked.yml"));
+  assert.throws(() => migrate(root), /ELOOP|symbolic link/);
+  assert.equal(fs.readFileSync(outside, "utf8"), caller);
+});

@@ -16,6 +16,7 @@
     "codemods/*.ts",
     "tests/*.ts",
     "platform-upgrade/*.ts",
-    "update-check.ts"
+    "update-check.ts",
+    "setup-updates/*.ts"
   ]
 }

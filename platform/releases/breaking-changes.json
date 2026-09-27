@@ -274,7 +274,15 @@
       "version": "2.0.0",
       "previous": null,
       "supportedBaseline": ">=2.0.0 <3.0.0",
-      "codemods": [],
+      "codemods": [
+        {
+          "id": "v2-ci-callers",
+          "path": "platform/tooling/codemods/v2-ci-callers.ts",
+          "touches": [
+            ".github/workflows/"
+          ]
+        }
+      ],
       "migrations": [],
       "env": [],
       "removedFiles": [],

@@ -156,3 +156,45 @@ test("a plan-only draft commit may contain its reports without invalidating the 
   const saved = readReport(reportFile); recordDecision(saved, { id: "secret:DRAFT_SECRET", action: "secret-configured", evidence: "Configured in the named staging environment" }); writeReport(reportFile, saved);
   const done = await applyUpgrade(saved, planned, { reportFile, execute: pass }); assert.equal(done.outcome, "verified", done.state.error);
 });
+
+test("a committed draft relocates without changing its plan or rerunning completed codemods", async () => {
+  const { relocateReport } = await import("./relocate.ts");
+  const f = runnable(), mod = "platform/tooling/codemods/portable.ts";
+  write(f.source, mod, `import fs from 'node:fs'; const p='apps/web/business.ts'; const done=fs.readFileSync(p,'utf8').includes('portable'); if(process.argv.includes('--check')) process.exit(done?0:1); if(!done) fs.appendFileSync(p,'// portable\\n');`);
+  f.publish("2.0.1", entry => entry.codemods.push({ id: "portable", path: mod, touches: ["apps/web/business.ts"] }));
+  const planned = await f.plan("2.0.1"), report = createReport(planned.plan, workingFiles(f.app)), reportFile = path.join(f.app, "upgrade-report.json");
+  const run: Execute = (args, cwd) => args[0] === process.execPath ? execute(args, cwd) : pass(args, cwd);
+  assert.equal((await applyUpgrade(report, planned, { reportFile, execute: run, deferE2e: true })).outcome, "needs-review");
+  git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "draft with completed codemod");
+  const clone = temp(); git(clone, "clone", "--no-local", "-q", f.app, ".");
+  const portable = readReport(path.join(clone, "upgrade-report.json")), immutable = JSON.stringify(portable.plan), excluded = ["upgrade-report.json", "upgrade-report.md"];
+  assert.throws(() => git(clone, "cat-file", "-e", portable.plan.target.commit));
+  relocateReport(portable, clone, excluded);
+  assert.equal(JSON.stringify(portable.plan), immutable); assert.equal(portable.state.stage, "codemods");
+  assert(!portable.state.steps.some(step => step.id === "install" || step.id.startsWith("verify:")));
+  const cache = createCache(planned.plan.source), calls: string[][] = [];
+  try {
+    const rebuilt = await reconstruct(portable, cache, excluded);
+    const done = await applyUpgrade(portable, rebuilt, { reportFile: path.join(clone, "upgrade-report.json"), execute: async args => { calls.push(args); return { exitCode: 0, log: "fresh machine checks" }; } });
+    assert.equal(done.outcome, "verified", done.state.error);
+    assert.deepEqual(calls.filter(args => args[1] === "run").map(args => args[2]), REQUIRED_CHECKS);
+    assert(calls.some(args => args[1] === "install")); assert(!calls.some(args => args.some(arg => arg.includes("codemods/"))));
+    assert.equal(fs.readFileSync(path.join(clone, "apps/web/business.ts"), "utf8"), "export const total = 42;\n// portable\n");
+    assert.equal(JSON.parse(fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8")).version, "2.0.0");
+  } finally { fs.rmSync(cache.directory, { recursive: true, force: true }); }
+});
+test("relocation refuses changed files, index-only edits and unrelated history; secrets need new evidence", async () => {
+  const { relocateReport } = await import("./relocate.ts");
+  const f = runnable(); f.publish("2.0.1", entry => entry.env.push({ name: "PORTABLE_SECRET", kind: "new", secret: true, required: true }));
+  const planned = await f.plan("2.0.1"), report = createReport(planned.plan, workingFiles(f.app));
+  recordDecision(report, { id: "secret:PORTABLE_SECRET", action: "secret-configured", evidence: "Configured for the original machine" });
+  const clone = temp(); git(clone, "clone", "-q", f.app, "."); git(clone, "switch", "-c", "platform-update/v2.0.1");
+  write(clone, "apps/web/business.ts", "changed");
+  assert.throws(() => relocateReport(report, clone, []), /Draft files changed/);
+  git(clone, "add", "apps/web/business.ts"); write(clone, "apps/web/business.ts", "export const total = 42;\n");
+  assert.throws(() => relocateReport(report, clone, []), /Index and working tree/);
+  git(clone, "add", "apps/web/business.ts");
+  const other = temp(); git(other, "init", "-q"); git(other, "switch", "-c", "platform-update/v2.0.1"); git(other, "commit", "--allow-empty", "-qm", "unrelated");
+  assert.throws(() => relocateReport(report, other, []), /history does not descend/);
+  relocateReport(report, clone, []); assert.equal(report.state.decisions.length, 0); assert.equal(report.plan.app.root, fs.realpathSync(f.app));
+});

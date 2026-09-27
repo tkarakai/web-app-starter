@@ -6,7 +6,7 @@ import { compare, satisfies } from "./semver.ts";
 import { scanEnvironment } from "./env.ts";
 import { readRegular } from "./io.ts";
 import { secretValueFile } from "./ownership.ts";
-import { decisionFor, unresolved, type Report } from "./report.ts";
+import { reportAppRoot, decisionFor, unresolved, type Report } from "./report.ts";
 import { workingFiles } from "./plan.ts";
 
 export const REQUIRED_CHECKS = ["check:runtime-baseline", "check:agent-skills", "check:actions-pinned", "check:i18n", "lint:dev-scripts", "typecheck:dev-scripts", "test:dev-scripts", "lint", "typecheck", "test", "test:unit", "test:convex", "test:contracts", "build", "test:e2e"] as const;
@@ -17,7 +17,7 @@ export function candidateBase(report: Report): PlatformBase {
   }).map(patch => ({ path: patch.path, reason: patch.reason })) };
 }
 export function verifySource(report: Report, directory: string, excluded: string[]): void {
-  const root = report.plan.app.root;
+  const root = reportAppRoot(report);
   demand(unresolved(report).length === 0, "Review items remain unresolved");
   for (const advisory of report.plan.advisories) if (["high", "critical"].includes(advisory.severity)) demand(!satisfies(report.plan.target.version, advisory.affected), "Target is still affected by advisory " + advisory.id);
   for (const file of report.plan.gates.filter(row => row.kind === "seam-conflict").flatMap(row => row.files)) {
@@ -31,7 +31,7 @@ export function verifySource(report: Report, directory: string, excluded: string
   const result = checkZone(root, { baseFile: candidate }); demand(result.errors.length === 0, result.errors.join("\n"));
 }
 export function verifyDependencies(report: Report): void {
-  const root = report.plan.app.root;
+  const root = reportAppRoot(report);
   for (const floor of report.plan.dependencies) {
     let current = path.dirname(path.join(root, floor.path)), installed: string | undefined;
     for (;;) {

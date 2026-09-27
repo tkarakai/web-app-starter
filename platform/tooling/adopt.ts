@@ -292,6 +292,10 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   writeFileSync(at("renovate.json"), rewriteRenovate(readFileSync(at("renovate.json"), "utf8"), options.repo));
   log(`  - renovate.json extends local>${options.repo}//platform/config/renovate-preset`);
 
+  mkdirSync(at(".github/workflows"), { recursive: true });
+  writeFileSync(at(".github/workflows/update-platform.yml"), readFileSync(at("platform/templates/update-platform.yml"), "utf8"));
+  log("  - update-platform.yml: weekday release checks (configure the updater App for automatic CI)");
+
   log("3. Reference apps");
   const remove = options.remove ?? [];
   if (remove.length === 0) log("  - kept all");
@@ -321,7 +325,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   }
 
   log("6. Platform updates");
-  log("  - Automatic update delivery isn't part of this release. Take releases with platform/UPGRADING.md.");
+  log("  - Weekday release checks are installed. Configure the updater GitHub App for automatic PR CI; see platform/docs/update-delivery.md.");
 
   log("7. Checks");
   const zone = checkZone(root);
