@@ -63,7 +63,9 @@ test("real loopback handshake rejects bad state, host and replay; it never serve
   const session = await startSetup({ repo, request: api.request, run: (args, input) => { writes.push({ args, input }); return ""; }, timeoutMs: 15_000 });
   const url = new URL(session.url), state = url.searchParams.get("state")!, callback = url.origin + "/callback?state=" + state + "&code=" + "a".repeat(40);
   try {
-    const form = await (await fetch(session.url)).text(); assert.match(form, /method="post"/); assert.match(form, /https:\/\/github.com\/settings\/apps\/new/); assert(!form.includes(pem));
+    const form = await (await fetch(session.url)).text(); assert.match(form, /method="post"/); assert(!form.includes(pem));
+    const action = new URL(/action="([^"]+)"/.exec(form)![1]);
+    assert.equal(action.origin, "https://github.com"); assert.equal(action.pathname, "/settings/apps/new"); assert.equal(action.searchParams.get("state"), state);
     assert.equal((await fetch(url.origin + "/callback?state=wrong&code=" + "a".repeat(40))).status, 403); assert.equal(api.calls.length, 0);
     assert.equal((await fetch(callback, { headers: { Origin: "https://example.invalid" } })).status, 403);
     const badHost = await new Promise<number>(resolve => { const req = httpRequest(session.url, { headers: { Host: "foreign.example" } }, res => { res.resume(); resolve(res.statusCode!); }); req.end(); }); assert.equal(badHost, 403);

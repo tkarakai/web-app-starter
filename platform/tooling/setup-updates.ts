@@ -13,9 +13,13 @@ export function installCaller(root: string): boolean {
     try { demand(!fs.lstatSync(path.join(root, relative)).isSymbolicLink(), "Update caller path must not traverse a symlink"); }
     catch (error) { if ((error as { code?: string }).code !== "ENOENT") throw error; }
   }
-  if (fs.existsSync(destination)) return false;
   const template = fs.readFileSync(path.join(root, "platform/templates/update-platform.yml"), "utf8");
-  fs.mkdirSync(path.dirname(destination), { recursive: true }); fs.writeFileSync(destination, template, { flag: "wx" }); return true;
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  let descriptor: number;
+  try { descriptor = fs.openSync(destination, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o644); }
+  catch (error) { if ((error as { code?: string }).code === "EEXIST") return false; throw error; }
+  try { fs.writeFileSync(descriptor, template); } finally { fs.closeSync(descriptor); }
+  return true;
 }
 export type Options = { repo?: string; check: boolean; fallback: boolean; replace: boolean; open: boolean };
 export function argumentsFor(args: string[]): Options {
