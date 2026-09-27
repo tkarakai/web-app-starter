@@ -84,7 +84,7 @@ Details: [docs/development.md](docs/development.md#app-configuration-appconfigts
 ```bash
 bun run dev                  # Convex + core apps; seeds admin@admin.com and user@user.com
 bun run dev:web              # Convex + web            bun run dev:admin      # Convex + admin
-bun run dev:landing          # landing                 bun run dev:landing-static
+bun run dev:landing          # Convex + landing        bun run dev:landing-static
 bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
 bun run ci                   # Full local CI: lint, types, tests, build, E2E

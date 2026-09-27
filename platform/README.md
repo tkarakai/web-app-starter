@@ -67,7 +67,7 @@ To start only a specific app:
 ```bash
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
-bun run dev:landing          # Landing page only (no Convex)
+bun run dev:landing          # Landing + local Convex for waitlist endpoints
 bun run dev:landing-static   # Static landing page (no Convex)
 bun run dev:storybook        # Component storybook (no Convex)
 ```

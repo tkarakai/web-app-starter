@@ -48,6 +48,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Landing development and CI guidance correctly describe the local Convex backend used by
+  waitlist status and submission endpoints.
+
 - Anonymous Convex backends started with `CI=true` use a bounded, overridable five-second
   execution budget, avoiding spurious query timeouts on small private-repository runners.
 

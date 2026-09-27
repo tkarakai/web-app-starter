@@ -11,7 +11,7 @@ bun run dev                  # Starts installed core apps; skips apps removed du
 # Start a specific app + Convex (ports: runtime.ports in app.config.ts)
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
-bun run dev:landing          # Landing only (no Convex needed)
+bun run dev:landing          # Landing + local Convex for waitlist endpoints
 bun run dev:landing-static   # Static landing page (no Convex)
 bun run dev:storybook        # Component storybook only (no Convex)
 
