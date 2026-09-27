@@ -70,11 +70,17 @@ require a new plan; retain the failed report as evidence and explain why the sco
 ## Complete verification and the PR
 
 Resume without `--defer-e2e`, using `CI=true bun run platform:upgrade --resume upgrade-report.json`
-for reproducible browser verification (one worker, retries and no Next.js agent-file generation).
+for reproducible browser verification (one worker and retries).
 The tool repeats installation and all required checks after relocation. Use the project's
 documented local Convex/E2E setup; local verification does not
 require hosted deployment credentials. Failed checks or pending decisions leave the old
 baseline in place. Do not weaken checks to make the update green.
+
+Next.js may generate app-level `AGENTS.md`/`CLAUDE.md` files during local setup, even with
+`CI=true`. Compare status before and after setup. If those newly generated, untracked files
+invalidate the saved plan, inspect and preserve them outside the checkout, then remove only
+the files confirmed absent before setup. Never remove existing app guides or weaken the
+source checks. Resume the same report after restoring its expected source state.
 
 Completion requires report outcome `verified`, stage `recorded`, the exact target commit in
 `.platform-base.json`, and a passing final zone check. Inspect the diff for preserved app
