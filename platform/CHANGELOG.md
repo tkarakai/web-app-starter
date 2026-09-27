@@ -15,6 +15,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- `bun run platform:check-updates` reports published updates, major releases for review and
+  advisories affecting the installed version. Contracts CI independently runs
+  `bun run check:advisories`: high/critical advisories fail; lower severity warns. Discovery is
+  read-only, ignores draft/prerelease tags, and validates the cumulative advisory schema.
+  See [release discovery and advisories](docs/platform-updates.md).
+
 - `bun run platform:upgrade` plans and applies published platform releases on a dedicated
   branch, preserving app code and merging declared seams. The target release supplies the tool;
   intermediate codemods run in order. JSON/Markdown reports record review gates, bounded
