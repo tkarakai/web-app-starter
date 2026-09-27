@@ -22,6 +22,7 @@ export type Plan = {
   changes: Change[]; patches: PlannedPatch[]; earlyCommits: string[];
   codemods: (Codemod & { release: string })[]; migrations: Migration[];
   environment: { changes: EnvChange[]; scan: EnvScan }; dependencies: FloorPlan[];
+  advisorySource?: { version: string; commit: string; digest: string };
   advisories: Advisory[]; removedFiles: string[]; renamedExports: { from: string; to: string }[];
   gates: Gate[]; rollback: string;
 };
@@ -68,7 +69,7 @@ function patchDiff(directory: string, file: string, before?: Buffer, after?: Buf
   demand(!result.error && (result.status === 0 || result.status === 1), "Cannot inspect patch: " + file);
   return result.stdout.replaceAll(left, "before/" + file).replaceAll(right, "after/" + file).slice(0, 65536);
 }
-export async function createPlan(options: { root: string; source: Source; to: string; excluded?: string[]; cache?: SourceCache; identity?: { root: string; branch: string } }): Promise<Planned> {
+export async function createPlan(options: { root: string; source: Source; to: string; advisoryRelease?: string; excluded?: string[]; cache?: SourceCache; identity?: { root: string; branch: string } }): Promise<Planned> {
   const root = fs.realpathSync(options.root), excluded = options.excluded ?? [];
   version(options.to);
   demand(dirtyPaths(root, excluded).length === 0, "Commit or stash app changes before planning an upgrade");
@@ -191,7 +192,14 @@ export async function createPlan(options: { root: string; source: Source; to: st
     }
     dependencies.push({ ...floor, ranges });
   }
-  const advisories = parseAdvisories(fileAt(cache.repo, target.tree, ADVISORIES).toString("utf8")).advisories.filter(row => satisfies(installed.version, row.affected));
+  const allAdvisories = new Map(parseAdvisories(fileAt(cache.repo, target.tree, ADVISORIES).toString("utf8")).advisories.map(row => [row.id, row]));
+  let advisorySource: Plan["advisorySource"];
+  if (options.advisoryRelease) {
+    const latest = await loadRelease(cache, options.advisoryRelease), bytes = fileAt(cache.repo, latest.tree, ADVISORIES);
+    advisorySource = { version: latest.version, commit: latest.commit, digest: digest(bytes) };
+    for (const advisory of parseAdvisories(bytes.toString("utf8")).advisories) allAdvisories.set(advisory.id, advisory);
+  }
+  const advisories = [...allAdvisories.values()].filter(row => satisfies(installed.version, row.affected));
   for (const advisory of advisories) if (["high", "critical"].includes(advisory.severity)) gate("advisory:" + advisory.id, "advisory", advisory.severity + " advisory requires review and passing contracts: " + advisory.id, []);
   const unsigned = {
     schemaVersion: 1 as const, tool: "platform-upgrade" as const,
@@ -199,7 +207,7 @@ export async function createPlan(options: { root: string; source: Source; to: st
     source: options.source, installed, previousBaseHash: digest(baseText),
     target: { version: target.version, commit: target.commit, manifestDigest: target.manifestDigest, nodeMajor: target.manifest.runtime.nodeMajor, bun: target.manifest.runtime.bun },
     releases: sources.map(row => ({ version: row.version, commit: row.commit })), changes, patches, earlyCommits, codemods, migrations,
-    environment: { changes: envChanges, scan }, dependencies, advisories,
+    environment: { changes: envChanges, scan }, dependencies, advisories, ...(advisorySource ? { advisorySource } : {}),
     removedFiles: selected.flatMap(row => row.removedFiles), renamedExports: selected.flatMap(row => row.renamedExports), gates,
     rollback: "Before data changes: abandon the update branch or revert with an ordinary commit, including baseline and lockfile. After data changes: follow the migration recovery procedure; a source revert is not a data rollback.",
   };

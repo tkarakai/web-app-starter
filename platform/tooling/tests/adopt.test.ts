@@ -123,6 +123,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.match(at("app.config.ts"), /const productName = "Acme \$& Co";/);
   assert.equal(at("README.md").split("\n")[0], "# Acme $& Co");
   assert.equal(at("CLAUDE.md"), read("platform/templates/CLAUDE.md"));
+  assert.equal(at(".github/workflows/update-platform.yml"), read("platform/templates/update-platform.yml"));
   assert.match(at("renovate.json"), /local>acme\/acme-app\/\/platform\/config\/renovate-preset/);
   assert.equal(existsSync(path.join(root, "apps/landing")), false);
   assert.equal(existsSync(path.join(root, ".github/workflows/ci-landing.yml")), false);

@@ -83,6 +83,12 @@ branch rules require. Change triggers there, never in `platform-*.yml`.
   rollbacks likewise inspect the selected commit for landing before building, checking
   credentials or checking health. Web, admin and backend checks remain required.
 
+### Platform update delivery
+
+The app-owned `update-platform.yml` calls `platform-update.yml` to discover releases, verify
+upgrades without write credentials, and deliver a ready/draft PR or an issue from a separate
+job. See [update delivery](update-delivery.md) for App setup, token fallback and review recovery.
+
 ### Paid features on private repositories
 
 Every workflow runs on GitHub Free with a private repository. Features that GitHub gives free

@@ -9,20 +9,20 @@ import { readRegular, writeAtomic } from "./io.ts";
 import { inScope, secretValueFile } from "./ownership.ts";
 import { execute, redact, type Execute } from "./commands.ts";
 import { candidateBase, REQUIRED_CHECKS, verifyDependencies, verifySource } from "./verify.ts";
-import { decisionFor, exclusions, unresolved, writeReport, type Report, type Step } from "./report.ts";
+import { reportAppRoot, decisionFor, exclusions, unresolved, writeReport, type Report, type Step } from "./report.ts";
 
 export async function reconstruct(report: Report, plannedTarget: Planned["cache"], excluded: string[]): Promise<Planned> {
-  const root = report.plan.app.root, original = path.join(plannedTarget.directory, "original-app");
+  const root = reportAppRoot(report), original = path.join(plannedTarget.directory, "original-app");
   git(plannedTarget.directory, ["clone", "--quiet", "--no-local", "--no-checkout", "--no-tags", "--", root, original]);
   git(original, ["checkout", "--quiet", "--detach", report.plan.app.head]);
   git(original, ["fetch", "--quiet", "--no-tags", root, report.plan.installed.commit]);
-  const planned = await createPlan({ root: original, source: report.plan.source, to: report.plan.target.version, cache: plannedTarget, excluded, identity: report.plan.app });
+  const planned = await createPlan({ root: original, source: report.plan.source, to: report.plan.target.version, advisoryRelease: report.plan.advisorySource?.version, cache: plannedTarget, excluded, identity: report.plan.app });
   demand(planned.plan.digest === report.plan.digest, "Saved plan no longer matches its source, release metadata or original app commit");
   return planned;
 }
 
 export async function applyUpgrade(report: Report, planned: Planned, options: { reportFile: string; deferE2e?: boolean; execute?: Execute }): Promise<Report> {
-  const root = report.plan.app.root, excluded = exclusions(root, options.reportFile), run = options.execute ?? execute;
+  const root = reportAppRoot(report), excluded = exclusions(root, options.reportFile), run = options.execute ?? execute;
   const save = () => writeReport(options.reportFile, report);
   const snapshot = () => workingFiles(root, excluded);
   const pending = (message?: string) => { report.outcome = "needs-review"; report.state.error = message; save(); return report; };

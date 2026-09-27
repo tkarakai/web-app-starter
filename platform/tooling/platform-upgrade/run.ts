@@ -5,8 +5,9 @@ import { argumentsFor, HELP, reportLocation } from "./cli.ts";
 import { canonical, demand } from "./metadata.ts";
 import { createCache, loadRelease, resolveSource } from "./git.ts";
 import { createPlan, workingFiles } from "./plan.ts";
-import { createReport, exclusions, readReport, recordDecision, unresolved, writeReport } from "./report.ts";
+import { createReport, exclusions, reportAppRoot, readReport, recordDecision, unresolved, writeReport } from "./report.ts";
 import { applyUpgrade, reconstruct } from "./engine.ts";
+import { relocateReport } from "./relocate.ts";
 import { redact } from "./commands.ts";
 
 export function assertRuntime(nodeMajor: number, bun: string): void {
@@ -18,7 +19,7 @@ export async function main(argv: string[]): Promise<number> {
   const args = argumentsFor(argv);
   demand(args.bootstrapProtocol === "1" && /^[0-9a-f]{40}$/.test(args.targetCommit ?? "") && args.appRoot, "Invoke platform:upgrade through its launcher; target protocol 1 is required");
   const root = fs.realpathSync(args.appRoot), saved = args.resume ? readReport(args.resume) : undefined;
-  if (saved) demand(saved.plan.app.root === root, "Saved plan belongs to another app checkout");
+  if (saved) demand(args.relocate || reportAppRoot(saved) === root, "Saved plan belongs to another app checkout");
   const source = saved?.plan.source ?? resolveSource(args.source), to = saved?.plan.target.version ?? args.to!;
   const cache = createCache(source);
   try {
@@ -28,11 +29,12 @@ export async function main(argv: string[]): Promise<number> {
     assertRuntime(target.manifest.runtime.nodeMajor, target.manifest.runtime.bun);
     const file = saved ? fs.realpathSync(args.resume!) : reportLocation(args.report), excluded = exclusions(root, file);
     process.stdout.write("Upgrade report: " + file + "\n");
+    if (saved && args.relocate) { relocateReport(saved, root, excluded); writeReport(file, saved); }
     if (args.resolve) {
       recordDecision(saved!, { id: args.resolve, action: args.action!, evidence: args.evidence!, migrationEvidence: args.migrationEvidence });
       writeReport(file, saved!); process.stdout.write("Decision recorded. Run --resume to continue.\n"); return 0;
     }
-    const planned = saved ? await reconstruct(saved, cache, excluded) : await createPlan({ root, source, to, cache, excluded });
+    const planned = saved ? await reconstruct(saved, cache, excluded) : await createPlan({ root, source, to, advisoryRelease: args.advisoryRelease, cache, excluded });
     const report = saved ?? createReport(planned.plan, workingFiles(root, excluded));
     if (!saved) {
       demand(canonical(report.plan.source) === canonical(source), "Source identity mismatch");

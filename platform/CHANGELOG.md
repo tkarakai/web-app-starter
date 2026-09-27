@@ -15,6 +15,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Automatic platform-update delivery separates read-only verification from the job holding
+  repository write credentials. Adoption installs its weekday caller; verified updates become
+  ready PRs, review gates become drafts, and failures or new majors become issues. GitHub App
+  tokens trigger ordinary PR CI; fallback workflow-file changes need a manual upgrade.
+  Draft reports relocate safely to a new checkout and repeat verification without repeating
+  completed codemods. See [update delivery](docs/update-delivery.md).
+
 - `bun run platform:upgrade` plans and applies published platform releases on a dedicated
   branch, preserving app code and merging declared seams. The target release supplies the tool;
   intermediate codemods run in order. JSON/Markdown reports record review gates, bounded
