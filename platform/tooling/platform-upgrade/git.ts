@@ -114,7 +114,9 @@ export function releaseAssetURL(source: Source, releaseVersion: string, asset: "
 }
 export function createCache(source: Source): SourceCache {
   validateSource(source);
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "platform-upgrade-"));
+  // Node resolves module URLs through symlinks. Historical CLI entrypoint guards
+  // compare that URL with argv[1], so every executable cache path must be canonical.
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "platform-upgrade-")));
   const repo = path.join(directory, "objects.git"); fs.mkdirSync(repo);
   git(repo, ["init", "--bare", "-q"]);
   const refs = gitText(repo, ["ls-remote", "--tags", "--refs", sourceLocation(source)]);

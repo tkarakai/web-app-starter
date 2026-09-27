@@ -48,6 +48,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Platform upgrades execute historical codemods through canonical temporary paths, avoiding
+  silent no-op entrypoints when the temporary directory is a symlink, including macOS `/var`.
+
 - Landing development and CI guidance correctly describe the local Convex backend used by
   waitlist status and submission endpoints.
 

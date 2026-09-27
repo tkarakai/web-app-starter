@@ -72,6 +72,32 @@ test("ordered codemods use historical implementations once and survive failed ch
   assert(!calls.slice(count).some(call => call.includes("codemods/")));
   assert.equal(fs.readFileSync(path.join(f.app, "apps/web/business.ts"), "utf8"), "export const total = 42;\n// first\n// second\n");
 });
+test("historical codemod entrypoints execute when the temporary parent is a symlink", async () => {
+  const f = runnable(), mod = "platform/tooling/codemods/guarded.ts";
+  write(f.source, mod, `import fs from 'node:fs'; import path from 'node:path'; import { pathToFileURL } from 'node:url';
+if (import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const file = 'apps/web/business.ts', source = fs.readFileSync(file, 'utf8');
+  if (process.argv.includes('--check')) process.exit(source.includes('historical-entry-ran') ? 0 : 1);
+  fs.appendFileSync(file, '// historical-entry-ran\\n');
+}`);
+  f.publish("2.1.0", entry => entry.codemods.push({ id: "guarded", path: mod, touches: ["apps/web/business.ts"] }));
+  write(f.source, mod, "throw new Error('must execute the intermediate release');\n");
+  f.publish("2.2.0", entry => entry.codemods.push(...f.manifest.releases[1].codemods));
+  const parent = temp(), actual = path.join(parent, "actual"), linked = path.join(parent, "linked");
+  fs.mkdirSync(actual); fs.symlinkSync(actual, linked, "dir");
+  const previous = process.env.TMPDIR;
+  try {
+    process.env.TMPDIR = linked;
+    const planned = await f.plan("2.2.0"), { report, reportFile } = reportFor(planned);
+    const result = await applyUpgrade(report, planned, { reportFile, execute: (args, cwd) => args[0] === process.execPath ? execute(args, cwd) : pass(args, cwd) });
+    assert.equal(result.outcome, "verified", result.state.error);
+    assert.equal(fs.readFileSync(path.join(f.app, "apps/web/business.ts"), "utf8"), "export const total = 42;\n// historical-entry-ran\n");
+    assert.equal(result.state.steps.find(step => step.id === "codemod:guarded:check")?.exitCode, 1);
+    assert.equal(result.state.steps.find(step => step.id === "codemod:guarded:idempotence")?.exitCode, 0);
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = previous;
+  }
+});
 test("new-secret gate is specific, bound to the plan and produces no source mutation", async () => {
   const f = runnable(); f.publish("2.0.1", entry => { entry.env.push({ name: "NEW_SECRET", kind: "new", secret: true, required: true }); });
   const planned = await f.plan("2.0.1"), { report, reportFile } = reportFor(planned); const before = git(f.app, "status", "--porcelain");
