@@ -79,9 +79,12 @@ export async function createPlan(options: { root: string; source: Source; to: st
   const baseText = fs.readFileSync(path.join(root, ".platform-base.json"), "utf8"), installed = parseBase(baseText);
   demand(typeof installed !== "string", typeof installed === "string" ? installed : "Invalid baseline"); version(installed.version);
   demand(compare(options.to, installed.version) >= 0, "Platform downgrades are not supported; use a reviewed revert");
-  installed.commit = fullCommit(root, installed.commit);
   const cache = options.cache ?? createCache(options.source);
   const target = await loadRelease(cache, options.to), baseline = await loadRelease(cache, installed.version);
+  // Wholesale upgrades do not put release commits in the app's ancestry. A fresh clone
+  // therefore resolves recorded upstream identities in the trusted release cache.
+  demand(baseline.commit.startsWith(installed.commit), "Installed version/commit does not match the trusted release tag");
+  installed.commit = fullCommit(cache.repo, installed.commit);
   demand(baseline.commit === installed.commit, "Installed version/commit does not match the trusted release tag");
   const baseIndex = target.manifest.releases.findIndex(row => row.version === installed.version); demand(baseIndex >= 0, "Target has no history for the installed baseline");
   const selected = target.manifest.releases.slice(baseIndex + 1);
@@ -102,11 +105,10 @@ export async function createPlan(options: { root: string; source: Source; to: st
   const change = (file: string, kind: Change["kind"], current: TreeFile | undefined, next: Payload, conflict = false): void => {
     changes.push({ path: file, kind, action: "remove" in next ? "delete" : current ? "change" : "add", conflict }); payloads.push(next);
   };
-  const earlyCommits = (installed.earlyCommits ?? []).map(commit => fullCommit(root, commit));
+  const earlyCommits = (installed.earlyCommits ?? []).map(commit => fullCommit(cache.repo, commit));
   const earlyFiles = new Map<string, TreeFile | undefined>();
   for (const commit of earlyCommits) {
     // Only a recorded upstream commit reachable from this trusted release is absorbed.
-    git(cache.repo, ["fetch", "--quiet", "--no-tags", root, commit]);
     demand(spawnSync("git", ["merge-base", "--is-ancestor", commit, target.commit], { cwd: cache.repo }).status === 0, "Recorded early commit is not part of the target release: " + commit);
     for (const file of gitText(cache.repo, ["diff-tree", "--no-commit-id", "--name-only", "-r", commit]).split("\n").filter(Boolean)) if (isZonePath(file)) earlyFiles.set(file, entry(tree(cache.repo, commit), file));
   }

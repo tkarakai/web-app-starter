@@ -166,8 +166,9 @@ test("a committed draft relocates without changing its plan or rerunning complet
   const run: Execute = (args, cwd) => args[0] === process.execPath ? execute(args, cwd) : pass(args, cwd);
   assert.equal((await applyUpgrade(report, planned, { reportFile, execute: run, deferE2e: true })).outcome, "needs-review");
   git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "draft with completed codemod");
-  const clone = temp(); git(clone, "clone", "-q", f.app, ".");
+  const clone = temp(); git(clone, "clone", "--no-local", "-q", f.app, ".");
   const portable = readReport(path.join(clone, "upgrade-report.json")), immutable = JSON.stringify(portable.plan), excluded = ["upgrade-report.json", "upgrade-report.md"];
+  assert.throws(() => git(clone, "cat-file", "-e", portable.plan.target.commit));
   relocateReport(portable, clone, excluded);
   assert.equal(JSON.stringify(portable.plan), immutable); assert.equal(portable.state.stage, "codemods");
   assert(!portable.state.steps.some(step => step.id === "install" || step.id.startsWith("verify:")));

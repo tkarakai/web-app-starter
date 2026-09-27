@@ -76,6 +76,20 @@ async function waitFor(check: () => boolean): Promise<void> {
   assert.fail("Timed out waiting for disposable process");
 }
 
+test("default startup skips stripped apps and explicit missing apps fail before side effects", async () => {
+  fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
+  fs.writeFileSync(path.join(root, "platform/apps/storybook/package.json"), "{}");
+  // Stop at the first setup operation, after exercising the real selector and config reader.
+  fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+  const selected = await runScript("dev-start.sh", ["--ci"]);
+  assert.equal(selected.status, 17, selected.stderr);
+  assert.match(selected.stdout, /Apps: web=false admin=false landing=false storybook=true convex=false/);
+  assert.equal(fs.existsSync(path.join(root, "apps/landing")), false);
+  const missing = await runScript("dev-start.sh", ["--ci", "--app=landing"]);
+  assert.equal(missing.status, 1); assert.match(missing.stdout, /App is not installed: landing/);
+  assert.equal(fs.existsSync(path.join(root, ".dev-pids")), false);
+});
+
 beforeEach(() => {
   temp = fs.mkdtempSync(path.join(os.tmpdir(), "dev process isolation "));
   base = fs.realpathSync(temp);

@@ -20,7 +20,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   ready PRs, review gates become drafts, and failures or new majors become issues. GitHub App
   tokens trigger ordinary PR CI; fallback workflow-file changes need a manual upgrade.
   Draft reports relocate safely to a new checkout and repeat verification without repeating
-  completed codemods. See [update delivery](docs/update-delivery.md).
+  completed codemods, restoring release objects from the trusted source in fresh clones.
+  Failed checks retain their report and diagnostics. Default dev startup skips removed apps.
+  See [update delivery](docs/update-delivery.md).
 
 - `bun run platform:check-updates` reports published updates, major releases for review and
   advisories affecting the installed version. Contracts CI independently runs

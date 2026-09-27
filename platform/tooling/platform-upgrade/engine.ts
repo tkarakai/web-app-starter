@@ -15,7 +15,6 @@ export async function reconstruct(report: Report, plannedTarget: Planned["cache"
   const root = reportAppRoot(report), original = path.join(plannedTarget.directory, "original-app");
   git(plannedTarget.directory, ["clone", "--quiet", "--no-local", "--no-checkout", "--no-tags", "--", root, original]);
   git(original, ["checkout", "--quiet", "--detach", report.plan.app.head]);
-  git(original, ["fetch", "--quiet", "--no-tags", root, report.plan.installed.commit]);
   const planned = await createPlan({ root: original, source: report.plan.source, to: report.plan.target.version, advisoryRelease: report.plan.advisorySource?.version, cache: plannedTarget, excluded, identity: report.plan.app });
   demand(planned.plan.digest === report.plan.digest, "Saved plan no longer matches its source, release metadata or original app commit");
   return planned;
@@ -65,7 +64,6 @@ export async function applyUpgrade(report: Report, planned: Planned, options: { 
       assertBeforeApply(report, planned, excluded);
       if (unresolved(report, true).length) return pending();
       report.state.branch = ensureUpdateBranch(root, report.plan.target.version); save();
-      git(root, ["fetch", "--quiet", "--no-tags", planned.cache.repo, report.plan.target.commit + ":refs/platform-upgrade/" + report.plan.digest]);
       materializePayloads(root, planned.payloads); stage(root, planned.payloads.map(row => row.path), planned.cache.directory);
       report.state.expectedFiles = snapshot(); report.state.stage = "applied"; save();
       if (report.plan.gates.some(gate => decisionFor(report, gate)?.action === "reapply-patch")) return pending("Reapply the reviewed patches to the new platform files, retaining their PLATFORM-PATCH markers, then resume.");
@@ -87,6 +85,9 @@ export async function applyUpgrade(report: Report, planned: Planned, options: { 
       save();
     }
     if (unresolved(report).length) return pending();
+    // A normal clone does not transfer refs/platform-upgrade or their otherwise unreachable
+    // objects. Import the already-validated target for the candidate zone check on resume too.
+    git(root, ["fetch", "--quiet", "--no-tags", planned.cache.repo, report.plan.target.commit + ":refs/platform-upgrade/" + report.plan.digest]);
     // Stop before executing scripts while a seam still contains conflict markers.
     for (const change of report.plan.changes.filter(row => row.conflict)) demand(!/^(?:<<<<<<<|=======|>>>>>>>|\|\|\|\|\|\|\|)(?: |$)/m.test(fs.readFileSync(path.join(root, change.path), "utf8")), "Resolve seam conflict before running scripts: " + change.path);
     if (report.state.stage === "applied") {

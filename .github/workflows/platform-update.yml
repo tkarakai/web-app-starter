@@ -150,6 +150,16 @@ jobs:
           path: ${{ runner.temp }}/platform-delivery/
           retention-days: 14
           if-no-files-found: warn
+      - name: Retain the report even when verification fails
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: platform-verification-report
+          path: |
+            upgrade-report.json
+            upgrade-report.md
+          retention-days: 14
+          if-no-files-found: warn
 
   deliver:
     needs: [check, verify]

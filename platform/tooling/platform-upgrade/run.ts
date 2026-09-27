@@ -43,6 +43,7 @@ export async function main(argv: string[]): Promise<number> {
     }
     if (!args.dryRun && report.outcome !== "unchanged") await applyUpgrade(report, planned, { reportFile: file, deferE2e: args.deferE2e });
     process.stdout.write("platform-upgrade: " + report.outcome + "; " + file + "\n");
+    if (report.outcome === "failed" && report.state.error) process.stderr.write(redact(report.state.error) + "\n");
     return report.outcome === "failed" ? 1 : report.outcome === "needs-review" ? 2 : 0;
   } finally { fs.rmSync(cache.directory, { recursive: true, force: true }); }
 }

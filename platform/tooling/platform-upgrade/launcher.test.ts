@@ -39,7 +39,8 @@ test("stable launcher runs the pinned target tool; real dry-run, apply and resum
   const originalDigest = readReport(file).plan.digest;
   fs.copyFileSync(file, path.join(f.app, "upgrade-report.json")); fs.copyFileSync(file.replace(/\.json$/, ".md"), path.join(f.app, "upgrade-report.md"));
   git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "deliver pending draft");
-  const clone = temp(); git(clone, "clone", "-q", f.app, ".");
+  const clone = temp(); git(clone, "clone", "--no-local", "-q", f.app, ".");
+  assert.notEqual(spawnSync("git", ["cat-file", "-e", readReport(file).plan.installed.commit], { cwd: clone }).status, 0);
   const clonedReport = path.join(clone, "upgrade-report.json");
   const refused = invoke(["--resume", clonedReport], clone); assert.equal(refused.status, 1); assert.match(refused.stderr, /relocate/);
   const done = invoke(["--resume", clonedReport, "--relocate"], clone); assert.equal(done.status, 0, done.stdout + done.stderr); assert.equal(readReport(clonedReport).outcome, "verified");
@@ -48,4 +49,14 @@ test("stable launcher runs the pinned target tool; real dry-run, apply and resum
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8")).version, "2.0.1");
   const manifest = JSON.parse(fs.readFileSync(path.join(clone, MANIFEST), "utf8")); assert.equal(manifest.releases.at(-1).version, "2.0.2");
   const guard = invoke(["--to", "2.0.2", "--bootstrap-protocol", "1"]); assert.equal(guard.status, 1); assert.match(guard.stderr, /recursive delegation/);
+  git(clone, "add", "-A"); git(clone, "commit", "-qm", "verified upgrade");
+  pkg.scripts["test:e2e"] = "node -e 'console.error(\"E2E_FAILURE_MARKER\"); process.exit(1)'";
+  write(f.source, "package.json", JSON.stringify(pkg)); f.publish("2.0.3");
+  const nextClone = temp(); git(nextClone, "clone", "--no-local", "-q", clone, ".");
+  assert.notEqual(spawnSync("git", ["cat-file", "-e", readReport(clonedReport).plan.target.commit], { cwd: nextClone }).status, 0);
+  const failedFile = path.join(nextClone, "failed-report.json");
+  const failed = invoke(["--to", "2.0.3", "--source", f.source, "--report", failedFile], nextClone);
+  assert.equal(failed.status, 1); assert.match(failed.stderr, /E2E_FAILURE_MARKER/);
+  assert.equal(readReport(failedFile).outcome, "failed");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(nextClone, ".platform-base.json"), "utf8")).version, "2.0.2");
 });
