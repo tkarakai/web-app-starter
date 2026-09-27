@@ -1,5 +1,7 @@
 # Commercial License
 
+> Draft: pending legal review.
+
 This document describes the commercial terms for using `web-app-starter` in
 production or for paid client work.
 
