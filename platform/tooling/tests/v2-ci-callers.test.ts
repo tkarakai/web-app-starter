@@ -25,4 +25,8 @@ test("check is read-only and denied permissions prevent every pending write", t 
   fs.writeFileSync(path.join(dir, "ci-z.yml"), caller.replace("jobs:", "permissions:\n  pull-requests: none\njobs:"));
   assert.throws(() => migrate(root), /explicitly denies/); assert.equal(fs.readFileSync(path.join(dir, "ci-web.yml"), "utf8"), caller);
   fs.unlinkSync(path.join(dir, "ci-z.yml")); migrate(root); assert.deepEqual(migrate(root, true), []);
+  const outside = path.join(root, "outside.yml"); fs.writeFileSync(outside, caller);
+  fs.symlinkSync(outside, path.join(dir, "ci-linked.yml"));
+  assert.throws(() => migrate(root), /ELOOP|symbolic link/);
+  assert.equal(fs.readFileSync(outside, "utf8"), caller);
 });

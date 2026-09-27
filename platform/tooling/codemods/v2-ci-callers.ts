@@ -49,17 +49,28 @@ export function transform(source: string): string {
 export function migrate(root: string, check = false): string[] {
   const directory = path.join(root, ".github/workflows");
   if (!fs.existsSync(directory)) return [];
-  const changes: { relative: string; file: string; content: string }[] = [];
+  const changes: { relative: string; file: string; content: string; mode: number }[] = [];
   for (const name of fs.readdirSync(directory).filter(file => /^ci-[a-z-]+\.ya?ml$/.test(file))) {
-    const file = path.join(directory, name), stat = fs.lstatSync(file);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw Error("CI caller must be a regular file: " + name);
-    const source = fs.readFileSync(file, "utf8");
+    const file = path.join(directory, name), fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    let source: string, mode: number;
+    try {
+      const stat = fs.fstatSync(fd);
+      if (!stat.isFile() || stat.size > 1024 * 1024) throw Error("CI caller must be a regular file under 1 MiB: " + name);
+      source = fs.readFileSync(fd, "utf8"); mode = stat.mode & 0o777;
+    } finally { fs.closeSync(fd); }
     if (!/^\s+uses: \.\/\.github\/workflows\/platform-ci-[a-z-]+\.ya?ml\s*$/m.test(source)) continue;
     if (!/^ {2}pull_request:/m.test(source)) continue; // Manual exact-commit verification has no PR event.
     const content = transform(source);
-    if (content !== source) changes.push({ relative: ".github/workflows/" + name, file, content });
+    if (content !== source) changes.push({ relative: ".github/workflows/" + name, file, content, mode });
   }
-  if (!check) for (const change of changes) fs.writeFileSync(change.file, change.content);
+  if (!check) for (const change of changes) {
+    const temporary = fs.mkdtempSync(path.join(directory, ".ci-callers-"));
+    try {
+      const file = path.join(temporary, "caller");
+      fs.writeFileSync(file, change.content, { flag: "wx", mode: change.mode });
+      fs.renameSync(file, change.file); // Replace a destination symlink instead of following it.
+    } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+  }
   return changes.map(row => row.relative);
 }
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
