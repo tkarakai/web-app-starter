@@ -115,6 +115,10 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 | `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
 | `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
 
+For account security, compose `SecuritySection` (or `ChangePasswordForm`, `TwoFactorSection`,
+`PasskeySection` and `SessionsList`) from `@web-app-starter/auth-ui` under the protected layout.
+These components own the auth operations and localized feedback; your app owns the page around them.
+
 Within an app, `@/` is an alias for its `src/`. It is app-internal only; across packages import
 by package name (`@web-app-starter/*` for the platform, `@repo/backend` for the backend).
 

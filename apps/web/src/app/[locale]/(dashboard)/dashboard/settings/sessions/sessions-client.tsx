@@ -35,7 +35,7 @@ export function SessionsClient() {
   const router = useRouter();
   const authUser = useAuthUser();
   const tc = useTranslations("common");
-  const ts = useTranslations("dashboard.sessions");
+  const ts = useTranslations("accountSecurity.sessions");
   const td = useTranslations("dashboard");
 
   const displayName = authUser?.name ?? tc("anonymous");

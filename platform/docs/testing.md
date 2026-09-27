@@ -13,6 +13,11 @@
 
 ## Bun Test Pattern (Utility Functions)
 
+Platform auth unit and component tests live in `platform/packages/auth-ui/qa/tests/` and
+run through that package's `test` and `test:unit` commands, root Turbo commands, and CI Shared.
+They use only platform message catalogues and do not need the sample app. Browser flows
+remain in `apps/web/qa/e2e/` to exercise the real app wiring and account page.
+
 ```typescript
 // apps/web/qa/tests/myFunction.test.ts
 import { describe, expect, it } from "bun:test";

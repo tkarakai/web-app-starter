@@ -36,7 +36,7 @@ Each top-level namespace has exactly one owner, and the loader merges them at re
 
 | File | Owner | Holds |
 |---|---|---|
-| `platform/packages/i18n/messages/<locale>.json` | Platform (never edited in an app) | `common`, `theme`, `language`, `offline`, `auth`, `errors`, `passwordStrength`, `forbidden`, `timezones`, in all 15 supported locales |
+| `platform/packages/i18n/messages/<locale>.json` | Platform (never edited in an app) | `common`, `theme`, `language`, `offline`, `auth`, `accountSecurity`, `errors`, `passwordStrength`, `forbidden`, `timezones`, in all 15 supported locales |
 | `packages/messages/<locale>.json` (`@repo/messages`) | App | The app's namespaces: in the reference apps `metadata`, `landing`, `legal`, `dashboard`, `projects`, `tasks`, `uploads`, `sampleErrors`. Needed only for the locales the app ships |
 | `packages/messages/overrides.json` | App | App wording for platform strings: `{ "<locale>": { "<platform namespace>": { ... } } }`, deep-merged over the platform's messages, one string at a time |
 

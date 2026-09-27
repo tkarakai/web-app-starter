@@ -41,6 +41,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Who is affected:** apps with customized account-security wording under
+  `dashboard.changePassword`, `dashboard.twoFactor`, `dashboard.passkeys` or `dashboard.sessions`.
+  These messages now belong to the platform's `accountSecurity` namespace. Run
+  `node platform/tooling/codemods/v2-security-messages.ts` to preserve customized values in
+  `packages/messages/overrides.json`. Original app keys remain for local components. Conflicting
+  overrides or custom keys without a platform equivalent stop for review before any write.
+  **Done when:** the codemod's `--check`, `bun run check:i18n` and account security tests pass.
+
 - **Who is affected:** any existing deployment with platform data in app-level tables. Before
   deploying this release, prepare the additive bridge with
   `platform/tooling/codemods/v2-component-data-bridge.ts`, stop writers, and run the internal
@@ -214,6 +222,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `git grep -n "<your product name>" -- packages/i18n/messages` finds nothing.
 
 ### Added
+
+- Account security settings now ship in `@web-app-starter/auth-ui`: `SecuritySection`,
+  `ChangePasswordForm`, `TwoFactorSection`, `PasskeySection` and `SessionsList`. Existing web
+  imports remain compatible through thin re-exports. Their auth logic and localized controls
+  receive platform updates; auth component and broadcast tests run from the package itself.
 
 - Reusable platform workflows, `.github/workflows/platform-*.yml` (CI for each app, security,
   staging and production deploys, rollback), with the app-owned `ci-*.yml`, `cd-*.yml` and
