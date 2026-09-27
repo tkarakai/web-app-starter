@@ -325,7 +325,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   }
 
   log("6. Platform updates");
-  log("  - Automatic update delivery isn't part of this release. Take releases with platform/UPGRADING.md.");
+  log("  - Weekday release checks are installed. Configure the updater GitHub App for automatic PR CI; see platform/docs/update-delivery.md.");
 
   log("7. Checks");
   const zone = checkZone(root);

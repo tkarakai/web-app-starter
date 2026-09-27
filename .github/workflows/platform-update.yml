@@ -103,6 +103,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/setup-bun
+      - name: Seed local origins for optional app builds
+        run: |
+          ./platform/tooling/ensure-app-env.sh --quiet
+          echo "LANDING_URL=$APP_CONFIG_ORIGIN_LANDING" >> "$GITHUB_ENV"
       # This entire job has only a read token. No App key or write token is in its env.
       - name: Plan, apply and verify without E2E
         id: upgrade
