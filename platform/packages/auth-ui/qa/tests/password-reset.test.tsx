@@ -30,7 +30,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
 });
 
-describe("web password reset", () => {
+describe("platform password reset", () => {
   it.each(["en", "hu"])("preserves the requesting origin and %s locale", async (locale) => {
     render(<NextIntlClientProvider locale={locale} messages={en}>
       <ForgotPasswordForm />
