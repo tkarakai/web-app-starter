@@ -27,8 +27,8 @@ const LOCALE_KEY = "NEXT_LOCALE";
  */
 export function useProfileSync() {
   const currentLocale = useLocale();
-  const profile = useQuery(api.userProfiles.get);
-  const setLocale = useMutation(api.userProfiles.setLocale);
+  const profile = useQuery(api.platform.userProfiles.get);
+  const setLocale = useMutation(api.platform.userProfiles.setLocale);
   const { setTheme } = useTheme();
 
   useEffect(() => {

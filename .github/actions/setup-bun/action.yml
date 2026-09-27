@@ -72,10 +72,13 @@ runs:
     # Local ports and origins from app.config.ts, as APP_CONFIG_* variables for
     # later steps (e.g. `APP_ORIGIN: ${{ env.APP_CONFIG_ORIGIN_WEB }}`), so CI
     # follows the app's configuration. Skipped for refs that predate the file,
-    # such as an old commit checked out by a rollback.
+    # such as an old commit checked out by a rollback. Commits before v2 keep the
+    # reader in scripts/ rather than platform/tooling/.
     - name: Export app configuration
       shell: bash
       run: |
-        if [ -f scripts/app-config.ts ]; then
+        if [ -f platform/tooling/app-config.ts ]; then
+          ./platform/tooling/node-ts.sh platform/tooling/app-config.ts github-env >> "$GITHUB_ENV"
+        elif [ -f scripts/app-config.ts ]; then
           ./scripts/node-ts.sh scripts/app-config.ts github-env >> "$GITHUB_ENV"
         fi

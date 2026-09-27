@@ -2,7 +2,7 @@
  * Authenticated E2E helpers.
  *
  * These drive the real sign-in UI against the real Convex backend that
- * `scripts/dev-start.sh --ci --app=web` boots for Playwright. Nothing here is
+ * `platform/tooling/dev-start.sh --ci --app=web` boots for Playwright. Nothing here is
  * mocked — that is the point. The Better Auth <-> Convex adapter integration has
  * no other behavioural coverage, so these helpers are what stands between a
  * breaking adapter upgrade and production.
@@ -17,7 +17,7 @@ import * as path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * The user seeded by `packages/backend/convex/devSeed.ts`. The password is the
+ * The user seeded by `packages/backend/convex/platform/devSeed.ts`. The password is the
  * email repeated three times, and the seed marks the address email-verified, so
  * this account can sign in without an inbox.
  *
@@ -177,8 +177,11 @@ export async function expectSignedOut(page: Page): Promise<void> {
 export async function signOut(page: Page): Promise<void> {
   await page.bringToFront();
   await page.goto("/en/dashboard");
-  await page.locator('[data-slot="sidebar-footer"] button').first().click();
-  await page.getByRole("menuitem").last().click();
+  const account = page.locator('[data-slot="sidebar-footer"] button').first();
+  const opensMenu = await account.getAttribute("aria-haspopup") === "menu";
+  await account.click();
+  // Adoption without the sample has a direct sign-out button in this same footer.
+  if (opensMenu) await page.getByRole("menuitem").last().click();
   await page.waitForURL((url) => !url.pathname.includes("/dashboard"), { timeout: 15_000 });
 }
 

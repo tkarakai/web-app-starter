@@ -1,7 +1,7 @@
 "use client";
 
 import { FolderKanban } from "lucide-react";
-import { Button } from "@repo/design-system";
+import { Button } from "@web-app-starter/design-system";
 
 type EmptyStateProps = {
   title: string;

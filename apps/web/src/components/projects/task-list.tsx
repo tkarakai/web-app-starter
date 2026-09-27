@@ -31,7 +31,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
 import { DeadlineInput } from "./deadline-input";
@@ -55,7 +55,7 @@ type TaskListProps = {
 
 export function TaskList({ projectId }: TaskListProps) {
   const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
-  const profile = useQuery(api.userProfiles.get);
+  const profile = useQuery(api.platform.userProfiles.get);
   const createTask = useMutationWithToast(api.tasks.create);
   const t = useTranslations("tasks");
   const tc = useTranslations("common");

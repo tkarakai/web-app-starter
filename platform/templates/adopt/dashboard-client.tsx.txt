@@ -1,0 +1,28 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { appConfig } from "@web-app-starter/app-config";
+import { useAuthUser } from "@web-app-starter/auth-ui";
+import { SidebarInset, SidebarProvider } from "@web-app-starter/design-system";
+import { AppSidebar } from "@/components/app-sidebar";
+import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
+import { SidebarTrigger } from "@/components/ui/localized-controls";
+import { useProfileSync } from "@/hooks/useProfileSync";
+
+export function DashboardClient() {
+  useProfileSync();
+  const user = useAuthUser();
+  const tc = useTranslations("common");
+  return (
+    <SidebarProvider>
+      <AppSidebar displayName={user?.name ?? tc("anonymous")} displayEmail={user?.email} />
+      <SidebarInset>
+        <AnnouncementBannerHost />
+        <header className="flex h-14 items-center gap-4 border-b px-4">
+          <SidebarTrigger />
+          <h1 className="font-semibold">{appConfig.identity.productName}</h1>
+        </header>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

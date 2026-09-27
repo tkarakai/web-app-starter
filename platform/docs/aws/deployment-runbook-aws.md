@@ -58,7 +58,7 @@ bun run aws:local:up         # first run also builds the patched Floci image (~3
 | `bun run aws:local:down` | Stops everything and wipes its Convex data; `aws:local:up` starts fresh |
 
 The dev seed accounts exist, as in `bun run dev` (`admin@admin.com`, `user@user.com`; passwords in
-`packages/backend/convex/devSeed.ts`). Passkeys work in a normal browser: `*.localhost` counts as a
+`packages/backend/convex/platform/devSeed.ts`). Passkeys work in a normal browser: `*.localhost` counts as a
 secure context without HTTPS.
 
 Deploy another commit with `infra/aws/scripts/deploy-manual.sh --env local --sha <commit>`; the
@@ -67,7 +67,7 @@ scripts build from commits, never from uncommitted changes. Run the E2E suites a
 ```bash
 export E2E_CONVEX_LOG=$PWD/infra/aws/local/.state/convex.log CONVEX_SITE_URL=http://convex.localhost.floci.io:3311
 E2E_BASE_URL=http://web.app.localhost:8080 bun run --cwd apps/web test:e2e
-E2E_BASE_URL=http://admin.app.localhost:8080 bun run --cwd apps/admin test:e2e
+E2E_BASE_URL=http://admin.app.localhost:8080 bun run --cwd platform/apps/admin test:e2e
 ```
 
 `bun run aws:local:up --iam` does the same with IAM enforcement on, deploying as a user that holds

@@ -57,7 +57,7 @@ Complete these steps once, in order.
 > ```bash
 > bun run infra:setup:staging
 > ```
-> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `scripts/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
+> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `platform/tooling/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
 
 ### 2a. Create Convex Projects
 
@@ -103,10 +103,10 @@ Choose **either** the dashboard or CLI approach.
    | Project Name | Root Directory | Framework Preset | Environment |
    |--------------|----------------|------------------|-------------|
    | `my-app-web` | `apps/web` | **Next.js** | Production |
-   | `my-app-admin` | `apps/admin` | **Next.js** | Production |
+   | `my-app-admin` | `platform/apps/admin` | **Next.js** | Production |
    | `my-app-landing` | `apps/landing` | **Next.js** | Production |
    | `my-app-web-staging` | `apps/web` | **Next.js** | Staging |
-   | `my-app-admin-staging` | `apps/admin` | **Next.js** | Staging |
+   | `my-app-admin-staging` | `platform/apps/admin` | **Next.js** | Staging |
    | `my-app-landing-staging` | `apps/landing` | **Next.js** | Staging |
 
    > **Important:** Both Root Directory and Framework Preset are required on all six projects. The CI/CD build runs `vercel build` from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579). **Root Directory** tells the `@vercel/next` builder which app to build. **Framework Preset = Next.js** ensures the correct builder is used (without it, Vercel falls back to `@vercel/static-build` and fails).
@@ -175,7 +175,7 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 
 Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
 
-In this repo, the **web app** (`apps/web`) and **admin app** (`apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
+In this repo, the **web app** (`apps/web`) and **admin app** (`platform/apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The **landing page** (`apps/landing`) also connects to Convex via HTTP actions for the waitlist API, so its URL goes in `LANDING_URL` (CORS origins in `packages/backend/convex/http.ts`). Storybook does not connect to Convex.
 
 **Option A — Convex Dashboard (recommended for one-time setup):**
 
@@ -239,7 +239,7 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
   bunx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 ```
 
-> **How `SITE_URL` works:** The auth config in `packages/backend/convex/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
+> **How `SITE_URL` works:** The auth config in `packages/backend/convex/platform/auth.ts` parses `SITE_URL` as a comma-separated list and passes all origins to Better Auth's `trustedOrigins`. This allows both the web app and admin app to authenticate against the same Convex backend.
 >
 > **How `ADMIN_SITE_URL` works:** The HTTP router in `packages/backend/convex/http.ts` and session management in `sessions.ts` use `ADMIN_SITE_URL` for CORS allowed-origins on admin-specific endpoints. The admin invitation system in `adminInvitationActions.ts` uses it to construct invitation email links.
 >
@@ -247,7 +247,7 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 >
 > **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Without it, the landing app's cross-origin requests to Convex would be blocked.
 >
-> **Why `RESEND_API_KEY` is required here:** Without it, auth and invitation emails fall back to being logged to the console, and that fallback runs only in local development (every `SITE_URL` origin on `http://localhost`; see `packages/backend/convex/developmentOnly.ts`). On a hosted deployment, sending an email without `RESEND_API_KEY` throws `EMAIL_DELIVERY_NOT_CONFIGURED`, so sign-up verification, password reset and invitations fail until it is set.
+> **Why `RESEND_API_KEY` is required here:** Without it, auth and invitation emails fall back to being logged to the console, and that fallback runs only in local development (every `SITE_URL` origin on `http://localhost`; see `packages/backend/convex/platform/developmentOnly.ts`). On a hosted deployment, sending an email without `RESEND_API_KEY` throws `EMAIL_DELIVERY_NOT_CONFIGURED`, so sign-up verification, password reset and invitations fail until it is set.
 
 ### 2d. Configure Vercel Environment Variables
 
@@ -433,7 +433,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Two Convex projects created: staging and production (step 2a)
 - [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
 - [ ] Six Vercel projects created: 3 staging + 3 production (step 2b)
-- [ ] Vercel Root Directory set to `apps/<app>` on all 6 projects (step 2b)
+- [ ] Vercel Root Directory set to the app directory on all 6 projects (`apps/web`, `apps/landing`, `platform/apps/admin`; step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
 - [ ] Convex environment variables set: `SITE_URL`, `ADMIN_SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)
@@ -496,23 +496,23 @@ gh run watch $(gh run list --workflow=cd-staging.yml --limit 1 --json databaseId
 
 On a fresh deployment the database is empty — no admin user exists yet. The `bootstrap` module provides internal functions to seed the first admin without needing a UI.
 
-**Run from the Convex dashboard** (Dashboard → select your project → Functions → `bootstrap:initialize`):
+**Run from the Convex dashboard** (Dashboard → select your project → Functions → `platform/bootstrap:initialize`):
 
 ```
-bootstrap:initialize  { "email": "you@example.com" }
+platform/bootstrap:initialize  { "email": "you@example.com" }
 ```
 
 Or via CLI with the deploy key:
 
 ```bash
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:initialize '{"email": "you@example.com"}'
+  bunx convex run platform/bootstrap:initialize '{"email": "you@example.com"}'
 ```
 
 This will:
 1. Add the email to the `adminEmails` table
 2. Create a waitlist entry and mark it as "invited"
-3. Send an invitation email (requires `RESEND_API_KEY`; without it the invitation action fails with `EMAIL_DELIVERY_NOT_CONFIGURED`; set the key, then resend with `bootstrap:rescue`, passing the same email as both `currentEmail` and `newEmail`)
+3. Send an invitation email (requires `RESEND_API_KEY`; without it the invitation action fails with `EMAIL_DELIVERY_NOT_CONFIGURED`; set the key, then resend with `platform/bootstrap:rescue`, passing the same email as both `currentEmail` and `newEmail`)
 
 **Check your email** for the invitation link and complete registration to claim the admin account.
 
@@ -520,7 +520,7 @@ This will:
 
 ```bash
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:status '{}'
+  bunx convex run platform/bootstrap:status '{}'
 ```
 
 The `status` function returns the current state and an actionable hint (e.g. "token expired — run rescue").
@@ -530,11 +530,11 @@ The `status` function returns the current state and an actionable hint (e.g. "to
 ```bash
 # Fix email typo and resend invitation
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:rescue '{"currentEmail": "typo@exmaple.com", "newEmail": "correct@example.com"}'
+  bunx convex run platform/bootstrap:rescue '{"currentEmail": "typo@exmaple.com", "newEmail": "correct@example.com"}'
 
 # Same email, just resend (expired token)
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
-  bunx convex run bootstrap:rescue '{"currentEmail": "you@example.com", "newEmail": "you@example.com"}'
+  bunx convex run platform/bootstrap:rescue '{"currentEmail": "you@example.com", "newEmail": "you@example.com"}'
 ```
 
 > **Note:** All bootstrap functions are `internalMutation`/`internalQuery` — they cannot be called from the client. The `rescue` function cannot be used after the admin has claimed the invitation (i.e. completed registration). Repeat this bootstrap step for production after promoting in Step 4.

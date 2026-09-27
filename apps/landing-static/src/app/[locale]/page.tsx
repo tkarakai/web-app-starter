@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { Badge, Button } from "@repo/design-system";
+import { Badge, Button } from "@web-app-starter/design-system";
 import { SiteHeader } from "@/components/site-header";
 
 const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL;

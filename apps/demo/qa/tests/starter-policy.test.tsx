@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { clampSidebarWidth, snapSidebarWidth } from "@repo/starter-sidebar-policy";
+import { clampSidebarWidth, snapSidebarWidth } from "@web-app-starter/starter-sidebar-policy";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 
 function ResizeProbe() {

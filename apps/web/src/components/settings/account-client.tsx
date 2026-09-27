@@ -20,8 +20,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@repo/design-system";
-import { useAuthUser } from "@/components/auth/auth-guard";
+} from "@web-app-starter/design-system";
+import { useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ProfileSection } from "@/components/settings/profile-section";

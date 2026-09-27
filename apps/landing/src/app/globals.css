@@ -1,4 +1,4 @@
-@import "@repo/design-system/styles/globals.css";
+@import "@web-app-starter/design-system/styles/globals.css";
 
 /* Override --font-sans for RTL locales so Arabic/Hebrew get their own typeface */
 html.font-arabic {

@@ -165,6 +165,34 @@ runs:
           "${{ inputs.vercel-project-id }}" \
           > ".vercel/project.json"
 
+    # `vercel deploy` refuses to run when the project's Root Directory setting
+    # names a directory missing from the working tree, even for a prebuilt
+    # deployment that uploads only .vercel/output. The admin app moved from
+    # apps/admin to platform/apps/admin in v2; until its Vercel projects' Root
+    # Directory is updated, create the configured directory so the deploy of the
+    # prebuilt output is not blocked by a stale setting, and say so.
+    - name: Check the Vercel Root Directory setting
+      shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+      run: |
+        SETTINGS=$(mktemp -d)
+        mkdir -p "$SETTINGS/.vercel"
+        cp .vercel/project.json "$SETTINGS/.vercel/project.json"
+        if ! (cd "$SETTINGS" && vercel pull --yes --environment=${{ inputs.environment }} --token="$VERCEL_TOKEN" >/dev/null 2>&1); then
+          echo "::warning::Could not read the Vercel project settings; deploying without checking the Root Directory."
+          rm -rf "$SETTINGS"
+          exit 0
+        fi
+        CONFIGURED=$(jq -r '.settings.rootDirectory // ""' "$SETTINGS/.vercel/project.json")
+        rm -rf "$SETTINGS"
+        if [[ -n "$CONFIGURED" && ! "$CONFIGURED" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ || "$CONFIGURED" == *..* ]]; then
+          echo "::warning::Unexpected Vercel Root Directory '${CONFIGURED}'; leaving the working tree unchanged."
+        elif [ -n "$CONFIGURED" ] && [ ! -d "$CONFIGURED" ]; then
+          echo "::warning::Vercel project Root Directory for ${{ inputs.app }} is '${CONFIGURED}', which is not in this checkout. Set it to the app's directory (platform/docs/deployment-runbook.md). Creating it so the prebuilt deploy can proceed."
+          mkdir -p "$CONFIGURED"
+        fi
+
     - name: Deploy to Vercel
       id: deploy
       shell: bash

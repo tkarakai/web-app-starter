@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
-import { toast } from "@repo/design-system";
+import { toast } from "@web-app-starter/design-system";
 import { ConvexError } from "convex/values";
 
 /**

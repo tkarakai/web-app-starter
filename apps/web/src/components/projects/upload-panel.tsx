@@ -16,7 +16,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { formatBytes } from "@/lib/format";
 

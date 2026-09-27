@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { appCookieDomain, fillStable, submitEmailStep } from "./helpers/auth";
-import { sessionCookieNames } from "@repo/auth/cookies";
+import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 
 // Session cookie names for the prefix in app.config.ts.
 const [SESSION] = sessionCookieNames();
@@ -80,7 +80,7 @@ test.describe("Sign-In Flow", () => {
 
 /**
  * Sign-up is gated. `onboardingType` defaults to `inviteOnly`
- * (`packages/backend/convex/onboardingType.ts`), and the self-service form only
+ * (`packages/backend/convex/platform/onboardingType.ts`), and the self-service form only
  * renders under `publicSignup`.
  *
  * These previously asserted #name / #password / #confirm-password on

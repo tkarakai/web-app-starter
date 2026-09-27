@@ -3,27 +3,28 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    ".": "./index.ts",
-    "./password-strength": "./src/password-strength.ts"
+    ".": "./index.ts"
   },
   "scripts": {
     "dev": "convex dev",
-    "test:convex": "vitest run --config vitest.config.ts"
+    "test:convex": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p convex --noEmit"
   },
   "dependencies": {
     "@better-auth/passkey": "1.6.33",
     "@convex-dev/better-auth": "0.12.5",
-    "@repo/app-config": "workspace:*",
-    "@repo/auth": "workspace:*",
-    "@repo/design-system": "workspace:*",
-    "@repo/i18n": "workspace:*",
+    "@web-app-starter/app-config": "workspace:*",
+    "@web-app-starter/auth": "workspace:*",
+    "@web-app-starter/design-system": "workspace:*",
+    "@web-app-starter/i18n": "workspace:*",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
     "@zxcvbn-ts/language-en": "^3.0.2",
     "better-auth": "1.6.33",
     "convex": "1.45.0",
     "convex-helpers": "^0.1.111",
-    "resend": "^6.28.0"
+    "resend": "^6.28.0",
+    "@web-app-starter/convex-platform": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.4",
@@ -31,8 +32,5 @@
     "convex-test": "^0.0.58",
     "typescript": "6.0.3",
     "vitest": "^5.0.0"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0"
   }
 }

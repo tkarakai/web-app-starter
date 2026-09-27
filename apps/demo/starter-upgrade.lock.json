@@ -2,11 +2,11 @@
   "files": {
     "starter-packages/sidebar-policy/dist/index.d.ts": "e0135c55cef05608bcf47a0e9ac573e61d7c9e69a96dd6ad0a752289c55885cb",
     "starter-packages/sidebar-policy/dist/index.js": "7b0f2dd6971daf9b4423fb5a8a448768af1c616c19eff2294953c48ccc2a5d20",
-    "starter-packages/sidebar-policy/package.json": "d80591ffbb67a4d6a0ab1d37e4580e4beeb2afa4e9313c98cf20d25d383d02d7"
+    "starter-packages/sidebar-policy/package.json": "8e8b3f082ea47293317d71d28ae4dbc8a0fccd8d107ea8f788c9e0545ee931ef"
   },
-  "package": "@repo/starter-sidebar-policy",
+  "package": "@web-app-starter/starter-sidebar-policy",
   "release": "1.0.1",
-  "releaseDigest": "edb1bba0f846150264006d12494de4407dd92b3e8db2564ea5fbcd3dae2211d0",
+  "releaseDigest": "49ee1ac1861e57e48756d56bced832d30d4e966a47e3e93b8aa9d333dd5ecb22",
   "schemaVersion": 1,
   "status": "baseline"
 }

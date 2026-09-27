@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../platform/config/tsconfig.base.json",
   "compilerOptions": {
     "jsx": "preserve",
     "plugins": [{ "name": "next" }],

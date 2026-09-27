@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 import { notFound } from "next/navigation";
 import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getLocaleDirection, type Locale, locales } from "@repo/i18n";
+import { getLocaleDirection, type Locale, locales } from "@web-app-starter/i18n";
 import { DocumentLocale } from "@/components/document-locale";
 import { Footer } from "@/components/footer";
 

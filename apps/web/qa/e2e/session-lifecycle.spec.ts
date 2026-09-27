@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { appCookieDomain } from "./helpers/auth";
-import { sessionCookieNames } from "@repo/auth/cookies";
+import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 
 // Session cookie names for the prefix in app.config.ts.
 const [SESSION] = sessionCookieNames();

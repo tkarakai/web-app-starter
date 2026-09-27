@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button } from "@repo/design-system";
+import { Button } from "@web-app-starter/design-system";
 
 import { WaitlistForm } from "./waitlist-form";
 

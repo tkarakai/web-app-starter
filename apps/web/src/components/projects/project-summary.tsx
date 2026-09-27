@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
   Progress,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 type ProjectSummaryProps = {
   onSelectProject: (id: Id<"projects">) => void;

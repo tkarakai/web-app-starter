@@ -9,9 +9,14 @@
 | Unit | Bun | Pure functions, utilities, helpers | `apps/*/qa/tests/*.test.ts` |
 | Component | Vitest | React components, UI interactions | `apps/*/qa/tests/*.test.tsx` |
 | E2E | Playwright | Full user flows, navigation, auth | `apps/*/qa/e2e/*.spec.ts` |
-| Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` |
+| Backend | convex-test | Convex functions (queries, mutations) | `packages/backend/convex/*.test.ts` (app), `packages/backend/convex/platform/*.test.ts` (platform) |
 
 ## Bun Test Pattern (Utility Functions)
+
+Platform auth unit and component tests live in `platform/packages/auth-ui/qa/tests/` and
+run through that package's `test` and `test:unit` commands, root Turbo commands, and CI Shared.
+They use only platform message catalogues and do not need the sample app. Browser flows
+remain in `apps/web/qa/e2e/` to exercise the real app wiring and account page.
 
 ```typescript
 // apps/web/qa/tests/myFunction.test.ts
@@ -36,7 +41,7 @@ describe("myFunction", () => {
 // apps/web/qa/tests/button.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { Button } from "@repo/design-system";
+import { Button } from "@web-app-starter/design-system";
 
 describe("Button", () => {
   it("renders with text", () => {
@@ -76,25 +81,29 @@ test.describe("Homepage", () => {
 
 ## Convex Backend Test Pattern
 
+Use `createTestEnv` from `convex/test.modules.ts` so every test registers the platform
+component. If you construct your own `convexTest(schema, modules)`, call
+`registerPlatform(t)` from `@web-app-starter/convex-platform/test` before invoking any
+function that writes audit events, including scheduled writes. Register Better Auth
+separately when the test creates real sessions. Component storage tests live in
+`platform/packages/convex-platform/src/component/` and run with `bun run test:convex`.
+
 ```typescript
-// packages/backend/convex/launchItems.test.ts
-import { convexTest } from "convex-test";
+// packages/backend/convex/projects.test.ts (the sample domain)
+import { createTestEnv } from "./test.modules";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
 
-describe("launchItems", () => {
-  test("returns items for authenticated user", async () => {
-    // IMPORTANT: In monorepos, pass glob as second arg for module discovery
-    const t = convexTest(schema, import.meta.glob("./**/*.*s"));
+describe("projects", () => {
+  test("stores a project", async () => {
+    // Includes the platform component and the root module glob.
+    const t = createTestEnv();
 
     // Seed test data
     await t.run(async (ctx) => {
-      await ctx.db.insert("launchItems", {
-        title: "Test Item",
+      await ctx.db.insert("projects", {
+        name: "Test project",
         description: "Description",
-        status: "idea",
-        priority: 1,
         ownerId: "test-user",
         createdAt: Date.now(),
       });
@@ -102,7 +111,7 @@ describe("launchItems", () => {
 
     // Query and verify
     const items = await t.run(async (ctx) => {
-      return ctx.db.query("launchItems").collect();
+      return ctx.db.query("projects").collect();
     });
 
     expect(items).toHaveLength(1);
@@ -110,7 +119,7 @@ describe("launchItems", () => {
 });
 ```
 
-> **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails.
+> **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails. The glob must be taken from the `convex/` root: a test in a subdirectory (such as the platform's own tests in `convex/platform/`) imports `modules` from `convex/test.modules.ts` instead, because a glob taken there keys its own directory's files as `./x.ts` and convex-test cannot find them.
 
 ### Scheduled Functions and Fake Timers
 
@@ -145,6 +154,24 @@ describe("myModule", () => {
 
 > **When to use this:** Only when the scheduled function can't run in tests. If the scheduled function is a simple mutation/query that works in convex-test, you don't need fake timers — let it run normally.
 
+## Contracts
+
+The contracts CI job also runs `bun run check:advisories` for adopted apps. High/critical
+advisories affecting `.platform-base.json` fail the job; lower severity warns. This check
+runs even when automatic update delivery is disabled. See [platform updates](platform-updates.md).
+
+Contracts are black-box tests of platform behaviour: HTTP handlers and Convex calls, not UI, so
+they survive an app replacing its screens. `bun run test:contracts` runs them, and CI's
+**Contracts** job runs them on every PR.
+
+| Contract | Where | Checks |
+|---|---|---|
+| Session and cookie isolation, security headers, environment | `platform/packages/contracts/tests/http.test.ts`, per app in `APPS` (web, admin) | `clear-session` deletes exactly this app's session cookies (never another app's on the same host); the proxy treats only this app's cookie as a session; nonce CSP and `next.config` security headers; required runtime variables in `.env.example` and `turbo.json` |
+| Endpoint authorization | `packages/backend/convex/platform/endpoint-authorization.test.ts` | Every public platform function is classified `public`, `user` or `admin` in `ACCESS`, and `user`/`admin` functions refuse anonymous callers, `admin` ones non-admins. A new platform function fails until classified |
+| The app's own | `packages/backend/convex/*contract*.test.ts` (sample: `authorization-contract.test.ts`) | The sample domain's ownership rules: anonymous and non-owner reads and writes are refused and leave records and stored bytes unchanged |
+
+Name your own backend contracts `*contract*.test.ts` so `test:contracts` picks them up.
+
 ## Test Helpers
 
 ### Authentication Mocking (`apps/web/qa/tests/helpers/auth-mock.ts`)
@@ -160,59 +187,6 @@ const auth = mockUseAuth({ isAuthenticated: true, user });
 
 // Create mock auth context for Convex testing
 const authCtx = createMockAuthContext(user);
-```
-
-### Test Fixtures (`apps/web/qa/tests/fixtures/data.ts`)
-
-```typescript
-import {
-  launchItemFixtures,
-  createLaunchItem,
-  createManyLaunchItems,
-  scenarios,
-} from "../qa/tests/fixtures/data";
-
-// Use pre-defined fixtures
-const items = scenarios.multiUser.launchItems;
-
-// Create a custom fixture
-const customItem = createLaunchItem({
-  title: "My Custom Item",
-  status: "building",
-  priority: 2,
-});
-
-// Bulk create for pagination testing
-const manyItems = createManyLaunchItems(50, "owner-id");
-```
-
-### Visual Regression (`apps/web/qa/tests/helpers/visual-regression.ts`)
-
-```typescript
-import {
-  expectPageSnapshot,
-  expectResponsiveSnapshot,
-  expectElementSnapshot,
-  fullVisualTest,
-} from "../qa/tests/helpers/visual-regression";
-
-// Full page screenshot comparison
-await expectPageSnapshot(page, "homepage");
-
-// Responsive viewport testing
-await expectResponsiveSnapshot(page, "dashboard", "mobile");
-await expectResponsiveSnapshot(page, "dashboard", "tablet");
-await expectResponsiveSnapshot(page, "dashboard", "desktop");
-
-// Element-specific screenshot
-const button = page.getByRole("button", { name: "Submit" });
-await expectElementSnapshot(button, "submit-button");
-
-// Full visual test (multiple viewports and themes)
-await fullVisualTest(page, "settings-page", {
-  viewports: ["mobile", "desktop"],
-  themes: ["light", "dark"],
-});
 ```
 
 ## TDD Workflow
@@ -261,11 +235,12 @@ bun run test:watch
 | **Component** | Create test in `apps/<app>/qa/tests/`, implement component, verify with Vitest |
 | **E2E Flow** | Create spec in `apps/<app>/qa/e2e/`, implement, verify with Playwright |
 | **Convex Function** | Define in `packages/backend/convex/schema.ts`, implement handler, test with convex-test |
-| **Shared UI** | Add component in `packages/design-system/src/`, export from index.ts |
+| **Shared UI** | Add component in `platform/packages/design-system/src/`, export from index.ts |
 
 ## Context Boundaries
 
 - Each file should be self-contained with clear imports
-- Use `@repo/` for cross-package imports, `@/` for app-internal imports
+- Use `@web-app-starter/*` for platform packages, `@repo/backend` and `@repo/messages` for app
+  packages, and `@/` for app-internal imports
 - Document public APIs with JSDoc comments
 - Keep component files under 200 lines

@@ -8,7 +8,7 @@
  */
 
 import { vi } from "vitest";
-import { localAppOrigin } from "@repo/app-config";
+import { localAppOrigin } from "@web-app-starter/app-config";
 
 /**
  * Mock user data for testing authenticated scenarios

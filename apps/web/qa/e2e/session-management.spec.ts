@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { appCookieDomain, signIn } from "./helpers/auth";
 import { createDisposableUser } from "./helpers/fixtures";
-import { sessionCookieNames } from "@repo/auth/cookies";
+import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 
 // Session cookie names for the prefix in app.config.ts.
 const [SESSION, SECURE_SESSION] = sessionCookieNames();

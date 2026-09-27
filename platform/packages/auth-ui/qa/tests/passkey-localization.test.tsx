@@ -1,0 +1,49 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import platformFrench from "@web-app-starter/i18n/messages/fr.json";
+import { PasskeySection } from "../../src/settings/passkey-section";
+
+const french = platformFrench;
+
+const mocks = vi.hoisted(() => ({
+  list: vi.fn(),
+  add: vi.fn(),
+  audit: vi.fn().mockResolvedValue(undefined),
+  error: vi.fn(),
+}));
+
+vi.mock("convex/react", () => ({
+  useQuery: () => "optional",
+  useMutation: () => mocks.audit,
+}));
+vi.mock("@web-app-starter/auth/client", () => ({
+  authClient: {
+    getSession: async () => ({ data: { user: { role: "user" } } }),
+    passkey: { listUserPasskeys: mocks.list, addPasskey: mocks.add },
+  },
+}));
+vi.mock("@web-app-starter/design-system", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@web-app-starter/design-system")>(),
+  usePasskeySupport: () => ({ supported: true }),
+  toast: { error: mocks.error, success: vi.fn() },
+}));
+
+describe("passkey localization", () => {
+  beforeEach(() => {
+    mocks.error.mockClear();
+    mocks.list.mockResolvedValue({ data: [{ id: "key-1", name: null, deviceType: "multiDevice" }] });
+    mocks.add.mockResolvedValue({ error: { message: "English provider error" } });
+  });
+
+  it("translates policy, device types, accessible actions and provider failures", async () => {
+    render(<NextIntlClientProvider locale="fr" messages={french}><PasskeySection /></NextIntlClientProvider>);
+    expect(await screen.findByText(french.accountSecurity.passkeys.unnamed)).toBeInTheDocument();
+    expect(screen.getByText(french.accountSecurity.passkeys.multiDevice)).toBeInTheDocument();
+    expect(screen.getByText(`Politique : ${french.accountSecurity.passkeys.optional}`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: french.accountSecurity.passkeys.rename.replace("{name}", french.accountSecurity.passkeys.unnamed) })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: french.accountSecurity.passkeys.add }));
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(french.accountSecurity.passkeys.addError));
+    expect(mocks.error).not.toHaveBeenCalledWith("English provider error");
+  });
+});

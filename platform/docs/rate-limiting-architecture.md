@@ -14,7 +14,7 @@ Client Request
 │  Layer 3: Edge Proxy                │  ← Per-IP, in-memory, first line of defense
 │  (Next.js proxy.ts)                 │
 │  apps/web/src/proxy.ts              │
-│  apps/admin/src/proxy.ts            │
+│  platform/apps/admin/src/proxy.ts            │
 └──────────────┬──────────────────────┘
                │
   ┌────────────┴────────────┐
@@ -40,7 +40,7 @@ Client Request
 
 **How it works**: Better Auth's built-in rate limiting, configured in the `betterAuth()` options. Uses the `rateLimit` table automatically provisioned by the `@convex-dev/better-auth` Convex component. Rate limiting is per-IP address, extracted from the `x-forwarded-for` header.
 
-**Configuration file**: `packages/backend/convex/auth.ts`
+**Configuration file**: `packages/backend/convex/platform/auth.ts`
 
 ### Default Limits
 
@@ -80,8 +80,8 @@ Set via `convex env set <KEY> <VALUE>`:
 **How it works**: Uses `convex-helpers/server/rateLimit` with `defineRateLimits`. A single global rate limit (`mutationGlobal`) is checked in the `authedMutation` builder, so every mutation call is rate limited per user. The token state is stored in the `rateLimits` table in the Convex database (persistent, works across all Convex instances).
 
 **Configuration files**:
-- `packages/backend/convex/rateLimits.ts` — Rate limit definitions
-- `packages/backend/convex/functions.ts` — Integration in `authedMutation`
+- `packages/backend/convex/platform/rateLimits.ts` — Rate limit definitions
+- `packages/backend/convex/platform/functions.ts` — Integration in `authedMutation`
 - `packages/backend/convex/schema.ts` — `rateLimitTables` spread into schema
 
 ### Default Limits
@@ -145,8 +145,8 @@ try {
 
 **Configuration files**:
 - `apps/web/src/proxy.ts` — Web app proxy integration
-- `apps/admin/src/proxy.ts` — Admin app proxy integration
-- `@repo/edge-rate-limit` (`packages/edge-rate-limit/`) — the shared rate limiter
+- `platform/apps/admin/src/proxy.ts` — Admin app proxy integration
+- `@web-app-starter/edge-rate-limit` (`platform/packages/edge-rate-limit/`) — the shared rate limiter
 
 The landing apps are static exports with no server-side proxy; rate-limit them at the CDN or hosting layer.
 

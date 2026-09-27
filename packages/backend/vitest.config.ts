@@ -1,4 +1,4 @@
-import { localAppOrigin } from "@repo/app-config";
+import { localAppOrigin } from "@web-app-starter/app-config";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({

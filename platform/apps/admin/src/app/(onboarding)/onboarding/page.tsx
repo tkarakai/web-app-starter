@@ -1,0 +1,18 @@
+import { SiteHeader } from "@web-app-starter/design-patterns";
+import { AdminOnboardingWizard } from "@/components/onboarding/admin-onboarding-wizard";
+import { OnboardingProfileMenu } from "@/components/onboarding/onboarding-profile-menu";
+import { appConfig } from "@web-app-starter/app-config";
+
+export default function OnboardingPage() {
+  return (
+    <main
+      className="flex min-h-[calc(100dvh-var(--env-banner-h,0px))] flex-col"
+      style={{ background: "var(--glow-warm-intense)" }}
+    >
+      <SiteHeader appName={`${appConfig.identity.productName} Administration`} actions={<OnboardingProfileMenu />} />
+      <div className="flex flex-1 items-center justify-center overflow-y-auto p-4 pt-20">
+        <AdminOnboardingWizard />
+      </div>
+    </main>
+  );
+}

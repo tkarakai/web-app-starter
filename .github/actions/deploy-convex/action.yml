@@ -12,6 +12,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Check platform data migration before deployment
+      shell: bash
+      env:
+        CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
+      run: ./platform/tooling/node-ts.sh platform/tooling/check-component-migration.ts
+
     - name: Deploy Convex functions
       shell: bash
       env:

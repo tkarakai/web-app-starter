@@ -6,9 +6,9 @@ import {
   isSessionCookie,
   sessionCookieNames,
   sessionTokenFromCookieHeader,
-} from "@repo/auth/cookies";
-import { appConfig } from "@repo/app-config";
-import { hasSessionCookie } from "@repo/edge-rate-limit";
+} from "@web-app-starter/auth/cookies";
+import { appConfig } from "@web-app-starter/app-config";
+import { hasSessionCookie } from "@web-app-starter/edge-rate-limit";
 
 const [SESSION, SECURE_SESSION] = sessionCookieNames();
 

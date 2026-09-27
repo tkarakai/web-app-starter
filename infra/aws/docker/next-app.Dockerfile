@@ -7,7 +7,7 @@
 # platform/docs/deployment-architecture.md), so one image serves every environment.
 #
 # NODE_VERSION and BUN_VERSION must match .node-version and packageManager;
-# scripts/check-runtime-baseline.ts enforces it.
+# platform/tooling/check-runtime-baseline.ts enforces it.
 ARG NODE_VERSION=24
 ARG BUN_VERSION=1.4.2
 
@@ -42,17 +42,22 @@ ENV CONVEX_URL=https://build-placeholder-cloud.convex.cloud \
 
 COPY . .
 RUN bun install --frozen-lockfile
-RUN ./scripts/copy-shared-assets.sh
-RUN bun run --cwd "apps/${APP}" build
-RUN ENV_FILE=/dev/null/none ./scripts/check-env-leak.sh "${APP}"
+RUN ./platform/tooling/copy-shared-assets.sh
+# The app's directory: apps/<app> for reference apps, platform/apps/<app> for
+# platform apps (admin), as app.config.ts's reader reports it.
+RUN ./platform/tooling/node-ts.sh platform/tooling/app-config.ts dir "${APP}" > /tmp/app-dir
+RUN bun run --cwd "$(cat /tmp/app-dir)" build
+RUN ENV_FILE=/dev/null/none ./platform/tooling/check-env-leak.sh "${APP}"
 
 # Assemble the runtime tree: the traced server, plus the static assets and public
 # files that standalone output deliberately leaves for a CDN or the host to serve.
-RUN mkdir -p /out \
- && cp -R "apps/${APP}/.next/standalone/." /out/ \
- && mkdir -p "/out/apps/${APP}/.next" \
- && cp -R "apps/${APP}/.next/static" "/out/apps/${APP}/.next/static" \
- && if [ -d "apps/${APP}/public" ]; then cp -R "apps/${APP}/public" "/out/apps/${APP}/public"; fi
+RUN APP_DIR="$(cat /tmp/app-dir)" \
+ && mkdir -p /out \
+ && cp -R "${APP_DIR}/.next/standalone/." /out/ \
+ && mkdir -p "/out/${APP_DIR}/.next" \
+ && cp -R "${APP_DIR}/.next/static" "/out/${APP_DIR}/.next/static" \
+ && if [ -d "${APP_DIR}/public" ]; then cp -R "${APP_DIR}/public" "/out/${APP_DIR}/public"; fi \
+ && printf '%s\n' "${APP_DIR}" > /out/.app-dir
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ARG APP
@@ -69,4 +74,4 @@ ENV NODE_ENV=production \
 COPY --from=builder --chown=node:node /out /app
 USER node
 EXPOSE 3000
-CMD ["sh", "-c", "exec node apps/${APP}/server.js"]
+CMD ["sh", "-c", "exec node \"$(cat /app/.app-dir)/server.js\""]

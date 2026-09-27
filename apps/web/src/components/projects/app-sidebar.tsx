@@ -8,12 +8,11 @@ import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
-import { ThemeToggle } from "@repo/design-patterns";
-import { LocaleSwitcher } from "@/components/ui/locale-switcher";
+import { ThemeToggle } from "@web-app-starter/design-patterns";
+import { LocaleSwitcher, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
-import { authClient } from "@repo/auth/client";
 import {
   Avatar,
   AvatarFallback,
@@ -43,10 +42,10 @@ import {
   SidebarMenuItem,
   Textarea,
   useSidebar,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
 import { AppLogo } from "@/components/app-logo";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 type Project = {
   _id: Id<"projects">;
@@ -80,7 +79,7 @@ export function AppSidebar({
   const tt = useTranslations("theme");
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
-  const userProfile = useQuery(api.userProfiles.get) ?? null;
+  const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -123,13 +122,7 @@ export function AppSidebar({
     }
   };
 
-  const handleSignOut = () => {
-    authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => router.push("/"),
-      },
-    });
-  };
+  const handleSignOut = useSignOut("/");
 
   return (
     <>

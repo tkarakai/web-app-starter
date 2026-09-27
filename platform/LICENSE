@@ -1,0 +1,26 @@
+Web App Starter Evaluation License v1.0
+
+Copyright (c) 2026 Tamas Karakai
+
+Permission is granted to any person obtaining a copy of this software and
+associated documentation files (the "Software") to use, copy, and modify the
+Software for evaluation, testing, and non-production development purposes.
+
+You may not:
+1. Use the Software in production for a commercial or internal business service
+   without a valid Commercial License from the copyright holder.
+2. Sell, sublicense, rent, lease, or redistribute the Software (or a derivative
+   work based primarily on the Software) as a template, starter, boilerplate,
+   SaaS kit, or competing product.
+3. Remove or alter copyright, trademark, or license notices in source files.
+
+A separate Commercial License is required for production use and broader
+commercial rights. See COMMERCIAL-LICENSE.md.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

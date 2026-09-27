@@ -1,8 +1,8 @@
 import "./globals.css";
 
 import { Raleway, Cairo, Heebo } from "next/font/google";
-import { BrandTokenStyle, EnvironmentBannerWrapper } from "@repo/design-system";
-import { appConfig, tokenOverrideCss } from "@repo/app-config";
+import { BrandTokenStyle, EnvironmentBannerWrapper } from "@web-app-starter/design-system";
+import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
 const raleway = Raleway({
   subsets: ["latin"],

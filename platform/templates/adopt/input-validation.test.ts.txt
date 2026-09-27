@@ -1,0 +1,73 @@
+import { describe, expect, test } from "vitest";
+
+import {
+  assertMaxLength,
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+} from "./platform/functions";
+
+
+describe("input validation", () => {
+  describe("assertMaxLength", () => {
+    test("allows string at exactly max length", () => {
+      expect(() =>
+        assertMaxLength("a".repeat(MAX_NAME_LENGTH), MAX_NAME_LENGTH, "NAME")
+      ).not.toThrow();
+    });
+
+    test("throws for string one char over max length", () => {
+      expect(() =>
+        assertMaxLength(
+          "a".repeat(MAX_NAME_LENGTH + 1),
+          MAX_NAME_LENGTH,
+          "NAME"
+        )
+      ).toThrow("NAME_TOO_LONG");
+    });
+
+    test("allows empty string", () => {
+      expect(() =>
+        assertMaxLength("", MAX_NAME_LENGTH, "NAME")
+      ).not.toThrow();
+    });
+
+    test("allows undefined (optional fields)", () => {
+      expect(() =>
+        assertMaxLength(undefined, MAX_NAME_LENGTH, "NAME")
+      ).not.toThrow();
+    });
+
+    test("throws with correct field name in error", () => {
+      expect(() =>
+        assertMaxLength("a".repeat(256), MAX_NAME_LENGTH, "TITLE")
+      ).toThrow("TITLE_TOO_LONG");
+    });
+
+    test("enforces description max length (5000)", () => {
+      expect(() =>
+        assertMaxLength(
+          "x".repeat(MAX_DESCRIPTION_LENGTH),
+          MAX_DESCRIPTION_LENGTH,
+          "DESCRIPTION"
+        )
+      ).not.toThrow();
+
+      expect(() =>
+        assertMaxLength(
+          "x".repeat(MAX_DESCRIPTION_LENGTH + 1),
+          MAX_DESCRIPTION_LENGTH,
+          "DESCRIPTION"
+        )
+      ).toThrow("DESCRIPTION_TOO_LONG");
+    });
+
+    test("handles unicode characters correctly", () => {
+      // Emoji takes 2 chars in JS string length
+      const emojiString = "\u{1F600}".repeat(128); // 256 JS string length
+      expect(() =>
+        assertMaxLength(emojiString, MAX_NAME_LENGTH, "NAME")
+      ).toThrow("NAME_TOO_LONG");
+    });
+  });
+
+});

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Link } from "@repo/i18n/navigation";
+import { Link } from "@web-app-starter/i18n/navigation";
 import {
   Button,
   Card,
@@ -22,7 +22,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@repo/design-system";
+} from "@web-app-starter/design-system";
 
 const SUPERPOWERS = [
   "coffee-to-code",
@@ -47,7 +47,7 @@ const EXCITEMENT_LEVELS = [
   "friend-made-me",
 ] as const;
 
-/** Optional profile fields; must match VALID_ROLES in packages/backend/convex/waitlist.ts. */
+/** Optional profile fields; must match VALID_ROLES in packages/backend/convex/platform/waitlist.ts. */
 const ROLES = ["founder", "engineering", "product", "design", "agency", "other"] as const;
 
 function MultiSelectDropdown({

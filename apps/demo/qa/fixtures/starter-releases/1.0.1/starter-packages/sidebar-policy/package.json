@@ -8,7 +8,7 @@
   "files": [
     "dist"
   ],
-  "name": "@repo/starter-sidebar-policy",
+  "name": "@web-app-starter/starter-sidebar-policy",
   "type": "module",
   "version": "1.0.1"
 }

@@ -5,9 +5,9 @@ Renovate proposes updates, regenerates `bun.lock`, lets the existing CI pipeline
 PRs — but **only for releases that are at least 10 days old**, so we adopt versions that the wider
 ecosystem has already vetted (not yanked, not a fresh supply-chain surprise).
 
-- Config: [`renovate.json`](../../renovate.json)
+- Config: the platform preset [`platform/config/renovate-preset.json`](../config/renovate-preset.json), extended by the root [`renovate.json`](../../renovate.json) (see "Preset and the platform zone")
 - Workflow: [`.github/workflows/renovate.yml`](../../.github/workflows/renovate.yml)
-- Compatibility holds: `HOLD:` rules in `renovate.json` (see "Holds" below)
+- Compatibility holds: `HOLD:` rules in the preset (see "Holds" below)
 - Every major decision, and what awaits a vendor-side change: its `deps:*` ticket and the PR that
   lands it
 
@@ -35,9 +35,30 @@ the repo and we control exactly when it runs; the price is owning the `RENOVATE_
 > repo activity**. You get an email first; re-enabling is one click under Actions → Renovate. If
 > bump PRs stop appearing on a dormant repo, check this before suspecting the token.
 
+## Preset and the platform zone
+
+The policy below lives in the platform preset, `platform/config/renovate-preset.json`, which is
+replaced on every platform upgrade. The root `renovate.json` is a seam: it extends the preset
+(`local>owner/repo//platform/config/renovate-preset`, naming this repository) and adds the app's
+own rules.
+
+- **The preset never touches the platform zone.** Its `ignorePaths` adds `platform/**`,
+  `.github/workflows/platform-*.yml` and `.github/actions/**` to Renovate's defaults. Platform
+  dependency upgrades arrive with platform releases; patch-level fixes inside the ranges platform
+  manifests declare reach the lockfile through lockfile maintenance.
+- **Platform manifests declare ranges (floors), not pins**, so an app can raise a shared
+  dependency such as React without editing `platform/`.
+- **The product repo is the exception.** The platform is developed there, so its root
+  `renovate.json` overrides `ignorePaths` back to the defaults and raises platform floors
+  (`rangeStrategy: "bump"` for `platform/**`). An adopted app drops both.
+
+Check that an app configuration leaves the zone alone with a local lookup-only dry run of the
+preset (copy it over `renovate.json` first, then restore): no `packageFile` under `platform/` may
+appear in `LOG_LEVEL=debug LOG_FORMAT=json npx renovate --platform=local --dry-run=lookup`.
+
 ## Update & merge policy
 
-Defined in `renovate.json` → `packageRules`:
+Defined in the preset's `packageRules`:
 
 - **Patch / minor / pin / digest** → **auto-merged** (squash, matching the linear-history rule on
   `main`) once all required CI checks pass (`platformAutomerge`).
@@ -243,10 +264,10 @@ filter to transitive dependencies.
 
 ## Validating a config change
 
-Before merging edits to `renovate.json`:
+Before merging edits to `renovate.json` or the preset:
 
 ```bash
-npx --yes --package renovate renovate-config-validator renovate.json
+npx --yes --package renovate renovate-config-validator renovate.json platform/config/renovate-preset.json
 ```
 
 For a local dry run (no PRs created), from the repo root:

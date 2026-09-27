@@ -212,17 +212,23 @@ convex_urls() {
 
 # Paths whose changes can alter an app image. Anything else (docs, other apps,
 # CI config) leaves the image as it was.
+# Both app locations are listed: reference apps live in apps/, platform apps
+# (admin) in platform/apps/, and a diff across the v2 move must see either.
 app_image_paths() {
   echo "apps/$1/"
+  echo "platform/apps/$1/"
   echo "packages/"
+  echo "platform/packages/"
+  echo "platform/config/"
+  echo "app.config.ts"
   echo "package.json"
   echo "bun.lock"
   echo "turbo.json"
   echo "tsconfig.json"
   echo "tsconfig.base.json"
   echo ".node-version"
-  echo "scripts/copy-shared-assets.sh"
-  echo "scripts/check-env-leak.sh"
+  echo "platform/tooling/copy-shared-assets.sh"
+  echo "platform/tooling/check-env-leak.sh"
   echo "infra/aws/docker/"
 }
 

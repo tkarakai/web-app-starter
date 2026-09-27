@@ -69,7 +69,7 @@ When a user enables 2FA (voluntarily or because it's mandatory), the same Better
 ## 5. Password Policy
 
 Both admins and users must have passwords. The shared policy is defined in
-[`packages/auth/src/password-policy.ts`](../../packages/auth/src/password-policy.ts):
+[`platform/packages/auth/src/password-policy.ts`](../packages/auth/src/password-policy.ts):
 `getMinPasswordLength` supplies the minimum for each account type and
 `REQUIRED_PASSWORD_SCORE` supplies the required zxcvbn-ts score. The current values are:
 
@@ -325,7 +325,7 @@ throw when Resend returns an API or transport error. For invitations, the email
 request occurs after the invite mutation and token storage have committed: its failure
 does not roll them back. An invitation row or `admin.invitation.sent` audit event
 therefore does not confirm delivery. Local fake-transport regression coverage lives
-in `packages/backend/convex/emailTransport.test.ts`; it does not verify inbox delivery.
+in `packages/backend/convex/platform/emailTransport.test.ts`; it does not verify inbox delivery.
 
 ### 9.2 Accepting an Admin Invitation
 

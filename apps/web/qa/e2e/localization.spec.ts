@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import french from "@repo/i18n/messages/fr.json";
-import arabic from "@repo/i18n/messages/ar.json";
+import french from "@web-app-starter/i18n/messages/fr.json";
+import arabic from "@web-app-starter/i18n/messages/ar.json";
 
 test("French sign-in renders the multi-step messages rather than missing keys", async ({ page }) => {
   await page.goto("/fr/sign-in");

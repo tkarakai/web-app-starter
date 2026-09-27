@@ -2,6 +2,10 @@
 
 How to safely change database schemas when existing data doesn't match the new shape.
 
+The v2 component move is a separate, operator-run cutover. Follow
+[component data migration](component-data-migration.md) before deploying v2 to an existing
+deployment. It does not run through the automatic migration runner described below.
+
 ## Background
 
 Convex validates **ALL existing documents** against the schema on every deploy. If any document doesn't match, **the deployment fails** — no functions run, no migration code executes.

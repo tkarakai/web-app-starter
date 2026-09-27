@@ -1,32 +1,43 @@
 ---
 name: platform-configure
-description: Use to set the app's product name, legal entity, support email, local ports, auth cookie prefix, local origins, brand (icons, design tokens, email look) or optional feature switches. All of these are edits to app.config.ts only.
+description: Use to set the app's product name, legal entity, support email, local ports, auth cookie prefix, local origins, brand (icons, design tokens, email look) or optional feature switches. Identity, runtime and brand values are edits to app.config.ts only. Also use to set up automatic platform update PRs.
 ---
 
 # Configure the app
 
-Every value an app is expected to change lives in the root **`app.config.ts`**, and nowhere
+For product identity, runtime, brand and feature switches, every value an app is expected to change lives in the root **`app.config.ts`**, and nowhere
 else. The platform reads it everywhere it needs one of these values: TypeScript through
-`@repo/app-config`, shell scripts and CI through `scripts/app-config.ts`, Better Auth and the
-proxies through `@repo/auth/cookies`. So a configuration change is an edit to `app.config.ts`
-and **no other file**. If a change seems to need another file, stop: either the value isn't
+`@web-app-starter/app-config`, shell scripts and CI through `platform/tooling/app-config.ts`, Better Auth and the
+proxies through `@web-app-starter/auth/cookies`. So a configuration change is an edit to `app.config.ts`
+and **no other file** for those values. If a change seems to need another file, stop: either the value isn't
 configuration (see "Not here" below) or the platform has a gap to report.
 
 Reference: `platform/docs/development.md`, "App configuration".
+
+## Set up automatic updates
+
+For update delivery, run `bun run platform:setup-updates` from the adopted app. Read
+`platform/docs/setup-updates.md`; the helper creates the GitHub App through its browser manifest
+flow, verifies installation on this repository only, and stores the ID and key with `gh`.
+The app-owned update caller holds schedule and policy. These credentials and workflow settings
+are separate from `app.config.ts`. Never place a private key in the app config, git or chat.
+Preserve existing settings; use `--check` to inspect status, and `--replace` only when the user
+asks to replace the App. `--fallback` documents the manual-CI/workflow-file limitations.
 
 ## What goes where
 
 | You want to change | Set in `app.config.ts` | Notes |
 |---|---|---|
-| Product name | `identity.productName` | Page titles, headers, TOTP issuer, email footer, `{productName}` in messages. Never write it into `packages/i18n/messages` |
+| Product name | `identity.productName` | Page titles, headers, TOTP issuer, email footer, `{productName}` in messages. Never write it into a message file (`packages/messages`) |
 | Company name in footers | `identity.legalEntity` | |
 | Support address | `identity.supportEmail` | |
 | Local ports | `runtime.ports.<app>` | `landing`, `web`, `admin`, `storybook`, `landing-static`; integers 1024–65535, all different. Local origins (`http://localhost:<port>`) follow from them |
 | Auth cookie prefix | `runtime.authCookiePrefix` | Letters, digits, `-`, `_`; starts with a letter or digit. Set a unique one when another Better Auth app shares the host (e.g. localhost). **Changing it signs every user out** |
 | Icons | `brand.icons.svg`, `.ico`, `.appleTouchIcon` | Repository-relative paths to your files; copied into each app on dev and build |
-| Colours and other design tokens | `brand.tokenOverrides` | `{ "--primary": "oklch(0.55 0.2 260)" }`; names from `packages/design-system/tokens/` |
+| Colours and other design tokens | `brand.tokenOverrides` | `{ "--primary": "oklch(0.55 0.2 260)" }`; names from `platform/packages/design-system/tokens/` |
 | Email look | `brand.email.lang`, `.palette.*` (hex colours), `.footerText` | |
 | Optional features | `features.waitlist`, `.invitations`, `.announcements`, `.environmentBanner` | `false` hides the feature; its code stays and keeps receiving fixes |
+| Languages shipped | `i18n.locales` | A subset of the platform's 15 (`allLocales` in `@web-app-starter/i18n`), including `en`. Each needs `packages/messages/<locale>.json`; `bun run check:i18n` says what's missing |
 
 **Not here:** deployed URLs, Convex URLs and secrets are per-deployment environment variables
 (`platform/AGENTS.md`, "Environment variables"); translated wording is in the message files
@@ -39,14 +50,14 @@ Reference: `platform/docs/development.md`, "App configuration".
 2. Validate and see the derived values:
 
    ```bash
-   ./scripts/node-ts.sh scripts/app-config.ts shell
+   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell
    ```
 
    It prints the `APP_CONFIG_*` variables, or the list of invalid settings.
 3. Check that nothing else still holds the old value. For a product name, port or cookie prefix:
 
    ```bash
-   git grep -n -F "<old value>" -- ':!app.config.ts' ':!CHANGELOG.md' ':!platform/'
+   git grep -n -F "<old value>" -- ':!app.config.ts' ':!platform/'
    ```
 
    Hits in your own code are bugs: read the value from `appConfig` instead of changing the
@@ -86,8 +97,8 @@ const appConfig = {
   // brand and features unchanged
 ```
 
-Then `./scripts/node-ts.sh scripts/app-config.ts shell` shows `APP_CONFIG_PORT_WEB=4001`,
+Then `./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell` shows `APP_CONFIG_PORT_WEB=4001`,
 `APP_CONFIG_ORIGIN_WEB=http://localhost:4001` and `APP_CONFIG_AUTH_COOKIE_PREFIX=acme-notes`.
 
-**Done when** `git status --short` lists only `app.config.ts`, and lint, typecheck, `test` and
+**Configuration-value changes are done when** `git status --short` lists only `app.config.ts`, and lint, typecheck, `test` and
 `test:unit` pass.

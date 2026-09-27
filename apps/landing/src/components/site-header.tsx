@@ -1,10 +1,10 @@
 "use client";
 
-import { Link } from "@repo/i18n/navigation";
+import { Link } from "@web-app-starter/i18n/navigation";
 
-import { SiteHeader as SharedSiteHeader } from "@repo/design-patterns";
+import { SiteHeader as SharedSiteHeader } from "@web-app-starter/design-patterns";
 import { LocaleSwitcher } from "./locale-switcher";
-import { appConfig } from "@repo/app-config";
+import { appConfig } from "@web-app-starter/app-config";
 
 export function SiteHeader() {
 

@@ -15,5 +15,5 @@
 # since act's default copy mode only includes committed files.
 -b
 
-# Volume mounts for caching are handled in scripts/ci-local-act.sh
+# Volume mounts for caching are handled in platform/tooling/ci-local-act.sh
 # (act doesn't properly accumulate multiple --container-options in .actrc)

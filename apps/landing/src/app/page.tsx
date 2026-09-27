@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { defaultLocale, locales, type Locale } from "@repo/i18n";
+import { defaultLocale, locales, type Locale } from "@web-app-starter/i18n";
 
 /**
  * Root page — redirects to the user's preferred locale.

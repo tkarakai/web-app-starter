@@ -3,8 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 
-import { LanguageSelector } from "@repo/design-patterns";
-import { locales, localeMetadata, persistLocale, type Locale } from "@repo/i18n";
+import { LanguageSelector } from "@web-app-starter/design-patterns";
+import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
 
 interface LocaleSwitcherProps {
   className?: string;

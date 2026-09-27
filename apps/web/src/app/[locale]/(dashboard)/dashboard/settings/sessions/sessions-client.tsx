@@ -16,8 +16,8 @@ import {
   Separator,
   SidebarInset,
   SidebarProvider,
-} from "@repo/design-system";
-import { useAuthUser } from "@/components/auth/auth-guard";
+} from "@web-app-starter/design-system";
+import { useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { SessionsList } from "@/components/settings/sessions-list";
@@ -35,7 +35,7 @@ export function SessionsClient() {
   const router = useRouter();
   const authUser = useAuthUser();
   const tc = useTranslations("common");
-  const ts = useTranslations("dashboard.sessions");
+  const ts = useTranslations("accountSecurity.sessions");
   const td = useTranslations("dashboard");
 
   const displayName = authUser?.name ?? tc("anonymous");

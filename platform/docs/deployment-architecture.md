@@ -220,7 +220,7 @@ tracked to make it happen.
 
 Two things keep the property honest:
 
-- `scripts/check-env-leak.sh` runs during every build and scans the output for the *values*
+- `platform/tooling/check-env-leak.sh` runs during every build and scans the output for the *values*
   of the environment-identity variables. Anything inlined is reported, so a missed variable
   is a build signal rather than a production incident.
 - `deploy-vercel` verifies the tarball's checksum and that its build manifest carries the
@@ -246,7 +246,7 @@ None are connected to git; all deployments are pushed from GitHub Actions via `v
 
 Two Vercel-specific settings are architecturally required on all six projects:
 
-- **Root Directory** must be set to `apps/<app>` on each project. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build.
+- **Root Directory** should be set to the app's directory on each project: `apps/web`, `apps/landing`, and `platform/apps/admin` for the admin app. The CI/CD pipeline runs `vercel build` from the monorepo root (to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579)), and Root Directory tells the `@vercel/next` builder which app to build. The build action (`.github/actions/build-app`) overrides the pulled setting with the directory it finds in the checkout, and the deploy action tolerates a stale setting with a warning, so a project still set to the pre-v2 `apps/admin` keeps deploying; update it when you see the notice.
 - **Framework Preset** must be set to **Next.js**. Without it, Vercel's builder detects `@vercel/static-build` from the monorepo root and fails.
 
 For setup instructions, see [deployment-runbook.md — Create Vercel Projects](./deployment-runbook.md#2b-create-vercel-projects).
@@ -266,11 +266,11 @@ Convex deploys **before** frontend apps. Backend functions and schema must be li
 
 ### First-Time Initialization (Admin Bootstrap)
 
-After the very first deployment, the Convex database is empty — no admin account exists. The `bootstrap` module (`packages/backend/convex/bootstrap.ts`) provides internal functions to seed the first admin without needing a UI:
+After the very first deployment, the Convex database is empty — no admin account exists. The `bootstrap` module (`packages/backend/convex/platform/bootstrap.ts`) provides internal functions to seed the first admin without needing a UI:
 
-- **`bootstrap:initialize`** — Seeds the admin email, creates a waitlist entry, and sends an invitation token. Can only run once.
-- **`bootstrap:rescue`** — Fixes a failed bootstrap (typo, expired token). Revokes old tokens and resends. Cannot run after claim.
-- **`bootstrap:status`** — Read-only diagnostic with actionable hints.
+- **`platform/bootstrap:initialize`** — Seeds the admin email, creates a waitlist entry, and sends an invitation token. Can only run once.
+- **`platform/bootstrap:rescue`** — Fixes a failed bootstrap (typo, expired token). Revokes old tokens and resends. Cannot run after claim.
+- **`platform/bootstrap:status`** — Read-only diagnostic with actionable hints.
 
 These are `internalMutation`/`internalQuery` — not callable from the client. Run them from the Convex dashboard or via `bunx convex run`. For step-by-step instructions, see [deployment-runbook.md — Bootstrap the First Admin](./deployment-runbook.md#step-2-bootstrap-the-first-admin).
 

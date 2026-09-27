@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { Button } from "@repo/design-system";
+import { Button } from "@web-app-starter/design-system";
 
 describe("Button", () => {
   it("renders with default props", () => {

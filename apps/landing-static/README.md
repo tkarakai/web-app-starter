@@ -145,7 +145,7 @@ Configure your CDN to serve hashed assets with long-lived caches:
 
 **3. Reduce locale count**
 
-Each locale adds ~4 HTML pages and its translation bundle to the client JS. If you don't need all 15 locales, edit `packages/i18n/src/config.ts` to remove unused ones — the build output will shrink proportionally.
+Each locale adds ~4 HTML pages and its translation bundle to the client JS. If you don't need all 15 locales, edit `platform/packages/i18n/src/config.ts` to remove unused ones — the build output will shrink proportionally.
 
 **4. Analyze the bundle**
 
@@ -436,7 +436,7 @@ apps/landing-static/
 │   │   ├── locale-switcher.tsx     # Language selector dropdown
 │   │   └── content-page-layout.tsx # Legal page wrapper
 │   └── i18n/
-│       └── request.ts             # Re-exports @repo/i18n/request
+│       └── request.ts             # Re-exports @web-app-starter/i18n/request
 ├── qa/
 │   ├── tests/                     # Unit + component tests
 │   └── e2e/                       # Playwright E2E specs

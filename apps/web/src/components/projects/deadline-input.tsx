@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 
-import { DateTimePicker, Label } from "@repo/design-system";
+import { DateTimePicker, Label } from "@web-app-starter/design-system";
 
 type DeadlineInputProps = {
   value: number | undefined;

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { locales } from "@repo/i18n";
+import { locales } from "@web-app-starter/i18n";
 import { getRequestOrigin } from "@/lib/request-origin";
 
 // Dynamic so the origin comes from the request rather than being baked in at

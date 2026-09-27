@@ -1,4 +1,4 @@
-import { convexTest } from "convex-test";
+import { createTestEnv as createPlatformTest } from "./test.modules";
 import { describe, expect, test } from "vitest";
 
 import { ALLOWED_CONTENT_TYPES } from "./files";
@@ -6,14 +6,11 @@ import {
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
-  requireProjectAccess,
-} from "./functions";
-import schema from "./schema";
-
-const modules = import.meta.glob("./**/*.*s");
+} from "./platform/functions";
+import { requireProjectAccess } from "./projectAccess";
 
 function createTestEnv() {
-  return convexTest(schema, modules);
+  return createPlatformTest();
 }
 
 describe("input validation", () => {

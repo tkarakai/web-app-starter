@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { appConfig, localAppOrigin } from "@repo/app-config";
+import { appConfig, localAppOrigin } from "@web-app-starter/app-config";
 
 const origin = localAppOrigin("landing-static");
 

@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { AnnouncementBanner } from "@repo/design-system";
-import { appConfig } from "@repo/app-config";
+import { AnnouncementBanner } from "@web-app-starter/design-system";
+import { appConfig } from "@web-app-starter/app-config";
 
 const LOCAL_STORAGE_DISMISS_KEY = "announcementDismissedPermanentId";
 
@@ -32,7 +32,7 @@ function ActiveAnnouncementBannerHost({
 }: AnnouncementBannerHostProps) {
   const t = useTranslations("common");
   const pathname = usePathname();
-  const announcement = useQuery(api.announcements.getActivePublic);
+  const announcement = useQuery(api.platform.announcements.getActivePublic);
   const [dismissedId, setDismissedId] = React.useState<string | null>(null);
   const [hasHydratedDismissal, setHasHydratedDismissal] = React.useState(false);
   const bannerContainerRef = React.useRef<HTMLDivElement | null>(null);

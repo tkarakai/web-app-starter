@@ -1,0 +1,216 @@
+{
+  "landing": {
+    "badge": "Next.js + Convex + Better Auth",
+    "heading": "Il tuo punto di partenza.",
+    "headingLine2": "Costruisci da qui.",
+    "description": "Autenticazione, database, sincronizzazione in tempo reale e caricamento file — tutto collegato e pronto.",
+    "getStarted": "Inizia",
+    "signIn": "Accedi",
+    "footer": {
+      "about": "Chi Siamo",
+      "privacyPolicy": "Informativa sulla privacy",
+      "termsOfService": "Termini di servizio"
+    },
+    "waitlist": {
+      "title": "Iscriviti alla lista d'attesa",
+      "description": "Richiedi l'accesso iscrivendoti alla lista d'attesa.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "tu@esempio.it",
+      "superpowersLabel": "Qual è il tuo superpotere?",
+      "superpowersPlaceholder": "Scegli i tuoi superpoteri",
+      "excitementLabel": "Quanto sei entusiasta?",
+      "excitementPlaceholder": "Dicci come ti senti",
+      "roleLabel": "Il tuo ruolo (facoltativo)",
+      "rolePlaceholder": "Seleziona il tuo ruolo",
+      "companyLabel": "Azienda (facoltativo)",
+      "companyPlaceholder": "Acme S.r.l.",
+      "useCaseLabel": "Cosa pensi di realizzare? (facoltativo)",
+      "useCasePlaceholder": "Un portale clienti, uno strumento interno…",
+      "roles": {
+        "founder": "Fondatore/Fondatrice",
+        "engineering": "Ingegneria",
+        "product": "Prodotto",
+        "design": "Design",
+        "agency": "Agenzia",
+        "other": "Altro"
+      },
+      "selectedCount": "{count} selezionato/i",
+      "submit": "Iscriviti alla lista",
+      "submitting": "Iscrizione...",
+      "successTitle": "Sei nella lista!",
+      "successDescription": "Ti invieremo un invito quando sarà il tuo turno.",
+      "alreadySignedUp": "Hai già un account?",
+      "signIn": "Accedi",
+      "superpowers": {
+        "coffee-to-code": "Trasformare il caffè in codice",
+        "pixel-perfect": "Rendere i pixel perfetti",
+        "bug-whisperer": "Sussurratore di bug",
+        "spreadsheet-wizard": "Magia dei fogli di calcolo",
+        "inbox-zero": "Posta in arrivo vuota ogni giorno",
+        "parallel-parking": "Parcheggio parallelo al primo colpo",
+        "remembering-names": "Ricordare il nome di tutti",
+        "never-burning-toast": "Non bruciare mai il toast",
+        "explaining-tech": "Spiegare la tecnologia ai genitori",
+        "finding-restaurants": "Trovare i ristoranti migliori",
+        "staying-calm": "Restare calmi nelle riunioni infinite",
+        "other": "Qualcosa di completamente diverso"
+      },
+      "excitement": {
+        "take-my-money": "Prendi i miei soldi!",
+        "cant-wait": "Non vedo l'ora di provarlo",
+        "cautiously-optimistic": "Cautamente ottimista",
+        "just-browsing": "Sto solo dando un'occhiata",
+        "friend-made-me": "Un amico mi ha costretto a iscrivermi"
+      },
+      "errors": {
+        "waitlistNotEnabled": "La lista d'attesa non accetta iscrizioni al momento. Riprova più tardi.",
+        "invalidEmail": "Inserisci un indirizzo e-mail valido.",
+        "rateLimited": "Troppe richieste. Attendi un momento e riprova.",
+        "generic": "Qualcosa è andato storto. Riprova."
+      }
+    },
+    "fallback": {
+      "title": "La registrazione è temporaneamente non disponibile",
+      "description": "Al momento non riusciamo a raggiungere i nostri servizi e continueremo a riprovare in background. Puoi comunque accedere a un account esistente.",
+      "bookDemo": "Prenota una demo",
+      "contact": "Contattaci"
+    }
+  },
+  "dashboard": {
+    "projects": "Progetti",
+    "noProjects": "Nessun progetto ancora",
+    "noProjectsDescription": "Crea un progetto per iniziare.",
+    "projectNotFound": "Progetto non trovato",
+    "projectNotFoundDescription": "Questo progetto potrebbe essere stato eliminato.",
+    "tabs": {
+      "tasks": "Attività",
+      "attachments": "Allegati"
+    },
+    "security": "Sicurezza",
+    "account": "Impostazioni",
+    "profile": {
+      "title": "Profilo",
+      "description": "Gestisci le informazioni del tuo profilo e le preferenze.",
+      "name": "Nome visualizzato",
+      "namePlaceholder": "Il tuo nome",
+      "email": "E-mail",
+      "emailReadonly": "Contatta il supporto per cambiare la tua e-mail.",
+      "avatarColor": "Colore avatar",
+      "saved": "Profilo aggiornato.",
+      "language": "Lingua",
+      "timezone": "Fuso orario",
+      "timezonePlaceholder": "Seleziona il tuo fuso orario",
+      "timezoneSearch": "Cerca fusi orari...",
+      "timezoneDetected": "Rilevato",
+      "noTimezoneResults": "Nessun fuso orario trovato.",
+      "theme": "Tema"
+    }
+  },
+  "projects": {
+    "newProject": "Nuovo progetto",
+    "createProject": "Crea progetto",
+    "createFirst": "Crea il tuo primo progetto",
+    "noProjects": "Nessun progetto",
+    "editProject": "Modifica progetto",
+    "deleteProject": "Elimina progetto",
+    "deleteConfirmTitle": "Eliminare il progetto?",
+    "deleteConfirmDescription": "Questo eliminerà definitivamente “{name}” e tutte le sue attività. Questa azione non può essere annullata.",
+    "fields": {
+      "name": "Nome",
+      "namePlaceholder": "Nome del progetto",
+      "description": "Descrizione",
+      "descriptionPlaceholder": "Di cosa tratta questo progetto?"
+    }
+  },
+  "tasks": {
+    "title": "Attività",
+    "addTask": "Aggiungi attività",
+    "newTask": "Nuova attività",
+    "editTask": "Modifica attività",
+    "deleteTask": "Elimina attività",
+    "confirmDelete": "Conferma eliminazione",
+    "createTask": "Crea attività",
+    "noTasks": "Nessuna attività ancora. Aggiungine una per iniziare.",
+    "noTasksSummary": "Nessuna attività ancora",
+    "progress": "{doneCount} di {totalCount} attività completate",
+    "progressPercent": "{percent}%",
+    "status": {
+      "label": "Stato",
+      "todo": "Da fare",
+      "inProgress": "In corso",
+      "done": "Completato",
+      "all": "Tutte"
+    },
+    "fields": {
+      "title": "Titolo",
+      "titlePlaceholder": "Cosa bisogna fare?",
+      "description": "Descrizione",
+      "descriptionPlaceholder": "Aggiungi dettagli...",
+      "deadline": "Scadenza",
+      "deadlinePlaceholder": "Nessuna scadenza",
+      "clearDeadline": "Rimuovi scadenza"
+    },
+    "deadline": {
+      "overdue": "Scaduta",
+      "dueToday": "Scade oggi"
+    },
+    "aria": {
+      "changeStatus": "Cambia stato da {status}"
+    },
+    "count": "{count, plural, =0 {Nessuna attività} one {# attività} other {# attività}}"
+  },
+  "uploads": {
+    "title": "Allegati",
+    "addFile": "Aggiungi file",
+    "uploading": "Caricamento...",
+    "processing": "Elaborazione",
+    "view": "Visualizza",
+    "deleteFile": "Elimina file",
+    "emptyState": "Carica file per vedere il flusso di archiviazione Convex.",
+    "errors": {
+      "tooLarge": "File troppo grande (max 1 MB)",
+      "uploadFailed": "Caricamento fallito. Riprova.",
+      "generic": "Caricamento fallito."
+    },
+    "count": "{count, plural, =0 {Nessun allegato} one {# allegato} other {# allegati}}"
+  },
+  "metadata": {
+    "description": "Uno starter Next.js con Convex, Better Auth e Bun."
+  },
+  "legal": {
+    "about": {
+      "title": "Chi Siamo",
+      "description": "Scopri {productName} e la nostra missione.",
+      "notice": "Questo è contenuto segnaposto. Sostituiscilo con il tuo contenuto prima del lancio.",
+      "heading": "Chi Siamo",
+      "mission": "La Nostra Missione",
+      "missionText": "Crediamo che i sviluppatori dovrebbero dedicare il loro tempo alla costruzione di funzionalità, non alla configurazione dell'infrastruttura. {productName} fornisce un punto di partenza pronto per la produzione con sincronizzazione dati in tempo reale, caricamenti di file e autenticazione basata su sessioni, tutto già collegato e pronto.",
+      "whatIncluded": "Cosa è Incluso",
+      "whatIncludedText": "Il kit di avvio include una pagina di atterraggio, un'applicazione web completamente autenticata, un dashboard di amministrazione e uno storybook di componenti. Ogni app condivide un sistema di design unificato costruito su primitive Radix UI con Tailwind CSS.",
+      "openSource": "Open Source",
+      "openSourceText": "Questo progetto è open source ed è progettato per essere biforcato e personalizzato.",
+      "intro": "{productName} è una base full-stack per costruire applicazioni web moderne. Combina Next.js per il frontend, Convex per il backend e Better Auth per l'autenticazione sicura — tutto collegato e pronto per il lancio."
+    },
+    "privacy": {
+      "title": "Informativa sulla Privacy",
+      "description": "Come raccogliamo, utilizziamo e proteggiamo i tuoi dati.",
+      "notice": "Questa è una politica sulla privacy template. Personalizzala per la tua applicazione specifica e la tua giurisdizione prima del lancio.",
+      "heading": "Informativa sulla Privacy",
+      "lastUpdated": "Ultimo aggiornamento: {date}"
+    },
+    "terms": {
+      "title": "Termini di Servizio",
+      "description": "Le regole e le linee guida per l'utilizzo del nostro servizio.",
+      "notice": "Questi sono termini di servizio template. Personalizzali per la tua applicazione specifica e la tua giurisdizione prima del lancio.",
+      "heading": "Termini di Servizio",
+      "lastUpdated": "Ultimo aggiornamento: {date}"
+    }
+  },
+  "sampleErrors": {
+    "projectNotFound": "Progetto non trovato.",
+    "taskNotFound": "Attività non trovata.",
+    "fileNotFound": "File non trovato nell'archivio.",
+    "fileTooLarge": "File troppo grande (max 1 MB).",
+    "uploadNotFound": "Caricamento non trovato."
+  }
+}
