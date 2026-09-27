@@ -8,9 +8,10 @@ import type { Gate, Plan } from "./plan.ts";
 export type Outcome = "planned" | "unchanged" | "verified" | "needs-review" | "failed";
 export type Decision = { gateId: string; planDigest: string; action: "reviewed" | "accept-release" | "reapply-patch" | "secret-configured" | "migration-complete"; evidence: string; at: string; migration?: { deployment: string; evidenceDigest: string } };
 export type Step = { id: string; status: "passed" | "failed" | "pending"; command: string[]; exitCode: number | null; log: string; changedFiles: string[] };
-export type UpgradeState = { stage: "planned" | "applied" | "codemods" | "installed" | "verified" | "recorded"; expectedFiles: Record<string, string>; decisions: Decision[]; steps: Step[]; branch?: string; error?: string; activeStep?: string; requiresReplan?: boolean; hash: string };
+export type UpgradeState = { stage: "planned" | "applied" | "codemods" | "installed" | "verified" | "recorded"; expectedFiles: Record<string, string>; decisions: Decision[]; steps: Step[]; branch?: string; executionRoot?: string; error?: string; activeStep?: string; requiresReplan?: boolean; hash: string };
 export type Report = { schemaVersion: 1; tool: "platform-upgrade"; outcome: Outcome; plan: Plan; state: UpgradeState; updatedAt: string };
 
+export function reportAppRoot(report: Report): string { return report.state.executionRoot ?? report.plan.app.root; }
 export function sealState(state: UpgradeState): void { state.hash = digest(canonical(Object.fromEntries(Object.entries(state).filter(([key]) => key !== "hash")))); }
 export function createReport(plan: Plan, files: Record<string, string>): Report {
   const state: UpgradeState = { stage: "planned", expectedFiles: files, decisions: [], steps: [], hash: "" }; sealState(state);

@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { canonical, demand, digest, hasControl, safeRelative } from "./metadata.ts";
 import { git, gitText } from "./git.ts";
 import { workingFiles, type Payload, type Planned } from "./plan.ts";
-import { decisionFor, type Report } from "./report.ts";
+import { reportAppRoot, decisionFor, type Report } from "./report.ts";
 
 function stat(file: string): fs.Stats | undefined { try { return fs.lstatSync(file); } catch (error) { if ((error as { code?: string }).code === "ENOENT") return undefined; throw error; } }
 export function changedFiles(before: Record<string, string>, after: Record<string, string>): string[] { return [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(file => before[file] !== after[file]).sort(); }
@@ -106,7 +106,7 @@ export function ensureUpdateBranch(root: string, target: string): string {
 }
 /** Permit only byte-exact interrupted writes before repeating the apply step. */
 export function assertBeforeApply(report: Report, planned: Planned, excluded: string[]): void {
-  const root = report.plan.app.root;
+  const root = reportAppRoot(report);
   const head = gitText(root, ["rev-parse", "HEAD"]);
   if (head !== report.plan.app.head) {
     demand(spawnSync("git", ["merge-base", "--is-ancestor", report.plan.app.head, head], { cwd: root }).status === 0, "App HEAD changed before apply; create a new plan");
@@ -125,7 +125,7 @@ export function assertBeforeApply(report: Report, planned: Planned, excluded: st
 }
 /** Manual conflict/patch/env/dependency resolutions are scoped to the plan's named files. */
 export function acceptReviewedEdits(report: Report, excluded: string[]): string[] {
-  const root = report.plan.app.root;
+  const root = reportAppRoot(report);
   demand(digest(fs.readFileSync(path.join(root, ".platform-base.json"))) === report.plan.previousBaseHash, "Installed baseline changed during the pending upgrade");
   const allowed = new Set(report.plan.gates.flatMap(gate => {
     const decision = decisionFor(report, gate);

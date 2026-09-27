@@ -1,18 +1,28 @@
 ---
 name: platform-configure
-description: Use to set the app's product name, legal entity, support email, local ports, auth cookie prefix, local origins, brand (icons, design tokens, email look) or optional feature switches. All of these are edits to app.config.ts only.
+description: Use to set the app's product name, legal entity, support email, local ports, auth cookie prefix, local origins, brand (icons, design tokens, email look) or optional feature switches. Identity, runtime and brand values are edits to app.config.ts only. Also use to set up automatic platform update PRs.
 ---
 
 # Configure the app
 
-Every value an app is expected to change lives in the root **`app.config.ts`**, and nowhere
+For product identity, runtime, brand and feature switches, every value an app is expected to change lives in the root **`app.config.ts`**, and nowhere
 else. The platform reads it everywhere it needs one of these values: TypeScript through
 `@web-app-starter/app-config`, shell scripts and CI through `platform/tooling/app-config.ts`, Better Auth and the
 proxies through `@web-app-starter/auth/cookies`. So a configuration change is an edit to `app.config.ts`
-and **no other file**. If a change seems to need another file, stop: either the value isn't
+and **no other file** for those values. If a change seems to need another file, stop: either the value isn't
 configuration (see "Not here" below) or the platform has a gap to report.
 
 Reference: `platform/docs/development.md`, "App configuration".
+
+## Set up automatic updates
+
+For update delivery, run `bun run platform:setup-updates` from the adopted app. Read
+`platform/docs/setup-updates.md`; the helper creates the GitHub App through its browser manifest
+flow, verifies installation on this repository only, and stores the ID and key with `gh`.
+The app-owned update caller holds schedule and policy. These credentials and workflow settings
+are separate from `app.config.ts`. Never place a private key in the app config, git or chat.
+Preserve existing settings; use `--check` to inspect status, and `--replace` only when the user
+asks to replace the App. `--fallback` documents the manual-CI/workflow-file limitations.
 
 ## What goes where
 
@@ -90,5 +100,5 @@ const appConfig = {
 Then `./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell` shows `APP_CONFIG_PORT_WEB=4001`,
 `APP_CONFIG_ORIGIN_WEB=http://localhost:4001` and `APP_CONFIG_AUTH_COOKIE_PREFIX=acme-notes`.
 
-**Done when** `git status --short` lists only `app.config.ts`, and lint, typecheck, `test` and
+**Configuration-value changes are done when** `git status --short` lists only `app.config.ts`, and lint, typecheck, `test` and
 `test:unit` pass.

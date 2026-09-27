@@ -54,7 +54,9 @@ Existing deployments upgrading to v2 must complete the [component data migration
 For a published platform update, follow [UPGRADING.md](UPGRADING.md):
 `bun run platform:upgrade --to vX.Y.Z --dry-run --report upgrade-report.json`, then
 `--resume upgrade-report.json`. Review gates are specific to the plan; the installed baseline
-advances only after all required checks pass. Keep pending updates as drafts.
+advances only after all required checks pass. Keep pending updates as drafts. For a cloned
+workflow draft, use `--resume upgrade-report.json --relocate` before making review edits; see
+[update delivery](docs/update-delivery.md) for schedule, credentials and outcomes.
 
 ## App configuration
 
@@ -99,6 +101,7 @@ bun run test:contracts       # Session isolation, endpoint authorization, header
 bun run platform:upgrade --help # Plan/apply/resume a published platform release
 bun run platform:check-updates # Discover allowed updates and major releases for review
 bun run check:advisories      # Fail on installed high/critical advisories; lower severity warns
+bun run platform:setup-updates # Configure the updater App and caller (docs/setup-updates.md)
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 
@@ -237,6 +240,7 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 | `platform-add-strings` | Add translated strings in an app namespace to every locale |
 | `platform-deps` | Update the app's dependencies (Renovate queue, majors, lockfile) |
 | `platform-patch` | Change platform code you can't wait for: mark and record the patch, draft the request |
+| `platform-upgrade` | Take a platform release or finish a draft update PR, resolve its report and verify the app |
 | `platform-pr-review` | Review a pull request and comment |
 | `platform-pr-respond` | Address review comments on a pull request |
 
