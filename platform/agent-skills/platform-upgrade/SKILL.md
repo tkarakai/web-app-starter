@@ -64,8 +64,10 @@ require a new plan; retain the failed report as evidence and explain why the sco
 
 ## Complete verification and the PR
 
-Resume without `--defer-e2e`. The tool repeats installation and all required checks after
-relocation. Use the project's documented local Convex/E2E setup; local verification does not
+Resume without `--defer-e2e`, using `CI=true bun run platform:upgrade --resume upgrade-report.json`
+for reproducible browser verification (one worker, retries and no Next.js agent-file generation).
+The tool repeats installation and all required checks after relocation. Use the project's
+documented local Convex/E2E setup; local verification does not
 require hosted deployment credentials. Failed checks or pending decisions leave the old
 baseline in place. Do not weaken checks to make the update green.
 
@@ -75,8 +77,11 @@ behavior and include both report files, the baseline and regenerated lockfile in
 commit. Follow the app's before-push checks and update the existing branch without rebasing,
 resetting or force-pushing. When pushing is authorized, wait for CI on that exact commit.
 
-Keep a pending update in draft. Once local verification and PR CI pass, update its description
-with the resolved gates and evidence and mark it ready. Merge or deploy only within the user's
+Keep a pending update in draft. Once local verification and applicable draft CI pass, update its
+description with the resolved gates and evidence and mark it ready. Draft CI may skip browsers:
+wait for the `ready_for_review` run on that exact head and require its E2E checks to pass too.
+If that run does not start, inspect the app-owned caller triggers and the target's migration
+notes; skipped browser jobs are not passing browser evidence. Merge or deploy only within the user's
 authorization. Report the target, preserved app choices, verification results and anything
 still awaiting an operator; do not describe a draft as an installed upgrade.
 
