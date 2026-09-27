@@ -30,6 +30,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Landing development and CI guidance correctly describe the local Convex backend used by
+  waitlist status and submission endpoints.
+
 - Auth browser tests support the direct sign-out button in apps adopted without the sample.
 
 - Root E2E runs app suites in sequence, so one app finishing cannot stop the shared local
