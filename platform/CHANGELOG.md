@@ -56,6 +56,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- Update app-owned CI callers with
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-ci-callers.ts`.
+  It grants the change detector explicit read access and runs browser CI when a draft becomes
+  ready. Custom permission denials or complex triggers require review. **Done when:** its
+  `--check` passes and a ready update PR runs all applicable checks, including E2E.
+
 - **Who is affected:** apps with customized account-security wording under
   `dashboard.changePassword`, `dashboard.twoFactor`, `dashboard.passkeys` or `dashboard.sessions`.
   These messages now belong to the platform's `accountSecurity` namespace. Run

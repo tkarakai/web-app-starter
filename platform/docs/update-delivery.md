@@ -19,6 +19,9 @@ Pull requests, Workflows and Issues **write** permissions. Store its ID in repos
 
 Without the App, the workflow uses `GITHUB_TOKEN`. Allow GitHub Actions to create pull requests
 in repository Actions settings. Its PRs may require **Approve and run** before CI starts.
+App-owned CI callers need `contents: read` and `pull-requests: read` for change detection,
+and the `ready_for_review` pull-request event to run browser checks after finishing a draft.
+The v2 `v2-ci-callers.ts` codemod updates the standard callers while preserving custom grants.
 Workflow-file changes instead produce an issue with the manual upgrade command because the
 fallback token cannot push them. A configured App with a missing/invalid key fails visibly;
 it does not silently fall back to a different identity.
