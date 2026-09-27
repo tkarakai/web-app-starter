@@ -15,6 +15,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- The `platform-upgrade` skill guides agents through draft update PRs, per-item decisions,
+  report relocation, complete verification and ready-for-review handoff while preserving app choices.
+
 - `bun run platform:setup-updates` guides GitHub App registration and repository-only
   installation, verifies permissions, and stores updater credentials through the GitHub CLI.
   It preserves existing configuration, supports read-only status and documents token fallback.
