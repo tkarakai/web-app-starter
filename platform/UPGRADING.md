@@ -94,6 +94,18 @@ preserves the immutable plan and completed codemods, then repeats installation a
 Secret-configuration decisions need fresh evidence for this environment. Interrupted commands
 and already-recorded upgrades cannot be relocated.
 
+If `package.json` contains conflict markers, Bun cannot read its scripts (it may report
+`Script not found "platform:upgrade"`). Run the same dependency-free launcher directly, before
+editing the conflicted file:
+
+```sh
+./platform/tooling/node-ts.sh platform/tooling/platform-upgrade.ts \
+  --resume upgrade-report.json --relocate
+```
+
+Use this command prefix for review operations until the package seam is valid JSON. Then the
+usual `bun run platform:upgrade` command works again; keep the existing report and branch.
+
 ## Resolve one review item
 
 Use the exact item ID in the report and explain the evidence for that one decision:

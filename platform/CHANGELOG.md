@@ -53,6 +53,9 @@ published or tagged; it is retained only as historical context.
 
 ### Fixed
 
+- Upgrade recovery documents the direct launcher for package-manifest conflicts, allowing
+  report relocation before editing even when Bun cannot read the package scripts.
+
 - Versioning guidance uses the separated platform baseline and published-major support
   policy. Evaluation, commercial and app-template licence texts remain pending legal review.
 

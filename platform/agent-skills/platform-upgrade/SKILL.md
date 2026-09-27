@@ -16,6 +16,11 @@ checks or mark a migration complete without deployment-specific evidence.
   any files, run `bun run platform:upgrade --resume upgrade-report.json --relocate` to bind the
   CI report to this checkout. Use the PR's actual report path if different. Exit 2 means there
   are review items to resolve; it is expected for a draft. Do not make a second update branch.
+- If `package.json` contains conflict markers, Bun cannot read its scripts. Before editing,
+  relocate with `./platform/tooling/node-ts.sh platform/tooling/platform-upgrade.ts --resume
+  upgrade-report.json --relocate` instead. This invokes the same dependency-free launcher.
+  Use that command prefix until the package seam is valid JSON; then `bun run platform:upgrade`
+  works again. A package-script error does not mean the saved upgrade must be replanned.
 - For a new upgrade, start from a clean committed app and plan it with
   `bun run platform:upgrade --to vX.Y.Z --dry-run --report upgrade-report.json`. Select a real
   release, review the plan, then resume that report. A dry run's exit 0 is not verification.
