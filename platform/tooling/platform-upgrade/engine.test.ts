@@ -138,3 +138,21 @@ test("an interrupted codemod is checked before retry and cannot run twice after 
   const calls: string[][] = []; const done = await applyUpgrade(readReport(reportFile), planned, { reportFile, execute: async (args, cwd) => { calls.push(args); return args[0] === process.execPath ? execute(args, cwd) : pass(args, cwd); } });
   assert.equal(done.outcome, "verified", done.state.error); assert(!calls.some(args => args[1]?.endsWith("interrupted.ts") && !args.includes("--check")));
 });
+test("index-only edits cannot enter an upgrade even when working-tree bytes match the plan", async () => {
+  const f = runnable(); f.publish("2.0.1"); const planned = await f.plan("2.0.1"), { report, reportFile } = reportFor(planned);
+  write(f.app, "apps/web/business.ts", "staged-only change\n"); git(f.app, "add", "apps/web/business.ts"); write(f.app, "apps/web/business.ts", "export const total = 42;\n");
+  const result = await applyUpgrade(report, planned, { reportFile, execute: pass }); assert.equal(result.outcome, "failed"); assert.match(result.state.error!, /Unexpected staged edit/);
+  assert.match(git(f.app, "show", ":apps/web/business.ts"), /staged-only change/);
+});
+test("bounded command diagnostics retain the initial failure across noisy shutdown output", async () => {
+  const result = await execute([process.execPath, "-e", "console.error('Error: initial dependency failure'); console.log('x'.repeat(100000)); process.exit(1)"], process.cwd());
+  assert.equal(result.exitCode, 1); assert(result.log.length <= 16384); assert.match(result.log, /initial dependency failure/);
+});
+test("a plan-only draft commit may contain its reports without invalidating the app source", async () => {
+  const f = runnable(); f.publish("2.0.1", entry => { entry.env.push({ name: "DRAFT_SECRET", kind: "new", secret: true, required: true }); });
+  const planned = await f.plan("2.0.1"), report = createReport(planned.plan, workingFiles(planned.plan.app.root)), reportFile = path.join(f.app, "upgrade-report.json");
+  await applyUpgrade(report, planned, { reportFile, execute: pass });
+  git(f.app, "switch", "-c", "platform-update/v2.0.1"); git(f.app, "add", "upgrade-report.json", "upgrade-report.md"); git(f.app, "commit", "-qm", "draft upgrade report");
+  const saved = readReport(reportFile); recordDecision(saved, { id: "secret:DRAFT_SECRET", action: "secret-configured", evidence: "Configured in the named staging environment" }); writeReport(reportFile, saved);
+  const done = await applyUpgrade(saved, planned, { reportFile, execute: pass }); assert.equal(done.outcome, "verified", done.state.error);
+});

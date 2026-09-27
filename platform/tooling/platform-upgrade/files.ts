@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { spawnSync } from "node:child_process";
 import { canonical, demand, digest, hasControl, safeRelative } from "./metadata.ts";
 import { git, gitText } from "./git.ts";
 import { workingFiles, type Payload, type Planned } from "./plan.ts";
@@ -106,7 +107,14 @@ export function ensureUpdateBranch(root: string, target: string): string {
 /** Permit only byte-exact interrupted writes before repeating the apply step. */
 export function assertBeforeApply(report: Report, planned: Planned, excluded: string[]): void {
   const root = report.plan.app.root;
-  demand(gitText(root, ["rev-parse", "HEAD"]) === report.plan.app.head, "App HEAD changed before apply; create a new plan");
+  const head = gitText(root, ["rev-parse", "HEAD"]);
+  if (head !== report.plan.app.head) {
+    demand(spawnSync("git", ["merge-base", "--is-ancestor", report.plan.app.head, head], { cwd: root }).status === 0, "App HEAD changed before apply; create a new plan");
+    const committed = git(root, ["diff", "--name-only", "-z", report.plan.app.head, head]).toString("utf8").split("\0").filter(Boolean);
+    demand(committed.every(file => excluded.includes(file)), "App source changed before apply; create a new plan");
+  }
+  const indexed = git(root, ["diff", "--cached", "--name-only", "-z", "HEAD"]).toString("utf8").split("\0").filter(Boolean);
+  demand(indexed.every(file => excluded.includes(file) || planned.payloads.some(row => row.path === file)), "Unexpected staged edit before apply; preserve the index and create a new plan");
   demand(digest(fs.readFileSync(path.join(root, ".platform-base.json"))) === report.plan.previousBaseHash, "Installed baseline changed before apply");
   const current = workingFiles(root, excluded);
   if (digest(canonical(current)) === report.plan.app.fingerprint) return;
@@ -126,5 +134,8 @@ export function acceptReviewedEdits(report: Report, excluded: string[]): string[
   }));
   const current = workingFiles(root, excluded), changed = changedFiles(report.state.expectedFiles, current);
   for (const file of changed) demand(allowed.has(file), "Unexpected edit during upgrade: " + file + ". Preserve your work and create a new plan if its scope changed.");
-  report.state.expectedFiles = current; return changed;
+  const unstaged = git(root, ["diff", "--name-only", "-z"]).toString("utf8").split("\0").filter(file => file && !excluded.includes(file));
+  const audited = new Set([...report.plan.changes.map(row => row.path), ...report.state.steps.flatMap(row => row.changedFiles), ...allowed]);
+  for (const file of unstaged) demand(audited.has(file), "Unexpected index/worktree difference: " + file);
+  report.state.expectedFiles = current; return [...new Set([...changed, ...unstaged])];
 }

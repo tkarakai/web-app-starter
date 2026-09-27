@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { parseBase, type PlatformBase } from "../check-zone.ts";
 import { ADVISORIES, canonical, demand, digest, parseAdvisories, safeRelative, type Advisory, type Codemod, type DependencyFloor, type EnvChange, type Migration } from "./metadata.ts";
 import { createCache, fileAt, fullCommit, git, gitText, loadRelease, readBlob, tree, type ReleaseSource, type Source, type SourceCache, type TreeFile } from "./git.ts";
+import { readRegular } from "./io.ts";
 import { isZonePath, secretValueFile } from "./ownership.ts";
 import { compare, raiseFloor, satisfies, version } from "./semver.ts";
 import { scanEnvironment, type EnvScan } from "./env.ts";
@@ -36,8 +37,9 @@ export function workingFiles(root: string, excluded: string[] = []): Record<stri
     const full = path.join(root, file);
     let stat: fs.Stats; try { stat = fs.lstatSync(full); } catch (error) { if ((error as { code?: string }).code === "ENOENT") { hashes[file] = "deleted"; continue; } throw error; }
     demand(stat.isFile() || stat.isSymbolicLink(), "Unsupported working-tree file: " + file);
-    const mode = stat.isSymbolicLink() ? "120000" : stat.mode & 0o111 ? "100755" : "100644";
-    const bytes = stat.isSymbolicLink() ? Buffer.from(fs.readlinkSync(full)) : fs.readFileSync(full);
+    const regular = stat.isSymbolicLink() ? undefined : readRegular(full);
+    const mode = regular ? regular.stat.mode & 0o111 ? "100755" : "100644" : "120000";
+    const bytes = regular ? regular.content : Buffer.from(fs.readlinkSync(full));
     hashes[file] = mode + ":" + digest(bytes);
   }
   return hashes;

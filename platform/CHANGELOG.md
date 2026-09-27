@@ -24,6 +24,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Root E2E runs app suites in sequence, so one app finishing cannot stop the shared local
+  development processes while another app is still testing.
+
 - Ops tests retain the web hash check and skip only the optional landing hash check when an
   adopted app removed that landing, so full upgrade verification works in stripped apps.
 

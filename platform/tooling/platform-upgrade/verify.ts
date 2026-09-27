@@ -4,6 +4,7 @@ import { checkZone, type PlatformBase } from "../check-zone.ts";
 import { demand } from "./metadata.ts";
 import { compare, satisfies } from "./semver.ts";
 import { scanEnvironment } from "./env.ts";
+import { readRegular } from "./io.ts";
 import { secretValueFile } from "./ownership.ts";
 import { decisionFor, unresolved, type Report } from "./report.ts";
 import { workingFiles } from "./plan.ts";
@@ -23,10 +24,7 @@ export function verifySource(report: Report, directory: string, excluded: string
     demand(fs.existsSync(path.join(root, file)), "Required seam remains missing: " + file);
     demand(!/^(?:<<<<<<<|=======|>>>>>>>|\|\|\|\|\|\|\|)(?: |$)/m.test(fs.readFileSync(path.join(root, file), "utf8")), "Seam conflict remains unresolved: " + file);
   }
-  const sources = Object.keys(workingFiles(root, excluded)).filter(file => !secretValueFile(file)).flatMap(file => {
-    const full = path.join(root, file); if (!fs.existsSync(full) || !fs.lstatSync(full).isFile()) return [];
-    return [{ path: file, content: fs.readFileSync(full) }];
-  });
+  const sources = Object.entries(workingFiles(root, excluded)).filter(([file, hash]) => !secretValueFile(file) && hash.startsWith("100")).map(([file]) => ({ path: file, content: readRegular(path.join(root, file)).content }));
   const scan = scanEnvironment(sources);
   for (const change of report.plan.environment.changes) if (change.kind !== "new") demand(!scan.references.some(row => row.name === change.name), "App still references removed/renamed env " + change.name);
   const candidate = path.join(directory, "candidate-base.json"); fs.writeFileSync(candidate, JSON.stringify(candidateBase(report)), { mode: 0o600 });

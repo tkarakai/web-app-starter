@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { canonical, demand, digest, safeRelative } from "./metadata.ts";
+import { readRegular } from "./io.ts";
 import { secretValueFile } from "./ownership.ts";
 import type { Gate, Plan } from "./plan.ts";
 
@@ -16,8 +17,7 @@ export function createReport(plan: Plan, files: Record<string, string>): Report 
   return { schemaVersion: 1, tool: "platform-upgrade", outcome: "planned", plan, state, updatedAt: new Date().toISOString() };
 }
 export function readReport(file: string): Report {
-  const stat = fs.lstatSync(file); demand(stat.isFile() && stat.size < 32 * 1024 * 1024, "Invalid or oversized upgrade report");
-  const value = JSON.parse(fs.readFileSync(file, "utf8")) as Report;
+  const value = JSON.parse(readRegular(file, 32 * 1024 * 1024).content.toString("utf8")) as Report;
   demand(value?.schemaVersion === 1 && value.tool === "platform-upgrade" && value.plan && value.state, "Unknown upgrade report schema");
   const { digest: planDigest, ...unsignedPlan } = value.plan;
   demand(digest(canonical(unsignedPlan)) === planDigest, "Upgrade plan changed; create a new plan");

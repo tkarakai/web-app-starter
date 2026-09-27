@@ -101,7 +101,19 @@ export function materialize(repo: string, entries: TreeFile[], directory: string
     else fs.writeFileSync(target, bytes, { mode: entry.mode === "100755" ? 0o755 : 0o644 });
   }
 }
+export function validateSource(source: Source): void {
+  demand(source && typeof source === "object" && (source.kind === "github" || source.kind === "local"), "Invalid platform source");
+  if (source.kind === "github") demand(typeof source.repo === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/.test(source.repo), "Invalid GitHub repository identifier");
+  else demand(typeof source.path === "string" && path.isAbsolute(source.path) && !hasControl(source.path), "Invalid local repository path");
+}
+export function releaseAssetURL(source: Source, releaseVersion: string, asset: "advisories.json" | "breaking-changes.json"): string {
+  validateSource(source); version(releaseVersion);
+  demand(source.kind === "github", "Release attachments require a GitHub source");
+  demand(asset === "advisories.json" || asset === "breaking-changes.json", "Unknown release attachment");
+  return "https://github.com/" + source.repo + "/releases/download/v" + releaseVersion + "/" + asset;
+}
 export function createCache(source: Source): SourceCache {
+  validateSource(source);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "platform-upgrade-"));
   const repo = path.join(directory, "objects.git"); fs.mkdirSync(repo);
   git(repo, ["init", "--bare", "-q"]);
@@ -126,7 +138,9 @@ export async function loadRelease(cache: SourceCache, releaseVersion: string): P
   fileAt(cache.repo, entries, ENTRY);
   if (cache.source.kind === "github") {
     for (const [name, expected] of [["breaking-changes.json", manifestBytes], ["advisories.json", advisoryBytes]] as const) {
-      const response = await fetch(`https://github.com/${cache.source.repo}/releases/download/v${releaseVersion}/${name}`, { signal: AbortSignal.timeout(30000) });
+      // Only the validated public repository identifier, semver tag and two literal asset names
+      // select this request. No file body, environment value, credential or report content is sent.
+      const response = await fetch(releaseAssetURL(cache.source, releaseVersion, name), { signal: AbortSignal.timeout(30000) });
       demand(response.ok, "Missing release attachment: " + name);
       const length = Number(response.headers.get("content-length") ?? 0); demand(length <= 5 * 1024 * 1024, "Oversized release attachment");
       demand(response.body, "Release attachment has no body"); const chunks: Uint8Array[] = []; let size = 0;

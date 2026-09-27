@@ -5,6 +5,7 @@ import { canonical, demand, digest } from "./metadata.ts";
 import { git, gitText, loadRelease } from "./git.ts";
 import { createPlan, workingFiles, type Planned } from "./plan.ts";
 import { acceptReviewedEdits, assertBeforeApply, changedFiles, ensureUpdateBranch, materializePayloads, stage } from "./files.ts";
+import { readRegular, writeAtomic } from "./io.ts";
 import { inScope, secretValueFile } from "./ownership.ts";
 import { execute, redact, type Execute } from "./commands.ts";
 import { candidateBase, REQUIRED_CHECKS, verifyDependencies, verifySource } from "./verify.ts";
@@ -25,10 +26,12 @@ export async function applyUpgrade(report: Report, planned: Planned, options: { 
   const save = () => writeReport(options.reportFile, report);
   const snapshot = () => workingFiles(root, excluded);
   const pending = (message?: string) => { report.outcome = "needs-review"; report.state.error = message; save(); return report; };
-  const baselinePath = path.join(root, ".platform-base.json"), baselineText = fs.readFileSync(baselinePath, "utf8");
+  const baselinePath = path.join(root, ".platform-base.json"), baselineText = readRegular(baselinePath).content.toString("utf8");
   const checkBaseline = () => {
-    if (!fs.existsSync(baselinePath) || digest(fs.readFileSync(baselinePath)) !== report.plan.previousBaseHash) {
-      fs.writeFileSync(baselinePath, baselineText); report.state.requiresReplan = true;
+    let matches = false;
+    try { matches = digest(readRegular(baselinePath).content) === report.plan.previousBaseHash; } catch { /* Missing or replaced baseline is an external mutation. */ }
+    if (!matches) {
+      writeAtomic(baselinePath, baselineText); report.state.requiresReplan = true;
       throw new Error("An external command changed the installed baseline; restored its original bytes. Inspect the command and create a new plan.");
     }
   };
@@ -74,10 +77,10 @@ export async function applyUpgrade(report: Report, planned: Planned, options: { 
       if (codemod) {
         const current = snapshot(), touched = changedFiles(report.state.expectedFiles, current);
         demand(touched.every(file => file !== ".platform-base.json" && !secretValueFile(file) && codemod.touches.some(scope => inScope(file, scope))), "Interrupted codemod changed unexpected files; preserve them and replan");
-        report.state.expectedFiles = current;
+        stage(root, touched, planned.cache.directory); report.state.expectedFiles = snapshot();
       }
       if (report.state.activeStep === "install") {
-        const current = snapshot(); demand(changedFiles(report.state.expectedFiles, current).every(file => file === "bun.lock"), "Interrupted install changed unexpected files; inspect and replan"); report.state.expectedFiles = current;
+        const current = snapshot(), touched = changedFiles(report.state.expectedFiles, current); demand(touched.every(file => file === "bun.lock"), "Interrupted install changed unexpected files; inspect and replan"); stage(root, touched, planned.cache.directory); report.state.expectedFiles = snapshot();
       }
       const reviewed = acceptReviewedEdits(report, excluded); stage(root, reviewed, planned.cache.directory); report.state.expectedFiles = snapshot();
       if (reviewed.length) { report.state.steps = report.state.steps.filter(row => !row.id.startsWith("verify:") && row.id !== "install"); report.state.stage = report.state.stage === "applied" ? "applied" : "codemods"; }
@@ -119,9 +122,9 @@ export async function applyUpgrade(report: Report, planned: Planned, options: { 
     if (report.state.steps.some(row => row.status === "pending")) return pending("Required E2E verification is pending; the installed baseline is unchanged.");
     verifySource(report, planned.cache.directory, excluded); verifyDependencies(report);
     report.state.stage = "verified"; save();
-    fs.writeFileSync(baselinePath, JSON.stringify(candidateBase(report), null, 2) + "\n");
+    writeAtomic(baselinePath, JSON.stringify(candidateBase(report), null, 2) + "\n");
     try { verifySource(report, planned.cache.directory, excluded); }
-    catch (error) { fs.writeFileSync(baselinePath, baselineText); throw error; }
+    catch (error) { writeAtomic(baselinePath, baselineText); throw error; }
     stage(root, [".platform-base.json"], planned.cache.directory);
     report.state.stage = "recorded"; report.state.expectedFiles = snapshot(); report.outcome = "verified"; delete report.state.error; save(); return report;
   } catch (error) {

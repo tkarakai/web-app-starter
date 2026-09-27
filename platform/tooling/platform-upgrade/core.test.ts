@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 import { compare, raiseFloor, satisfies } from "./semver.ts";
 import { MANIFEST, ADVISORIES, ENTRY, parseAdvisories, parseManifest, safeRelative, type Manifest, type Release } from "./metadata.ts";
-import { createCache, gitText, loadRelease, materialize, tree } from "./git.ts";
+import { createCache, gitText, loadRelease, materialize, tree, releaseAssetURL } from "./git.ts";
 import { scanEnvironment } from "./env.ts";
 import { checkZone } from "../check-zone.ts";
 
@@ -97,4 +97,10 @@ test("candidate zone checks do not overwrite the installed baseline; missing can
   assert.deepEqual(checkZone(root, { baseFile: candidate }).errors, []);
   assert.equal(fs.readFileSync(path.join(root, ".platform-base.json"), "utf8"), original);
   assert(checkZone(root, { baseFile: candidate + ".missing" }).errors.some(error => error.includes("Candidate baseline is missing")));
+});
+
+test("asset requests accept only a public repository identifier, strict version and fixed metadata name", () => {
+  assert.equal(releaseAssetURL({ kind: "github", repo: "tkarakai/web-app-starter" }, "2.0.1", "advisories.json"), "https://github.com/tkarakai/web-app-starter/releases/download/v2.0.1/advisories.json");
+  for (const repo of ["owner/repo?token=secret", "owner/repo#secret", "owner/repo/extra", "owner/repo\nsecret", "https://elsewhere.test/owner/repo"]) assert.throws(() => releaseAssetURL({ kind: "github", repo }, "2.0.1", "advisories.json"), /identifier/);
+  assert.throws(() => releaseAssetURL({ kind: "github", repo: "owner/repo" }, "2.0.1?secret", "advisories.json"));
 });

@@ -40,7 +40,7 @@
     "test:contracts": "bun run --cwd platform/packages/contracts test:contracts && bun run --cwd packages/backend test:convex endpoint-authorization authorization-contract",
     "setup:e2e": "./platform/tooling/setup-e2e.sh",
     "pretest:e2e": "./platform/tooling/ensure-app-env.sh --quiet",
-    "test:e2e": "turbo test:e2e",
+    "test:e2e": "turbo test:e2e --concurrency=1",
     "test:all": "turbo test test:unit test:convex test:e2e",
     "clean": "rm -rf apps/*/.next apps/*/.turbo packages/*/.turbo platform/apps/*/.next platform/apps/*/.turbo platform/packages/*/.turbo .turbo",
     "ci": "./platform/tooling/ci-local.sh",
