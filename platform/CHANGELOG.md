@@ -15,6 +15,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- `bun run platform:setup-updates` guides GitHub App registration and repository-only
+  installation, verifies permissions, and stores updater credentials through the GitHub CLI.
+  It preserves existing configuration, supports read-only status and documents token fallback.
+  Private keys stay out of local files, browser responses, arguments and logs.
+  See [updater setup](docs/setup-updates.md).
+
 - Automatic platform-update delivery separates read-only verification from the job holding
   repository write credentials. Adoption installs its weekday caller; verified updates become
   ready PRs, review gates become drafts, and failures or new majors become issues. GitHub App
