@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- The `platform-upgrade` skill guides agents through draft update PRs, per-item decisions,
+  report relocation, complete verification and ready-for-review handoff while preserving app choices.
+
+### Added
+
 - `bun run platform:check-updates` reports published updates, major releases for review and
   advisories affecting the installed version. Contracts CI independently runs
   `bun run check:advisories`: high/critical advisories fail; lower severity warns. Discovery is

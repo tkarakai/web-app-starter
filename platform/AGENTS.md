@@ -237,6 +237,7 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 | `platform-add-strings` | Add translated strings in an app namespace to every locale |
 | `platform-deps` | Update the app's dependencies (Renovate queue, majors, lockfile) |
 | `platform-patch` | Change platform code you can't wait for: mark and record the patch, draft the request |
+| `platform-upgrade` | Take a platform release or finish a draft update PR, resolve its report and verify the app |
 | `platform-pr-review` | Review a pull request and comment |
 | `platform-pr-respond` | Address review comments on a pull request |
 

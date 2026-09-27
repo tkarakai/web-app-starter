@@ -5,6 +5,9 @@ an ordinary update branch, takes platform files from the selected release, merge
 seams against your installed version, and verifies your app before recording the new baseline.
 Your app code, branding, messages and optional-app choices remain yours.
 
+An agent can use the [`platform-upgrade` skill](agent-skills/platform-upgrade/SKILL.md) to
+finish an update PR, resolve its saved report and complete verification.
+
 The installed version, exact source commit and recorded patches live in `.platform-base.json`.
 `platform/VERSION` describes the source currently in the checkout; during a pending upgrade
 these can differ. The root package version is your app's version.
