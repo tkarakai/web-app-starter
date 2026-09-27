@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-27
+
 Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never
 published or tagged; it is retained only as historical context.
 
@@ -535,4 +537,5 @@ any claimed release resolves to the verified starter commit with required action
 completed. New apps cloned from the published `v1.0.0` tag can record that exact
 tag/commit immediately; their own setup and deployment still need validation.
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v2.0.0
