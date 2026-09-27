@@ -81,6 +81,16 @@ for conflict resolution. App dependency floors can raise a lower compatible decl
 root override, but never lower a higher version. Unprovable ranges and major differences need
 review. Verification checks the actual installed dependency versions too.
 
+## Resume a draft from CI
+
+The [update workflow](docs/update-delivery.md) can deliver a pending upgrade as a draft PR.
+Check out its `platform-update/vX.Y.Z` branch and, before editing files, run
+`bun run platform:upgrade --resume upgrade-report.json --relocate`. The tool checks the exact
+draft tree, index, baseline and app history before binding the report to your checkout. It
+preserves the immutable plan and completed codemods, then repeats installation and all checks.
+Secret-configuration decisions need fresh evidence for this environment. Interrupted commands
+and already-recorded upgrades cannot be relocated.
+
 ## Resolve one review item
 
 Use the exact item ID in the report and explain the evidence for that one decision:
@@ -132,7 +142,7 @@ processes, and known secret environment values are redacted from bounded command
 `--defer-e2e` leaves E2E pending and the baseline unchanged. The update remains a draft. Resume
 without that flag to run E2E and finalize; passing other checks is not an installed upgrade.
 After final recording the zone check runs again. Normal app CI checks the installed baseline.
-For an explicitly different platform source, make your CI baseline-fetch step use that source too.
+For an explicitly different public platform source, set `PLATFORM_SOURCE_REPOSITORY` in CI.
 
 After a failed check, fix only the report's named review files and resume. A change to the source,
 metadata, baseline or unrelated app files invalidates the saved plan. Preserve your work, inspect

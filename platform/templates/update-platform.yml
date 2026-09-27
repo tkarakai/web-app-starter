@@ -1,0 +1,24 @@
+name: Update platform
+on:
+  schedule:
+    - cron: "23 5 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Target version (default newest allowed)
+        required: false
+        type: string
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+jobs:
+  update:
+    uses: ./.github/workflows/platform-update.yml
+    with:
+      policy: minor
+      version: ${{ inputs.version || '' }}
+      auto-merge: false
+      source: ${{ vars.PLATFORM_SOURCE_REPOSITORY || 'tkarakai/web-app-starter' }}
+    secrets:
+      PLATFORM_UPDATER_PRIVATE_KEY: ${{ secrets.PLATFORM_UPDATER_PRIVATE_KEY }}
