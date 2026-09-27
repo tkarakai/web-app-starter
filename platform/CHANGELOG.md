@@ -24,6 +24,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Auth browser tests support the direct sign-out button in apps adopted without the sample.
+
 - Root E2E runs app suites in sequence, so one app finishing cannot stop the shared local
   development processes while another app is still testing.
 
