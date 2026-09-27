@@ -117,7 +117,8 @@ jobs:
         run: |
           if [[ -f .platform-base.json ]]; then
             base="$(jq -r .commit .platform-base.json)"
-            git cat-file -e "${base}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base"
+            [[ "$base" =~ ^[0-9a-f]{7,40}$ ]] || { echo "Invalid platform baseline commit" >&2; exit 1; }
+            git cat-file -e "${base}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 https://github.com/tkarakai/web-app-starter.git "$base"
           fi
           bun run check:zone
 
