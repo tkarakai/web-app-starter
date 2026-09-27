@@ -59,6 +59,9 @@ published or tagged; it is retained only as historical context.
 - Versioning guidance uses the separated platform baseline and published-major support
   policy. Evaluation, commercial and app-template licence texts remain pending legal review.
 
+- Platform upgrades execute historical codemods through canonical temporary paths, avoiding
+  silent no-op entrypoints when the temporary directory is a symlink, including macOS `/var`.
+
 - Landing development and CI guidance correctly describe the local Convex backend used by
   waitlist status and submission endpoints.
 
