@@ -16,6 +16,11 @@ checks or mark a migration complete without deployment-specific evidence.
   any files, run `bun run platform:upgrade --resume upgrade-report.json --relocate` to bind the
   CI report to this checkout. Use the PR's actual report path if different. Exit 2 means there
   are review items to resolve; it is expected for a draft. Do not make a second update branch.
+- If `package.json` contains conflict markers, Bun cannot read its scripts. Before editing,
+  relocate with `./platform/tooling/node-ts.sh platform/tooling/platform-upgrade.ts --resume
+  upgrade-report.json --relocate` instead. This invokes the same dependency-free launcher.
+  Use that command prefix until the package seam is valid JSON; then `bun run platform:upgrade`
+  works again. A package-script error does not mean the saved upgrade must be replanned.
 - For a new upgrade, start from a clean committed app and plan it with
   `bun run platform:upgrade --to vX.Y.Z --dry-run --report upgrade-report.json`. Select a real
   release, review the plan, then resume that report. A dry run's exit 0 is not verification.
@@ -65,11 +70,17 @@ require a new plan; retain the failed report as evidence and explain why the sco
 ## Complete verification and the PR
 
 Resume without `--defer-e2e`, using `CI=true bun run platform:upgrade --resume upgrade-report.json`
-for reproducible browser verification (one worker, retries and no Next.js agent-file generation).
+for reproducible browser verification (one worker and retries).
 The tool repeats installation and all required checks after relocation. Use the project's
 documented local Convex/E2E setup; local verification does not
 require hosted deployment credentials. Failed checks or pending decisions leave the old
 baseline in place. Do not weaken checks to make the update green.
+
+Next.js may generate app-level `AGENTS.md`/`CLAUDE.md` files during local setup, even with
+`CI=true`. Compare status before and after setup. If those newly generated, untracked files
+invalidate the saved plan, inspect and preserve them outside the checkout, then remove only
+the files confirmed absent before setup. Never remove existing app guides or weaken the
+source checks. Resume the same report after restoring its expected source state.
 
 Completion requires report outcome `verified`, stage `recorded`, the exact target commit in
 `.platform-base.json`, and a passing final zone check. Inspect the diff for preserved app

@@ -13,6 +13,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-27
+
+Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never
+published or tagged; it is retained only as historical context.
+
 ### Added
 
 - The `platform-upgrade` skill guides agents through draft update PRs, per-item decisions,
@@ -47,6 +52,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
   See [UPGRADING.md](UPGRADING.md).
 
 ### Fixed
+
+- Upgrade recovery documents the direct launcher for package-manifest conflicts, allowing
+  report relocation before editing even when Bun cannot read the package scripts.
+
+- Versioning guidance uses the separated platform baseline and published-major support
+  policy. Evaluation, commercial and app-template licence texts remain pending legal review.
 
 - Platform upgrades execute historical codemods through canonical temporary paths, avoiding
   silent no-op entrypoints when the temporary directory is a symlink, including macOS `/var`.
@@ -391,11 +402,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   pointed at a port and route that no longer matched any app.
 - `.eslintrc.cjs`: ESLint 9 uses the flat config only, so the file was ignored.
 
-## [1.0.0] - 2026-09-25
+## [1.0.0] - 2026-09-25 (prepared; never published)
 
-First tagged release. The baseline: the starter as it exists today, with a version
-number attached to it and a documented source-merge upgrade process. This is the
-first supported starting point, not proof of arbitrary pre-release app upgrades.
+This snapshot was prepared but never published or tagged. The entries and migration
+instructions below describe that historical preparation; they do not establish a
+supported adoption path or automatic-upgrade baseline. Use the v2.0.0 instructions above.
 
 ### Added
 
@@ -532,5 +543,5 @@ any claimed release resolves to the verified starter commit with required action
 completed. New apps cloned from the published `v1.0.0` tag can record that exact
 tag/commit immediately; their own setup and deployment still need validation.
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v1.0.0
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v2.0.0

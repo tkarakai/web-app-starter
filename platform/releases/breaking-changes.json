@@ -276,6 +276,75 @@
       "supportedBaseline": ">=2.0.0 <3.0.0",
       "codemods": [
         {
+          "id": "v2-platform-packages",
+          "path": "platform/tooling/codemods/v2-platform-packages.ts",
+          "touches": [
+            "apps/",
+            "packages/",
+            "docs/",
+            "package.json",
+            "turbo.json",
+            "tsconfig.json",
+            "eslint.config.mjs",
+            ".github/"
+          ]
+        },
+        {
+          "id": "v2-convex-platform",
+          "path": "platform/tooling/codemods/v2-convex-platform.ts",
+          "touches": [
+            "apps/",
+            "packages/"
+          ]
+        },
+        {
+          "id": "v2-auth-ui",
+          "path": "platform/tooling/codemods/v2-auth-ui.ts",
+          "touches": [
+            "apps/",
+            "packages/"
+          ]
+        },
+        {
+          "id": "v2-security-messages",
+          "path": "platform/tooling/codemods/v2-security-messages.ts",
+          "touches": [
+            "packages/messages/overrides.json"
+          ]
+        },
+        {
+          "id": "v2-audit-trail-type",
+          "path": "platform/tooling/codemods/v2-audit-trail-type.ts",
+          "touches": [
+            "apps/",
+            "packages/"
+          ]
+        },
+        {
+          "id": "v2-announcement-types",
+          "path": "platform/tooling/codemods/v2-announcement-types.ts",
+          "touches": [
+            "apps/",
+            "packages/"
+          ]
+        },
+        {
+          "id": "v2-invitation-types",
+          "path": "platform/tooling/codemods/v2-invitation-types.ts",
+          "touches": [
+            "apps/",
+            "packages/"
+          ]
+        },
+        {
+          "id": "v2-admin-email-types",
+          "path": "platform/tooling/codemods/v2-admin-email-types.ts",
+          "touches": [
+            "apps/",
+            "packages/"
+          ]
+        },
+        {
           "id": "v2-ci-callers",
           "path": "platform/tooling/codemods/v2-ci-callers.ts",
           "touches": [
@@ -283,12 +352,159 @@
           ]
         }
       ],
-      "migrations": [],
+      "migrations": [
+        {
+          "id": "v2-component-data",
+          "changesRows": true,
+          "expansion": "Operator-reviewed additive bridge generated from the currently deployed legacy commit with v2-component-data-bridge.ts; see instructions",
+          "contract": "2.0.0",
+          "dependsOn": [],
+          "statusCommand": [
+            "bunx",
+            "convex",
+            "run",
+            "platform/componentMigration:status"
+          ],
+          "completion": "While writers are stopped: phase is complete, matches is true, and every legacy row has a matching component receipt with missing=0 and mismatched=0. Preserve the deployment URL and per-table verification evidence.",
+          "instructions": "platform/docs/component-data-migration.md"
+        }
+      ],
       "env": [],
-      "removedFiles": [],
-      "renamedExports": [],
-      "dependencyFloors": [],
-      "changedSeams": []
+      "removedFiles": [
+        ".eslintrc.cjs",
+        "lighthouserc.json",
+        "tsconfig.base.json",
+        "COMMERCIAL-LICENSE.md",
+        "UPGRADING.md",
+        "VERSIONING.md",
+        "CHANGELOG.md"
+      ],
+      "renamedExports": [
+        {
+          "from": "@repo/app-config",
+          "to": "@web-app-starter/app-config"
+        },
+        {
+          "from": "@repo/auth",
+          "to": "@web-app-starter/auth"
+        },
+        {
+          "from": "@repo/design-patterns",
+          "to": "@web-app-starter/design-patterns"
+        },
+        {
+          "from": "@repo/design-system",
+          "to": "@web-app-starter/design-system"
+        },
+        {
+          "from": "@repo/edge-rate-limit",
+          "to": "@web-app-starter/edge-rate-limit"
+        },
+        {
+          "from": "@repo/i18n",
+          "to": "@web-app-starter/i18n"
+        },
+        {
+          "from": "@repo/ops",
+          "to": "@web-app-starter/ops"
+        },
+        {
+          "from": "@repo/paper-roll",
+          "to": "@web-app-starter/paper-roll"
+        },
+        {
+          "from": "@repo/starter-sidebar-policy",
+          "to": "@web-app-starter/starter-sidebar-policy"
+        },
+        {
+          "from": "api.<platformModule> / internal.<platformModule>",
+          "to": "api.platform.<platformModule> / internal.platform.<platformModule>"
+        },
+        {
+          "from": "@/components/auth/* and moved auth helpers",
+          "to": "@web-app-starter/auth-ui"
+        },
+        {
+          "from": "Doc<\"auditTrail\">",
+          "to": "AuditTrailEvent from @repo/backend"
+        },
+        {
+          "from": "Doc<\"announcements\">",
+          "to": "Announcement from @repo/backend"
+        },
+        {
+          "from": "Doc<\"waitlistEntries\"> / Doc<\"invitationTokens\"> / Doc<\"adminInvitations\">",
+          "to": "WaitlistEntry / InvitationToken / AdminInvitation from @repo/backend"
+        },
+        {
+          "from": "Doc<\"adminEmails\">",
+          "to": "AdminEmail from @repo/backend"
+        },
+        {
+          "from": "Id for component-owned tables",
+          "to": "Opaque string IDs"
+        },
+        {
+          "from": "dashboard.{changePassword,twoFactor,passkeys,sessions} message namespaces",
+          "to": "accountSecurity platform messages; customized wording in packages/messages/overrides.json"
+        }
+      ],
+      "dependencyFloors": [
+        {
+          "path": "package.json",
+          "name": "typescript",
+          "minimum": "6.0.3"
+        }
+      ],
+      "changedSeams": [
+        "root.github.actions.build-app.action.yml",
+        "root.github.actions.deploy-convex.action.yml",
+        "root.github.actions.deploy-vercel.action.yml",
+        "root.github.actions.paid-feature.action.yml",
+        "root.github.actions.setup-bun.action.yml",
+        "root.github.actions.setup-bun.find-node.sh",
+        "root.github.actions.setup-bun.setup-bun-act.sh",
+        "root.github.actions.setup-playwright.action.yml",
+        "root.gitignore",
+        "root.node-version",
+        "app.config.ts",
+        "apps.demo.next.config.ts",
+        "apps.demo.package.json",
+        "apps.demo.tsconfig.json",
+        "apps.landing-static..env.example",
+        "apps.landing-static.next.config.ts",
+        "apps.landing-static.package.json",
+        "apps.landing-static.tsconfig.json",
+        "apps.landing..env.example",
+        "apps.landing.next.config.ts",
+        "apps.landing.package.json",
+        "apps.landing.tsconfig.json",
+        "apps.web..env.example",
+        "apps.web.next.config.ts",
+        "apps.web.package.json",
+        "apps.web.tsconfig.json",
+        "eslint.config.mjs",
+        "package.json",
+        "packages.backend..env.example",
+        "packages.backend.convex._generated.api.d.ts",
+        "packages.backend.convex._generated.api.js",
+        "packages.backend.convex._generated.datamodel.d.ts",
+        "packages.backend.convex._generated.server.d.ts",
+        "packages.backend.convex._generated.server.js",
+        "packages.backend.convex.auth.config.ts",
+        "packages.backend.convex.convex.config.ts",
+        "packages.backend.convex.http.ts",
+        "packages.backend.convex.schema.ts",
+        "packages.backend.convex.test.modules.ts",
+        "packages.backend.convex.tsconfig.json",
+        "packages.backend.index.ts",
+        "packages.backend.package.json",
+        "packages.messages.index.ts",
+        "packages.messages.package.json",
+        "renovate.json",
+        "tsconfig.json",
+        "turbo.json"
+      ]
     }
   ]
 }
