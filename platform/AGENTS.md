@@ -99,6 +99,7 @@ bun run test:contracts       # Session isolation, endpoint authorization, header
 bun run platform:upgrade --help # Plan/apply/resume a published platform release
 bun run platform:check-updates # Discover allowed updates and major releases for review
 bun run check:advisories      # Fail on installed high/critical advisories; lower severity warns
+bun run platform:setup-updates # Configure the updater App and caller (docs/setup-updates.md)
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 

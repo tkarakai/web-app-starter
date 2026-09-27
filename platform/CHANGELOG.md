@@ -15,6 +15,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- `bun run platform:setup-updates` guides GitHub App registration and repository-only
+  installation, verifies permissions, and stores updater credentials through the GitHub CLI.
+  It preserves existing configuration, supports read-only status and documents token fallback.
+  Private keys stay out of local files, browser responses, arguments and logs.
+  See [updater setup](docs/setup-updates.md).
+
 - `bun run platform:check-updates` reports published updates, major releases for review and
   advisories affecting the installed version. Contracts CI independently runs
   `bun run check:advisories`: high/critical advisories fail; lower severity warns. Discovery is
