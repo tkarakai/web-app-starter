@@ -22,6 +22,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Draft reports relocate safely to a new checkout and repeat verification without repeating
   completed codemods. See [update delivery](docs/update-delivery.md).
 
+- `bun run platform:check-updates` reports published updates, major releases for review and
+  advisories affecting the installed version. Contracts CI independently runs
+  `bun run check:advisories`: high/critical advisories fail; lower severity warns. Discovery is
+  read-only, ignores draft/prerelease tags, and validates the cumulative advisory schema.
+  See [release discovery and advisories](docs/platform-updates.md).
+
 - `bun run platform:upgrade` plans and applies published platform releases on a dedicated
   branch, preserving app code and merging declared seams. The target release supplies the tool;
   intermediate codemods run in order. JSON/Markdown reports record review gates, bounded
@@ -47,6 +53,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
   optional-app detection uses the selected source commit, including during rollback.
 
 ### Action required
+
+- **Who is affected:** apps with customized account-security wording under
+  `dashboard.changePassword`, `dashboard.twoFactor`, `dashboard.passkeys` or `dashboard.sessions`.
+  These messages now belong to the platform's `accountSecurity` namespace. Run
+  `node platform/tooling/codemods/v2-security-messages.ts` to preserve customized values in
+  `packages/messages/overrides.json`. Original app keys remain for local components. Conflicting
+  overrides or custom keys without a platform equivalent stop for review before any write.
+  **Done when:** the codemod's `--check`, `bun run check:i18n` and account security tests pass.
 
 - **Who is affected:** any existing deployment with platform data in app-level tables. Before
   deploying this release, prepare the additive bridge with
@@ -221,6 +235,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `git grep -n "<your product name>" -- packages/i18n/messages` finds nothing.
 
 ### Added
+
+- Account security settings now ship in `@web-app-starter/auth-ui`: `SecuritySection`,
+  `ChangePasswordForm`, `TwoFactorSection`, `PasskeySection` and `SessionsList`. Existing web
+  imports remain compatible through thin re-exports. Their auth logic and localized controls
+  receive platform updates; auth component and broadcast tests run from the package itself.
 
 - Reusable platform workflows, `.github/workflows/platform-*.yml` (CI for each app, security,
   staging and production deploys, rollback), with the app-owned `ci-*.yml`, `cd-*.yml` and

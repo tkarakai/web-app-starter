@@ -13,6 +13,11 @@
 
 ## Bun Test Pattern (Utility Functions)
 
+Platform auth unit and component tests live in `platform/packages/auth-ui/qa/tests/` and
+run through that package's `test` and `test:unit` commands, root Turbo commands, and CI Shared.
+They use only platform message catalogues and do not need the sample app. Browser flows
+remain in `apps/web/qa/e2e/` to exercise the real app wiring and account page.
+
 ```typescript
 // apps/web/qa/tests/myFunction.test.ts
 import { describe, expect, it } from "bun:test";
@@ -150,6 +155,10 @@ describe("myModule", () => {
 > **When to use this:** Only when the scheduled function can't run in tests. If the scheduled function is a simple mutation/query that works in convex-test, you don't need fake timers — let it run normally.
 
 ## Contracts
+
+The contracts CI job also runs `bun run check:advisories` for adopted apps. High/critical
+advisories affecting `.platform-base.json` fail the job; lower severity warns. This check
+runs even when automatic update delivery is disabled. See [platform updates](platform-updates.md).
 
 Contracts are black-box tests of platform behaviour: HTTP handlers and Convex calls, not UI, so
 they survive an app replacing its screens. `bun run test:contracts` runs them, and CI's
