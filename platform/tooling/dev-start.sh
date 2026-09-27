@@ -34,7 +34,7 @@ app_dir() {
 # ============================================================
 # --ci          Non-interactive/foreground mode (for Playwright)
 # --app=NAME    Start specific app(s): web, admin, landing (comma-separated)
-# No --app flag means start all apps
+# No --app flag means start every installed core app
 
 NON_INTERACTIVE=false
 FORCE_RESTART=false
@@ -67,12 +67,11 @@ START_STORYBOOK=false
 NEED_CONVEX=false
 
 if [ -z "$SELECTED_APPS" ]; then
-    # No --app flag: start everything
-    START_WEB=true
-    START_ADMIN=true
-    START_LANDING=true
-    START_STORYBOOK=true
-    NEED_CONVEX=true
+    # Adoption can remove optional apps. Never recreate their directories or env files.
+    if [ -f "$(app_dir web)/package.json" ]; then START_WEB=true; NEED_CONVEX=true; fi
+    if [ -f "$(app_dir admin)/package.json" ]; then START_ADMIN=true; NEED_CONVEX=true; fi
+    if [ -f "$(app_dir landing)/package.json" ]; then START_LANDING=true; NEED_CONVEX=true; fi
+    if [ -f "$(app_dir storybook)/package.json" ]; then START_STORYBOOK=true; fi
 else
     # Parse comma-separated app names
     IFS=',' read -ra APP_LIST <<< "$SELECTED_APPS"
@@ -100,7 +99,16 @@ else
                 exit 1
                 ;;
         esac
+        if [ ! -d "$(app_dir "$app")" ]; then
+            echo -e "${RED}App is not installed: $app${NC}"
+            exit 1
+        fi
     done
+fi
+
+if [ "$START_WEB$START_ADMIN$START_LANDING$START_STORYBOOK" = falsefalsefalsefalse ]; then
+    echo -e "${RED}No core apps are installed.${NC}"
+    exit 1
 fi
 
 if [ "$NON_INTERACTIVE" = true ]; then
@@ -517,11 +525,11 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ "$NON_INTERACTIVE" = true ]; then
         echo "[CI MODE] Convex state dir: $CONVEX_STATE_DIR"
         echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev (from $CONVEX_DIR)"
-        (cd "$CONVEX_DIR" && CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
+        (cd "$CONVEX_DIR" && CONVEX_VERBOSE=1 bash "$SCRIPT_DIR/dev-convex.sh" > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
         echo "[CI MODE] Convex process started with PID: $CONVEX_PID"
     else
-        (cd "$CONVEX_DIR" && CONVEX_AGENT_MODE=anonymous npx convex dev > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
+        (cd "$CONVEX_DIR" && bash "$SCRIPT_DIR/dev-convex.sh" > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
     fi
     "$NODE_TS" "$PROCESS_HELPER" track convex "$CONVEX_PID"

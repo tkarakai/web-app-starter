@@ -17,7 +17,7 @@ import * as manager from "../dev-processes.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
 const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts"];
 
@@ -75,6 +75,20 @@ async function waitFor(check: () => boolean): Promise<void> {
   }
   assert.fail("Timed out waiting for disposable process");
 }
+
+test("default startup skips stripped apps and explicit missing apps fail before side effects", async () => {
+  fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
+  fs.writeFileSync(path.join(root, "platform/apps/storybook/package.json"), "{}");
+  // Stop at the first setup operation, after exercising the real selector and config reader.
+  fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+  const selected = await runScript("dev-start.sh", ["--ci"]);
+  assert.equal(selected.status, 17, selected.stderr);
+  assert.match(selected.stdout, /Apps: web=false admin=false landing=false storybook=true convex=false/);
+  assert.equal(fs.existsSync(path.join(root, "apps/landing")), false);
+  const missing = await runScript("dev-start.sh", ["--ci", "--app=landing"]);
+  assert.equal(missing.status, 1); assert.match(missing.stdout, /App is not installed: landing/);
+  assert.equal(fs.existsSync(path.join(root, ".dev-pids")), false);
+});
 
 beforeEach(() => {
   temp = fs.mkdtempSync(path.join(os.tmpdir(), "dev process isolation "));

@@ -310,7 +310,8 @@ Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
 2. Replaces the root `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `templates/`, and
-   points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`).
+   points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`),
+   and installs the app-owned `update-platform.yml` weekday caller.
 3. Optionally removes the `landing`, `landing-static` and `demo` reference apps and their wiring.
    `--remove-sample` removes project, task and upload tables, functions, screens and strings,
    leaving a dashboard shell with account settings, announcements and sign-out.
@@ -321,8 +322,8 @@ Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
 and rollback inspect the selected commit, so removing landing does not require a landing
 Vercel project or block the remaining apps. `bun run dev` regenerates the Convex API after
-sample removal; adoption itself needs no live backend. Automatic update setup is added by
-the update-delivery workflow when available.
+sample removal; adoption itself needs no live backend. Configure the updater GitHub App for
+automatic CI on update PRs; see [update delivery](docs/update-delivery.md).
 
 ## Sample functionality
 

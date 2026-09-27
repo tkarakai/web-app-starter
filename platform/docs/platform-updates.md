@@ -37,3 +37,6 @@ variable `PLATFORM_SOURCE_REPOSITORY` to use that source in contracts CI too. On
 to GitHub; app source and local environment values are not uploaded. `GH_TOKEN` (or
 `GITHUB_TOKEN`) is optional for API rate limits and sent only to `api.github.com`, never the
 release download URL. Use a read-only token; release discovery does not need write access.
+
+The [update-delivery workflow](update-delivery.md) uses this same discovery result to prepare
+a verified PR, a review draft or an issue. It pins the advisory source into the upgrade plan.

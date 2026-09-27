@@ -6,7 +6,7 @@
 
 ```bash
 # Start core apps + Convex (recommended)
-bun run dev                  # Uses platform/tooling/dev-start.sh
+bun run dev                  # Starts installed core apps; skips apps removed during adoption
 
 # Start a specific app + Convex (ports: runtime.ports in app.config.ts)
 bun run dev:web              # Convex + web app

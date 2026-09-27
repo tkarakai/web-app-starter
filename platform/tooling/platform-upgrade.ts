@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { argumentsFor, HELP } from "./platform-upgrade/cli.ts";
 import { createCache, fileAt, gitText, loadRelease, resolveSource } from "./platform-upgrade/git.ts";
 import { ENTRY, demand } from "./platform-upgrade/metadata.ts";
-import { readReport } from "./platform-upgrade/report.ts";
+import { readReport, reportAppRoot } from "./platform-upgrade/report.ts";
 import { childEnvironment, redact } from "./platform-upgrade/commands.ts";
 
 export async function main(argv: string[]): Promise<number> {
@@ -14,7 +14,7 @@ export async function main(argv: string[]): Promise<number> {
   demand(!args.bootstrapProtocol && !args.targetCommit && !args.appRoot, "Bootstrap options are internal; recursive delegation refused");
   const root = fs.realpathSync(gitText(process.cwd(), ["rev-parse", "--show-toplevel"]));
   const saved = args.resume ? readReport(args.resume) : undefined;
-  if (saved) demand(saved.plan.app.root === root, "Resume from the app checkout that created this plan");
+  if (saved) demand(args.relocate || reportAppRoot(saved) === root, "Resume from the original checkout or use --relocate for a cloned draft");
   const source = saved?.plan.source ?? resolveSource(args.source), to = saved?.plan.target.version ?? args.to!;
   process.stdout.write("Trusted platform source: " + (source.kind === "github" ? source.repo : source.path) + "\n");
   const cache = createCache(source);

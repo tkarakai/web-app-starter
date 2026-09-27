@@ -70,3 +70,19 @@ test("root overrides cannot undercut an app dependency floor", async () => {
   const { payloads, plan } = await f.plan("2.0.1"); const root = payloads.find(row => row.path === "package.json"); assert(root && !("remove" in root));
   assert.equal(JSON.parse(root.content.toString()).overrides.example, "2.1.0"); assert.equal(plan.dependencies.length, 2);
 });
+
+test("newer advisory metadata remains pinned and gates an older selected target", async () => {
+  const { createPlan } = await import("./plan.ts"), { createCache } = await import("./git.ts"), { createReport } = await import("./report.ts"), { workingFiles } = await import("./plan.ts"), { reconstruct } = await import("./engine.ts");
+  const f = fixture(); f.publish("2.0.1");
+  write(f.source, "platform/releases/advisories.json", JSON.stringify({ schemaVersion: 1, advisories: [{ id: "late-notice", severity: "high", affected: ">=2.0.0 <2.0.1", fixed: "2.0.1", summary: "Advisory published after the original fix" }] }));
+  f.publish("2.0.2");
+  const cache = createCache({ kind: "local", path: f.source });
+  try {
+    const planned = await createPlan({ root: f.app, source: cache.source, to: "2.0.1", advisoryRelease: "2.0.2", cache });
+    assert.equal(planned.plan.target.version, "2.0.1"); assert.equal(planned.plan.advisorySource?.version, "2.0.2");
+    assert(planned.plan.gates.some(gate => gate.id === "advisory:late-notice" && gate.beforeApply));
+    const report = createReport(planned.plan, workingFiles(f.app)), rebuiltCache = createCache(cache.source);
+    try { assert.equal((await reconstruct(report, rebuiltCache, [])).plan.digest, planned.plan.digest); }
+    finally { fs.rmSync(rebuiltCache.directory, { recursive: true, force: true }); }
+  } finally { fs.rmSync(cache.directory, { recursive: true, force: true }); }
+});

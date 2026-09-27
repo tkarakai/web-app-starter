@@ -26,6 +26,12 @@ starter upgrade checks use the root scripts):
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
+With `CI=true`, the dev harness gives its anonymous local Convex backend a five-second query
+execution budget. This avoids one-second wall-clock timeouts while small shared runners compile
+Next.js. Set `DATABASE_UDF_USER_TIMEOUT_SECONDS` explicitly to use a different local budget.
+Interactive development keeps Convex's default; hosted deployments and browser assertions are
+unchanged.
+
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
 
 > **Note**: Security checks (CodeQL, dependency audit, secrets scan), Lighthouse audits, and CI gate are only run in GitHub Actions CI, not locally.
@@ -82,6 +88,12 @@ branch rules require. Change triggers there, never in `platform-*.yml`.
   app, and CI Shared skips the demo rehearsal when `apps/demo` is absent. Deploys and
   rollbacks likewise inspect the selected commit for landing before building, checking
   credentials or checking health. Web, admin and backend checks remain required.
+
+### Platform update delivery
+
+The app-owned `update-platform.yml` calls `platform-update.yml` to discover releases, verify
+upgrades without write credentials, and deliver a ready/draft PR or an issue from a separate
+job. See [update delivery](update-delivery.md) for App setup, token fallback and review recovery.
 
 ### Paid features on private repositories
 

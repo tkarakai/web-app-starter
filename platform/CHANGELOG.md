@@ -15,6 +15,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Automatic platform-update delivery separates read-only verification from the job holding
+  repository write credentials. Adoption installs its weekday caller; verified updates become
+  ready PRs, review gates become drafts, and failures or new majors become issues. GitHub App
+  tokens trigger ordinary PR CI; fallback workflow-file changes need a manual upgrade.
+  Draft reports relocate safely to a new checkout and repeat verification without repeating
+  completed codemods, restoring release objects from the trusted source in fresh clones.
+  Failed checks retain their report and diagnostics. Default dev startup skips removed apps.
+  See [update delivery](docs/update-delivery.md).
+
 - `bun run platform:check-updates` reports published updates, major releases for review and
   advisories affecting the installed version. Contracts CI independently runs
   `bun run check:advisories`: high/critical advisories fail; lower severity warns. Discovery is
@@ -29,6 +38,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   See [UPGRADING.md](UPGRADING.md).
 
 ### Fixed
+
+- Anonymous Convex backends started with `CI=true` use a bounded, overridable five-second
+  execution budget, avoiding spurious query timeouts on small private-repository runners.
 
 - Auth browser tests support the direct sign-out button in apps adopted without the sample.
 
@@ -46,6 +58,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
   optional-app detection uses the selected source commit, including during rollback.
 
 ### Action required
+
+- Update app-owned CI callers with
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-ci-callers.ts`.
+  It grants the change detector explicit read access and runs browser CI when a draft becomes
+  ready. Custom permission denials or complex triggers require review. **Done when:** its
+  `--check` passes and a ready update PR runs all applicable checks, including E2E.
 
 - **Who is affected:** apps with customized account-security wording under
   `dashboard.changePassword`, `dashboard.twoFactor`, `dashboard.passkeys` or `dashboard.sessions`.
