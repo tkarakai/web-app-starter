@@ -156,6 +156,10 @@ describe("myModule", () => {
 
 ## Contracts
 
+The contracts CI job also runs `bun run check:advisories` for adopted apps. High/critical
+advisories affecting `.platform-base.json` fail the job; lower severity warns. This check
+runs even when automatic update delivery is disabled. See [platform updates](platform-updates.md).
+
 Contracts are black-box tests of platform behaviour: HTTP handlers and Convex calls, not UI, so
 they survive an app replacing its screens. `bun run test:contracts` runs them, and CI's
 **Contracts** job runs them on every PR.

@@ -97,6 +97,8 @@ bun run build                # Production build via Turborepo
 bun run check:zone           # Platform edits are recorded patches; seams keep their hooks
 bun run test:contracts       # Session isolation, endpoint authorization, headers, env
 bun run platform:upgrade --help # Plan/apply/resume a published platform release
+bun run platform:check-updates # Discover allowed updates and major releases for review
+bun run check:advisories      # Fail on installed high/critical advisories; lower severity warns
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 
@@ -220,6 +222,7 @@ environment-specific and silently breaks artifact reuse
 | Hosting on AWS instead of Vercel (`infra/aws`) | [docs/aws/deployment-architecture-aws.md](docs/aws/deployment-architecture-aws.md); Convex stays on Convex Cloud |
 | Updating dependencies, Renovate, or the Node/Bun baseline | [docs/dependency-updates.md](docs/dependency-updates.md), [docs/dependency-migrations.md](docs/dependency-migrations.md) |
 | Taking a newer platform release | `platform/UPGRADING.md` and `platform/CHANGELOG.md` |
+| Discovering releases or resolving an advisory CI failure | [docs/platform-updates.md](docs/platform-updates.md) |
 
 ## Skills
 

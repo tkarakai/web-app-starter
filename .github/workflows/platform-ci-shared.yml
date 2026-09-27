@@ -179,6 +179,12 @@ jobs:
       - name: Run contracts
         run: bun run test:contracts
 
+      - name: Check platform advisories
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLATFORM_SOURCE_REPOSITORY: ${{ vars.PLATFORM_SOURCE_REPOSITORY || 'tkarakai/web-app-starter' }}
+        run: bun run check:advisories --repo "$PLATFORM_SOURCE_REPOSITORY"
+
   # Local starter package contract and a rehearsal using the real demo app.
   starter-upgrade:
     name: Starter Upgrade Rehearsal
