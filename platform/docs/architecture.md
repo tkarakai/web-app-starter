@@ -27,6 +27,17 @@ package's parts: `AuthPageShell` (`/views`), and `AuthForm`, `ForgotPasswordForm
 The web app uses a **three-layer** auth system. New protected pages get all three layers by
 placing them under `apps/web/src/app/[locale]/(dashboard)/dashboard/`.
 
+Account security UI is also platform code. Import `SecuritySection` from
+`@web-app-starter/auth-ui` for the full password/2FA/passkey/session panel, or compose
+`ChangePasswordForm`, `TwoFactorSection`, `PasskeySection` and `SessionsList` separately.
+Keep the panel under the protected layout and the app's locale/Convex providers. The web
+account page owns its surrounding navigation, profile preferences and page layout; its
+`components/settings/` security files are compatibility re-exports. Replacing one with an
+app component means maintaining that customization yourself.
+Security messages use the platform `accountSecurity` namespace. Customize individual strings
+through `packages/messages/overrides.json`; the v2 security-message codemod preserves prior
+customized wording from the app's `dashboard` namespace.
+
 | Layer | Where | What it does | Speed |
 |-------|-------|-------------|-------|
 | **Proxy** | `apps/web/src/proxy.ts` calling `authRedirect()` (`@web-app-starter/auth-ui/proxy`) | Cookie-presence check (Edge); the app's proxy adds rate limiting, CSP and locale handling | ~1ms |

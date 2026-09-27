@@ -114,7 +114,7 @@ test.describe("Session management from settings", () => {
 
     // The confirmation is an AlertDialog whose footer is [Cancel, Action]. Take
     // the last button structurally — matching its label would mean tracking the
-    // `dashboard.sessions.revokeAllConfirm` string across 15 locales.
+    // `accountSecurity.sessions.revokeAllConfirm` string across 15 locales.
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toBeVisible({ timeout: 15_000 });
     await dialog.getByRole("button").last().click();
