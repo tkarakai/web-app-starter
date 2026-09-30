@@ -66,7 +66,7 @@ published or tagged; it is retained only as historical context.
   report relocation before editing even when Bun cannot read the package scripts.
 
 - Versioning guidance uses the separated platform baseline and published-major support
-  policy. Evaluation, commercial and app-template licence texts remain pending legal review.
+  policy. Evaluation, commercial and app-template licence texts have completed legal review.
 
 - Platform upgrades execute historical codemods through canonical temporary paths, avoiding
   silent no-op entrypoints when the temporary directory is a symlink, including macOS `/var`.
@@ -343,7 +343,7 @@ published or tagged; it is retained only as historical context.
 - `platform/tooling/codemods/v2-convex-platform.ts`: the codemod for the Convex
   `convex/platform/` move (idempotent; `--check` for CI).
 - `platform/VERSION` (the installed platform version), `platform/templates/README.md` and
-  `platform/templates/LICENSE` (draft, pending legal review), and
+  `platform/templates/LICENSE`, and
   `platform/tooling/app-config.ts dir <app>` / `APP_CONFIG_DIR_<APP>` for an app's directory.
 - `app.config.ts` (root) and `@web-app-starter/app-config`: one typed, validated file for the values an app
   changes — identity (product name, legal entity, support email), runtime (local ports, Better
