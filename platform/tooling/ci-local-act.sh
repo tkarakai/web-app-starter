@@ -68,12 +68,14 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOG_FILE="$PROJECT_DIR/.act-output.log"
 ARTIFACTS_DIR="$PROJECT_DIR/.act-artifacts"
 
+LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR" --required) || exit 1
+
 # CI workflow files (in execution order)
 CI_WORKFLOWS=(
     ".github/workflows/ci-shared.yml"
     ".github/workflows/ci-web.yml"
     ".github/workflows/ci-admin.yml"
-    ".github/workflows/ci-landing.yml"
+    ".github/workflows/ci-$LANDING_APP.yml"
     ".github/workflows/ci-storybook.yml"
 )
 

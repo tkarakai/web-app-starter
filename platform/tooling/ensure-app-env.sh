@@ -40,11 +40,14 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 APP_CONFIG_VARS=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
 eval "$APP_CONFIG_VARS"
 : "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
+LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR")
+LANDING_ORIGIN="$APP_CONFIG_ORIGIN_LANDING"
+if [ "$LANDING_APP" = landing-static ]; then LANDING_ORIGIN="$APP_CONFIG_ORIGIN_LANDING_STATIC"; fi
 
 # The local default for an app's URL key, or nothing.
 config_default() {
     case "$1:$2" in
-        web:LANDING_URL)                          echo "$APP_CONFIG_ORIGIN_LANDING" ;;
+        web:LANDING_URL)                          echo "$LANDING_ORIGIN" ;;
         landing:NEXT_PUBLIC_SITE_URL)             echo "$APP_CONFIG_ORIGIN_LANDING" ;;
         landing-static:NEXT_PUBLIC_SITE_URL)      echo "$APP_CONFIG_ORIGIN_LANDING_STATIC" ;;
         landing:NEXT_PUBLIC_WEB_APP_URL|landing-static:NEXT_PUBLIC_WEB_APP_URL)

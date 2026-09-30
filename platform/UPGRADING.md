@@ -173,3 +173,13 @@ compatibility/recovery procedure and retain its expanded schema until recovery i
 The optional demo's sidebar-package rehearsal is a separate example:
 `bun run test:starter-rehearsal`. It does not replace platform verification or prove a backend
 migration. No upgrade command publishes a release or deploys your app.
+
+## Reference-app fixes
+
+App-owned pages are preserved by the updater. When taking the landing/locale fixes listed in the changelog:
+
+- In a web locale-root page, await `params`, validate `locale` against `locales`, then ``redirect(`/${locale}/dashboard`)`` (use a template string in your code). Relative `redirect("dashboard")` loses the locale.
+- If using `landing-static`, add `src/app/page.tsx` to redirect the root URL to a supported browser language, falling back to exported `defaultLocale`. The reference implementation is in that path in the release. The static host needs an `index.html` for root health checks.
+- For its single exported `404.html`, load `loadMessages(defaultLocale)` in the server page and pass `common.notFound` to the client component; the client can resolve a locale from the URL after hydration. This honors app message overrides too.
+- Keep `dev:landing` wired to `./platform/tooling/dev-start.sh --app=landing`, even when you remove the primary app. Set `dev:landing-static` to `./platform/tooling/dev-start.sh --app=landing-static` if retained. The updater merges the root script seam; review customized script conflicts.
+- Static Vercel projects need the settings and separate project-ID secrets in the [deployment runbook](docs/deployment-runbook.md#2b-create-vercel-projects). Removing both landing apps is unsupported.

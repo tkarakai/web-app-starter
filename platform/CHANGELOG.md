@@ -13,6 +13,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Locale-root redirects preserve the requested locale on the way to the dashboard and sign-in (#186).
+- Optional `i18n.defaultLocale` selects a shipped fallback locale independently of locale ordering; omission stays English (#185). Static 404 HTML uses the configured merged catalog.
+- Dev, local CI, staging, production and rollback select `landing` first, falling back to `landing-static` only when the primary app is removed (#187, #188). The static fallback uses separate Vercel projects, static output and distinct artifacts. Ops records and verifies its physical app identity.
+- Staging audit records retain the selected landing app when CI fails, so a successful rerun does not leave conflicting evidence in `ops inspect`.
+- Deployment workflows use the platform-owned `platform-record-ops.cjs` helper, so upgrades deliver the recorder together with the workflows and Ops CLI.
+- Local startup seeds Convex's required `LANDING_URL` for the static fallback too, including web-only and admin-only startup.
+- Local CI keeps build-time placeholder backend URLs out of browser-test server environments.
+- Both landing dev commands use managed process tracking; static-only startup needs no Convex. Adoption preserves the generic landing command and rejects removal of the last landing before changing files.
+
+### Action required
+
+- Keep at least one landing app for default dev/CI/deployment. If using the fallback, configure its separate Vercel projects and `VERCEL_PROJECT_ID_LANDING_STATIC[_STAGING]` secrets as described in the deployment runbook. Update web's `LANDING_URL` and run `ops setup` for the static project mappings.
+- App-owned reference files are preserved by platform upgrades. Apply the locale-preserving redirect to `apps/web/src/app/[locale]/page.tsx`; static landing adopters should add the root locale redirect and use the configured fallback catalog in their 404 page. See [reference-app fixes](UPGRADING.md#reference-app-fixes).
+
 ## [2.0.0] - 2026-09-27
 
 Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never

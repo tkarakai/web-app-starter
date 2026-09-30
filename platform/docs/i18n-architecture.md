@@ -24,7 +24,7 @@ syntax and matching interpolation parameters. Run it through `bun run --cwd apps
 The web app's `localized-controls.tsx` and `@web-app-starter/auth-ui` supply current-locale labels to shared
 primitives without making the design system depend on i18n. The static landing
 404 reads its URL locale after hydration because static hosting serves one
-`404.html`; its initial HTML uses the English catalog.
+`404.html`; its initial HTML uses the configured default locale and merged catalog.
 
 ---
 
@@ -45,6 +45,7 @@ Each top-level namespace has exactly one owner, and the loader merges them at re
 - **Locale subset.** `i18n.locales` in `app.config.ts` lists the locales the apps ship (a subset of
   `allLocales` that includes `en`); routing, the language selector and the checks follow it. The
   platform keeps translating its own strings into all 15.
+- **Default locale.** Set `i18n.defaultLocale` to a shipped locale, for example `"hu"`. Omission keeps `"en"`; reordering `i18n.locales` never changes the default. Routing fallback, message loading, SEO x-default links and static landing redirects use this setting. English remains the catalog validation baseline and must stay in the shipped list.
 - **Validation** (`bun run check:i18n`, `platform/tooling/check-i18n.ts`): platform files match the
   English keys; every shipped locale has an app file with the app's English keys; no app
   namespace has a platform namespace's name; every override names an existing platform string in
@@ -91,8 +92,8 @@ platform/packages/i18n/                     # @web-app-starter/i18n
 ### `platform/packages/i18n/src/config.ts`
 
 ```ts
-export const locales = ["en"] as const;
-export const defaultLocale = "en" as const;
+export const locales = selectLocales(appConfig.i18n.locales);
+export const defaultLocale = selectLocales([appConfig.i18n.defaultLocale])[0];
 export type Locale = (typeof locales)[number];
 
 export const localeMetadata: Record<Locale, { name: string; nativeName: string; dir: "ltr" | "rtl" }> = {
@@ -534,7 +535,7 @@ The navigation works by replacing the locale segment (first path segment) in the
 2. **User profile** (authenticated only, Convex) — cross-device persistence
 3. **Cookie** (`NEXT_LOCALE`) — persists explicit language choice
 4. **Accept-Language header** — browser preference
-5. **Default locale** — English
+5. **Default locale** — `i18n.defaultLocale` in `app.config.ts` (defaults to English)
 
 ### Persistence Strategy
 

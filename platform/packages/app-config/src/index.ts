@@ -7,9 +7,9 @@
  * `AppConfigError` naming each bad setting.
  */
 import rawAppConfig from "../../../../app.config.ts";
-import { type AppConfig, type AppId, localOrigin, validateAppConfig } from "./schema.ts";
+import { type ResolvedAppConfig, type AppId, localOrigin, validateAppConfig } from "./schema.ts";
 
-export const appConfig: AppConfig = validateAppConfig(rawAppConfig);
+export const appConfig: ResolvedAppConfig = validateAppConfig(rawAppConfig);
 
 /** `http://localhost:<port>` for an app, from `runtime.ports`. */
 export function localAppOrigin(app: AppId): string {
@@ -24,6 +24,7 @@ export {
   tokenOverrideCss,
   validateAppConfig,
   type AppConfig,
+  type ResolvedAppConfig,
   type AppId,
   type EmailPalette,
   type FeatureSwitches,

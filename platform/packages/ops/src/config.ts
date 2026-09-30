@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { OpsError, registerSecret, usage } from "./errors";
@@ -22,9 +24,11 @@ export async function githubToken() {
   if (!token.trim()) throw new OpsError("AUTH", "GitHub CLI returned an empty credential.", "Run ops auth login github.");
   registerSecret(token); return token;
 }
-export function defaultConfig(repository: string): Config {
+export function defaultConfig(repository: string, root = process.cwd()): Config {
+  const landing = !existsSync(resolve(root, "apps/landing/package.json")) && existsSync(resolve(root, "apps/landing-static/package.json"))
+    ? "landing-static" : "landing";
   return { repository, workflowRef: "main", apps: {
-    web: { projects: {} }, admin: { projects: {} }, landing: { projects: {} },
+    web: { projects: {} }, admin: { projects: {} }, [landing]: { projects: {} },
   } };
 }
 export function validateConfig(value: unknown): Config {

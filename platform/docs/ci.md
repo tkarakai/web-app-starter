@@ -1,5 +1,7 @@
 # CI Guide
 
+The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## Local CI (Pre-Push Checks)
@@ -78,6 +80,11 @@ composite actions in `.github/actions/`. They are replaced on platform upgrade. 
 callers with the familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): triggers, the
 permissions they grant, `secrets: inherit` for deploys, and the `CI <App> Complete` job that
 branch rules require. Change triggers there, never in `platform-*.yml`.
+
+Deployment audit recording uses `.github/scripts/platform-record-ops.cjs`, which also
+ships through platform upgrades. An older app-owned `.github/scripts/record-ops.cjs`
+may remain after upgrading; the platform workflows no longer call it. Custom workflows
+that use the old helper should switch to the platform-owned path for landing selection support.
 
 - **The platform unit suite** (dev-script and ops tests, the starter upgrade rehearsal) runs in
   CI Shared only when `platform/**`, `.github/**`, `apps/demo/**`, `package.json` or `bun.lock`

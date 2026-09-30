@@ -1,5 +1,7 @@
 # Ops CLI
 
+Deployment records identify the selected `landing` or `landing-static` app. Static fallback artifacts and serving verification use `landing-static` and its separate Vercel project mappings. After removing `apps/landing`, run `bun run ops setup` to add those mappings; do not assign the primary landing project to the static app. Historical runs retain their original landing identity.
+
 The ops CLI joins GitHub workflow runs, CI statuses, artifacts and deployment records with the deployments currently serving Vercel domains. It also dispatches staging, production and rollback workflows and follows their progress.
 
 ## Guided operations console

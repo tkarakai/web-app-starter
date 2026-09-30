@@ -79,6 +79,7 @@ const appConfig = {
     // (allLocales in @web-app-starter/i18n) that includes "en". App messages in
     // packages/messages/ are only needed for these.
     locales: ["en", "cs", "de", "es", "fr", "it", "hu", "nl", "pl", "pt", "ru", "zh", "ja", "ar", "he"],
+    defaultLocale: "en",
   },
 } satisfies AppConfig;
 

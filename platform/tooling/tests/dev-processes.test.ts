@@ -19,7 +19,7 @@ const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const ROOT = path.resolve(SCRIPTS, "../..");
 const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
-const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts"];
+const CONFIG_FILES = [".github/scripts/platform-landing-app.sh", "app.config.ts", "platform/packages/app-config/src/schema.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
@@ -82,8 +82,8 @@ test("default startup skips stripped apps and explicit missing apps fail before 
   // Stop at the first setup operation, after exercising the real selector and config reader.
   fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
   const selected = await runScript("dev-start.sh", ["--ci"]);
-  assert.equal(selected.status, 17, selected.stderr);
-  assert.match(selected.stdout, /Apps: web=false admin=false landing=false storybook=true convex=false/);
+  assert.equal(selected.status, 1, selected.stderr);
+  assert.match(selected.stderr, /No landing app is installed/);
   assert.equal(fs.existsSync(path.join(root, "apps/landing")), false);
   const missing = await runScript("dev-start.sh", ["--ci", "--app=landing"]);
   assert.equal(missing.status, 1); assert.match(missing.stdout, /App is not installed: landing/);
@@ -340,7 +340,9 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   assert.deepEqual(manager.readRecords(root), {});
 });
 
-for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"]]) {
+for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run", "dev:landing-static"], ["run", "dev:landing"]]) {
+  const app = args.at(-1)?.includes("landing") ? "landing-static" : "storybook";
+  const appDir = app === "storybook" ? "platform/apps/storybook" : "apps/landing-static";
   test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 30_000 }, async () => {
     // Keep the public package scripts and predev helpers real. Only the external
     // server is substituted; this tests command wiring, not Next.js compilation.
@@ -349,8 +351,9 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"]]) {
       fs.copyFileSync(path.join(SCRIPTS, name), path.join(root, "platform/tooling", name));
     }
     fs.cpSync(path.join(ROOT, "platform/packages/design-system/assets"), path.join(root, "platform/packages/design-system/assets"), { recursive: true });
-    fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
-    fs.writeFileSync(path.join(root, "platform/apps/storybook/.env.example"), "SMOKE_TEST_DEFAULT=seeded\n");
+    fs.mkdirSync(path.join(root, appDir), { recursive: true });
+    fs.writeFileSync(path.join(root, appDir, "package.json"), '{"name":"@repo/fixture"}');
+    fs.writeFileSync(path.join(root, appDir, ".env.example"), "SMOKE_TEST_DEFAULT=seeded\n");
     // Recreate the isolated workspace layout behind the original predev bug.
     fs.mkdirSync(path.join(root, "apps/web/node_modules/@playwright/test"), { recursive: true });
     const bindir = path.join(root, "fake-bin");
@@ -373,11 +376,13 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"]]) {
         assert.ok(!exited(launcher), logs);
         return logs.includes("[CI MODE] Staying in foreground");
       });
-      assert.ok(fs.existsSync(path.join(root, "platform/apps/storybook/public/icon.svg")));
+      assert.ok(fs.existsSync(path.join(root, appDir, "public/icon.svg")));
       if (args[0] === "dev") {
-        assert.match(fs.readFileSync(path.join(root, "platform/apps/storybook/.env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
+        assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
       }
-      assert.ok(Object.keys(manager.readRecords(root)).includes("next-storybook"));
+      assert.deepEqual(Object.keys(manager.readRecords(root)), [`next-${app}`]);
+      const status = await runScript("dev-status.sh");
+      assert.match(status.stdout, new RegExp(app));
     } finally {
       // The process group belongs exclusively to this fixture. Stop the Bun
       // wrapper, launcher, and log tail even when a startup assertion fails.
@@ -410,3 +415,18 @@ test("nuke is limited to registered git worktrees and preserves state", async ()
   assert.ok(await alive(outsider));
   assert.equal(fs.readFileSync(state, "utf8"), "keep my data");
 });
+
+for (const installed of [["landing"], ["landing-static"], ["landing", "landing-static"]]) {
+  test(`default startup selects one landing from ${installed.join(", ")}`, async () => {
+    for (const app of installed) {
+      fs.mkdirSync(path.join(root, "apps", app), { recursive: true });
+      fs.writeFileSync(path.join(root, "apps", app, "package.json"), "{}");
+    }
+    fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+    const selected = installed.includes("landing") ? "landing" : "landing-static";
+    const result = await runScript("dev-start.sh", ["--ci"]);
+    assert.equal(result.status, 17, result.stderr);
+    assert.ok(result.stdout.includes(`Selected landing: ${selected}\n`));
+    assert.ok(result.stdout.includes(`Apps: web=false admin=false landing=true storybook=false convex=${selected === "landing"}`));
+  });
+}

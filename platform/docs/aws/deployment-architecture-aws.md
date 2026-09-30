@@ -17,15 +17,17 @@ workflows.
 |---|---|---|
 | `web` | Vercel project, serverless | ECS Fargate service behind an Application Load Balancer |
 | `admin` | Vercel project, serverless | ECS Fargate service behind the same ALB |
-| `landing` | Vercel project, static export | S3 bucket behind CloudFront |
+| Selected landing | Vercel project, static export | S3 bucket behind CloudFront |
 
 **Out of scope: hosting Convex on AWS.** Convex stays exactly as it is today: Convex Cloud
 for staging and production, the local `convex dev` deployment for development. Functions
 are deployed with `convex deploy` and a deploy key, as `.github/actions/deploy-convex`
 does. No database, Convex backend, file-storage bucket or Convex dashboard runs on AWS.
 
-Also out of scope: `landing-static` (not deployed by the Vercel pipeline either), `demo`
-and `storybook`, and replacing the GitHub CD workflows. The AWS path is operated from a
+The landing export uses `apps/landing` when installed, otherwise `apps/landing-static`.
+Both publish plain files to the landing S3/CloudFront stack.
+
+Out of scope: `demo` and `storybook`, and replacing the GitHub CD workflows. The AWS path is operated from a
 terminal.
 
 ## Topology

@@ -1,5 +1,7 @@
 # Development Workflow
 
+The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## Starting Development
@@ -23,6 +25,11 @@ bun run dev:stop
 ```
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
+
+Whenever web, admin or the primary landing starts Convex, the launcher also sets the
+backend's `LANDING_URL` to the selected landing's actual URL, or its configured local
+origin if it is not started. The backend needs this for CORS and announcement links
+even when the selected landing is static. Starting only `landing-static` needs no Convex.
 
 ### App configuration (`app.config.ts`)
 

@@ -4,6 +4,33 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { gitText } from "./git.ts";
 import { fixture, write, git } from "./fixtures.ts";
+test("upgrades deliver every deployment workflow's Ops recorder with static landing support", async () => {
+  const f = fixture();
+  const root = new URL("../../../", import.meta.url);
+  const legacy = ".github/scripts/record-ops.cjs";
+  write(f.app, legacy, "// Existing app-owned recorder\n");
+  git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "keep existing recorder");
+  const helpers = new Map<string, string>();
+  const workflows = ["staging", "production", "rollback"].map(env => `.github/workflows/platform-cd-${env}.yml`);
+  for (const workflow of workflows) {
+    const content = fs.readFileSync(new URL(workflow, root), "utf8");
+    write(f.source, workflow, content);
+    const helper = content.match(/const record = require\('\.\/(.+?)'\)/)?.[1];
+    assert(helper, `Missing recorder in ${workflow}`);
+    helpers.set(helper, fs.readFileSync(new URL(helper, root), "utf8"));
+  }
+  for (const [helper, content] of helpers) write(f.source, helper, content);
+  f.publish("2.0.1");
+  const { payloads } = await f.plan("2.0.1");
+  for (const file of [...workflows, ...helpers.keys()]) {
+    const delivered = payloads.find(row => row.path === file);
+    assert(delivered && !("remove" in delivered), `Upgrade omitted ${file}`);
+    assert.equal(delivered.content.toString(), fs.readFileSync(path.join(f.source, file), "utf8"));
+  }
+  // The renamed helper is delivered wholesale; an old app-owned copy can remain
+  // without being used or overwritten by the new deployment workflows.
+  assert(!payloads.some(row => row.path === legacy));
+});
 test("read-only planning merges app customization, removes retired platform files and preserves app/index/refs", async () => {
   const f = fixture();
   write(f.source, "app.config.ts", fs.readFileSync(path.join(f.source, "app.config.ts"), "utf8").replace("'old'", "'new'"));

@@ -7,17 +7,20 @@ module.exports = async function recordOps({ github, context, core }) {
     throw new Error(`Cannot record invalid selected SHA: ${selectedSha}`);
   }
   const failures = [];
-  for (const app of ['web', 'admin', 'landing', 'backend']) {
+  const landingApp = process.env.OPS_LANDING_APP || 'landing';
+  if (!['landing', 'landing-static'].includes(landingApp)) throw new Error('Invalid selected landing app');
+  for (const slot of ['web', 'admin', 'landing', 'backend']) {
+    const app = slot === 'landing' ? landingApp : slot;
     try {
-      const build = needs[`build-${app}`];
-      const deploy = needs[app === 'backend' ? 'deploy-convex' : `deploy-${app}`];
+      const build = needs[`build-${slot}`];
+      const deploy = needs[slot === 'backend' ? 'deploy-convex' : `deploy-${slot}`];
       const outputs = build?.outputs || {};
       const deployed = deploy?.outputs || {};
       const unchanged = environment === 'staging' && needs.changes?.result === 'success'
-        && needs.changes.outputs[app] === 'false';
+        && needs.changes.outputs[slot] === 'false';
       const result = unchanged ? 'unchanged' : deploy?.result || 'unknown';
       const payload = {
-        schemaVersion: 1, app, environment, selectedSha,
+        schemaVersion: 1, app, landingApp, environment, selectedSha,
         builtSha: deployed['built-sha'] || outputs['built-sha'] || null,
         inputHash: outputs['input-hash'] || null,
         artifactId: Number(outputs['artifact-id']) || null,

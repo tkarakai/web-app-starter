@@ -221,6 +221,9 @@ VERCEL_TOKEN=""
 VERCEL_ORG_ID=""
 VERCEL_WEB_NAME=""
 VERCEL_ADMIN_NAME=""
+LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR" --required)
+LANDING_PROJECT_SECRET=VERCEL_PROJECT_ID_LANDING_STAGING
+if [ "$LANDING_APP" = landing-static ]; then LANDING_PROJECT_SECRET=VERCEL_PROJECT_ID_LANDING_STATIC_STAGING; fi
 VERCEL_LANDING_NAME=""
 VERCEL_WEB_URL=""
 VERCEL_ADMIN_URL=""
@@ -300,7 +303,7 @@ collect_inputs() {
     # --- Project prefix ---
     echo ""
     log_info "Choose a project name prefix. This will be used for:"
-    echo "    - Vercel project names: {prefix}-web-staging, {prefix}-admin-staging, {prefix}-landing-staging"
+    echo "    - Vercel project names: {prefix}-web-staging, {prefix}-admin-staging, {prefix}-${LANDING_APP}-staging"
     echo ""
     local default_prefix
     default_prefix=$(echo "$GITHUB_REPO" | cut -d'/' -f2)
@@ -395,7 +398,7 @@ collect_inputs() {
     # Derive Vercel project names and URLs
     VERCEL_WEB_NAME="${PROJECT_PREFIX}-web-staging"
     VERCEL_ADMIN_NAME="${PROJECT_PREFIX}-admin-staging"
-    VERCEL_LANDING_NAME="${PROJECT_PREFIX}-landing-staging"
+    VERCEL_LANDING_NAME="${PROJECT_PREFIX}-${LANDING_APP}-staging"
     VERCEL_WEB_URL="https://${VERCEL_WEB_NAME}.vercel.app"
     VERCEL_ADMIN_URL="https://${VERCEL_ADMIN_NAME}.vercel.app"
     VERCEL_LANDING_URL="https://${VERCEL_LANDING_NAME}.vercel.app"
@@ -422,7 +425,7 @@ print_summary() {
     echo "    Projects to create:"
     echo "      - $VERCEL_WEB_NAME       (root: apps/web)"
     echo "      - $VERCEL_ADMIN_NAME     (root: platform/apps/admin)"
-    echo "      - $VERCEL_LANDING_NAME   (root: apps/landing)"
+    echo "      - $VERCEL_LANDING_NAME   (root: apps/$LANDING_APP)"
     echo ""
     echo -e "  ${BOLD}Planned Phase 3 Execution Steps:${NC}"
     echo "    Step 1: Create 3 Vercel staging projects"
@@ -511,12 +514,17 @@ configure_vercel_project() {
     local project_name="$1"
     local root_dir="$2"
 
-    log_info "Configuring $project_name: rootDirectory=$root_dir, framework=nextjs"
+    local settings
+    settings=$(jq -n --arg root "$root_dir" '{rootDirectory: $root, framework: "nextjs"}')
+    if [ "$root_dir" = apps/landing-static ]; then
+        settings=$(jq '.framework = null | .buildCommand = "bun run build" | .outputDirectory = "out"' <<< "$settings")
+    fi
+    log_info "Configuring $project_name: $settings"
     local response http_code body
     response=$(curl -s -w "\n%{http_code}" -X PATCH \
         -H "Authorization: Bearer $VERCEL_TOKEN" \
         -H "Content-Type: application/json" \
-        -d "{\"rootDirectory\": \"$root_dir\", \"framework\": \"nextjs\"}" \
+        -d "$settings" \
         "https://api.vercel.com/v9/projects/${project_name}")
     http_code=$(echo "$response" | tail -1)
     body=$(echo "$response" | sed '$d')
@@ -532,7 +540,7 @@ step_create_vercel_projects() {
     log_step "Phase 3, Step 1: Create Vercel Staging Projects"
     echo ""
     echo "  This will create 3 Vercel projects and configure each with"
-    echo "  the correct root directory and Next.js framework preset."
+    echo "  the correct root directory and framework/static preset."
     echo ""
     echo "  Note: The Vercel CLI has no command for project settings,"
     echo "  so one REST API call per project is used for rootDirectory"
@@ -546,7 +554,7 @@ step_create_vercel_projects() {
 
     create_vercel_project "$VERCEL_WEB_NAME" "apps/web" "VERCEL_PROJECT_WEB_STAGING_ID"
     create_vercel_project "$VERCEL_ADMIN_NAME" "platform/apps/admin" "VERCEL_PROJECT_ADMIN_STAGING_ID"
-    create_vercel_project "$VERCEL_LANDING_NAME" "apps/landing" "VERCEL_PROJECT_LANDING_STAGING_ID"
+    create_vercel_project "$VERCEL_LANDING_NAME" "apps/$LANDING_APP" "VERCEL_PROJECT_LANDING_STAGING_ID"
 
     record_value "VERCEL_WEB_STAGING_URL" "$VERCEL_WEB_URL"
     record_value "VERCEL_ADMIN_STAGING_URL" "$VERCEL_ADMIN_URL"
@@ -686,7 +694,7 @@ step_configure_vercel_env() {
     echo "    NEXT_PUBLIC_CONVEX_URL      = $CONVEX_STAGING_URL"
     echo "    NEXT_PUBLIC_CONVEX_SITE_URL = $CONVEX_STAGING_SITE_URL"
     echo "    NEXT_PUBLIC_SITE_URL        = $VERCEL_WEB_URL"
-    echo "    NEXT_PUBLIC_LANDING_URL     = $VERCEL_LANDING_URL"
+    echo "    LANDING_URL                 = $VERCEL_LANDING_URL"
     echo ""
     echo -e "  ${BOLD}admin-staging:${NC}"
     echo "    NEXT_PUBLIC_APP_ENVIRONMENT = staging"
@@ -694,7 +702,7 @@ step_configure_vercel_env() {
     echo "    NEXT_PUBLIC_CONVEX_SITE_URL = $CONVEX_STAGING_SITE_URL"
     echo "    NEXT_PUBLIC_SITE_URL        = $VERCEL_ADMIN_URL"
     echo ""
-    echo -e "  ${BOLD}landing-staging:${NC}"
+    echo -e "  ${BOLD}${LANDING_APP}-staging:${NC}"
     echo "    NEXT_PUBLIC_APP_ENVIRONMENT = staging"
     echo "    NEXT_PUBLIC_SITE_URL        = $VERCEL_LANDING_URL"
     echo "    NEXT_PUBLIC_WEB_APP_URL     = $VERCEL_WEB_URL"
@@ -739,7 +747,7 @@ step_configure_vercel_env() {
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_CONVEX_URL" "$CONVEX_STAGING_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_SITE_URL" "$VERCEL_WEB_URL")
-    (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "NEXT_PUBLIC_LANDING_URL" "$VERCEL_LANDING_URL")
+    (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_WEB_NAME" "LANDING_URL" "$VERCEL_LANDING_URL")
 
     log_info "Setting admin-staging env vars..."
     echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ADMIN_STAGING_ID\"}" \
@@ -749,13 +757,15 @@ step_configure_vercel_env() {
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_ADMIN_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_ADMIN_NAME" "NEXT_PUBLIC_SITE_URL" "$VERCEL_ADMIN_URL")
 
-    log_info "Setting landing-staging env vars..."
+    log_info "Setting ${LANDING_APP}-staging env vars..."
     echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_LANDING_STAGING_ID\"}" \
         > "$TMPDIR_VERCEL/.vercel/project.json"
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_APP_ENVIRONMENT" "staging")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_SITE_URL" "$VERCEL_LANDING_URL")
     (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_WEB_APP_URL" "$VERCEL_WEB_URL")
-    (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
+    if [ "$LANDING_APP" = landing ]; then
+        (cd "$TMPDIR_VERCEL" && set_vercel_env "$VERCEL_LANDING_NAME" "NEXT_PUBLIC_CONVEX_SITE_URL" "$CONVEX_STAGING_SITE_URL")
+    fi
 
     # Clean up temp dir
     rm -rf "$TMPDIR_VERCEL"
@@ -789,10 +799,10 @@ set_github_secrets() {
         --repo "$GITHUB_REPO"
     log_info "  Set VERCEL_PROJECT_ID_ADMIN_STAGING"
 
-    gh secret set VERCEL_PROJECT_ID_LANDING_STAGING \
+    gh secret set "$LANDING_PROJECT_SECRET" \
         --body "$VERCEL_PROJECT_LANDING_STAGING_ID" \
         --repo "$GITHUB_REPO"
-    log_info "  Set VERCEL_PROJECT_ID_LANDING_STAGING"
+    log_info "  Set $LANDING_PROJECT_SECRET"
 
     log_success "Repository secrets set"
 }

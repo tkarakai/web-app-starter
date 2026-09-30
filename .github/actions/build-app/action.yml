@@ -12,7 +12,7 @@ description: >-
 
 inputs:
   app:
-    description: "App name (web, admin, or landing)"
+    description: "App name (web, admin, landing, or landing-static)"
     required: true
   environment:
     description: "Target environment (preview or production)"
@@ -118,6 +118,16 @@ runs:
           jq --arg dir "$APP_DIR" '.settings.rootDirectory = $dir' .vercel/project.json > .vercel/project.json.tmp
           mv .vercel/project.json.tmp .vercel/project.json
         fi
+
+    - name: Configure static export builder
+      if: inputs.app == 'landing-static'
+      shell: bash
+      run: |
+        # This is a separate Vercel project using the Other/static preset.
+        # Never run the Next.js serverless builder for the static export.
+        jq '.settings.framework = null | .settings.buildCommand = "bun run build" | .settings.outputDirectory = "out"' \
+          .vercel/project.json > .vercel/project.json.tmp
+        mv .vercel/project.json.tmp .vercel/project.json
 
     - name: Compute build-input hash
       id: meta
@@ -245,10 +255,19 @@ runs:
         # cache/ is build cache and dev/ is `next dev` output; neither is read by
         # `vercel deploy --prebuilt`. dev/ never exists on a fresh CI checkout, but
         # excluding it keeps a local run of this action honest about artifact size.
-        tar -czf "${TARBALL}" \
-          --exclude="${APP_DIR}/.next/cache" \
-          --exclude="${APP_DIR}/.next/dev" \
-          .vercel/output "${APP_DIR}/.next"
+        if [ "${{ inputs.app }}" = landing-static ]; then
+          [ -f .vercel/output/static/index.html ] || { echo "::error::Static landing export has no index.html"; exit 1; }
+          if [ -d .vercel/output/functions ] && [ -n "$(ls -A .vercel/output/functions)" ]; then
+            echo "::error::Static landing must not contain serverless functions"
+            exit 1
+          fi
+          tar -czf "${TARBALL}" .vercel/output
+        else
+          tar -czf "${TARBALL}" \
+            --exclude="${APP_DIR}/.next/cache" \
+            --exclude="${APP_DIR}/.next/dev" \
+            .vercel/output "${APP_DIR}/.next"
+        fi
         sha256sum "${TARBALL}" > "${CHECKSUM}"
 
         echo "### Build Artifact: ${{ inputs.app }} (built with ${{ inputs.environment }} config)" >> "$GITHUB_STEP_SUMMARY"

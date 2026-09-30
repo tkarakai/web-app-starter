@@ -10,8 +10,6 @@ export const allLocales = [
 ] as const;
 export type Locale = (typeof allLocales)[number];
 
-export const defaultLocale: Locale = "en";
-
 /** Check a locale list against the supported set; throws naming any unknown locale. */
 export function selectLocales(requested: readonly string[]): readonly Locale[] {
   const unknown = requested.filter((locale) => !(allLocales as readonly string[]).includes(locale));
@@ -25,6 +23,9 @@ export function selectLocales(requested: readonly string[]): readonly Locale[] {
 
 /** The locales this app ships: `i18n.locales` from app.config.ts, in that order. */
 export const locales: readonly Locale[] = selectLocales(appConfig.i18n.locales);
+
+/** Configured fallback, independent of the language selector's display order. */
+export const defaultLocale: Locale = selectLocales([appConfig.i18n.defaultLocale])[0];
 
 /** Metadata for each locale used in the language selector UI. */
 export const localeMetadata: Record<

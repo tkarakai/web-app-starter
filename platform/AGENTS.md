@@ -64,7 +64,7 @@ The root `app.config.ts` holds every value an app is expected to change: `identi
 name, legal entity, support email), `runtime` (local port per app, Better Auth cookie prefix),
 `brand` (icons, design-token overrides, email palette, `lang` and footer) and `features`
 (`waitlist`, `invitations`, `announcements`, `environmentBanner`) and `i18n` (`locales`: the
-locales the apps ship, a subset of the platform's 15 that includes `en`). It is validated on load; a bad
+locales the apps ship, a subset of the platform's 15 that includes `en`; optional `defaultLocale`: a shipped locale, default `en`). It is validated on load; a bad
 or unknown value stops dev, build and tests with a message naming it. Everything in it is public.
 
 - Never write these values as literals. In TypeScript use `appConfig` (and `localAppOrigin`) from
@@ -84,7 +84,7 @@ Details: [docs/development.md](docs/development.md#app-configuration-appconfigts
 ```bash
 bun run dev                  # Convex + core apps; seeds admin@admin.com and user@user.com
 bun run dev:web              # Convex + web            bun run dev:admin      # Convex + admin
-bun run dev:landing          # Convex + landing        bun run dev:landing-static
+bun run dev:landing          # Selected landing        bun run dev:landing-static
 bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
 bun run ci                   # Full local CI: lint, types, tests, build, E2E
@@ -104,6 +104,8 @@ bun run check:advisories      # Fail on installed high/critical advisories; lowe
 bun run platform:setup-updates # Configure the updater App and caller (docs/setup-updates.md)
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
+
+The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
 
 Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accounts: [docs/development.md](docs/development.md).
 
