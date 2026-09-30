@@ -130,9 +130,13 @@ files may change while an update is pending. Unrelated work requires a new plan.
 | Seam conflict or dependency decision | `reviewed`, with the intended resolution; seams also permit `accept-release` |
 | Removed/renamed env | `reviewed`; remove old reads/declarations from the named app files before verification |
 | Dynamic env access | `reviewed`, identifying what the dynamic access reads |
-| New secret | `secret-configured`, naming the environment where it is configured, never its value |
+| Required new secret | `secret-configured`, naming the environment where it is configured, never its value |
 | High/critical advisory | `reviewed`; the target must also be outside the affected range and pass contracts |
 | Row-changing migration | `migration-complete`, with deployment-specific completion evidence |
+
+Optional new settings are listed in the report without requiring configuration before the
+upgrade. Configure them before using the associated feature, such as deploying the static landing.
+Removed or renamed settings and required new settings still trigger the applicable review gates.
 
 Migration evidence is a saved read-only status JSON containing `deployment`, `phase: "complete"`,
 `matches: true`, and a nonempty `tables` array whose entries have `matches: true`, `missing: 0`

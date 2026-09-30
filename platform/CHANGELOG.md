@@ -53,6 +53,7 @@ published or tagged; it is retained only as historical context.
 
 ### Fixed
 
+- Optional new environment settings remain visible in upgrade reports without blocking verification; required new secrets and removed or renamed settings retain their review gates.
 - Update Next.js to 16.3.6 for [GHSA-vcvr-r3jv-pc5j](https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j), which affects Node.js `next/og` image generation with untrusted SVG values. The upgrade manifest enforces the patched dependency floor.
 
 - Locale-root redirects preserve the requested locale on the way to the dashboard and sign-in (#186).

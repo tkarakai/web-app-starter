@@ -156,11 +156,11 @@ export async function createPlan(options: { root: string; source: Source; to: st
   const envChanges = selected.flatMap(row => row.env);
   const scan = scanEnvironment(appTree.filter(row => row.mode !== "120000").map(row => ({ path: row.path, content: readBlob(root, row.blob) })));
   for (const env of envChanges) {
-    if (env.kind === "new" && env.secret) gate("secret:" + env.name, "new-secret", "Configure the new secret outside Git before verification: " + env.name, []);
+    if (env.kind === "new" && env.secret && env.required) gate("secret:" + env.name, "new-secret", "Configure the new secret outside Git before verification: " + env.name, []);
     const references = scan.references.filter(row => row.name === env.name);
     if (env.kind !== "new" && references.length) gate("env:" + env.name, "removed-env", "App code/declarations still reference " + env.kind + " env " + env.name, [...new Set(references.map(row => row.file))]);
   }
-  if (envChanges.length && scan.dynamic.length) gate("env:dynamic", "dynamic-env", "Review dynamic env accesses; static scanning cannot establish their names", [...new Set(scan.dynamic.map(row => row.file))]);
+  if (envChanges.some(env => env.kind !== "new" || env.required) && scan.dynamic.length) gate("env:dynamic", "dynamic-env", "Review dynamic env accesses; static scanning cannot establish their names", [...new Set(scan.dynamic.map(row => row.file))]);
   const dependencies: FloorPlan[] = [];
   const floors = new Map<string, DependencyFloor>();
   const addFloor = (floor: DependencyFloor) => { const key = floor.path + ":" + floor.name; const old = floors.get(key); if (!old || compare(floor.minimum, old.minimum) > 0) floors.set(key, floor); };

@@ -65,6 +65,17 @@ test("patches, removed env usage, dynamic env and new secrets produce specific r
   assert.deepEqual(plan.gates.map(row => row.kind).sort(), ["dynamic-env", "new-secret", "patch", "removed-env"]);
   assert.match(plan.patches[0].baseToApp, /business fix/); assert.equal(plan.patches[0].absorbed, false);
 });
+test("optional new deployment secrets are reported without blocking apps that do not use them", async () => {
+  const f = fixture();
+  write(f.app, "apps/web/env.ts", "export const value = process.env[key];\n");
+  git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "existing dynamic lookup");
+  const secret = { name: "VERCEL_PROJECT_ID_LANDING_STATIC", kind: "new" as const, secret: true, required: false };
+  f.publish("2.0.1", entry => { entry.env.push(secret); });
+  const { plan } = await f.plan("2.0.1");
+  assert.deepEqual(plan.environment.changes, [{ ...secret, replacement: undefined }]);
+  assert.equal(plan.environment.scan.dynamic.length, 1);
+  assert.deepEqual(plan.gates, []);
+});
 test("optional app deletion stays deleted, while a deleted required seam needs review", async () => {
   const f = fixture();
   f.manifest.seams.push({ id: "optional", path: "apps/landing/package.json", hooks: [], optionalApp: "apps/landing" });
