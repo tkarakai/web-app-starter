@@ -579,5 +579,5 @@ jobs:
           OPS_HEALTH_JOB: post-deploy
         with:
           script: |
-            const record = require('./.github/scripts/record-ops.cjs');
+            const record = require('./.github/scripts/platform-record-ops.cjs');
             await record({ github, context, core });

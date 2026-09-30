@@ -520,5 +520,5 @@ jobs:
           OPS_HEALTH_JOB: post-rollback
         with:
           script: |
-            const record = require('./.github/scripts/record-ops.cjs');
+            const record = require('./.github/scripts/platform-record-ops.cjs');
             await record({ github, context, core });

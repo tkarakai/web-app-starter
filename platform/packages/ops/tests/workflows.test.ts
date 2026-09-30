@@ -11,7 +11,7 @@ import { OpsService } from "../src/service";
 import { parseOptions } from "../src/options";
 import type { Api, Deployment } from "../src/types";
 const require = createRequire(import.meta.url);
-const recordOps = require("../../../../.github/scripts/record-ops.cjs");
+const recordOps = require("../../../../.github/scripts/platform-record-ops.cjs");
 const sha = "a".repeat(40), old = "b".repeat(40);
 const original = { ...process.env };
 afterEach(() => { process.env = { ...original }; });

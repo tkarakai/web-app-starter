@@ -81,6 +81,11 @@ callers with the familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): trigge
 permissions they grant, `secrets: inherit` for deploys, and the `CI <App> Complete` job that
 branch rules require. Change triggers there, never in `platform-*.yml`.
 
+Deployment audit recording uses `.github/scripts/platform-record-ops.cjs`, which also
+ships through platform upgrades. An older app-owned `.github/scripts/record-ops.cjs`
+may remain after upgrading; the platform workflows no longer call it. Custom workflows
+that use the old helper should switch to the platform-owned path for landing selection support.
+
 - **The platform unit suite** (dev-script and ops tests, the starter upgrade rehearsal) runs in
   CI Shared only when `platform/**`, `.github/**`, `apps/demo/**`, `package.json` or `bun.lock`
   changed. Lint, typecheck, the zone check and contracts run on every PR.
