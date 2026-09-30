@@ -467,6 +467,23 @@
           "path": "package.json",
           "name": "typescript",
           "minimum": "6.0.3"
+        },
+        {
+          "path": "package.json",
+          "name": "next",
+          "minimum": "16.3.6"
+        },
+        {
+          "path": "apps/web/package.json",
+          "name": "next",
+          "minimum": "16.3.6",
+          "optionalApp": "apps/web"
+        },
+        {
+          "path": "apps/web/package.json",
+          "name": "eslint-config-next",
+          "minimum": "16.3.6",
+          "optionalApp": "apps/web"
         }
       ],
       "changedSeams": [

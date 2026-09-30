@@ -53,6 +53,8 @@ published or tagged; it is retained only as historical context.
 
 ### Fixed
 
+- Update Next.js to 16.3.6 for [GHSA-vcvr-r3jv-pc5j](https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j), which affects Node.js `next/og` image generation with untrusted SVG values. The upgrade manifest enforces the patched dependency floor.
+
 - Locale-root redirects preserve the requested locale on the way to the dashboard and sign-in (#186).
 - Optional `i18n.defaultLocale` selects a shipped fallback locale independently of locale ordering; omission stays English (#185). Static 404 HTML uses the configured merged catalog.
 - Dev, local CI, staging, production and rollback select `landing` first, falling back to `landing-static` only when the primary app is removed (#187, #188). The static fallback uses separate Vercel projects, static output and distinct artifacts. Ops records and verifies its physical app identity.
