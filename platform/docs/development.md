@@ -26,6 +26,11 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
+Whenever web, admin or the primary landing starts Convex, the launcher also sets the
+backend's `LANDING_URL` to the selected landing's actual URL, or its configured local
+origin if it is not started. The backend needs this for CORS and announcement links
+even when the selected landing is static. Starting only `landing-static` needs no Convex.
+
 ### App configuration (`app.config.ts`)
 
 The root `app.config.ts` holds every value an app built on the starter is expected to change:

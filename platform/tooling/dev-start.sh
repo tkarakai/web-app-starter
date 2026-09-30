@@ -985,8 +985,9 @@ if [ "$START_LANDING" = true ]; then
     start_next_app "$LANDING_APP" "$LANDING_PORT"
     LANDING_APP_URL="$LAST_APP_URL"
 
-    # Sync LANDING_URL to Convex so CORS allows the landing origin
-    if [ "$NEED_CONVEX" = true ] && [ "$LANDING_APP" = landing ] && [ -n "$LANDING_APP_URL" ]; then
+    # The backend needs the selected landing URL for CORS and announcement links,
+    # including when the landing itself is static and never calls Convex.
+    if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
         if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
         else
@@ -1043,7 +1044,7 @@ if [ "$NEED_CONVEX" = true ]; then
     fi
 
     # Seed LANDING_URL in Convex when landing is not started
-    if [ "$START_LANDING" = false ] && [ "$LANDING_APP" = landing ]; then
+    if [ "$START_LANDING" = false ]; then
         if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_ORIGIN" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $LANDING_ORIGIN in Convex"
         fi
