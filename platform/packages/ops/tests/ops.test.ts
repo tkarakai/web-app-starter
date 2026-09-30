@@ -1,15 +1,16 @@
+import { fixtureConfig } from "./fixtures";
 import { describe, expect, test } from "bun:test";
 import { HttpApi } from "../src/api";
 import { OpsError, errorInfo, registerSecret } from "../src/errors";
 import { parseOptions } from "../src/options";
-import { defaultConfig, validateConfig } from "../src/config";
+import { validateConfig } from "../src/config";
 import { OpsService } from "../src/service";
 import { envelope, safeCell } from "../src/output";
 import type { Api, Artifact, Config, Deployment, Run } from "../src/types";
 
 const sha = "a".repeat(40), old = "b".repeat(40);
 const base = "/repos/team/repo";
-const config = (): Config => ({ ...defaultConfig("team/repo"), teamId: "team_test" });
+const config = (): Config => ({ ...fixtureConfig(), teamId: "team_test" });
 const options = (args: string[]) => parseOptions(args);
 class FakeApi implements Api {
   calls: { path: string; body?: unknown }[] = [];

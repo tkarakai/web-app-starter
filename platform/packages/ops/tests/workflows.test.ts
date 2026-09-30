@@ -1,3 +1,4 @@
+import { fixtureConfig } from "./fixtures";
 import { afterEach, expect, test } from "bun:test";
 import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -461,7 +462,7 @@ test.each(["landing", "landing-static"])("failed staging CI followed by a succes
     },
     async post<T>(): Promise<T> { throw new Error("Inspection must not write"); },
   };
-  const service = new OpsService(defaultConfig("team/repo"), api);
+  const service = new OpsService(fixtureConfig(), api);
   const inspection = await service.inspect(sha, parseOptions(["inspect", sha, "--to", "staging"]));
   expect(service.errors).toEqual([]);
   expect(inspection.rows?.map(row => row.app)).toEqual(["web", "admin", selected, "backend"]);

@@ -1,6 +1,7 @@
+import { fixtureConfig } from "./fixtures";
 import { expect, test } from "bun:test";
 import { HttpApi } from "../src/api";
-import { defaultConfig, validateConfig } from "../src/config";
+import { validateConfig } from "../src/config";
 import { artifactApp, parallel, resolveTag } from "../src/evidence";
 import { OpsError } from "../src/errors";
 import { failureStage } from "../src/journeys";
@@ -17,7 +18,7 @@ class Fake implements Api {
   async post<T>(): Promise<T> { throw new Error("Unexpected write"); }
 }
 function fixture() {
-  const config = defaultConfig("team/repo");
+  const config = fixtureConfig();
   const run: Run = { id: 42, run_attempt: 1, path: ".github/workflows/cd-staging.yml", name: "Deploy staging", display_title: "deploy", head_sha: sha,
     head_branch: "main", status: "completed", conclusion: "success", created_at: "2026-09-23T12:00:00Z", updated_at: "2026-09-23T12:01:00Z", actor: { login: "ops" }, html_url: "https://github.com/team/repo/actions/runs/42" };
   const records: Deployment[] = ["web", "admin", "landing", "backend"].map((app, i) => ({ id: i + 1, task: "ops-record", environment: "staging", sha, created_at: "2026-09-23T12:01:00Z",
@@ -143,7 +144,7 @@ test("forged staging evidence cannot authorize a production write", async () => 
     : path.endsWith("status") ? { statuses: [{ context: "ci/gate-passed", state: "success" }] }
       : { sha, commit: { message: "release" } }) as T,
     pages: async () => [], post: async <T>() => { writes++; return undefined as T; } };
-  await expect(new OpsService(defaultConfig("team/repo"), gh).dispatch(sha, parseOptions(["deploy", sha, "--to", "production", "--yes"]))).rejects.toBeInstanceOf(OpsError);
+  await expect(new OpsService(fixtureConfig(), gh).dispatch(sha, parseOptions(["deploy", sha, "--to", "production", "--yes"]))).rejects.toBeInstanceOf(OpsError);
   expect(writes).toBe(0);
 });
 test("interrupting preflight cannot send a delayed deployment request", async () => {
@@ -152,7 +153,7 @@ test("interrupting preflight cannot send a delayed deployment request", async ()
   let finish!: (value: unknown) => void;
   const commit = new Promise(resolve => { finish = resolve; });
   const gh: Api = { get: async <T>() => await commit as T, pages: async () => [], post: async <T>() => { writes++; return undefined as T; } };
-  const pending = new OpsService(defaultConfig("team/repo"), gh).dispatch(sha, { ...parseOptions(["deploy", sha, "--to", "staging", "--yes"]), signal: controller.signal });
+  const pending = new OpsService(fixtureConfig(), gh).dispatch(sha, { ...parseOptions(["deploy", sha, "--to", "staging", "--yes"]), signal: controller.signal });
   controller.abort(); finish({ sha, commit: { message: "release" } });
   await expect(pending).rejects.toMatchObject({ code: "INTERRUPTED" }); expect(writes).toBe(0);
 });
@@ -174,7 +175,7 @@ test("artifact recognition handles overlapping app names and excludes report upl
   }
 });
 test("one project cannot impersonate two environments", () => {
-  const config = defaultConfig("team/repo"); config.apps.web.projects = { staging: { id: "same" }, production: { id: "same" } };
+  const config = fixtureConfig(); config.apps.web.projects = { staging: { id: "same" }, production: { id: "same" } };
   expect(() => validateConfig(config)).toThrow("only be mapped to one");
 });
 test("provider links drop userinfo and sensitive query strings", () => {
