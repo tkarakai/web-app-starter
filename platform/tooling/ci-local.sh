@@ -259,6 +259,8 @@ app_dir() {
   ./platform/tooling/node-ts.sh platform/tooling/app-config.ts dir "$1"
 }
 
+LANDING_APP=$(bash .github/scripts/platform-landing-app.sh . --required) || exit 1
+
 # Helper: whether an app is present (bun run adopt --remove can delete landing).
 app_present() {
   [ -d "$(app_dir "$1")" ]
@@ -355,7 +357,7 @@ else
   exit 1
 fi
 PHASE_FAILED=false
-for APP in web admin landing; do
+for APP in web admin "$LANDING_APP"; do
   app_present "$APP" || continue
   step_start
   if turbo test --filter=@repo/$APP; then
@@ -376,7 +378,7 @@ if [ "$PHASE_FAILED" = true ]; then exit 1; fi
 # ============================================================
 print_step "Step 4/9: Component Tests + Coverage (Vitest)"
 COVERAGE_PASSED=true
-for APP in web admin landing; do
+for APP in web admin "$LANDING_APP"; do
   app_present "$APP" || continue
   step_start
   if turbo test:coverage --filter=@repo/$APP; then
@@ -437,7 +439,7 @@ print_step "Step 7/9: Production Build"
 # These mirror the placeholder values in ci-{web,admin,landing}.yml.
 # The actual values are only needed at runtime, not at build time.
 #
-# Two forms are exported because the apps differ: web and admin read runtime
+# Two forms are supplied because the apps differ: web and admin read runtime
 # (unprefixed) names so their artifacts stay promotable, while landing and
 # landing-static are static exports that must inline NEXT_PUBLIC_* at build time.
 # See platform/docs/deployment-architecture.md
@@ -446,25 +448,29 @@ print_step "Step 7/9: Production Build"
 _APP_CONFIG_VARS=$(./platform/tooling/node-ts.sh platform/tooling/app-config.ts shell) || exit 1
 eval "$_APP_CONFIG_VARS"
 : "${APP_CONFIG_ORIGIN_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
-export CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}"
-export CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}"
-export LANDING_URL="${LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}"
-export NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}"
-export NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}"
-export NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}"
-export NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
+LANDING_ORIGIN="$APP_CONFIG_ORIGIN_LANDING"
+if [ "$LANDING_APP" = landing-static ]; then LANDING_ORIGIN="$APP_CONFIG_ORIGIN_LANDING_STATIC"; fi
 BUILD_FAILED=false
-for APP in web admin landing storybook; do
+for APP in web admin "$LANDING_APP" storybook; do
   app_present "$APP" || continue
   # Set per-app site URL (each app runs on a different port)
   case "$APP" in
     web)     _SITE_URL="$APP_CONFIG_ORIGIN_WEB" ;;
     admin)   _SITE_URL="$APP_CONFIG_ORIGIN_ADMIN" ;;
     landing) _SITE_URL="$APP_CONFIG_ORIGIN_LANDING" ;;
+    landing-static) _SITE_URL="$APP_CONFIG_ORIGIN_LANDING_STATIC" ;;
     *)       _SITE_URL="" ;;
   esac
   step_start
-  if SITE_URL="${SITE_URL:-$_SITE_URL}" NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$_SITE_URL}" turbo build --filter=@repo/$APP...; then
+  # Scope build placeholders to this command: E2E must use the launcher's local backend.
+  if CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}" \
+     CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}" \
+     LANDING_URL="${LANDING_URL:-$LANDING_ORIGIN}" \
+     NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}" \
+     NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}" \
+     NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-$LANDING_ORIGIN}" \
+     NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}" \
+     SITE_URL="${SITE_URL:-$_SITE_URL}" NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$_SITE_URL}" turbo build --filter=@repo/$APP...; then
     print_success "Build succeeded ($APP)"
     step_end "$APP: Build" "pass"
   else
@@ -484,8 +490,8 @@ print_step "Step 8/9: Bundle Size"
 BUNDLE_FAILED=false
 for APP_DIR in apps/*/ platform/apps/*/; do
   APP_NAME=$(basename "$APP_DIR")
-  # Skip apps not included in CI builds (no corresponding workflow)
-  case "$APP_NAME" in landing-static) continue ;; esac
+  # Check only the landing variant selected for this CI run
+  case "$APP_NAME" in landing|landing-static) [ "$APP_NAME" = "$LANDING_APP" ] || continue ;; esac
   if [ -f "$APP_DIR/.size-limit.json" ]; then
     step_start
     if (cd "$APP_DIR" && bun run size); then
@@ -507,7 +513,7 @@ if [ "$BUNDLE_FAILED" = true ]; then exit 1; fi
 # ============================================================
 if [ "$SKIP_E2E" = true ]; then
   print_warning "Skipping E2E tests (--skip-e2e flag)"
-  for APP in web admin landing storybook; do
+  for APP in web admin "$LANDING_APP" storybook; do
     app_present "$APP" || continue
     step_start
     step_end "$APP: E2E (Playwright)" "skip"
@@ -522,7 +528,7 @@ else
   E2E_PASSED=true
   E2E_FAILED_APPS=()
 
-  for APP in web admin landing storybook; do
+  for APP in web admin "$LANDING_APP" storybook; do
     app_present "$APP" || continue
     step_start
     echo -e "  ${BOLD}Running E2E tests ($APP)...${NC}"

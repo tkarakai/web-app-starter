@@ -65,12 +65,16 @@ START_ADMIN=false
 START_LANDING=false
 START_STORYBOOK=false
 NEED_CONVEX=false
+LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR")
+REQUESTED_LANDING=""
 
 if [ -z "$SELECTED_APPS" ]; then
     # Adoption can remove optional apps. Never recreate their directories or env files.
     if [ -f "$(app_dir web)/package.json" ]; then START_WEB=true; NEED_CONVEX=true; fi
     if [ -f "$(app_dir admin)/package.json" ]; then START_ADMIN=true; NEED_CONVEX=true; fi
-    if [ -f "$(app_dir landing)/package.json" ]; then START_LANDING=true; NEED_CONVEX=true; fi
+    LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR" --required)
+    START_LANDING=true
+    if [ "$LANDING_APP" = landing ]; then NEED_CONVEX=true; fi
     if [ -f "$(app_dir storybook)/package.json" ]; then START_STORYBOOK=true; fi
 else
     # Parse comma-separated app names
@@ -85,9 +89,22 @@ else
                 START_ADMIN=true
                 NEED_CONVEX=true
                 ;;
-            landing)
+            landing|landing-static)
+                if [ "$app" = landing ]; then
+                    app="$LANDING_APP"
+                fi
+                if [ -z "$app" ]; then
+                    echo "App is not installed: landing (or landing-static)"
+                    exit 1
+                fi
+                if [ -n "$REQUESTED_LANDING" ] && [ "$REQUESTED_LANDING" != "$app" ]; then
+                    echo "Start only one landing app at a time."
+                    exit 1
+                fi
+                REQUESTED_LANDING="$app"
+                LANDING_APP="$app"
                 START_LANDING=true
-                NEED_CONVEX=true
+                if [ "$app" = landing ]; then NEED_CONVEX=true; fi
                 ;;
             storybook)
                 START_STORYBOOK=true
@@ -95,7 +112,7 @@ else
                 ;;
             *)
                 echo -e "${RED}Unknown app: $app${NC}"
-                echo "Available apps: web, admin, landing, storybook"
+                echo "Available apps: web, admin, landing, landing-static, storybook"
                 exit 1
                 ;;
         esac
@@ -105,6 +122,13 @@ else
         fi
     done
 fi
+
+# Keep physical names in process records and logs, and resolve cross-app links
+# from the selected landing's own configured port.
+LANDING_DIR="apps/${LANDING_APP:-landing}"
+LANDING_PORT_VAR="APP_CONFIG_PORT_$(echo "${LANDING_APP:-landing}" | tr '[:lower:]-' '[:upper:]_')"
+LANDING_PORT="${!LANDING_PORT_VAR}"
+LANDING_ORIGIN="http://localhost:$LANDING_PORT"
 
 if [ "$START_WEB$START_ADMIN$START_LANDING$START_STORYBOOK" = falsefalsefalsefalse ]; then
     echo -e "${RED}No core apps are installed.${NC}"
@@ -116,6 +140,7 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Current directory: $(pwd)"
     echo "[CI MODE] Script directory: $SCRIPT_DIR"
     echo "[CI MODE] Project directory: $PROJECT_DIR"
+    echo "[CI MODE] Selected landing: $LANDING_APP"
     echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING storybook=$START_STORYBOOK convex=$NEED_CONVEX"
 fi
 
@@ -676,8 +701,8 @@ if [ "$NEED_CONVEX" = true ]; then
         if [ "$START_ADMIN" = true ]; then
             update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
-        if [ "$START_LANDING" = true ]; then
-            update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
+        if [ "$START_LANDING" = true ] && [ "$LANDING_APP" = landing ]; then
+            update_app_env_urls "$PROJECT_DIR/$LANDING_DIR/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
         fi
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
@@ -889,7 +914,7 @@ start_next_app() {
     # to run for the web app only, so starting landing on its own left its
     # origin untrusted and every browser call to the Convex HTTP router failed
     # CORS -- which is exactly how it failed the moment E2E first ran in CI.
-    if [ "$NEED_CONVEX" = true ] && [ -n "$next_port" ]; then
+    if [ "$NEED_CONVEX" = true ] && [ "$app_name" != landing-static ] && [ -n "$next_port" ]; then
         local app_origin="http://localhost:$next_port"
         local existing_site_url
         existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
@@ -953,16 +978,15 @@ fi
 
 if [ "$START_LANDING" = true ]; then
     # Ensure landing's .env.local has the web app URL for cross-app links
-    touch "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local"
-    if [ -n "$WEB_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$WEB_APP_URL"
-        echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL set to $WEB_APP_URL for landing"
+    touch "$PROJECT_DIR/$LANDING_DIR/.env.local"
+    if [ -n "$WEB_APP_URL" ] || ! grep -q '^NEXT_PUBLIC_WEB_APP_URL=.' "$PROJECT_DIR/$LANDING_DIR/.env.local"; then
+        update_env_var "$PROJECT_DIR/$LANDING_DIR/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "${WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
     fi
-    start_next_app "landing" "$APP_CONFIG_PORT_LANDING"
+    start_next_app "$LANDING_APP" "$LANDING_PORT"
     LANDING_APP_URL="$LAST_APP_URL"
 
     # Sync LANDING_URL to Convex so CORS allows the landing origin
-    if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
+    if [ "$NEED_CONVEX" = true ] && [ "$LANDING_APP" = landing ] && [ -n "$LANDING_APP_URL" ]; then
         if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
         else
@@ -994,8 +1018,8 @@ if [ "$NEED_CONVEX" = true ]; then
     # Seed LANDING_URL for web when landing is not started
     if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
         if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "LANDING_URL" "$APP_CONFIG_ORIGIN_LANDING"
-            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING for web"
+            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "LANDING_URL" "$LANDING_ORIGIN"
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $LANDING_ORIGIN for web"
         else
             echo -e "  ${GREEN}✔${NC} LANDING_URL already set for web (preserved)"
         fi
@@ -1003,8 +1027,8 @@ if [ "$NEED_CONVEX" = true ]; then
 
     # Seed NEXT_PUBLIC_WEB_APP_URL for landing when web is not started
     if [ "$START_LANDING" = true ] && [ "$START_WEB" = false ]; then
-        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$APP_CONFIG_ORIGIN_WEB"
+        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/$LANDING_DIR/.env.local" 2>/dev/null; then
+            update_env_var "$PROJECT_DIR/$LANDING_DIR/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$APP_CONFIG_ORIGIN_WEB"
             echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to $APP_CONFIG_ORIGIN_WEB for landing"
         else
             echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL already set for landing (preserved)"
@@ -1019,9 +1043,9 @@ if [ "$NEED_CONVEX" = true ]; then
     fi
 
     # Seed LANDING_URL in Convex when landing is not started
-    if [ "$START_LANDING" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$APP_CONFIG_ORIGIN_LANDING" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING in Convex"
+    if [ "$START_LANDING" = false ] && [ "$LANDING_APP" = landing ]; then
+        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_ORIGIN" > /dev/null 2>&1); then
+            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $LANDING_ORIGIN in Convex"
         fi
     fi
 fi
@@ -1044,7 +1068,8 @@ fi
 # In CI mode, show final env contents
 if [ "$NON_INTERACTIVE" = true ]; then
     echo ""
-    for app_name in web admin landing storybook; do
+    for app_name in web admin "$LANDING_APP" storybook; do
+        [ -n "$app_name" ] || continue
         local_env="$(app_dir "$app_name")/.env.local"
         if [ -f "$local_env" ]; then
             echo "[CI MODE] ${local_env#"$PROJECT_DIR/"}:"
@@ -1078,7 +1103,7 @@ fi
 if [ "$START_LANDING" = true ] && [ -n "$LANDING_APP_URL" ]; then
     curl -sL --max-time 30 -o /dev/null "$LANDING_APP_URL" 2>/dev/null &
     WARM_PIDS+=($!)
-    WARM_LABELS+=("landing /")
+    WARM_LABELS+=("$LANDING_APP /")
 fi
 
 # Wait for all warm-up requests to complete
@@ -1115,8 +1140,9 @@ if [ "$NON_INTERACTIVE" = true ]; then
     trap cleanup SIGINT SIGTERM EXIT
 
     # Stream all log files
-    LOG_FILES="$PROJECT_DIR/.convex-dev.log"
-    [ "$START_LANDING" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-landing.log"
+    LOG_FILES=""
+    [ "$NEED_CONVEX" = true ] && LOG_FILES="$PROJECT_DIR/.convex-dev.log"
+    [ "$START_LANDING" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-$LANDING_APP.log"
     [ "$START_WEB" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-web.log"
     [ "$START_ADMIN" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-admin.log"
     [ "$START_STORYBOOK" = true ] && LOG_FILES="$LOG_FILES $PROJECT_DIR/.next-storybook.log"

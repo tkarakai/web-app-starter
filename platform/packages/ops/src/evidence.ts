@@ -1,7 +1,15 @@
 import { OpsError } from "./errors";
-import type { Api } from "./types";
+import type { Api, Deployment } from "./types";
 
-export const deployedApps = ["web", "admin", "landing"] as const;
+export const deployedApps = ["web", "admin", "landing", "landing-static"] as const;
+/** Each run deploys exactly one landing variant. Old records predate static CD. */
+export function deploymentApps(records: Deployment[], fallback: "landing" | "landing-static" = "landing"): string[] {
+  const variants = [...new Set(records.map((record) => record.payload.landingApp).filter((app) => app !== undefined))];
+  if (variants.length > 1 || variants.some((app) => app !== "landing" && app !== "landing-static")) {
+    throw new OpsError("EVIDENCE_INCOMPLETE", "Conflicting landing-app selection in deployment records.", "Inspect the run's per-app records before verifying it.", 3);
+  }
+  return ["web", "admin", variants[0] ?? fallback];
+}
 export const fullSha = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 export function artifactApp(name: string, apps: string[]): string | undefined {
   // build-app resolves <app>-<Turbo input hash>. Legacy SHA-addressed and

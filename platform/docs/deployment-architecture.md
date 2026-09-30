@@ -1,5 +1,9 @@
 # Deployment Architecture
 
+The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+
+When the static fallback is selected, it has its own Vercel projects and `landing-static-<hash>` artifacts. Use the **Other** preset, build command `bun run build`, output directory `out`, and root `apps/landing-static`. Its project IDs are `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` and `VERCEL_PROJECT_ID_LANDING_STATIC`; never reuse the primary landing project. Rollback chooses the variant present in the selected source commit.
+
 This document explains how the CI/CD pipeline works and what happens when things fail. The pipeline builds everything in GitHub Actions, pushes prebuilt artifacts to Vercel (`vercel deploy --prebuilt`) and deploys Convex separately (`convex deploy`), always before the frontends. Vercel is a hosting target only, with no Git integration. For step-by-step operational procedures, see [deployment-runbook.md](./deployment-runbook.md).
 
 > **Hosting on AWS instead of Vercel:** see [aws/deployment-architecture-aws.md](./aws/deployment-architecture-aws.md).

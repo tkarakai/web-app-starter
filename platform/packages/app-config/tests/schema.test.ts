@@ -99,7 +99,27 @@ describe("validateAppConfig", () => {
       'i18n.locales[3]: must be a language tag such as en or pt-BR (got "Not a tag")',
     ]);
     config.i18n.locales = ["de"];
-    expect(issuesOf(config)).toEqual(['i18n.locales: must include "en", the fallback locale']);
+    expect(issuesOf(config)).toContain('i18n.locales: must include "en", the fallback locale');
+  });
+
+  it("defaults omitted locale settings to English without using list order", () => {
+    const config = draft();
+    delete config.i18n.defaultLocale;
+    config.i18n.locales = ["hu", "en"];
+    expect(validateAppConfig(config).i18n.defaultLocale).toBe("en");
+    config.i18n.defaultLocale = "hu";
+    expect(validateAppConfig(config).i18n.defaultLocale).toBe("hu");
+    config.i18n.locales.reverse();
+    expect(validateAppConfig(config).i18n.defaultLocale).toBe("hu");
+  });
+
+  it("rejects malformed and unshipped default locales", () => {
+    const config = draft();
+    config.i18n.locales = ["hu", "en"];
+    for (const locale of ["fr", "", "not a tag", null, 1]) {
+      config.i18n.defaultLocale = locale as string;
+      expect(issuesOf(config).some((issue) => issue.startsWith("i18n.defaultLocale:"))).toBe(true);
+    }
   });
 
   it("rejects unknown settings, which are usually typos", () => {

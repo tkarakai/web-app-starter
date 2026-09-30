@@ -15,17 +15,9 @@ A fully static, serverless variant of the landing page — built with Next.js `o
 - Dark/light/system theme support
 - Zero runtime server dependencies
 
-**What's different from the dynamic `landing` app:**
+Both landing apps are static exports. The primary `landing` integrates the Convex waitlist; `landing-static` needs no backend. Default dev, CI and CD select this app only after `apps/landing` is removed. Explicit `bun run dev:landing-static` uses the same managed lifecycle as the other dev commands.
 
-| | `landing` (dynamic) | `landing-static` |
-|---|---|---|
-| Rendering | Server-side per request | Pre-rendered at build time |
-| Hosting | Requires Node.js server | Any static file host / CDN |
-| Rate limiting | Edge rate limiter (proxy.ts) | None needed (CDN-level) |
-| CSP nonce | Generated per request | Not applicable |
-| Fonts | Google Fonts (downloaded at build time) | System font stack (zero external deps) |
-| Image optimization | Server-side (`next/image`) | Client-side only (`unoptimized: true`) |
-| Trailing slashes | Off | On (CDN compatibility) |
+For the built-in Vercel pipeline, create separate static projects for staging and production: root `apps/landing-static`, preset **Other**, build command `bun run build`, output directory `out`. Configure `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` and `VERCEL_PROJECT_ID_LANDING_STATIC`, plus this site and web-app URLs. See the [deployment runbook](../../platform/docs/deployment-runbook.md).
 
 ## Quick start
 
@@ -204,7 +196,7 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
 ```
 
-> **Note on CSP:** The dynamic landing app uses nonce-based CSP (`script-src 'nonce-xxx'`). Static sites can't generate per-request nonces, so use `'self'` for script-src instead. Next.js inlines a small theme-detection script, so you may need `'unsafe-inline'` for script-src or use a hash-based CSP — see the [Next.js CSP docs](https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy).
+> **Note on CSP:** Server-rendered apps can use nonce-based CSP. Static sites cannot generate per-request nonces, so use `'self'` for script-src instead. Next.js inlines a small theme-detection script, so you may need `'unsafe-inline'` for script-src or use a hash-based CSP — see the [Next.js CSP docs](https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy).
 
 ### Subresource Integrity (SRI)
 

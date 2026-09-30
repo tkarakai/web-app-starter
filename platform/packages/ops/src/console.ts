@@ -224,9 +224,9 @@ export class OperationsConsole {
       { label: "Change time/app filters", action: async () => {
         const time = (await this.ui.ask("Since ISO date/time (blank for recent history): ")).trim();
         if (time && !Number.isFinite(Date.parse(time))) { this.ui.tell("Enter a valid ISO date or timestamp."); return; }
-        const choice = await this.ui.select("History › App", ["All apps", "web", "admin", "landing", "backend", "Back"], 0, { back: true });
-        if (choice < 0 || choice === 5) return;
-        since = time || undefined; app = [undefined, "web", "admin", "landing", "backend"][choice];
+        const choice = await this.ui.select("History › App", ["All apps", "web", "admin", "landing", "landing-static", "backend", "Back"], 0, { back: true });
+        if (choice < 0 || choice === 6) return;
+        since = time || undefined; app = [undefined, "web", "admin", "landing", "landing-static", "backend"][choice];
         report = await this.read("history", { env, app, since, limit });
       } },
       { label: "Export this observation", action: () => this.deps.export(report) },
@@ -283,7 +283,7 @@ export class OperationsConsole {
     ], [`Selected commit: ${selected}`, `CI: ${report.data?.ci ?? "unknown"}; staging tag: ${report.data?.stagingTag ?? "unknown"}`,
       "Artifact plan from recorded target inputs; current configuration is checked during deployment:",
       ...rows(report.data).map(row => `${row.app}: ${{ "reuse-recorded-artifact": "existing artifact found", "build-required": "recorded artifact missing or expired; build expected", "resolve-at-deploy": "reuse or build determined during deployment", "deploy-source-and-migrations": "deploy source and migrations (no frontend artifact)" }[String(row.action)] ?? row.action}`),
-      "Scope: web, admin, landing, backend and migrations; monitoring skips do not change deployment scope.",
+      "Scope: web, admin, the selected landing app, backend and migrations; monitoring skips do not change deployment scope.",
       "Completion: successful workflow + intended deployments serving configured domains.", ...report.errors.map(e => e.message)])) { /* back returns to candidates */ }
   }
   private async confirm(kind: "deploy" | "rollback", env: Environment, sha: string) {
@@ -291,7 +291,7 @@ export class OperationsConsole {
     if (preview.errors.length || !fullSha(preview.data?.sha)) { await this.details(preview, `bun run ops ${kind} ${sha} --to ${env} --dry-run`); return; }
     const action = await this.ui.select(`Confirm ${kind} › ${env} › ${preview.data.sha}`, ["Back to review", `Confirm ${kind} to ${env}`], 0, { back: true, summary: () => [
       `Repository: ${preview.data!.repository}`, `Commit: ${preview.data!.sha}`, `Environment: ${env.toUpperCase()}`,
-      `Workflow code: ${preview.data!.workflowRef}`, "Scope: web, admin, landing, backend and migrations.",
+      `Workflow code: ${preview.data!.workflowRef}`, "Scope: web, admin, the selected landing app, backend and migrations.",
       kind === "rollback" ? "Rollback redeploys code and runs migrations; it does not restore database contents." : "Gates were just rechecked and will be checked again before dispatch.",
       "Remote work continues if you close this console. Completion requires workflow success and intended serving state.",
     ] });

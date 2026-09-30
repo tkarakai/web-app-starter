@@ -142,9 +142,17 @@ function writeJson(file: string, value: unknown): void {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function validateLandingRemoval(root: string, apps: readonly RemovableApp[]): void {
+  if (!["landing", "landing-static"].some((app) =>
+    !apps.includes(app as RemovableApp) && existsSync(path.join(root, `apps/${app}/package.json`)))) {
+    throw new Error("Keep one landing app: remove landing to use landing-static, or remove landing-static to keep landing.");
+  }
+}
+
 /** Delete reference apps and their app-owned wiring (callers, scripts, tsconfig and Turbo entries). */
 export function removeApps(root: string, apps: readonly RemovableApp[], log: (line: string) => void): void {
   if (apps.length === 0) return;
+  validateLandingRemoval(root, apps);
   const at = (file: string): string => path.join(root, file);
   const pkg = readJson<{ scripts?: Record<string, string> }>(at("package.json"));
   const tsconfigText = readOptional(at("tsconfig.json"));
@@ -158,7 +166,8 @@ export function removeApps(root: string, apps: readonly RemovableApp[], log: (li
     rmSync(at(`apps/${app}`), { recursive: true, force: true });
     rmSync(at(`.github/workflows/ci-${app}.yml`), { force: true });
     for (const script of Object.keys(pkg.scripts ?? {})) {
-      if (script === `dev:${app}`) delete pkg.scripts?.[script];
+      // dev:landing is the stable entry point for the selected marketing site.
+      if (script === `dev:${app}` && app !== "landing") delete pkg.scripts?.[script];
     }
     if (tsconfig) {
       tsconfig = tsconfig.split("\n").filter((line) => !line.includes(`"path": "apps/${app}"`)).join("\n");
@@ -277,6 +286,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   if (existsSync(at(BASE_FILE))) throw new Error(`${BASE_FILE} exists: this repository is already adopted`);
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error(`--repo must be owner/name (got "${options.repo}")`);
   if (git(root, ["status", "--porcelain"]) !== "") throw new Error("Adoption needs a clean checkout; commit or preserve your work first");
+  validateLandingRemoval(root, options.remove ?? []);
   const commit = git(root, ["rev-parse", "HEAD"]);
   const version = readFileSync(at("platform/VERSION"), "utf8").trim();
 

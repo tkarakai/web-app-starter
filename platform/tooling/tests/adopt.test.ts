@@ -103,6 +103,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
     }
   }
   write(root, "apps/landing/package.json", "{}");
+  write(root, "apps/landing-static/package.json", "{}");
   write(root, "apps/web/package.json", "{}");
   git(root, "init", "-q");
   git(root, "add", "-A");
@@ -113,6 +114,9 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.throws(() => adopt(root, { name: "Acme", repo: "acme/acme-app", build: false }), /clean checkout/);
   assert.equal(readFileSync(path.join(root, "README.md"), "utf8"), "Uncommitted work\n");
   rmSync(path.join(root, "README.md"));
+
+  assert.throws(() => adopt(root, { name: "Acme", repo: "acme/acme-app", remove: ["landing", "landing-static"], build: false }), /Keep one landing app/);
+  assert.equal(git(root, "status", "--porcelain"), "", "invalid removal must fail before changing the clone");
 
   const lines: string[] = [];
   const errors = adopt(root, { name: "Acme $& Co", repo: "acme/acme-app", remove: ["landing"], install: false, build: false },
@@ -129,7 +133,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.equal(existsSync(path.join(root, ".github/workflows/ci-landing.yml")), false);
   assert.doesNotMatch(at("tsconfig.json"), /apps\/landing"/);
   JSON.parse(at("tsconfig.json"));
-  assert.equal((JSON.parse(at("package.json")) as { scripts: Record<string, string> }).scripts["dev:landing"], undefined);
+  assert.equal((JSON.parse(at("package.json")) as { scripts: Record<string, string> }).scripts["dev:landing"], "./platform/tooling/dev-start.sh --app=landing");
   assert.equal((JSON.parse(at("turbo.json")) as { tasks: Record<string, unknown> }).tasks["@repo/landing#build"], undefined);
   for (const dir of [".claude/skills", ".agents/skills"]) {
     assert.equal(readlinkSync(path.join(root, dir, "platform-deps")), "../../platform/agent-skills/platform-deps");

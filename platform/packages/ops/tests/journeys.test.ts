@@ -48,6 +48,26 @@ test("serving verification uses the deployment identity, not the reused build SH
   expect(result.outcome).toBe("serving");
   expect(result.rows?.find(r => r.app === "backend")?.state).toBe("workflow-evidence");
 });
+test("static landing serving verification requires its own project and outcome", async () => {
+  const f = fixture();
+  for (const record of f.records) record.payload.landingApp = "landing-static";
+  f.records[2].payload.app = "landing-static";
+  f.records[2].payload.deploymentUrl = "https://landing-static.vercel.app";
+  delete f.config.apps.landing;
+  f.config.apps["landing-static"] = { projects: { staging: { id: "landing-static", domain: "landing-static.example.com" }, production: null } };
+  f.observed["landing-static"] = { ...f.observed.landing, url: "landing-static.vercel.app" };
+  const result = await f.service.verify(42, parseOptions(["verify", "--run", "42"]));
+  expect(result.outcome).toBe("serving");
+  expect(result.rows?.map(r => r.app)).toEqual(["web", "admin", "landing-static", "backend"]);
+  f.records.splice(2, 1);
+  expect((await f.service.verify(42, parseOptions(["verify", "--run", "42"]))).outcome).toBe("incomplete");
+});
+test("conflicting landing selection cannot become serving success", async () => {
+  const f = fixture();
+  f.records[0].payload.landingApp = "landing";
+  f.records[1].payload.landingApp = "landing-static";
+  await expect(f.service.verify(42, parseOptions(["verify", "--run", "42"]))).rejects.toMatchObject({ code: "EVIDENCE_INCOMPLETE" });
+});
 test.each(["metadata", "domain", "attempt", "url"])("verification rejects a serving %s mismatch", async kind => {
   const f = fixture();
   if (kind === "metadata") f.observed.web.meta.opsSelectedSha = prior;

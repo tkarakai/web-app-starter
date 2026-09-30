@@ -119,7 +119,14 @@ export type AppConfig = {
      * messages only need the locales listed here.
      */
     locales: string[];
+    /** Routing and message fallback; defaults to English and must be a shipped locale. */
+    defaultLocale?: string;
   };
+};
+
+/** Validated configuration with optional input defaults filled in. */
+export type ResolvedAppConfig = Omit<AppConfig, "i18n"> & {
+  i18n: AppConfig["i18n"] & { defaultLocale: string };
 };
 
 /** Thrown when `app.config.ts` holds an invalid value. Lists every problem at once. */
@@ -336,7 +343,7 @@ function validateLocales(i18n: Obj, issues: Issues): string[] {
  * Check a raw config and return it typed. Throws an {@link AppConfigError}
  * listing every invalid or unknown value, so one run shows all mistakes.
  */
-export function validateAppConfig(input: unknown): AppConfig {
+export function validateAppConfig(input: unknown): ResolvedAppConfig {
   const issues: Issues = [];
   if (!isObject(input)) issues.push("app.config.ts must export an object");
   const root = isObject(input) ? input : {};
@@ -353,9 +360,14 @@ export function validateAppConfig(input: unknown): AppConfig {
   const features = objectAt(root, "features", "features", issues);
   rejectUnknownKeys(features, FEATURE_KEYS, "features", issues);
   const i18n = objectAt(root, "i18n", "i18n", issues);
-  rejectUnknownKeys(i18n, ["locales"], "i18n", issues);
+  rejectUnknownKeys(i18n, ["locales", "defaultLocale"], "i18n", issues);
+  const locales = validateLocales(i18n, issues);
+  const defaultLocale = i18n.defaultLocale === undefined ? "en" : text(i18n, "defaultLocale", "i18n.defaultLocale", issues, LANGUAGE_TAG);
+  if (!locales.includes(defaultLocale)) {
+    issues.push("i18n.defaultLocale: must be one of i18n.locales");
+  }
 
-  const config: AppConfig = {
+  const config: ResolvedAppConfig = {
     identity: {
       productName: text(identity, "productName", "identity.productName", issues, {
         ...DISPLAY_TEXT,
@@ -396,7 +408,8 @@ export function validateAppConfig(input: unknown): AppConfig {
       environmentBanner: bool(features, "environmentBanner", "features.environmentBanner", issues),
     },
     i18n: {
-      locales: validateLocales(i18n, issues),
+      locales,
+      defaultLocale,
     },
   };
 

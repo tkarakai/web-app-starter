@@ -3,16 +3,7 @@ import { appConfig } from "@web-app-starter/app-config";
 
 const { productName } = appConfig.identity;
 
-/**
- * Paths are locale-prefixed and carry a trailing slash.
- *
- * The static export has no `out/index.html` — i18n puts the site under
- * `out/en/`, `out/de/` and so on, and `trailingSlash: true` is set in
- * next.config. Serving `out` directly therefore answers `/` with a directory
- * listing, which is why these tests read a page title of "Files within out/".
- * Production relies on host-level routing for the bare `/`; the E2E harness
- * serves the artifact as-is, so it addresses the real paths.
- */
+import { defaultLocale } from "@web-app-starter/i18n";
 
 test.describe("Landing Static Homepage", () => {
   test("loads and displays the correct title", async ({ page }) => {
@@ -98,4 +89,12 @@ test.describe("Legal Pages", () => {
     // Home is the locale root, not the bare origin.
     await expect(page).toHaveURL(/\/en\/?$/);
   });
+});
+
+test("bare root is a page and falls back to the configured locale", async ({ page, request }) => {
+  expect((await request.get("/")).status()).toBe(200);
+  await page.addInitScript(() => Object.defineProperty(globalThis.navigator, "languages", { get: () => ["zz-ZZ"] }));
+  await page.goto("/");
+  await expect(page).toHaveURL(new RegExp(`/${defaultLocale}/$`));
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });

@@ -24,6 +24,7 @@ export interface Artifact {
 }
 export interface RecordPayload {
   schemaVersion: 1; app: string; environment: Environment; selectedSha: string;
+  landingApp?: "landing" | "landing-static";
   builtSha?: string; inputHash?: string; artifactId?: number; artifactName?: string;
   checksum?: string; buildRunId?: number; reused?: boolean; result: string; buildResult?: string;
   health: string; runId: number; runAttempt: number; actor: string; recordedAt: string;

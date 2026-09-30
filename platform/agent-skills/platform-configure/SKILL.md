@@ -37,6 +37,7 @@ asks to replace the App. `--fallback` documents the manual-CI/workflow-file limi
 | Colours and other design tokens | `brand.tokenOverrides` | `{ "--primary": "oklch(0.55 0.2 260)" }`; names from `platform/packages/design-system/tokens/` |
 | Email look | `brand.email.lang`, `.palette.*` (hex colours), `.footerText` | |
 | Optional features | `features.waitlist`, `.invitations`, `.announcements`, `.environmentBanner` | `false` hides the feature; its code stays and keeps receiving fixes |
+| Default language | `i18n.defaultLocale` | Optional; defaults to `en`. Must be in `i18n.locales`. Reordering the list does not select a default; English remains the catalog baseline |
 | Languages shipped | `i18n.locales` | A subset of the platform's 15 (`allLocales` in `@web-app-starter/i18n`), including `en`. Each needs `packages/messages/<locale>.json`; `bun run check:i18n` says what's missing |
 
 **Not here:** deployed URLs, Convex URLs and secrets are per-deployment environment variables

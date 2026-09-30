@@ -1,4 +1,4 @@
-import { artifactApp, deployedApps } from "./evidence";
+import { artifactApp, deployedApps, deploymentApps } from "./evidence";
 import type { Artifact, Deployment } from "./types";
 
 export interface AppBuildEvidence {
@@ -19,7 +19,8 @@ export function candidateEvidence(sha: string, records: Deployment[], artifacts:
   const identity = latest && Number.isSafeInteger(latest.runId) && Number(latest.runId) > 0
     && Number.isSafeInteger(latest.runAttempt) && Number(latest.runAttempt) > 0;
   const attempt = identity ? relevant.filter(r => r.payload.runId === latest.runId && r.payload.runAttempt === latest.runAttempt) : [];
-  const appEvidence: AppBuildEvidence[] = [...deployedApps, "backend"].map(app => {
+  const uploadedStatic = pushArtifacts.some((entry) => entry.sha === sha && artifactApp(entry.artifact.name, [...deployedApps]) === "landing-static");
+  const appEvidence: AppBuildEvidence[] = [...deploymentApps(attempt, uploadedStatic ? "landing-static" : "landing"), "backend"].map(app => {
     const matches = attempt.filter(r => r.payload.app === app);
     // Never fill a missing outcome from an older attempt, or accept conflicting records.
     const record = matches.length === 1 && matches[0].payload.selectedSha === sha && matches[0].payload.schemaVersion === 1

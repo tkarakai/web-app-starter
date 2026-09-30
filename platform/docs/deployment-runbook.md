@@ -98,7 +98,7 @@ Choose **either** the dashboard or CLI approach.
 
 1. **Install the Vercel GitHub App** (one-time): When you click "Add New Project" in the [Vercel dashboard](https://vercel.com/dashboard), Vercel prompts you to install its GitHub App. Grant access to your repository. This is a GitHub App, not an OAuth token — it lets Vercel read your repo to detect framework settings.
 
-2. **Import the repository six times** (once per project). For each: click "Add New Project" → "Import Git Repository" → select your repo → set the **Root Directory** and confirm the **Framework Preset** is **Next.js**:
+2. **Import the repository six times** (once per project). For each: click "Add New Project" → "Import Git Repository" → select your repo → set the **Root Directory** and confirm the **Framework Preset** is **Next.js** for the projects below:
 
    | Project Name | Root Directory | Framework Preset | Environment |
    |--------------|----------------|------------------|-------------|
@@ -109,7 +109,9 @@ Choose **either** the dashboard or CLI approach.
    | `my-app-admin-staging` | `platform/apps/admin` | **Next.js** | Staging |
    | `my-app-landing-staging` | `apps/landing` | **Next.js** | Staging |
 
-   > **Important:** Both Root Directory and Framework Preset are required on all six projects. The CI/CD build runs `vercel build` from the monorepo root to avoid a [Turbopack path-doubling bug](https://github.com/vercel/next.js/issues/88579). **Root Directory** tells the `@vercel/next` builder which app to build. **Framework Preset = Next.js** ensures the correct builder is used (without it, Vercel falls back to `@vercel/static-build` and fails).
+   The table assumes `apps/landing` is installed. If it has been removed, create **different** projects named `my-app-landing-static` and `my-app-landing-static-staging`, with root `apps/landing-static`, preset **Other**, build command `bun run build` and output directory `out`. Do not repurpose the `landing` projects. Only the selected variant is deployed; no toggle is needed.
+
+   Builds run `vercel build` from the monorepo root with the selected project root. Web/admin and the primary landing retain their Next.js preset; `landing-static` uses Vercel static hosting. Configure its `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` per environment; it needs no Convex variable. Point web's `LANDING_URL` at the selected landing's URL.
 
 **Option B — CLI (no GitHub connection needed):**
 
@@ -345,7 +347,9 @@ These are used by the CD workflows to authenticate with Vercel when running `ver
 | `VERCEL_PROJECT_ID_LANDING` | landing production project ID | From step 2b |
 | `VERCEL_PROJECT_ID_WEB_STAGING` | web staging project ID | From step 2b |
 | `VERCEL_PROJECT_ID_ADMIN_STAGING` | admin staging project ID | From step 2b |
-| `VERCEL_PROJECT_ID_LANDING_STAGING` | landing staging project ID | From step 2b |
+| `VERCEL_PROJECT_ID_LANDING_STAGING` | landing staging project ID, when installed | From step 2b |
+| `VERCEL_PROJECT_ID_LANDING_STATIC` | Separate static landing production project ID, when primary landing is removed | From step 2b; Other preset, output `out` |
+| `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` | Separate static landing staging project ID, when primary landing is removed | From step 2b; Other preset, output `out` |
 
 > **Note:** All `VERCEL_PROJECT_ID_*` secrets must be **repository secrets** (not environment secrets) because the CD workflow build jobs run without an `environment:` context and can only access repository-level secrets.
 
@@ -433,7 +437,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Two Convex projects created: staging and production (step 2a)
 - [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
 - [ ] Six Vercel projects created: 3 staging + 3 production (step 2b)
-- [ ] Vercel Root Directory set to the app directory on all 6 projects (`apps/web`, `apps/landing`, `platform/apps/admin`; step 2b)
+- [ ] Vercel Root Directory set to the app directory on all 6 projects (`apps/web`, the selected landing, `platform/apps/admin`; step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
 - [ ] Convex environment variables set: `SITE_URL`, `ADMIN_SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)

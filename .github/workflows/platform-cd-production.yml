@@ -64,20 +64,25 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       landing: ${{ steps.present.outputs.landing }}
+      landing-app: ${{ steps.present.outputs.landing-app }}
     steps:
       - name: Check optional apps in the selected commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
           persist-credentials: false
+      - name: Checkout landing selection tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ops-workflow
+          sparse-checkout: .github/scripts
+          persist-credentials: false
       - id: present
         run: |
-          if [ -f apps/landing/package.json ]; then
-            echo "landing=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "landing=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::landing is not installed in the selected commit."
-          fi
+          LANDING_APP=$(bash .ops-workflow/.github/scripts/platform-landing-app.sh . --required)
+          echo "landing=true" >> "$GITHUB_OUTPUT"
+          echo "landing-app=$LANDING_APP" >> "$GITHUB_OUTPUT"
 
       - name: Verify confirmation string
         if: inputs.confirm != 'deploy-production'
@@ -249,11 +254,11 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
-          app: landing
+          app: ${{ needs.validate.outputs.landing-app }}
           environment: production
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ secrets[needs.validate.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC' || 'VERCEL_PROJECT_ID_LANDING'] }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Attest provenance for anything actually built here ──────────
@@ -304,7 +309,7 @@ jobs:
         if: needs.build-landing.outputs.reused == 'false'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: artifacts/landing/landing.tar.gz
+          subject-path: artifacts/landing/${{ needs.build-landing.outputs.tarball }}
 
   # ─── Deploy Convex backend (before frontend) ────────────────────
   deploy-convex:
@@ -428,7 +433,7 @@ jobs:
 
   deploy-landing:
     name: Deploy Landing (Production)
-    needs: [build-landing, deploy-convex]
+    needs: [validate, build-landing, deploy-convex]
     if: >-
       !cancelled() &&
       needs.build-landing.result == 'success' &&
@@ -456,7 +461,7 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
-          app: landing
+          app: ${{ needs.validate.outputs.landing-app }}
           environment: production
           artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
           tarball: ${{ needs.build-landing.outputs.tarball }}
@@ -469,7 +474,7 @@ jobs:
           expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+          vercel-project-id: ${{ secrets[needs.validate.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC' || 'VERCEL_PROJECT_ID_LANDING'] }}
 
   # ─── Post-deploy health checks and tagging ───────────────────────
   post-deploy:
@@ -566,6 +571,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OPS_NEEDS: ${{ toJSON(needs) }}
+          OPS_LANDING_APP: ${{ needs.validate.outputs.landing-app }}
           OPS_ENVIRONMENT: production
           OPS_SHA: ${{ inputs.git_sha }}
           OPS_OPERATION: deploy
