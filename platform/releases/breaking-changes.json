@@ -369,7 +369,20 @@
           "instructions": "platform/docs/component-data-migration.md"
         }
       ],
-      "env": [],
+      "env": [
+        {
+          "name": "VERCEL_PROJECT_ID_LANDING_STATIC_STAGING",
+          "kind": "new",
+          "secret": true,
+          "required": false
+        },
+        {
+          "name": "VERCEL_PROJECT_ID_LANDING_STATIC",
+          "kind": "new",
+          "secret": true,
+          "required": false
+        }
+      ],
       "removedFiles": [
         ".eslintrc.cjs",
         "lighthouserc.json",
