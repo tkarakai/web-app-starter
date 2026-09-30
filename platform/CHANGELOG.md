@@ -18,6 +18,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Locale-root redirects preserve the requested locale on the way to the dashboard and sign-in (#186).
 - Optional `i18n.defaultLocale` selects a shipped fallback locale independently of locale ordering; omission stays English (#185). Static 404 HTML uses the configured merged catalog.
 - Dev, local CI, staging, production and rollback select `landing` first, falling back to `landing-static` only when the primary app is removed (#187, #188). The static fallback uses separate Vercel projects, static output and distinct artifacts. Ops records and verifies its physical app identity.
+- Staging audit records retain the selected landing app when CI fails, so a successful rerun does not leave conflicting evidence in `ops inspect`.
 - Local CI keeps build-time placeholder backend URLs out of browser-test server environments.
 - Both landing dev commands use managed process tracking; static-only startup needs no Convex. Adoption preserves the generic landing command and rejects removal of the last landing before changing files.
 

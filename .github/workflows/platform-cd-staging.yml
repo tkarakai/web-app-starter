@@ -691,7 +691,7 @@ jobs:
   ops-record:
     name: Record Ops Outcomes
     if: always()
-    needs: [build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, changes, smoke-test, record]
+    needs: [validate-source, build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, changes, smoke-test, record]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -702,7 +702,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OPS_NEEDS: ${{ toJSON(needs) }}
-          OPS_LANDING_APP: ${{ needs.changes.outputs.landing-app }}
+          OPS_LANDING_APP: ${{ needs.validate-source.outputs.landing-app }}
           OPS_ENVIRONMENT: staging
           OPS_SHA: ${{ inputs.git_sha || github.sha }}
           OPS_OPERATION: deploy

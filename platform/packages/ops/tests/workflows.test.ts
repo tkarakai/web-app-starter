@@ -6,6 +6,9 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { YAML, spawn } from "bun";
 import { defaultConfig } from "../src/config";
+import { OpsService } from "../src/service";
+import { parseOptions } from "../src/options";
+import type { Api, Deployment } from "../src/types";
 const require = createRequire(import.meta.url);
 const recordOps = require("../../../../.github/scripts/record-ops.cjs");
 const sha = "a".repeat(40), old = "b".repeat(40);
@@ -416,4 +419,55 @@ test.each(["landing", "landing-static"])("staging change evaluation schedules th
       expect(await readFile(output, "utf8")).toContain(`landing=${force || changed}\n`);
     }
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test.each(["landing", "landing-static"])("failed staging CI followed by a successful rerun preserves %s evidence", async selected => {
+  const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as {
+    jobs: Record<string, { needs: string[]; steps: (Step & { env?: Record<string, string> })[] }>;
+  };
+  const job = w.jobs["ops-record"];
+  const expression = job.steps.find(s => s.name === "Persist app outcomes")!.env!.OPS_LANDING_APP;
+  const selectionJob = expression.match(/^\$\{\{ needs\.([a-z-]+)\.outputs\.landing-app \}\}$/)![1];
+  const f = recordFixture();
+  for (const attempt of [1, 2]) {
+    const passed = attempt === 2;
+    const outcomes: Record<string, { result: string; outputs: Record<string, string> }> = {
+      "validate-source": { result: "success", outputs: { "landing-app": selected } },
+      changes: passed ? { result: "success", outputs: { "landing-app": selected, web: "true", admin: "true", landing: "true", backend: "true" } }
+        : { result: "skipped", outputs: {} },
+    };
+    // Only direct dependencies appear in Actions' needs context. CI failure skips
+    // changes and deployment jobs; source selection has already succeeded.
+    const needs = Object.fromEntries(job.needs.map(name => [name, outcomes[name] ?? { result: passed ? "success" : "skipped", outputs: {} }]));
+    process.env.OPS_NEEDS = JSON.stringify(needs);
+    process.env.OPS_LANDING_APP = needs[selectionJob]?.outputs["landing-app"] ?? "";
+    process.env.GITHUB_RUN_ATTEMPT = String(attempt);
+    await recordOps(f.args);
+  }
+  const records: Deployment[] = f.records.map((record, index) => ({
+    id: index + 1, sha: String(record.ref), environment: String(record.environment), task: "ops-record",
+    created_at: `2026-09-30T12:0${index < 4 ? 1 : 2}:00Z`, payload: record.payload as Deployment["payload"],
+  }));
+  const api: Api = {
+    async get<T>(path: string): Promise<T> {
+      if (path.endsWith(`/commits/${sha}`)) return { sha, commit: { message: "Static landing" } } as T;
+      if (path.endsWith("/status")) return { statuses: [{ context: "ci/gate-passed", state: "success" }] } as T;
+      if (path.includes("/git/matching-refs/")) return [] as T;
+      throw new Error(`Unexpected evidence request: ${path}`);
+    },
+    async pages<T>(path: string): Promise<T[]> {
+      if (path.includes("/deployments?")) return [...records].reverse() as T[];
+      throw new Error(`Unexpected evidence list: ${path}`);
+    },
+    async post<T>(): Promise<T> { throw new Error("Inspection must not write"); },
+  };
+  const service = new OpsService(defaultConfig("team/repo"), api);
+  const inspection = await service.inspect(sha, parseOptions(["inspect", sha, "--to", "staging"]));
+  expect(service.errors).toEqual([]);
+  expect(inspection.rows?.map(row => row.app)).toEqual(["web", "admin", selected, "backend"]);
+  expect(records).toHaveLength(8);
+  expect(records.slice(0, 4).every(record => record.payload.result === "skipped" && record.payload.runAttempt === 1)).toBe(true);
+  expect(records.slice(4).every(record => record.payload.result === "success" && record.payload.runAttempt === 2)).toBe(true);
+  expect(records.every(record => record.payload.landingApp === selected)).toBe(true);
+  expect(records.filter(record => record.payload.app === selected)).toHaveLength(2);
 });
