@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getLocaleDirection, type Locale, locales } from "@web-app-starter/i18n";
+import DocumentShell from "@/components/document-shell";
 import { DocumentLocale } from "@/components/document-locale";
 import { Footer } from "@/components/footer";
 
@@ -85,12 +86,14 @@ export default async function LocaleLayout({
   const dir = getLocaleDirection(locale);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <NextIntlClientProvider messages={messages}>
-        <DocumentLocale lang={locale} dir={dir} />
-        <div className="flex-1">{children}</div>
-        <Footer />
-      </NextIntlClientProvider>
-    </ThemeProvider>
+    <DocumentShell locale={locale}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <NextIntlClientProvider messages={messages}>
+          <DocumentLocale lang={locale} dir={dir} />
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </NextIntlClientProvider>
+      </ThemeProvider>
+    </DocumentShell>
   );
 }

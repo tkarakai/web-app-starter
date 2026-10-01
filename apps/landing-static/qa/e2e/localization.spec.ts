@@ -34,6 +34,6 @@ for (const locale of locales) {
     const t = createTranslator({ locale, messages: loadMessages(locale) });
     await page.goto(`/${locale}/does-not-exist/`);
     await expect(page.getByRole("heading", { name: t("common.notFound") })).toBeVisible();
-    await expect(page.locator(`[lang="${locale}"][dir="${getLocaleDirection(locale)}"]`)).toBeVisible();
+    await expect(page.locator(`div[lang="${locale}"][dir="${getLocaleDirection(locale)}"]`)).toBeVisible();
   });
 }

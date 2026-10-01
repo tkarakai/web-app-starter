@@ -1,19 +1,18 @@
-import "./globals.css";
+import "@/app/globals.css";
+import { defaultLocale, getLocaleDirection } from "@web-app-starter/i18n";
 import { BrandTokenStyle, EnvironmentBannerWrapper } from "@web-app-starter/design-system";
 import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
-/**
- * Root layout — provides the required html/body shell for Next.js 16 static export.
- * Locale-specific lang and dir attributes are applied by [locale]/layout.tsx
- * via an inline script that runs synchronously before paint.
- */
-export default function RootLayout({
+/** Server-rendered document attributes; shared by locale routes and the entry page. */
+export default function DocumentShell({
   children,
+  locale = defaultLocale,
 }: {
   children: React.ReactNode;
+  locale?: string;
 }) {
   return (
-    <html suppressHydrationWarning>
+    <html lang={locale} dir={getLocaleDirection(locale)} suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
         {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="landing-static" />}
         <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
