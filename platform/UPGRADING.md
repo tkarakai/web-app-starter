@@ -17,11 +17,13 @@ This command handles upgrades **between separated platform releases**. An older 
 over an existing app. Existing deployments with legacy platform tables must also complete
 [the component data migration](docs/component-data-migration.md) before deploying v2.
 
+For initial adoption into an existing repository, use [the existing-repository guide](README.md#existing-repositories). For a missing or invalid baseline, read this guide from the **target published tag**; the installed copy may predate the repair. Never invent a baseline or run adoption over an already adopted app.
+
 ## Apps adopted before the first published release
 
-A checkout can say `2.0.0` without containing the published `v2.0.0` commit. Adoption records
-the checkout's `HEAD`, so adopting after merging starter source into an existing repository
-can also record an app merge commit. Neither is a published-release baseline. The automatic
+A checkout can say `2.0.0` without containing the published `v2.0.0` commit. Earlier adoption
+versions recorded the checkout's `HEAD`, so adopting after merging starter source into an existing
+repository could also record an app merge commit. Neither is a published-release baseline. The automatic
 updater deliberately rejects these records; choosing a later target version does not fix them.
 
 For an app already using the separated v2 layout, make a one-time, reviewed source migration
