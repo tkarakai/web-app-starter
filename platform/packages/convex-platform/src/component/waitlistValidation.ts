@@ -1,82 +1,38 @@
-/** Valid superpower values for the waitlist meta field. */
-const VALID_SUPERPOWERS = [
-  "coffee-to-code",
-  "pixel-perfect",
-  "bug-whisperer",
-  "spreadsheet-wizard",
-  "inbox-zero",
-  "parallel-parking",
-  "remembering-names",
-  "never-burning-toast",
-  "explaining-tech",
-  "finding-restaurants",
-  "staying-calm",
-  "other",
-] as const;
+/** Inclusive UTF-8 limit on the JSON string, including whitespace and escapes. */
+export const MAX_WAITLIST_META_BYTES = 16_384;
 
-/** Valid excitement values for the waitlist meta field. */
-const VALID_EXCITEMENT = [
-  "take-my-money",
-  "cant-wait",
-  "cautiously-optimistic",
-  "just-browsing",
-  "friend-made-me",
-] as const;
-
-/** Valid role values for the optional waitlist profile fields. */
-const VALID_ROLES = [
-  "founder",
-  "engineering",
-  "product",
-  "design",
-  "agency",
-  "other",
-] as const;
-
-const MAX_COMPANY_LENGTH = 120;
-const MAX_USE_CASE_LENGTH = 500;
-
-/** Validate and parse the JSON meta string. Throws on invalid input. */
+/**
+ * Validate app-owned metadata without prescribing questions or answer types.
+ * Accept a JSON object; reject prototype-related keys anywhere in its tree.
+ * Check size before parsing, then walk iteratively so even deeply nested input
+ * has work and memory bounded by the byte cap, without exhausting the JS stack.
+ */
 export function validateMeta(meta: string): void {
-  let parsed: Record<string, unknown>;
+  // UTF-8 needs at least one byte per UTF-16 code unit. This cheap check avoids
+  // allocating an encoded copy of an arbitrarily large string.
+  if (meta.length > MAX_WAITLIST_META_BYTES ||
+      new globalThis.TextEncoder().encode(meta).byteLength > MAX_WAITLIST_META_BYTES) {
+    throw new Error("INVALID_META: exceeds 16384 UTF-8 bytes");
+  }
+
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(meta) as Record<string, unknown>;
+    parsed = JSON.parse(meta);
   } catch {
     throw new Error("INVALID_META: must be valid JSON");
   }
-
-  if (!Array.isArray(parsed.superpowers) || parsed.superpowers.length === 0) {
-    throw new Error("INVALID_META: at least one superpower is required");
-  }
-  for (const s of parsed.superpowers) {
-    if (!(VALID_SUPERPOWERS as readonly string[]).includes(s as string)) {
-      throw new Error("INVALID_META: invalid superpower value");
-    }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("INVALID_META: must be a JSON object");
   }
 
-  if (!Array.isArray(parsed.excitement) || parsed.excitement.length === 0) {
-    throw new Error("INVALID_META: at least one excitement level is required");
-  }
-  for (const e of parsed.excitement) {
-    if (!(VALID_EXCITEMENT as readonly string[]).includes(e as string)) {
-      throw new Error("INVALID_META: invalid excitement value");
-    }
-  }
-
-  // Optional profile fields: absent is fine, present must be well-formed.
-  if (parsed.role !== undefined) {
-    if (!(VALID_ROLES as readonly unknown[]).includes(parsed.role)) {
-      throw new Error("INVALID_META: invalid role value");
-    }
-  }
-  if (parsed.company !== undefined) {
-    if (typeof parsed.company !== "string" || parsed.company.length > MAX_COMPANY_LENGTH) {
-      throw new Error("INVALID_META: company must be a string of at most 120 characters");
-    }
-  }
-  if (parsed.useCase !== undefined) {
-    if (typeof parsed.useCase !== "string" || parsed.useCase.length > MAX_USE_CASE_LENGTH) {
-      throw new Error("INVALID_META: useCase must be a string of at most 500 characters");
+  const pending: object[] = [parsed];
+  while (pending.length > 0) {
+    const current = pending.pop()!;
+    for (const [key, value] of Object.entries(current)) {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") {
+        throw new Error("INVALID_META: prohibited key");
+      }
+      if (value !== null && typeof value === "object") pending.push(value);
     }
   }
 }

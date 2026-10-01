@@ -1,4 +1,5 @@
 import type { HttpRouter } from "convex/server";
+import { isRateLimitError } from "convex-helpers/server/rateLimit";
 
 import { internal } from "../_generated/api";
 import { httpAction } from "../_generated/server";
@@ -121,8 +122,16 @@ export function registerPlatformRoutes(http: HttpRouter): void {
     method: "POST",
     handler: httpAction(async (ctx, request) => {
       try {
-        const body = (await request.json()) as Record<string, unknown>;
-        const { email, meta } = body;
+        let body: unknown;
+        try {
+          body = await request.json();
+        } catch {
+          throw new Error("INVALID_REQUEST");
+        }
+        if (body === null || typeof body !== "object" || Array.isArray(body)) {
+          throw new Error("INVALID_REQUEST");
+        }
+        const { email, meta } = body as Record<string, unknown>;
 
         // Basic input validation
         if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -140,7 +149,7 @@ export function registerPlatformRoutes(http: HttpRouter): void {
 
         const result = await ctx.runMutation(internal.platform.waitlist.join, {
           email: email.trim().toLowerCase(),
-          meta: typeof meta === "string" ? meta : JSON.stringify(meta ?? {}),
+          meta: typeof meta === "string" ? meta : JSON.stringify(meta === undefined ? {} : meta),
           clientIp,
         });
 
@@ -154,16 +163,18 @@ export function registerPlatformRoutes(http: HttpRouter): void {
         // Known client errors → 400; everything else → 500
         const clientErrors = [
           "WAITLIST_NOT_ENABLED",
+          "INVALID_REQUEST",
           "INVALID_EMAIL",
           "INVALID_META",
           "RATE_LIMITED",
         ];
-        const isClientError = clientErrors.some((code) =>
-          message.includes(code)
-        );
+        const code = isRateLimitError(err) ? "RATE_LIMITED"
+          : message.includes("EMAIL_TOO_LONG") ? "INVALID_EMAIL"
+          : clientErrors.find((code) => message.includes(code));
 
-        return new Response(JSON.stringify({ error: message }), {
-          status: isClientError ? 400 : 500,
+        // Return only stable codes, never Convex diagnostics or submitted values.
+        return new Response(JSON.stringify({ error: code ?? "UNKNOWN_ERROR" }), {
+          status: code ? 400 : 500,
           headers: corsHeaders(request),
         });
       }

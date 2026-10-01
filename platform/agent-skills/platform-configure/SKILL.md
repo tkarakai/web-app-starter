@@ -44,6 +44,19 @@ asks to replace the App. `--fallback` documents the manual-CI/workflow-file limi
 (`platform/AGENTS.md`, "Environment variables"); translated wording is in the message files
 (`platform-add-strings`); `apps/demo` has its own settings.
 
+## Waitlist questions
+
+`features.waitlist` controls feature visibility. Questions and answer validation belong to
+app code, not `app.config.ts` or the platform backend. The reference form is
+`apps/landing/src/components/waitlist-form.tsx`; keep or replace its sample questions and
+app-owned translations. Submit `meta: JSON.stringify(answers)`, or `meta: "{}"` for no
+questions. No backend patch, migration or new config key is needed.
+
+Read the [waitlist metadata contract](../../docs/authentication-and-onboarding.md#waitlist-metadata-contract)
+for the 16,384-byte UTF-8 cap, object-only root, prohibited keys and admin display behavior.
+The platform enforces those safety constraints; validate app-specific business rules in
+app-owned server code if you rely on answers for trusted decisions.
+
 ## Steps
 
 1. Edit `app.config.ts`. Keep the `satisfies AppConfig` check and the existing structure; don't add

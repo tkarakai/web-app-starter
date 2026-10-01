@@ -339,6 +339,52 @@ When the invited person clicks the link:
 
 User invitations are sent from **Manage > Onboarding** (Users tab) and allow **multiple email addresses**. The invitation link points to `/signup-with-invitation?token=<invitation-token>` on the first origin in `SITE_URL` and is only valid for the web app. User invitations follow the user sign-up flow (§7).
 
+### Waitlist metadata contract
+
+Apps own their waitlist questions and answer schema. Send a JSON object serialized as the
+existing `meta` **string** to `POST /api/waitlist/join`:
+
+```ts
+const body = JSON.stringify({
+  email: "buyer@example.test",
+  meta: JSON.stringify({ teamSize: 5, interests: ["reporting"] }),
+});
+// No questions: meta: "{}"
+```
+
+The platform accepts any JSON object within these safety constraints:
+
+- Maximum **16,384 UTF-8 bytes (16 KiB), inclusive**, measured on the metadata string,
+  including JSON syntax, whitespace and escapes, before parsing. This is not a character
+  count; clients can measure with `new TextEncoder().encode(meta).byteLength`.
+- The root must be an object, not an array, null, string, number or boolean. Nested JSON
+  objects, arrays and scalar values are allowed. Malformed JSON is rejected.
+- Keys named `__proto__`, `constructor` or `prototype` are rejected at every nesting
+  level, including inside arrays and when written with JSON Unicode escapes. These words
+  are allowed as string values. Validation uses an iterative walk bounded by the byte cap;
+  there is no additional question-count or nesting-depth limit.
+
+The original string is stored unchanged. For compatibility the HTTP endpoint also accepts
+an object-valued `meta` (serialized before validation), and omitted `meta` becomes `"{}"`.
+Invalid metadata returns HTTP 400 with `{ error: "INVALID_META" }`; malformed request bodies
+return `INVALID_REQUEST`. Error responses contain fixed codes, never submitted metadata or
+internal diagnostics. Email validation/normalization, onboarding restrictions, deduplication
+and per-visitor rate limits still apply. Joining again does not replace stored answers.
+
+The reference form in `apps/landing/src/components/waitlist-form.tsx` still asks for
+superpowers and excitement and offers role, company (120 characters) and use case
+(500 characters). These are sample-app choices, not platform-required fields. Change or
+remove them in your app and keep their translations in `packages/messages/`. The platform
+validates the transport and safety boundary, not your business rules; if answers drive
+trusted decisions, validate them in app-owned server code before using them. Treat stored
+metadata as untrusted and do not merge it into configuration or render it as HTML.
+
+Admin retains the sample columns when their values have the expected types. Missing or
+incompatible values display a dash; a **Metadata → View metadata** cell shows the original
+JSON as escaped text, including custom fields. Older malformed rows cannot crash these
+cells. This change requires no migration, configuration change or mandatory app action;
+existing sample submissions and stored rows continue to work.
+
 ## 10. Admin App — Manage Section
 
 The existing **Manage > Onboarding** page gains a tab bar to split between Users and Admins. This is not two separate sidebar entries — it is one page with two tabs. The existing users table is reused, just filtered by role.
