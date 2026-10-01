@@ -99,13 +99,9 @@ bun run test:watch           # Watch mode for development (run from apps/web)
 
 # Convex Tests (backend functions)
 bun run test:convex          # Run Convex backend tests (packages/backend)
-
-# Playwright E2E Tests
-bun run test:e2e             # Run all E2E tests
-
-# Run everything
-bun run test:all             # Bun + Vitest + Convex + Playwright
 ```
+
+For browser tests and full validation, follow [reliable E2E execution](testing.md#running-playwright-e2e-reliably).
 
 To run tests for a specific workspace directly:
 
@@ -114,7 +110,6 @@ To run tests for a specific workspace directly:
 cd apps/web
 bun run test                 # Bun unit tests for web app
 bun run test:unit            # Vitest component tests
-bun run test:e2e             # Playwright E2E
 
 # From packages/backend/
 cd packages/backend

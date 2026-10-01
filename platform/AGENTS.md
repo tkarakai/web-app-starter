@@ -250,5 +250,5 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 
 ## Verification
 
-Before pushing, run `bun run ci` (or `bun run ci:quick` to skip E2E). Keep `lint`, `typecheck` and
-the test suites green.
+Before pushing, follow the [local CI guidance](docs/ci.md#local-ci-pre-push-checks).
+Keep `lint`, `typecheck` and the test suites green.

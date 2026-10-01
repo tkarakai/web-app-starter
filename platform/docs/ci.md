@@ -131,7 +131,7 @@ Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/
 **Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation) and bind-mount mode (`-b`) to make composite actions visible to act.
 
 **When to use which**:
-- `bun run ci` — Fast native checks, no Docker required
+- [Local CI script](#local-ci-pre-push-checks) — Fast native checks, no Docker required
 - `bun run ci:act` — Full GitHub Actions simulation in Docker
 - `bun run ci:act:offline` — Fast offline execution (no network required)
 
