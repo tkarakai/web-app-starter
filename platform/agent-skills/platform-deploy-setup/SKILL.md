@@ -35,7 +35,8 @@ and explicit manual requests fail visibly; configured apps require no setup mark
 commands run from `packages/backend`. Branch inspection must retain all installed-app required
 checks. Public state uses unique atomic temporary writes so abandoned files do not block resume.
 
-Saved proof is bound to the selected topology and staging mappings. Recheck actual serving,
+Saved proof is bound to the selected topology and staging mappings; unrelated ops app mappings
+are preserved and do not fail the mapping check. Explicit `--request` IDs are for deploy/watch only. Recheck actual serving,
 including when a saved workflow succeeded. Changed mappings or legacy evidence require a new
 explicit authorization at the wizard’s local prompt; never silently redispatch. A declined prompt
 preserves the previous request. Deterministic provider fixtures are simulated evidence, not live

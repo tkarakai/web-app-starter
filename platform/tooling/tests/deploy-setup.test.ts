@@ -287,3 +287,35 @@ test("serving verification checks current ops mappings and propagates provider f
   await assert.rejects(() => verifyServing(s, ["web"], exec, root), /not serving/);
   assert.equal(calls, 1);
 });
+
+test("selected proof mappings allow unrelated ops apps but reject selected identity changes", async t => {
+  const { checkProofMappings, verifyServing } = await import("../deploy-setup/proof.ts");
+  const root = mkdtempSync(path.join(tmpdir(), "deploy-selected-proof-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const landing of ["landing", "landing-static"] as const) {
+    const installed = ["web", "admin", landing] as const;
+    const s = state(); s.proof = "42";
+    for (const app of installed) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.com` };
+    const config = { repository: s.repository, teamId: s.team, workflowRef: s.branch,
+      apps: Object.fromEntries([...installed, "other"].map(app => [app, { projects: { staging: {
+        id: `prj_${app}`, domain: `${app}.example.com`,
+      } } }])) };
+    const file = path.join(root, "ops.config.json");
+    const text = JSON.stringify(config); writeFileSync(file, text);
+    assert.doesNotThrow(() => checkProofMappings(s, [...installed], root));
+    let verifications = 0;
+    await verifyServing(s, [...installed], async () => { verifications++; return ""; }, root);
+    assert.equal(verifications, 1);
+    assert.equal(readFileSync(file, "utf8"), text);
+    for (const app of installed) for (const field of ["id", "domain"] as const) {
+      const changed = structuredClone(config); changed.apps[app].projects.staging[field] = "different";
+      writeFileSync(file, JSON.stringify(changed));
+      assert.throws(() => checkProofMappings(s, [...installed], root), /mappings differ/);
+    }
+    for (const app of installed) {
+      const changed = structuredClone(config); delete changed.apps[app];
+      writeFileSync(file, JSON.stringify(changed));
+      assert.throws(() => checkProofMappings(s, [...installed], root), /mappings differ/);
+    }
+  }
+});

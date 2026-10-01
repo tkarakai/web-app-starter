@@ -371,3 +371,12 @@ test("skips do not conceal genuinely missing mappings or domain divergence", asy
   expect(state.skipped).toHaveLength(1);
   expect(service.warnings.join(" ")).toContain("select the hostname");
 });
+
+test("explicit request IDs support deploy and watch but reject rollback", () => {
+  for (const flag of [["--request", "setup-proof"], ["--request=setup-proof"]]) {
+    expect(parseOptions(["deploy", sha, "--to", "staging", ...flag]).request).toBe("setup-proof");
+    expect(parseOptions(["watch", ...flag, "--until", "serving"]).request).toBe("setup-proof");
+    expect(() => parseOptions(["rollback", sha, "--to", "staging", ...flag])).toThrow("--request is not supported for rollback");
+  }
+  expect(parseOptions(["rollback", sha, "--to", "staging", "--yes"]).command).toBe("rollback");
+});

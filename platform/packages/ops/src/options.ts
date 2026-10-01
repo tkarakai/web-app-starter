@@ -58,7 +58,7 @@ export function parseOptions(argv: string[]): Options {
       limit: ["status", "history", "builds", "candidates", "runs"],
       team: ["projects", "setup"],
       until: ["watch", "deploy", "rollback"], run: ["verify"],
-      attempt: ["watch", "logs", "diagnose", "verify"], request: ["watch", "deploy", "rollback"],
+      attempt: ["watch", "logs", "diagnose", "verify"], request: ["watch", "deploy"],
     };
     for (const [flag, commands] of Object.entries(allowed)) if (supplied.has(flag) && !commands.includes(o.command)) usage(`--${flag} is not supported for ${o.command}.`);
     if ((supplied.has("interval") || supplied.has("timeout")) && !o.watch && o.command !== "watch") usage("--interval and --timeout require a watch command or --watch.");

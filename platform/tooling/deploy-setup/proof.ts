@@ -16,7 +16,6 @@ export function checkProofMappings(state: State, installed: App[], root = proces
     apps?: Record<string, { projects?: { staging?: { id?: string; domain?: string } } }>;
   };
   if (config.repository !== state.repository || config.teamId !== state.team || config.workflowRef !== state.branch
-    || Object.keys(config.apps ?? {}).sort().join() !== [...installed].sort().join()
     || installed.some(app => {
       const expected = state.projects[`${app}/staging`], actual = config.apps?.[app]?.projects?.staging;
       return !expected || actual?.id !== expected.id || actual?.domain !== expected.domain;

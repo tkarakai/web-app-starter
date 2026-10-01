@@ -68,7 +68,9 @@ The final step asks to deploy the default branch's immutable commit through `ops
 serving verification. `bun run deploy:setup --prove` resumes the saved request rather than
 repeating provisioning or dispatching another deployment while its configuration remains unchanged.
 Saved requests bind proof to the selected topology, staging domains, project/backend mappings,
-repository and team. Saved successful proof is checked against current `ops.config.json` mappings
+repository and team. Mapping validation checks the selected apps while preserving unrelated
+ops app mappings. Caller-supplied `--request` IDs are supported by deploy and watch, not rollback.
+Saved successful proof is checked against current `ops.config.json` mappings
 and reverified for serving through `ops verify`; workflow success alone is insufficient. Changed
 configuration or legacy unbound evidence requires explicit local authorization for a new proof.
 Declining preserves the saved request and dispatches nothing. If dispatch failed ambiguously, inspect
