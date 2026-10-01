@@ -122,3 +122,17 @@ test("interrupted staging proof resumes the same request without duplicate deplo
   await stagingProof(s, io);
   assert.equal(dispatches, 1); assert.equal(watches, 2);
 });
+
+test("an interrupted key write cannot create duplicate Convex credentials", async () => {
+  const { ensureDeployKey } = await import("../deploy-setup/providers.ts");
+  const s = state(); s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
+  let creates = 0, exists = false;
+  const request: Request = async <T>(_endpoint: string, method = "GET"): Promise<T> => {
+    if (method === "GET") return (exists ? [{ name: "github-owner-app-staging" }] : []) as T;
+    creates++; exists = true; return { deployKey: "prod:backend|secret-sentinel" } as T;
+  };
+  const exec: Run = async (_file, args) => { if (args.includes("list")) return "[]"; throw Error("storage interrupted"); };
+  await assert.rejects(() => ensureDeployKey(s, "staging", request, exec), /storage interrupted/);
+  await assert.rejects(() => ensureDeployKey(s, "staging", request, exec), /No duplicate key/);
+  assert.equal(creates, 1);
+});

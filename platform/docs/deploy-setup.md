@@ -44,9 +44,8 @@ There are two kinds of provider credentials:
 Enter credentials only at the hidden terminal prompts. Values go to APIs in memory or to
 `gh secret set`/`convex env set` through stdin. They never enter the public resume file, process
 arguments or setup logs. Provider error bodies are suppressed because they can echo inputs.
-Existing backend auth secrets and email credentials are retained. On resume, supply an existing
-Convex deployment key locally when its GitHub secret already exists: GitHub cannot return a
-stored secret's value. Keys are not rotated just to resume setup.
+Existing backend auth secrets and email credentials are retained. On resume, the authenticated Convex CLI administers the explicitly selected deployment;
+existing GitHub deployment secrets are neither retrieved nor rotated.
 
 Public progress lives in git-ignored `.deploy-setup.json`. Keep it to resume project IDs, domains
 and the staging request. `ops.config.json` receives the same mappings. Rerunning queries live

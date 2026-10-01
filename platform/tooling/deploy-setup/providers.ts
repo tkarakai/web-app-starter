@@ -133,3 +133,14 @@ export async function configureBranch(state: State, installed: App[], exec: Run 
   await github(state.repository, `${endpoint}/required_status_checks`, "PATCH", { strict: old.required_status_checks?.strict ?? true, checks }, exec);
   if (!old.required_pull_request_reviews) await github(state.repository, `${endpoint}/required_pull_request_reviews`, "PATCH", { required_approving_review_count: 1 }, exec);
 }
+
+export async function ensureDeployKey(state: State, env: Environment, request: Request, exec: Run = run) {
+  if ((await secretNames(state.repository, env, exec)).has("CONVEX_DEPLOY_KEY")) return;
+  const backend = state.backends[env]; if (!backend) throw Error(`Missing ${env} backend`);
+  const name = `github-${state.repository.replace("/", "-")}-${env}`;
+  const existing = await request<{ name: string }[]>(`/deployments/${backend.name}/list_deploy_keys`);
+  if (existing.some(key => key.name === name)) throw Error(`Convex key ${name} already exists but its GitHub secret is missing. Restore it with gh secret set CONVEX_DEPLOY_KEY --repo ${state.repository} --env ${env}, or revoke the orphan in https://dashboard.convex.dev before resuming. No duplicate key was created.`);
+  const key = (await request<{ deployKey: string }>(`/deployments/${backend.name}/create_deploy_key`, "POST", { name })).deployKey;
+  if (!key.startsWith(`prod:${backend.name}|`)) throw Error(`The ${env} key does not target ${backend.name}; value withheld.`);
+  await storeSecret(state.repository, "CONVEX_DEPLOY_KEY", key, env, exec);
+}

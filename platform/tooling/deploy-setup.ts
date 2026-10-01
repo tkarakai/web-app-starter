@@ -7,7 +7,7 @@ import { lookup } from "node:dns/promises";
 import path from "node:path";
 import { apps, ENVIRONMENTS, loadState, saveState, safePath, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
 import { ask, hidden, interactive, run } from "./deploy-setup/io.ts";
-import { checkSetup, configureBranch, convexAPI, ensureBackend, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
+import { checkSetup, configureBranch, convexAPI, ensureBackend, ensureDeployKey, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
 import { stagingProof } from "./deploy-setup/proof.ts";
 import rawConfig from "../../app.config.ts";
 import { validateAppConfig } from "../packages/app-config/src/schema.ts";
@@ -94,26 +94,23 @@ async function configure(state: State, root: string) {
   for (const env of ENVIRONMENTS) {
     const backend = state.backends[env]!;
     const keys = await secretNames(state.repository, env);
-    let deployKey: string;
-    if (keys.has("CONVEX_DEPLOY_KEY")) {
-      deployKey = await hidden(`${env} existing Convex production deploy key (reused to verify/set backend env; not rotated)`);
-    } else {
+    if (!keys.has("CONVEX_DEPLOY_KEY")) {
       await confirm(`Create a production deploy key for ${env} backend ${backend.name} and save it to GitHub environment ${env}?`);
-      deployKey = (await convex<{ deployKey: string }>(`/deployments/${backend.name}/create_deploy_key`, "POST", { name: `github-${state.repository.replace("/", "-")}-${env}` })).deployKey;
+      await ensureDeployKey(state, env, convex);
     }
-    if (!deployKey.startsWith(`prod:${backend.name}|`)) throw Error(`The ${env} key must target production deployment ${backend.name}.`);
-    const targetEnv = { CONVEX_DEPLOY_KEY: deployKey };
-    const names = new Set((await run("bun", ["x", "convex", "env", "list", "--names-only"], undefined, targetEnv)).split(/\s+/));
+    // Use the official logged-in CLI for env administration on resume, not unreadable GitHub secrets.
+    const targetEnv = { CONVEX_DEPLOY_KEY: "", CONVEX_DEPLOYMENT: "" };
+    const convexEnv = (args: string[], input?: string) => run("bun", ["x", "convex", "env", ...args, "--deployment-name", backend.name], input, targetEnv);
+    const names = new Set((await convexEnv(["list", "--names-only"])).split(/\s+/));
     const config = values(state, installed, env);
-    for (const [name, value] of Object.entries(config.convex)) await run("bun", ["x", "convex", "env", "set", name], value, targetEnv);
-    if (!names.has("BETTER_AUTH_SECRET")) await run("bun", ["x", "convex", "env", "set", "BETTER_AUTH_SECRET"], randomBytes(32).toString("base64"), targetEnv);
-    if (!names.has("RESEND_API_KEY")) await run("bun", ["x", "convex", "env", "set", "RESEND_API_KEY"], await hidden(`${env} Resend API key from https://resend.com/api-keys (verify your sending domain first)`), targetEnv);
+    for (const [name, value] of Object.entries(config.convex)) await convexEnv(["set", name], value);
+    if (!names.has("BETTER_AUTH_SECRET")) await convexEnv(["set", "BETTER_AUTH_SECRET"], randomBytes(32).toString("base64"));
+    if (!names.has("RESEND_API_KEY")) await convexEnv(["set", "RESEND_API_KEY"], await hidden(`${env} Resend API key from https://resend.com/api-keys (verify your sending domain first)`));
     if (!names.has("EMAIL_FROM")) {
       const from = await ask(`${env} verified sender email (https://resend.com/domains)`);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)) throw Error("Enter a verified sender email address.");
-      await run("bun", ["x", "convex", "env", "set", "EMAIL_FROM"], from, targetEnv);
+      await convexEnv(["set", "EMAIL_FROM"], from);
     }
-    if (!keys.has("CONVEX_DEPLOY_KEY")) await storeSecret(state.repository, "CONVEX_DEPLOY_KEY", deployKey, env);
     for (const app of installed) {
       const project = state.projects[`${app}/${env}`]!;
       await storeSecret(state.repository, secretName(app, env), project.id);
