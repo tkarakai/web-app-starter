@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Update next-intl to 4.14.5 with age-qualified transitive dependencies, including the upstream middleware redirect and catalog prototype-pollution fixes. Locale routing and message loading remain unchanged. Experimental message precompilation remains disabled and is not supported; see the [i18n guide](docs/i18n-architecture.md#scope).
+
 ## [2.0.0] - 2026-09-30
 
 Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never
