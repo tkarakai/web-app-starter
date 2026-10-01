@@ -324,7 +324,7 @@ For example, clone with
    `--remove-sample` removes project, task and upload tables, functions, screens and strings,
    leaving a dashboard shell with account settings, announcements and sign-out.
 4. Links the platform skills into `.claude/skills/` and `.agents/skills/`.
-5. Writes `.platform-base.json` (platform version and commit) and adds a main-only, no-tags `upstream` remote (omit with `--no-upstream`). It also sets `gh` to your app repository when available.
+5. Writes `.platform-base.json` (platform version and commit) and, if absent, adds a main-only, no-tags `upstream` remote (omit with `--no-upstream`). Existing remotes are unchanged; see [existing repositories](#existing-repositories) to narrow their fetches. It also sets `gh` to your app repository when its remote is configured, or prints the command to run afterward.
 6. Runs the zone check and a build, and prints what is yours and what is the platform's.
 
 CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
