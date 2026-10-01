@@ -10,7 +10,7 @@ See [landing selection and development commands](development.md) and
 Run the same checks that GitHub Actions CI runs before pushing:
 
 ```bash
-bun run ci                   # Full CI check (runs everything)
+CI=true bun run ci           # Full CI check; supported single-worker web E2E
 bun run ci:quick             # Skip E2E tests for faster feedback
 ```
 
@@ -28,6 +28,13 @@ starter upgrade checks use the root scripts):
 10. **Playwright E2E tests** (reuses running development servers or starts them through each app's Playwright configuration)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
+
+Use `CI=true` for full local CI and standalone E2E (`CI=true bun run test:e2e`).
+Web's Playwright configuration then uses one worker and retries instead of local parallel
+workers that can exceed the per-IP edge rate limit and cause HTTP 429/locator timeouts.
+This selects test execution settings, not a rate-limit bypass; production defaults stay
+unchanged. See [running E2E reliably](testing.md#running-playwright-e2e-reliably) for server
+isolation and troubleshooting.
 
 With `CI=true`, the dev harness gives its anonymous local Convex backend a five-second query
 execution budget. This avoids one-second wall-clock timeouts while small shared runners compile

@@ -58,6 +58,30 @@ describe("Button", () => {
 });
 ```
 
+## Running Playwright E2E reliably
+
+Install the pinned browsers once with `bun run setup:e2e`, then run from the repository root:
+
+```bash
+CI=true bun run test:e2e  # App suites run sequentially; web uses one worker and retries
+CI=true bun run ci        # Full local validation, including E2E
+```
+
+For only web, run `CI=true bun run --cwd apps/web test:e2e`. `CI=true` selects the
+supported single-worker configuration and prevents reuse of an unrelated existing server.
+Without it, Playwright chooses several local workers. Their requests share one IP and can
+exceed the web proxy's default **200 page requests per 60 seconds**, producing HTTP 429
+`Too Many Requests`, empty titles and cascading locator/`fillStable` timeouts that look like
+unrelated app failures. See [edge rate limiting](rate-limiting-architecture.md#layer-3-edge-proxy-http-requests).
+
+Do not disable rate limiting or raise deployment limits to make tests pass. Stop this
+checkout's dev servers before switching to CI mode (`bun run dev:stop`); the test harness
+starts its own managed local services. An explicitly supplied `E2E_BASE_URL` still targets
+that deployment, so use only a disposable test environment, never production. A focused
+interactive run may use `bun run --cwd apps/web test:e2e --workers=1`, but it still reuses an
+existing local server and does not enable CI retries. After a 429, wait for `Retry-After`
+or restart only the managed server for this checkout before retrying.
+
 ## Playwright E2E Test Pattern
 
 ```typescript

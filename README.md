@@ -29,6 +29,13 @@ Then read:
 - [`platform/AGENTS.md`](platform/AGENTS.md): the platform's rules, for you and your coding agents.
 - [`platform/UPGRADING.md`](platform/UPGRADING.md): how to take a newer platform release.
 
+## Tests
+
+Run `bun run setup:e2e` once after installing dependencies, then `CI=true bun run test:e2e`
+for browser tests or `CI=true bun run ci` for full local validation. CI mode uses one web
+worker: parallel local workers can exceed the proxy's per-IP edge rate limit and trigger
+HTTP 429 and cascading timeouts. See [the testing guide](platform/docs/testing.md#running-playwright-e2e-reliably).
+
 ## Licence
 
 Until adoption this repository is under the evaluation licence in [`LICENSE`](LICENSE). Production

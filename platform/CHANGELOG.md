@@ -21,6 +21,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- E2E and full local CI guidance now uses `CI=true` for web's single-worker browser configuration, explains edge-rate-limit HTTP 429 failures under parallel local workers, and documents isolated-server recovery without weakening deployment limits.
+
 - Waitlist joins validate email syntax in the shared mutation using the bulk-invitation policy, normalize before deduplication, and reject malformed addresses with `INVALID_EMAIL`. Optional arbitrary JSON metadata, its byte cap, and visitor IP limits are preserved.
 
 - Waitlist joins accept app-owned JSON object metadata, including `meta: "{}"`, without requiring sample questions. The existing string contract remains, with a 16,384-byte UTF-8 cap and nested prototype-key protection. Admin safely renders custom and legacy metadata alongside sample columns, and join errors return fixed codes without internal details. No migration or app action is required. See the [metadata contract](docs/authentication-and-onboarding.md#waitlist-metadata-contract).
