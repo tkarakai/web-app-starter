@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { test } from "node:test";
-import { apps, loadState, saveState, secretName, settings, values, type State } from "../deploy-setup/model.ts";
+import { apps, ciApps, proofContext, writePublicFile, loadState, saveState, secretName, settings, values, type State } from "../deploy-setup/model.ts";
 import { HttpError, run, type Run } from "../deploy-setup/io.ts";
-import { checkSetup, ensureBackend, ensureProject, storeSecret, type Request } from "../deploy-setup/providers.ts";
+import { checkSetup, convexEnv, requiredChecks, ensureBackend, ensureProject, storeSecret, type Request } from "../deploy-setup/providers.ts";
 const require = createRequire(import.meta.url);
 const { readiness } = require("../../../.github/scripts/platform-deploy-preflight.cjs") as { readiness: (env: Record<string, string>) => { status: string; missing: string[] } };
 const state = (): State => ({ schema: 1, repository: "owner/app", branch: "main", prefix: "app", team: "team_test", convexTeam: "123", projects: {}, backends: {} });
@@ -15,10 +15,15 @@ test("staging skips only unconfigured automatic pushes, preserves legacy deploym
   assert.equal(readiness({ GITHUB_EVENT_NAME: "push" }).status, "skip");
   assert.equal(readiness({ GITHUB_EVENT_NAME: "workflow_dispatch" }).status, "error");
   assert.equal(readiness({ GITHUB_EVENT_NAME: "push", VERCEL_TOKEN: "present" }).status, "error");
-  assert.equal(readiness({ GITHUB_EVENT_NAME: "push", DEPLOY_SETUP_STATE: "configuring", VERCEL_TOKEN: "present" }).status, "skip");
-  assert.equal(readiness({ GITHUB_EVENT_NAME: "push", DEPLOY_SETUP_STATE: "ready" }).status, "error");
+  assert.equal(readiness({ GITHUB_EVENT_NAME: "push", DEPLOY_SETUP_STATE: "configuring", VERCEL_TOKEN: "present" }).status, "error");
+  assert.equal(readiness({ GITHUB_EVENT_NAME: "push", DEPLOY_SETUP_STATE: "ready" }).status, "skip");
   const complete = Object.fromEntries(["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID_WEB_STAGING", "VERCEL_PROJECT_ID_ADMIN_STAGING", "VERCEL_PROJECT_ID_LANDING_STATIC_STAGING", "CONVEX_DEPLOY_KEY"].map(k => [k, "present"]));
   assert.equal(readiness({ ...complete, LANDING_APP: "landing-static" }).status, "ready");
+  for (const marker of ["", "configuring", "ready"]) for (const event of ["push", "workflow_dispatch"]) {
+    assert.equal(readiness({ ...complete, LANDING_APP: "landing-static", GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, "ready");
+    assert.equal(readiness({ VERCEL_TOKEN: "present", GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, "error");
+    assert.equal(readiness({ GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, event === "push" ? "skip" : "error");
+  }
   assert.deepEqual(readiness(complete).missing, ["VERCEL_PROJECT_ID_LANDING_STAGING"]);
 });
 test("static-only topology has separate static projects and no Convex browser variable", t => {
@@ -104,7 +109,7 @@ test("branch setup adds checks without replacing existing review/access policy",
 
 test("interrupted staging proof resumes the same request without duplicate deployment", async () => {
   const { stagingProof } = await import("../deploy-setup/proof.ts");
-  const s = state(); let dispatches = 0, watches = 0, savedBeforeDispatch = false;
+  const s = state(); let dispatches = 0, watches = 0, verifications = 0, savedBeforeDispatch = false;
   const io = {
     github: async <T>(endpoint: string): Promise<T> => {
       if (endpoint.startsWith("commits/")) return { sha: "a".repeat(40) } as T;
@@ -113,14 +118,15 @@ test("interrupted staging proof resumes the same request without duplicate deplo
     },
     run: async (_file: string, args: string[]) => { assert(savedBeforeDispatch); assert(args.includes(s.request!.id)); dispatches++; return "{}"; },
     watch: async () => { watches++; if (watches === 1) throw Error("interrupted"); },
+    verify: async () => { verifications++; },
     confirm: async () => {}, save: () => { savedBeforeDispatch = Boolean(s.request); }, tell: () => {},
   };
-  await assert.rejects(() => stagingProof(s, io), /interrupted/);
+  await assert.rejects(() => stagingProof(s, ["web", "admin", "landing"], io), /interrupted/);
   const original = s.request!.id;
-  await stagingProof(s, io);
+  await stagingProof(s, ["web", "admin", "landing"], io);
   assert.equal(s.request!.id, original); assert.equal(dispatches, 1); assert.equal(s.proof, "42");
-  await stagingProof(s, io);
-  assert.equal(dispatches, 1); assert.equal(watches, 2);
+  await stagingProof(s, ["web", "admin", "landing"], io);
+  assert.equal(dispatches, 1); assert.equal(watches, 2); assert.equal(verifications, 1);
 });
 
 test("an interrupted key write cannot create duplicate Convex credentials", async () => {
@@ -137,12 +143,13 @@ test("an interrupted key write cannot create duplicate Convex credentials", asyn
   assert.equal(creates, 1);
 });
 
-test("public state writes refuse symlink temporary files and leave their targets untouched", async t => {
+test("public state writes bypass abandoned temporary files without touching symlink targets", async t => {
   const { writePublicFile, readPublicFile } = await import("../deploy-setup/model.ts");
   const root = mkdtempSync(path.join(tmpdir(), "deploy-files-")); t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, "other.txt"), "keep");
   symlinkSync(path.join(root, "other.txt"), path.join(root, "ops.config.json.tmp"));
-  assert.throws(() => writePublicFile(root, "ops.config.json", "changed"), /EEXIST/);
+  writePublicFile(root, "ops.config.json", "changed");
+  assert.equal(readFileSync(path.join(root, "ops.config.json"), "utf8"), "changed");
   assert.equal(readFileSync(path.join(root, "other.txt"), "utf8"), "keep");
   symlinkSync(path.join(root, "other.txt"), path.join(root, ".deploy-setup.json"));
   assert.throws(() => readPublicFile(root, ".deploy-setup.json"), /safely open/);
@@ -171,4 +178,112 @@ test("new branch protection requires PRs and checks without imposing an extra re
   await configureBranch(state(), ["web", "admin", "landing"], exec);
   assert.deepEqual(body?.required_pull_request_reviews, { required_approving_review_count: 0 });
   assert((body?.required_status_checks as { contexts: string[] }).contexts.includes("CI Web Complete"));
+});
+
+test("simulated Convex environment consumers use the backend package and clear ambient deployment selection", async () => {
+  const calls: string[][] = [];
+  const exec: Run = async (_file, args, input, env, cwd) => {
+    assert.equal(cwd, path.resolve("packages/backend"));
+    assert.deepEqual(env, { CONVEX_DEPLOY_KEY: "", CONVEX_DEPLOYMENT: "" });
+    assert.deepEqual(args.slice(-2), ["--deployment-name", "backend"]);
+    assert(!args.includes("secret-sentinel"));
+    if (args.includes("set")) assert.equal(input, "secret-sentinel");
+    calls.push(args); return "";
+  };
+  for (const args of [["list", "--names-only"], ["get", "SITE_URL"], ["set", "BETTER_AUTH_SECRET"]]) {
+    await convexEnv("backend", args, args[0] === "set" ? "secret-sentinel" : undefined, exec);
+  }
+  assert.equal(calls.length, 3);
+  assert.equal(await run(process.execPath, ["-e", "process.stdout.write(process.cwd())"], undefined, undefined, path.resolve("packages/backend")), path.resolve("packages/backend"));
+  const s = state(), installed = ["web", "admin", "landing"] as const;
+  for (const env of ["staging", "production"] as const) {
+    s.backends[env] = { id: env === "staging" ? 1 : 2, name: "backend", url: "https://backend.convex.cloud" };
+    for (const app of installed) s.projects[`${app}/${env}`] = { id: `prj_${app}_${env}`, name: app, domain: `${app}.${env}.example.com` };
+  }
+  let reads = 0;
+  const checkExec: Run = async (file, args, input, env, cwd) => {
+    if (args.includes("env") && file === "bun") {
+      await exec(file, args, input, env, cwd); reads++;
+      if (args.includes("list")) return "SITE_URL ADMIN_SITE_URL LANDING_URL BETTER_AUTH_SECRET RESEND_API_KEY EMAIL_FROM";
+      return values(s, [...installed], reads <= 4 ? "staging" : "production").convex[args[4] as "SITE_URL"];
+    }
+    throw Error("unavailable fixture provider");
+  };
+  const checks = await checkSetup(s, [...installed], checkExec, [...installed]);
+  assert.equal(reads, 8);
+  assert(checks.filter(c => c.step.startsWith("convex-env-")).every(c => c.status === "done"));
+});
+
+test("public atomic writes recover stale files and clean up after a failed rename", t => {
+  const root = mkdtempSync(path.join(tmpdir(), "deploy-atomic-")); t.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const name of [".deploy-setup.json", "ops.config.json"]) {
+    writeFileSync(path.join(root, `${name}.tmp`), "abandoned");
+    writePublicFile(root, name, "first"); writePublicFile(root, name, "second");
+    assert.equal(readFileSync(path.join(root, name), "utf8"), "second");
+    const files = readdirSync(root).sort();
+    assert.throws(() => writePublicFile(root, name, Symbol("invalid data") as unknown as string));
+    assert.deepEqual(readdirSync(root).sort(), files);
+    assert.equal(readFileSync(path.join(root, name), "utf8"), "second");
+    rmSync(path.join(root, name)); mkdirSync(path.join(root, name));
+    const before = readdirSync(root).sort();
+    assert.throws(() => writePublicFile(root, name, "cannot replace directory"));
+    assert.deepEqual(readdirSync(root).sort(), before);
+  }
+});
+
+test("simulated branch inspection rejects every missing installed-app context", async () => {
+  const installed = ciApps(process.cwd());
+  const required = requiredChecks(installed);
+  for (const representation of ["contexts", "checks"] as const) for (const missing of [undefined, ...required]) {
+    const contexts = required.filter(context => context !== missing);
+    const exec: Run = async (_file, args) => {
+      if (args[1]?.endsWith("/protection")) return JSON.stringify({ required_pull_request_reviews: {},
+        required_status_checks: { [representation]: representation === "contexts" ? contexts : contexts.map(context => ({ context, app_id: 123 })) } });
+      throw Error("unavailable fixture provider");
+    };
+    const checks = await checkSetup(state(), apps(process.cwd()), exec);
+    assert.equal(checks.find(c => c.step === "branch-protection")?.status, missing ? "missing" : "done");
+  }
+});
+
+test("simulated staging proof requires authorization after topology, domain or project changes", async () => {
+  const { stagingProof } = await import("../deploy-setup/proof.ts");
+  for (const change of ["topology", "domain", "project", "backend", "legacy"] as const) {
+    const s = state(); let installed: ("web" | "admin" | "landing" | "landing-static")[] = ["web", "admin", "landing"];
+    s.projects["web/staging"] = { id: "prj_web", name: "web", domain: "web.example.com" };
+    s.request = { id: "old-request", sha: "a".repeat(40), context: proofContext(s, installed) }; s.proof = "42";
+    if (change === "topology") installed = ["web", "admin", "landing-static"];
+    if (change === "domain") s.projects["web/staging"]!.domain = "new.example.com";
+    if (change === "project") s.projects["web/staging"]!.id = "prj_new";
+    if (change === "backend") s.backends.staging = { id: 2, name: "new", url: "https://new.convex.cloud" };
+    if (change === "legacy") delete s.request.context;
+    let allowed = false, dispatches = 0, verifications = 0;
+    const io = {
+      github: async <T>(endpoint: string): Promise<T> => (endpoint.startsWith("commits/") ? { sha: "b".repeat(40) }
+        : { workflow_runs: [{ id: 43, conclusion: "success", display_title: `[ops:${s.request!.id}]`, html_url: "fixture" }] }) as T,
+      confirm: async () => { if (!allowed) throw Error("declined"); }, save: () => {}, tell: () => {},
+      run: async () => { assert(allowed); dispatches++; return ""; }, watch: async () => {},
+      verify: async () => { verifications++; throw Error("not serving"); },
+    };
+    await assert.rejects(() => stagingProof(s, installed, io), /declined/);
+    assert.equal(s.request.id, "old-request"); assert.equal(dispatches, 0);
+    allowed = true; await stagingProof(s, installed, io);
+    assert.equal(dispatches, 1); assert.equal(s.proof, "43");
+    await assert.rejects(() => stagingProof(s, installed, io), /not serving/);
+    assert.equal(verifications, 1); assert.equal(dispatches, 1);
+  }
+});
+
+test("serving verification checks current ops mappings and propagates provider failure", async t => {
+  const { verifyServing } = await import("../deploy-setup/proof.ts");
+  const root = mkdtempSync(path.join(tmpdir(), "deploy-proof-")); t.after(() => rmSync(root, { recursive: true, force: true }));
+  const s = state(); s.proof = "42";
+  s.projects["web/staging"] = { id: "prj_web", name: "web", domain: "web.example.com" };
+  let calls = 0;
+  const exec: Run = async (_file, args) => { calls++; assert.deepEqual(args, ["run", "ops", "verify", "--run", "42", "--env", "staging", "--repo", "owner/app", "--json"]); throw Error("not serving"); };
+  await assert.rejects(() => verifyServing(s, ["web"], exec, root), /mappings differ/);
+  assert.equal(calls, 0);
+  writeFileSync(path.join(root, "ops.config.json"), JSON.stringify({ repository: s.repository, teamId: s.team, workflowRef: s.branch, apps: { web: { projects: { staging: s.projects["web/staging"] } } } }));
+  await assert.rejects(() => verifyServing(s, ["web"], exec, root), /not serving/);
+  assert.equal(calls, 1);
 });

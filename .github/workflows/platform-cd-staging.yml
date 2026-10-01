@@ -53,7 +53,6 @@ jobs:
       - id: check
         name: Check deployment configuration
         env:
-          DEPLOY_SETUP_STATE: ${{ vars.DEPLOY_SETUP_STATE }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID_WEB_STAGING: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}

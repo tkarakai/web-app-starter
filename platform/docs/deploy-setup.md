@@ -28,7 +28,7 @@ production deployment for each environment. The wizard sets computed cross-app U
 backend origins, creates GitHub environments, and stores IDs/keys under the names expected by
 CD. It adds required CI checks and PR review protection without replacing existing branch
 access/reviewer settings. Review existing required checks when removing an app: stale required
-checks are never deleted automatically.
+checks are never deleted automatically. Read-only inspection requires the same installed-app CI contexts as setup, including both landing checks when both apps remain installed.
 
 ## Credentials and resuming
 
@@ -44,11 +44,11 @@ There are two kinds of provider credentials:
 Enter credentials only at the hidden terminal prompts. Values go to APIs in memory or to
 `gh secret set`/`convex env set` through stdin. They never enter the public resume file, process
 arguments or setup logs. Provider error bodies are suppressed because they can echo inputs.
-Existing backend auth secrets and email credentials are retained. On resume, the authenticated Convex CLI administers the explicitly selected deployment;
+Existing backend auth secrets and email credentials are retained. On resume, the authenticated Convex CLI runs from `packages/backend` for all environment reads and writes against the explicitly selected deployment;
 existing GitHub deployment secrets are neither retrieved nor rotated.
 
 Public progress lives in git-ignored `.deploy-setup.json`. Keep it to resume project IDs, domains
-and the staging request. `ops.config.json` receives the same mappings. Rerunning queries live
+and the staging request. Public files are replaced atomically using exclusive, unique same-directory temporary files with cleanup on failure; abandoned temporary files do not prevent resumption. `ops.config.json` receives the same mappings. Rerunning queries live
 resources before creating anything. A saved mapping is not proof that its provider credentials
 still work; `--check` labels local-only evidence and checks secret names without decrypting them.
 
@@ -61,13 +61,17 @@ before retrying any failed write.
 
 A new repository with no deployment credentials skips automatic staging deployment with a
 setup notice. Explicit dispatches and partial configurations fail with missing credential names.
-During guided provisioning, `DEPLOY_SETUP_STATE=configuring` pauses automatic staging deploys;
-setup changes it to `ready` only after configuration and protection checks. Existing fully
-configured apps need no new opt-in variable. Production's existing dispatch gates remain.
+Interrupted setup and reruns have no skip exception: partial credentials fail visibly. Existing fully
+configured apps need no opt-in variable; legacy `DEPLOY_SETUP_STATE` values are ignored. Production's existing dispatch gates remain.
 
 The final step asks to deploy the default branch's immutable commit through `ops` and waits for
 serving verification. `bun run deploy:setup --prove` resumes the saved request rather than
-repeating provisioning or dispatching another deployment. If dispatch failed ambiguously, inspect
+repeating provisioning or dispatching another deployment while its configuration remains unchanged.
+Saved requests bind proof to the selected topology, staging domains, project/backend mappings,
+repository and team. Saved successful proof is checked against current `ops.config.json` mappings
+and reverified for serving through `ops verify`; workflow success alone is insufficient. Changed
+configuration or legacy unbound evidence requires explicit local authorization for a new proof.
+Declining preserves the saved request and dispatches nothing. If dispatch failed ambiguously, inspect
 Actions/`ops` using the saved request ID; do not delete the request and retry blindly. After a
 confirmed failed/cancelled run is diagnosed, preserve its evidence and remove only `request` and
 `proof` from the public state to authorize a fresh proof on the next run. Production is never

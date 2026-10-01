@@ -1,3 +1,4 @@
+import { randomUUID, createHash } from "node:crypto";
 import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 export type Environment = "staging" | "production";
@@ -5,7 +6,7 @@ export type App = "web" | "admin" | "landing" | "landing-static";
 export type Project = { id: string; name: string; domain: string };
 export type Backend = { id: number; name: string; url: string };
 export type State = { schema: 1; repository: string; branch: string; prefix: string; team: string; convexTeam: string;
-  projects: Partial<Record<`${App}/${Environment}`, Project>>; backends: Partial<Record<Environment, Backend>>; proof?: string; request?: { id: string; sha: string } };
+  projects: Partial<Record<`${App}/${Environment}`, Project>>; backends: Partial<Record<Environment, Backend>>; proof?: string; request?: { id: string; sha: string; context?: string } };
 export const STATE_FILE = ".deploy-setup.json";
 export const ENVIRONMENTS: Environment[] = ["staging", "production"];
 export function apps(root: string): App[] {
@@ -71,7 +72,8 @@ export function validateState(raw: State): State {
   if (raw.proof && /^\d+$/.test(raw.proof)) clean.proof = raw.proof;
   if (raw.request) {
     if (!/^[a-zA-Z0-9-]{1,100}$/.test(raw.request.id) || !/^[a-f0-9]{40}$/.test(raw.request.sha)) throw Error("Invalid staging request");
-    clean.request = { id: raw.request.id, sha: raw.request.sha };
+    if (raw.request.context && !/^[a-f0-9]{64}$/.test(raw.request.context)) throw Error("Invalid staging context");
+    clean.request = { id: raw.request.id, sha: raw.request.sha, ...(raw.request.context ? { context: raw.request.context } : {}) };
   }
   return clean;
 }
@@ -83,11 +85,12 @@ export function readPublicFile(root: string, name: string): string | undefined {
   finally { closeSync(fd); }
 }
 export function writePublicFile(root: string, name: string, text: string): void {
-  const file = safePath(root, name), temp = path.join(root, `${name}.tmp`);
-  // Exclusive creation refuses stale files and symlinks atomically; rename never follows the target.
+  const file = safePath(root, name), temp = path.join(root, `${name}.${randomUUID()}.tmp`);
   const fd = openSync(temp, "wx", 0o600);
-  try { writeFileSync(fd, text); } finally { closeSync(fd); }
-  try { renameSync(temp, file); } catch (error) { rmSync(temp, { force: true }); throw error; }
+  try {
+    try { writeFileSync(fd, text); } finally { closeSync(fd); }
+    renameSync(temp, file);
+  } finally { rmSync(temp, { force: true }); }
 }
 export function loadState(root: string): State | undefined {
   const text = readPublicFile(root, STATE_FILE);
@@ -96,4 +99,13 @@ export function loadState(root: string): State | undefined {
 }
 export function saveState(root: string, state: State): void {
   writePublicFile(root, STATE_FILE, `${JSON.stringify(validateState(state), null, 2)}\n`);
+}
+
+export function ciApps(root: string): App[] {
+  const selected = apps(root);
+  return [...selected, ...(["landing", "landing-static"] as const).filter(app => !selected.includes(app) && existsSync(path.join(root, `apps/${app}/package.json`)))];
+}
+export function proofContext(state: State, installed: App[]): string {
+  return createHash("sha256").update(JSON.stringify({ repository: state.repository, branch: state.branch, team: state.team,
+    backend: state.backends.staging, apps: [...installed].sort().map(app => [app, state.projects[`${app}/staging`]]) })).digest("hex");
 }

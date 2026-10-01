@@ -1,5 +1,15 @@
+import path from "node:path";
+import { verifyServing } from "./proof.ts";
 import { api, HttpError, run, type Run } from "./io.ts";
-import { ENVIRONMENTS, secretName, settings, values, type App, type Environment, type State } from "./model.ts";
+import { ENVIRONMENTS, ciApps, proofContext, secretName, settings, values, type App, type Environment, type State } from "./model.ts";
+export function convexEnv(backend: string, args: string[], input?: string, exec: Run = run) {
+  return exec("bun", ["x", "convex", "env", ...args, "--deployment-name", backend], input,
+    { CONVEX_DEPLOY_KEY: "", CONVEX_DEPLOYMENT: "" }, path.resolve("packages/backend"));
+}
+export function requiredChecks(installed: App[]): string[] {
+  const title = (app: App) => app === "landing-static" ? "Landing Static" : app[0].toUpperCase() + app.slice(1);
+  return ["CI Shared Complete", "CI Storybook Complete", ...installed.map(app => "CI " + title(app) + " Complete")];
+}
 export type Request = <T>(endpoint: string, method?: string, body?: unknown) => Promise<T>;
 export type Check = { step: string; status: "done" | "missing" | "human-only" | "unavailable"; instruction?: string };
 export const convexAPI = (token: string): Request => (endpoint, method, body) => api("https://api.convex.dev/v1", endpoint, token, method, body);
@@ -56,7 +66,7 @@ export async function ensureBackend(state: State, env: Environment, request: Req
   if (prod.length !== 1) throw Error(`${name} needs one default production deployment. Configure it at https://dashboard.convex.dev and resume.`);
   state.backends[env] = { id, name: prod[0].name, url: prod[0].deploymentUrl };
 }
-export async function checkSetup(state: State | undefined, installed: App[], exec: Run = run): Promise<Check[]> {
+export async function checkSetup(state: State | undefined, installed: App[], exec: Run = run, requiredApps: App[] = ciApps(process.cwd())): Promise<Check[]> {
   const checks: Check[] = [];
   const check = async (step: string, action: () => Promise<boolean>, instruction: string) => {
     try { checks.push({ step, status: await action() ? "done" : "missing", instruction }); }
@@ -75,10 +85,10 @@ export async function checkSetup(state: State | undefined, installed: App[], exe
     await check(`convex-key-${env}`, async () => (await secretNames(state.repository, env, exec)).has("CONVEX_DEPLOY_KEY"), `Resume deploy:setup for the ${env} environment key.`);
     await check(`convex-env-${env}`, async () => {
       const backend = state.backends[env]; if (!backend) return false;
-      const names = new Set((await exec("bun", ["x", "convex", "env", "list", "--names-only", "--deployment-name", backend.name])).split(/\s+/));
+      const names = new Set((await convexEnv(backend.name, ["list", "--names-only"], undefined, exec)).split(/\s+/));
       if (!["SITE_URL", "ADMIN_SITE_URL", "LANDING_URL", "BETTER_AUTH_SECRET", "RESEND_API_KEY", "EMAIL_FROM"].every(name => names.has(name))) return false;
       for (const [name, value] of Object.entries(values(state, installed, env).convex)) {
-        if ((await exec("bun", ["x", "convex", "env", "get", name, "--deployment-name", backend.name])).trim() !== value) return false;
+        if ((await convexEnv(backend.name, ["get", name], undefined, exec)).trim() !== value) return false;
       }
       return true;
     }, "Resume deploy:setup to verify backend origins and hosted email configuration; secret values are not printed.");
@@ -103,17 +113,21 @@ export async function checkSetup(state: State | undefined, installed: App[], exe
     }
   }
   await check("production-reviewer", async () => (await github<{ protection_rules: { type: string }[] }>(state.repository, "environments/production", "GET", undefined, exec)).protection_rules.some(r => r.type === "required_reviewers"), `Configure a production reviewer: https://github.com/${state.repository}/settings/environments`);
-  await check("branch-protection", async () => Boolean((await github<{ required_pull_request_reviews?: unknown }>(state.repository, `branches/${encodeURIComponent(state.branch)}/protection`, "GET", undefined, exec)).required_pull_request_reviews), "Resume deploy:setup to configure required checks and PR review.");
-  await check("deployment-enabled", async () => (await github<{ value: string }>(state.repository, "actions/variables/DEPLOY_SETUP_STATE", "GET", undefined, exec)).value === "ready", "Resume setup to enable automatic staging deployment.");
-  await check("staging-proof", async () => Boolean(state.proof && (await github<{ conclusion: string }>(state.repository, `actions/runs/${state.proof}`, "GET", undefined, exec)).conclusion === "success"), "Run deploy:setup --prove to deploy the reviewed default-branch commit and watch its actual result.");
+  await check("branch-protection", async () => {
+    const protection = await github<{ required_pull_request_reviews?: unknown; required_status_checks?: { contexts?: string[]; checks?: { context: string }[] } }>(state.repository, `branches/${encodeURIComponent(state.branch)}/protection`, "GET", undefined, exec);
+    const contexts = new Set([...(protection.required_status_checks?.contexts ?? []), ...(protection.required_status_checks?.checks ?? []).map(c => c.context)]);
+    return Boolean(protection.required_pull_request_reviews) && requiredChecks(requiredApps).every(context => contexts.has(context));
+  }, "Resume deploy:setup to configure required checks and PR review.");
+  await check("staging-proof", async () => {
+    if (!state.proof || state.request?.context !== proofContext(state, installed)) return false;
+    await verifyServing(state, installed, exec); return true;
+  }, "Run deploy:setup --prove to deploy the reviewed default-branch commit and watch its actual result.");
   return checks;
 }
 
 /** Add the installed app checks without replacing an existing branch's review/access policy. */
 export async function configureBranch(state: State, installed: App[], exec: Run = run) {
-  const title = (app: App) => app === "landing-static" ? "Landing Static" : app[0].toUpperCase() + app.slice(1);
-  const contexts = ["CI Shared Complete", "CI Storybook Complete",
-    ...installed.map(app => `CI ${title(app)} Complete`)];
+  const contexts = requiredChecks(installed);
   const endpoint = `branches/${encodeURIComponent(state.branch)}/protection`;
   type Protection = { required_status_checks?: { strict: boolean; contexts: string[]; checks?: { context: string; app_id: number | null }[] }; required_pull_request_reviews?: unknown };
   let old: Protection | undefined;

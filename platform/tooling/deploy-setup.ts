@@ -1,14 +1,14 @@
 // Guided deployment provisioning. Credentials live only in memory and provider secret stores.
 // --check is read-only JSON; --prove resumes/displays staging proof without provisioning again.
-import { appendFileSync, closeSync, constants, existsSync, fstatSync, openSync, readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, closeSync, constants, fstatSync, openSync, readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import path from "node:path";
-import { apps, ENVIRONMENTS, loadState, saveState, readPublicFile, writePublicFile, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
+import { apps, ciApps, ENVIRONMENTS, loadState, saveState, readPublicFile, writePublicFile, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
 import { ask, hidden, interactive, run } from "./deploy-setup/io.ts";
-import { checkSetup, configureBranch, convexAPI, ensureBackend, ensureDeployKey, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
-import { stagingProof } from "./deploy-setup/proof.ts";
+import { checkSetup, convexEnv, configureBranch, convexAPI, ensureBackend, ensureDeployKey, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
+import { stagingProof, verifyServing, checkProofMappings } from "./deploy-setup/proof.ts";
 import rawConfig from "../../app.config.ts";
 import { validateAppConfig } from "../packages/app-config/src/schema.ts";
 
@@ -22,7 +22,7 @@ function ignoreState(root: string) {
     const fd = openSync(target, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND | constants.O_NOFOLLOW, 0o600);
     try {
       if (!fstatSync(fd).isFile()) throw Error("Git exclude must be a regular file");
-      const old = readFileSync(fd, "utf8"), patterns = [STATE_FILE, `${STATE_FILE}.tmp`, "ops.config.json", "ops.config.json.tmp"];
+      const old = readFileSync(fd, "utf8"), patterns = [STATE_FILE, `${STATE_FILE}.*.tmp`, "ops.config.json", "ops.config.json.*.tmp"];
       const missing = patterns.filter(p => !old.split("\n").includes(p));
       if (missing.length) appendFileSync(fd, `${old.endsWith("\n") ? "" : "\n"}${missing.join("\n")}\n`);
     } finally { closeSync(fd); }
@@ -84,7 +84,6 @@ async function configure(state: State, root: string) {
   const convex = convexAPI(convexToken);
   const details = await convex<{ teamId: number }>("/token_details");
   if (String(details.teamId) !== state.convexTeam) throw Error("Convex token belongs to a different team.");
-  await run("gh", ["variable", "set", "DEPLOY_SETUP_STATE", "--repo", state.repository, "--body", "configuring"]);
   for (const env of ENVIRONMENTS) {
     // PUT only when absent; never replace an existing environment's reviewers or protection rules.
     const environments = await github<{ environments: { name: string }[] }>(state.repository, "environments?per_page=100");
@@ -104,17 +103,16 @@ async function configure(state: State, root: string) {
       await ensureDeployKey(state, env, convex);
     }
     // Use the official logged-in CLI for env administration on resume, not unreadable GitHub secrets.
-    const targetEnv = { CONVEX_DEPLOY_KEY: "", CONVEX_DEPLOYMENT: "" };
-    const convexEnv = (args: string[], input?: string) => run("bun", ["x", "convex", "env", ...args, "--deployment-name", backend.name], input, targetEnv);
-    const names = new Set((await convexEnv(["list", "--names-only"])).split(/\s+/));
+    const environment = (args: string[], input?: string) => convexEnv(backend.name, args, input);
+    const names = new Set((await environment(["list", "--names-only"])).split(/\s+/));
     const config = values(state, installed, env);
-    for (const [name, value] of Object.entries(config.convex)) await convexEnv(["set", name], value);
-    if (!names.has("BETTER_AUTH_SECRET")) await convexEnv(["set", "BETTER_AUTH_SECRET"], randomBytes(32).toString("base64"));
-    if (!names.has("RESEND_API_KEY")) await convexEnv(["set", "RESEND_API_KEY"], await hidden(`${env} Resend API key from https://resend.com/api-keys (verify your sending domain first)`));
+    for (const [name, value] of Object.entries(config.convex)) await environment(["set", name], value);
+    if (!names.has("BETTER_AUTH_SECRET")) await environment(["set", "BETTER_AUTH_SECRET"], randomBytes(32).toString("base64"));
+    if (!names.has("RESEND_API_KEY")) await environment(["set", "RESEND_API_KEY"], await hidden(`${env} Resend API key from https://resend.com/api-keys (verify your sending domain first)`));
     if (!names.has("EMAIL_FROM")) {
       const from = await ask(`${env} verified sender email (https://resend.com/domains)`);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)) throw Error("Enter a verified sender email address.");
-      await convexEnv(["set", "EMAIL_FROM"], from);
+      await environment(["set", "EMAIL_FROM"], from);
     }
     for (const app of installed) {
       const project = state.projects[`${app}/${env}`]!;
@@ -122,9 +120,7 @@ async function configure(state: State, root: string) {
       await vercel(`/v10/projects/${project.id}/env?upsert=true`, "POST", Object.entries(config.vercel[app]!).map(([key, value]) => ({ key, value, type: "encrypted", target: ["production"] })));
     }
   }
-  const ciApps = [...installed];
-  for (const landing of ["landing", "landing-static"] as const) if (!ciApps.includes(landing) && existsSync(path.join(root, `apps/${landing}/package.json`))) ciApps.push(landing);
-  await configureBranch(state, ciApps);
+  await configureBranch(state, ciApps(root));
   console.log(`Review production reviewers and branch rules: https://github.com/${state.repository}/settings/environments and /settings/branches. See platform/docs/deployment-runbook.md for required checks matching installed apps.`);
   await confirm("Production environment protections and branch rules reviewed/configured?");
   const protection = await github<{ protection_rules: { type: string }[] }>(state.repository, "environments/production");
@@ -135,12 +131,13 @@ async function configure(state: State, root: string) {
   const mapped = Object.fromEntries(installed.map(app => [app, { projects: Object.fromEntries(ENVIRONMENTS.map(env => [env, { id: state.projects[`${app}/${env}`]!.id, domain: state.projects[`${app}/${env}`]!.domain }])) }]));
   const priorApps = { ...(current.apps as Record<string, unknown> ?? {}) };
   for (const landing of ["landing", "landing-static"] as const) if (!installed.includes(landing)) delete priorApps[landing];
-  await confirm("Save selected project mappings to ops.config.json and enable automatic staging deployments?");
+  await confirm("Save selected project mappings to ops.config.json? Automatic staging uses configured credentials.");
   writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...priorApps, ...mapped } }, null, 2)}\n`);
-  await run("gh", ["variable", "set", "DEPLOY_SETUP_STATE", "--repo", state.repository, "--body", "ready"]);
 }
 async function prove(state: State, root: string) {
-  await stagingProof(state, { github: endpoint => github(state.repository, endpoint), run,
+  checkProofMappings(state, apps(root), root);
+  await stagingProof(state, apps(root), { github: endpoint => github(state.repository, endpoint), run,
+    verify: () => verifyServing(state, apps(root), run, root),
     watch: args => interactive("bun", args), confirm, save: value => saveState(root, value), tell: message => console.log(message) });
   for (const app of apps(root)) console.log(`${app}: https://${state.projects[`${app}/staging`]!.domain}`);
 }

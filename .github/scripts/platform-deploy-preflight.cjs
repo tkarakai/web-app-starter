@@ -6,7 +6,7 @@ function readiness(env) {
     'VERCEL_PROJECT_ID_ADMIN_STAGING', `VERCEL_PROJECT_ID_${landing}_STAGING`, 'CONVEX_DEPLOY_KEY'];
   const missing = required.filter(name => !env[name]);
   const configured = Object.keys(env).some(name => /^(VERCEL_|CONVEX_DEPLOY_KEY$)/.test(name) && env[name]);
-  if (env.GITHUB_EVENT_NAME === 'push' && (env.DEPLOY_SETUP_STATE === 'configuring' || (!configured && env.DEPLOY_SETUP_STATE !== 'ready'))) {
+  if (env.GITHUB_EVENT_NAME === 'push' && !configured) {
     return { status: 'skip', missing };
   }
   return { status: missing.length ? 'error' : 'ready', missing };

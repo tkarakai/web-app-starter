@@ -84,4 +84,6 @@ ops.config.json
 
 # Public deployment setup resume state (credentials are never stored here)
 .deploy-setup.json
-.deploy-setup.json.tmp
+.deploy-setup.json.*.tmp
+
+ops.config.json.*.tmp

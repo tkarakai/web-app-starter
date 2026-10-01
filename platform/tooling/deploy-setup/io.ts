@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
-export type Run = (file: string, args: string[], input?: string, env?: Record<string, string>) => Promise<string>;
+export type Run = (file: string, args: string[], input?: string, env?: Record<string, string>, cwd?: string) => Promise<string>;
 // Never include subprocess output/arguments in errors: provider errors can echo request secrets.
 export class CommandError extends Error { status?: number; constructor(file: string, code: number | null, status?: number) { super(`${file} failed (exit ${code}); check provider access and resume. Provider output was withheld to protect credentials.`); this.status = status; } }
-export const run: Run = (file, args, input, env) => new Promise((resolve, reject) => {
-  const child = spawn(file, args, { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ...env, NO_COLOR: "1" } });
+export const run: Run = (file, args, input, env, cwd) => new Promise((resolve, reject) => {
+  const child = spawn(file, args, { cwd, stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ...env, NO_COLOR: "1" } });
   let out = "", err = "";
   const timer = setTimeout(() => { child.kill(); reject(Error(`${file} timed out; check authentication/connectivity and resume.`)); }, 60_000);
   child.stdout.on("data", chunk => { out += chunk; });

@@ -29,3 +29,14 @@ provider error and available setup instructions rather than marking it complete.
 `ops` before requesting another. Never dispatch repeatedly while waiting for evidence. Completion
 means the staging workflow and serving verification passed; a successful provisioning API call
 or workflow dispatch alone is not a deployment. Production deployment is a separate operation.
+
+Only unconfigured automatic pushes skip staging. Partial credentials, including interrupted setup,
+and explicit manual requests fail visibly; configured apps require no setup marker. Convex env
+commands run from `packages/backend`. Branch inspection must retain all installed-app required
+checks. Public state uses unique atomic temporary writes so abandoned files do not block resume.
+
+Saved proof is bound to the selected topology and staging mappings. Recheck actual serving,
+including when a saved workflow succeeded. Changed mappings or legacy evidence require a new
+explicit authorization at the wizard’s local prompt; never silently redispatch. A declined prompt
+preserves the previous request. Deterministic provider fixtures are simulated evidence, not live
+cloud provisioning or deployment verification.

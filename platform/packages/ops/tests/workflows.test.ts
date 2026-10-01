@@ -189,8 +189,15 @@ test("hash resolution reads target configuration before looking up reusable byte
 });
 test("every deployment workflow records failures using workflow-version tooling", async () => {
   for (const kind of ["staging", "production", "rollback"]) {
-    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { if?: string; steps?: Step[] }>; permissions: Record<string, string> };
-    expect(workflow.permissions.deployments).toBe("write"); expect(workflow.jobs["ops-record"].if).toBe(kind === "staging" ? "always() && needs.preflight.outputs.ready == 'true'" : "always()");
+    const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, JobCondition & { steps?: Step[] }>; permissions: Record<string, string> };
+    expect(workflow.permissions.deployments).toBe("write");
+    const job = workflow.jobs["ops-record"];
+    const dependencies = typeof job.needs === "string" ? [job.needs] : job.needs ?? [];
+    for (const result of ["success", "skipped", "failure", "cancelled"]) for (const ready of ["true", "false", ""]) {
+      const outcomes = Object.fromEntries(dependencies.map(name => [name, { result, outputs: {} }]));
+      outcomes.preflight = { result: ready === "true" ? "success" : result, outputs: { ready } };
+      expect(schedules(job, outcomes, result === "cancelled")).toBe(kind !== "staging" || ready === "true");
+    }
     for (const app of ["web", "admin", "landing"]) {
       const steps = workflow.jobs[`deploy-${app}`].steps!;
       expect(steps.some(s => s.uses === "./.ops-workflow/.github/actions/deploy-vercel")).toBe(true);
@@ -203,7 +210,13 @@ test("every deployment workflow records failures using workflow-version tooling"
 test("staging success tags depend directly on every deploy and attestation outcome", async () => {
   const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { needs: string[]; if: string }> };
   for (const dependency of ["deploy-web", "deploy-admin", "deploy-landing", "attest", "smoke-test"]) expect(w.jobs.record.needs).toContain(dependency);
-  expect(w.jobs.record.if).toContain("!contains(needs.*.result, 'failure')");
+  const job = w.jobs.record;
+  for (const dependency of job.needs) for (const result of ["success", "skipped", "failure", "cancelled"]) for (const changed of ["true", "false"]) {
+    const outcomes = Object.fromEntries(job.needs.map(name => [name, { result: "success", outputs: {} as Record<string, string> }]));
+    outcomes.changes.outputs.any_app = changed;
+    outcomes[dependency].result = result;
+    expect(schedules(job, outcomes, result === "cancelled")).toBe(changed === "true" && (result === "success" || result === "skipped"));
+  }
 });
 test("health remains successful when a later tag write fails", async () => {
   const f = recordFixture();
@@ -472,3 +485,20 @@ test.each(["landing", "landing-static"])("failed staging CI followed by a succes
   expect(records.every(record => record.payload.landingApp === selected)).toBe(true);
   expect(records.filter(record => record.payload.app === selected)).toHaveLength(2);
 });
+type JobCondition = { if?: string; needs?: string | string[] };
+type JobOutcome = { result: string; outputs: Record<string, string> };
+function schedules(job: JobCondition, outcomes: Record<string, JobOutcome>, cancelled = false): boolean {
+  const dependencies = typeof job.needs === "string" ? [job.needs] : job.needs ?? [];
+  const needs = Object.fromEntries(dependencies.map(name => [name, outcomes[name] ?? { result: "skipped", outputs: {} }]));
+  const results = Object.values(needs).map(value => value.result);
+  const expression = (job.if ?? "success()").replace(/^\s*\$\{\{|\}\}\s*$/g, "")
+    .replaceAll("needs.*.result", "results")
+    .replace(/needs\.([\w-]+)\.outputs\.([\w-]+)/g, 'needs["$1"].outputs["$2"]')
+    .replace(/needs\.([\w-]+)\.result/g, 'needs["$1"].result');
+  const success = () => results.every(result => result === "success");
+  const failure = () => results.includes("failure");
+  if (!/\b(always|cancelled|success|failure)\s*\(/.test(expression) && !success()) return false;
+  return Boolean(new Function("needs", "results", "always", "cancelled", "success", "failure", "contains", "return (" + expression + ");")(
+    needs, results, () => true, () => cancelled, success, failure, (items: string[], item: string) => items.includes(item)));
+}
+
