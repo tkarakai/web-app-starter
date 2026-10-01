@@ -1,5 +1,6 @@
 // Shared policy: a never-configured app skips automatic deployment. Broken or explicitly
 // requested deployments fail. Log names only, never credentials.
+/* global console, process */
 function readiness(env) {
   const landing = env.LANDING_APP === 'landing-static' ? 'LANDING_STATIC' : 'LANDING';
   const required = ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID_WEB_STAGING',

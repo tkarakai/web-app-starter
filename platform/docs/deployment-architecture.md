@@ -64,7 +64,9 @@ Deploy Production (manual trigger)
 
 ### Staging (Automatic)
 
-Every push to `main` triggers the unified `cd-staging.yml` workflow:
+Every push to `main` triggers the unified `cd-staging.yml` workflow. Its setup preflight gates
+the phases below; see [deployment readiness](deploy-setup.md#staging-and-production) for
+unconfigured, partial and explicit-request behavior.
 
 1. **CI phase** calls 4 CI workflows as reusable workflows (parallel)
 2. **CI Gate** evaluates results and sets `ci/gate-passed` commit status

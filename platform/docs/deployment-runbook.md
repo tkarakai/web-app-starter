@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-For new setups, start with [`bun run deploy:setup`](deploy-setup.md). It creates projects without a Vercel Git connection, derives the selected landing, stores credentials securely and resumes interrupted setup. `--check` is read-only JSON. The steps below explain the same provider settings for manual administration.
+For new setups, start with the [guided deployment setup](deploy-setup.md). The steps below explain provider settings for manual administration.
 
 Step-by-step procedures for deploying, operating, and rolling back the monorepo. Covers one-time infrastructure setup, first deployment, day-to-day operations, and rollback.
 
@@ -55,11 +55,7 @@ gh auth login
 
 Complete these steps once, in order.
 
-> **Automated staging setup:** For the staging environment (steps 2a–2e), you can use the interactive setup script instead of following the manual steps below:
-> ```bash
-> bun run infra:setup:staging
-> ```
-> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `platform/tooling/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
+For automated setup and interruption recovery, follow the [setup guide](deploy-setup.md).
 
 ### 2a. Create Convex Projects
 
@@ -93,8 +89,6 @@ Make sure that you have "Production" designation selected for the project (even 
 ### 2b. Create Vercel Projects
 
 Create six Vercel projects — three for staging and three for production. Each project serves a single environment, so there's no need to split environment variables across Vercel's Preview/Production scopes.
-
-Choose **either** the dashboard or CLI approach.
 
 **Project settings (created by the wizard or CLI, without a Git connection):**
 

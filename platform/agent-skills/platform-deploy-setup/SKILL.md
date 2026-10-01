@@ -30,13 +30,11 @@ provider error and available setup instructions rather than marking it complete.
 means the staging workflow and serving verification passed; a successful provisioning API call
 or workflow dispatch alone is not a deployment. Production deployment is a separate operation.
 
-Only unconfigured automatic pushes skip staging. Partial credentials, including interrupted setup,
-and explicit manual requests fail visibly; configured apps require no setup marker. Convex env
-commands run from `packages/backend`. Branch inspection must retain all installed-app required
-checks. Public state uses unique atomic temporary writes so abandoned files do not block resume.
+Use the guide's [deployment readiness and recovery rules](../../docs/deploy-setup.md#staging-and-production)
+when diagnosing interrupted setup; do not bypass a failed preflight or weaken branch checks.
 
 Saved proof is bound to the selected topology and staging mappings; unrelated ops app mappings
-are preserved and do not fail the mapping check. Explicit `--request` IDs are for deploy/watch only. Recheck actual serving,
+are preserved and do not fail the mapping check. Follow the [ops request contract](../../docs/ops-cli.md#exercise-the-complete-workflow). Recheck actual serving,
 including when a saved workflow succeeded. Changed mappings or legacy evidence require a new
 explicit authorization at the wizard’s local prompt; never silently redispatch. A declined prompt
 preserves the previous request. Deterministic provider fixtures are simulated evidence, not live

@@ -5,6 +5,9 @@ work remains). Run `bun run deploy:setup` in a terminal to provision and configu
 or resume an interrupted setup. It creates cloud resources and updates provider settings;
 review the repository, teams and project list shown before proceeding.
 
+The legacy `bun run infra:setup:staging` command delegates to this wizard, including production
+infrastructure setup. It accepts the same flags; it no longer runs the staging-only script.
+
 Start these human steps early:
 
 - Create accounts and choose billing at [Vercel](https://vercel.com/dashboard) and
@@ -50,7 +53,8 @@ existing GitHub deployment secrets are neither retrieved nor rotated.
 Public progress lives in git-ignored `.deploy-setup.json`. Keep it to resume project IDs, domains
 and the staging request. Public files are replaced atomically using exclusive, unique same-directory temporary files with cleanup on failure; abandoned temporary files do not prevent resumption. `ops.config.json` receives the same mappings. Rerunning queries live
 resources before creating anything. A saved mapping is not proof that its provider credentials
-still work; `--check` labels local-only evidence and checks secret names without decrypting them.
+still work; `--check` reports missing configuration separately from unavailable provider checks
+and checks secret names without decrypting them.
 
 If interrupted immediately after creating a Convex key but before storing it, recover that key
 from the provider step if available, or revoke the orphan in the Convex dashboard before resuming.
@@ -69,7 +73,8 @@ serving verification. `bun run deploy:setup --prove` resumes the saved request r
 repeating provisioning or dispatching another deployment while its configuration remains unchanged.
 Saved requests bind proof to the selected topology, staging domains, project/backend mappings,
 repository and team. Mapping validation checks the selected apps while preserving unrelated
-ops app mappings. Caller-supplied `--request` IDs are supported by deploy and watch, not rollback.
+ops app mappings; configuration removes the unselected landing variant from `ops.config.json`.
+See [ops request correlation](ops-cli.md#exercise-the-complete-workflow) for caller-supplied request IDs.
 Saved successful proof is checked against current `ops.config.json` mappings
 and reverified for serving through `ops verify`; workflow success alone is insufficient. Changed
 configuration or legacy unbound evidence requires explicit local authorization for a new proof.

@@ -58,6 +58,7 @@ export default [
         atob: "readonly",
         crypto: "readonly",
         globalThis: "readonly",
+        structuredClone: "readonly",
         Request: "readonly",
         Response: "readonly",
         setTimeout: "readonly",
