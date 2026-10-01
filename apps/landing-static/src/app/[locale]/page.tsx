@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { appConfig } from "@web-app-starter/app-config";
+import { pageMetadata } from "@/lib/metadata";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Badge, Button } from "@web-app-starter/design-system";
@@ -11,6 +14,12 @@ if (!WEB_APP_URL) {
 type Props = {
   params: Promise<{ locale: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
+  return pageMetadata({ locale, pathname: "/", title: appConfig.identity.productName, description: t("description") });
+}
 
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
