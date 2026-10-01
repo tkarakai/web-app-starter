@@ -6,7 +6,7 @@ import { defaultLocale, locales, type Locale } from "@web-app-starter/i18n";
 /**
  * Root page — redirects to the user's preferred locale.
  * Reads navigator.languages and matches against supported locales,
- * falling back to the default locale ("en").
+ * falling back to the configured default locale.
  */
 export default function RootPage() {
   useEffect(() => {
