@@ -58,6 +58,8 @@ export function validateState(raw: State): State {
     if (!/^(web|admin|landing|landing-static)\/(staging|production)$/.test(key) || !/^prj_[\w]+$/.test(p.id) || !/^[a-z0-9-]+$/.test(p.name) || !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(p.domain)) throw Error("Invalid public project mapping");
     clean.projects[key as keyof State["projects"]] = { id: p.id, name: p.name, domain: p.domain };
   }
+  const projectIds = Object.values(clean.projects).map(project => project.id);
+  if (new Set(projectIds).size !== projectIds.length) throw Error("Each app/environment needs a separate Vercel project");
   for (const env of ENVIRONMENTS) {
     const b = raw.backends?.[env];
     if (b) {
@@ -65,6 +67,7 @@ export function validateState(raw: State): State {
       clean.backends[env] = { id: b.id, name: b.name, url: b.url };
     }
   }
+  if (clean.backends.staging && clean.backends.production && clean.backends.staging.id === clean.backends.production.id) throw Error("Staging and production need separate Convex projects");
   if (raw.proof && /^\d+$/.test(raw.proof)) clean.proof = raw.proof;
   if (raw.request) {
     if (!/^[a-zA-Z0-9-]{1,100}$/.test(raw.request.id) || !/^[a-f0-9]{40}$/.test(raw.request.sha)) throw Error("Invalid staging request");

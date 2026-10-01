@@ -133,8 +133,10 @@ async function configure(state: State, root: string) {
   const current = opsText ? JSON.parse(opsText) as Record<string, unknown> : {};
   if (current.repository && current.repository !== state.repository) throw Error("ops.config.json targets another repository; review it before continuing.");
   const mapped = Object.fromEntries(installed.map(app => [app, { projects: Object.fromEntries(ENVIRONMENTS.map(env => [env, { id: state.projects[`${app}/${env}`]!.id, domain: state.projects[`${app}/${env}`]!.domain }])) }]));
+  const priorApps = { ...(current.apps as Record<string, unknown> ?? {}) };
+  for (const landing of ["landing", "landing-static"] as const) if (!installed.includes(landing)) delete priorApps[landing];
   await confirm("Save selected project mappings to ops.config.json and enable automatic staging deployments?");
-  writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...(current.apps as object ?? {}), ...mapped } }, null, 2)}\n`);
+  writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...priorApps, ...mapped } }, null, 2)}\n`);
   await run("gh", ["variable", "set", "DEPLOY_SETUP_STATE", "--repo", state.repository, "--body", "ready"]);
 }
 async function prove(state: State, root: string) {

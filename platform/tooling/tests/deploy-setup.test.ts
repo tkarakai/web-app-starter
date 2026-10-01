@@ -147,3 +147,15 @@ test("public state writes refuse symlink temporary files and leave their targets
   symlinkSync(path.join(root, "other.txt"), path.join(root, ".deploy-setup.json"));
   assert.throws(() => readPublicFile(root, ".deploy-setup.json"), /safely open/);
 });
+
+test("saved setup cannot map staging and production to the same project", async () => {
+  const { validateState } = await import("../deploy-setup/model.ts");
+  const s = state();
+  s.projects["web/staging"] = { id: "prj_same", name: "web", domain: "web.example.com" };
+  s.projects["web/production"] = { ...s.projects["web/staging"] };
+  assert.throws(() => validateState(s), /separate Vercel project/);
+  s.projects = {};
+  s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
+  s.backends.production = { ...s.backends.staging };
+  assert.throws(() => validateState(s), /separate Convex projects/);
+});
