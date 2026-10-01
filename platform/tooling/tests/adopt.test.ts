@@ -120,7 +120,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
 
   const lines: string[] = [];
   const errors = adopt(root, { name: "Acme $& Co", repo: "acme/acme-app", remove: ["landing"], install: false, build: false },
-    (line) => lines.push(line));
+    (line) => lines.push(line), { release: () => ({ version: read("platform/VERSION").trim(), commit }), command: () => "" });
 
   assert.equal(errors, 0, lines.join("\n"));
   const at = (file: string): string => readFileSync(path.join(root, file), "utf8");
@@ -140,6 +140,8 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   }
   assert.deepEqual(JSON.parse(at(".platform-base.json")), { version: read("platform/VERSION").trim(), commit, patches: [] });
   assert.equal(git(root, "remote", "get-url", "upstream"), "https://github.com/tkarakai/web-app-starter.git");
+  assert.equal(git(root, "config", "remote.upstream.tagOpt"), "--no-tags");
+  assert.equal(git(root, "config", "remote.upstream.fetch"), "+refs/heads/main:refs/remotes/upstream/main");
   assert.equal(checkZone(root).mode, "adopted");
   assert.throws(() => adopt(root, { name: "Acme", repo: "acme/acme-app", build: false }), /already adopted/);
 });

@@ -306,14 +306,14 @@ Notes:
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
 `--port app=N`, `--remove landing,demo`, `--remove-sample`, `--yes`).
-Start from a clean checkout; adoption refuses to overwrite uncommitted work:
+Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
-For automatic upgrades, that checkout must be at a **published release tag** before adoption,
-with no intervening app commits or merge commits. For example, clone with
+Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
+By default, the checkout must be at that release commit, with no intervening app commits or
+merge commits; for an existing-repository merge, use [the procedure below](#existing-repositories).
+For example, clone with
 `git clone --branch v2.0.0 https://github.com/tkarakai/web-app-starter.git my-app`, then
-`cd my-app` and `git switch -c main`. Select an actually published version. Adoption records
-the current commit as the installed platform baseline; a version string on `main` alone is
-not a released baseline. Existing apps adopted from unpublished source need the
+`cd my-app` and `git switch -c main`. Select an actually published version. Adoption verifies the published GitHub release and its remote tag before changing files; a version string on `main` alone is not a released baseline. Existing apps adopted from unpublished source need the
 [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release).
 
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
@@ -324,7 +324,7 @@ not a released baseline. Existing apps adopted from unpublished source need the
    `--remove-sample` removes project, task and upload tables, functions, screens and strings,
    leaving a dashboard shell with account settings, announcements and sign-out.
 4. Links the platform skills into `.claude/skills/` and `.agents/skills/`.
-5. Writes `.platform-base.json` (platform version and commit) and adds the `upstream` remote.
+5. Writes `.platform-base.json` (platform version and commit) and, if absent, adds a main-only, no-tags `upstream` remote (omit with `--no-upstream`). Existing remotes are unchanged; see [existing repositories](#existing-repositories) to narrow their fetches. It also sets `gh` to your app repository when its remote is configured, or prints the command to run afterward.
 6. Runs the zone check and a build, and prints what is yours and what is the platform's.
 
 CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
@@ -332,6 +332,23 @@ and rollback inspect the selected commit, so removing landing does not require a
 Vercel project or block the remaining apps. `bun run dev` regenerates the Convex API after
 sample removal; adoption itself needs no live backend. Configure the updater GitHub App for
 automatic CI on update PRs; see [update delivery](docs/update-delivery.md).
+
+### Existing repositories
+
+Do this on an adoption branch, with a clean checkout and a backup of the existing app. This is initial adoption, not the procedure for an already adopted app or an old starter fork.
+
+1. Before moving files, inspect [installed GitHub Apps](https://github.com/settings/installations), the repository’s Settings → Webhooks, and each hosting dashboard. Pause or repoint builds tied to the old repository root. GitHub cannot list every external host for you.
+2. Move the old site into a subfolder, commit it, and resolve root-file collisions deliberately. Preserve existing licence obligations and app documentation before adoption replaces the root templates.
+3. Select a published starter release, fetch only its tag, then merge its source. For example:
+
+   `git fetch --no-tags https://github.com/tkarakai/web-app-starter.git tag vX.Y.Z`
+
+   `git merge --allow-unrelated-histories vX.Y.Z`
+
+4. Commit conflict resolutions, keeping the release’s platform zone intact. Install its Node/Bun versions and dependencies, then run `bun run adopt --from-release vX.Y.Z --repo owner/app`. This verifies publication and platform bytes and records the **release commit**, not your merge commit. Replace vX.Y.Z with a published release containing this option; for v2.0.0 itself follow the [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release).
+5. Review and commit the adoption. Run `bun run platform:upgrade --to vX.Y.Z --dry-run` for the adopted version; expect `unchanged`. This checks baseline acceptance, not application correctness; run normal CI too.
+
+Use `gh ... --repo owner/app` for repository operations, or `gh repo set-default owner/app` after configuring the app remote. For an existing unrestricted starter remote, narrow future fetches with `git config remote.upstream.fetch '+refs/heads/main:refs/remotes/upstream/main'` and `git config remote.upstream.tagOpt --no-tags`. Existing local refs are left alone. Fetch individual release tags explicitly; do not use `git fetch upstream --tags`.
 
 ## Sample functionality
 
