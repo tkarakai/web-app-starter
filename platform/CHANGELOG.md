@@ -13,23 +13,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
-### Fixed
-
-- Locale-root redirects preserve the requested locale on the way to the dashboard and sign-in (#186).
-- Optional `i18n.defaultLocale` selects a shipped fallback locale independently of locale ordering; omission stays English (#185). Static 404 HTML uses the configured merged catalog.
-- Dev, local CI, staging, production and rollback select `landing` first, falling back to `landing-static` only when the primary app is removed (#187, #188). The static fallback uses separate Vercel projects, static output and distinct artifacts. Ops records and verifies its physical app identity.
-- Staging audit records retain the selected landing app when CI fails, so a successful rerun does not leave conflicting evidence in `ops inspect`.
-- Deployment workflows use the platform-owned `platform-record-ops.cjs` helper, so upgrades deliver the recorder together with the workflows and Ops CLI.
-- Local startup seeds Convex's required `LANDING_URL` for the static fallback too, including web-only and admin-only startup.
-- Local CI keeps build-time placeholder backend URLs out of browser-test server environments.
-- Both landing dev commands use managed process tracking; static-only startup needs no Convex. Adoption preserves the generic landing command and rejects removal of the last landing before changing files.
-
-### Action required
-
-- Keep at least one landing app for default dev/CI/deployment. If using the fallback, configure its separate Vercel projects and `VERCEL_PROJECT_ID_LANDING_STATIC[_STAGING]` secrets as described in the deployment runbook. Update web's `LANDING_URL` and run `ops setup` for the static project mappings.
-- App-owned reference files are preserved by platform upgrades. Apply the locale-preserving redirect to `apps/web/src/app/[locale]/page.tsx`; static landing adopters should add the root locale redirect and use the configured fallback catalog in their 404 page. See [reference-app fixes](UPGRADING.md#reference-app-fixes).
-
-## [2.0.0] - 2026-09-27
+## [2.0.0] - 2026-09-30
 
 Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never
 published or tagged; it is retained only as historical context.
@@ -69,11 +53,25 @@ published or tagged; it is retained only as historical context.
 
 ### Fixed
 
+- Dependency minimums remain enforced after reviewing a conflicted package manifest; resolving
+  the text conflict cannot bypass verification of the installed security-patched version.
+- Optional new environment settings remain visible in upgrade reports without blocking verification; required new secrets and removed or renamed settings retain their review gates.
+- Update Next.js to 16.3.6 for [GHSA-vcvr-r3jv-pc5j](https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j), which affects Node.js `next/og` image generation with untrusted SVG values. The upgrade manifest enforces the patched dependency floor.
+
+- Locale-root redirects preserve the requested locale on the way to the dashboard and sign-in (#186).
+- Optional `i18n.defaultLocale` selects a shipped fallback locale independently of locale ordering; omission stays English (#185). Static 404 HTML uses the configured merged catalog.
+- Dev, local CI, staging, production and rollback select `landing` first, falling back to `landing-static` only when the primary app is removed (#187, #188). The static fallback uses separate Vercel projects, static output and distinct artifacts. Ops records and verifies its physical app identity.
+- Staging audit records retain the selected landing app when CI fails, so a successful rerun does not leave conflicting evidence in `ops inspect`.
+- Deployment workflows use the platform-owned `platform-record-ops.cjs` helper, so upgrades deliver the recorder together with the workflows and Ops CLI.
+- Local startup seeds Convex's required `LANDING_URL` for the static fallback too, including web-only and admin-only startup.
+- Local CI keeps build-time placeholder backend URLs out of browser-test server environments.
+- Both landing dev commands use managed process tracking; static-only startup needs no Convex. Adoption preserves the generic landing command and rejects removal of the last landing before changing files.
+
 - Upgrade recovery documents the direct launcher for package-manifest conflicts, allowing
   report relocation before editing even when Bun cannot read the package scripts.
 
 - Versioning guidance uses the separated platform baseline and published-major support
-  policy. Evaluation, commercial and app-template licence texts remain pending legal review.
+  policy. Evaluation, commercial and app-template licence texts have completed legal review.
 
 - Platform upgrades execute historical codemods through canonical temporary paths, avoiding
   silent no-op entrypoints when the temporary directory is a symlink, including macOS `/var`.
@@ -100,6 +98,12 @@ published or tagged; it is retained only as historical context.
   optional-app detection uses the selected source commit, including during rollback.
 
 ### Action required
+
+- **Apps adopted from unpublished v2 source:** a `2.0.0` version string or app merge commit is
+  not the published release baseline. Follow the [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release), preserving app choices and verifying all checks before recording the release commit. **Done when:** the installed record matches the verified published source and the zone check passes. Subsequent releases use the automatic updater.
+- Keep at least one landing app for default dev/CI/deployment. If using the fallback, configure its separate Vercel projects and `VERCEL_PROJECT_ID_LANDING_STATIC[_STAGING]` secrets as described in the deployment runbook. Update web's `LANDING_URL` and run `ops setup` for the static project mappings.
+- App-owned reference files are preserved by platform upgrades. Apply the locale-preserving redirect to `apps/web/src/app/[locale]/page.tsx`; static landing adopters should add the root locale redirect and use the configured fallback catalog in their 404 page. See [reference-app fixes](UPGRADING.md#reference-app-fixes).
+- Apps with a locale subset should adapt copied web/landing localization browser tests to their configured languages and message overrides. The corrected reference tests exercise enabled locales instead of assuming French and Arabic are installed.
 
 - Update app-owned CI callers with
   `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-ci-callers.ts`.
@@ -347,7 +351,7 @@ published or tagged; it is retained only as historical context.
 - `platform/tooling/codemods/v2-convex-platform.ts`: the codemod for the Convex
   `convex/platform/` move (idempotent; `--check` for CI).
 - `platform/VERSION` (the installed platform version), `platform/templates/README.md` and
-  `platform/templates/LICENSE` (draft, pending legal review), and
+  `platform/templates/LICENSE`, and
   `platform/tooling/app-config.ts dir <app>` / `APP_CONFIG_DIR_<APP>` for an app's directory.
 - `app.config.ts` (root) and `@web-app-starter/app-config`: one typed, validated file for the values an app
   changes — identity (product name, legal entity, support email), runtime (local ports, Better

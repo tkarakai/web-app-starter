@@ -17,6 +17,41 @@ This command handles upgrades **between separated platform releases**. An older 
 over an existing app. Existing deployments with legacy platform tables must also complete
 [the component data migration](docs/component-data-migration.md) before deploying v2.
 
+## Apps adopted before the first published release
+
+A checkout can say `2.0.0` without containing the published `v2.0.0` commit. Adoption records
+the checkout's `HEAD`, so adopting after merging starter source into an existing repository
+can also record an app merge commit. Neither is a published-release baseline. The automatic
+updater deliberately rejects these records; choosing a later target version does not fix them.
+
+For an app already using the separated v2 layout, make a one-time, reviewed source migration
+on a new branch, preferably rehearsed in a separate clone first:
+
+1. Identify the actual starter source commit in the app's history. Compare its platform zone
+   with the recorded baseline and current app; account for every local platform edit. Preserve
+   the existing `.platform-base.json` until verification finishes. Do not rerun `adopt`.
+2. Fetch the published `v2.0.0` from `tkarakai/web-app-starter`, record its full commit SHA,
+   and merge that commit with `git merge --no-commit --no-ff FULL_RELEASE_SHA`. This procedure
+   requires shared starter ancestry; unrelated source copies need a separately reviewed migration.
+3. Review the entire diff and resolve conflicts. Take the release's platform zone, preserving
+   intentional patches through the `platform-patch` contract. Preserve app guides, identity,
+   messages, business code and removed optional apps. Review app-owned reference fixes below;
+   a source merge also changes app-owned files, unlike the automatic updater. Set the desired
+   `i18n.defaultLocale` explicitly and keep the selected landing's development scripts.
+4. Write a **candidate** baseline outside the checkout with the release version, full release
+   SHA and reviewed patches. Run `./platform/tooling/node-ts.sh platform/tooling/check-zone.ts
+   --base-file /absolute/path/to/candidate-base.json`. Investigate each difference, including
+   generated files accidentally committed inside platform directories.
+5. Run `bun install` and every check listed in **Verify and recover**, including E2E. Review
+   dependency floors and applicable environment/data-migration requirements in the release
+   metadata. Configure separate static Vercel projects before deploying a static-only landing.
+6. Only after those checks pass, copy the candidate record to `.platform-base.json`, rerun
+   `bun run check:zone`, and commit the reviewed migration. Retain its verification evidence.
+
+This establishes the first published baseline. Subsequent published versions use the normal
+`platform:upgrade` flow. Never merely change the recorded version or commit to silence an error:
+the record must describe the platform source actually installed and verified in the app.
+
 ## Plan and apply
 
 Start with a clean, committed app checkout. Read the target release's
@@ -83,6 +118,8 @@ Conflicting seams retain labeled app/installed/target sections. Codemods and ins
 for conflict resolution. App dependency floors can raise a lower compatible declaration and
 root override, but never lower a higher version. Unprovable ranges and major differences need
 review. Verification checks the actual installed dependency versions too.
+Package conflicts retain those minimums: both the seam and its dependency review need evidence,
+and the resolved installed version must still pass verification afterward.
 
 ## Resume a draft from CI
 
@@ -130,9 +167,13 @@ files may change while an update is pending. Unrelated work requires a new plan.
 | Seam conflict or dependency decision | `reviewed`, with the intended resolution; seams also permit `accept-release` |
 | Removed/renamed env | `reviewed`; remove old reads/declarations from the named app files before verification |
 | Dynamic env access | `reviewed`, identifying what the dynamic access reads |
-| New secret | `secret-configured`, naming the environment where it is configured, never its value |
+| Required new secret | `secret-configured`, naming the environment where it is configured, never its value |
 | High/critical advisory | `reviewed`; the target must also be outside the affected range and pass contracts |
 | Row-changing migration | `migration-complete`, with deployment-specific completion evidence |
+
+Optional new settings are listed in the report without requiring configuration before the
+upgrade. Configure them before using the associated feature, such as deploying the static landing.
+Removed or renamed settings and required new settings still trigger the applicable review gates.
 
 Migration evidence is a saved read-only status JSON containing `deployment`, `phase: "complete"`,
 `matches: true`, and a nonempty `tables` array whose entries have `matches: true`, `missing: 0`
@@ -183,3 +224,4 @@ App-owned pages are preserved by the updater. When taking the landing/locale fix
 - For its single exported `404.html`, load `loadMessages(defaultLocale)` in the server page and pass `common.notFound` to the client component; the client can resolve a locale from the URL after hydration. This honors app message overrides too.
 - Keep `dev:landing` wired to `./platform/tooling/dev-start.sh --app=landing`, even when you remove the primary app. Set `dev:landing-static` to `./platform/tooling/dev-start.sh --app=landing-static` if retained. The updater merges the root script seam; review customized script conflicts.
 - Static Vercel projects need the settings and separate project-ID secrets in the [deployment runbook](docs/deployment-runbook.md#2b-create-vercel-projects). Removing both landing apps is unsupported.
+- Copied `qa/e2e/localization.spec.ts` tests in web and landing apps must use the app's configured `locales` and `loadMessages` catalogues, including overrides. Earlier reference tests hard-coded French and Arabic, which fail when those languages are removed. The release includes corrected reference tests.
