@@ -174,7 +174,13 @@ export async function createPlan(options: { root: string; source: Source; to: st
     demand(!isZonePath(floor.path), "Dependency floors cannot edit platform packages");
     const existing = payloads.find(row => row.path === floor.path), app = entry(appTree, floor.path);
     demand(app || existing, "Required dependency manifest is missing: " + floor.path);
-    if (changes.some(row => row.path === floor.path && row.conflict)) { gate("dependency:" + floor.path + ":" + floor.name, "dependency", "Resolve the package seam before checking its dependency floor", [floor.path], false); continue; }
+    if (changes.some(row => row.path === floor.path && row.conflict)) {
+      gate("dependency:" + floor.path + ":" + floor.name, "dependency", "Resolve the package seam before checking its dependency floor", [floor.path], false);
+      // Text ranges are unreadable until review, but the installed dependency
+      // must still meet this minimum after the reviewer resolves the conflict.
+      dependencies.push({ ...floor, ranges: [] });
+      continue;
+    }
     const content = existing && !("remove" in existing) ? existing.content : readBlob(root, app!.blob);
     const pkg = JSON.parse(content.toString("utf8")) as Record<string, Record<string, string> | undefined>;
     const ranges: FloorPlan["ranges"] = [];

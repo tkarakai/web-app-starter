@@ -118,6 +118,8 @@ Conflicting seams retain labeled app/installed/target sections. Codemods and ins
 for conflict resolution. App dependency floors can raise a lower compatible declaration and
 root override, but never lower a higher version. Unprovable ranges and major differences need
 review. Verification checks the actual installed dependency versions too.
+Package conflicts retain those minimums: both the seam and its dependency review need evidence,
+and the resolved installed version must still pass verification afterward.
 
 ## Resume a draft from CI
 
