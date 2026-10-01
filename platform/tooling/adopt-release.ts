@@ -36,7 +36,8 @@ export function adoptionRelease(root: string, from?: string, run = commandAt(roo
   try { run("git", ["cat-file", "-e", `${commit}^{commit}`]); }
   catch { run("git", ["fetch", "--no-tags", URL, commit]); }
   if (run("git", ["show", `${commit}:platform/VERSION`]).trim() !== version) throw Error("Release version does not match source");
-  const changed = run("git", ["diff", "--name-only", "-z", commit, "HEAD"]).split("\0").filter(isZonePath);
+  // Report both sides of a rename so moving a file out of the zone cannot hide its deletion.
+  const changed = run("git", ["diff", "--name-only", "--no-renames", "-z", commit, "HEAD"]).split("\0").filter(isZonePath);
   if (changed.length) throw Error(`Platform source differs from ${tag}: ${changed.join(", ")}. Use the migration guide; adoption cannot manufacture a baseline.`);
   return { version, commit };
 }

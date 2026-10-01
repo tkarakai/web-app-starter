@@ -15,7 +15,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
-- Adoption verifies a published release before editing files, supports an explicit release baseline for existing-repository merges, limits new upstream fetches, and sets GitHub CLI repository targeting. Existing-repository and invalid-baseline recovery instructions now identify the target release guide.
+- Adoption verifies a published release before editing files, rejects files renamed out of the platform zone, supports an explicit release baseline for existing-repository merges, limits new upstream fetches, and sets GitHub CLI repository targeting. Existing-repository and invalid-baseline recovery instructions now identify the target release guide.
 
 ## [2.0.0] - 2026-09-30
 
