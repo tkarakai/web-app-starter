@@ -371,7 +371,7 @@ bun run test:unit       # Vitest component tests
 bun run test:convex     # Convex backend tests
 bun run setup:e2e       # Download Chromium before first E2E run / after Playwright upgrades
 CI=true bun run test:e2e # Playwright E2E; one web worker avoids edge-rate-limit failures
-CI=true bun run test:all # All test suites above (does not run setup:e2e)
+CI=true bun run test:all --concurrency=1 # All test suites above, serially (setup:e2e first)
 ```
 
 Use `CI=true` for full E2E runs: local parallel web workers share one IP and can exceed

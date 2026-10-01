@@ -233,7 +233,7 @@ bun run test --watch
 bun run test:watch
 
 # For full integration (from root)
-bun run test:all
+CI=true bun run ci
 ```
 
 ### Example TDD Session
