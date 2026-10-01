@@ -89,6 +89,7 @@ describe("validateAppConfig", () => {
   it("accepts a locale subset and rejects empty, duplicate or en-less lists", () => {
     const config = draft();
     config.i18n.locales = ["en", "de"];
+    config.i18n.defaultLocale = "en";
     expect(validateAppConfig(config).i18n.locales).toEqual(["en", "de"]);
 
     config.i18n.locales = [];
