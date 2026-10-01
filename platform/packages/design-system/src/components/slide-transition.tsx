@@ -58,7 +58,6 @@ export function SlideTransition({
     setPhase("setup");
 
     // We intentionally only trigger the animation when stepIndex changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex]);
 
   // Capture the committed children after the step-change effect has read the
