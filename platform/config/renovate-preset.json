@@ -123,6 +123,14 @@
         "typescript"
       ],
       "allowedVersions": "<7"
+    },
+    {
+      "description": "HOLD: size-limit and @size-limit/file 14 require Node ^24.5.0 on Node 24, excluding versions promised by engines.node 24.x. Keep the compatible v13 line; see https://github.com/tkarakai/web-app-starter/issues/208. REMOVE when both packages support the full declared runtime baseline, or a separately authorized runtime-baseline change satisfies both packages.",
+      "matchPackageNames": [
+        "size-limit",
+        "@size-limit/file"
+      ],
+      "allowedVersions": "<14"
     }
   ],
   "ignorePaths": [

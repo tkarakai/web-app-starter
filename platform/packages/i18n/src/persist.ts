@@ -1,3 +1,5 @@
+/* global localStorage: readonly */
+
 const LOCALE_KEY = "NEXT_LOCALE";
 const COOKIE_MAX_AGE = 31536000; // 1 year in seconds
 
