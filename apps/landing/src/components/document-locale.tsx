@@ -7,12 +7,7 @@ const FONT_CLASSES: Record<string, string> = {
   he: "font-hebrew",
 };
 
-/**
- * Sets lang, dir, and font-family attributes on the <html> element.
- * Uses useLayoutEffect so it runs synchronously before the browser paints,
- * avoiding any flash of incorrect direction or font. Returns null so it
- * doesn't affect the React component tree or hydration.
- */
+/** Keep document attributes in sync when navigating between locales on the client. */
 export function DocumentLocale({ lang, dir }: { lang: string; dir: string }) {
   useLayoutEffect(() => {
     const el = document.documentElement;

@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   output: process.env.NODE_ENV === "production" ? "export" : undefined,
   trailingSlash: true,
   reactStrictMode: true,
+  // Locale and entry routes have separate root layouts; preserve the shared static 404.
+  experimental: { globalNotFound: true },
   env: {
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
