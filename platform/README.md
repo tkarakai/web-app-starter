@@ -308,8 +308,10 @@ needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cook
 `--port app=N`, `--remove landing,demo`, `--remove-sample`, `--yes`).
 Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
-For automatic upgrades, that checkout must be at a **published release tag** before adoption,
-with no intervening app commits or merge commits. For example, clone with
+Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
+By default, the checkout must be at that release commit, with no intervening app commits or
+merge commits; for an existing-repository merge, use [the procedure below](#existing-repositories).
+For example, clone with
 `git clone --branch v2.0.0 https://github.com/tkarakai/web-app-starter.git my-app`, then
 `cd my-app` and `git switch -c main`. Select an actually published version. Adoption verifies the published GitHub release and its remote tag before changing files; a version string on `main` alone is not a released baseline. Existing apps adopted from unpublished source need the
 [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release).
