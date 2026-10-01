@@ -33,8 +33,6 @@ export function SlideTransition({
   duration = 250,
   easing = "ease-out",
 }: SlideTransitionProps) {
-  const [currentContent, setCurrentContent] =
-    React.useState<React.ReactNode>(children);
   const [outgoingContent, setOutgoingContent] =
     React.useState<React.ReactNode>(null);
   const [direction, setDirection] = React.useState<SlideDirection>("forward");
@@ -47,26 +45,28 @@ export function SlideTransition({
   // Keep a ref to current content so we can capture it synchronously as
   // "outgoing" when the step changes.
   const currentContentRef = React.useRef<React.ReactNode>(children);
-  currentContentRef.current = currentContent;
 
   React.useEffect(() => {
-    if (stepIndex === prevStepRef.current) {
-      setCurrentContent(children);
-      return;
-    }
+    if (stepIndex === prevStepRef.current) return;
 
     const dir: SlideDirection =
       stepIndex > prevStepRef.current ? "forward" : "back";
     prevStepRef.current = stepIndex;
     setDirection(dir);
     setOutgoingContent(currentContentRef.current);
-    setCurrentContent(children);
     // "setup" positions both panels at their starting offsets with no transition.
     setPhase("setup");
 
     // We intentionally only trigger the animation when stepIndex changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex]);
+
+  // Capture the committed children after the step-change effect has read the
+  // previous panel. Only the outgoing panel needs a snapshot; active controls
+  // must receive their latest values in the same render as their parent.
+  React.useEffect(() => {
+    currentContentRef.current = children;
+  }, [children]);
 
   // After "setup" renders both panels at their start positions, measure heights,
   // lock the container to the outgoing height, force a reflow, then set the
@@ -117,15 +117,6 @@ export function SlideTransition({
       return () => clearTimeout(timer);
     }
   }, [phase, duration]);
-
-  // Keep current content in sync when children change *without* a step change
-  // (e.g. form state updates within a step).
-  React.useEffect(() => {
-    if (phase === "idle") {
-      setCurrentContent(children);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [children]);
 
   const exitX = direction === "forward" ? "-100%" : "100%";
   const enterX = direction === "forward" ? "100%" : "-100%";
@@ -178,6 +169,7 @@ export function SlideTransition({
       {isActive && outgoingContent != null && (
         <div
           ref={outgoingRef}
+          inert
           style={{
             position: "absolute",
             top: 2,
@@ -192,7 +184,7 @@ export function SlideTransition({
 
       {/* Current / entering panel — stays in normal flow to maintain height */}
       <div ref={enterRef} style={enterStyle}>
-        {currentContent}
+        {children}
       </div>
     </div>
   );
