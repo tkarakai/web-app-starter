@@ -27,8 +27,11 @@ checks or mark a migration complete without deployment-specific evidence.
 - Without `.platform-base.json`, this is not a separated-platform upgrade. An existing fork
   needs its migration procedure; adoption must not be run over it to manufacture a baseline.
 - If the installed version/commit does not match a published release, inspect its provenance.
-  A pre-publication adoption or app merge commit needs the one-time source migration in
-  `UPGRADING.md`; do not change the baseline record just to pass the automatic updater.
+  A pre-publication adoption or app merge commit needs the one-time source migration.
+  The installed guide may predate that repair: fetch the intended published release tag explicitly
+  from the trusted starter source, then read `git show vX.Y.Z:platform/UPGRADING.md`. Use that
+  target guide for both missing and invalid baselines; if it has no applicable migration, stop
+  and report the unsupported source. Never change the baseline record just to pass the updater.
 
 Use the target's Node major and exact Bun version. The launcher validates and runs the target
 tool. Resume retains its pinned source, release metadata and ordered codemods. Do not change

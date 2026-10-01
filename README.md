@@ -13,6 +13,8 @@ This repository has two parts:
 
 ## Start here
 
+Start from a [published release](https://github.com/tkarakai/web-app-starter/releases), not an arbitrary main commit. For an existing repository, follow [the adoption guide](platform/README.md#existing-repositories) before moving files or merging source.
+
 1. Install the Node and Bun versions named in `package.json` (`engines`, `packageManager`), then
    run `bun install`.
 2. Run `bun run adopt` once. It sets your product name, ports and auth cookie prefix in

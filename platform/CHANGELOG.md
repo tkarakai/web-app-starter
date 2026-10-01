@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Adoption verifies a published release before editing files, supports an explicit release baseline for existing-repository merges, limits new upstream fetches, and sets GitHub CLI repository targeting. Existing-repository and invalid-baseline recovery instructions now identify the target release guide.
+
 ## [2.0.0] - 2026-09-30
 
 Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never

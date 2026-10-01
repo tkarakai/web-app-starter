@@ -17,6 +17,8 @@ This command handles upgrades **between separated platform releases**. An older 
 over an existing app. Existing deployments with legacy platform tables must also complete
 [the component data migration](docs/component-data-migration.md) before deploying v2.
 
+For initial adoption into an existing repository, use [the existing-repository guide](README.md#existing-repositories). For a missing or invalid baseline, read this guide from the **target published tag**; the installed copy may predate the repair. Never invent a baseline or run adoption over an already adopted app.
+
 ## Apps adopted before the first published release
 
 A checkout can say `2.0.0` without containing the published `v2.0.0` commit. Adoption records
