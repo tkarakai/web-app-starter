@@ -8,6 +8,12 @@ The system uses **[next-intl](https://next-intl.dev) v4+** as the core i18n libr
 
 ### Scope
 
+The platform uses ordinary next-intl message loading, not `experimental.messages.precompile`.
+Keep experimental precompilation disabled: with next-intl 4.14.5, serialized precompiled
+`select` messages can render the message key instead of the fallback when a value is a
+prototype name such as `constructor` or `__proto__`. The ordinary translator handles those
+values correctly. Enabling this experimental feature requires separate upstream-fix verification.
+
 **Scope:** web, landing and landing-static localize their user-visible text.
 Admin remains English-only and imports platform entries from
 `@web-app-starter/i18n/messages/en.json` where applicable (never app namespaces); it does not
