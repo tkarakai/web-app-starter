@@ -19,6 +19,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Dev-script test fixtures include the icon sources configured in `brand.icons`, so app-owned branding paths outside `platform/` no longer break the dev launcher smoke tests. Missing icon sources still fail validation.
 - Unconfigured apps skip automatic staging deployment with setup instructions. Partial configuration and explicit deploy requests fail visibly; already configured deployments continue without a new opt-in. The legacy staging setup command now delegates to the credential-safe wizard.
 - Adoption verifies a published release before editing files, rejects files renamed out of the platform zone, supports an explicit release baseline for existing-repository merges, limits new upstream fetches, and sets GitHub CLI repository targeting. Existing-repository and invalid-baseline recovery instructions now identify the target release guide.
 - PR CI now runs for every base branch. CI callers are upgrade seams, so existing apps receive the trigger repair through three-way merging while custom triggers remain reviewable. Branch-protection guidance matches installed landing apps.

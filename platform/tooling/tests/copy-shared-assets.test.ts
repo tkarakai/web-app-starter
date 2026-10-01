@@ -6,9 +6,12 @@ import { dirname, join } from "node:path";
 import { test, type TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import rawAppConfig from "../../../app.config.ts";
+import { copyConfiguredIcons } from "./icon-fixture.ts";
+
 const repo = fileURLToPath(new URL("../../..", import.meta.url));
 const apps = ["apps/web", "platform/apps/admin", "apps/landing", "apps/landing-static", "platform/apps/storybook"];
-const assets = ["icon.svg", "favicon.ico", "apple-touch-icon.png"];
+const assets = { svg: "icon.svg", ico: "favicon.ico", appleTouchIcon: "apple-touch-icon.png" };
 
 /** A disposable checkout with the real script, config reader and config. */
 function fixture(t: TestContext) {
@@ -30,16 +33,19 @@ function fixture(t: TestContext) {
     mkdirSync(dirname(join(root, name)), { recursive: true });
     copyFileSync(join(repo, name), join(root, name));
   }
-  for (const asset of assets) write(`platform/packages/design-system/assets/${asset}`, `shared:${asset}`);
+  copyConfiguredIcons(root, repo);
+  const expected = Object.fromEntries(Object.entries(assets).map(([key, asset]) => [
+    asset, readFileSync(join(root, rawAppConfig.brand.icons[key as keyof typeof assets])),
+  ]));
   for (const app of apps) write(`${app}/package.json`, "{}");
   const run = () => spawnSync("bash", [join(root, "platform/tooling/copy-shared-assets.sh")], { encoding: "utf8", timeout: 10_000 });
   const read = (name: string) => readFileSync(join(root, name), "utf8");
-  const configure = (from: string, to: string) => {
-    const config = read("app.config.ts");
-    assert.ok(config.includes(from), `app.config.ts has ${from}`);
-    write("app.config.ts", config.replace(from, to));
+  const configure = (icons: Partial<typeof rawAppConfig.brand.icons>) => {
+    write("app.config.ts", `export default ${JSON.stringify({
+      ...rawAppConfig, brand: { ...rawAppConfig.brand, icons: { ...rawAppConfig.brand.icons, ...icons } },
+    })};\n`);
   };
-  return { root, write, run, read, configure };
+  return { root, write, run, read, configure, expected };
 }
 
 test("apps receive the configured icons, repeat runs are no-ops, demo stays application-owned", (t) => {
@@ -47,7 +53,7 @@ test("apps receive the configured icons, repeat runs are no-ops, demo stays appl
   f.write("apps/demo/public/icon.svg", "demo");
   const first = f.run();
   assert.equal(first.status, 0, first.stderr);
-  for (const app of apps) for (const asset of assets) assert.equal(f.read(`${app}/public/${asset}`), `shared:${asset}`);
+  for (const app of apps) for (const asset of Object.values(assets)) assert.deepEqual(readFileSync(join(f.root, app, "public", asset)), f.expected[asset]);
   const before = statSync(join(f.root, "apps/web/public/icon.svg")).mtimeMs;
   const repeat = f.run();
   assert.equal(repeat.status, 0, repeat.stderr);
@@ -57,37 +63,39 @@ test("apps receive the configured icons, repeat runs are no-ops, demo stays appl
   assert.equal(existsSync(join(f.root, "apps/demo/public/favicon.ico")), false);
 });
 
-test("an app-owned icon named in app.config.ts replaces the starter's", (t) => {
+test("app-owned nested icons named in app.config.ts replace the starter's", (t) => {
   const f = fixture(t);
-  f.write("branding/acme.svg", "acme icon");
-  f.configure('svg: "platform/packages/design-system/assets/icon.svg"', 'svg: "branding/acme.svg"');
+  const icons = { svg: "branding/nested/acme.svg", ico: "branding/nested/site.ico", appleTouchIcon: "branding/nested/touch.png" };
+  for (const [key, source] of Object.entries(icons)) f.write(source, `custom:${key}`);
+  f.configure(icons);
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
-  for (const app of apps) {
-    assert.equal(f.read(`${app}/public/icon.svg`), "acme icon");
-    assert.equal(f.read(`${app}/public/favicon.ico`), "shared:favicon.ico");
+  for (const app of apps) for (const [key, asset] of Object.entries(assets)) {
+    assert.equal(f.read(`${app}/public/${asset}`), `custom:${key}`);
   }
 });
 
-test("a missing icon source fails before any app output changes", (t) => {
-  const f = fixture(t);
-  f.write("apps/web/public/icon.svg", "preserved");
-  f.configure('svg: "platform/packages/design-system/assets/icon.svg"', 'svg: "branding/missing.svg"');
-  const result = f.run();
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /branding\/missing\.svg/);
-  assert.equal(f.read("apps/web/public/icon.svg"), "preserved");
-  assert.equal(existsSync(join(f.root, "platform/apps/admin/public/icon.svg")), false);
-});
+for (const key of Object.keys(assets) as (keyof typeof assets)[]) {
+  test(`a missing ${key} source fails before any app output changes`, (t) => {
+    const f = fixture(t);
+    f.write("apps/web/public/icon.svg", "preserved");
+    rmSync(join(f.root, rawAppConfig.brand.icons[key]));
+    const result = f.run();
+    assert.notEqual(result.status, 0);
+    assert.ok(result.stderr.includes(`Source asset not found: ${rawAppConfig.brand.icons[key]}`));
+    assert.equal(f.read("apps/web/public/icon.svg"), "preserved");
+    assert.equal(existsSync(join(f.root, "platform/apps/admin/public/icon.svg")), false);
+  });
 
-test("an invalid app.config.ts stops the copy", (t) => {
-  const f = fixture(t);
-  f.configure('svg: "platform/packages/design-system/assets/icon.svg"', 'svg: "../outside.svg"');
-  const result = f.run();
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /brand\.icons\.svg/);
-  assert.equal(existsSync(join(f.root, "apps/web/public/icon.svg")), false);
-});
+  test(`an invalid ${key} path in app.config.ts stops the copy`, (t) => {
+    const f = fixture(t);
+    f.configure({ [key]: "../outside.svg" });
+    const result = f.run();
+    assert.notEqual(result.status, 0);
+    assert.ok(result.stderr.includes(`brand.icons.${key}`));
+    assert.equal(existsSync(join(f.root, "apps/web/public/icon.svg")), false);
+  });
+}
 
 test("an app removed at adoption gets no assets", (t) => {
   const f = fixture(t);
@@ -95,5 +103,7 @@ test("an app removed at adoption gets no assets", (t) => {
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
   assert.equal(existsSync(join(f.root, "apps/landing")), false);
-  assert.equal(f.read("apps/web/public/icon.svg"), "shared:icon.svg");
+  for (const asset of Object.values(assets)) {
+    assert.deepEqual(readFileSync(join(f.root, "apps/web/public", asset)), f.expected[asset]);
+  }
 });
