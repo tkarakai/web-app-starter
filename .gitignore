@@ -81,3 +81,7 @@ ops.config.json
 # Local ops sessions and exported observations
 *.session.json
 .ops-reports/
+
+# Public deployment setup resume state (credentials are never stored here)
+.deploy-setup.json
+.deploy-setup.json.tmp

@@ -190,7 +190,7 @@ test("hash resolution reads target configuration before looking up reusable byte
 test("every deployment workflow records failures using workflow-version tooling", async () => {
   for (const kind of ["staging", "production", "rollback"]) {
     const workflow = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { if?: string; steps?: Step[] }>; permissions: Record<string, string> };
-    expect(workflow.permissions.deployments).toBe("write"); expect(workflow.jobs["ops-record"].if).toBe("always()");
+    expect(workflow.permissions.deployments).toBe("write"); expect(workflow.jobs["ops-record"].if).toBe(kind === "staging" ? "always() && needs.preflight.outputs.ready == 'true'" : "always()");
     for (const app of ["web", "admin", "landing"]) {
       const steps = workflow.jobs[`deploy-${app}`].steps!;
       expect(steps.some(s => s.uses === "./.ops-workflow/.github/actions/deploy-vercel")).toBe(true);

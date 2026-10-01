@@ -17,6 +17,7 @@
     "tests/*.ts",
     "platform-upgrade/*.ts",
     "update-check.ts",
-    "setup-updates/*.ts"
+    "setup-updates/*.ts",
+    "deploy-setup/*.ts"
   ]
 }

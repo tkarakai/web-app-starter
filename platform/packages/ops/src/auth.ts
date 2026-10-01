@@ -4,7 +4,7 @@ import { githubToken } from "./config";
 import { OpsError, redact } from "./errors";
 import type { Api, Result, PageReport } from "./types";
 
-export type Provider = "github" | "vercel";
+export type Provider = "github" | "vercel" | "convex";
 export type Log = (message: string) => void;
 export interface CommandResult { stdout: string; stderr: string; exitCode: number }
 export type Runner = (file: string, args: string[], signal?: globalThis.AbortSignal) => Promise<CommandResult>;
@@ -78,11 +78,17 @@ export function githubApi(log: Log = () => {}, signal?: globalThis.AbortSignal):
   };
 }
 export function authSource(provider: Provider): string {
+  if (provider === "convex") return "convex CLI session";
   return provider === "github" ? process.env.GH_TOKEN ? "GH_TOKEN" : process.env.GITHUB_TOKEN ? "GITHUB_TOKEN" : "gh session"
     : process.env.VERCEL_TOKEN ? "VERCEL_TOKEN" : "vercel session";
 }
 export async function account(provider: Provider, log: Log = () => {}): Promise<Record<string, unknown>> {
   const source = authSource(provider);
+  if (provider === "convex") {
+    const status = await runCaptured("bun", ["x", "convex", "login", "status"]);
+    if (status.exitCode !== 0 || !/Status: Logged in/.test(status.stdout + status.stderr)) throw new OpsError("AUTH", "Convex is not logged in.", "Run bun run ops auth login convex.");
+    return { provider, source, state: "authenticated" };
+  }
   if (provider === "github") {
     const user = await new HttpApi("github", await githubToken(), log).get<{ login: string }>("/user");
     if (typeof user?.login !== "string" || !user.login) throw new OpsError("INVALID_RESPONSE", "GitHub did not return an account login.", "Retry ops auth status with --debug.");
@@ -111,8 +117,8 @@ export function requireInteractive(json: boolean) {
 export async function login(provider: Provider): Promise<void> {
   const source = authSource(provider);
   if (source.endsWith("TOKEN")) throw new OpsError("AUTH_OVERRIDE", `${source} overrides the ${provider} CLI session.`, `Unset ${source} to use CLI login, or update the environment credential through your secret manager.`, 2);
-  const file = provider === "github" ? "gh" : "vercel";
-  const args = provider === "github" ? ["auth", "login", "--hostname", "github.com", "--web"] : ["login"];
+  const file = provider === "github" ? "gh" : provider === "convex" ? "bun" : "vercel";
+  const args = provider === "github" ? ["auth", "login", "--hostname", "github.com", "--web"] : provider === "convex" ? ["x", "convex", "login"] : ["login"];
   await new Promise<void>((resolve, reject) => {
     const child = spawn(file, args, { stdio: "inherit" });
     child.once("error", cause => reject(new OpsError("CLI_MISSING", `Cannot start ${file}: ${cause.message}`, `Install ${file === "gh" ? "GitHub CLI from https://cli.github.com" : "Vercel CLI with npm install -g vercel@latest"}, then retry.`, 1, { provider }, { cause })));

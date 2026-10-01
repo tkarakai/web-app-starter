@@ -204,3 +204,7 @@ bun run --cwd platform/packages/ops lint
 ```
 
 The tests include scripted console journeys (navigation, confirmation, save-before-write and resume), exact serving identity and unchanged-app baselines, workflow tag-resolution gates, mocked provider errors/pagination, subprocess CLI integration, dispatch-to-watch completion, partial results, timeout/failure exits, and audit recording after partial deployment. They do not deploy infrastructure. Shared CI runs this suite when the checked-out source contains the CLI. Real end-to-end deployment testing additionally requires the new workflows on GitHub and correctly configured GitHub environments and provider secrets.
+
+## First deployment setup
+
+Use [`bun run deploy:setup`](deploy-setup.md) to create/configure infrastructure. `ops setup` maps existing projects; it does not provision them. `ops auth login convex` opens the official Convex login flow. A saved setup proof resumes `ops watch --request ID --until serving` instead of dispatching again.

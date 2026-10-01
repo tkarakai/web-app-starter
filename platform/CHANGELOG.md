@@ -13,6 +13,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- `bun run deploy:setup` and the `platform-deploy-setup` skill guide resumable Vercel, Convex and GitHub provisioning, with read-only JSON checks, hidden credential entry and staging verification through ops. Static landing uses separate static projects; existing backend secrets are retained.
+
+### Fixed
+
+- Unconfigured apps skip automatic staging deployment with setup instructions. Partial configuration and explicit deploy requests fail visibly; already configured deployments continue without a new opt-in. The legacy staging setup command now delegates to the credential-safe wizard.
+
 ## [2.0.0] - 2026-09-30
 
 Publication begins with v2.0.0. The v1.0.0 snapshot below was prepared but never
