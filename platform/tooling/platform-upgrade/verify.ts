@@ -30,16 +30,54 @@ export function verifySource(report: Report, directory: string, excluded: string
   const candidate = path.join(directory, "candidate-base.json"); fs.writeFileSync(candidate, JSON.stringify(candidateBase(report)), { mode: 0o600 });
   const result = checkZone(root, { baseFile: candidate }); demand(result.errors.length === 0, result.errors.join("\n"));
 }
-export function verifyDependencies(report: Report): void {
-  const root = reportAppRoot(report);
-  for (const floor of report.plan.dependencies) {
-    let current = path.dirname(path.join(root, floor.path)), installed: string | undefined;
-    for (;;) {
-      const file = path.join(current, "node_modules", floor.name, "package.json");
-      if (fs.existsSync(file)) { installed = JSON.parse(fs.readFileSync(file, "utf8")).version; break; }
-      if (current === root) break;
-      const parent = path.dirname(current); demand(parent !== current && (parent === root || parent.startsWith(root + path.sep)), "Dependency lookup escaped the app"); current = parent;
+type Package = { version?: string; workspaces?: string[] } & Partial<Record<"dependencies" | "devDependencies" | "optionalDependencies" | "peerDependencies" | "overrides", Record<string, string>>>;
+const readPackage = (file: string): Package => JSON.parse(fs.readFileSync(file, "utf8"));
+function inside(root: string, file: string): string {
+  const resolved = fs.realpathSync(file);
+  demand(resolved.startsWith(root + path.sep), "Dependency lookup escaped the app");
+  return resolved;
+}
+function installedPackage(root: string, directory: string, name: string): string | undefined {
+  let current = directory;
+  for (;;) {
+    const file = path.join(current, "node_modules", name, "package.json");
+    if (fs.existsSync(file)) return inside(root, file);
+    if (current === root) return undefined;
+    const parent = path.dirname(current);
+    demand(parent !== current && (parent === root || parent.startsWith(root + path.sep)), "Dependency lookup escaped the app");
+    current = parent;
+  }
+}
+function overrideVersions(root: string, name: string): (string | undefined)[] {
+  const rootFile = path.join(root, "package.json"), pkg = readPackage(rootFile);
+  const workspaces = fs.globSync((pkg.workspaces ?? []).map(glob => glob + "/package.json"), { cwd: root, exclude: ["**/node_modules/**", "**/.git/**"] });
+  const queue = [rootFile, ...workspaces.map(file => inside(root, path.join(root, file)))].map(file => ({ file, workspace: true }));
+  const visited = new Set<string>(), versions: (string | undefined)[] = [];
+  // Follow reachable packages, including Bun's isolated symlinks. Scanning its
+  // .bun store would also count stale versions that no consumer resolves.
+  for (const { file, workspace } of queue) {
+    if (visited.has(file)) continue;
+    visited.add(file);
+    const manifest = readPackage(file);
+    for (const section of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const) {
+      if (section === "devDependencies" && !workspace) continue;
+      for (const dependency of Object.keys(manifest[section] ?? {})) {
+        const installed = installedPackage(root, path.dirname(file), dependency);
+        if (dependency === name && (installed || section === "dependencies" || section === "devDependencies")) versions.push(installed ? readPackage(installed).version : undefined);
+        if (installed) queue.push({ file: installed, workspace: false });
+      }
     }
-    demand(typeof installed === "string" && compare(installed, floor.minimum) >= 0, "Resolved dependency is below its floor or missing: " + floor.name + " in " + floor.path);
+  }
+  return versions;
+}
+export function verifyDependencies(report: Report): void {
+  const root = fs.realpathSync(reportAppRoot(report));
+  for (const floor of report.plan.dependencies) {
+    const file = path.join(root, floor.path), pkg = readPackage(file);
+    const installed = installedPackage(root, path.dirname(file), floor.name);
+    const versions = floor.path === "package.json" && Object.hasOwn(pkg.overrides ?? {}, floor.name)
+      ? overrideVersions(root, floor.name)
+      : [installed ? readPackage(installed).version : undefined];
+    demand(versions.length > 0 && versions.every(version => typeof version === "string" && compare(version, floor.minimum) >= 0), "Resolved dependency is below its floor or missing: " + floor.name + " in " + floor.path);
   }
 }
