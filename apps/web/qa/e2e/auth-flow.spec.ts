@@ -16,8 +16,6 @@ const [SESSION] = sessionCookieNames();
  * Some tests create real user accounts — use unique emails per test run.
  */
 
-const TEST_EMAIL_PREFIX = `e2e-auth-${Date.now()}`;
-
 test.describe("Sign-In Flow", () => {
   test("shows generic error for wrong password (no email enumeration)", async ({
     page,
