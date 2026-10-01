@@ -68,7 +68,7 @@
       "devDependencies": {
         "@axe-core/playwright": "^4.10.0",
         "@playwright/test": "^1.58.0",
-        "@size-limit/file": "^14.0.0",
+        "@size-limit/file": "^13.0.0",
         "@tailwindcss/postcss": "^4.1.4",
         "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.2",
@@ -78,7 +78,7 @@
         "@vitejs/plugin-react": "5.2.0",
         "@vitest/coverage-v8": "^5.0.0",
         "happy-dom": "^20.3.7",
-        "size-limit": "^14.0.0",
+        "size-limit": "^13.0.0",
         "tailwindcss": "^4.1.4",
         "typescript": "6.0.3",
         "vitest": "^5.0.0",
@@ -103,7 +103,7 @@
       "devDependencies": {
         "@axe-core/playwright": "^4.10.0",
         "@playwright/test": "^1.58.0",
-        "@size-limit/file": "^14.0.0",
+        "@size-limit/file": "^13.0.0",
         "@tailwindcss/postcss": "^4.1.4",
         "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.2",
@@ -114,7 +114,7 @@
         "@vitest/coverage-v8": "^5.0.0",
         "happy-dom": "^20.3.7",
         "serve": "^14.2.6",
-        "size-limit": "^14.0.0",
+        "size-limit": "^13.0.0",
         "tailwindcss": "^4.1.4",
         "typescript": "6.0.3",
         "vitest": "^5.0.0",
@@ -148,7 +148,7 @@
         "@axe-core/playwright": "^4.10.0",
         "@formatjs/icu-messageformat-parser": "3.5.1",
         "@playwright/test": "^1.58.0",
-        "@size-limit/file": "^14.0.0",
+        "@size-limit/file": "^13.0.0",
         "@tailwindcss/postcss": "4.3.3",
         "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.2",
@@ -162,7 +162,7 @@
         "eslint-config-next": "16.3.6",
         "happy-dom": "^20.3.7",
         "postcss": "8.5.28",
-        "size-limit": "^14.0.0",
+        "size-limit": "^13.0.0",
         "tailwindcss": "4.3.3",
         "typescript": "6.0.3",
         "vitest": "^5.0.0",
@@ -229,7 +229,7 @@
       "devDependencies": {
         "@axe-core/playwright": "^4.10.0",
         "@playwright/test": "^1.58.0",
-        "@size-limit/file": "^14.0.0",
+        "@size-limit/file": "^13.0.0",
         "@tailwindcss/postcss": "^4.1.4",
         "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.2",
@@ -240,7 +240,7 @@
         "@vitejs/plugin-react": "^5.2.0",
         "@vitest/coverage-v8": "^5.0.0",
         "happy-dom": "^20.14.5",
-        "size-limit": "^14.0.0",
+        "size-limit": "^13.0.0",
         "tailwindcss": "^4.1.4",
         "typescript": "^6.0.3",
         "vitest": "^5.0.0",
@@ -1002,7 +1002,7 @@
 
     "@simplewebauthn/server": ["@simplewebauthn/server@13.3.3", "", { "dependencies": { "@hexagon/base64": "^1.1.27", "@levischuck/tiny-cbor": "^0.2.2", "@peculiar/asn1-android": "^2.6.0", "@peculiar/asn1-ecc": "^2.6.1", "@peculiar/asn1-rsa": "^2.6.1", "@peculiar/asn1-schema": "^2.6.0", "@peculiar/asn1-x509": "^2.6.1", "@peculiar/x509": "^1.14.3" } }, "sha512-LelX/lcy5cjc15A86i/aNxHhB5eU7dd20QsbP0VLAf9e38+SLlsnqCCyecx3xqfGofhmX05h1J9fKRYWxw+luA=="],
 
-    "@size-limit/file": ["@size-limit/file@14.1.0", "", { "peerDependencies": { "size-limit": "14.1.0" } }, "sha512-mR0uVxzdzV31pk8Iz795dDXxhHsrv9RSsyjeCVboUr1Q2+2KL/GpjeMZ44ydFqI2JfXZ22dOsbY28yPeOse1Nw=="],
+    "@size-limit/file": ["@size-limit/file@13.1.1", "", { "peerDependencies": { "size-limit": "13.1.1" } }, "sha512-hWsrLRKBSh1vVFa86e2WcpBWcTYnwRvvZ54o6wzmPduhYUQPgOCr9eWqNMLCxvqLP5EiJeGCwLQFDjdgusGFSw=="],
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
@@ -1295,6 +1295,8 @@
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
 
     "bytes": ["bytes@3.1.2", "", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
+
+    "bytes-iec": ["bytes-iec@3.1.1", "", {}, "sha512-fey6+4jDK7TFtFg/klGSvNKJctyU7n2aQdnM+CO0ruLPbqqMOM8Tio0Pc+deqUeVKX1tL5DQep1zQ7+37aTAsA=="],
 
     "call-bind": ["call-bind@1.0.8", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.0", "es-define-property": "^1.0.0", "get-intrinsic": "^1.2.4", "set-function-length": "^1.2.2" } }, "sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww=="],
 
@@ -1940,7 +1942,7 @@
 
     "signal-exit": ["signal-exit@3.0.7", "", {}, "sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ=="],
 
-    "size-limit": ["size-limit@14.1.0", "", { "dependencies": { "lilconfig": "^3.1.3", "nanospinner": "^1.2.2" }, "bin": { "size-limit": "bin.js" } }, "sha512-ANW8IDwAK3P84y+bElmWqq8ymV/mNS8Jan+otR5XItVVS4AEyAx7MpT+1BsMULbgDaJ1cle3qN/hkOYQS0vF7g=="],
+    "size-limit": ["size-limit@13.1.1", "", { "dependencies": { "bytes-iec": "^3.1.1", "lilconfig": "^3.1.3", "nanospinner": "^1.2.2" }, "bin": { "size-limit": "bin.js" } }, "sha512-Yl3CuQFSB3TSirrg9jyD/ahEUa6+aoMWj4UuucW36XunEsBfYhRACZRQr7vaUKoLkS88Njw0czdpDQFfbvCc+Q=="],
 
     "sonner": ["sonner@2.0.7", "", { "peerDependencies": { "react": "^18.0.0 || ^19.0.0 || ^19.0.0-rc", "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-rc" } }, "sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w=="],
 
