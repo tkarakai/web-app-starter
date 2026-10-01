@@ -19,8 +19,8 @@
     "next-intl": "^4.14.5"
   },
   "peerDependencies": {
-    "next": "^16.3.5",
-    "react": "^19.0.0"
+    "next": "^16.3.6",
+    "react": "^19.3.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
