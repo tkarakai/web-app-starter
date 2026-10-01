@@ -117,7 +117,8 @@ commits, pushes, merges, deploys or changes remote data itself.
 Conflicting seams retain labeled app/installed/target sections. Codemods and installation wait
 for conflict resolution. App dependency floors can raise a lower compatible declaration and
 root override, but never lower a higher version. Unprovable ranges and major differences need
-review. Verification checks the actual installed dependency versions too.
+review. Verification checks the actual installed dependency versions too. Root overrides are
+checked across the consuming workspaces and their installed dependency graph, including isolated installs.
 Package conflicts retain those minimums: both the seam and its dependency review need evidence,
 and the resolved installed version must still pass verification afterward.
 

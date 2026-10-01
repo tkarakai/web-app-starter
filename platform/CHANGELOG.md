@@ -53,6 +53,8 @@ published or tagged; it is retained only as historical context.
 
 ### Fixed
 
+- Root dependency overrides are verified against reachable workspace installations, including
+  Bun's isolated layout, instead of requiring a hoisted root installation.
 - Dependency minimums remain enforced after reviewing a conflicted package manifest; resolving
   the text conflict cannot bypass verification of the installed security-patched version.
 - Optional new environment settings remain visible in upgrade reports without blocking verification; required new secrets and removed or renamed settings retain their review gates.
