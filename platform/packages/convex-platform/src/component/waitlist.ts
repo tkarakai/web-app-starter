@@ -6,7 +6,7 @@ import { mutation, query } from "./functions";
 import type { Id } from "./_generated/dataModel";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 
-import { assertMaxLength, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./inputLimits";
+import { assertMaxLength, MAX_NAME_LENGTH } from "./inputLimits";
 
 import schema, { waitlistEntriesFields } from "./schema";
 const row = v.object({ _id: v.id("waitlistEntries"), _creationTime: v.number(), ...waitlistEntriesFields });
@@ -29,7 +29,6 @@ export const join = mutation({
   returns: v.object({ alreadyJoined: v.boolean() }),
   handler: async (ctx, args) => {    // Validate inputs
     assertMaxLength(args.email, MAX_NAME_LENGTH, "EMAIL");
-    assertMaxLength(args.meta, MAX_DESCRIPTION_LENGTH, "META");
     validateMeta(args.meta);
 
     // Check for duplicate email

@@ -19,6 +19,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Waitlist joins accept app-owned JSON object metadata, including `meta: "{}"`, without requiring sample questions. The existing string contract remains, with a 16,384-byte UTF-8 cap and nested prototype-key protection. Admin safely renders custom and legacy metadata alongside sample columns, and join errors return fixed codes without internal details. No migration or app action is required. See the [metadata contract](docs/authentication-and-onboarding.md#waitlist-metadata-contract).
+
 - Dev-script test fixtures include the icon sources configured in `brand.icons`, so app-owned branding paths outside `platform/` no longer break the dev launcher smoke tests. Missing icon sources still fail validation.
 - Unconfigured apps skip automatic staging deployment with setup instructions. Partial configuration and explicit deploy requests fail visibly; already configured deployments continue without a new opt-in. The legacy staging setup command now delegates to the credential-safe wizard.
 - Adoption verifies a published release before editing files, rejects files renamed out of the platform zone, supports an explicit release baseline for existing-repository merges, limits new upstream fetches, and sets GitHub CLI repository targeting. Existing-repository and invalid-baseline recovery instructions now identify the target release guide.

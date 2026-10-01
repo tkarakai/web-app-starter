@@ -55,7 +55,7 @@ describe("component invitations", () => {
     const args = { email: "buyer@example.test", meta };
     expect(await t.mutation(api.waitlist.join, args)).toEqual({ alreadyJoined: false });
     expect(await t.mutation(api.waitlist.join, args)).toEqual({ alreadyJoined: true });
-    await expect(t.mutation(api.waitlist.join, { ...args, meta: "{}" })).rejects.toThrow("INVALID_META");
+    await expect(t.mutation(api.waitlist.join, { ...args, meta: "[]" })).rejects.toThrow("INVALID_META");
     expect(await t.run(ctx => ctx.db.query("waitlistEntries").collect())).toHaveLength(1);
   });
 

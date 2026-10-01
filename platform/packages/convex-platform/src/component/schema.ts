@@ -40,7 +40,7 @@ export const announcementFields = {
 
 export const waitlistEntriesFields = {
     email: v.string(),
-    meta: v.string(), // JSON: { superpowers: string[], excitement: string[] }
+    meta: v.string(), // App-owned JSON object, stored as a string
     status: v.union(
       v.literal("waiting"),
       v.literal("invited"),

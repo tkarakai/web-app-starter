@@ -119,7 +119,19 @@ interface WaitlistMeta {
 
 function parseMeta(meta: string): WaitlistMeta {
   try {
-    return JSON.parse(meta) as WaitlistMeta;
+    const parsed: unknown = JSON.parse(meta);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const fields = parsed as Record<string, unknown>;
+    const strings = (value: unknown): string[] | undefined =>
+      Array.isArray(value) && value.every(item => typeof item === "string")
+        ? [...new Set(value as string[])] : undefined;
+    return {
+      superpowers: strings(fields.superpowers),
+      excitement: strings(fields.excitement),
+      role: typeof fields.role === "string" ? fields.role : undefined,
+      company: typeof fields.company === "string" ? fields.company : undefined,
+      useCase: typeof fields.useCase === "string" ? fields.useCase : undefined,
+    };
   } catch {
     return {};
   }
@@ -304,7 +316,7 @@ export function createColumns(
           <div className="flex flex-wrap gap-1">
             {items.map((s) => (
               <Badge key={s} variant="outline" className="text-xs">
-                {SUPERPOWER_LABELS[s] ?? s}
+                {Object.hasOwn(SUPERPOWER_LABELS, s) ? SUPERPOWER_LABELS[s] : s}
               </Badge>
             ))}
           </div>
@@ -325,7 +337,7 @@ export function createColumns(
           <div className="flex flex-wrap gap-1">
             {items.map((e) => (
               <Badge key={e} variant="secondary" className="text-xs">
-                {EXCITEMENT_LABELS[e] ?? e}
+                {Object.hasOwn(EXCITEMENT_LABELS, e) ? EXCITEMENT_LABELS[e] : e}
               </Badge>
             ))}
           </div>
@@ -344,7 +356,7 @@ export function createColumns(
         }
         return (
           <Badge variant="outline" className="text-xs">
-            {ROLE_LABELS[role] ?? role}
+            {Object.hasOwn(ROLE_LABELS, role) ? ROLE_LABELS[role] : role}
           </Badge>
         );
       },
@@ -369,6 +381,18 @@ export function createColumns(
           </div>
         );
       },
+      enableSorting: false,
+    },
+    {
+      id: "metadata",
+      header: "Metadata",
+      accessorFn: (row) => row.meta,
+      cell: ({ row }) => (
+        <details className="max-w-xs text-xs">
+          <summary className="cursor-pointer">View metadata</summary>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all">{row.original.meta}</pre>
+        </details>
+      ),
       enableSorting: false,
     },
     {
