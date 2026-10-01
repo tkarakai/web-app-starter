@@ -15,6 +15,7 @@ import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as manager from "../dev-processes.ts";
 import rawAppConfig from "../../../app.config.ts";
+import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
@@ -39,22 +40,7 @@ function installPredev(checkout: string, source = ROOT): void {
   for (const name of ["ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh"]) {
     fs.copyFileSync(path.join(SCRIPTS, name), path.join(checkout, "platform/tooling", name));
   }
-  // Read the copied config through the real validator. Copy only its icon files,
-  // preserving app-owned paths without pulling app directories into the fixture.
-  const sourceRoot = fs.realpathSync(source);
-  for (const key of ["svg", "ico", "appleTouchIcon"]) {
-    const name = execFileSync(path.join(checkout, "platform/tooling/node-ts.sh"), [
-      path.join(checkout, "platform/tooling/app-config.ts"), "get", `brand.icons.${key}`,
-    ], { encoding: "utf8", stdio: "pipe" }).trim();
-    const original = fs.realpathSync(path.join(sourceRoot, name));
-    const relative = path.relative(sourceRoot, original);
-    assert.ok(relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative),
-      `Icon source is outside source checkout: ${name}`);
-    assert.ok(fs.statSync(original).isFile(), `Icon source must be a file: ${name}`);
-    const destination = path.join(checkout, name);
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.copyFileSync(original, destination);
-  }
+  copyConfiguredIcons(checkout, source);
 }
 
 function spawnIn(directory: string, source?: string): ChildProcess {
