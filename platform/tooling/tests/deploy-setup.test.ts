@@ -159,3 +159,16 @@ test("saved setup cannot map staging and production to the same project", async 
   s.backends.production = { ...s.backends.staging };
   assert.throws(() => validateState(s), /separate Convex projects/);
 });
+
+test("new branch protection requires PRs and checks without imposing an extra reviewer on solo apps", async () => {
+  const { configureBranch } = await import("../deploy-setup/providers.ts");
+  const { CommandError } = await import("../deploy-setup/io.ts");
+  let body: Record<string, unknown> | undefined;
+  const exec: Run = async (_file, args, input) => {
+    if (args.includes("GET")) throw new CommandError("gh", 1, 404);
+    body = JSON.parse(input!); return "{}";
+  };
+  await configureBranch(state(), ["web", "admin", "landing"], exec);
+  assert.deepEqual(body?.required_pull_request_reviews, { required_approving_review_count: 0 });
+  assert((body?.required_status_checks as { contexts: string[] }).contexts.includes("CI Web Complete"));
+});

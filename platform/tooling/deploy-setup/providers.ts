@@ -123,7 +123,7 @@ export async function configureBranch(state: State, installed: App[], exec: Run 
   }
   if (!old) {
     await github(state.repository, endpoint, "PUT", { required_status_checks: { strict: true, contexts }, enforce_admins: true,
-      required_pull_request_reviews: { required_approving_review_count: 1 }, restrictions: null }, exec);
+      required_pull_request_reviews: { required_approving_review_count: 0 }, restrictions: null }, exec);
     return;
   }
   const checks: { context: string; app_id?: number }[] = old.required_status_checks?.checks
@@ -131,7 +131,7 @@ export async function configureBranch(state: State, installed: App[], exec: Run 
     : (old.required_status_checks?.contexts ?? []).map(context => ({ context }));
   for (const context of contexts) if (!checks.some(c => c.context === context)) checks.push({ context });
   await github(state.repository, `${endpoint}/required_status_checks`, "PATCH", { strict: old.required_status_checks?.strict ?? true, checks }, exec);
-  if (!old.required_pull_request_reviews) await github(state.repository, `${endpoint}/required_pull_request_reviews`, "PATCH", { required_approving_review_count: 1 }, exec);
+  if (!old.required_pull_request_reviews) await github(state.repository, `${endpoint}/required_pull_request_reviews`, "PATCH", { required_approving_review_count: 0 }, exec);
 }
 
 export async function ensureDeployKey(state: State, env: Environment, request: Request, exec: Run = run) {
