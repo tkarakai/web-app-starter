@@ -198,4 +198,4 @@ releasing it.
 
 ### Pull-request base branches
 
-App-owned `ci-*.yml` callers run on all pull-request bases, including stacked and migration branches. They are upgrade seams: upstream trigger fixes merge against your baseline; intentional customization stays yours and conflicts require review. Require summary checks only for installed apps. Both installed landing variants have PR checks; a static-only app requires `CI Landing Static / CI Landing Static Complete`.
+App-owned `ci-*.yml` callers run on all pull-request bases, including stacked and migration branches. They are upgrade seams: upstream trigger fixes merge against your baseline; intentional customization stays yours and conflicts require review. Require summary checks only for installed apps. Both installed landing variants have PR checks; a static-only app requires `CI Landing Static Complete`.

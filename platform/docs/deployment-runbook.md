@@ -367,12 +367,12 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
 
 - [x] Require a pull request before merging
 - [x] Require status checks to pass before merging
-  - Required: `CI Shared / CI Shared Complete`
-  - Required: `CI Web / CI Web Complete`
-  - Required: `CI Admin / CI Admin Complete`
-  - Required when `apps/landing` is installed: `CI Landing / CI Landing Complete`
-  - Required when `apps/landing-static` is installed: `CI Landing Static / CI Landing Static Complete`
-  - Required: `CI Storybook / CI Storybook Complete`
+  - Required: `CI Shared Complete`
+  - Required: `CI Web Complete`
+  - Required: `CI Admin Complete`
+  - Required when `apps/landing` is installed: `CI Landing Complete`
+  - Required when `apps/landing-static` is installed: `CI Landing Static Complete`
+  - Required: `CI Storybook Complete`
 - [x] Require branches to be up to date before merging
 
 > **How it works:** CI callers run on pull requests to every base branch, including stacked and migration branches. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. When both landing apps are installed, both have PR CI, even though deployment selects only one. Copy exact check names from a completed PR run.
@@ -467,12 +467,12 @@ gh secret list --env production
 # Verify branch protection
 gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts[]'
 # Should list:
-#   CI Shared / CI Shared Complete
-#   CI Web / CI Web Complete
-#   CI Admin / CI Admin Complete
-#   CI Landing / CI Landing Complete (if installed)
-#   CI Landing Static / CI Landing Static Complete (if installed)
-#   CI Storybook / CI Storybook Complete
+#   CI Shared Complete
+#   CI Web Complete
+#   CI Admin Complete
+#   CI Landing Complete (if installed)
+#   CI Landing Static Complete (if installed)
+#   CI Storybook Complete
 ```
 
 ---
