@@ -78,6 +78,11 @@
       "hooks": []
     },
     {
+      "id": "root.github.workflows.security.yml",
+      "path": ".github/workflows/security.yml",
+      "hooks": []
+    },
+    {
       "id": "root.gitignore",
       "path": ".gitignore",
       "hooks": []

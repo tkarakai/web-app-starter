@@ -7,7 +7,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, v2]
   schedule:
     # Weekly, Mondays at 02:00 UTC
     - cron: "0 2 * * 1"
