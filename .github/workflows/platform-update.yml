@@ -94,7 +94,6 @@ jobs:
       CONVEX_URL: http://127.0.0.1:3210
       CONVEX_SITE_URL: http://127.0.0.1:3211
       NEXT_PUBLIC_CONVEX_URL: http://127.0.0.1:3210
-      NEXT_PUBLIC_CONVEX_SITE_URL: http://127.0.0.1:3211
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

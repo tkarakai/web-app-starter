@@ -213,6 +213,22 @@
       "signInRequired": "A fiókodhoz hozzáférési kulccsal kell bejelentkezned.",
       "unsupportedTitle": "Ez az eszköz vagy böngésző nem támogatja a hozzáférési kulcsokat.",
       "unsupportedDescription": "A beállításhoz jelentkezz be hozzáférési kulcsokat támogató eszközről vagy böngészőből."
+    },
+    "waitlist": {
+      "title": "Csatlakozás a várólistához",
+      "description": "Kérjen hozzáférést a várólistára való feliratkozással.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "on@pelda.hu",
+      "submit": "Feliratkozás",
+      "submitting": "Feliratkozás...",
+      "successTitle": "Felkerült a listára!",
+      "successDescription": "Meghívót küldünk, amikor Önre kerül a sor.",
+      "errors": {
+        "waitlistNotEnabled": "A várólista jelenleg nem fogad regisztrációkat. Kérjük, próbálja újra később.",
+        "invalidEmail": "Kérjük, adjon meg egy érvényes e-mail-címet.",
+        "rateLimited": "Túl sok kérés. Kérjük, várjon egy pillanatot, és próbálja újra.",
+        "generic": "Valami hiba történt. Kérjük, próbálja újra."
+      }
     }
   },
   "errors": {

@@ -18,7 +18,7 @@
 #
 # Only apps whose .env.example is self-sufficient are seeded — that is, every key
 # has a value once the local URLs are filled in. apps/web and platform/apps/admin deliberately ship empty
-# NEXT_PUBLIC_CONVEX_URL / NEXT_PUBLIC_CONVEX_SITE_URL entries, because those are
+# CONVEX_URL / CONVEX_SITE_URL entries, because those are
 # only knowable once `convex dev` has assigned a port; dev-start.sh owns them.
 # Copying an empty value there would swap one build failure for a more confusing
 # one ("CONVEX_SITE_URL is not set"), so those apps are skipped.

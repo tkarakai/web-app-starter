@@ -25,8 +25,10 @@ trail. Two marketing sites and a component showcase complete it.
 | demo | `apps/demo` | Standalone UI/dispatch demo ([README](apps/demo/README.md)) |
 
 Each app keeps source in `src/` and tests in `qa/` (`qa/tests/` for unit and component tests,
-`qa/e2e/` for Playwright). The backend for all of them is the Convex project in
-`packages/backend/convex/`; the sample domain is `projects`, `tasks` and `files`. Their name, ports,
+`qa/e2e/` for Playwright). Web and admin use the Convex project in
+`packages/backend/convex/`; the sample domain is `projects`, `tasks` and `files`.
+Both landing apps need no backend: they link to web's `/sign-up` and `/sign-in`, and web
+owns the onboarding decision and waitlist form. Their name, ports,
 auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
 ## Our conventions

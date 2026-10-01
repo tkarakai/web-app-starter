@@ -213,6 +213,22 @@
       "signInRequired": "你的账户必须使用通行密钥登录。",
       "unsupportedTitle": "此设备或浏览器不支持通行密钥。",
       "unsupportedDescription": "请使用支持通行密钥的设备或浏览器登录以完成设置。"
+    },
+    "waitlist": {
+      "title": "加入候补名单",
+      "description": "加入候补名单，申请访问。",
+      "emailLabel": "电子邮箱",
+      "emailPlaceholder": "you@example.cn",
+      "submit": "加入候补名单",
+      "submitting": "正在提交...",
+      "successTitle": "您已加入名单！",
+      "successDescription": "轮到您时，我们会向您发送邀请。",
+      "errors": {
+        "waitlistNotEnabled": "候补名单目前暂不接受注册。请稍后再试。",
+        "invalidEmail": "请输入有效的电子邮箱地址。",
+        "rateLimited": "请求过于频繁。请稍等片刻后重试。",
+        "generic": "出了点问题。请重试。"
+      }
     }
   },
   "errors": {

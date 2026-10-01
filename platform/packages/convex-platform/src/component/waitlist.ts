@@ -27,19 +27,22 @@ export const join = mutation({
     clientIp: v.optional(v.string()),
   },
   returns: v.object({ alreadyJoined: v.boolean() }),
-  handler: async (ctx, args) => {    // Validate inputs
+  handler: async (ctx, args) => {
+    // Normalize and validate before lookup so every caller uses the same policy.
+    const email = normalizeEmail(args.email);
     assertMaxLength(args.email, MAX_NAME_LENGTH, "EMAIL");
+    if (!EMAIL_PATTERN.test(email)) throw new Error("INVALID_EMAIL");
     validateMeta(args.meta);
 
     // Check for duplicate email
     const existing = await ctx.db
       .query("waitlistEntries")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
     if (existing) {
       await scheduleAuditEvent(ctx, {
-        actor: args.email,
+        actor: email,
         sourceDetail: "waitlist",
         action: "waitlist.joined",
         resource: `waitlist-entry:${existing._id}`,
@@ -53,14 +56,14 @@ export const join = mutation({
     }
 
     const entryId = await ctx.db.insert("waitlistEntries", {
-      email: args.email,
+      email,
       meta: args.meta,
       status: "waiting",
       createdAt: Date.now(),
     });
 
     await scheduleAuditEvent(ctx, {
-      actor: args.email,
+      actor: email,
       sourceDetail: "waitlist",
       action: "waitlist.joined",
       resource: `waitlist-entry:${entryId}`,

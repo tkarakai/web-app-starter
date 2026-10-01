@@ -10,7 +10,9 @@ interface WaitlistStatus {
 }
 
 /** Normalise the status payload, including the legacy field names older backends send. */
-export function parseOnboardingStatus(data: WaitlistStatus): OnboardingType {
+export function parseOnboardingStatus(value: unknown): OnboardingType {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "inviteOnly";
+  const data = value as WaitlistStatus;
   if (
     data.onboardingType === "inviteOnly" ||
     data.onboardingType === "publicWaitlist" ||
@@ -21,14 +23,15 @@ export function parseOnboardingStatus(data: WaitlistStatus): OnboardingType {
   if (data.onboardingType === "waitlist") return "publicWaitlist";
   if (data.onboardingType === "signup") return "publicSignup";
   if (data.onboardingType === "none") return "inviteOnly";
+  if (data.onboardingType !== undefined) return "inviteOnly";
   if (data.waitlistEnabled === true || data.enabled === true) return "publicWaitlist";
   if (data.signupEnabled === true) return "publicSignup";
-  return "publicSignup";
+  return "inviteOnly";
 }
 
 /**
- * Fetch the onboarding mode from Convex (`CONVEX_SITE_URL`, read at request time), cached
- * for a minute. Falls back to public sign-up if the backend can't be reached.
+ * Fetch the onboarding mode from Convex (`CONVEX_SITE_URL`, read at request time), uncached
+ * so admin changes apply on the next request. Fail closed on backend errors.
  */
 export async function fetchOnboardingType(): Promise<OnboardingType> {
   const convexSiteUrl = process.env.CONVEX_SITE_URL;
@@ -37,10 +40,11 @@ export async function fetchOnboardingType(): Promise<OnboardingType> {
   }
   try {
     const res = await fetch(`${convexSiteUrl}/api/waitlist/status`, {
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
+    if (!res.ok) return "inviteOnly";
     return parseOnboardingStatus((await res.json()) as WaitlistStatus);
   } catch {
-    return "publicSignup";
+    return "inviteOnly";
   }
 }

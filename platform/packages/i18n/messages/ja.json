@@ -213,6 +213,22 @@
       "signInRequired": "このアカウントにはパスキーでのログインが必要です。",
       "unsupportedTitle": "このデバイスまたはブラウザーはパスキーに対応していません。",
       "unsupportedDescription": "パスキー対応のデバイスまたはブラウザーからログインして設定してください。"
+    },
+    "waitlist": {
+      "title": "ウェイトリストに参加",
+      "description": "ウェイトリストに参加して、アクセスをリクエストしましょう。",
+      "emailLabel": "メールアドレス",
+      "emailPlaceholder": "you@example.jp",
+      "submit": "ウェイトリストに参加",
+      "submitting": "登録中...",
+      "successTitle": "リストに登録されました！",
+      "successDescription": "順番が来ましたら招待メールをお送りします。",
+      "errors": {
+        "waitlistNotEnabled": "現在ウェイトリストへの登録を受け付けておりません。後ほどお試しください。",
+        "invalidEmail": "有効なメールアドレスを入力してください。",
+        "rateLimited": "リクエストが多すぎます。しばらく待ってからもう一度お試しください。",
+        "generic": "エラーが発生しました。もう一度お試しください。"
+      }
     }
   },
   "errors": {

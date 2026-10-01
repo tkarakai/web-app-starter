@@ -74,7 +74,6 @@ if [ -z "$SELECTED_APPS" ]; then
     if [ -f "$(app_dir admin)/package.json" ]; then START_ADMIN=true; NEED_CONVEX=true; fi
     LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR" --required)
     START_LANDING=true
-    if [ "$LANDING_APP" = landing ]; then NEED_CONVEX=true; fi
     if [ -f "$(app_dir storybook)/package.json" ]; then START_STORYBOOK=true; fi
 else
     # Parse comma-separated app names
@@ -104,7 +103,6 @@ else
                 REQUESTED_LANDING="$app"
                 LANDING_APP="$app"
                 START_LANDING=true
-                if [ "$app" = landing ]; then NEED_CONVEX=true; fi
                 ;;
             storybook)
                 START_STORYBOOK=true
@@ -296,15 +294,13 @@ get_convex_urls_from_backend_env() {
 # Update Convex URLs in an app's .env.local
 #
 # web and admin read these unprefixed at request time so their build artifacts
-# stay environment-agnostic and can be promoted between environments. landing is
-# a static export (output: "export") with no server at runtime, so it still needs
-# the NEXT_PUBLIC_* form inlined at build time.
+# stay environment-agnostic and can be promoted between environments. Neither
+# landing app needs Convex URLs.
 # See platform/docs/deployment-architecture.md
 update_app_env_urls() {
     local env_file="$1"
     local cloud_port="$2"
     local site_port="$3"
-    local style="${4:-runtime}"   # runtime | inlined
 
     local cloud_url="http://127.0.0.1:$cloud_port"
     local site_url="http://127.0.0.1:$site_port"
@@ -312,13 +308,8 @@ update_app_env_urls() {
     # Ensure file exists
     touch "$env_file"
 
-    if [ "$style" = "inlined" ]; then
-        update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_URL" "$cloud_url"
-        update_env_var "$env_file" "NEXT_PUBLIC_CONVEX_SITE_URL" "$site_url"
-    else
-        update_env_var "$env_file" "CONVEX_URL" "$cloud_url"
-        update_env_var "$env_file" "CONVEX_SITE_URL" "$site_url"
-    fi
+    update_env_var "$env_file" "CONVEX_URL" "$cloud_url"
+    update_env_var "$env_file" "CONVEX_SITE_URL" "$site_url"
 }
 
 # Check if esbuild binary is functional (Convex uses it to bundle functions)
@@ -701,9 +692,6 @@ if [ "$NEED_CONVEX" = true ]; then
         if [ "$START_ADMIN" = true ]; then
             update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
-        if [ "$START_LANDING" = true ] && [ "$LANDING_APP" = landing ]; then
-            update_app_env_urls "$PROJECT_DIR/$LANDING_DIR/.env.local" "$CLOUD_PORT" "$SITE_PORT" "inlined"
-        fi
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi
@@ -910,11 +898,8 @@ start_next_app() {
     # Sync this app's origin into Convex's SITE_URL.
     #
     # SITE_URL is a comma-separated list; the backend splits it and uses every
-    # entry as a trusted origin (see getSiteUrls() in convex/platform/auth.ts). This used
-    # to run for the web app only, so starting landing on its own left its
-    # origin untrusted and every browser call to the Convex HTTP router failed
-    # CORS -- which is exactly how it failed the moment E2E first ran in CI.
-    if [ "$NEED_CONVEX" = true ] && [ "$app_name" != landing-static ] && [ -n "$next_port" ]; then
+    # entry as a trusted origin. Only web and admin call the backend.
+    if [ "$NEED_CONVEX" = true ] && { [ "$app_name" = web ] || [ "$app_name" = admin ]; } && [ -n "$next_port" ]; then
         local app_origin="http://localhost:$next_port"
         local existing_site_url
         existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')

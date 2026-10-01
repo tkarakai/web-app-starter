@@ -213,6 +213,22 @@
       "signInRequired": "Für Ihr Konto ist die Anmeldung mit einem Passkey erforderlich.",
       "unsupportedTitle": "Dieses Gerät oder dieser Browser unterstützt keine Passkeys.",
       "unsupportedDescription": "Melden Sie sich auf einem Gerät oder Browser mit Passkey-Unterstützung an, um einen einzurichten."
+    },
+    "waitlist": {
+      "title": "Warteliste beitreten",
+      "description": "Fordern Sie Zugang an, indem Sie sich auf die Warteliste setzen.",
+      "emailLabel": "E-Mail",
+      "emailPlaceholder": "sie@beispiel.de",
+      "submit": "Auf die Warteliste",
+      "submitting": "Wird eingetragen...",
+      "successTitle": "Sie sind auf der Liste!",
+      "successDescription": "Wir senden Ihnen eine Einladung, wenn Sie an der Reihe sind.",
+      "errors": {
+        "waitlistNotEnabled": "Die Warteliste nimmt derzeit keine Anmeldungen an. Bitte versuchen Sie es später erneut.",
+        "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+        "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      }
     }
   },
   "errors": {

@@ -38,8 +38,7 @@ export function values(state: State, installed: App[], env: Environment) {
     vercel: {
       web: { CONVEX_URL: backend.url, CONVEX_SITE_URL: site, LANDING_URL: origin(landing), APP_ENVIRONMENT: env },
       admin: { CONVEX_URL: backend.url, CONVEX_SITE_URL: site, APP_ENVIRONMENT: env },
-      [landing]: { NEXT_PUBLIC_SITE_URL: origin(landing), NEXT_PUBLIC_WEB_APP_URL: origin("web"),
-        ...(landing === "landing" ? { NEXT_PUBLIC_CONVEX_SITE_URL: site } : {}) },
+      [landing]: { NEXT_PUBLIC_SITE_URL: origin(landing), NEXT_PUBLIC_WEB_APP_URL: origin("web") },
     } as Partial<Record<App, Record<string, string>>>,
     convex: { SITE_URL: `${origin("web")},${origin("admin")}`, ADMIN_SITE_URL: origin("admin"), LANDING_URL: origin(landing) },
   };

@@ -1,6 +1,6 @@
 # Development Workflow
 
-The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Either landing app runs without a Convex backend. Both offer generic Get started / Sign in links to web; web alone reads the onboarding mode.
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
@@ -13,7 +13,7 @@ bun run dev                  # Starts installed core apps; skips apps removed du
 # Start a specific app + Convex (ports: runtime.ports in app.config.ts)
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
-bun run dev:landing          # Landing + local Convex for waitlist endpoints
+bun run dev:landing          # Landing only (no backend)
 bun run dev:landing-static   # Static landing page (no Convex)
 bun run dev:storybook        # Component storybook only (no Convex)
 
@@ -26,10 +26,10 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
-Whenever web, admin or the primary landing starts Convex, the launcher also sets the
+Whenever web or admin starts Convex, the launcher also sets the
 backend's `LANDING_URL` to the selected landing's actual URL, or its configured local
 origin if it is not started. The backend needs this for CORS and announcement links
-even when the selected landing is static. Starting only `landing-static` needs no Convex.
+even when the selected landing is static. Starting either landing alone needs no Convex.
 
 ### App configuration (`app.config.ts`)
 

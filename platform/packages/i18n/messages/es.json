@@ -213,6 +213,22 @@
       "signInRequired": "Tu cuenta requiere iniciar sesión con una clave de acceso.",
       "unsupportedTitle": "Este dispositivo o navegador no admite claves de acceso.",
       "unsupportedDescription": "Inicia sesión desde un dispositivo o navegador compatible para configurar una clave de acceso."
+    },
+    "waitlist": {
+      "title": "Unirse a la lista de espera",
+      "description": "Solicite acceso uniéndose a la lista de espera.",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "usted@ejemplo.es",
+      "submit": "Unirse a la lista",
+      "submitting": "Registrando...",
+      "successTitle": "¡Está en la lista!",
+      "successDescription": "Le enviaremos una invitación cuando sea su turno.",
+      "errors": {
+        "waitlistNotEnabled": "La lista de espera no está aceptando registros en este momento. Inténtelo de nuevo más tarde.",
+        "invalidEmail": "Por favor, introduzca una dirección de correo electrónico válida.",
+        "rateLimited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
+        "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
+      }
     }
   },
   "errors": {

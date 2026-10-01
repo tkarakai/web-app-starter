@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense, type ComponentType, type ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { appConfig } from "@web-app-starter/app-config";
@@ -18,6 +18,7 @@ import { InvitationSignupForm } from "../components/invitation-signup-form";
 import { LocaleSwitcher } from "../components/locale-switcher";
 import { ResetPasswordForm } from "../components/reset-password-form";
 import { VerifyEmailForm } from "../components/verify-email-form";
+import { WaitlistForm, type WaitlistFormProps } from "../components/waitlist-form";
 import { fetchOnboardingType } from "../lib/onboarding";
 
 /** The marketing site URL for the header's home link, read at request time. */
@@ -83,37 +84,43 @@ export async function SignInView() {
   );
 }
 
-/**
- * Default sign-up page. Shows the form in public-signup mode; otherwise explains that
- * sign-up is closed and links to the waitlist (landing) or sign-in.
- */
+/** Default page; preserve direct route re-exports with no extra Next.js page props. */
 export async function SignUpView() {
+  return renderSignUpView(WaitlistForm);
+}
+
+/** Compose an app-owned question form into a route with the same onboarding gate. */
+export function createSignUpView({ waitlistForm }: {
+  waitlistForm: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>;
+}) {
+  return async function SignUpPage() {
+    return renderSignUpView(waitlistForm);
+  };
+}
+
+/** Web owns the uncached onboarding decision, shared by both page entry points. */
+async function renderSignUpView(Waitlist: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>) {
   const ts = await getTranslations("auth.signIn");
   const ti = await getTranslations("auth.invitation");
   const onboardingType = await fetchOnboardingType();
-  const landing = landingUrl();
 
   return (
     <AuthPageShell namespace="auth.signUp" background="var(--glow-cool)">
       {onboardingType === "publicSignup" ? (
         <AuthForm mode="sign-up" />
+      ) : onboardingType === "publicWaitlist" ? (
+        <Waitlist convexSiteUrl={process.env.CONVEX_SITE_URL!} />
       ) : (
         <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
           <CardHeader>
             <CardTitle>{ti("signupBlocked")}</CardTitle>
             <CardDescription>
-              {onboardingType === "publicWaitlist"
-                ? ti("signupBlockedDescription")
-                : ts("description")}
+              {ts("description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              {onboardingType === "publicWaitlist" ? (
-                <a href={landing}>{ti("goToWaitlist")}</a>
-              ) : (
-                <a href="/sign-in">{ts("cta")}</a>
-              )}
+              <a href="/sign-in">{ts("cta")}</a>
             </Button>
           </CardContent>
         </Card>
