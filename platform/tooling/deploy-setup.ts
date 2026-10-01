@@ -1,11 +1,11 @@
 // Guided deployment provisioning. Credentials live only in memory and provider secret stores.
 // --check is read-only JSON; --prove resumes/displays staging proof without provisioning again.
-import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, constants, existsSync, fstatSync, openSync, readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import path from "node:path";
-import { apps, ENVIRONMENTS, loadState, saveState, safePath, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
+import { apps, ENVIRONMENTS, loadState, saveState, readPublicFile, writePublicFile, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
 import { ask, hidden, interactive, run } from "./deploy-setup/io.ts";
 import { checkSetup, configureBranch, convexAPI, ensureBackend, ensureDeployKey, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
 import { stagingProof } from "./deploy-setup/proof.ts";
@@ -18,9 +18,14 @@ async function confirm(message: string) {
 function ignoreState(root: string) {
   // Local exclusion also works before an older app has upgraded its app-owned .gitignore seam.
   return run("git", ["rev-parse", "--git-path", "info/exclude"]).then(file => {
-    const target = path.resolve(root, file), old = existsSync(target) ? readFileSync(target, "utf8") : "";
-    const patterns = [STATE_FILE, `${STATE_FILE}.tmp`, "ops.config.json"];
-    writeFileSync(target, `${old}${old.endsWith("\n") ? "" : "\n"}${patterns.filter(p => !old.split("\n").includes(p)).join("\n")}\n`);
+    const target = path.resolve(root, file);
+    const fd = openSync(target, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND | constants.O_NOFOLLOW, 0o600);
+    try {
+      if (!fstatSync(fd).isFile()) throw Error("Git exclude must be a regular file");
+      const old = readFileSync(fd, "utf8"), patterns = [STATE_FILE, `${STATE_FILE}.tmp`, "ops.config.json", "ops.config.json.tmp"];
+      const missing = patterns.filter(p => !old.split("\n").includes(p));
+      if (missing.length) appendFileSync(fd, `${old.endsWith("\n") ? "" : "\n"}${missing.join("\n")}\n`);
+    } finally { closeSync(fd); }
   });
 }
 async function identity(root: string): Promise<State> {
@@ -124,12 +129,12 @@ async function configure(state: State, root: string) {
   await confirm("Production environment protections and branch rules reviewed/configured?");
   const protection = await github<{ protection_rules: { type: string }[] }>(state.repository, "environments/production");
   if (!protection.protection_rules.some(rule => rule.type === "required_reviewers")) throw Error("Production needs a required reviewer. Add one in environment settings, then resume; setup will not weaken protection.");
-  const opsFile = safePath(root, "ops.config.json");
-  const current = existsSync(opsFile) ? JSON.parse(readFileSync(opsFile, "utf8")) as Record<string, unknown> : {};
+  const opsText = readPublicFile(root, "ops.config.json");
+  const current = opsText ? JSON.parse(opsText) as Record<string, unknown> : {};
   if (current.repository && current.repository !== state.repository) throw Error("ops.config.json targets another repository; review it before continuing.");
   const mapped = Object.fromEntries(installed.map(app => [app, { projects: Object.fromEntries(ENVIRONMENTS.map(env => [env, { id: state.projects[`${app}/${env}`]!.id, domain: state.projects[`${app}/${env}`]!.domain }])) }]));
   await confirm("Save selected project mappings to ops.config.json and enable automatic staging deployments?");
-  writeFileSync(opsFile, `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...(current.apps as object ?? {}), ...mapped } }, null, 2)}\n`, { mode: 0o600 });
+  writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...(current.apps as object ?? {}), ...mapped } }, null, 2)}\n`);
   await run("gh", ["variable", "set", "DEPLOY_SETUP_STATE", "--repo", state.repository, "--body", "ready"]);
 }
 async function prove(state: State, root: string) {

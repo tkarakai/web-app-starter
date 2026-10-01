@@ -136,3 +136,14 @@ test("an interrupted key write cannot create duplicate Convex credentials", asyn
   await assert.rejects(() => ensureDeployKey(s, "staging", request, exec), /No duplicate key/);
   assert.equal(creates, 1);
 });
+
+test("public state writes refuse symlink temporary files and leave their targets untouched", async t => {
+  const { writePublicFile, readPublicFile } = await import("../deploy-setup/model.ts");
+  const root = mkdtempSync(path.join(tmpdir(), "deploy-files-")); t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, "other.txt"), "keep");
+  symlinkSync(path.join(root, "other.txt"), path.join(root, "ops.config.json.tmp"));
+  assert.throws(() => writePublicFile(root, "ops.config.json", "changed"), /EEXIST/);
+  assert.equal(readFileSync(path.join(root, "other.txt"), "utf8"), "keep");
+  symlinkSync(path.join(root, "other.txt"), path.join(root, ".deploy-setup.json"));
+  assert.throws(() => readPublicFile(root, ".deploy-setup.json"), /safely open/);
+});

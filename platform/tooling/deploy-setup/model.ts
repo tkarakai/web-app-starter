@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 export type Environment = "staging" | "production";
 export type App = "web" | "admin" | "landing" | "landing-static";
@@ -72,12 +72,25 @@ export function validateState(raw: State): State {
   }
   return clean;
 }
+export function readPublicFile(root: string, name: string): string | undefined {
+  let fd: number;
+  try { fd = openSync(path.join(root, name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
+  catch (error) { if ((error as { code?: string }).code === "ENOENT") return undefined; throw Error(`Cannot safely open ${name}`); }
+  try { if (!fstatSync(fd).isFile()) throw Error(`Expected a regular file: ${name}`); return readFileSync(fd, "utf8"); }
+  finally { closeSync(fd); }
+}
+export function writePublicFile(root: string, name: string, text: string): void {
+  const file = safePath(root, name), temp = path.join(root, `${name}.tmp`);
+  // Exclusive creation refuses stale files and symlinks atomically; rename never follows the target.
+  const fd = openSync(temp, "wx", 0o600);
+  try { writeFileSync(fd, text); } finally { closeSync(fd); }
+  try { renameSync(temp, file); } catch (error) { rmSync(temp, { force: true }); throw error; }
+}
 export function loadState(root: string): State | undefined {
-  const file = safePath(root, STATE_FILE);
-  return existsSync(file) ? validateState(JSON.parse(readFileSync(file, "utf8"))) : undefined;
+  const text = readPublicFile(root, STATE_FILE);
+  if (text === undefined) return undefined;
+  try { return validateState(JSON.parse(text)); } catch { throw Error("Invalid public deployment setup state; inspect .deploy-setup.json without sharing credentials."); }
 }
 export function saveState(root: string, state: State): void {
-  const file = safePath(root, STATE_FILE), temp = safePath(root, `${STATE_FILE}.tmp`);
-  writeFileSync(temp, `${JSON.stringify(validateState(state), null, 2)}\n`, { mode: 0o600 });
-  renameSync(temp, file);
+  writePublicFile(root, STATE_FILE, `${JSON.stringify(validateState(state), null, 2)}\n`);
 }
