@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { appCookieDomain, fillStable, submitEmailStep } from "./helpers/auth";
+import { appCookieDomain, submitEmailStep } from "./helpers/auth";
 import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 
 // Session cookie names for the prefix in app.config.ts.
@@ -16,16 +16,23 @@ const [SESSION] = sessionCookieNames();
  * Some tests create real user accounts — use unique emails per test run.
  */
 
-const TEST_EMAIL_PREFIX = `e2e-auth-${Date.now()}`;
-
 test.describe("Sign-In Flow", () => {
   test("shows generic error for wrong password (no email enumeration)", async ({
     page,
   }) => {
     // Sign-in is a two-step form: #password does not exist until the email
     // step is submitted.
-    await submitEmailStep(page, "nonexistent@example.com");
-    await fillStable(page, "#password", "wrongpassword123");
+    await page.goto("/en/sign-in");
+    await page.waitForLoadState("networkidle");
+    const emailInput = page.locator("#email");
+    await emailInput.pressSequentially("nonexistent@example.com", { delay: 15 });
+    await expect(emailInput).toHaveValue("nonexistent@example.com");
+    await page.locator('form:has(#email) button[type="submit"]').click();
+
+    const passwordInput = page.locator("#password");
+    await expect(passwordInput).toBeVisible();
+    await passwordInput.pressSequentially("wrongpassword123", { delay: 15 });
+    await expect(passwordInput).toHaveValue("wrongpassword123");
     await page.locator('form:has(#password) button[type="submit"]').click();
 
     // Wait for the error message to appear

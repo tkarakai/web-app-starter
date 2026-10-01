@@ -6,13 +6,14 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { addComponent, prepare } from "../codemods/v2-component-data-bridge.ts";
 const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const sourceBackend: { dependencies: { convex: string } } = JSON.parse(fs.readFileSync(path.join(source, "packages/backend/package.json"), "utf8"));
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "component-bridge-test-")); roots.push(root);
   fs.mkdirSync(path.join(root, "packages/backend/convex"), { recursive: true });
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ workspaces: ["apps/*", "packages/*"] }) + "\n");
-  fs.writeFileSync(path.join(root, "packages/backend/package.json"), JSON.stringify({ dependencies: { convex: "1.45.0" } }) + "\n");
+  fs.writeFileSync(path.join(root, "packages/backend/package.json"), JSON.stringify({ dependencies: { convex: sourceBackend.dependencies.convex } }) + "\n");
   fs.writeFileSync(path.join(root, "packages/backend/convex/convex.config.ts"), 'import { defineApp } from "convex/server";\nconst app = defineApp();\nexport default app;\n');
   fs.writeFileSync(path.join(root, "packages/backend/convex/schema.ts"), "// Original legacy schema must stay intact.\n");
   fs.writeFileSync(path.join(root, "packages/backend/convex/announcements.ts"), "// Original scheduled handlers must stay intact.\n");

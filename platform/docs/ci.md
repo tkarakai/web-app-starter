@@ -69,7 +69,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks; its E2E dev server starts local Convex for waitlist endpoints
-5. `ci-storybook.yml` — Storybook app: build, E2E (non-blocking, not required for merge)
+5. `ci-storybook.yml` — Storybook app: build, E2E
 
 ### Reusable platform workflows and thin callers
 
@@ -195,3 +195,7 @@ forcing E2E even when `SKIP_E2E` is set. Its final **Verified** job succeeds onl
 when every workflow succeeds. Called-workflow concurrency includes the caller name,
 so ordinary PR or deployment CI cannot cancel it. Run it on a commit before tagging or
 releasing it.
+
+### Pull-request base branches
+
+App-owned `ci-*.yml` and `security.yml` callers run on all pull-request bases, including stacked and migration branches. They are upgrade seams: upstream trigger fixes merge against your baseline; intentional customization stays yours and conflicts require review. For required summary checks and installed landing variants, see the [branch-protection checklist](deployment-runbook.md#configure-branch-protection).

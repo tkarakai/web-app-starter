@@ -11,6 +11,7 @@
 //   --repo <owner/name>       Your GitHub repository, for the Renovate preset link; default: from origin
 //   --remove <apps>           Comma-separated reference apps to delete: landing, landing-static, demo
 //   --remove-sample           Remove projects, tasks and uploads; keep account settings and auth
+//   --from-release <vX.Y.Z>  Verify this published source after an existing-repository merge
 //   --no-upstream             Don't add the `upstream` remote
 //   --skip-install            Don't run `bun install` after removing apps
 //   --skip-build              Don't run the build at the end
@@ -32,6 +33,7 @@ import { createInterface } from "node:readline/promises";
 import { pathToFileURL } from "node:url";
 
 import { BASE_FILE, SEAM_HOOKS, checkZone, type PlatformBase } from "./check-zone.ts";
+import { adoptionRelease, commandAt, type Command } from "./adopt-release.ts";
 
 export const STARTER_REPO = "tkarakai/web-app-starter";
 export const STARTER_URL = `https://github.com/${STARTER_REPO}.git`;
@@ -52,6 +54,7 @@ export type AdoptOptions = {
   upstream?: boolean;
   install?: boolean;
   build?: boolean;
+  fromRelease?: string;
 };
 
 /** "Acme Tasks!" → "acme-tasks": a cookie-safe default prefix. */
@@ -281,14 +284,17 @@ const BUILD_PLACEHOLDERS: Record<string, string> = {
 };
 
 /** Run every adoption step on `root`. Returns the zone check's error count. */
-export function adopt(root: string, options: AdoptOptions, log: (line: string) => void = (line) => process.stdout.write(`${line}\n`)): number {
+export function adopt(root: string, options: AdoptOptions, log: (line: string) => void = (line) => process.stdout.write(`${line}\n`), services: { release?: typeof adoptionRelease; command?: Command } = {}): number {
   const at = (file: string): string => path.join(root, file);
   if (existsSync(at(BASE_FILE))) throw new Error(`${BASE_FILE} exists: this repository is already adopted`);
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error(`--repo must be owner/name (got "${options.repo}")`);
   if (git(root, ["status", "--porcelain"]) !== "") throw new Error("Adoption needs a clean checkout; commit or preserve your work first");
   validateLandingRemoval(root, options.remove ?? []);
-  const commit = git(root, ["rev-parse", "HEAD"]);
-  const version = readFileSync(at("platform/VERSION"), "utf8").trim();
+  const { commit, version } = (services.release ?? adoptionRelease)(root, options.fromRelease);
+  log(`Pre-adoption checklist for https://github.com/${options.repo}/settings/installations and /settings/hooks:`);
+  log("  - Review installed GitHub Apps, webhooks and Git-connected hosts (Vercel, Cloudflare, Netlify, etc.).");
+  log("  - Repoint or pause builds tied to the old repository root before pushing the new layout.");
+  log("  - These dashboard checks are manual: GitHub cannot enumerate every external hosting integration.");
 
   log("1. app.config.ts");
   writeFileSync(at("app.config.ts"), setAppConfig(readFileSync(at("app.config.ts"), "utf8"), options));
@@ -329,9 +335,15 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
     const remotes = git(root, ["remote"]).split("\n");
     if (remotes.includes("upstream")) log("  - upstream remote already set");
     else {
-      git(root, ["remote", "add", "upstream", STARTER_URL]);
+      git(root, ["remote", "add", "--no-tags", "-t", "main", "upstream", STARTER_URL]);
       log(`  - added upstream remote ${STARTER_URL}`);
     }
+  }
+  try {
+    (services.command ?? commandAt(root))("gh", ["repo", "set-default", options.repo]);
+    log(`  - gh default repository: ${options.repo}`);
+  } catch {
+    log(`  - Run gh repo set-default ${options.repo} once its remote exists. Until then use gh ... --repo ${options.repo}.`);
   }
 
   log("6. Platform updates");
@@ -349,6 +361,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   log("The platform's (never edit; replaced on upgrade): platform/, packages/backend/convex/platform/, .github/workflows/platform-*.yml, .claude/skills/platform-*, .agents/skills/platform-*.");
   log("Deployment: run bun run deploy:setup --check early for accounts, DNS and setup requirements. A new unconfigured app skips automatic deployment; merging to main starts staging deployment once setup is complete.");
   log("Next: fill in the <placeholders> in README.md and AGENTS.md, review the diff, and commit.");
+  log(`Then smoke-test the baseline: bun run platform:upgrade --to v${version} --dry-run (expect unchanged).`);
   return zone.errors.length;
 }
 
@@ -368,6 +381,7 @@ export function parseArgs(argv: readonly string[]): Parsed {
       case "--support-email": parsed.supportEmail = value(); break;
       case "--cookie-prefix": parsed.cookiePrefix = value(); break;
       case "--repo": parsed.repo = value(); break;
+      case "--from-release": parsed.fromRelease = value(); break;
       case "--port": {
         const [app, port] = value().split("=");
         if (!app || !/^\d+$/.test(port ?? "")) throw new Error("--port takes <app>=<port>");
