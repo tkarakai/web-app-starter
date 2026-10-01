@@ -370,10 +370,12 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
   - Required: `CI Shared / CI Shared Complete`
   - Required: `CI Web / CI Web Complete`
   - Required: `CI Admin / CI Admin Complete`
-  - Required: `CI Landing / CI Landing Complete`
+  - Required when `apps/landing` is installed: `CI Landing / CI Landing Complete`
+  - Required when `apps/landing-static` is installed: `CI Landing Static / CI Landing Static Complete`
+  - Required: `CI Storybook / CI Storybook Complete`
 - [x] Require branches to be up to date before merging
 
-> **How it works:** The 4 CI workflows (`ci-shared.yml`, `ci-web.yml`, `ci-admin.yml`, `ci-landing.yml`) run on every pull request. Each workflow has a summary job (e.g., "CI Shared Complete") that passes only when all of that workflow's checks succeed. Branch protection requires all 4 summary jobs to pass before a PR can be merged.
+> **How it works:** CI callers run on pull requests to every base branch, including stacked and migration branches. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. When both landing apps are installed, both have PR CI, even though deployment selects only one. Copy exact check names from a completed PR run.
 >
 > On push to main (after a PR is merged), the unified `cd-staging.yml` workflow calls these same CI workflows as reusable workflows, then detects which apps changed, builds only those, and deploys to staging. It also sets a `ci/gate-passed` commit status that `cd-production.yml` checks before allowing production deploys.
 
@@ -468,7 +470,9 @@ gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_chec
 #   CI Shared / CI Shared Complete
 #   CI Web / CI Web Complete
 #   CI Admin / CI Admin Complete
-#   CI Landing / CI Landing Complete
+#   CI Landing / CI Landing Complete (if installed)
+#   CI Landing Static / CI Landing Static Complete (if installed)
+#   CI Storybook / CI Storybook Complete
 ```
 
 ---

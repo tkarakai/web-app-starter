@@ -46,6 +46,38 @@
       "hooks": []
     },
     {
+      "id": "root.github.workflows.ci-admin.yml",
+      "path": ".github/workflows/ci-admin.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.workflows.ci-landing-static.yml",
+      "path": ".github/workflows/ci-landing-static.yml",
+      "hooks": [],
+      "optionalApp": "apps/landing-static"
+    },
+    {
+      "id": "root.github.workflows.ci-landing.yml",
+      "path": ".github/workflows/ci-landing.yml",
+      "hooks": [],
+      "optionalApp": "apps/landing"
+    },
+    {
+      "id": "root.github.workflows.ci-shared.yml",
+      "path": ".github/workflows/ci-shared.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.workflows.ci-storybook.yml",
+      "path": ".github/workflows/ci-storybook.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.workflows.ci-web.yml",
+      "path": ".github/workflows/ci-web.yml",
+      "hooks": []
+    },
+    {
       "id": "root.gitignore",
       "path": ".gitignore",
       "hooks": []
