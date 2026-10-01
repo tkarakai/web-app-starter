@@ -213,6 +213,22 @@
       "signInRequired": "החשבון שלך מחייב התחברות באמצעות מפתח גישה.",
       "unsupportedTitle": "המכשיר או הדפדפן הזה אינו תומך במפתחות גישה.",
       "unsupportedDescription": "יש להתחבר ממכשיר או מדפדפן שתומך במפתחות גישה כדי להגדיר מפתח."
+    },
+    "waitlist": {
+      "title": "הצטרפות לרשימת ההמתנה",
+      "description": "בקשו גישה על ידי הצטרפות לרשימת ההמתנה.",
+      "emailLabel": "אימייל",
+      "emailPlaceholder": "you@example.co.il",
+      "submit": "הצטרפות לרשימה",
+      "submitting": "נרשם...",
+      "successTitle": "אתם ברשימה!",
+      "successDescription": "נשלח לכם הזמנה כשיגיע תורכם.",
+      "errors": {
+        "waitlistNotEnabled": "רשימת ההמתנה אינה מקבלת הרשמות כרגע. אנא נסו שוב מאוחר יותר.",
+        "invalidEmail": "אנא הזינו כתובת אימייל תקינה.",
+        "rateLimited": "יותר מדי בקשות. אנא המתינו רגע ונסו שוב.",
+        "generic": "משהו השתבש. אנא נסו שוב."
+      }
     }
   },
   "errors": {

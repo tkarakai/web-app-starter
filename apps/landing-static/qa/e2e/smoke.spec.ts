@@ -98,3 +98,16 @@ test("bare root is a page and falls back to the configured locale", async ({ pag
   await expect(page).toHaveURL(new RegExp(`/${defaultLocale}/$`));
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
+
+test("hands off to web without contacting a backend", async ({ page }) => {
+  const calls: string[] = [];
+  await page.route("**/api/**", (route) => {
+    calls.push(route.request().url());
+    return route.abort();
+  });
+  await page.goto("/en/");
+  await expect(page.getByRole("link", { name: "Get started" })).toHaveAttribute("href", /\/sign-up$/);
+  await expect(page.getByRole("link", { name: "Sign in" }).first()).toHaveAttribute("href", /\/sign-in$/);
+  await page.waitForLoadState("networkidle");
+  expect(calls).toEqual([]);
+});

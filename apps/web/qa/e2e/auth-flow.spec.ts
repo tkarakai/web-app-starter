@@ -118,13 +118,8 @@ test.describe("Sign-Up Flow (invitation-gated)", () => {
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 
-    // The blocked page renders exactly one CTA, and which one depends on
-    // `onboardingType` (sign-up/page.tsx): `publicWaitlist` links out to the
-    // marketing site's waitlist, anything else (including the `inviteOnly`
-    // default) links back to sign-in. Assert the affordance exists without
-    // pinning the variant — a dev database left on publicWaitlist would
-    // otherwise disagree with a fresh CI backend on inviteOnly.
-    const cta = page.locator("main a[href]").filter({ hasNotText: "" }).last();
+    // Invite-only visitors can still sign in; waitlist mode is rendered in web.
+    const cta = page.locator('main a[href="/sign-in"]');
     await expect(cta).toBeVisible({ timeout: 15_000 });
     await expect(cta).toHaveAttribute("href", /.+/);
   });

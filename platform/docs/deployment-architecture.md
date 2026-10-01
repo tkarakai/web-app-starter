@@ -1,6 +1,7 @@
 # Deployment Architecture
 
-The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+See [landing selection and development commands](development.md) and
+[onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 When the static fallback is selected, it has its own Vercel projects and `landing-static-<hash>` artifacts. Use the **Other** preset, build command `bun run build`, output directory `out`, and root `apps/landing-static`. Its project IDs are `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` and `VERCEL_PROJECT_ID_LANDING_STATIC`; never reuse the primary landing project. Rollback chooses the variant present in the selected source commit.
 
@@ -200,7 +201,7 @@ Three consequences, and they are the whole point:
 | `*.md`, `qa/**` | **no** | documentation and tests do not change the build; excluded via `inputs` in `turbo.json` |
 | `CONVEX_URL`, `CONVEX_SITE_URL`, `LANDING_URL`, `APP_ENVIRONMENT`, … | **no** (`passThroughEnv`) | web and admin read these at request time; they are present during the build but never inlined, so they must not make the hash environment-specific |
 | `NEXT_PUBLIC_GIT_SHA`, `BUILD_ID`, `DEPLOY_TIMESTAMP`, … | **no** (`passThroughEnv`) | they change every commit; hashing them would defeat reuse entirely |
-| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` for `landing` / `landing-static` | **yes** | these are static exports: the values *are* inlined, so staging and production legitimately produce different artifacts |
+| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL` for `landing` / `landing-static` | **yes** | these are static exports: the values *are* inlined, so staging and production legitimately produce different artifacts |
 
 ### Build identity vs deployed commit
 

@@ -484,6 +484,19 @@ for (const installed of [["landing"], ["landing-static"], ["landing", "landing-s
     const result = await runScript("dev-start.sh", ["--ci"]);
     assert.equal(result.status, 17, result.stderr);
     assert.ok(result.stdout.includes(`Selected landing: ${selected}\n`));
-    assert.ok(result.stdout.includes(`Apps: web=false admin=false landing=true storybook=false convex=${selected === "landing"}`));
+    assert.ok(result.stdout.includes(`Apps: web=false admin=false landing=true storybook=false convex=false`));
+  });
+}
+
+for (const landing of ["landing", "landing-static"]) {
+  test(`explicit ${landing} startup requires no backend`, async () => {
+    fs.mkdirSync(path.join(root, "apps", landing), { recursive: true });
+    fs.writeFileSync(path.join(root, "apps", landing, "package.json"), "{}");
+    // Exercise the public launcher, stopping at its first setup operation.
+    fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+    const result = await runScript("dev-start.sh", ["--ci", `--app=${landing}`]);
+    assert.equal(result.status, 17, result.stderr);
+    assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=false"));
+    assert.equal(fs.existsSync(path.join(root, `apps/${landing}/.env.local`)), false);
   });
 }

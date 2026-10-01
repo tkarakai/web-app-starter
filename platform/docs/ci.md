@@ -1,6 +1,7 @@
 # CI Guide
 
-The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+See [landing selection and development commands](development.md) and
+[onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
@@ -68,7 +69,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required starter ownership checks and demo upgrade rehearsal (see `apps/demo/README.md`)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
-4. `ci-landing.yml` — Landing app: same checks; its E2E dev server starts local Convex for waitlist endpoints
+4. `ci-landing.yml` — Landing app: same checks; its E2E dev server needs no backend
 5. `ci-storybook.yml` — Storybook app: build, E2E
 
 ### Reusable platform workflows and thin callers

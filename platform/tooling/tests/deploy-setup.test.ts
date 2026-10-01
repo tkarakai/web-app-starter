@@ -319,3 +319,14 @@ test("selected proof mappings allow unrelated ops apps but reject selected ident
     }
   }
 });
+
+test("both landing generators emit only backend-free marketing configuration", () => {
+  for (const landing of ["landing", "landing-static"] as const) {
+    const s = state();
+    for (const app of ["web", "admin", landing] as const) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.test` };
+    s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
+    const generated = values(s, ["web", "admin", landing], "staging");
+    assert.deepEqual(generated.vercel[landing], { NEXT_PUBLIC_SITE_URL: `https://${landing}.example.test`, NEXT_PUBLIC_WEB_APP_URL: "https://web.example.test" });
+    assert.equal(generated.vercel.web?.CONVEX_SITE_URL, "https://backend.convex.site");
+  }
+});

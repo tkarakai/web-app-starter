@@ -67,7 +67,7 @@ To start only a specific app:
 ```bash
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
-bun run dev:landing          # Landing + local Convex for waitlist endpoints
+bun run dev:landing          # Landing only (no backend)
 bun run dev:landing-static   # Static landing page (no Convex)
 bun run dev:storybook        # Component storybook (no Convex)
 ```
@@ -274,7 +274,8 @@ CONVEX_SITE_URL=https://<deployment>.convex.site
 # apps/landing and apps/landing-static are static exports, so they must inline
 # their configuration at build time and keep the NEXT_PUBLIC_ prefix.
 NEXT_PUBLIC_SITE_URL=https://your-app-domain.com
-NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
+NEXT_PUBLIC_WEB_APP_URL=https://your-web-app-domain.com
+# Neither landing needs Convex: Get started / Sign in hand off to web.
 ```
 
 3. Configure Convex env vars for that deployment:
@@ -441,9 +442,9 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 
 ### Environment differences
 
-- Local env uses `CONVEX_URL` and `CONVEX_SITE_URL` (web/admin) or their `NEXT_PUBLIC_` counterparts (landing, landing-static) pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`.
+- Local web/admin env uses `CONVEX_URL` and `CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`. The backend-free landings use only `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` for app URLs.
 - Cloud env uses `https://<deployment>.convex.cloud` (API) and `https://<deployment>.convex.site` (site proxy).
-- `NEXT_PUBLIC_SITE_URL` (landing apps only) and the Convex `SITE_URL` env var should match your app URL for each environment. `web` and `admin` need neither — they derive their origin from the request `Host` header.
+- `NEXT_PUBLIC_SITE_URL` is the selected landing's URL. Convex's `SITE_URL` contains the trusted web/admin origins. Web and admin derive their own origin from the request `Host` header.
 
 ## Convex workflow primer
 

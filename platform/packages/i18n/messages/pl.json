@@ -213,6 +213,22 @@
       "signInRequired": "Twoje konto wymaga logowania kluczem dostępu.",
       "unsupportedTitle": "To urządzenie lub przeglądarka nie obsługuje kluczy dostępu.",
       "unsupportedDescription": "Zaloguj się na urządzeniu lub w przeglądarce obsługującej klucze dostępu, aby je skonfigurować."
+    },
+    "waitlist": {
+      "title": "Dołącz do listy oczekujących",
+      "description": "Poproś o dostęp, dołączając do listy oczekujących.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "ty@przyklad.pl",
+      "submit": "Dołącz do listy",
+      "submitting": "Zapisywanie...",
+      "successTitle": "Jesteś na liście!",
+      "successDescription": "Wyślemy Ci zaproszenie, gdy nadejdzie Twoja kolej.",
+      "errors": {
+        "waitlistNotEnabled": "Lista oczekujących nie przyjmuje obecnie zapisów. Spróbuj ponownie później.",
+        "invalidEmail": "Podaj prawidłowy adres e-mail.",
+        "rateLimited": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
+        "generic": "Coś poszło nie tak. Spróbuj ponownie."
+      }
     }
   },
   "errors": {

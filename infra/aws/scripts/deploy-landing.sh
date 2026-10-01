@@ -21,7 +21,6 @@ BUCKET="$(require_output "$LANDING_STACK" LandingBucketName)"
 DISTRIBUTION_ID="$(require_output "$LANDING_STACK" LandingCloudFrontDistributionId)"
 LANDING_URL="$(require_output "$LANDING_STACK" LandingUrl)"
 WEB_URL="$(require_output "$(stack_name network)" WebUrl)"
-read -r _ CONVEX_SITE_URL <<<"$(convex_urls)"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -38,7 +37,6 @@ log "Building $LANDING_APP (site=${LANDING_URL} web=${WEB_URL})"
   NEXT_TELEMETRY_DISABLED=1 \
   NEXT_PUBLIC_SITE_URL="$LANDING_URL" \
   NEXT_PUBLIC_WEB_APP_URL="$WEB_URL" \
-  NEXT_PUBLIC_CONVEX_SITE_URL="$CONVEX_SITE_URL" \
   NEXT_PUBLIC_GIT_SHA="$SHA" \
   NEXT_PUBLIC_APP_NAME="$LANDING_APP" \
     bun run --cwd "apps/$LANDING_APP" build

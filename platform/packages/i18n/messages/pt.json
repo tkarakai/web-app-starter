@@ -213,6 +213,22 @@
       "signInRequired": "Sua conta exige o uso de uma chave de acesso para entrar.",
       "unsupportedTitle": "Este dispositivo ou navegador não oferece suporte a chaves de acesso.",
       "unsupportedDescription": "Entre em um dispositivo ou navegador compatível para configurar uma chave de acesso."
+    },
+    "waitlist": {
+      "title": "Entrar na lista de espera",
+      "description": "Solicite acesso entrando na lista de espera.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "voce@exemplo.com.br",
+      "submit": "Entrar na lista",
+      "submitting": "Registrando...",
+      "successTitle": "Você está na lista!",
+      "successDescription": "Enviaremos um convite quando for a sua vez.",
+      "errors": {
+        "waitlistNotEnabled": "A lista de espera não está aceitando inscrições no momento. Tente novamente mais tarde.",
+        "invalidEmail": "Por favor, insira um endereço de e-mail válido.",
+        "rateLimited": "Muitas solicitações. Aguarde um momento e tente novamente.",
+        "generic": "Algo deu errado. Tente novamente."
+      }
     }
   },
   "errors": {

@@ -134,6 +134,42 @@ step writes an `admin.onboarding.*` audit event (§12).
 
 For users, sign-up *is* onboarding. The flow is simpler than admin onboarding because 2FA and passkey are optional.
 
+### Onboarding ownership and landing handoff
+
+Both reference landing apps are backend-free marketing sites. Get started links to the web
+app's `/sign-up`, and Sign in links to `/sign-in`. Neither landing reads the onboarding
+mode or requires a Convex URL. The default landing no longer mounts a live announcement host;
+web and admin retain their announcement UI.
+
+Web's `SignUpView` reads `CONVEX_SITE_URL/api/waitlist/status` on every request with
+`cache: "no-store"`. Admin mode changes apply to the next page request, without the former
+60-second stale-while-revalidate window. `publicSignup` renders account creation,
+`publicWaitlist` renders the shared `WaitlistForm` in web, and `inviteOnly` renders the
+invitation-only notice and sign-in link. Backend failures or unrecognized responses fail closed
+with that notice, never an open signup form. Backend mutations still enforce the mode at submit
+time; an already-open page does not grant permission after an admin changes it.
+
+The email-only default needs no app code. For custom questions, export
+`createSignUpView({ waitlistForm: AppWaitlistForm })` as the page default from
+`@web-app-starter/auth-ui/views`. The app-owned client form component receives
+`convexSiteUrl` at request time and composes `WaitlistForm` from
+`@web-app-starter/auth-ui` with `children` (question controls), optional `meta` (a JSON
+object, default `{}`) and `disabled` (app validation). See
+`apps/web/src/components/waitlist-form.tsx` for the reference questions. The shared form
+posts directly from the visitor's browser to Convex, preserving per-visitor IP rate limiting;
+do not replace it with a server action that collapses visitors onto the server's IP.
+The form uses the existing web `PublicConfigProvider` for localized marketing legal links.
+Shared wording lives in `auth.waitlist`; use `packages/messages/overrides.json` to reword it.
+Sample question translations remain app-owned under `landing.waitlist` for compatibility.
+
+**Additive adoption:** platform upgrades do not replace buyer-owned pages, questions or layouts.
+Existing apps can keep their landing forms or opt into the web handoff by composing the new
+view and form. Copy/customize the web question wrapper before removing an old form. The old
+reference landing form, waitlist section and announcement host remain as unmounted app seams;
+if you still mount them, retain their app-owned environment wiring and build env declarations.
+Only remove a landing's Convex variable after removing its backend consumers. New default
+launcher and infrastructure generators no longer supply it. No stored-answer migration is needed.
+
 ### 7.1 Step 1 — Create Account (email + password)
 
 User enters their email and creates a password that meets the shared policy in §5.
@@ -368,10 +404,13 @@ The original string is stored unchanged. For compatibility the HTTP endpoint als
 an object-valued `meta` (serialized before validation), and omitted `meta` becomes `"{}"`.
 Invalid metadata returns HTTP 400 with `{ error: "INVALID_META" }`; malformed request bodies
 return `INVALID_REQUEST`. Error responses contain fixed codes, never submitted metadata or
-internal diagnostics. Email validation/normalization, onboarding restrictions, deduplication
+internal diagnostics. Email syntax uses the same policy as bulk invitations (a non-whitespace
+local part, one @,
+and a domain with a dot); malformed addresses such as `anna@` return `INVALID_EMAIL`. The
+shared join mutation normalizes case/whitespace before lookup. Onboarding restrictions, deduplication
 and per-visitor rate limits still apply. Joining again does not replace stored answers.
 
-The reference form in `apps/landing/src/components/waitlist-form.tsx` still asks for
+The reference wrapper in `apps/web/src/components/waitlist-form.tsx` asks for
 superpowers and excitement and offers role, company (120 characters) and use case
 (500 characters). These are sample-app choices, not platform-required fields. Change or
 remove them in your app and keep their translations in `packages/messages/`. The platform

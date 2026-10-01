@@ -7,6 +7,7 @@ export {
   ResetPasswordView,
   SignInView,
   SignUpView,
+  createSignUpView,
   VerifyEmailView,
 } from "./auth-views";
 export { AuthLayout, ForbiddenView, ProtectedLayout, PublicAuthLayout } from "./layouts";

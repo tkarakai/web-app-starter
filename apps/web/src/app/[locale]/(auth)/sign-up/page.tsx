@@ -1,3 +1,5 @@
-// Platform route (the default sign-up view); the logic lives in @web-app-starter/auth-ui.
-// To customise it, replace this re-export with your own component.
-export { SignUpView as default } from "@web-app-starter/auth-ui/views";
+import { createSignUpView } from "@web-app-starter/auth-ui/views";
+import { AppWaitlistForm } from "@/components/waitlist-form";
+
+// App-owned questions; re-export SignUpView for the platform's email-only default.
+export default createSignUpView({ waitlistForm: AppWaitlistForm });

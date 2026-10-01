@@ -106,7 +106,8 @@ bun run deploy:setup         # Guided Vercel/Convex/GitHub setup; --check gives 
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 
-The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Static-only development needs no Convex backend.
+See [landing selection and development commands](docs/development.md) and
+[onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accounts: [docs/development.md](docs/development.md).
 
@@ -182,7 +183,7 @@ artifact to one environment.
 
 | Variable | Description | Apps |
 |---|---|---|
-| `CONVEX_DEPLOYMENT` | Convex deployment identifier | all |
+| `CONVEX_DEPLOYMENT` | Convex deployment identifier | backend tooling |
 | `CONVEX_URL` | Convex API URL | web, admin |
 | `CONVEX_SITE_URL` | Convex HTTP actions URL | web, admin |
 | `LANDING_URL` | Marketing site URL, for cross-app links | web |
@@ -194,7 +195,6 @@ artifact to one environment.
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | This app's public URL | landing, landing-static |
 | `NEXT_PUBLIC_WEB_APP_URL` | Web app URL, for cross-app links | landing, landing-static |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex HTTP actions URL | landing |
 
 Build-identity variables keep the `NEXT_PUBLIC_` prefix everywhere, because they describe the
 build: `NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_GIT_BRANCH`, `NEXT_PUBLIC_DEPLOY_TIMESTAMP`,

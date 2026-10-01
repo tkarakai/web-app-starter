@@ -15,7 +15,7 @@ A fully static, serverless variant of the landing page — built with Next.js `o
 - Dark/light/system theme support
 - Zero runtime server dependencies
 
-Both landing apps are static exports. The primary `landing` integrates the Convex waitlist; `landing-static` needs no backend. Default dev, CI and CD select this app only after `apps/landing` is removed. Explicit `bun run dev:landing-static` uses the same managed lifecycle as the other dev commands.
+Both landing apps are static exports. Both offer generic Get started / Sign in links to web and need no backend. Web owns signup, waitlist and invitation-only mode selection. Default dev, CI and CD select this app only after `apps/landing` is removed. Explicit `bun run dev:landing-static` uses the same managed lifecycle as the other dev commands.
 
 For the built-in Vercel pipeline, create separate static projects for staging and production: root `apps/landing-static`, preset **Other**, build command `bun run build`, output directory `out`. Configure `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` and `VERCEL_PROJECT_ID_LANDING_STATIC`, plus this site and web-app URLs. See the [deployment runbook](../../platform/docs/deployment-runbook.md).
 

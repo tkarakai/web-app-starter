@@ -91,3 +91,25 @@ describe("waitlist HTTP metadata boundary", () => {
     expect(await rows()).toHaveLength(2);
   });
 });
+
+describe("waitlist email syntax", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  test.each(["anna@", "@example.test", "anna@@example.test", "anna@example", "an na@example.test"])("rejects %s through HTTP and direct component calls", async (email) => {
+    const { t, join, rows } = await fixture();
+    await expect(t.mutation(components.platform.waitlist.join, { email, meta: "{}" })).rejects.toThrow("INVALID_EMAIL");
+    const response = await join({ email });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "INVALID_EMAIL" });
+    expect(await rows()).toEqual([]);
+  });
+
+  test("direct callers normalize valid email before deduplication", async () => {
+    const { t, rows } = await fixture();
+    expect(await t.mutation(components.platform.waitlist.join, { email: " ANNA@example.test ", meta: '{"custom":true}' })).toEqual({ alreadyJoined: false });
+    expect(await t.mutation(components.platform.waitlist.join, { email: "anna@example.test", meta: "{}" })).toEqual({ alreadyJoined: true });
+    expect(await rows()).toMatchObject([{ email: "anna@example.test", meta: '{"custom":true}' }]);
+    expect(await rows()).toHaveLength(1);
+  });
+});

@@ -467,7 +467,6 @@ for APP in web admin "$LANDING_APP" storybook; do
      CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}" \
      LANDING_URL="${LANDING_URL:-$LANDING_ORIGIN}" \
      NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}" \
-     NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}" \
      NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-$LANDING_ORIGIN}" \
      NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}" \
      SITE_URL="${SITE_URL:-$_SITE_URL}" NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$_SITE_URL}" turbo build --filter=@repo/$APP...; then

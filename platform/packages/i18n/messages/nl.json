@@ -213,6 +213,22 @@
       "signInRequired": "Voor je account moet je inloggen met een passkey.",
       "unsupportedTitle": "Dit apparaat of deze browser ondersteunt geen passkeys.",
       "unsupportedDescription": "Log in vanaf een apparaat of browser met passkeyondersteuning om er een in te stellen."
+    },
+    "waitlist": {
+      "title": "Aanmelden voor de wachtlijst",
+      "description": "Vraag toegang aan door u aan te melden voor de wachtlijst.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "u@voorbeeld.nl",
+      "submit": "Aanmelden",
+      "submitting": "Bezig met aanmelden...",
+      "successTitle": "U staat op de lijst!",
+      "successDescription": "We sturen u een uitnodiging wanneer u aan de beurt bent.",
+      "errors": {
+        "waitlistNotEnabled": "De wachtlijst accepteert momenteel geen aanmeldingen. Probeer het later opnieuw.",
+        "invalidEmail": "Voer een geldig e-mailadres in.",
+        "rateLimited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+        "generic": "Er is iets misgegaan. Probeer het opnieuw."
+      }
     }
   },
   "errors": {

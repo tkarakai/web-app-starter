@@ -15,9 +15,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Shared `auth-ui` waitlist form and an app-owned web question wrapper. Both reference landings now hand off to web; `SignUpView` owns uncached onboarding selection, renders the waitlist in place and fails closed on backend errors. Default launcher and infrastructure configuration need no landing Convex URL. Adoption is additive: buyer-owned pages, question forms and optional announcement consumers remain yours; retain their env wiring until switching them. See [onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
+
 - `bun run deploy:setup` and the `platform-deploy-setup` skill guide resumable Vercel, Convex and GitHub provisioning, with read-only JSON checks, hidden credential entry and staging verification through ops. Static landing uses separate static projects; existing backend secrets are retained.
 
 ### Fixed
+
+- Waitlist joins validate email syntax in the shared mutation using the bulk-invitation policy, normalize before deduplication, and reject malformed addresses with `INVALID_EMAIL`. Optional arbitrary JSON metadata, its byte cap, and visitor IP limits are preserved.
 
 - Waitlist joins accept app-owned JSON object metadata, including `meta: "{}"`, without requiring sample questions. The existing string contract remains, with a 16,384-byte UTF-8 cap and nested prototype-key protection. Admin safely renders custom and legacy metadata alongside sample columns, and join errors return fixed codes without internal details. No migration or app action is required. See the [metadata contract](docs/authentication-and-onboarding.md#waitlist-metadata-contract).
 

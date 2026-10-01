@@ -213,6 +213,22 @@
       "signInRequired": "Passkey sign-in is required for your account.",
       "unsupportedTitle": "Passkeys are not supported on this device or browser.",
       "unsupportedDescription": "Sign in from a device or browser that supports passkeys to set one up."
+    },
+    "waitlist": {
+      "title": "Join the Waitlist",
+      "description": "Request access by joining the waitlist.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Join waitlist",
+      "submitting": "Joining...",
+      "successTitle": "You're on the list!",
+      "successDescription": "We'll send you an invitation when it's your turn.",
+      "errors": {
+        "waitlistNotEnabled": "The waitlist is not currently accepting sign-ups. Please try again later.",
+        "invalidEmail": "Please enter a valid email address.",
+        "rateLimited": "Too many requests. Please wait a moment and try again.",
+        "generic": "Something went wrong. Please try again."
+      }
     }
   },
   "errors": {
