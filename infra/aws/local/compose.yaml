@@ -69,7 +69,7 @@ services:
   # at Floci's address, the host through Floci's published ports, and Convex
   # itself on loopback. (3210/3211 stay free for `bun run dev` on the host.)
   convex-relay:
-    image: alpine/socat:1.8.0.3
+    image: alpine/socat:1.8.1.1
     network_mode: service:floci
     depends_on:
       floci:

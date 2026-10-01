@@ -29,8 +29,8 @@
     "@web-app-starter/edge-rate-limit": "workspace:*",
     "@web-app-starter/i18n": "workspace:*",
     "@types/qrcode": "^1.5.6",
-    "convex": "1.45.0",
-    "lucide-react": "1.46.0",
+    "convex": "1.46.0",
+    "lucide-react": "1.47.0",
     "next": "16.3.6",
     "next-intl": "^4.8.2",
     "next-themes": "^0.4.6",
@@ -46,12 +46,12 @@
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "24.13.4",
+    "@types/node": "24.13.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "5.2.0",
     "@vitest/coverage-v8": "^5.0.0",
-    "autoprefixer": "10.6.0",
+    "autoprefixer": "10.6.1",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.6",
     "happy-dom": "^20.3.7",
@@ -60,6 +60,6 @@
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "vitest": "^5.0.0",
-    "@formatjs/icu-messageformat-parser": "3.5.1"
+    "@formatjs/icu-messageformat-parser": "3.5.20"
   }
 }
