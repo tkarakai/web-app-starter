@@ -78,7 +78,7 @@ export function validateState(raw: State): State {
 export function readPublicFile(root: string, name: string): string | undefined {
   let fd: number;
   try { fd = openSync(path.join(root, name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
-  catch (error) { if ((error as { code?: string }).code === "ENOENT") return undefined; throw Error(`Cannot safely open ${name}`); }
+  catch (error) { if ((error as { code?: string }).code === "ENOENT") return undefined; throw Error(`Cannot safely open ${name}`, { cause: error }); }
   try { if (!fstatSync(fd).isFile()) throw Error(`Expected a regular file: ${name}`); return readFileSync(fd, "utf8"); }
   finally { closeSync(fd); }
 }
