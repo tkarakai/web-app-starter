@@ -359,6 +359,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   log("Yours (edit freely): apps/, packages/backend/convex/ outside platform/, the root files.");
   log(`Seams (yours, keep the platform's hooks): app.config.ts, ${SEAM_HOOKS.map((seam) => seam.file).join(", ")}, turbo.json, package.json.`);
   log("The platform's (never edit; replaced on upgrade): platform/, packages/backend/convex/platform/, .github/workflows/platform-*.yml, .claude/skills/platform-*, .agents/skills/platform-*.");
+  log("Deployment: run bun run deploy:setup --check early for accounts, DNS and setup requirements. A new unconfigured app skips automatic deployment; merging to main starts staging deployment once setup is complete.");
   log("Next: fill in the <placeholders> in README.md and AGENTS.md, review the diff, and commit.");
   log(`Then smoke-test the baseline: bun run platform:upgrade --to v${version} --dry-run (expect unchanged).`);
   return zone.errors.length;

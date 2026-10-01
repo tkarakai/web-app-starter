@@ -32,11 +32,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    name: Deployment Setup
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+          path: .deploy-source
+          persist-credentials: false
+      - name: Select landing
+        run: echo "LANDING_APP=$(bash .github/scripts/platform-landing-app.sh .deploy-source --required)" >> "$GITHUB_ENV"
+      - id: check
+        name: Check deployment configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID_WEB_STAGING: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
+          VERCEL_PROJECT_ID_ADMIN_STAGING: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
+          VERCEL_PROJECT_ID_LANDING_STAGING: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
+          VERCEL_PROJECT_ID_LANDING_STATIC_STAGING: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STATIC_STAGING }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: node .github/scripts/platform-deploy-preflight.cjs
+
   # ─── Paid features ─────────────────────────────────────────────
   # Artifact attestations are free on public repositories only (user-owned private
   # repositories can't use them on any plan). They run when the repository is public or
   # PLATFORM_ATTESTATIONS is "true", otherwise skip with a notice (platform/docs/ci.md).
   paid-features:
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true'
     name: Paid Features
     runs-on: ubuntu-latest
     outputs:
@@ -53,6 +85,8 @@ jobs:
           variable: PLATFORM_ATTESTATIONS
 
   validate-source:
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true'
     name: Validate Source SHA
     runs-on: ubuntu-latest
     outputs:
@@ -120,8 +154,8 @@ jobs:
   # ─── CI Gate ────────────────────────────────────────────────────
   ci-gate:
     name: CI Gate
-    needs: [validate-source, ci-shared, ci-web, ci-admin, ci-landing, ci-landing-static]
-    if: always()
+    needs: [preflight, validate-source, ci-shared, ci-web, ci-admin, ci-landing, ci-landing-static]
+    if: always() && needs.preflight.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Evaluate CI and set commit status
@@ -690,8 +724,8 @@ jobs:
 
   ops-record:
     name: Record Ops Outcomes
-    if: always()
-    needs: [validate-source, build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, changes, smoke-test, record]
+    if: always() && needs.preflight.outputs.ready == 'true'
+    needs: [preflight, validate-source, build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, changes, smoke-test, record]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

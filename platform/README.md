@@ -333,6 +333,10 @@ Vercel project or block the remaining apps. `bun run dev` regenerates the Convex
 sample removal; adoption itself needs no live backend. Configure the updater GitHub App for
 automatic CI on update PRs; see [update delivery](docs/update-delivery.md).
 
+### Deployment setup
+
+Run `bun run deploy:setup --check` early to identify account, DNS and credential prerequisites. `bun run deploy:setup` configures Vercel, Convex and GitHub in a resumable terminal wizard; see [the setup guide](docs/deploy-setup.md). An unconfigured app skips automatic staging deployment with a clear notice. Once configured, pushes to the app’s CD branch deploy staging.
+
 ### Existing repositories
 
 Do this on an adoption branch, with a clean checkout and a backup of the existing app. This is initial adoption, not the procedure for an already adopted app or an old starter fork.

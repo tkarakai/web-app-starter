@@ -45,6 +45,7 @@ You can also authenticate and inspect access separately:
 ```sh
 bun run ops auth login github   # delegates to gh auth login --hostname github.com --web
 bun run ops auth login vercel   # delegates to vercel login
+bun run ops auth login convex   # delegates to bun x convex login
 bun run ops auth status         # account, credential source, status for both services
 bun run ops teams               # team names, slugs and IDs; no repository config needed
 bun run ops projects --team web-app-starter  # accepts a team slug or ID
@@ -132,6 +133,10 @@ Production dispatch requires an exact staging tag and successful `ci/gate-passed
 
 A successful dispatch response is acceptance, not deployment success. Every CLI dispatch has a unique `requestId` embedded in the workflow run title. `--watch` uses this exact ID, avoiding accidental attachment to another operator's run. If connection loss makes acceptance uncertain, the error includes the request ID and workflow URL. Check for that run before retrying: write requests are never automatically retried.
 
+`deploy --request ID` accepts a caller-supplied correlation ID so setup can save intent before
+dispatch. Resume observation with `watch --request ID`; reusing an ID for another deploy does
+not deduplicate dispatches. Rollback does not accept `--request`.
+
 Rollback uses the existing rebuild/reuse-and-redeploy workflow, including backend functions and migrations; it does not restore database contents:
 
 ```sh
@@ -204,3 +209,8 @@ bun run --cwd platform/packages/ops lint
 ```
 
 The tests include scripted console journeys (navigation, confirmation, save-before-write and resume), exact serving identity and unchanged-app baselines, workflow tag-resolution gates, mocked provider errors/pagination, subprocess CLI integration, dispatch-to-watch completion, partial results, timeout/failure exits, and audit recording after partial deployment. They do not deploy infrastructure. Shared CI runs this suite when the checked-out source contains the CLI. Real end-to-end deployment testing additionally requires the new workflows on GitHub and correctly configured GitHub environments and provider secrets.
+
+## First deployment setup
+
+Use the [deployment setup guide](deploy-setup.md) to create/configure infrastructure and resume
+staging proof. `ops setup` maps existing projects; it does not provision them.

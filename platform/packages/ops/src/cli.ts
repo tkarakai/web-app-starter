@@ -31,7 +31,7 @@ const HELP = `ops — deployment visibility and workflow control
   ops rollback SHA --to staging|production [--dry-run | --yes] [--watch]
   ops setup                          Guided login, team and project configuration
   ops auth status                    Check both accounts and credential sources
-  ops auth login github|vercel        Sign in with the official provider CLI
+  ops auth login github|vercel|convex        Sign in with the official provider CLI
   ops teams                          List Vercel team names, slugs and IDs
   ops projects [--team ID_OR_SLUG]    Discover Vercel project IDs
   ops doctor                         Check credentials, access and configuration

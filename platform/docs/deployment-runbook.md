@@ -1,5 +1,7 @@
 # Deployment Runbook
 
+For new setups, start with the [guided deployment setup](deploy-setup.md). The steps below explain provider settings for manual administration.
+
 Step-by-step procedures for deploying, operating, and rolling back the monorepo. Covers one-time infrastructure setup, first deployment, day-to-day operations, and rollback.
 
 For pipeline architecture, failure modes, and migration examples, see [deployment-architecture.md](./deployment-architecture.md).
@@ -53,11 +55,7 @@ gh auth login
 
 Complete these steps once, in order.
 
-> **Automated staging setup:** For the staging environment (steps 2a–2e), you can use the interactive setup script instead of following the manual steps below:
-> ```bash
-> bun run infra:setup:staging
-> ```
-> The script collects all inputs upfront, shows a summary for confirmation, then executes each step with individual approval. It checks for existing resources before creating them, so it's safe to re-run. See `platform/tooling/infra-setup-staging.sh --help` for details. Production setup must still be done manually.
+For automated setup and interruption recovery, follow the [setup guide](deploy-setup.md).
 
 ### 2a. Create Convex Projects
 
@@ -92,13 +90,7 @@ Make sure that you have "Production" designation selected for the project (even 
 
 Create six Vercel projects — three for staging and three for production. Each project serves a single environment, so there's no need to split environment variables across Vercel's Preview/Production scopes.
 
-Choose **either** the dashboard or CLI approach.
-
-**Option A — Dashboard (requires GitHub connection):**
-
-1. **Install the Vercel GitHub App** (one-time): When you click "Add New Project" in the [Vercel dashboard](https://vercel.com/dashboard), Vercel prompts you to install its GitHub App. Grant access to your repository. This is a GitHub App, not an OAuth token — it lets Vercel read your repo to detect framework settings.
-
-2. **Import the repository six times** (once per project). For each: click "Add New Project" → "Import Git Repository" → select your repo → set the **Root Directory** and confirm the **Framework Preset** is **Next.js** for the projects below:
+**Project settings (created by the wizard or CLI, without a Git connection):**
 
    | Project Name | Root Directory | Framework Preset | Environment |
    |--------------|----------------|------------------|-------------|
@@ -113,7 +105,7 @@ Choose **either** the dashboard or CLI approach.
 
    Builds run `vercel build` from the monorepo root with the selected project root. Web/admin and the primary landing retain their Next.js preset; `landing-static` uses Vercel static hosting. Configure its `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` per environment; it needs no Convex variable. Point web's `LANDING_URL` at the selected landing's URL.
 
-**Option B — CLI (no GitHub connection needed):**
+**Manual CLI alternative:**
 
 ```bash
 # Authenticate with Vercel (one-time)
@@ -138,7 +130,7 @@ vercel project add my-app-landing-staging
   { "git": { "deploymentEnabled": false } }
   ```
 
-Note that you do not have to have git connected from Vercel at all.
+Do not connect Git when creating these projects. For pre-existing Git-connected projects, disconnect under Settings → Git; Actions owns deployment.
 
 **Record the project IDs and app URLs:**
 

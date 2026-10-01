@@ -43,7 +43,7 @@ export function parseOptions(argv: string[]): Options {
   if (o.since && !Number.isFinite(Date.parse(o.since))) usage("--since must be an ISO date or timestamp.");
   const counts: Record<string, number> = { inspect: 1, diff: 2, watch: o.request ? 0 : 1, logs: 1, diagnose: 1, deploy: 1, rollback: 1 };
   if (o.command === "auth") {
-    if (!(o.args.length === 1 && o.args[0] === "status") && !(o.args.length === 2 && o.args[0] === "login" && ["github", "vercel"].includes(o.args[1]))) usage("Use ops auth status or ops auth login github|vercel.");
+    if (!(o.args.length === 1 && o.args[0] === "status") && !(o.args.length === 2 && o.args[0] === "login" && ["github", "vercel", "convex"].includes(o.args[1]))) usage("Use ops auth status or ops auth login github|vercel|convex.");
   } else if (o.command !== "help" && o.args.length !== (counts[o.command] ?? 0)) usage(`${o.command} expects ${counts[o.command] ?? 0} positional argument(s).`);
   if (["watch", "logs", "diagnose"].includes(o.command) && !o.request && !/^\d+$/.test(o.args[0])) usage("Run ID must be numeric.");
   if (o.watch && !["status", "runs", "deploy", "rollback"].includes(o.command)) usage("--watch is supported for status, runs, deploy, and rollback.");
@@ -58,7 +58,7 @@ export function parseOptions(argv: string[]): Options {
       limit: ["status", "history", "builds", "candidates", "runs"],
       team: ["projects", "setup"],
       until: ["watch", "deploy", "rollback"], run: ["verify"],
-      attempt: ["watch", "logs", "diagnose", "verify"], request: ["watch"],
+      attempt: ["watch", "logs", "diagnose", "verify"], request: ["watch", "deploy"],
     };
     for (const [flag, commands] of Object.entries(allowed)) if (supplied.has(flag) && !commands.includes(o.command)) usage(`--${flag} is not supported for ${o.command}.`);
     if ((supplied.has("interval") || supplied.has("timeout")) && !o.watch && o.command !== "watch") usage("--interval and --timeout require a watch command or --watch.");
