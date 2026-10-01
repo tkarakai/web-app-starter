@@ -1,6 +1,6 @@
 # Development Workflow
 
-The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Either landing app runs without a Convex backend. Both offer generic Get started / Sign in links to web; web alone reads the onboarding mode.
+The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Either landing app runs without a Convex backend. See [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff) for the marketing-to-web flow.
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 

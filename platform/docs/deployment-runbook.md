@@ -72,7 +72,7 @@ Make sure that you have "Production" designation selected for the project (even 
 
 | Value | Where to find it | Staging | Production |
 |-------|-------------------|---------|------------|
-| Deployment URL → `CONVEX_URL` (web/admin), `NEXT_PUBLIC_CONVEX_URL` (landing) | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
+| Deployment URL → `CONVEX_URL` (web/admin) | Deployment Settings | `https://xxx.convex.cloud` | `https://yyy.convex.cloud` |
 | HTTP Actions URL → `CONVEX_SITE_URL` (web/admin) | Deployment Settings | `https://xxx.convex.site` | `https://yyy.convex.site` |
 
 **Generate deploy keys** for each project:

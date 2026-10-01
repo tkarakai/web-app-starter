@@ -106,7 +106,8 @@ bun run deploy:setup         # Guided Vercel/Convex/GitHub setup; --check gives 
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 
-The default dev launcher, local CI and deployment workflows select exactly one landing app: `apps/landing` when its `package.json` exists, otherwise `apps/landing-static`. Keep at least one installed. There is no deployment opt-in flag. `bun run dev:landing` follows this selection; `bun run dev:landing-static` explicitly starts the static app for development. Both use the managed launcher, logs and stop/status commands. Either landing app runs without a Convex backend. Both offer generic Get started / Sign in links to web; web alone reads the onboarding mode.
+See [landing selection and development commands](docs/development.md) and
+[onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accounts: [docs/development.md](docs/development.md).
 
