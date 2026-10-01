@@ -14,6 +14,7 @@ import * as path from "node:path";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as manager from "../dev-processes.ts";
+import rawAppConfig from "../../../app.config.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
@@ -31,6 +32,29 @@ function install(checkout: string): void {
     fs.copyFileSync(path.join(ROOT, name), path.join(checkout, name));
   }
   fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module" }));
+}
+
+function installPredev(checkout: string, source = ROOT): void {
+  fs.copyFileSync(path.join(ROOT, "package.json"), path.join(checkout, "package.json"));
+  for (const name of ["ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh"]) {
+    fs.copyFileSync(path.join(SCRIPTS, name), path.join(checkout, "platform/tooling", name));
+  }
+  // Read the copied config through the real validator. Copy only its icon files,
+  // preserving app-owned paths without pulling app directories into the fixture.
+  const sourceRoot = fs.realpathSync(source);
+  for (const key of ["svg", "ico", "appleTouchIcon"]) {
+    const name = execFileSync(path.join(checkout, "platform/tooling/node-ts.sh"), [
+      path.join(checkout, "platform/tooling/app-config.ts"), "get", `brand.icons.${key}`,
+    ], { encoding: "utf8", stdio: "pipe" }).trim();
+    const original = fs.realpathSync(path.join(sourceRoot, name));
+    const relative = path.relative(sourceRoot, original);
+    assert.ok(relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative),
+      `Icon source is outside source checkout: ${name}`);
+    assert.ok(fs.statSync(original).isFile(), `Icon source must be a file: ${name}`);
+    const destination = path.join(checkout, name);
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.copyFileSync(original, destination);
+  }
 }
 
 function spawnIn(directory: string, source?: string): ChildProcess {
@@ -340,17 +364,64 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   assert.deepEqual(manager.readRecords(root), {});
 });
 
+test("predev fixture copies custom icon sources and still rejects missing assets", async () => {
+  const source = path.join(base, "custom app");
+  const icons = { svg: "branding/icon.svg", ico: "branding/nested/site.ico", appleTouchIcon: "branding/touch.png" };
+  const contents = { svg: "custom svg", ico: "custom ico", appleTouchIcon: "custom touch" };
+  for (const [key, name] of Object.entries(icons)) {
+    fs.mkdirSync(path.dirname(path.join(source, name)), { recursive: true });
+    fs.writeFileSync(path.join(source, name), contents[key as keyof typeof contents]);
+  }
+  fs.writeFileSync(path.join(source, "branding/unrelated.txt"), "not an icon");
+  fs.writeFileSync(path.join(root, "app.config.ts"), `export default ${JSON.stringify({
+    ...rawAppConfig, brand: { ...rawAppConfig.brand, icons },
+  })};\n`);
+  fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
+  installPredev(root, source);
+  assert.equal(fs.existsSync(path.join(root, "branding/unrelated.txt")), false);
+
+  const result = await runScript("copy-shared-assets.sh");
+  assert.equal(result.status, 0, result.stderr);
+  const publicDir = path.join(root, "platform/apps/storybook/public");
+  for (const [name, content] of Object.entries({ "icon.svg": contents.svg, "favicon.ico": contents.ico, "apple-touch-icon.png": contents.appleTouchIcon })) {
+    assert.equal(fs.readFileSync(path.join(publicDir, name), "utf8"), content);
+  }
+  for (const app of ["apps/web", "platform/apps/admin", "apps/landing", "apps/landing-static"]) {
+    assert.equal(fs.existsSync(path.join(root, app)), false, `${app} remains absent`);
+  }
+
+  fs.unlinkSync(path.join(root, icons.appleTouchIcon));
+  fs.writeFileSync(path.join(publicDir, "icon.svg"), "preserved");
+  const missing = await runScript("copy-shared-assets.sh");
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /Source asset not found: branding\/touch\.png/);
+  assert.equal(fs.readFileSync(path.join(publicDir, "icon.svg"), "utf8"), "preserved");
+
+  fs.unlinkSync(path.join(source, icons.appleTouchIcon));
+  assert.throws(() => installPredev(root, source), /ENOENT/);
+});
+
+test("predev fixture refuses icon symlinks outside the source checkout", () => {
+  const source = path.join(base, "custom app");
+  fs.mkdirSync(path.join(source, "branding"), { recursive: true });
+  const outside = path.join(foreign, "icon.svg");
+  fs.writeFileSync(outside, "outside icon");
+  fs.symlinkSync(outside, path.join(source, "branding/icon.svg"));
+  fs.writeFileSync(path.join(root, "app.config.ts"), `export default ${JSON.stringify({
+    ...rawAppConfig, brand: { ...rawAppConfig.brand, icons: { ...rawAppConfig.brand.icons, svg: "branding/icon.svg" } },
+  })};\n`);
+  assert.throws(() => installPredev(root, source), /Icon source is outside source checkout/);
+  assert.equal(fs.existsSync(path.join(root, "branding/icon.svg")), false);
+  assert.equal(fs.readFileSync(outside, "utf8"), "outside icon");
+});
+
 for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run", "dev:landing-static"], ["run", "dev:landing"]]) {
   const app = args.at(-1)?.includes("landing") ? "landing-static" : "storybook";
   const appDir = app === "storybook" ? "platform/apps/storybook" : "apps/landing-static";
   test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 30_000 }, async () => {
     // Keep the public package scripts and predev helpers real. Only the external
     // server is substituted; this tests command wiring, not Next.js compilation.
-    fs.copyFileSync(path.join(ROOT, "package.json"), path.join(root, "package.json"));
-    for (const name of ["ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh"]) {
-      fs.copyFileSync(path.join(SCRIPTS, name), path.join(root, "platform/tooling", name));
-    }
-    fs.cpSync(path.join(ROOT, "platform/packages/design-system/assets"), path.join(root, "platform/packages/design-system/assets"), { recursive: true });
+    installPredev(root);
     fs.mkdirSync(path.join(root, appDir), { recursive: true });
     fs.writeFileSync(path.join(root, appDir, "package.json"), '{"name":"@repo/fixture"}');
     fs.writeFileSync(path.join(root, appDir, ".env.example"), "SMOKE_TEST_DEFAULT=seeded\n");
