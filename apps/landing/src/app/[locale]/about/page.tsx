@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { appConfig } from "@web-app-starter/app-config";
 
+import { pageMetadata } from "@/lib/metadata";
 import { ContentPageLayout } from "@/components/content-page-layout";
 
 // The product name is an argument, not part of the translations: renaming the
@@ -16,10 +17,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "legal.about" });
 
-  return {
+  return pageMetadata({
+    locale,
+    pathname: "/about",
     title: t("title"),
     description: t("description", { productName }),
-  };
+  });
 }
 
 export default async function AboutPage({ params }: Props) {

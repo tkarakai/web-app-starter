@@ -12,6 +12,7 @@ A fully static, serverless variant of the landing page — built with Next.js `o
 - All JS/CSS/assets bundled and fingerprinted for cache-busting
 - Pre-generated `robots.txt` and `sitemap.xml` with all locale alternates
 - Full i18n with client-side locale switching (no server round-trip)
+- Locale-specific `lang`/`dir` in the exported HTML, with page-specific canonical, OpenGraph and language-alternate URLs
 - Dark/light/system theme support
 - Zero runtime server dependencies
 
@@ -411,7 +412,8 @@ bun run size
 apps/landing-static/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx              # Root layout (CSS import)
+│   │   ├── (entry)/               # Root redirect page and default-locale document layout
+│   │   ├── global-not-found.tsx    # Shared static 404 document (globalNotFound enabled)
 │   │   ├── globals.css             # Imports design system styles
 │   │   ├── icon.tsx                # Favicon (generated at build time)
 │   │   ├── robots.ts              # robots.txt (generated at build time)
@@ -423,6 +425,8 @@ apps/landing-static/
 │   │       ├── privacy/page.tsx    # Privacy policy
 │   │       └── terms/page.tsx      # Terms of service
 │   ├── components/
+│   │   ├── document-shell.tsx      # Server-rendered html/body, locale attributes and branding
+│   │   ├── document-locale.tsx     # Synchronizes document attributes during client navigation
 │   │   ├── site-header.tsx         # Navigation header + locale switcher
 │   │   ├── footer.tsx              # Footer with legal links
 │   │   ├── locale-switcher.tsx     # Language selector dropdown

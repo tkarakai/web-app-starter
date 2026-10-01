@@ -192,7 +192,12 @@ Auth redirects preserve the active locale by extracting it from the URL path bef
 ### Landing apps
 
 `landing` and `landing-static` are static exports (`output: "export"`), so they have no proxy. Every
-locale is pre-rendered under `[locale]/`, and the root page picks a locale in the browser.
+locale is pre-rendered under `[locale]/`, whose root layout renders the document's `lang` and
+`dir` through the app-owned `DocumentShell`. These attributes are present without JavaScript;
+`DocumentLocale` only keeps them synchronized during client-side locale changes. The separate
+`(entry)` root layout uses the configured default locale while its page picks a locale in the
+browser. `landing-static` also uses `global-not-found.tsx` with `experimental.globalNotFound`
+for its shared static 404 document; its URL-specific translation still happens after hydration.
 
 ### next-intl Middleware Configuration
 
@@ -705,6 +710,15 @@ function MyComponent() {
 ## SEO & Metadata
 
 ### Localized Metadata
+
+In both reference landing apps, each page's `generateMetadata()` calls the app-owned
+`src/lib/metadata.ts` helper with its own pathname. Canonical, OpenGraph URL and language
+alternates must identify that page, not the locale homepage. The helper uses the deployed
+`NEXT_PUBLIC_SITE_URL`, configured locales and trailing-slash export paths; `x-default` points
+to the same page in the configured default locale. Sitemaps use the same URL builder. When
+adding a landing route, extend its `LandingPath` union, call `pageMetadata` from the page and
+add the route to the sitemap. Keep the locale layout's metadata limited to inherited defaults
+(such as title template and icons), rather than page-specific URLs.
 
 Each page supports `generateMetadata()` for localized titles, descriptions, OpenGraph and Twitter cards:
 
