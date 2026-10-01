@@ -363,6 +363,8 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
 
 > **Note:** `CONVEX_DEPLOY_KEY` is an **environment** secret (not repository secret) because the staging and production workflows must push to different Convex projects. Each GitHub environment gets the deploy key for its corresponding Convex project.
 
+<a id="configure-branch-protection"></a>
+
 **Configure branch protection** (Settings > Branches > `main`):
 
 - [x] Require a pull request before merging
@@ -375,7 +377,7 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
   - Required: `CI Storybook Complete`
 - [x] Require branches to be up to date before merging
 
-> **How it works:** CI callers run on pull requests to every base branch, including stacked and migration branches. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. When both landing apps are installed, both have PR CI, even though deployment selects only one. Copy exact check names from a completed PR run.
+> **How it works:** See the [CI guide](ci.md#pull-request-base-branches) for trigger coverage and customization. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. When both landing apps are installed, both have PR CI, even though deployment selects only one. Copy exact check names from a completed PR run.
 >
 > On push to main (after a PR is merged), the unified `cd-staging.yml` workflow calls these same CI workflows as reusable workflows, then detects which apps changed, builds only those, and deploys to staging. It also sets a `ci/gate-passed` commit status that `cd-production.yml` checks before allowing production deploys.
 
@@ -466,13 +468,7 @@ gh secret list --env production
 
 # Verify branch protection
 gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts[]'
-# Should list:
-#   CI Shared Complete
-#   CI Web Complete
-#   CI Admin Complete
-#   CI Landing Complete (if installed)
-#   CI Landing Static Complete (if installed)
-#   CI Storybook Complete
+# Compare with the branch-protection checklist in step 2e above.
 ```
 
 ---
