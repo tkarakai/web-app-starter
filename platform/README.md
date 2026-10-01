@@ -308,6 +308,14 @@ needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cook
 `--port app=N`, `--remove landing,demo`, `--remove-sample`, `--yes`).
 Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
+For automatic upgrades, that checkout must be at a **published release tag** before adoption,
+with no intervening app commits or merge commits. For example, clone with
+`git clone --branch v2.0.0 https://github.com/tkarakai/web-app-starter.git my-app`, then
+`cd my-app` and `git switch -c main`. Select an actually published version. Adoption records
+the current commit as the installed platform baseline; a version string on `main` alone is
+not a released baseline. Existing apps adopted from unpublished source need the
+[one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release).
+
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
 2. Replaces the root `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `templates/`, and
    points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`),

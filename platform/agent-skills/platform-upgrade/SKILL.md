@@ -26,6 +26,9 @@ checks or mark a migration complete without deployment-specific evidence.
   release, review the plan, then resume that report. A dry run's exit 0 is not verification.
 - Without `.platform-base.json`, this is not a separated-platform upgrade. An existing fork
   needs its migration procedure; adoption must not be run over it to manufacture a baseline.
+- If the installed version/commit does not match a published release, inspect its provenance.
+  A pre-publication adoption or app merge commit needs the one-time source migration in
+  `UPGRADING.md`; do not change the baseline record just to pass the automatic updater.
 
 Use the target's Node major and exact Bun version. The launcher validates and runs the target
 tool. Resume retains its pinned source, release metadata and ordered codemods. Do not change

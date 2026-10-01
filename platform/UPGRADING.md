@@ -17,6 +17,41 @@ This command handles upgrades **between separated platform releases**. An older 
 over an existing app. Existing deployments with legacy platform tables must also complete
 [the component data migration](docs/component-data-migration.md) before deploying v2.
 
+## Apps adopted before the first published release
+
+A checkout can say `2.0.0` without containing the published `v2.0.0` commit. Adoption records
+the checkout's `HEAD`, so adopting after merging starter source into an existing repository
+can also record an app merge commit. Neither is a published-release baseline. The automatic
+updater deliberately rejects these records; choosing a later target version does not fix them.
+
+For an app already using the separated v2 layout, make a one-time, reviewed source migration
+on a new branch, preferably rehearsed in a separate clone first:
+
+1. Identify the actual starter source commit in the app's history. Compare its platform zone
+   with the recorded baseline and current app; account for every local platform edit. Preserve
+   the existing `.platform-base.json` until verification finishes. Do not rerun `adopt`.
+2. Fetch the published `v2.0.0` from `tkarakai/web-app-starter`, record its full commit SHA,
+   and merge that commit with `git merge --no-commit --no-ff FULL_RELEASE_SHA`. This procedure
+   requires shared starter ancestry; unrelated source copies need a separately reviewed migration.
+3. Review the entire diff and resolve conflicts. Take the release's platform zone, preserving
+   intentional patches through the `platform-patch` contract. Preserve app guides, identity,
+   messages, business code and removed optional apps. Review app-owned reference fixes below;
+   a source merge also changes app-owned files, unlike the automatic updater. Set the desired
+   `i18n.defaultLocale` explicitly and keep the selected landing's development scripts.
+4. Write a **candidate** baseline outside the checkout with the release version, full release
+   SHA and reviewed patches. Run `./platform/tooling/node-ts.sh platform/tooling/check-zone.ts
+   --base-file /absolute/path/to/candidate-base.json`. Investigate each difference, including
+   generated files accidentally committed inside platform directories.
+5. Run `bun install` and every check listed in **Verify and recover**, including E2E. Review
+   dependency floors and applicable environment/data-migration requirements in the release
+   metadata. Configure separate static Vercel projects before deploying a static-only landing.
+6. Only after those checks pass, copy the candidate record to `.platform-base.json`, rerun
+   `bun run check:zone`, and commit the reviewed migration. Retain its verification evidence.
+
+This establishes the first published baseline. Subsequent published versions use the normal
+`platform:upgrade` flow. Never merely change the recorded version or commit to silence an error:
+the record must describe the platform source actually installed and verified in the app.
+
 ## Plan and apply
 
 Start with a clean, committed app checkout. Read the target release's

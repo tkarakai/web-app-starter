@@ -97,6 +97,8 @@ published or tagged; it is retained only as historical context.
 
 ### Action required
 
+- **Apps adopted from unpublished v2 source:** a `2.0.0` version string or app merge commit is
+  not the published release baseline. Follow the [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release), preserving app choices and verifying all checks before recording the release commit. **Done when:** the installed record matches the verified published source and the zone check passes. Subsequent releases use the automatic updater.
 - Keep at least one landing app for default dev/CI/deployment. If using the fallback, configure its separate Vercel projects and `VERCEL_PROJECT_ID_LANDING_STATIC[_STAGING]` secrets as described in the deployment runbook. Update web's `LANDING_URL` and run `ops setup` for the static project mappings.
 - App-owned reference files are preserved by platform upgrades. Apply the locale-preserving redirect to `apps/web/src/app/[locale]/page.tsx`; static landing adopters should add the root locale redirect and use the configured fallback catalog in their 404 page. See [reference-app fixes](UPGRADING.md#reference-app-fixes).
 
