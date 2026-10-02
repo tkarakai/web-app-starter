@@ -1,0 +1,11 @@
+{
+  "name": "@fixture/lib",
+  "version": "0.0.0",
+  "dependencies": {
+    "ms": "~2.0.0",
+    "is-number": "^7.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}
