@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-02
+
 
 ### Added
 
@@ -624,3 +626,6 @@ completed. New apps cloned from the published `v1.0.0` tag can record that exact
 tag/commit immediately; their own setup and deployment still need validation.
 
 [2.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v2.0.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/tkarakai/web-app-starter/compare/v2.0.0...v2.1.0
