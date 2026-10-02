@@ -1,12 +1,12 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useMutation } from "convex/react";
 
 import { LanguageSelector } from "@web-app-starter/design-patterns";
 import { useNetworkStatus } from "@web-app-starter/design-system";
-import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
+import { locales, localeMetadata, navigateToLocalePath, persistLocale, type Locale } from "@web-app-starter/i18n";
 import { api } from "@repo/backend";
 import { useAuthUser } from "./auth-guard";
 
@@ -19,7 +19,6 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
   const locale = useLocale();
   const tl = useTranslations("language");
   const pathname = usePathname();
-  const router = useRouter();
   const user = useAuthUser();
   const setLocale = useMutation(api.platform.userProfiles.setLocale);
   const isOnline = useNetworkStatus();
@@ -46,7 +45,7 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
     segments[1] = newLocale;
     const newPath = segments.join("/") || `/${newLocale}`;
     const search = window.location.search;
-    router.push(`${newPath}${search}`);
+    navigateToLocalePath(`${newPath}${search}`);
   };
 
   return (
