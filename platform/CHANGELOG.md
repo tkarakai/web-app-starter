@@ -21,6 +21,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- The planted development admin (`admin@admin.com`) now uses `admin!admin.comadmin@admin.comadmin#admin.com`, which satisfies the admin password policy (45 characters, zxcvbn score 4); the old password repeated the account email and scored 0. The planted user password is unchanged. `bun run dev` output and the development docs show the new password, and a backend test holds the planted admin password to the active policy. Accounts already seeded keep their password.
+
 - The development status table (`bun run dev`, `bun run dev:status`) sizes its columns to the longest service name and URL, so `Landing-static` no longer crowds `STATUS`. Widths are capped (24 characters for services, 40 for URLs followed by a PID) and longer values end in `...`; a trailing URL is never cut. Rows with blank fields stay aligned.
 
 - E2E and full local CI guidance now uses `CI=true` for web's single-worker browser configuration, explains edge-rate-limit HTTP 429 failures under parallel local workers, and documents isolated-server recovery without weakening deployment limits.

@@ -57,7 +57,7 @@ This starts Convex and the core apps (web, admin, landing, storybook) in local a
 
 | Account | Email | Password | Role |
 |---------|-------|----------|------|
-| Admin | `admin@admin.com` | email pasted x 3 | admin |
+| Admin | `admin@admin.com` | `admin!admin.comadmin@admin.comadmin#admin.com` | admin |
 | User | `user@user.com` | email pasted x 3 | user |
 
 These are created automatically via `devSeed` and persist across restarts. Subsequent runs skip seeding.

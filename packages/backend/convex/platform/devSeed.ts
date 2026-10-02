@@ -11,8 +11,10 @@ import { isLocalDevelopment } from "./developmentOnly";
 // outside local development (see developmentOnly.ts).
 // ---------------------------------------------------------------------------
 
-const DEV_USERS = [
-  { email: "admin@admin.com", password: "admin@admin.comadmin@admin.comadmin@admin.com", name: "Dev Admin", isAdmin: true },
+// Exported so a test can hold every seed password to the active password policy.
+// The admin password cannot repeat the account email: zxcvbn scores that as 0.
+export const DEV_USERS = [
+  { email: "admin@admin.com", password: "admin!admin.comadmin@admin.comadmin#admin.com", name: "Dev Admin", isAdmin: true },
   { email: "user@user.com", password: "user@user.comuser@user.comuser@user.com", name: "Dev User", isAdmin: false },
 ] as const;
 
