@@ -38,10 +38,22 @@ export const APP_DIRS: Readonly<Record<AppId, string>> = {
 export type TokenOverrides = Record<string, string>;
 
 /**
- * Design-token overrides per app. `"*"` applies to every app; an app id applies to that app
- * only and wins over `"*"` for the tokens both set.
+ * The admin app's public pages: sign-in, forgot and reset password, and onboarding. A token
+ * scope of its own, so they can look different from the dashboard.
  */
-export type ScopedTokenOverrides = { "*"?: TokenOverrides } & { [A in AppId]?: TokenOverrides };
+export const ADMIN_PUBLIC_SCOPE = "admin-public";
+
+/** What `tokenOverrideCss` can be asked for: an app, or the admin's public pages. */
+export type TokenScope = AppId | typeof ADMIN_PUBLIC_SCOPE;
+
+/**
+ * Design-token overrides per app. `"*"` applies to every app; an app id applies to that app
+ * only and wins over `"*"` for the tokens both set. `"admin-public"` is applied on top of the
+ * admin's own tokens, on the admin's public pages only.
+ */
+export type ScopedTokenOverrides = { "*"?: TokenOverrides; [ADMIN_PUBLIC_SCOPE]?: TokenOverrides } & {
+  [A in AppId]?: TokenOverrides;
+};
 
 /** Colours used by the transactional email templates (`#rgb` or `#rrggbb`). */
 export type EmailPalette = {
@@ -109,7 +121,9 @@ export type AppConfig = {
      * Two forms. A flat map of tokens applies to every app. A map keyed by `"*"` and app ids
      * scopes them: `{ "*": { "--radius": "0.25rem" }, web: { "--primary": "oklch(0.55 0.2 260)" } }`
      * re-themes web only (the admin keeps the platform look) and every app gets the radius.
-     * The two forms cannot be mixed. Each app passes its id to `tokenOverrideCss`.
+     * `"admin-public"` adds tokens on top of the admin's own for its sign-in, password-reset and
+     * onboarding pages only (the dashboard is unaffected). The two forms cannot be mixed.
+     * Each app passes its id to `tokenOverrideCss`.
      */
     tokenOverrides: TokenOverrides | ScopedTokenOverrides;
     email: {
@@ -299,8 +313,8 @@ function validatePorts(runtime: Obj, issues: Issues): Record<AppId, number> {
   return ports;
 }
 
-/** Keys that scope token overrides: every app, or one app. */
-const TOKEN_SCOPES: readonly string[] = ["*", ...APP_IDS];
+/** Keys that scope token overrides: every app, one app, or the admin's public pages. */
+const TOKEN_SCOPES: readonly string[] = ["*", ...APP_IDS, ADMIN_PUBLIC_SCOPE];
 
 function validateTokenMap(raw: Obj, base: string, issues: Issues): TokenOverrides {
   const tokens: TokenOverrides = {};
@@ -324,7 +338,7 @@ function validateTokenOverrides(brand: Obj, issues: Issues): TokenOverrides | Sc
   for (const key of Object.keys(raw)) {
     const path = `brand.tokenOverrides[${JSON.stringify(key)}]`;
     if (!TOKEN_SCOPES.includes(key)) {
-      issues.push(`${path}: cannot mix tokens with ${scopes.map((scope) => JSON.stringify(scope)).join(", ")}; put it under "*" to apply it to every app, or under an app id (${APP_IDS.join(", ")})`);
+      issues.push(`${path}: cannot mix tokens with ${scopes.map((scope) => JSON.stringify(scope)).join(", ")}; put it under "*" to apply it to every app, or under an app id (${APP_IDS.join(", ")}) or "${ADMIN_PUBLIC_SCOPE}"`);
       continue;
     }
     (scoped as Record<string, TokenOverrides>)[key] = validateTokenMap(objectAt(raw, key, path, issues), path, issues);
@@ -462,19 +476,24 @@ function isScoped(overrides: TokenOverrides | ScopedTokenOverrides): overrides i
 /**
  * The token overrides one app applies: a flat map applies to every app; in the scoped form,
  * `"*"` then the app's own tokens (which win). Without `app`, only `"*"` (or the flat map).
+ *
+ * `"admin-public"` returns only the tokens scoped to the admin's public pages: they are a layer
+ * the admin's public layouts add after the admin's own tokens, so nothing is repeated.
  */
-export function tokenOverridesFor(config: AppConfig, app?: AppId): TokenOverrides {
+export function tokenOverridesFor(config: AppConfig, scope?: TokenScope): TokenOverrides {
   const overrides = config.brand.tokenOverrides;
+  if (scope === ADMIN_PUBLIC_SCOPE) return isScoped(overrides) ? { ...overrides[ADMIN_PUBLIC_SCOPE] } : {};
   if (!isScoped(overrides)) return overrides;
-  return { ...overrides["*"], ...(app === undefined ? undefined : overrides[app]) };
+  return { ...overrides["*"], ...(scope === undefined ? undefined : overrides[scope]) };
 }
 
 /**
- * The `:root{...}` rule for the design-token overrides that apply to `app`, or "" when there
+ * The `:root{...}` rule for the design-token overrides that apply to `scope`, or "" when there
  * are none. Pass the app's id: with scoped overrides, an app that omits it gets only the `"*"` tokens.
+ * The admin's public layouts pass `"admin-public"` and render the result after the root layout's.
  */
-export function tokenOverrideCss(config: AppConfig, app?: AppId): string {
-  const declarations = Object.entries(tokenOverridesFor(config, app)).map(
+export function tokenOverrideCss(config: AppConfig, scope?: TokenScope): string {
+  const declarations = Object.entries(tokenOverridesFor(config, scope)).map(
     ([name, value]) => `${name}:${value}`,
   );
   return declarations.length === 0 ? "" : `:root{${declarations.join(";")}}`;

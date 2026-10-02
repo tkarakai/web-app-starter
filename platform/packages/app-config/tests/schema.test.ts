@@ -3,10 +3,12 @@ import { describe, expect, it } from "bun:test";
 import rawAppConfig from "../../../../app.config";
 import { appConfig, localAppOrigin } from "../src/index";
 import {
+  ADMIN_PUBLIC_SCOPE,
   APP_IDS,
   AppConfigError,
   localOrigin,
   tokenOverrideCss,
+  tokenOverridesFor,
   validateAppConfig,
   type AppConfig,
 } from "../src/schema";
@@ -197,11 +199,19 @@ describe("validateAppConfig", () => {
     expect(issuesOf(config)).toEqual([]);
   });
 
+  it("accepts a scope for the admin's public pages next to the app scopes", () => {
+    const config = draft();
+    config.brand.tokenOverrides = { admin: { "--primary": "#111111" }, "admin-public": { "--primary": "#123456" } };
+    expect(issuesOf(config)).toEqual([]);
+    config.brand.tokenOverrides = { "admin-public": { "--primary": "red;} body{display:none" } };
+    expect(issuesOf(config)).toHaveLength(1);
+  });
+
   it("rejects mixing flat tokens with per-app scopes, naming the stray token", () => {
     const config = draft();
     config.brand.tokenOverrides = { "--radius": "0.25rem", web: { "--primary": "#123456" } };
     expect(issuesOf(config)).toEqual([
-      'brand.tokenOverrides["--radius"]: cannot mix tokens with "web"; put it under "*" to apply it to every app, or under an app id (landing, web, admin, storybook, landing-static)',
+      'brand.tokenOverrides["--radius"]: cannot mix tokens with "web"; put it under "*" to apply it to every app, or under an app id (landing, web, admin, storybook, landing-static) or "admin-public"',
     ]);
   });
 
@@ -254,6 +264,33 @@ describe("tokenOverrideCss", () => {
     expect(tokenOverrideCss(resolved, "web")).toBe(":root{--radius:0.25rem;--primary:#123456}");
     expect(tokenOverrideCss(resolved, "admin")).toBe(":root{--radius:0.25rem;--primary:#111111}");
     expect(tokenOverrideCss(resolved)).toBe(":root{--radius:0.25rem;--primary:#111111}");
+  });
+
+  it("scopes the admin's public pages as a layer on top of the admin's tokens", () => {
+    const config = draft();
+    config.brand.tokenOverrides = {
+      "*": { "--radius": "0.25rem" },
+      admin: { "--primary": "#111111" },
+      [ADMIN_PUBLIC_SCOPE]: { "--primary": "#123456", "--accent": "#abcdef" },
+    };
+    const resolved = validateAppConfig(config);
+    expect(tokenOverrideCss(resolved, ADMIN_PUBLIC_SCOPE)).toBe(":root{--primary:#123456;--accent:#abcdef}");
+    // The admin itself, and every other app, never see the public-page tokens.
+    expect(tokenOverrideCss(resolved, "admin")).toBe(":root{--radius:0.25rem;--primary:#111111}");
+    expect(tokenOverrideCss(resolved)).toBe(":root{--radius:0.25rem}");
+    expect(tokenOverridesFor(resolved, "web")).toEqual({ "--radius": "0.25rem" });
+  });
+
+  it("has no public-page layer without the scope, in the flat form or with no overrides", () => {
+    const flat = draft();
+    flat.brand.tokenOverrides = { "--primary": "#123456" };
+    expect(tokenOverrideCss(validateAppConfig(flat), ADMIN_PUBLIC_SCOPE)).toBe("");
+    const none = draft();
+    none.brand.tokenOverrides = {};
+    expect(tokenOverrideCss(validateAppConfig(none), ADMIN_PUBLIC_SCOPE)).toBe("");
+    const other = draft();
+    other.brand.tokenOverrides = { admin: { "--primary": "#111111" } };
+    expect(tokenOverrideCss(validateAppConfig(other), ADMIN_PUBLIC_SCOPE)).toBe("");
   });
 
   it("leaves an app unstyled when only other apps are scoped", () => {
