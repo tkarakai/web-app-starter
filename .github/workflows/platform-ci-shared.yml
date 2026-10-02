@@ -128,6 +128,12 @@ jobs:
       - name: Check message files (platform and app, overrides)
         run: bun run check:i18n
 
+      # Product only: direct dependency floors equal the versions bun.lock resolves.
+      # Adopted apps may run the same script by hand (platform-deps skill).
+      - name: Check dependency floors
+        if: hashFiles('.platform-base.json') == ''
+        run: ./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts
+
       # Platform unit suite: only when the platform (or what it depends on) changed.
       - name: Check development scripts and process isolation
         if: needs.changes.outputs.platform == 'true'
