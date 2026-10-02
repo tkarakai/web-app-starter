@@ -144,7 +144,7 @@ High-risk, so the user decides, whatever the tier:
 6. **Trial.** Bump to the same version in every workspace that declares the package
    (`bun add <pkg>@<version> --cwd <workspace>`) and in the root `overrides` if it is pinned
    there, then `bun install --minimum-release-age=864000` (`43200` for a twelve-hour security
-   fix). Follow the migration guide, then `bun run ci`. Performance is an informal check: bundle
+   fix). Follow the migration guide, then the [local CI guidance](../../../docs/ci.md#local-ci-pre-push-checks). Performance is an informal check: bundle
    sizes stay within the size-limit budgets, and nothing in the diff or the release notes
    suggests a slowdown. If the app turns out broken, reject; some changes can only be judged by
    trying them.
