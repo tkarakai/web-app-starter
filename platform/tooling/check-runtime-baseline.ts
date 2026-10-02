@@ -25,6 +25,16 @@ function major(version: string): string | undefined {
   return version.match(/(\d+)/)?.[1];
 }
 
+/**
+ * `engines.node` is either the whole major (`24.x`) or a minimum minor inside it
+ * (`>=24.21 <25`), which is how a tool that needs a newer Node 24 is declared.
+ */
+function engineFitsMajor(engine: string | undefined, node: string): boolean {
+  if (engine === `${node}.x`) return true;
+  const range = engine?.match(/^>=(\d+)\.(\d+) <(\d+)$/);
+  return range !== undefined && range !== null && range[1] === node && Number(range[3]) === Number(node) + 1;
+}
+
 function workspaceManifests(root: string, globs: string[]): string[] {
   const files: string[] = [];
   for (const glob of globs) {
@@ -52,8 +62,10 @@ export function checkRuntimeBaseline(root: string): string[] {
   if (!/^\d+$/.test(node)) errors.push(`.node-version must be a bare major, found "${node}"`);
 
   const rootManifest = readManifest(path.join(root, "package.json"));
-  if (rootManifest.engines?.node !== `${node}.x`) {
-    errors.push(`package.json engines.node is "${rootManifest.engines?.node}", expected "${node}.x"`);
+  if (!engineFitsMajor(rootManifest.engines?.node, node)) {
+    errors.push(
+      `package.json engines.node is "${rootManifest.engines?.node}", expected "${node}.x" or ">=${node}.<minor> <${Number(node) + 1}"`,
+    );
   }
 
   const action = readFileSync(path.join(root, setupAction), "utf8");
