@@ -1,4 +1,4 @@
-import { deploymentApps, fullSha, safeUrl } from "./evidence";
+import { deployedApps, fullSha, safeUrl } from "./evidence";
 import { OpsError } from "./errors";
 import type { Options } from "./options";
 import type { OpsService } from "./service";
@@ -66,14 +66,11 @@ export async function verifyServing(service: OpsService, id: number, o: Options)
   const environment = runEnvironment(run, attempt);
   if (!environment) return { ...base, outcome: "incomplete", rows: [], note: "Cannot establish the run's environment from workflow/record evidence." };
   if (o.env && environment !== o.env) throw new OpsError("ENVIRONMENT_MISMATCH", `Run ${id} targets ${environment}, not ${o.env}.`, "Choose a run for the intended environment.", 2);
-  const apps = deploymentApps(attempt);
-  // Historical mappings for the other landing variant must not affect this run.
-  const live = (await Promise.all(apps.map(app => service.status({ ...o, env: environment, app }, false))))
-    .flatMap(result => result.rows ?? []);
+  const live = await service.status({ ...o, env: environment, app: undefined }, false);
   const rows: Record<string, unknown>[] = [];
   const selected = new Set(attempt.map(r => r.sha));
   if (o.expectedSha && (selected.size !== 1 || !selected.has(o.expectedSha))) return { ...base, environment, outcome: "incomplete", rows: [], note: "Recorded target does not match the reviewed release. Inspect the run before proceeding." };
-  for (const app of [...apps, "backend"]) {
+  for (const app of [...deployedApps, "backend"]) {
     const matches = attempt.filter(r => r.payload.app === app && r.environment === environment);
     const record = matches[0];
     let expected = record;
@@ -90,7 +87,7 @@ export async function verifyServing(service: OpsService, id: number, o: Options)
       }
       if (app === "backend") { state = "workflow-evidence"; reason = `${record.payload.result}; no live backend version probe`; }
       else {
-        const observed = live.find(r => r.app === app);
+        const observed = live.rows?.find(r => r.app === app);
         if (expected && fullSha(expected.sha) && expected.payload.selectedSha === expected.sha && observed && fullSha(observed.deployedSha)) {
           const identityMatches = observed.deployedSha === expected.sha && observed.runId === expected.payload.runId
             && observed.runAttempt === expected.payload.runAttempt && safeUrl(expected.payload.deploymentUrl) !== null

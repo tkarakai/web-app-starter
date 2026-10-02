@@ -1,4 +1,4 @@
-import { artifactApp, deployedApps, deploymentApps, fullSha, parallel, resolveTag, safeUrl, type TagRef, type DeploymentTag } from "./evidence";
+import { artifactApp, deployedApps, fullSha, parallel, resolveTag, safeUrl, type TagRef, type DeploymentTag } from "./evidence";
 import { assertAttempt, diagnose, runEnvironment, verifyServing } from "./journeys";
 import { candidateEvidence, type PushArtifact } from "./candidate-evidence";
 import { OpsError, usage } from "./errors";
@@ -229,7 +229,7 @@ export class OpsService {
         backendChanges: comparison?.files?.filter(f => f.filename.startsWith("packages/backend/")).map(f => f.filename) ?? [], url: safeUrl(comparison?.html_url) };
     });
     return { ...plan, current: current.rows, changes, activity: current.activity, skipped: current.skipped,
-      deploymentScope: "web, admin, the selected landing app, backend and migrations. Landing-static deploys only when landing is absent, to its own Vercel project.",
+      deploymentScope: "web, admin, landing, backend and migrations. Monitoring selections do not change workflow destinations.",
       completion: "Workflow success and intended frontend deployments serving configured domains; backend uses workflow evidence.",
       migrationNote: "Changed backend files require compatibility review; this CLI does not prove database compatibility or restore data." };
   }
@@ -335,7 +335,7 @@ export class OpsService {
     const stagingTag = tags.some(t => t.ref.endsWith(`/${commit.sha}`));
     const target = o.to ?? "production";
     const rows = [];
-    for (const app of deploymentApps(records, this.config.apps["landing-static"] && !this.config.apps.landing ? "landing-static" : "landing")) {
+    for (const app of deployedApps) {
       if (o.app && o.app !== app) continue;
       const candidates = records.filter(r => r.sha === commit.sha && r.payload.app === app && r.environment === target && r.payload.inputHash
         && r.payload.artifactName === `${app}-${r.payload.inputHash}` && artifactApp(r.payload.artifactName, [...deployedApps]) === app);

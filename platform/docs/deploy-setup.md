@@ -19,11 +19,9 @@ Start these human steps early:
   needs working email delivery. Select a production environment reviewer in GitHub; provider
   plan restrictions are not bypassed.
 
-The wizard derives web, admin and exactly one landing from installed app packages. It creates
-separate staging and production Vercel projects, without a Git connection. If `apps/landing`
-exists it is selected; otherwise `apps/landing-static` is selected. Static landing projects have
-different names and IDs, root `apps/landing-static`, framework Other and output `out`; they
-never reuse the primary landing project. GitHub Actions performs all deployments.
+The wizard deploys web, admin and landing, and stops if any of their app packages is missing.
+It creates separate staging and production Vercel projects, without a Git connection. GitHub
+Actions performs all deployments.
 
 Vercel project settings and Convex projects are read back before proceeding. Existing projects
 are reused; conflicting settings stop with a precise remedy. Convex uses a separate project's
@@ -31,7 +29,7 @@ production deployment for each environment. The wizard sets computed cross-app U
 backend origins, creates GitHub environments, and stores IDs/keys under the names expected by
 CD. It adds required CI checks and PR review protection without replacing existing branch
 access/reviewer settings. Review existing required checks when removing an app: stale required
-checks are never deleted automatically. Read-only inspection requires the same installed-app CI contexts as setup, including both landing checks when both apps remain installed.
+checks are never deleted automatically. Read-only inspection requires the same app CI contexts as setup.
 
 ## Credentials and resuming
 
@@ -72,8 +70,8 @@ The final step asks to deploy the default branch's immutable commit through `ops
 serving verification. `bun run deploy:setup --prove` resumes the saved request rather than
 repeating provisioning or dispatching another deployment while its configuration remains unchanged.
 Saved requests bind proof to the selected topology, staging domains, project/backend mappings,
-repository and team. Mapping validation checks the selected apps while preserving unrelated
-ops app mappings; configuration removes the unselected landing variant from `ops.config.json`.
+repository and team. Mapping validation checks the deployed apps while preserving unrelated
+ops app mappings.
 See [ops request correlation](ops-cli.md#exercise-the-complete-workflow) for caller-supplied request IDs.
 Saved successful proof is checked against current `ops.config.json` mappings
 and reverified for serving through `ops verify`; workflow success alone is insufficient. Changed

@@ -27,9 +27,7 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 log "Exporting ${SHA:0:12} to a clean build root"
 git -C "$REPO_ROOT" archive "$SHA" | tar -x -C "$TMP_DIR"
 
-LANDING_APP=$(bash "$REPO_ROOT/.github/scripts/platform-landing-app.sh" "$TMP_DIR" --required)
-
-log "Building $LANDING_APP (site=${LANDING_URL} web=${WEB_URL})"
+log "Building landing (site=${LANDING_URL} web=${WEB_URL})"
 (
   cd "$TMP_DIR"
   bun install --frozen-lockfile >/dev/null
@@ -38,11 +36,11 @@ log "Building $LANDING_APP (site=${LANDING_URL} web=${WEB_URL})"
   NEXT_PUBLIC_SITE_URL="$LANDING_URL" \
   NEXT_PUBLIC_WEB_APP_URL="$WEB_URL" \
   NEXT_PUBLIC_GIT_SHA="$SHA" \
-  NEXT_PUBLIC_APP_NAME="$LANDING_APP" \
-    bun run --cwd "apps/$LANDING_APP" build
+  NEXT_PUBLIC_APP_NAME=landing \
+    bun run --cwd apps/landing build
 )
-OUT="$TMP_DIR/apps/$LANDING_APP/out"
-[[ -f "$OUT/index.html" ]] || die "Landing export not found at apps/$LANDING_APP/out"
+OUT="$TMP_DIR/apps/landing/out"
+[[ -f "$OUT/index.html" ]] || die "Landing export not found at apps/landing/out"
 
 # S3 behind CloudFront has no directory indexes: /en/ is the key "en/", not
 # "en/index.html". Publish each page under its directory keys as well ("en/"

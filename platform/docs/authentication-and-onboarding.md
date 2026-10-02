@@ -136,9 +136,9 @@ For users, sign-up *is* onboarding. The flow is simpler than admin onboarding be
 
 ### Onboarding ownership and landing handoff
 
-Both reference landing apps are backend-free marketing sites. Get started links to the web
-app's `/sign-up`, and Sign in links to `/sign-in`. Neither landing reads the onboarding
-mode or requires a Convex URL. The default landing no longer mounts a live announcement host;
+The reference landing app is a backend-free marketing site. Get started links to the web
+app's `/sign-up`, and Sign in links to `/sign-in`. The landing neither reads the onboarding
+mode nor requires a Convex URL. It no longer mounts a live announcement host;
 web and admin retain their announcement UI.
 
 Web's `SignUpView` reads `CONVEX_SITE_URL/api/waitlist/status` on every request with

@@ -6,7 +6,6 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { YAML, spawn } from "bun";
-import { defaultConfig } from "../src/config";
 import { OpsService } from "../src/service";
 import { parseOptions } from "../src/options";
 import type { Api, Deployment } from "../src/types";
@@ -242,7 +241,7 @@ test("production and rollback workflow gates resolve annotated tags and reject m
     }
   }
 });
-async function realTurboHashes(app: "web" | "landing" | "landing-static"): Promise<Record<string, string>> {
+async function realTurboHashes(app: "web" | "landing"): Promise<Record<string, string>> {
   const a = await action("build-app");
   const dir = await mkdtemp(resolve(tmpdir(), "ops-hash-test-"));
   const hashes: Record<string, string> = {};
@@ -271,71 +270,37 @@ test("real Turbo hashes reuse web across environments", async () => {
   const hashes = await realTurboHashes("web"); expect(hashes["web/staging"]).toBe(hashes["web/production"]);
 }, 30_000);
 const landingHashTest = existsSync(new URL("../../../../apps/landing/package.json", import.meta.url)) ? test : test.skip;
-landingHashTest("real Turbo hashes separate optional static landing builds", async () => {
+landingHashTest("real Turbo hashes separate landing builds per environment", async () => {
   const hashes = await realTurboHashes("landing"); expect(hashes["landing/staging"]).not.toBe(hashes["landing/production"]);
 }, 30_000);
 
-
-for (const installed of [[], ["landing"], ["landing-static"], ["landing", "landing-static"]]) {
-  test(`deployment selects one landing from [${installed.join(",")}]`, async () => {
-    const root = await mkdtemp(resolve(tmpdir(), "selected-landing-"));
+for (const installed of [[], ["landing"]]) {
+  test(`deployment requires apps/landing (installed: [${installed.join(",")}])`, async () => {
+    const root = await mkdtemp(resolve(tmpdir(), "required-landing-"));
     try {
-      await mkdir(resolve(root, ".ops-workflow/.github/scripts"), { recursive: true });
-      await writeFile(resolve(root, ".ops-workflow/.github/scripts/platform-landing-app.sh"), await readFile(new URL("../../../../.github/scripts/platform-landing-app.sh", import.meta.url)));
       for (const app of installed) {
         await mkdir(resolve(root, `apps/${app}`), { recursive: true });
         await writeFile(resolve(root, `apps/${app}/package.json`), "{}");
       }
-      const selected = installed.includes("landing") ? "landing" : installed[0];
-      if (selected) expect(Object.keys(defaultConfig("team/repo", root).apps)).toEqual(["web", "admin", selected]);
+      const present = installed.length > 0;
       for (const kind of ["staging", "production", "rollback"]) {
         const w = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
-        const step = w.jobs[kind === "staging" ? "validate-source" : "validate"].steps.find(s => s.id === "present")!;
+        const step = w.jobs[kind === "staging" ? "validate-source" : "validate"].steps.find(s => s.name === "Require the landing app")!;
         const output = resolve(root, "output"); await writeFile(output, "");
         const child = spawn(["bash", "-e", "-c", step.run!], { cwd: root, env: { ...process.env, GITHUB_OUTPUT: output }, stdout: "pipe", stderr: "pipe" });
-        expect(await child.exited).toBe(selected ? 0 : 1);
-        const values = await readFile(output, "utf8");
-        if (selected) expect(values).toBe(`landing=true\nlanding-app=${selected}\n`);
-        else expect(await new Response(child.stderr).text()).toContain("No landing app is installed");
+        expect(await child.exited).toBe(present ? 0 : 1);
+        if (!present) expect(await new Response(child.stdout).text()).toContain("::error::apps/landing is not installed");
+        else if (kind !== "staging") expect(await readFile(output, "utf8")).toBe("landing=true\n");
       }
     } finally { await rm(root, { recursive: true, force: true }); }
   });
 }
-test("static landing records use the selected physical app in every outcome", async () => {
-  const f = recordFixture(); process.env.OPS_LANDING_APP = "landing-static";
-  await recordOps(f.args);
-  expect(f.records).toHaveLength(4);
-  expect(f.records[2]).toMatchObject({ payload: { app: "landing-static", landingApp: "landing-static", result: "failure" } });
-  for (const r of f.records) expect(r).toMatchObject({ payload: { landingApp: "landing-static" } });
-});
-const staticHashTest = existsSync(new URL("../../../../apps/landing-static/package.json", import.meta.url)) ? test : test.skip;
-staticHashTest("static fallback hashes separate staging and production", async () => {
-  const hashes = await realTurboHashes("landing-static");
-  expect(hashes["landing-static/staging"]).not.toBe(hashes["landing-static/production"]);
-}, 30_000);
 
-test("static builder overrides serverless settings with an exported directory", async () => {
-  const a = await action("build-app");
-  const step = a.runs.steps.find(s => s.name === "Configure static export builder")!;
-  const root = await mkdtemp(resolve(tmpdir(), "static-builder-"));
-  try {
-    await mkdir(resolve(root, ".vercel"));
-    await writeFile(resolve(root, ".vercel/project.json"), JSON.stringify({ projectId: "static-only", settings: { framework: "nextjs", rootDirectory: "apps/landing-static" } }));
-    const child = spawn(["bash", "-e", "-c", step.run!], { cwd: root, stdout: "pipe", stderr: "pipe" });
-    expect(await child.exited).toBe(0);
-    expect(JSON.parse(await readFile(resolve(root, ".vercel/project.json"), "utf8"))).toEqual({ projectId: "static-only", settings: {
-      framework: null, rootDirectory: "apps/landing-static", buildCommand: "bun run build", outputDirectory: "out",
-    } });
-  } finally { await rm(root, { recursive: true, force: true }); }
-});
-
-test.each(["landing", "landing-static"])("staging gate requires the selected %s CI and ignores the skipped alternative", async selected => {
+test("staging gate requires landing CI", async () => {
   const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
   const template = String(w.jobs["ci-gate"].steps[0].with!.script);
   for (const result of ["success", "failure", "skipped"]) {
-    const script = template.replaceAll("${{ needs.validate-source.outputs.landing-app }}", selected)
-      .replaceAll("${{ needs.ci-landing.result }}", selected === "landing" ? result : "skipped")
-      .replaceAll("${{ needs.ci-landing-static.result }}", selected === "landing-static" ? result : "skipped")
+    const script = template.replaceAll("${{ needs.ci-landing.result }}", result)
       .replace(/\$\{\{ needs\.[\w-]+\.result \}\}/g, "success");
     const statuses: { state: string }[] = [];
     const failures: string[] = [];
@@ -347,83 +312,34 @@ test.each(["landing", "landing-static"])("staging gate requires the selected %s 
   }
 });
 
-test.each(["valid", "missing-root", "serverless"])("static artifact packaging handles %s output", async kind => {
-  const a = await action("build-app"), step = a.runs.steps.find(s => s.name === "Package artifact")!;
-  const dir = await mkdtemp(resolve(tmpdir(), "static-package-"));
-  try {
-    await mkdir(resolve(dir, ".vercel/output/static"), { recursive: true });
-    if (kind !== "missing-root") await writeFile(resolve(dir, ".vercel/output/static/index.html"), "<html>static</html>");
-    if (kind === "serverless") {
-      await mkdir(resolve(dir, ".vercel/output/functions"));
-      await writeFile(resolve(dir, ".vercel/output/functions/function"), "server");
-    }
-    const expressions: Record<string, string> = { "inputs.app": "landing-static", "steps.meta.outputs.tarball": "landing-static.tar.gz",
-      "steps.meta.outputs.checksum-file": "landing-static.tar.gz.sha256", "steps.layout.outputs.app-dir": "apps/landing-static", "inputs.environment": "production" };
-    const script = step.run!.replace(/\$\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => {
-      if (!(key in expressions)) throw new Error(`Missing expression fixture: ${key}`);
-      return expressions[key];
-    });
-    const child = spawn(["bash", "-e", "-c", script], { cwd: dir, env: { ...process.env, GITHUB_STEP_SUMMARY: resolve(dir, "summary") }, stdout: "pipe", stderr: "pipe" });
-    expect(await child.exited).toBe(kind === "valid" ? 0 : 1);
-    if (kind === "valid") {
-      const list = spawn(["tar", "-tzf", "landing-static.tar.gz"], { cwd: dir, stdout: "pipe" });
-      const files = await new Response(list.stdout).text();
-      expect(await list.exited).toBe(0);
-      expect(files).toContain(".vercel/output/static/index.html");
-      expect(files).not.toContain(".next");
-    }
-  } finally { await rm(dir, { recursive: true, force: true }); }
-});
-
-test("all CD paths use distinct static project secrets without falling back to the primary project", async () => {
-  for (const kind of ["staging", "production", "rollback"]) {
-    const source = await readFile(new URL(`../../../../.github/workflows/platform-cd-${kind}.yml`, import.meta.url), "utf8");
-    const expressions = [...source.matchAll(/\$\{\{ (secrets\[[^\n]+?\]) \}\}/g)].map(match => match[1]);
-    expect(expressions).toHaveLength(2);
-    for (const expression of expressions) {
-      const suffix = expression.includes("_STAGING") ? "_STAGING" : "";
-      for (const selected of ["landing", "landing-static"]) {
-        const code = expression.replace(/(?:needs\.(?:changes|validate)|steps\.present)\.outputs\.landing-app/g, JSON.stringify(selected));
-        const evaluate = new Function("secrets", `return ${code};`);
-        const secrets = { [`VERCEL_PROJECT_ID_LANDING${suffix}`]: "primary-project", [`VERCEL_PROJECT_ID_LANDING_STATIC${suffix}`]: "static-project" };
-        expect(evaluate(secrets)).toBe(selected === "landing-static" ? "static-project" : "primary-project");
-        delete secrets[`VERCEL_PROJECT_ID_LANDING_STATIC${suffix}`];
-        expect(evaluate(secrets)).toBe(selected === "landing-static" ? undefined : "primary-project");
-      }
-    }
-  }
-});
-
-test("standalone landing CI still skips removed apps", async () => {
+test("standalone landing CI still skips a removed landing", async () => {
   const root = await mkdtemp(resolve(tmpdir(), "optional-landing-ci-"));
   try {
-    for (const app of ["landing", "landing-static"]) {
-      const w = YAML.parse(await readFile(new URL(`../../../../.github/workflows/platform-ci-${app}.yml`, import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
-      const step = w.jobs.changes.steps.find(s => s.id === "present")!;
-      const output = resolve(root, "output");
-      for (const present of [false, true]) {
-        if (present) {
-          await mkdir(resolve(root, `apps/${app}`), { recursive: true });
-          await writeFile(resolve(root, `apps/${app}/package.json`), "{}");
-        }
-        await writeFile(output, "");
-        const child = spawn(["bash", "-e", "-c", step.run!], { cwd: root, env: { ...process.env, GITHUB_OUTPUT: output }, stdout: "pipe", stderr: "pipe" });
-        expect(await child.exited).toBe(0);
-        expect(await readFile(output, "utf8")).toBe(`app=${present}\n`);
+    const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-ci-landing.yml", import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
+    const step = w.jobs.changes.steps.find(s => s.id === "present")!;
+    const output = resolve(root, "output");
+    for (const present of [false, true]) {
+      if (present) {
+        await mkdir(resolve(root, "apps/landing"), { recursive: true });
+        await writeFile(resolve(root, "apps/landing/package.json"), "{}");
       }
+      await writeFile(output, "");
+      const child = spawn(["bash", "-e", "-c", step.run!], { cwd: root, env: { ...process.env, GITHUB_OUTPUT: output }, stdout: "pipe", stderr: "pipe" });
+      expect(await child.exited).toBe(0);
+      expect(await readFile(output, "utf8")).toBe(`app=${present}\n`);
     }
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test.each(["landing", "landing-static"])("staging change evaluation schedules the selected %s only for changed inputs or force", async selected => {
+test("staging change evaluation schedules landing only for changed inputs or force", async () => {
   const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
   const step = w.jobs.changes.steps.find(s => s.id === "eval")!;
   const filters = YAML.parse(String(w.jobs.changes.steps.find(s => s.id === "filter")!.with!.filters)) as { landing: string[] };
-  for (const path of ["apps/landing/**", "apps/landing-static/**", "platform/packages/i18n/**", "packages/messages/**"]) expect(filters.landing).toContain(path);
+  for (const path of ["apps/landing/**", "platform/packages/i18n/**", "packages/messages/**"]) expect(filters.landing).toContain(path);
   const root = await mkdtemp(resolve(tmpdir(), "landing-changes-"));
   try {
     for (const force of [false, true]) for (const changed of [false, true]) {
-      const script = step.run!.replaceAll("${{ needs.validate-source.outputs.landing-app }}", selected)
+      const script = step.run!
         .replaceAll("${{ inputs.force_deploy || inputs.git_sha != '' }}", String(force))
         .replaceAll("${{ steps.filter.outputs.landing }}", String(changed))
         .replace(/\$\{\{ steps\.filter\.outputs\.\w+ \}\}/g, "false");
@@ -435,26 +351,23 @@ test.each(["landing", "landing-static"])("staging change evaluation schedules th
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test.each(["landing", "landing-static"])("failed staging CI followed by a successful rerun preserves %s evidence", async selected => {
+test("failed staging CI followed by a successful rerun preserves landing evidence", async () => {
   const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as {
     jobs: Record<string, { needs: string[]; steps: (Step & { env?: Record<string, string> })[] }>;
   };
   const job = w.jobs["ops-record"];
-  const expression = job.steps.find(s => s.name === "Persist app outcomes")!.env!.OPS_LANDING_APP;
-  const selectionJob = expression.match(/^\$\{\{ needs\.([a-z-]+)\.outputs\.landing-app \}\}$/)![1];
   const f = recordFixture();
   for (const attempt of [1, 2]) {
     const passed = attempt === 2;
     const outcomes: Record<string, { result: string; outputs: Record<string, string> }> = {
-      "validate-source": { result: "success", outputs: { "landing-app": selected } },
-      changes: passed ? { result: "success", outputs: { "landing-app": selected, web: "true", admin: "true", landing: "true", backend: "true" } }
+      "validate-source": { result: "success", outputs: {} },
+      changes: passed ? { result: "success", outputs: { web: "true", admin: "true", landing: "true", backend: "true" } }
         : { result: "skipped", outputs: {} },
     };
     // Only direct dependencies appear in Actions' needs context. CI failure skips
-    // changes and deployment jobs; source selection has already succeeded.
+    // changes and deployment jobs; source validation has already succeeded.
     const needs = Object.fromEntries(job.needs.map(name => [name, outcomes[name] ?? { result: passed ? "success" : "skipped", outputs: {} }]));
     process.env.OPS_NEEDS = JSON.stringify(needs);
-    process.env.OPS_LANDING_APP = needs[selectionJob]?.outputs["landing-app"] ?? "";
     process.env.GITHUB_RUN_ATTEMPT = String(attempt);
     await recordOps(f.args);
   }
@@ -464,7 +377,7 @@ test.each(["landing", "landing-static"])("failed staging CI followed by a succes
   }));
   const api: Api = {
     async get<T>(path: string): Promise<T> {
-      if (path.endsWith(`/commits/${sha}`)) return { sha, commit: { message: "Static landing" } } as T;
+      if (path.endsWith(`/commits/${sha}`)) return { sha, commit: { message: "Landing" } } as T;
       if (path.endsWith("/status")) return { statuses: [{ context: "ci/gate-passed", state: "success" }] } as T;
       if (path.includes("/git/matching-refs/")) return [] as T;
       throw new Error(`Unexpected evidence request: ${path}`);
@@ -478,12 +391,11 @@ test.each(["landing", "landing-static"])("failed staging CI followed by a succes
   const service = new OpsService(fixtureConfig(), api);
   const inspection = await service.inspect(sha, parseOptions(["inspect", sha, "--to", "staging"]));
   expect(service.errors).toEqual([]);
-  expect(inspection.rows?.map(row => row.app)).toEqual(["web", "admin", selected, "backend"]);
+  expect(inspection.rows?.map(row => row.app)).toEqual(["web", "admin", "landing", "backend"]);
   expect(records).toHaveLength(8);
   expect(records.slice(0, 4).every(record => record.payload.result === "skipped" && record.payload.runAttempt === 1)).toBe(true);
   expect(records.slice(4).every(record => record.payload.result === "success" && record.payload.runAttempt === 2)).toBe(true);
-  expect(records.every(record => record.payload.landingApp === selected)).toBe(true);
-  expect(records.filter(record => record.payload.app === selected)).toHaveLength(2);
+  expect(records.filter(record => record.payload.app === "landing")).toHaveLength(2);
 });
 type JobCondition = { if?: string; needs?: string | string[] };
 type JobOutcome = { result: string; outputs: Record<string, string> };

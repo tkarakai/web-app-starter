@@ -1,9 +1,7 @@
 # Deployment Architecture
 
-See [landing selection and development commands](development.md) and
+See [development commands](development.md) and
 [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
-
-When the static fallback is selected, it has its own Vercel projects and `landing-static-<hash>` artifacts. Use the **Other** preset, build command `bun run build`, output directory `out`, and root `apps/landing-static`. Its project IDs are `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` and `VERCEL_PROJECT_ID_LANDING_STATIC`; never reuse the primary landing project. Rollback chooses the variant present in the selected source commit.
 
 This document explains how the CI/CD pipeline works and what happens when things fail. The pipeline builds everything in GitHub Actions, pushes prebuilt artifacts to Vercel (`vercel deploy --prebuilt`) and deploys Convex separately (`convex deploy`), always before the frontends. Vercel is a hosting target only, with no Git integration. For step-by-step operational procedures, see [deployment-runbook.md](./deployment-runbook.md).
 
@@ -201,7 +199,7 @@ Three consequences, and they are the whole point:
 | `*.md`, `qa/**` | **no** | documentation and tests do not change the build; excluded via `inputs` in `turbo.json` |
 | `CONVEX_URL`, `CONVEX_SITE_URL`, `LANDING_URL`, `APP_ENVIRONMENT`, … | **no** (`passThroughEnv`) | web and admin read these at request time; they are present during the build but never inlined, so they must not make the hash environment-specific |
 | `NEXT_PUBLIC_GIT_SHA`, `BUILD_ID`, `DEPLOY_TIMESTAMP`, … | **no** (`passThroughEnv`) | they change every commit; hashing them would defeat reuse entirely |
-| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL` for `landing` / `landing-static` | **yes** | these are static exports: the values *are* inlined, so staging and production legitimately produce different artifacts |
+| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL` for `landing` | **yes** | it is a static export: the values *are* inlined, so staging and production legitimately produce different artifacts |
 
 ### Build identity vs deployed commit
 
@@ -234,9 +232,9 @@ Two things keep the property honest:
   expected input hash, so deploying the wrong artifact fails before it reaches an
   environment.
 
-**landing and landing-static are excluded from promotion.** Both set `output: "export"`, so
-they have no server at runtime and cannot read runtime configuration at all — they keep
-`NEXT_PUBLIC_*`, hash those values, and are therefore built once per environment. They still
+**landing is excluded from promotion.** It sets `output: "export"`, so
+it has no server at runtime and cannot read runtime configuration at all — it keeps
+`NEXT_PUBLIC_*`, hashes those values, and is therefore built once per environment. It still
 benefit from content addressing: repeated deploys to the *same* environment reuse the
 artifact when nothing changed.
 

@@ -55,13 +55,6 @@ jobs:
       git_sha: ${{ needs.resolve.outputs.sha }}
       require_e2e: true
 
-  landing-static:
-    needs: resolve
-    uses: ./.github/workflows/platform-ci-landing-static.yml
-    with:
-      git_sha: ${{ needs.resolve.outputs.sha }}
-      require_e2e: true
-
   storybook:
     needs: resolve
     uses: ./.github/workflows/platform-ci-storybook.yml
@@ -71,7 +64,7 @@ jobs:
 
   verified:
     name: Verified
-    needs: [resolve, shared, web, admin, landing, landing-static, storybook]
+    needs: [resolve, shared, web, admin, landing, storybook]
     runs-on: ubuntu-latest
     steps:
       - name: Report the verified commit

@@ -65,7 +65,6 @@ These app layout files reference the shared icons:
 - `apps/web/src/app/[locale]/layout.tsx`
 - `platform/apps/admin/src/app/layout.tsx`
 - `apps/landing/src/app/[locale]/layout.tsx`
-- `apps/landing-static/src/app/[locale]/layout.tsx`
 - `platform/apps/storybook/src/app/layout.tsx`
 
 ### Showcase

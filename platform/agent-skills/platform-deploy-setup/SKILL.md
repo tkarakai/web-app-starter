@@ -17,9 +17,8 @@ command arguments, repository files or screenshots. Do not read provider credent
 
 Once provisioning is authorized, resume the same `.deploy-setup.json` and its existing project
 mappings. This file contains public identifiers only. Do not create replacement projects to
-work around a failed check. The wizard verifies root directories and presets; a static-only
-landing uses distinct `landing-static` projects with Other preset/output `out`. Primary landing
-wins when both are installed. Don't alter platform files to configure an app.
+work around a failed check. The wizard verifies root directories and presets. Don't alter
+platform files to configure an app.
 
 Read each failure and correct its named provider setting. Existing protection rules and backend
 secrets must survive setup. Providers may require a paid plan for protection; report the actual

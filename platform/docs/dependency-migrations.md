@@ -64,7 +64,7 @@ crash on a Node 24 server.
 |---|---|---|
 | **Node** major | `.node-version` (a bare major); root `engines.node` (`<major>.x`, or `>=<major>.<minor> <next>` when a tool needs a newer minor of the line: currently `>=24.21 <25`; the minor is the oldest Node the platform promises and tests, raised by editing this one value); `node-version` in `.github/actions/setup-bun/action.yml` and explicit `node-version:` in workflows; `@types/node` major in every workspace; `ARG NODE_VERSION` in `infra/aws/docker/*.Dockerfile` | `bun run check:runtime-baseline` (CI) |
 | **Bun** exact version | root `packageManager`; `bun-version` default in `.github/actions/setup-bun/action.yml`; `ARG BUN_VERSION` in `infra/aws/docker/*.Dockerfile` | `bun run check:runtime-baseline` (CI) |
-| **Vercel** Node version | each Vercel project's Node.js setting (web, admin, landing, landing-static) | manual: Vercel project settings, part of the baseline playbook |
+| **Vercel** Node version | each Vercel project's Node.js setting (web, admin, landing) | manual: Vercel project settings, part of the baseline playbook |
 | **Convex** | Convex runs our functions in its managed runtime. No `"use node"` actions exist today. If any are added, the Node version for Convex actions joins this table | manual |
 | **GitHub runner / act image** | `ubuntu-latest`, and `catthehacker/ubuntu:act-latest` in `.actrc` | not pinned: they follow GitHub's image. Only the Node and Bun set up on them matter |
 

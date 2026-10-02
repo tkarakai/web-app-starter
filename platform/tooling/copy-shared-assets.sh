@@ -31,7 +31,6 @@ APPS=(
   "web"
   "admin"
   "landing"
-  "landing-static"
   "storybook"
   # demo owns its public branding assets; never overwrite them.
 )

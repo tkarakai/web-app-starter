@@ -22,7 +22,7 @@ test("port and origin follow runtime.ports", () => {
   assert.equal(run(["port", "web"]), String(config.runtime.ports.web));
   assert.equal(run(["port", "web"], customised()), "4101");
   assert.equal(run(["origin", "web"], customised()), "http://localhost:4101");
-  assert.equal(run(["port", "landing-static"]), String(config.runtime.ports["landing-static"]));
+  assert.equal(run(["port", "landing"]), String(config.runtime.ports.landing));
 });
 
 test("dir names each app's directory relative to the repository root", () => {
@@ -31,7 +31,7 @@ test("dir names each app's directory relative to the repository root", () => {
   assert.equal(run(["dir", "storybook"]), "platform/apps/storybook");
   assert.throws(() => run(["dir", "demo"]), /expected an app name/);
   const variables = configVariables(config);
-  assert.equal(variables.APP_CONFIG_DIR_LANDING_STATIC, "apps/landing-static");
+  assert.equal(variables.APP_CONFIG_DIR_LANDING, "apps/landing");
   assert.equal(variables.APP_CONFIG_DIR_ADMIN, "platform/apps/admin");
 });
 
@@ -47,11 +47,11 @@ test("shell output survives eval, including quotes in values", () => {
   const output = run(["shell"], customised());
   const result = spawnSync(
     "bash",
-    ["-c", `eval "$1"; printf '%s|%s|%s' "$APP_CONFIG_PRODUCT_NAME" "$APP_CONFIG_PORT_WEB" "$APP_CONFIG_ORIGIN_LANDING_STATIC"`, "_", output],
+    ["-c", `eval "$1"; printf '%s|%s|%s' "$APP_CONFIG_PRODUCT_NAME" "$APP_CONFIG_PORT_WEB" "$APP_CONFIG_ORIGIN_LANDING"`, "_", output],
     { encoding: "utf8" },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, `Acme's Cloud|4101|http://localhost:${config.runtime.ports["landing-static"]}`);
+  assert.equal(result.stdout, `Acme's Cloud|4101|http://localhost:${config.runtime.ports.landing}`);
   assert.equal(shellQuote("a'b"), `'a'\\''b'`);
 });
 

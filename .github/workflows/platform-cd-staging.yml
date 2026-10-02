@@ -43,13 +43,6 @@ jobs:
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.git_sha || github.sha }}
-          path: .deploy-source
-          persist-credentials: false
-      - name: Select landing
-        run: echo "LANDING_APP=$(bash .github/scripts/platform-landing-app.sh .deploy-source --required)" >> "$GITHUB_ENV"
       - id: check
         name: Check deployment configuration
         env:
@@ -58,7 +51,6 @@ jobs:
           VERCEL_PROJECT_ID_WEB_STAGING: ${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}
           VERCEL_PROJECT_ID_ADMIN_STAGING: ${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}
           VERCEL_PROJECT_ID_LANDING_STAGING: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
-          VERCEL_PROJECT_ID_LANDING_STATIC_STAGING: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STATIC_STAGING }}
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: node .github/scripts/platform-deploy-preflight.cjs
 
@@ -89,8 +81,6 @@ jobs:
     if: needs.preflight.outputs.ready == 'true'
     name: Validate Source SHA
     runs-on: ubuntu-latest
-    outputs:
-      landing-app: ${{ steps.present.outputs.landing-app }}
     steps:
       - name: Require an immutable full commit SHA
         shell: bash
@@ -104,19 +94,12 @@ jobs:
         with:
           ref: ${{ inputs.git_sha || github.sha }}
           persist-credentials: false
-      - name: Checkout landing selection tooling
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.workflow_sha }}
-          path: .ops-workflow
-          sparse-checkout: .github/scripts
-          persist-credentials: false
-      - id: present
-        name: Select landing app
+      - name: Require the landing app
         run: |
-          LANDING_APP=$(bash .ops-workflow/.github/scripts/platform-landing-app.sh . --required)
-          echo "landing=true" >> "$GITHUB_OUTPUT"
-          echo "landing-app=$LANDING_APP" >> "$GITHUB_OUTPUT"
+          if [ ! -f apps/landing/package.json ]; then
+            echo "::error::apps/landing is not installed in the selected commit."
+            exit 1
+          fi
 
   # ─── CI Phase (reusable workflows, parallel) ───────────────────
   ci-shared:
@@ -139,22 +122,14 @@ jobs:
 
   ci-landing:
     needs: validate-source
-    if: needs.validate-source.outputs.landing-app == 'landing'
     uses: ./.github/workflows/platform-ci-landing.yml
-    with:
-      git_sha: ${{ inputs.git_sha }}
-
-  ci-landing-static:
-    needs: validate-source
-    if: needs.validate-source.outputs.landing-app == 'landing-static'
-    uses: ./.github/workflows/platform-ci-landing-static.yml
     with:
       git_sha: ${{ inputs.git_sha }}
 
   # ─── CI Gate ────────────────────────────────────────────────────
   ci-gate:
     name: CI Gate
-    needs: [preflight, validate-source, ci-shared, ci-web, ci-admin, ci-landing, ci-landing-static]
+    needs: [preflight, validate-source, ci-shared, ci-web, ci-admin, ci-landing]
     if: always() && needs.preflight.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -169,8 +144,7 @@ jobs:
               web: '${{ needs.ci-web.result }}',
               admin: '${{ needs.ci-admin.result }}',
               source: '${{ needs.validate-source.result }}',
-              landing: '${{ needs.validate-source.outputs.landing-app }}' === 'landing-static'
-                ? '${{ needs.ci-landing-static.result }}' : '${{ needs.ci-landing.result }}',
+              landing: '${{ needs.ci-landing.result }}',
             };
 
             console.log('CI Results:', JSON.stringify(results, null, 2));
@@ -202,7 +176,6 @@ jobs:
       web: ${{ steps.eval.outputs.web }}
       admin: ${{ steps.eval.outputs.admin }}
       landing: ${{ steps.eval.outputs.landing }}
-      landing-app: ${{ needs.validate-source.outputs.landing-app }}
       backend: ${{ steps.eval.outputs.backend }}
       any_app: ${{ steps.eval.outputs.any_app }}
     steps:
@@ -245,7 +218,6 @@ jobs:
               - 'platform/config/**'
             landing:
               - 'apps/landing/**'
-              - 'apps/landing-static/**'
               - 'platform/packages/design-system/**'
               - 'platform/packages/design-patterns/**'
               - 'platform/packages/i18n/**'
@@ -270,7 +242,7 @@ jobs:
         run: |
           FORCE="${{ inputs.force_deploy || inputs.git_sha != '' }}"
           LANDING=false
-          if [[ -n "${{ needs.validate-source.outputs.landing-app }}" ]] && [[ "$FORCE" == "true" || "${{ steps.filter.outputs.landing }}" == "true" ]]; then
+          if [[ "$FORCE" == "true" || "${{ steps.filter.outputs.landing }}" == "true" ]]; then
             LANDING=true
           fi
 
@@ -400,11 +372,11 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
-          app: ${{ needs.changes.outputs.landing-app }}
+          app: landing
           environment: production
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets[needs.changes.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC_STAGING' || 'VERCEL_PROJECT_ID_LANDING_STAGING'] }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Attest build provenance (only for artifacts this run built) ──
@@ -612,7 +584,7 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
-          app: ${{ needs.changes.outputs.landing-app }}
+          app: landing
           environment: production
           artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
           tarball: ${{ needs.build-landing.outputs.tarball }}
@@ -625,7 +597,7 @@ jobs:
           expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets[needs.changes.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC_STAGING' || 'VERCEL_PROJECT_ID_LANDING_STAGING'] }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}
 
   # ─── Smoke tests (only for deployed apps) ──────────────────────
   smoke-test:
@@ -736,7 +708,6 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OPS_NEEDS: ${{ toJSON(needs) }}
-          OPS_LANDING_APP: ${{ needs.validate-source.outputs.landing-app }}
           OPS_ENVIRONMENT: staging
           OPS_SHA: ${{ inputs.git_sha || github.sha }}
           OPS_OPERATION: deploy

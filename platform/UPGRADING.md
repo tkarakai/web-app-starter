@@ -39,7 +39,7 @@ on a new branch, preferably rehearsed in a separate clone first:
    intentional patches through the `platform-patch` contract. Preserve app guides, identity,
    messages, business code and removed optional apps. Review app-owned reference fixes below;
    a source merge also changes app-owned files, unlike the automatic updater. Set the desired
-   `i18n.defaultLocale` explicitly and keep the selected landing's development scripts.
+   `i18n.defaultLocale` explicitly and keep the landing's development scripts.
 4. Write a **candidate** baseline outside the checkout with the release version, full release
    SHA and reviewed patches. Run `./platform/tooling/node-ts.sh platform/tooling/check-zone.ts
    --base-file /absolute/path/to/candidate-base.json`. Investigate each difference, including
@@ -175,7 +175,7 @@ files may change while an update is pending. Unrelated work requires a new plan.
 | Row-changing migration | `migration-complete`, with deployment-specific completion evidence |
 
 Optional new settings are listed in the report without requiring configuration before the
-upgrade. Configure them before using the associated feature, such as deploying the static landing.
+upgrade. Configure them before using the associated feature.
 Removed or renamed settings and required new settings still trigger the applicable review gates.
 
 Migration evidence is a saved read-only status JSON containing `deployment`, `phase: "complete"`,
@@ -236,8 +236,5 @@ migration. No upgrade command publishes a release or deploys your app.
 App-owned pages are preserved by the updater. When taking the landing/locale fixes listed in the changelog:
 
 - In a web locale-root page, await `params`, validate `locale` against `locales`, then ``redirect(`/${locale}/dashboard`)`` (use a template string in your code). Relative `redirect("dashboard")` loses the locale.
-- If using `landing-static`, add `src/app/page.tsx` to redirect the root URL to a supported browser language, falling back to exported `defaultLocale`. The reference implementation is in that path in the release. The static host needs an `index.html` for root health checks.
-- For its single exported `404.html`, load `loadMessages(defaultLocale)` in the server page and pass `common.notFound` to the client component; the client can resolve a locale from the URL after hydration. This honors app message overrides too.
-- Keep `dev:landing` wired to `./platform/tooling/dev-start.sh --app=landing`, even when you remove the primary app. Set `dev:landing-static` to `./platform/tooling/dev-start.sh --app=landing-static` if retained. The updater merges the root script seam; review customized script conflicts.
-- Static Vercel projects need the settings and separate project-ID secrets in the [deployment runbook](docs/deployment-runbook.md#2b-create-vercel-projects). Removing both landing apps is unsupported.
+- Keep `dev:landing` wired to `./platform/tooling/dev-start.sh --app=landing`. The updater merges the root script seam; review customized script conflicts.
 - Copied `qa/e2e/localization.spec.ts` tests in web and landing apps must use the app's configured `locales` and `loadMessages` catalogues, including overrides. Earlier reference tests hard-coded French and Arabic, which fail when those languages are removed. The release includes corrected reference tests.

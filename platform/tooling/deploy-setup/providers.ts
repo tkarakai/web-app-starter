@@ -1,13 +1,13 @@
 import path from "node:path";
 import { verifyServing } from "./proof.ts";
 import { api, HttpError, run, type Run } from "./io.ts";
-import { ENVIRONMENTS, ciApps, proofContext, secretName, settings, values, type App, type Environment, type State } from "./model.ts";
+import { ENVIRONMENTS, apps, proofContext, secretName, settings, values, type App, type Environment, type State } from "./model.ts";
 export function convexEnv(backend: string, args: string[], input?: string, exec: Run = run) {
   return exec("bun", ["x", "convex", "env", ...args, "--deployment-name", backend], input,
     { CONVEX_DEPLOY_KEY: "", CONVEX_DEPLOYMENT: "" }, path.resolve("packages/backend"));
 }
 export function requiredChecks(installed: App[]): string[] {
-  const title = (app: App) => app === "landing-static" ? "Landing Static" : app[0].toUpperCase() + app.slice(1);
+  const title = (app: App) => app[0].toUpperCase() + app.slice(1);
   return ["CI Shared Complete", "CI Storybook Complete", ...installed.map(app => "CI " + title(app) + " Complete")];
 }
 export type Request = <T>(endpoint: string, method?: string, body?: unknown) => Promise<T>;
@@ -66,7 +66,7 @@ export async function ensureBackend(state: State, env: Environment, request: Req
   if (prod.length !== 1) throw Error(`${name} needs one default production deployment. Configure it at https://dashboard.convex.dev and resume.`);
   state.backends[env] = { id, name: prod[0].name, url: prod[0].deploymentUrl };
 }
-export async function checkSetup(state: State | undefined, installed: App[], exec: Run = run, requiredApps: App[] = ciApps(process.cwd())): Promise<Check[]> {
+export async function checkSetup(state: State | undefined, installed: App[], exec: Run = run, requiredApps: App[] = apps(process.cwd())): Promise<Check[]> {
   const checks: Check[] = [];
   const check = async (step: string, action: () => Promise<boolean>, instruction: string) => {
     try { checks.push({ step, status: await action() ? "done" : "missing", instruction }); }

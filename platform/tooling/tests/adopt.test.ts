@@ -27,13 +27,13 @@ function write(root: string, file: string, text: string): void {
 
 test("setAppConfig sets name, email, cookie prefix and ports in the starter configuration fixture", () => {
   const out = setAppConfig(read("app.config.ts"), {
-    name: "Acme \"Tasks\"", supportEmail: "help@acme.test", ports: { web: 4001, "landing-static": 4004 },
+    name: "Acme \"Tasks\"", supportEmail: "help@acme.test", ports: { web: 4001, storybook: 4013 },
   });
   assert.match(out, /^const productName = "Acme \\"Tasks\\"";$/m);
   assert.match(out, /^const supportEmail = "help@acme.test";$/m);
   assert.match(out, /authCookiePrefix: "acme-tasks",/);
   assert.match(out, /^\s+web: 4001,$/m);
-  assert.match(out, /^\s+"landing-static": 4004,$/m);
+  assert.match(out, /^\s+storybook: 4013,$/m);
   assert.match(out, /^\s+admin: 3002,$/m);
   assert.throws(() => setAppConfig(read("app.config.ts"), { name: "x", ports: { nope: 1 } }), /unknown app/);
 });
@@ -43,14 +43,14 @@ test("generated config loads user strings literally, including replacement metac
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const name = 'Acme $& $` $\' $1 \\ "Tasks"';
   write(root, "app.config.ts", setAppConfig(read("app.config.ts"), {
-    name, supportEmail: "help+$&@acme.test", ports: { web: 4001, "landing-static": 4004 },
+    name, supportEmail: "help+$&@acme.test", ports: { web: 4001, storybook: 4013 },
   }));
   const { default: config } = await import(pathToFileURL(path.join(root, "app.config.ts")).href);
   assert.equal(config.identity.productName, name);
   assert.equal(config.identity.legalEntity, name);
   assert.equal(config.identity.supportEmail, "help+$&@acme.test");
   assert.equal(config.runtime.ports.web, 4001);
-  assert.equal(config.runtime.ports["landing-static"], 4004);
+  assert.equal(config.runtime.ports.storybook, 4013);
   assert.equal(config.runtime.ports.admin, 3002);
 });
 
@@ -74,16 +74,17 @@ test("helpers: slug, repoFromUrl, parseArgs", () => {
   assert.equal(repoFromUrl("git@github.com:acme/app.git"), "acme/app");
   assert.equal(repoFromUrl("https://github.com/acme/app"), "acme/app");
   assert.equal(repoFromUrl("/local/path"), undefined);
-  assert.deepEqual(parseArgs(["--name", "A", "--port", "web=4001", "--remove", "demo,landing", "--yes"]),
-    { yes: true, name: "A", ports: { web: 4001 }, remove: ["demo", "landing"] });
+  assert.deepEqual(parseArgs(["--name", "A", "--port", "web=4001", "--remove", "demo", "--yes"]),
+    { yes: true, name: "A", ports: { web: 4001 }, remove: ["demo"] });
   assert.throws(() => parseArgs(["--remove", "web"]), /not one of/);
+  assert.throws(() => parseArgs(["--remove", "landing"]), /not one of/);
 });
 
 test("removeWorkflowJob removes the job block and its needs entries", () => {
   const out = removeWorkflowJob(read(".github/workflows/ci-verify.yml"), "landing");
   assert.doesNotMatch(out, /^ {2}landing:$/m);
-  assert.match(out, /^ {2}landing-static:$/m);
-  assert.match(out, /needs: \[resolve, shared, web, admin, landing-static, storybook\]/);
+  assert.match(out, /^ {2}storybook:$/m);
+  assert.match(out, /needs: \[resolve, shared, web, admin, storybook\]/);
 });
 
 test("adopt: a fresh clone is configured, stripped, linked and recorded; the zone check passes", (t) => {
@@ -103,7 +104,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
     }
   }
   write(root, "apps/landing/package.json", "{}");
-  write(root, "apps/landing-static/package.json", "{}");
+  write(root, "apps/demo/package.json", "{}");
   write(root, "apps/web/package.json", "{}");
   git(root, "init", "-q");
   git(root, "add", "-A");
@@ -115,11 +116,8 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.equal(readFileSync(path.join(root, "README.md"), "utf8"), "Uncommitted work\n");
   rmSync(path.join(root, "README.md"));
 
-  assert.throws(() => adopt(root, { name: "Acme", repo: "acme/acme-app", remove: ["landing", "landing-static"], build: false }), /Keep one landing app/);
-  assert.equal(git(root, "status", "--porcelain"), "", "invalid removal must fail before changing the clone");
-
   const lines: string[] = [];
-  const errors = adopt(root, { name: "Acme $& Co", repo: "acme/acme-app", remove: ["landing"], install: false, build: false },
+  const errors = adopt(root, { name: "Acme $& Co", repo: "acme/acme-app", remove: ["demo"], install: false, build: false },
     (line) => lines.push(line), { release: () => ({ version: read("platform/VERSION").trim(), commit }), command: () => "" });
 
   assert.equal(errors, 0, lines.join("\n"));
@@ -129,12 +127,13 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.equal(at("CLAUDE.md"), read("platform/templates/CLAUDE.md"));
   assert.equal(at(".github/workflows/update-platform.yml"), read("platform/templates/update-platform.yml"));
   assert.match(at("renovate.json"), /local>acme\/acme-app\/\/platform\/config\/renovate-preset/);
-  assert.equal(existsSync(path.join(root, "apps/landing")), false);
-  assert.equal(existsSync(path.join(root, ".github/workflows/ci-landing.yml")), false);
-  assert.doesNotMatch(at("tsconfig.json"), /apps\/landing"/);
+  assert.equal(existsSync(path.join(root, "apps/demo")), false);
+  assert.equal(existsSync(path.join(root, "apps/landing/package.json")), true);
+  assert.equal(existsSync(path.join(root, ".github/workflows/ci-landing.yml")), true);
+  assert.match(at("tsconfig.json"), /apps\/landing"/);
   JSON.parse(at("tsconfig.json"));
   assert.equal((JSON.parse(at("package.json")) as { scripts: Record<string, string> }).scripts["dev:landing"], "./platform/tooling/dev-start.sh --app=landing");
-  assert.equal((JSON.parse(at("turbo.json")) as { tasks: Record<string, unknown> }).tasks["@repo/landing#build"], undefined);
+  assert.notEqual((JSON.parse(at("turbo.json")) as { tasks: Record<string, unknown> }).tasks["@repo/landing#build"], undefined);
   for (const dir of [".claude/skills", ".agents/skills"]) {
     assert.equal(readlinkSync(path.join(root, dir, "platform-deps")), "../../platform/agent-skills/platform-deps");
   }

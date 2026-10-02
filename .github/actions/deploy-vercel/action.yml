@@ -3,7 +3,7 @@ description: "Deploy a prebuilt app artifact to Vercel"
 
 inputs:
   app:
-    description: "App name (web, admin, landing, or landing-static)"
+    description: "App name (web, admin or landing)"
     required: true
   environment:
     description: "Target environment (preview or production)"
@@ -75,7 +75,7 @@ runs:
         ARTIFACT_CHECKSUM_FILE: ${{ inputs.checksum-file }}
         DEPLOY_SELECTED_SHA: ${{ inputs.deployed-commit }}
       run: |
-        if [[ ! "$ARTIFACT_APP" =~ ^(web|admin|landing|landing-static)$ ||
+        if [[ ! "$ARTIFACT_APP" =~ ^(web|admin|landing)$ ||
               ! "$ARTIFACT_HASH" =~ ^[a-f0-9]{16}$ ||
               "$ARTIFACT_NAME" != "$ARTIFACT_APP-$ARTIFACT_HASH" ||
               ! "$ARTIFACT_RUN_ID" =~ ^[1-9][0-9]*$ ||

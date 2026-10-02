@@ -37,7 +37,7 @@ function fixture(t: TestContext) {
   };
 }
 
-for (const location of ["apps/web", "platform/apps/admin", "apps/landing", "apps/landing-static", "platform/apps/storybook", "."]) {
+for (const location of ["apps/web", "platform/apps/admin", "apps/landing", "platform/apps/storybook", "."]) {
   test(`E2E setup installs Chromium using Playwright in ${location}`, (t) => {
     const checkout = fixture(t);
     checkout.install(location, `require("node:fs").writeFileSync("invocation.json", JSON.stringify(process.argv.slice(2)));`);

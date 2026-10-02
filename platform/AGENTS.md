@@ -84,7 +84,7 @@ Details: [docs/development.md](docs/development.md#app-configuration-appconfigts
 ```bash
 bun run dev                  # Convex + core apps; seeds admin@admin.com and user@user.com
 bun run dev:web              # Convex + web            bun run dev:admin      # Convex + admin
-bun run dev:landing          # Selected landing        bun run dev:landing-static
+bun run dev:landing          # landing
 bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
 CI=true bun run ci           # Full local CI; one web E2E worker avoids edge-rate-limit failures
@@ -106,7 +106,7 @@ bun run deploy:setup         # Guided Vercel/Convex/GitHub setup; --check gives 
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 
-See [landing selection and development commands](docs/development.md) and
+See [development commands](docs/development.md) and
 [onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accounts: [docs/development.md](docs/development.md).
@@ -148,7 +148,7 @@ by package name (`@web-app-starter/*` for the platform, `@repo/backend` for the 
 - Server Components by default; a Client Component starts with `"use client"`. Server
   Components cannot use hooks or browser APIs; Convex functions run on the server and have no
   browser APIs either.
-- User-visible text in web, landing and landing-static comes from locale messages, including
+- User-visible text in web and landing comes from locale messages, including
   errors, placeholders, accessible labels and metadata. Admin is English-only.
 - No `console.log` debugging left behind; handle errors explicitly.
 
@@ -188,13 +188,13 @@ artifact to one environment.
 | `CONVEX_SITE_URL` | Convex HTTP actions URL | web, admin |
 | `LANDING_URL` | Marketing site URL, for cross-app links | web |
 
-`landing` and `landing-static` are static exports (`output: "export"`) with no server, so they
-**must** inline their configuration at build time:
+`landing` is a static export (`output: "export"`) with no server, so it
+**must** inline its configuration at build time:
 
 | Variable | Description | Apps |
 |---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | This app's public URL | landing, landing-static |
-| `NEXT_PUBLIC_WEB_APP_URL` | Web app URL, for cross-app links | landing, landing-static |
+| `NEXT_PUBLIC_SITE_URL` | This app's public URL | landing |
+| `NEXT_PUBLIC_WEB_APP_URL` | Web app URL, for cross-app links | landing |
 
 Build-identity variables keep the `NEXT_PUBLIC_` prefix everywhere, because they describe the
 build: `NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_GIT_BRANCH`, `NEXT_PUBLIC_DEPLOY_TIMESTAMP`,
@@ -207,7 +207,7 @@ admin don't read those.
 
 **Adding a runtime variable** takes three places: the app's `.env.example`, the hosting project,
 and `turbo.json`: `passThroughEnv` if read at request time (web, admin), `env` if inlined at build
-time (landing, landing-static). A runtime variable in `env` makes the build hash
+time (landing). A runtime variable in `env` makes the build hash
 environment-specific and silently breaks artifact reuse
 ([docs/deployment-architecture.md](docs/deployment-architecture.md#artifacts-are-content-addressed)).
 `bun run dev` manages `.env.local` for local development.

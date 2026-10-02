@@ -41,29 +41,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       landing: ${{ steps.present.outputs.landing }}
-      landing-app: ${{ steps.present.outputs.landing-app }}
       vercel-env: ${{ steps.env.outputs.vercel-env }}
       project-id-web: ${{ steps.projects.outputs.web }}
       project-id-admin: ${{ steps.projects.outputs.admin }}
       project-id-landing: ${{ steps.projects.outputs.landing }}
     steps:
-      - name: Check optional apps in the selected commit
+      - name: Checkout the selected commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.target_sha }}
           persist-credentials: false
-      - name: Checkout landing selection tooling
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.workflow_sha }}
-          path: .ops-workflow
-          sparse-checkout: .github/scripts
-          persist-credentials: false
       - id: present
+        name: Require the landing app
         run: |
-          LANDING_APP=$(bash .ops-workflow/.github/scripts/platform-landing-app.sh . --required)
+          if [ ! -f apps/landing/package.json ]; then
+            echo "::error::apps/landing is not installed in the selected commit."
+            exit 1
+          fi
           echo "landing=true" >> "$GITHUB_OUTPUT"
-          echo "landing-app=$LANDING_APP" >> "$GITHUB_OUTPUT"
 
       - name: Verify confirmation string
         if: inputs.confirm != format('rollback-{0}', inputs.environment)
@@ -124,11 +119,11 @@ jobs:
           if [ "${{ inputs.environment }}" = "staging" ]; then
             web="${{ secrets.VERCEL_PROJECT_ID_WEB_STAGING }}"
             admin="${{ secrets.VERCEL_PROJECT_ID_ADMIN_STAGING }}"
-            landing="${{ secrets[steps.present.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC_STAGING' || 'VERCEL_PROJECT_ID_LANDING_STAGING'] }}"
+            landing="${{ secrets.VERCEL_PROJECT_ID_LANDING_STAGING }}"
           else
             web="${{ secrets.VERCEL_PROJECT_ID_WEB }}"
             admin="${{ secrets.VERCEL_PROJECT_ID_ADMIN }}"
-            landing="${{ secrets[steps.present.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC' || 'VERCEL_PROJECT_ID_LANDING'] }}"
+            landing="${{ secrets.VERCEL_PROJECT_ID_LANDING }}"
           fi
 
           for name in web admin landing; do
@@ -244,7 +239,7 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
-          app: ${{ needs.validate.outputs.landing-app }}
+          app: landing
           environment: ${{ needs.validate.outputs.vercel-env }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -405,7 +400,7 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
-          app: ${{ needs.validate.outputs.landing-app }}
+          app: landing
           environment: ${{ needs.validate.outputs.vercel-env }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
@@ -512,7 +507,6 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OPS_NEEDS: ${{ toJSON(needs) }}
-          OPS_LANDING_APP: ${{ needs.validate.outputs.landing-app }}
           OPS_ENVIRONMENT: ${{ inputs.environment }}
           OPS_SHA: ${{ inputs.target_sha }}
           OPS_OPERATION: rollback

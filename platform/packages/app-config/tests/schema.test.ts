@@ -54,7 +54,6 @@ describe("validateAppConfig", () => {
       web: 4001,
       admin: 4002,
       storybook: 4003,
-      "landing-static": 4004,
     };
     config.runtime.authCookiePrefix = "acme_cloud-2";
     config.brand.tokenOverrides = { "--primary": "oklch(0.55 0.2 260)" };
@@ -211,7 +210,7 @@ describe("validateAppConfig", () => {
     const config = draft();
     config.brand.tokenOverrides = { "--radius": "0.25rem", web: { "--primary": "#123456" } };
     expect(issuesOf(config)).toEqual([
-      'brand.tokenOverrides["--radius"]: cannot mix tokens with "web"; put it under "*" to apply it to every app, or under an app id (landing, web, admin, storybook, landing-static) or "admin-public"',
+      'brand.tokenOverrides["--radius"]: cannot mix tokens with "web"; put it under "*" to apply it to every app, or under an app id (landing, web, admin, storybook) or "admin-public"',
     ]);
   });
 

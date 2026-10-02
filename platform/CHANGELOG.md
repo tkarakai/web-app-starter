@@ -13,6 +13,32 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Action required
+
+- **Who is affected:** apps that still have `apps/landing-static`. The static landing app is
+  removed, and `apps/landing` is now the only marketing site the dev launcher, local CI,
+  deployments and Ops support. It is required: `bun run adopt --remove` accepts only `demo`, and
+  `bun run dev`, CI and the CD workflows stop with "apps/landing is not installed" without it.
+  **What to do:** before or while taking this release, move your static landing's pages, copy,
+  metadata and assets into `apps/landing` (start from this release's `apps/landing`; it is also a
+  static export with locale routes, and hands off to web's `/sign-up` and `/sign-in`), then run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v3-remove-landing-static.ts`. It
+  deletes `apps/landing-static`, its CI caller and `ci-verify` job, the `dev:landing-static`
+  script, its Turbo tasks, tsconfig reference and port, and refuses to run while `apps/landing` is
+  missing. If you deployed the static landing, create the `landing` Vercel projects and set
+  `VERCEL_PROJECT_ID_LANDING[_STAGING]` (or run `bun run deploy:setup`), point web's
+  `LANDING_URL` at it, run `bun run ops setup`, then delete the old static projects and the
+  `VERCEL_PROJECT_ID_LANDING_STATIC[_STAGING]` secrets. In branch protection, replace
+  `CI Landing Static Complete` with `CI Landing Complete`. **Done when:** the codemod's `--check`
+  passes, `bun run dev` starts landing, and `CI Landing Complete` passes.
+
+### Removed
+
+- `apps/landing-static`, its `platform-ci-landing-static.yml` workflow, the `landing-static` app id
+  in `app.config.ts` (`runtime.ports`, `tokenOverrides` scopes) and the landing-selection script.
+  Deployment records no longer carry a `landingApp` field, and `deploy:setup` no longer creates
+  static landing projects.
+
 ## [2.1.2] - 2026-10-02
 
 ### Fixed

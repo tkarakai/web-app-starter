@@ -9,7 +9,7 @@
 //   --cookie-prefix <prefix>  Better Auth cookie prefix (runtime.authCookiePrefix); default: from the name
 //   --port <app>=<port>       Local port, repeatable (runtime.ports)
 //   --repo <owner/name>       Your GitHub repository, for the Renovate preset link; default: from origin
-//   --remove <apps>           Comma-separated reference apps to delete: landing, landing-static, demo
+//   --remove <apps>           Comma-separated reference apps to delete: demo
 //   --remove-sample           Remove projects, tasks and uploads; keep account settings and auth
 //   --from-release <vX.Y.Z>  Verify this published source after an existing-repository merge
 //   --no-upstream             Don't add the `upstream` remote
@@ -37,9 +37,9 @@ import { adoptionRelease, commandAt, type Command } from "./adopt-release.ts";
 
 export const STARTER_REPO = "tkarakai/web-app-starter";
 export const STARTER_URL = `https://github.com/${STARTER_REPO}.git`;
-export const REMOVABLE_APPS = ["landing", "landing-static", "demo"] as const;
+export const REMOVABLE_APPS = ["demo"] as const;
 export type RemovableApp = (typeof REMOVABLE_APPS)[number];
-const PORT_APPS = ["landing", "web", "admin", "storybook", "landing-static"] as const;
+const PORT_APPS = ["landing", "web", "admin", "storybook"] as const;
 const TEMPLATES = ["README.md", "LICENSE", "AGENTS.md", "CLAUDE.md"] as const;
 const SKILL_DIRS = [".claude/skills", ".agents/skills"] as const;
 
@@ -145,17 +145,9 @@ function writeJson(file: string, value: unknown): void {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function validateLandingRemoval(root: string, apps: readonly RemovableApp[]): void {
-  if (!["landing", "landing-static"].some((app) =>
-    !apps.includes(app as RemovableApp) && existsSync(path.join(root, `apps/${app}/package.json`)))) {
-    throw new Error("Keep one landing app: remove landing to use landing-static, or remove landing-static to keep landing.");
-  }
-}
-
 /** Delete reference apps and their app-owned wiring (callers, scripts, tsconfig and Turbo entries). */
 export function removeApps(root: string, apps: readonly RemovableApp[], log: (line: string) => void): void {
   if (apps.length === 0) return;
-  validateLandingRemoval(root, apps);
   const at = (file: string): string => path.join(root, file);
   const pkg = readJson<{ scripts?: Record<string, string> }>(at("package.json"));
   const tsconfigText = readOptional(at("tsconfig.json"));
@@ -169,8 +161,7 @@ export function removeApps(root: string, apps: readonly RemovableApp[], log: (li
     rmSync(at(`apps/${app}`), { recursive: true, force: true });
     rmSync(at(`.github/workflows/ci-${app}.yml`), { force: true });
     for (const script of Object.keys(pkg.scripts ?? {})) {
-      // dev:landing is the stable entry point for the selected marketing site.
-      if (script === `dev:${app}` && app !== "landing") delete pkg.scripts?.[script];
+      if (script === `dev:${app}`) delete pkg.scripts?.[script];
     }
     if (tsconfig) {
       tsconfig = tsconfig.split("\n").filter((line) => !line.includes(`"path": "apps/${app}"`)).join("\n");
@@ -288,7 +279,6 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   if (existsSync(at(BASE_FILE))) throw new Error(`${BASE_FILE} exists: this repository is already adopted`);
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error(`--repo must be owner/name (got "${options.repo}")`);
   if (git(root, ["status", "--porcelain"]) !== "") throw new Error("Adoption needs a clean checkout; commit or preserve your work first");
-  validateLandingRemoval(root, options.remove ?? []);
   const { commit, version } = (services.release ?? adoptionRelease)(root, options.fromRelease);
   log(`Pre-adoption checklist for https://github.com/${options.repo}/settings/installations and /settings/hooks:`);
   log("  - Review installed GitHub Apps, webhooks and Git-connected hosts (Vercel, Cloudflare, Netlify, etc.).");

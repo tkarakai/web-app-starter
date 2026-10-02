@@ -7,7 +7,7 @@ A production-shaped monorepo starter that wires Bun, Turborepo, Tailwind, shadcn
 ## What this starter gives you
 
 - **Monorepo** powered by Bun workspaces + Turborepo for orchestration.
-- **Six Next.js apps**: web, admin, landing, landing-static, storybook and demo.
+- **Five Next.js apps**: web, admin, landing, storybook and demo.
 - **One configuration file**, `app.config.ts`, for the values an app changes: product name, ports, auth cookie prefix, brand and optional features. See [App configuration](docs/development.md#app-configuration-appconfigts).
 - **Shared packages** for UI, auth, backend, i18n, rate limiting and starter sidebar policy; see [Shared packages](#shared-packages).
 - Convex for database, file storage, and API functions (queries/mutations/actions).
@@ -68,7 +68,6 @@ To start only a specific app:
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
 bun run dev:landing          # Landing only (no backend)
-bun run dev:landing-static   # Static landing page (no Convex)
 bun run dev:storybook        # Component storybook (no Convex)
 ```
 
@@ -76,7 +75,6 @@ bun run dev:storybook        # Component storybook (no Convex)
    - Web app: `http://localhost:3001`
    - Admin dashboard: `http://localhost:3002`
    - Landing page: `http://localhost:3000`
-   - Landing static: `http://localhost:3004`
    - Storybook: `http://localhost:3003`
 
    The **Convex UI** URL is printed by `bun run dev` and `bun run dev:status` when
@@ -168,8 +166,7 @@ when you take a newer release. Everything else is yours.
 │   │   └── qa/
 │   │       ├── tests/         # Unit + component tests, helpers, fixtures
 │   │       └── e2e/           # Playwright E2E specs
-│   ├── landing/               # Dynamic landing page (@repo/landing)
-│   ├── landing-static/        # Fully static landing page (@repo/landing-static)
+│   ├── landing/               # Landing page, static export (@repo/landing)
 │   └── demo/                  # Standalone UI/dispatch demo; also tests starter upgrades
 ├── packages/
 │   └── backend/               # Convex backend (@repo/backend)
@@ -271,11 +268,11 @@ CONVEX_DEPLOYMENT=dev:<your-deployment>
 CONVEX_URL=https://<deployment>.convex.cloud
 CONVEX_SITE_URL=https://<deployment>.convex.site
 
-# apps/landing and apps/landing-static are static exports, so they must inline
-# their configuration at build time and keep the NEXT_PUBLIC_ prefix.
+# apps/landing is a static export, so it must inline its configuration
+# at build time and keep the NEXT_PUBLIC_ prefix.
 NEXT_PUBLIC_SITE_URL=https://your-app-domain.com
 NEXT_PUBLIC_WEB_APP_URL=https://your-web-app-domain.com
-# Neither landing needs Convex: Get started / Sign in hand off to web.
+# Landing needs no Convex: Get started / Sign in hand off to web.
 ```
 
 3. Configure Convex env vars for that deployment:
@@ -306,7 +303,7 @@ Notes:
 
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
-`--port app=N`, `--remove landing,demo`, `--remove-sample`, `--yes`).
+`--port app=N`, `--remove demo`, `--remove-sample`, `--yes`).
 Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
@@ -321,7 +318,7 @@ For example, clone with
 2. Replaces the root `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `templates/`, and
    points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`),
    and installs the app-owned `update-platform.yml` weekday caller.
-3. Optionally removes reference apps and their wiring. Keep either `landing` or `landing-static`; removing both is rejected before any files change. The default launcher and deployments prefer `landing`, then fall back to `landing-static`.
+3. Optionally removes the `demo` reference app and its wiring. `landing` is required: the dev launcher, CI and deployments use it.
    `--remove-sample` removes project, task and upload tables, functions, screens and strings,
    leaving a dashboard shell with account settings, announcements and sign-out.
 4. Links the platform skills into `.claude/skills/` and `.agents/skills/`.
@@ -446,9 +443,9 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 
 ### Environment differences
 
-- Local web/admin env uses `CONVEX_URL` and `CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`. The backend-free landings use only `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` for app URLs.
+- Local web/admin env uses `CONVEX_URL` and `CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`. The backend-free landing uses only `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` for app URLs.
 - Cloud env uses `https://<deployment>.convex.cloud` (API) and `https://<deployment>.convex.site` (site proxy).
-- `NEXT_PUBLIC_SITE_URL` is the selected landing's URL. Convex's `SITE_URL` contains the trusted web/admin origins. Web and admin derive their own origin from the request `Host` header.
+- `NEXT_PUBLIC_SITE_URL` is the landing's URL. Convex's `SITE_URL` contains the trusted web/admin origins. Web and admin derive their own origin from the request `Host` header.
 
 ## Convex workflow primer
 
@@ -477,7 +474,7 @@ Use this mental model to avoid surprises when switching between local and cloud.
 
 ### Mental model
 
-- `CONVEX_URL` (`NEXT_PUBLIC_CONVEX_URL` in the landing apps) = where your app sends requests.
+- `CONVEX_URL` (`NEXT_PUBLIC_CONVEX_URL` in the landing app) = where your app sends requests.
 - `bun run dev` (local) / `bunx convex deploy` (cloud) = how local code is pushed to that backend.
 
 ## Environment conventions
@@ -496,7 +493,7 @@ CONVEX_URL=http://127.0.0.1:<cloud-port>
 CONVEX_SITE_URL=http://127.0.0.1:<site-port>
 ```
 
-Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment. These examples are for `apps/web` and `platform/apps/admin`, which read the unprefixed names at request time and need no site-URL variable. `apps/landing` and `apps/landing-static` are static exports and use the `NEXT_PUBLIC_` forms instead.
+Note: `bun run dev` automatically manages these values. Ports are dynamically assigned per deployment. These examples are for `apps/web` and `platform/apps/admin`, which read the unprefixed names at request time and need no site-URL variable. `apps/landing` is a static export and uses the `NEXT_PUBLIC_` forms instead.
 
 ### Example: hybrid (local app + cloud Convex)
 

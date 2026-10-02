@@ -31,7 +31,7 @@ asks to replace the App. `--fallback` documents the manual-CI/workflow-file limi
 | Product name | `identity.productName` | Page titles, headers, TOTP issuer, email footer, `{productName}` in messages. Never write it into a message file (`packages/messages`) |
 | Company name in footers | `identity.legalEntity` | |
 | Support address | `identity.supportEmail` | |
-| Local ports | `runtime.ports.<app>` | `landing`, `web`, `admin`, `storybook`, `landing-static`; integers 1024–65535, all different. Local origins (`http://localhost:<port>`) follow from them |
+| Local ports | `runtime.ports.<app>` | `landing`, `web`, `admin`, `storybook`; integers 1024–65535, all different. Local origins (`http://localhost:<port>`) follow from them |
 | Auth cookie prefix | `runtime.authCookiePrefix` | Letters, digits, `-`, `_`; starts with a letter or digit. Set a unique one when another Better Auth app shares the host (e.g. localhost). **Changing it signs every user out** |
 | Icons | `brand.icons.svg`, `.ico`, `.appleTouchIcon` | Repository-relative paths to your files; copied into each app on dev and build |
 | Colours and other design tokens | `brand.tokenOverrides` | `{ "--primary": "oklch(0.55 0.2 260)" }` applies to every app; names from `platform/packages/design-system/tokens/`. To re-theme some apps only, key it by scope: `{ "*": { "--radius": "0.25rem" }, web: { "--primary": "oklch(0.55 0.2 260)" } }` (`"*"` = every app, or an app id; the app's own tokens win; the two forms cannot be mixed). An app that is not named keeps the platform look. `"admin-public"` adds tokens on top of the admin's own for its sign-in, forgot/reset-password and onboarding pages only, never the dashboard (e.g. `{ admin: {...}, "admin-public": { "--primary": "#123456" } }`). Each root layout passes its id: `tokenOverrideCss(appConfig, "web")` |
@@ -57,7 +57,7 @@ Re-export `SignUpView` for the email-only default (existing page re-exports keep
 The shared form serializes metadata; direct HTTP callers submit `meta: JSON.stringify(answers)` or `meta: "{}"`.
 No backend patch, migration or new config key is needed.
 
-Both landings hand off to web `/sign-up` and `/sign-in`, with no backend dependency.
+The landing hands off to web `/sign-up` and `/sign-in`, with no backend dependency.
 Web reads onboarding mode uncached and fails closed on backend error. Adoption is additive:
 keep buyer-owned questions and pages until deliberately switching them to the shared form.
 The unmounted legacy landing form and announcement host can remain; remove their Convex env
@@ -95,8 +95,8 @@ app-owned server code if you rely on answers for trusted decisions.
    ```
 
 5. **Local environment.** Existing `apps/*/.env.local` files are never overwritten. After
-   changing ports, delete the `.env.local` files of landing and landing-static (they hold local
-   URLs) or fix their URLs by hand, then restart with `bun run dev:stop && bun run dev`. The dev
+   changing ports, delete landing's `.env.local` file (it holds local
+   URLs) or fix its URLs by hand, then restart with `bun run dev:stop && bun run dev`. The dev
    script updates Convex's `SITE_URL` for the new origins. After changing the cookie prefix, sign
    in again.
 6. **Deployments.** Ports and the cookie prefix are local-development and app-wide values; a new
@@ -106,7 +106,7 @@ app-owned server code if you rely on answers for trusted decisions.
 ## Worked example
 
 **Task:** the product is called "Acme Notes", run by "Acme Inc." with support at
-`help@acme.test`. Move the local ports to 4000–4004 so it can run beside another app, and give it
+`help@acme.test`. Move the local ports to 4000–4003 so it can run beside another app, and give it
 its own cookie prefix `acme-notes`.
 
 ```ts
@@ -116,7 +116,7 @@ const supportEmail = "help@acme.test";
 const appConfig = {
   identity: { productName, legalEntity: "Acme Inc.", supportEmail },
   runtime: {
-    ports: { landing: 4000, web: 4001, admin: 4002, storybook: 4003, "landing-static": 4004 },
+    ports: { landing: 4000, web: 4001, admin: 4002, storybook: 4003 },
     authCookiePrefix: "acme-notes",
   },
   // brand and features unchanged

@@ -79,7 +79,6 @@ MUST_BE_LOCAL=(
     "apps/web/.next"
     "platform/apps/admin/.next"
     "apps/landing/.next"
-    "apps/landing-static/.next"
     ".turbo"
     ".cache"
 )
