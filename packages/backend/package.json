@@ -23,15 +23,15 @@
     "@zxcvbn-ts/language-en": "^3.0.2",
     "better-auth": "1.6.33",
     "convex": "1.46.0",
-    "convex-helpers": "^0.1.111",
+    "convex-helpers": "^0.1.124",
     "resend": "^6.28.0",
     "@web-app-starter/convex-platform": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^24.13.4",
+    "@types/node": "^24.13.6",
     "@types/react": "19.3.0",
     "convex-test": "^0.0.59",
     "typescript": "6.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }
