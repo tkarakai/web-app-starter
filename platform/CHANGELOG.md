@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- `platform:upgrade` no longer stops with "Target is missing required seam" when the target release drops an optional app that your app still has (as 3.0.0 does with `apps/landing-static`). Seams of such a retired app are skipped, so its files stay yours until the release's codemod or you remove them. No app action is required.
+
 ### Action required
 
 - **Who is affected:** apps that still have `apps/landing-static`. The static landing app is
