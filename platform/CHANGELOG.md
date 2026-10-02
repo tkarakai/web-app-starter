@@ -15,6 +15,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [2.1.0] - 2026-10-02
 
+
 ### Added
 
 - `platform/tooling/dependency-floors.ts` keeps direct dependency floors at the versions `bun.lock` resolves: an offline check (`--write` raises stale floors, never touching the lockfile's resolutions) for exact, caret and tilde ranges, with the lockfile refresh sequence, security-fix adoption and the repair path documented in the `platform-deps` skill and [dependency-updates](docs/dependency-updates.md#direct-dependency-floors). The shared Renovate preset now uses `rangeStrategy: "bump"` for npm dependencies and devDependencies, so routine updates raise floors themselves. No app action is required: CI enforces the rule in the product repository only, the script is optional in adopted apps (run it by its path; the `check:`/`sync:dependency-floors` root scripts exist only in the product), and your own workspaces keep the ranges they declare. Expect Renovate to start raising your declared floors on in-range updates.

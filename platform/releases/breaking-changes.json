@@ -579,14 +579,7 @@
       "supportedBaseline": ">=2.0.0 <3.0.0",
       "codemods": [],
       "migrations": [],
-      "env": [
-        {
-          "name": "NEXT_PUBLIC_CONVEX_SITE_URL",
-          "kind": "removed",
-          "secret": false,
-          "required": false
-        }
-      ],
+      "env": [],
       "removedFiles": [
         "apps/landing-static/src/app/page.tsx",
         "apps/landing-static/src/app/not-found.tsx",
