@@ -190,6 +190,36 @@ describe("validateAppConfig", () => {
     };
     expect(issuesOf(config)).toHaveLength(3);
   });
+
+  it("accepts token overrides scoped to every app and to single apps", () => {
+    const config = draft();
+    config.brand.tokenOverrides = { "*": { "--radius": "0.25rem" }, web: { "--primary": "#123456" }, admin: {} };
+    expect(issuesOf(config)).toEqual([]);
+  });
+
+  it("rejects mixing flat tokens with per-app scopes, naming the stray token", () => {
+    const config = draft();
+    config.brand.tokenOverrides = { "--radius": "0.25rem", web: { "--primary": "#123456" } };
+    expect(issuesOf(config)).toEqual([
+      'brand.tokenOverrides["--radius"]: cannot mix tokens with "web"; put it under "*" to apply it to every app, or under an app id (landing, web, admin, storybook, landing-static)',
+    ]);
+  });
+
+  it("rejects a misspelt app id, a bad token and a non-object scope inside the scoped form", () => {
+    const config = draft();
+    // Invalid on purpose, so it needs a cast past the config type.
+    config.brand.tokenOverrides = {
+      web: { primary: "#123456", "--accent": "</style><script>" },
+      Admin: { "--primary": "red" },
+      "*": "red",
+    } as unknown as AppConfig["brand"]["tokenOverrides"];
+    expect(issuesOf(config)).toEqual([
+      'brand.tokenOverrides["web"]["primary"]: the name must be a CSS custom property such as "--primary"',
+      expect.stringContaining('brand.tokenOverrides["web"]["--accent"]'),
+      expect.stringContaining('brand.tokenOverrides["Admin"]: cannot mix tokens with "web", "*"'),
+      expect.stringContaining('brand.tokenOverrides["*"]: must be an object'),
+    ]);
+  });
 });
 
 describe("tokenOverrideCss", () => {
@@ -204,5 +234,34 @@ describe("tokenOverrideCss", () => {
     expect(tokenOverrideCss(validateAppConfig(config))).toBe(
       ":root{--primary:#123456;--radius:0.25rem}",
     );
+  });
+
+  it("applies flat overrides to every app, with or without an app id", () => {
+    const config = draft();
+    config.brand.tokenOverrides = { "--primary": "#123456" };
+    const resolved = validateAppConfig(config);
+    expect(tokenOverrideCss(resolved)).toBe(":root{--primary:#123456}");
+    for (const app of APP_IDS) expect(tokenOverrideCss(resolved, app)).toBe(":root{--primary:#123456}");
+  });
+
+  it("scopes overrides: an app gets \"*\" plus its own tokens, its own winning, and other apps are untouched", () => {
+    const config = draft();
+    config.brand.tokenOverrides = {
+      "*": { "--radius": "0.25rem", "--primary": "#111111" },
+      web: { "--primary": "#123456" },
+    };
+    const resolved = validateAppConfig(config);
+    expect(tokenOverrideCss(resolved, "web")).toBe(":root{--radius:0.25rem;--primary:#123456}");
+    expect(tokenOverrideCss(resolved, "admin")).toBe(":root{--radius:0.25rem;--primary:#111111}");
+    expect(tokenOverrideCss(resolved)).toBe(":root{--radius:0.25rem;--primary:#111111}");
+  });
+
+  it("leaves an app unstyled when only other apps are scoped", () => {
+    const config = draft();
+    config.brand.tokenOverrides = { web: { "--primary": "#123456" }, landing: { "--primary": "#123456" } };
+    const resolved = validateAppConfig(config);
+    expect(tokenOverrideCss(resolved, "admin")).toBe("");
+    expect(tokenOverrideCss(resolved, "storybook")).toBe("");
+    expect(tokenOverrideCss(resolved, "landing")).toBe(":root{--primary:#123456}");
   });
 });

@@ -34,6 +34,15 @@ export const APP_DIRS: Readonly<Record<AppId, string>> = {
   "landing-static": "apps/landing-static",
 };
 
+/** Design-token overrides: CSS custom property name to value, e.g. `{ "--primary": "oklch(0.55 0.2 260)" }`. */
+export type TokenOverrides = Record<string, string>;
+
+/**
+ * Design-token overrides per app. `"*"` applies to every app; an app id applies to that app
+ * only and wins over `"*"` for the tokens both set.
+ */
+export type ScopedTokenOverrides = { "*"?: TokenOverrides } & { [A in AppId]?: TokenOverrides };
+
 /** Colours used by the transactional email templates (`#rgb` or `#rrggbb`). */
 export type EmailPalette = {
   /** Page background around the card, and behind one-time codes. */
@@ -94,10 +103,15 @@ export type AppConfig = {
     };
     /**
      * Design-token overrides: CSS custom properties from
-     * `platform/packages/design-system/tokens/`, set on `:root` in every app, e.g.
+     * `platform/packages/design-system/tokens/`, set on `:root`, e.g.
      * `{ "--primary": "oklch(0.55 0.2 260)" }`. Empty keeps the design system's values.
+     *
+     * Two forms. A flat map of tokens applies to every app. A map keyed by `"*"` and app ids
+     * scopes them: `{ "*": { "--radius": "0.25rem" }, web: { "--primary": "oklch(0.55 0.2 260)" } }`
+     * re-themes web only (the admin keeps the platform look) and every app gets the radius.
+     * The two forms cannot be mixed. Each app passes its id to `tokenOverrideCss`.
      */
-    tokenOverrides: Record<string, string>;
+    tokenOverrides: TokenOverrides | ScopedTokenOverrides;
     email: {
       /** `lang` attribute of the email templates: the language their copy is written in. */
       lang: string;
@@ -285,11 +299,13 @@ function validatePorts(runtime: Obj, issues: Issues): Record<AppId, number> {
   return ports;
 }
 
-function validateTokenOverrides(brand: Obj, issues: Issues): Record<string, string> {
-  const raw = objectAt(brand, "tokenOverrides", "brand.tokenOverrides", issues);
-  const tokens: Record<string, string> = {};
+/** Keys that scope token overrides: every app, or one app. */
+const TOKEN_SCOPES: readonly string[] = ["*", ...APP_IDS];
+
+function validateTokenMap(raw: Obj, base: string, issues: Issues): TokenOverrides {
+  const tokens: TokenOverrides = {};
   for (const name of Object.keys(raw)) {
-    const path = `brand.tokenOverrides[${JSON.stringify(name)}]`;
+    const path = `${base}[${JSON.stringify(name)}]`;
     if (!CSS_CUSTOM_PROPERTY.test(name)) {
       issues.push(`${path}: the name must be a CSS custom property such as "--primary"`);
       continue;
@@ -297,6 +313,23 @@ function validateTokenOverrides(brand: Obj, issues: Issues): Record<string, stri
     tokens[name] = text(raw, name, path, issues, CSS_VALUE);
   }
   return tokens;
+}
+
+function validateTokenOverrides(brand: Obj, issues: Issues): TokenOverrides | ScopedTokenOverrides {
+  const raw = objectAt(brand, "tokenOverrides", "brand.tokenOverrides", issues);
+  const scopes = Object.keys(raw).filter((key) => TOKEN_SCOPES.includes(key));
+  if (scopes.length === 0) return validateTokenMap(raw, "brand.tokenOverrides", issues);
+
+  const scoped: ScopedTokenOverrides = {};
+  for (const key of Object.keys(raw)) {
+    const path = `brand.tokenOverrides[${JSON.stringify(key)}]`;
+    if (!TOKEN_SCOPES.includes(key)) {
+      issues.push(`${path}: cannot mix tokens with ${scopes.map((scope) => JSON.stringify(scope)).join(", ")}; put it under "*" to apply it to every app, or under an app id (${APP_IDS.join(", ")})`);
+      continue;
+    }
+    (scoped as Record<string, TokenOverrides>)[key] = validateTokenMap(objectAt(raw, key, path, issues), path, issues);
+  }
+  return scoped;
 }
 
 function validateEmail(brand: Obj, issues: Issues): AppConfig["brand"]["email"] {
@@ -422,9 +455,26 @@ export function localOrigin(config: AppConfig, app: AppId): string {
   return `http://localhost:${config.runtime.ports[app]}`;
 }
 
-/** The `:root{...}` rule for the configured design-token overrides, or "" when there are none. */
-export function tokenOverrideCss(config: AppConfig): string {
-  const declarations = Object.entries(config.brand.tokenOverrides).map(
+function isScoped(overrides: TokenOverrides | ScopedTokenOverrides): overrides is ScopedTokenOverrides {
+  return Object.keys(overrides).some((key) => TOKEN_SCOPES.includes(key));
+}
+
+/**
+ * The token overrides one app applies: a flat map applies to every app; in the scoped form,
+ * `"*"` then the app's own tokens (which win). Without `app`, only `"*"` (or the flat map).
+ */
+export function tokenOverridesFor(config: AppConfig, app?: AppId): TokenOverrides {
+  const overrides = config.brand.tokenOverrides;
+  if (!isScoped(overrides)) return overrides;
+  return { ...overrides["*"], ...(app === undefined ? undefined : overrides[app]) };
+}
+
+/**
+ * The `:root{...}` rule for the design-token overrides that apply to `app`, or "" when there
+ * are none. Pass the app's id: with scoped overrides, an app that omits it gets only the `"*"` tokens.
+ */
+export function tokenOverrideCss(config: AppConfig, app?: AppId): string {
+  const declarations = Object.entries(tokenOverridesFor(config, app)).map(
     ([name, value]) => `${name}:${value}`,
   );
   return declarations.length === 0 ? "" : `:root{${declarations.join(";")}}`;

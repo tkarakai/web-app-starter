@@ -53,7 +53,7 @@ export default async function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="admin" />}
-          <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
+          <BrandTokenStyle css={tokenOverrideCss(appConfig, "admin")} />
           <OfflineBanner />
           <PublicConfigProvider value={publicConfig}>
             <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
