@@ -192,9 +192,44 @@ Otherwise carry out the answers and steps 3–7.
      `/platform-deps ticket #<ticket>`.
 6. **Lockfile refresh.** Renovate's lockfile maintenance is off because it ignores the release
    age for transitive dependencies. If no `chore(deps): refresh lockfile` commit on `main` is
-   newer than seven days, refresh on `deps/lockfile-<date>`: delete `bun.lock`, run
-   `bun install --minimum-release-age=864000`, then `bun install --frozen-lockfile`. Open the PR
-   titled `chore(deps): refresh lockfile` and merge it.
+   newer than seven days, refresh on `deps/lockfile-<date>`, then open the PR titled
+   `chore(deps): refresh lockfile` and merge it.
+
+   The sequence keeps a known-good lockfile so the checkout is never left without one, and syncs
+   the direct dependency floors (`$FLOORS` is
+   `./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts`; see
+   [dependency-updates](../../docs/dependency-updates.md#direct-dependency-floors)) so they protect
+   the rebuild:
+
+   ```bash
+   $FLOORS --write                                  # floors protect the rebuild
+   cp bun.lock "$TMPDIR/bun.lock.known-good"        # matches the synced manifests
+   rm bun.lock
+   bun install --minimum-release-age=864000         # on failure: see below
+   $FLOORS --write
+   bun install --frozen-lockfile
+   ```
+
+   - **Required in the product repo** (no `.platform-base.json`); **optional in an adopted app**.
+     An app that has not opted in runs only `cp`, `rm`, `bun install --minimum-release-age=864000`
+     and `bun install --frozen-lockfile`, keeping the same known-good copy and restore.
+   - If the age-gated install fails, or the refresh is skipped for any reason: copy
+     `bun.lock.known-good` back to `bun.lock`, keep the synchronized manifests, and confirm with
+     `bun install --frozen-lockfile` and `$FLOORS`. Never lower a floor and never bypass the gate.
+   - A failure caused only by a floor or override adopted through the reviewed security exception
+     that is still younger than ten days (for example a locked `next` published a week ago) is
+     expected: skip that week's refresh and record why.
+   - `bun add` ignores the ten-day gate for transitive dependencies, and
+     `bun install --minimum-release-age` fails when any locked version is younger than ten days.
+     After a `bun add`, audit the age of every changed `bun.lock` entry; pin the eligible
+     versions with a **temporary** root `overrides` entry, install, then remove the override.
+   - **Other lockfile rewrites** (`bun add`, resolving a `bun.lock` conflict, a security fix
+     adopted outside Renovate, `references/major-ticket.md`): run `$FLOORS --write` in the same
+     PR (product: required, CI checks it; adopted app: optional).
+   - **A Renovate PR that fails the product's floors check** (rare, as the preset's `bump` rule
+     raises the floors itself): never push to `renovate/*`. Open `deps/floors-<package>` from
+     `main`, apply the same update, run `$FLOORS --write`, merge it and close the Renovate PR.
+     The update is then on `main`, so Renovate does not recreate it.
 7. **Close out.**
    - Ask the decisions still open (interactive only), and carry out the answers.
    - Record the run in the report: one line per merged Renovate PR, the lockfile refresh, and any

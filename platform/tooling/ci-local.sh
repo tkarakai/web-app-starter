@@ -344,6 +344,20 @@ else
   exit 1
 fi
 
+# Product only: direct dependency floors equal the versions bun.lock resolves
+# (mirrors platform-ci-shared.yml → "Check dependency floors"; adopted apps skip it).
+if [ ! -f .platform-base.json ]; then
+  step_start
+  if ./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts; then
+    print_success "Dependency floors in sync"
+    step_end "all: Dependency floors" "pass"
+  else
+    print_error "Dependency floors are stale (run: bun run sync:dependency-floors)"
+    step_end "all: Dependency floors" "fail"
+    exit 1
+  fi
+fi
+
 # ============================================================
 # Phase 3: Bun Unit Tests (mirrors ci-{web,admin,landing}.yml → test job)
 # Per-app so failures show which app broke.
