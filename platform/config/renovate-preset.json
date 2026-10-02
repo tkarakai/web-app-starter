@@ -104,13 +104,6 @@
       "allowedVersions": "<25"
     },
     {
-      "description": "HOLD: 6.x requires Vite 8; PR #125 failed with ERR_PACKAGE_PATH_NOT_EXPORTED vite/internal. REMOVE together with a Vite 8 migration of the vitest configs.",
-      "matchPackageNames": [
-        "@vitejs/plugin-react"
-      ],
-      "allowedVersions": "<6"
-    },
-    {
       "description": "HOLD: eslint-plugin-react 7.37.x only supports ESLint ^9.7. REMOVE when `bun info eslint-plugin-react@latest peerDependencies` accepts ESLint 10.",
       "matchPackageNames": [
         "eslint"
