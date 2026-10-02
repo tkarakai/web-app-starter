@@ -510,19 +510,18 @@ interface LanguageSelectorProps {
 ```tsx
 "use client";
 import { useLocale } from "next-intl";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { LanguageSelector } from "@web-app-starter/design-patterns";
-import { locales, localeMetadata, type Locale } from "@web-app-starter/i18n";
+import { locales, localeMetadata, navigateToLocalePath, type Locale } from "@web-app-starter/i18n";
 
 export function LocaleSwitcher({ className }: { className?: string }) {
   const locale = useLocale();
   const pathname = usePathname();
-  const router = useRouter();
 
   const handleLocaleChange = (newLocale: string) => {
     const segments = pathname.split("/");
     segments[1] = newLocale;
-    router.push(segments.join("/") || `/${newLocale}`);
+    navigateToLocalePath(segments.join("/") || `/${newLocale}`);
   };
 
   return (
@@ -559,9 +558,17 @@ The system uses a **three-tier sync** approach for authenticated users:
 #### For Unauthenticated Users
 
 When a user selects a language:
-1. The `LocaleSwitcher` navigates to the new locale URL
+1. The `LocaleSwitcher` loads the new locale URL with `navigateToLocalePath` (a full page load, see below)
 2. next-intl middleware automatically sets the `NEXT_LOCALE` cookie
 3. Subsequent visits remember the choice via localStorage fallback
+
+**Change locale with `navigateToLocalePath`, not `router.push`.** A client-side navigation across
+`[locale]` mounts the new layout in the browser, where `next-themes` creates its inline theme
+`<script>` and React logs "Encountered a script tag while rendering React component"
+([next-themes#387](https://github.com/pacocoursey/next-themes/issues/387), open for 0.4.6). The
+message is development-only and the theme is already applied, but a document load avoids it: it
+hydrates the server HTML, so the theme script runs from the server with its nonce. State below the
+layout is discarded on a locale change either way. Use the router for navigation inside one locale.
 
 #### For Authenticated Users (Cross-Device Sync)
 

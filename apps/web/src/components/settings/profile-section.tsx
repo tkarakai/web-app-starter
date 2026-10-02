@@ -4,7 +4,7 @@ import { TimezoneSelector } from "@/components/ui/localized-controls";
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 
@@ -30,7 +30,7 @@ import {
   toast,
 } from "@web-app-starter/design-system";
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
+import { locales, localeMetadata, navigateToLocalePath, persistLocale, type Locale } from "@web-app-starter/i18n";
 import { useAuthUser } from "@web-app-starter/auth-ui";
 
 const AVATAR_COLORS = [
@@ -54,7 +54,6 @@ export function ProfileSection() {
   const tl = useTranslations("language");
   const locale = useLocale();
   const pathname = usePathname();
-  const router = useRouter();
   const { theme } = useTheme();
 
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
@@ -145,7 +144,7 @@ export function ProfileSection() {
     const segments = pathname.split("/");
     segments[1] = newLocale;
     const newPath = segments.join("/") || `/${newLocale}`;
-    router.push(newPath);
+    navigateToLocalePath(newPath);
   };
 
   return (

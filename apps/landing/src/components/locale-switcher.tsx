@@ -1,10 +1,10 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { LanguageSelector } from "@web-app-starter/design-patterns";
-import { locales, localeMetadata, persistLocale, type Locale } from "@web-app-starter/i18n";
+import { locales, localeMetadata, navigateToLocalePath, persistLocale, type Locale } from "@web-app-starter/i18n";
 
 interface LocaleSwitcherProps {
   className?: string;
@@ -15,7 +15,6 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
   const locale = useLocale();
   const tl = useTranslations("language");
   const pathname = usePathname();
-  const router = useRouter();
 
   const localeOptions = locales.map((code) => ({
     code,
@@ -29,7 +28,7 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
     segments[1] = newLocale;
     const newPath = segments.join("/") || `/${newLocale}`;
     const search = window.location.search;
-    router.push(`${newPath}${search}`);
+    navigateToLocalePath(`${newPath}${search}`);
   };
 
   return (

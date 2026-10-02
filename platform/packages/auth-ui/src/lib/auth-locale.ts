@@ -1,7 +1,7 @@
 "use client";
 
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { defaultLocale, persistLocale } from "@web-app-starter/i18n";
+import { defaultLocale, navigateToLocalePath, persistLocale } from "@web-app-starter/i18n";
 import { getAuthUserLocaleAction } from "../actions";
 
 /**
@@ -16,6 +16,13 @@ function getCurrentLocaleFromUrl(): string {
     }
   }
   return defaultLocale;
+}
+
+/** Soft navigation within a locale; a full page load across locales (see navigateToLocalePath). */
+function goToDashboard(router: AppRouterInstance, targetLocale: string, currentLocale: string): void {
+  const path = `/${targetLocale}/dashboard`;
+  if (targetLocale === currentLocale) router.push(path);
+  else navigateToLocalePath(path);
 }
 
 /**
@@ -40,12 +47,12 @@ export async function redirectWithUserLocale(router: AppRouterInstance): Promise
     // Persist the target locale in browser storage for next-intl middleware
     persistLocale(targetLocale);
 
-    // Redirect to dashboard with the target locale
-    router.push(`/${targetLocale}/dashboard`);
+    // Redirect to dashboard with the target locale. Crossing locales needs a full page load.
+    goToDashboard(router, targetLocale, currentLocale);
   } catch {
     // If anything fails, fall back to current browser locale
     const currentLocale = getCurrentLocaleFromUrl();
     persistLocale(currentLocale);
-    router.push(`/${currentLocale}/dashboard`);
+    goToDashboard(router, currentLocale, currentLocale);
   }
 }
