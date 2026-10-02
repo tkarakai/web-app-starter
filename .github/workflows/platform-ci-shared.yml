@@ -220,6 +220,7 @@ jobs:
         with:
           name: starter-upgrade-evidence
           include-hidden-files: true
+          retention-days: ${{ vars.PLATFORM_CI_ARTIFACT_RETENTION_DAYS || 7 }}
           path: |
             .ci-local-artifacts/starter-upgrade/*.json
             .ci-local-artifacts/starter-upgrade/*.log
@@ -227,42 +228,3 @@ jobs:
             .ci-local-artifacts/starter-upgrade/apps/demo/.starter-upgrade/*.json
             .ci-local-artifacts/starter-upgrade/apps/demo/.starter-upgrade/*.log
             .ci-local-artifacts/starter-upgrade/apps/demo/.next/server/app/dashboard.html
-
-  # ============================================================
-  # SUMMARY
-  # ============================================================
-  ci-shared-complete:
-    name: CI Shared Complete
-    runs-on: ubuntu-latest
-    needs: [lint, test-convex, contracts, starter-upgrade]
-    if: always()
-    steps:
-      - name: Check all jobs passed
-        run: |
-          echo "Lint: ${{ needs.lint.result }}"
-          echo "Convex: ${{ needs.test-convex.result }}"
-          echo "Starter upgrade rehearsal: ${{ needs.starter-upgrade.result }}"
-          echo "Contracts: ${{ needs.contracts.result }}"
-
-          if [[ "${{ needs.contracts.result }}" != "success" ]]; then
-            echo "Contracts failed"
-            exit 1
-          fi
-
-          if [[ "${{ needs.starter-upgrade.result }}" != "success" && "${{ needs.starter-upgrade.result }}" != "skipped" ]]; then
-            echo "Starter upgrade rehearsal failed"
-            exit 1
-          fi
-
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "Lint failed"
-            exit 1
-          fi
-
-          CONVEX="${{ needs.test-convex.result }}"
-          if [[ "$CONVEX" != "success" && "$CONVEX" != "skipped" ]]; then
-            echo "test-convex failed with: $CONVEX"
-            exit 1
-          fi
-
-          echo "All shared CI jobs passed"

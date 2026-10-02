@@ -124,12 +124,12 @@ jobs:
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ always() && !env.ACT }}
+        if: ${{ failure() && !env.ACT }}
         continue-on-error: true
         with:
           name: playwright-report-storybook
           path: platform/apps/storybook/qa/playwright-report/
-          retention-days: 7
+          retention-days: ${{ vars.PLATFORM_CI_ARTIFACT_RETENTION_DAYS || 7 }}
 
       - name: Save job outputs (act)
         if: ${{ always() && env.ACT }}
@@ -137,40 +137,3 @@ jobs:
           JOB_DIR="/act-artifacts/storybook/e2e"
           mkdir -p "$JOB_DIR/artifacts"
           [ -d "platform/apps/storybook/qa/playwright-report" ] && cp -r "platform/apps/storybook/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-storybook" 2>/dev/null || true
-
-  # ============================================================
-  # SUMMARY
-  # ============================================================
-  ci-storybook-complete:
-    name: CI Storybook Complete
-    runs-on: ubuntu-latest
-    needs: [changes, build, e2e]
-    if: always()
-    steps:
-      - name: Check all jobs passed
-        run: |
-          echo "Changes should_run: ${{ needs.changes.outputs.should_run }}"
-          echo "Build: ${{ needs.build.result }}"
-          echo "E2E: ${{ needs.e2e.result }}"
-
-          if [[ "${{ needs.changes.outputs.should_run }}" != "true" ]]; then
-            echo "No relevant changes — skipping storybook CI"
-            exit 0
-          fi
-
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "Build failed: ${{ needs.build.result }}"
-            exit 1
-          fi
-
-          E2E="${{ needs.e2e.result }}"
-          if [[ "${{ inputs.require_e2e }}" == "true" && "$E2E" != "success" ]]; then
-            echo "Full commit verification requires successful E2E tests"
-            exit 1
-          fi
-          if [[ "$E2E" != "success" && "$E2E" != "skipped" ]]; then
-            echo "E2E failed: $E2E"
-            exit 1
-          fi
-
-          echo "All storybook CI jobs passed"

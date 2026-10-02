@@ -13,6 +13,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Changed
+
+- Platform CI spends fewer billed Actions minutes and less artifact storage per push, which
+  matters on private repositories. The platform CI workflows no longer run their own
+  `CI <App> Complete` summary job; the caller's `CI <App> Complete` job, the one branch rules
+  require, already fails unless the platform workflow succeeds. Web's `Merge E2E Reports` job
+  runs only when E2E failed. Playwright reports, blob reports and visual snapshots are uploaded
+  only when E2E fails. No app action is required. If your branch rules require the nested
+  `Platform / CI <App> Complete` check rather than `CI <App> Complete`, require the latter.
+
+### Added
+
+- Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
+  artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
+  default, follows it too.
+
 ## [3.0.0] - 2026-10-02
 
 ### Action required
