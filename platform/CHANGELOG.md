@@ -13,6 +13,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- The platform's i18n test `every shipped platform catalog is translated` no longer fails in an adopted app that ships a subset of locales. It checked the whole repository with the locale list `["en"]`, so an app with `i18n.locales: ["hu", "en"]` and a `hu` entry in `packages/messages/overrides.json` failed `bun run test:dev-scripts`, which `platform:upgrade` runs as a required check, and so could not complete an upgrade. The test now checks only the platform's own catalogs; `bun run check:i18n` keeps checking an app's messages against its configured locales. No app action is required.
+
+- `platform/UPGRADING.md` states what the `platform:upgrade` verification scripts need: warnings in your own code fail `lint` (`--max-warnings 0`), `build` needs `CONVEX_URL` and `CONVEX_SITE_URL` (placeholders are enough in a fresh checkout), and `test:e2e` needs the `app.config.ts` ports free (or `--defer-e2e`). Documentation only.
+
 ## [2.1.0] - 2026-10-02
 
 

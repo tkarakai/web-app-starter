@@ -194,6 +194,19 @@ Verification uses a separate candidate baseline, preserving the installed record
 It checks zone/hooks, env references and resolved dependencies, then runs the app's root scripts:
 `check:runtime-baseline`, `check:agent-skills`, `check:actions-pinned`, `check:i18n`,
 `lint:dev-scripts`, `typecheck:dev-scripts`, `test:dev-scripts`, `lint`, `typecheck`, `test`, `test:unit`, `test:convex`, `test:contracts`, `build`, `test:e2e`.
+Before you run it, know what these scripts need:
+
+- **`lint` runs with `--max-warnings 0`** in every workspace (since 2.1.0), so a warning in your
+  own code fails verification. Fix them in a separate commit before planning: changing app files
+  after planning invalidates the saved plan.
+- **`build` needs `CONVEX_URL` and `CONVEX_SITE_URL`** (web and admin read them while collecting
+  page data). In a checkout that has run `bun run dev` they come from each app's `.env.local`. In
+  a fresh clone or worktree, export placeholders for the run, as `bun run ci` does, for example
+  `CONVEX_URL=https://placeholder.convex.cloud CONVEX_SITE_URL=https://placeholder.convex.site`.
+- **`test:e2e` starts the launcher's own local backend and servers on the ports in
+  `app.config.ts`.** Stop a running `bun run dev` stack (or any process on those ports) first, or
+  use `--defer-e2e` and let CI run the browsers on the draft PR.
+
 Keep these scripts representative of your app. Missing scripts and changed tracked files during
 a verification command are failures. Publishing/updater credentials are removed from child
 processes, and known secret environment values are redacted from bounded command diagnostics.
