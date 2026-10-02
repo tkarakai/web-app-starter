@@ -572,51 +572,6 @@
         "tsconfig.json",
         "turbo.json"
       ]
-    },
-    {
-      "version": "2.1.0",
-      "previous": "2.0.0",
-      "supportedBaseline": ">=2.0.0 <3.0.0",
-      "codemods": [],
-      "migrations": [],
-      "env": [
-        {
-          "name": "NEXT_PUBLIC_CONVEX_SITE_URL",
-          "kind": "removed",
-          "secret": false,
-          "required": false
-        }
-      ],
-      "removedFiles": [
-        "apps/landing-static/src/app/page.tsx",
-        "apps/landing-static/src/app/not-found.tsx",
-        "apps/landing-static/src/app/layout.tsx",
-        "apps/landing/src/app/page.tsx",
-        "apps/landing/src/app/layout.tsx"
-      ],
-      "renamedExports": [],
-      "dependencyFloors": [],
-      "changedSeams": [
-        "root.github.workflows.ci-admin.yml",
-        "root.github.workflows.ci-landing-static.yml",
-        "root.github.workflows.ci-landing.yml",
-        "root.github.workflows.ci-shared.yml",
-        "root.github.workflows.ci-storybook.yml",
-        "root.github.workflows.ci-web.yml",
-        "root.github.workflows.security.yml",
-        "root.gitignore",
-        "app.config.ts",
-        "apps.demo.package.json",
-        "apps.landing-static.next.config.ts",
-        "apps.landing-static.package.json",
-        "apps.landing..env.example",
-        "apps.landing.package.json",
-        "apps.web.package.json",
-        "package.json",
-        "packages.backend.package.json",
-        "renovate.json",
-        "turbo.json"
-      ]
     }
   ]
 }
