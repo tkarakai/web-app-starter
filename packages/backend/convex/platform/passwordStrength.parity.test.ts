@@ -26,6 +26,12 @@ const cases: Array<{ password: string; role: Role; email: string; expected: Expe
   { password: "Summer2024!!xx", role: "user", email: PERSON, expected: { valid: false, score: 3, warningKey: null, suggestionKeys: [], crackMagnitude: 5 } },
   // Passwords derived from the account email are rejected.
   { password: "orchidquartz12", role: "user", email: "orchidquartz@example.com", expected: { valid: false, score: 1, warningKey: "warnings.userInputs", suggestionKeys: ["suggestions.anotherWord"], crackMagnitude: 0 } },
+  // A repeated form of the account's own email or name must stay rejected: the library has to apply
+  // the per-call user inputs inside its repeat matching too. zxcvbn-ts 4.2.0 scores these 4 (10^11
+  // guesses) instead of 2 (10^6), so it would accept a password anyone who knows the email can guess.
+  { password: "orchidquartz-orchidquartz-orchidquartz", role: "user", email: "orchidquartz@example.com", expected: { valid: false, score: 2, warningKey: "warnings.extendedRepeat", suggestionKeys: ["suggestions.anotherWord", "suggestions.repeated"], crackMagnitude: 2 } },
+  { password: "jane.smith@example.comjane.smith@example.comjane.smith@example.com", role: "admin", email: "jane.smith@example.com", expected: { valid: false, score: 0, warningKey: "warnings.extendedRepeat", suggestionKeys: ["suggestions.anotherWord", "suggestions.repeated"], crackMagnitude: -3 } },
+  { password: "jsmith@example.comjsmith@example.comjsmith@example.comjsmith@example.com", role: "admin", email: "jsmith@example.com", expected: { valid: false, score: 0, warningKey: "warnings.extendedRepeat", suggestionKeys: ["suggestions.anotherWord", "suggestions.repeated"], crackMagnitude: -3 } },
   // Strong passwords are accepted.
   { password: "Tr0ub4dor&3xyz", role: "user", email: PERSON, expected: { valid: true, score: 4, warningKey: null, suggestionKeys: [], crackMagnitude: 9 } },
   { password: "correct horse battery staple", role: "user", email: PERSON, expected: { valid: true, score: 4, warningKey: null, suggestionKeys: [], crackMagnitude: 16 } },
