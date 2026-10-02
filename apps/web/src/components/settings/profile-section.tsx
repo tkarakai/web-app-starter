@@ -104,8 +104,14 @@ export function ProfileSection() {
 
     try {
       // Update name via Better Auth if changed
+      // Better Auth returns failures as { error } instead of throwing.
       if (nameChanged) {
-        await authClient.updateUser({ name: name.trim() });
+        const result = await authClient.updateUser({ name: name.trim() });
+        if (result.error) {
+          status = "failed.unknown";
+          toast.error(tc("error"));
+          return;
+        }
       }
 
       // Update profile preferences via Convex
