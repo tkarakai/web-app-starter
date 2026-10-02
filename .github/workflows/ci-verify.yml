@@ -18,7 +18,7 @@ concurrency:
 jobs:
   resolve:
     name: Resolve commit
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
@@ -65,7 +65,7 @@ jobs:
   verified:
     name: Verified
     needs: [resolve, shared, web, admin, landing, storybook]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Report the verified commit
         env:

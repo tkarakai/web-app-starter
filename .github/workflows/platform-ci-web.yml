@@ -26,7 +26,7 @@ jobs:
   # ============================================================
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       should_run: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
     steps:
@@ -87,7 +87,7 @@ jobs:
   # ============================================================
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
@@ -145,7 +145,7 @@ jobs:
   # ============================================================
   build:
     name: Build & Bundle Size
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
@@ -170,7 +170,7 @@ jobs:
   # ============================================================
   e2e:
     name: E2E Tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes, build]
     if: needs.changes.outputs.should_run == 'true' && (inputs.require_e2e || (vars.SKIP_E2E != 'true' && github.event.pull_request.draft == false))
     timeout-minutes: 20
@@ -195,9 +195,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.convex
-          key: ${{ runner.os }}-convex-backend-${{ hashFiles('bun.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-convex-backend-${{ hashFiles('bun.lock') }}
           restore-keys: |
-            ${{ runner.os }}-convex-backend-
+            ${{ runner.os }}-${{ runner.arch }}-convex-backend-
 
       # Each shard boots its own Convex backend via the Playwright webServer,
       # so auth rate-limit counters stay per-shard and workers stay at 1.
@@ -252,7 +252,7 @@ jobs:
   # ============================================================
   e2e-report:
     name: Merge E2E Reports
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes, e2e]
     # Only a failed run needs the report: shards upload their blob reports on
     # failure, and a green run would merge nothing (and spend a billed job).

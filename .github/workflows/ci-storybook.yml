@@ -23,7 +23,7 @@ jobs:
     name: CI Storybook Complete
     needs: [platform]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Require the platform workflow to pass
         run: |

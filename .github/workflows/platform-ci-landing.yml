@@ -26,7 +26,7 @@ jobs:
   # ============================================================
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       should_run: ${{ steps.present.outputs.app == 'true' && (inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run) || 'false' }}
     steps:
@@ -91,7 +91,7 @@ jobs:
   # ============================================================
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
@@ -149,7 +149,7 @@ jobs:
   # ============================================================
   build:
     name: Build & Bundle Size
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
@@ -172,7 +172,7 @@ jobs:
   # ============================================================
   e2e:
     name: E2E Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes, build]
     if: needs.changes.outputs.should_run == 'true' && (inputs.require_e2e || (vars.SKIP_E2E != 'true' && github.event.pull_request.draft == false))
     timeout-minutes: 15

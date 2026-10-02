@@ -29,9 +29,9 @@ runs:
         # and a stale cache surfaces as "Executable doesn't exist at ...".
         # (Previously keyed on bun.lockb, which no longer exists — hashFiles
         # returned empty, so the key was constant and never matched.)
-        key: ${{ runner.os }}-playwright-chromium-${{ steps.pw.outputs.version }}
+        key: ${{ runner.os }}-${{ runner.arch }}-playwright-chromium-${{ steps.pw.outputs.version }}
         restore-keys: |
-          ${{ runner.os }}-playwright-chromium-
+          ${{ runner.os }}-${{ runner.arch }}-playwright-chromium-
 
     - name: Install Playwright browsers
       if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' || env.ACT }}

@@ -28,6 +28,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
   artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
   default, follows it too.
+- Repository variable `PLATFORM_CI_RUNNER` runs every CI job on a self-hosted runner with that
+  label (default `ubuntu-latest`), so an app on a private repository can run CI without using
+  Actions minutes. The app-owned `ci-*.yml` callers and `ci-verify.yml` use it for their summary
+  jobs too; an app that keeps its current callers still works, and those jobs then stay on
+  GitHub-hosted runners. The Playwright browser and Convex backend caches are now keyed by CPU
+  architecture as well, so arm64 and x64 runners don't restore each other's binaries; the first
+  run after upgrading downloads them once.
+- [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md): how Actions minutes and storage
+  work on a private repository, what the starter's CI costs per push, and how to spend less, with
+  step-by-step self-hosted runner setup for a Mac.
 
 ## [3.0.0] - 2026-10-02
 
