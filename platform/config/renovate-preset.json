@@ -131,6 +131,15 @@
         "@size-limit/file"
       ],
       "allowedVersions": "<14"
+    },
+    {
+      "description": "HOLD: @zxcvbn-ts 4.x scores a repeated form of the account's own email or name as strong because its repeat matching ignores the per-call user inputs (orchidquartz-orchidquartz-orchidquartz: 10^6 guesses on 3.0.4, 10^11 on 4.2.0), which would weaken password enforcement; see https://github.com/tkarakai/web-app-starter/issues/137. REMOVE when a 4.x release applies the user inputs inside repeat matching, shown by packages/backend/convex/platform/passwordStrength.parity.test.ts passing unmodified on it.",
+      "matchPackageNames": [
+        "@zxcvbn-ts/core",
+        "@zxcvbn-ts/language-common",
+        "@zxcvbn-ts/language-en"
+      ],
+      "allowedVersions": "<4"
     }
   ],
   "ignorePaths": [
