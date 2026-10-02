@@ -1,4 +1,5 @@
 import { ForceSystemTheme, GuestGuard } from "@web-app-starter/auth-ui";
+import { PublicPageBrandTokens } from "@/components/auth/public-page-brand-tokens";
 
 export default function AuthLayout({
   children,
@@ -8,6 +9,7 @@ export default function AuthLayout({
   return (
     <GuestGuard>
       <ForceSystemTheme />
+      <PublicPageBrandTokens />
       {children}
     </GuestGuard>
   );
