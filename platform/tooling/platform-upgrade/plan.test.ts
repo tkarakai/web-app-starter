@@ -87,6 +87,14 @@ test("optional app deletion stays deleted, while a deleted required seam needs r
   assert(!payloads.some(row => row.path.startsWith("apps/landing/")));
   assert(plan.gates.some(row => row.id === "seam:app.config.ts"));
 });
+test("seams of an optional app the target retired leave the app's copy untouched", async () => {
+  const f = fixture();
+  f.manifest.seams.push({ id: "retired", path: "apps/retired/package.json", hooks: [], optionalApp: "apps/retired" });
+  write(f.app, "apps/retired/package.json", '{"name":"retired"}\n'); git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "keep retired app"); f.publish("2.0.1");
+  const { plan, payloads } = await f.plan("2.0.1");
+  assert(!payloads.some(row => row.path.startsWith("apps/retired/")));
+  assert(!plan.gates.some(row => row.id.includes("apps/retired")));
+});
 test("floors raise a lower same-major app declaration without lowering a higher one", async () => {
   const f = fixture(); f.publish("2.0.1", entry => { entry.dependencyFloors.push({ path: "package.json", name: "example", minimum: "2.1.0" }); });
   const result = await f.plan("2.0.1"); const pkg = result.payloads.find(row => row.path === "package.json"); assert(pkg && !("remove" in pkg));

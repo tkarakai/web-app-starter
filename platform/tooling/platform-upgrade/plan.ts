@@ -52,6 +52,8 @@ function entry(entries: TreeFile[], file: string): TreeFile | undefined { return
 function bytes(repo: string, value?: TreeFile): Buffer | undefined { return value ? readBlob(repo, value.blob) : undefined; }
 function same(a?: TreeFile, b?: TreeFile): boolean { return a?.blob === b?.blob && a?.mode === b?.mode; }
 function active(seam: { optionalApp?: string }, files: TreeFile[]): boolean { return !seam.optionalApp || files.some(file => file.path.startsWith(seam.optionalApp + "/")); }
+/** A release that drops an optional app keeps its seams for history; the app's files stay the app's. */
+function retired(seam: { optionalApp?: string }, target: TreeFile[]): boolean { return Boolean(seam.optionalApp) && !active(seam, target); }
 function mergeText(directory: string, file: string, base?: Buffer, app?: Buffer, target?: Buffer): { content: Buffer; conflict: boolean } {
   demand(![base, app, target].some(value => value?.includes(0)), "Binary seam needs manual migration: " + file);
   const key = digest(file), names = ["app", "base", "target"].map(side => path.join(directory, key + "." + side));
@@ -124,7 +126,7 @@ export async function createPlan(options: { root: string; source: Source; to: st
     if (!same(app, next)) change(file, "platform", app, next ? { path: file, mode: next.mode, content: readBlob(cache.repo, next.blob) } : { path: file, remove: true });
   }
   for (const patch of installed.patches) demand(isZonePath(patch.path) && zoneFiles.includes(patch.path), "Invalid or missing patch path: " + patch.path);
-  for (const seam of target.manifest.seams.filter(seam => active(seam, appTree))) {
+  for (const seam of target.manifest.seams.filter(seam => active(seam, appTree) && !retired(seam, target.tree))) {
     const file = seam.path, base = entry(baseline.tree, file), app = entry(appTree, file), next = entry(target.tree, file);
     demand(next, "Target is missing required seam: " + file);
     demand(next.mode !== "120000" && app?.mode !== "120000" && base?.mode !== "120000", "Symlink seams are unsupported: " + file);
