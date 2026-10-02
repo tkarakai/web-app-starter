@@ -17,6 +17,7 @@ export function localAppOrigin(app: AppId): string {
 }
 
 export {
+  ADMIN_PUBLIC_SCOPE,
   APP_DIRS,
   APP_IDS,
   AppConfigError,
@@ -31,4 +32,5 @@ export {
   type FeatureSwitches,
   type ScopedTokenOverrides,
   type TokenOverrides,
+  type TokenScope,
 } from "./schema.ts";
