@@ -21,6 +21,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- The invitation session-conflict dialog ("Different Account Signed In", its description, "Sign out and onboard new account" and "Cancel") is translated in all 14 non-English locales; it was English everywhere. `bun run check:i18n` now also fails when a platform locale string of more than one word is still the English text, so key-only parity can no longer hide this class of omission. City names and the sample name placeholder are allowlisted, and an app's own `packages/messages/` files are not checked. No app action is required; apps that override these strings in `overrides.json` keep their wording.
+
 - The web app's profile settings now check the result of Better Auth's `updateUser`, which returns failures as `{ error }` instead of throwing. A rejected name change shows the error toast, is audited as failed, and no longer saves the other preferences or reports "Profile updated" (the admin form already behaved this way). This is a reference-app change, so it does not replace a buyer's own profile form on upgrade; apps that copied it should apply the same check.
 
 - Starter-owned code is free of ESLint warnings, and every workspace lint script (now including `packages/backend`, which had none) runs with `--max-warnings 0`, so a new warning in an adopted app fails `bun run lint` instead of hiding in the noise. Unused test imports and parameters are removed, and the two locale checks in `userProfiles` use a typed guard instead of `as any`. No behaviour changes.

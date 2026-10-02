@@ -122,10 +122,10 @@
       "signupBlocked": "Registrace je v současné době pouze na pozvánku.",
       "signupBlockedDescription": "Připojte se na čekací listinu na naší hlavní stránce a požádejte o přístup.",
       "goToWaitlist": "Připojit se na čekací listinu",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "Přihlášen jiný účet",
+      "sessionConflictDescription": "Aktuálně jste přihlášeni jako {email}. Tato pozvánka je určena pro jiný účet.",
+      "signOutAndContinue": "Odhlásit se a nastavit nový účet",
+      "cancel": "Zrušit"
     },
     "forgotPassword": {
       "badge": "Obnovení hesla",

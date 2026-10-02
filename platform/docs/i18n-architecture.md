@@ -24,7 +24,7 @@ argument (`t("intro", { productName })`), so renaming the product touches no loc
 file; a test fails if a catalog contains the name.
 
 `bun run check:i18n` (CI runs it) checks key parity of the platform and app files, namespace
-ownership and stale overrides (see "Message ownership" below).
+ownership, stale overrides and untranslated platform strings (see "Message ownership" below).
 `apps/web/qa/tests/message-catalogues.test.ts` checks every shipped catalog, as merged, for ICU
 syntax and matching interpolation parameters. Run it through `bun run --cwd apps/web test`.
 The web app's `localized-controls.tsx` and `@web-app-starter/auth-ui` supply current-locale labels to shared
@@ -56,7 +56,11 @@ Each top-level namespace has exactly one owner, and the loader merges them at re
   English keys; every shipped locale has an app file with the app's English keys; no app
   namespace has a platform namespace's name; every override names an existing platform string in
   a shipped locale. A stale override (the platform renamed or removed the key, usually in an
-  upgrade) is reported with its path; at runtime it would be ignored.
+  upgrade) is reported with its path; at runtime it would be ignored. A platform locale file
+  whose string of more than one word is still the English text fails too (one-word strings and
+  `{placeholders}` do not count). City names and the sample name placeholder are exempt through
+  `UNTRANSLATED_ALLOWED` in `check-i18n.ts`. Your own `packages/messages/` files are not held to
+  this, so you can ship a locale while it is being translated.
 - **Merging is pure** (`@web-app-starter/i18n/merge`: `mergeMessages`, `deepMerge`,
   `namespaceClashes`, `staleOverrides`), so tests and tools share it. Component tests render with
   both catalogues: `{ ...platformFr, ...appFr }`.

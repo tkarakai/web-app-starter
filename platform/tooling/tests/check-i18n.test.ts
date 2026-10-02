@@ -74,3 +74,48 @@ test("flags stale overrides, overrides of unshipped locales, clashes and platfor
     'packages/messages/overrides.json: "fr" is not in app.config.ts i18n.locales',
   ]);
 });
+
+const LABEL = "platform/packages/i18n/messages/de.json";
+const STILL_ENGLISH = (key: string): string =>
+  `${LABEL}: ${key} is still the English text (translate it; if it reads the same in every language, add it to UNTRANSLATED_ALLOWED)`;
+
+function platformRepo(en: unknown, de: unknown): string {
+  return tree({ "platform/packages/i18n/messages/en.json": en, "platform/packages/i18n/messages/de.json": de });
+}
+
+test("a platform string still in English is named when it has more than one word", () => {
+  const en = { auth: { invitation: { sessionConflictTitle: "Different Account Signed In", cancel: "Cancel", note: "Hello {name}!" } } };
+  const root = platformRepo(en, { auth: { invitation: { sessionConflictTitle: "Different Account Signed In", cancel: "Cancel", note: "Hallo {name}!" } } });
+  // One-word strings ("Cancel") are words in other languages too, and a changed string passes.
+  assert.deepEqual(checkMessages(root, ["en"]), [STILL_ENGLISH("auth.invitation.sessionConflictTitle")]);
+});
+
+test("placeholders do not make a one-word string a multi-word one", () => {
+  const en = { passwordStrength: { timeEstimation: { minute: "{base} minute" } } };
+  assert.deepEqual(checkMessages(platformRepo(en, en), ["en"]), []);
+});
+
+test("a multi-word string with a placeholder is checked like any other", () => {
+  const en = { x: { note: "You are signed in as {email}" } };
+  assert.deepEqual(checkMessages(platformRepo(en, { x: { note: "Sie sind angemeldet als {email}" } }), ["en"]), []);
+  assert.deepEqual(checkMessages(platformRepo(en, en), ["en"]), [STILL_ENGLISH("x.note")]);
+});
+
+test("allowlisted proper nouns may read the same in every locale", () => {
+  const en = { timezones: { zones: { "America/New_York": "New York" } }, auth: { fields: { namePlaceholder: "Avery Quinn" } } };
+  assert.deepEqual(checkMessages(platformRepo(en, en), ["en"]), []);
+});
+
+test("app message files are not held to the untranslated check", () => {
+  const root = repo({}, { "packages/messages/de.json": { bookmarks: { title: appEn.bookmarks.title } } });
+  assert.deepEqual(checkMessages(root, ["en", "de"]), []);
+  const multiWord = { bookmarks: { title: "My saved bookmarks" } };
+  const buyer = repo({}, { "packages/messages/en.json": multiWord, "packages/messages/de.json": multiWord });
+  assert.deepEqual(checkMessages(buyer, ["en", "de"]), []);
+});
+
+test("every shipped platform catalog is translated", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const problems = checkMessages(root, ["en"]);
+  assert.deepEqual(problems, []);
+});

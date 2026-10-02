@@ -122,10 +122,10 @@
       "signupBlocked": "ההרשמה כרגע בהזמנה בלבד.",
       "signupBlockedDescription": "הצטרפו לרשימת ההמתנה בדף הבית שלנו כדי לבקש גישה.",
       "goToWaitlist": "הצטרפות לרשימת ההמתנה",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "מחובר לחשבון אחר",
+      "sessionConflictDescription": "אתה מחובר כעת בתור {email}. ההזמנה הזו מיועדת לחשבון אחר.",
+      "signOutAndContinue": "התנתקות והגדרת החשבון החדש",
+      "cancel": "ביטול"
     },
     "forgotPassword": {
       "badge": "שחזור סיסמה",

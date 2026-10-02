@@ -7,6 +7,8 @@
  * Fails (exit 1) and names each problem when:
  *   - a platform locale file (platform/packages/i18n/messages/<locale>.json) lacks a key the
  *     English one has, or has one it doesn't;
+ *   - a platform locale file still has the English text for a string of more than one word
+ *     (an untranslated string; see UNTRANSLATED_ALLOWED for what may read the same);
  *   - a locale in app.config.ts `i18n.locales` has no app file (packages/messages/<locale>.json),
  *     or the app file's keys differ from the app's English file;
  *   - an app namespace has the same name as a platform namespace (each namespace has one owner);
@@ -30,6 +32,39 @@ function readJson(file: string): Messages {
   return JSON.parse(fs.readFileSync(file, "utf8")) as Messages;
 }
 
+/**
+ * Platform strings that may read the same in every locale: proper nouns such as city names,
+ * and the sample person in a placeholder. An entry ending in "." covers a whole subtree.
+ * A string of one word (after dropping {placeholders}) never needs an entry: "Cancel" and
+ * "{base} minute" are words in other languages too.
+ */
+export const UNTRANSLATED_ALLOWED: readonly string[] = ["timezones.zones.", "auth.fields.namePlaceholder"];
+
+/** Words in a message, not counting {placeholders} or anything without a letter. */
+function wordCount(message: string): number {
+  return message.replace(/\{\w+\}/g, " ").split(/\s+/).filter((word) => /\p{L}/u.test(word)).length;
+}
+
+function stringAt(tree: Messages, dotted: string): string | undefined {
+  let node: string | Messages | undefined = tree;
+  for (const part of dotted.split(".")) {
+    if (typeof node !== "object" || node === null) return undefined;
+    node = node[part];
+  }
+  return typeof node === "string" ? node : undefined;
+}
+
+/** Paths of multi-word strings in `actual` that are still the English text. */
+function untranslatedKeys(english: Messages, actual: Messages): string[] {
+  return leafPaths(english).filter((key) => {
+    const text = stringAt(english, key);
+    return text !== undefined
+      && text.trim() === stringAt(actual, key)?.trim()
+      && wordCount(text) > 1
+      && !UNTRANSLATED_ALLOWED.some((allowed) => (allowed.endsWith(".") ? key.startsWith(allowed) : key === allowed));
+  });
+}
+
 /** Keys in `actual` missing from, or extra to, `expected`, as problem lines. */
 function keyDifferences(label: string, expected: Messages, actual: Messages): string[] {
   const want = new Set(leafPaths(expected));
@@ -50,7 +85,13 @@ export function checkMessages(root: string, appLocales: readonly string[]): stri
   const platformLocales = fs.readdirSync(platformDir).filter((file) => file.endsWith(".json")).map((file) => file.slice(0, -5));
   for (const locale of platformLocales) {
     if (locale === "en") continue;
-    problems.push(...keyDifferences(`${PLATFORM_DIR}/${locale}.json`, platformEn, readJson(path.join(platformDir, `${locale}.json`))));
+    const label = `${PLATFORM_DIR}/${locale}.json`;
+    const messages = readJson(path.join(platformDir, `${locale}.json`));
+    problems.push(...keyDifferences(label, platformEn, messages));
+    // Platform files only: an app's own files may keep English text while it is being translated.
+    for (const key of untranslatedKeys(platformEn, messages)) {
+      problems.push(`${label}: ${key} is still the English text (translate it; if it reads the same in every language, add it to UNTRANSLATED_ALLOWED)`);
+    }
   }
 
   const appEnFile = path.join(appDir, "en.json");

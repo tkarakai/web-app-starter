@@ -122,10 +122,10 @@
       "signupBlocked": "A regisztráció jelenleg csak meghívóval lehetséges.",
       "signupBlockedDescription": "Iratkozzon fel a várólistára a főoldalunkon a hozzáférés igényléséhez.",
       "goToWaitlist": "Csatlakozás a várólistához",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "Másik fiók van bejelentkezve",
+      "sessionConflictDescription": "Jelenleg bejelentkezve mint {email}. Ez a meghívó egy másik fiókhoz tartozik.",
+      "signOutAndContinue": "Kijelentkezés és az új fiók beállítása",
+      "cancel": "Mégse"
     },
     "forgotPassword": {
       "badge": "Jelszó-visszaállítás",

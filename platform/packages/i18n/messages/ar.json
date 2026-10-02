@@ -122,10 +122,10 @@
       "signupBlocked": "التسجيل متاح حالياً بالدعوة فقط.",
       "signupBlockedDescription": "انضم إلى قائمة الانتظار على صفحتنا الرئيسية لطلب الوصول.",
       "goToWaitlist": "انضم إلى قائمة الانتظار",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "تم تسجيل الدخول بحساب مختلف",
+      "sessionConflictDescription": "أنت مسجّل الدخول حالياً بحساب {email}. هذه الدعوة مخصصة لحساب مختلف.",
+      "signOutAndContinue": "تسجيل الخروج وإعداد الحساب الجديد",
+      "cancel": "إلغاء"
     },
     "forgotPassword": {
       "badge": "استعادة كلمة المرور",
