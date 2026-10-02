@@ -62,7 +62,7 @@ crash on a Node 24 server.
 
 | Runtime | Must agree | Checked by |
 |---|---|---|
-| **Node** major | `.node-version`; root `engines.node`; `node-version` in `.github/actions/setup-bun/action.yml` and explicit `node-version:` in workflows; `@types/node` major in every workspace; `ARG NODE_VERSION` in `infra/aws/docker/*.Dockerfile` | `bun run check:runtime-baseline` (CI) |
+| **Node** major | `.node-version` (a bare major); root `engines.node` (`<major>.x`, or `>=<major>.<minor> <next>` when a tool needs a newer minor of the line: currently `>=24.21 <25`; the minor is the oldest Node the platform promises and tests, raised by editing this one value); `node-version` in `.github/actions/setup-bun/action.yml` and explicit `node-version:` in workflows; `@types/node` major in every workspace; `ARG NODE_VERSION` in `infra/aws/docker/*.Dockerfile` | `bun run check:runtime-baseline` (CI) |
 | **Bun** exact version | root `packageManager`; `bun-version` default in `.github/actions/setup-bun/action.yml`; `ARG BUN_VERSION` in `infra/aws/docker/*.Dockerfile` | `bun run check:runtime-baseline` (CI) |
 | **Vercel** Node version | each Vercel project's Node.js setting (web, admin, landing, landing-static) | manual: Vercel project settings, part of the baseline playbook |
 | **Convex** | Convex runs our functions in its managed runtime. No `"use node"` actions exist today. If any are added, the Node version for Convex actions joins this table | manual |
@@ -87,7 +87,7 @@ Do this as one PR on `deps/node-<major>` (or `deps/bun-<version>`):
 1. Confirm the new line is Active LTS and that Vercel supports it (and Convex, if relevant).
 2. Update every "must agree" location in the table. Lift the `@types/node` hold to the new
    major (`<next>`) and bump `@types/node` to it.
-3. Re-check holds whose REMOVE condition mentions the Node floor.
+3. Re-check holds whose REMOVE condition mentions the Node floor. A hold that needs a newer minor of the current major is lifted by raising the minor in `engines.node` (`>=<major>.<minor> <next>`), not the major: the change needs an **Action required** changelog note (install that Node locally) and the same staging check as a major move. Vercel offers only major versions and trails upstream minors, so it cannot enforce the minor: a floor above what Vercel currently runs only matters for tools that Vercel builds do not run.
 4. `bun run check:runtime-baseline`, then follow the [local CI guidance](ci.md#local-ci-pre-push-checks).
 5. Update the Vercel project Node settings as part of the merge, and verify the staging deploy
    before any production promote. Tell everyone who works on the app to install the new Node

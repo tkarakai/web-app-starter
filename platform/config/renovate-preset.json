@@ -118,14 +118,6 @@
       "allowedVersions": "<7"
     },
     {
-      "description": "HOLD: size-limit and @size-limit/file 14 require Node ^24.5.0 on Node 24, excluding versions promised by engines.node 24.x. Keep the compatible v13 line; see https://github.com/tkarakai/web-app-starter/issues/208. REMOVE when both packages support the full declared runtime baseline, or a separately authorized runtime-baseline change satisfies both packages.",
-      "matchPackageNames": [
-        "size-limit",
-        "@size-limit/file"
-      ],
-      "allowedVersions": "<14"
-    },
-    {
       "description": "HOLD: @zxcvbn-ts 4.x scores a repeated form of the account's own email or name as strong because its repeat matching ignores the per-call user inputs (orchidquartz-orchidquartz-orchidquartz: 10^6 guesses on 3.0.4, 10^11 on 4.2.0), which would weaken password enforcement; see https://github.com/tkarakai/web-app-starter/issues/137. REMOVE when a 4.x release applies the user inputs inside repeat matching, shown by packages/backend/convex/platform/passwordStrength.parity.test.ts passing unmodified on it.",
       "matchPackageNames": [
         "@zxcvbn-ts/core",
