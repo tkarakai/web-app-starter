@@ -167,6 +167,50 @@ exit "$DASHBOARD_TEST_CODE"
   });
 }
 
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+const stripAnsi = (text: string): string => text.replace(ANSI, "");
+
+// Return each status row as [service, status, url, pid], split at the header column offsets.
+function statusColumns(stdout: string): { header: number[]; rows: string[][] } {
+  const lines = stripAnsi(stdout).split("\n").filter((line) => line.startsWith("  ") && line.trim() !== "");
+  const headerLine = lines.find((line) => line.includes("SERVICE")) as string;
+  const header = ["SERVICE", "STATUS", "URL", "PID"].map((title) => headerLine.indexOf(title));
+  const rows = lines.filter((line) => /\bup\b|\bdead\b|\bhttp:/.test(line) && !line.includes("SERVICE") && !line.includes("Stop with")).map((line) =>
+    header.map((start, index) => line.slice(start, header[index + 1] ?? line.length).trim()));
+  return { header, rows };
+}
+
+test("status sizes its columns to the longest service name and keeps rows aligned", async () => {
+  fs.mkdirSync(path.join(root, "packages/backend"), { recursive: true });
+  const bin = path.join(root, "bin");
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "bunx"), "#!/bin/bash\nprintf '%s\\n' http://127.0.0.1:6790/\n", { mode: 0o755 });
+  for (const [name, port] of [["landing-static", 3004], ["web", 3001]] as const) {
+    track(`next-${name}`, spawnIn(root));
+    fs.writeFileSync(path.join(root, `.next-${name}.log`), `ready on http://localhost:${port}\n`);
+  }
+  track("convex", spawnIn(root));
+  const result = await runScript("dev-status.sh", [], root, { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` });
+  assert.equal(result.status, 0, result.stderr);
+  const plain = stripAnsi(result.stdout);
+  const { header, rows } = statusColumns(result.stdout);
+  const byService = Object.fromEntries(rows.map((row) => [row[0], row]));
+  assert.deepEqual(byService["Landing-static"].slice(1, 3), ["up", "http://localhost:3004"]);
+  assert.deepEqual(byService.Web.slice(1, 3), ["up", "http://localhost:3001"]);
+  assert.equal(byService["Convex UI"][1], "");
+  assert.equal(byService["Convex UI"][2], "http://127.0.0.1:6790/");
+  // Every value starts exactly where its header does, including rows with blank fields.
+  for (const line of plain.split("\n")) {
+    const service = ["Landing-static", "Web", "Convex API", "Site API", "Convex UI"].find((name) => line.startsWith(`  ${name}`));
+    if (service === undefined) continue;
+    assert.equal(line.slice(header[0] - 2, header[0]).trim(), "", line);
+    assert.ok(line.slice(header[0], header[1]).trim() === service, `service column overflows: ${line}`);
+    assert.match(line.slice(header[1] - 2, header[1]), /^ {2}$/, line);
+    if (line.slice(header[1], header[2]).trim() !== "") assert.match(line.slice(header[1], header[2]), /^(up|dead) +$/, line);
+  }
+  assert.match(plain, /^ {2}─+ {2}─{6} {2}─+ {2}─{5}$/m);
+});
+
 test("stop owned tree preserves unrelated backend", async () => {
   const outsider = spawnIn(foreign);
   const parent = spawnIn(root, "const { spawn } = require('node:child_process'); const fs = require('node:fs'); "
