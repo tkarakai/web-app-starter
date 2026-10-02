@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-10-02
+
 ### Fixed
 
 - `apps/landing-static/next.config.ts` enables `experimental.globalNotFound` only when `src/app/global-not-found.tsx` exists. 2.1.0 enabled it unconditionally, so a static landing that kept the 2.0.0 layout (one root layout and its own `src/app/not-found.tsx`) got Next's default English 404 after taking the `next.config.ts` seam, and the `localization.spec.ts` 404 tests failed. Such an app now keeps its `not-found.tsx`, while the reference app (which has `global-not-found.tsx`) behaves exactly as before. No app action is required; an app that moves to the reference layout adds `global-not-found.tsx` and the setting turns on by itself.
@@ -641,5 +643,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [2.1.0]: https://github.com/tkarakai/web-app-starter/compare/v2.0.0...v2.1.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.1.1...HEAD
 [2.1.1]: https://github.com/tkarakai/web-app-starter/compare/v2.1.0...v2.1.1
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.1.2...HEAD
+[2.1.2]: https://github.com/tkarakai/web-app-starter/compare/v2.1.1...v2.1.2

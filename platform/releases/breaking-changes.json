@@ -622,6 +622,20 @@
       "renamedExports": [],
       "dependencyFloors": [],
       "changedSeams": []
+    },
+    {
+      "version": "2.1.2",
+      "previous": "2.1.1",
+      "supportedBaseline": ">=2.0.0 <3.0.0",
+      "codemods": [],
+      "migrations": [],
+      "env": [],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": [
+        "apps.landing-static.next.config.ts"
+      ]
     }
   ]
 }
