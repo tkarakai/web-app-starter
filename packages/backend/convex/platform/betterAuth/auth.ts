@@ -24,7 +24,7 @@ import {
 import { passkey } from "@better-auth/passkey";
 
 export const auth = betterAuth({
-  database: convexAdapter({} as any, {} as any),
+  database: convexAdapter({} as never, {} as never),
   rateLimit: {
     storage: "database",
   },

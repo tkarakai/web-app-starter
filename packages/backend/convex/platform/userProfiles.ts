@@ -1,10 +1,14 @@
 import { v } from "convex/values";
-import { locales } from "@web-app-starter/i18n";
+import { locales, type Locale } from "@web-app-starter/i18n";
 import { authedMutation, authedQuery, assertMaxLength } from "./functions";
 
 export const VALID_THEMES = ["light", "dark", "system"] as const;
 const MAX_TIMEZONE_LENGTH = 64;
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function isLocale(value: string): value is Locale {
+  return (locales as readonly string[]).includes(value);
+}
 
 /**
  * Get the current user's full profile.
@@ -50,7 +54,7 @@ export const upsert = authedMutation({
   },
   handler: async (ctx, args) => {
     // Validate locale if provided
-    if (args.locale && !locales.includes(args.locale as any)) {
+    if (args.locale && !isLocale(args.locale)) {
       throw new Error("INVALID_LOCALE");
     }
     // Validate theme against allowlist
@@ -103,7 +107,7 @@ export const upsert = authedMutation({
 export const setLocale = authedMutation({
   args: { locale: v.string() },
   handler: async (ctx, args) => {
-    if (!locales.includes(args.locale as any)) {
+    if (!isLocale(args.locale)) {
       throw new Error("INVALID_LOCALE");
     }
 

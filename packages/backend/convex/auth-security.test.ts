@@ -239,7 +239,7 @@ describe("authorization — cross-tenant isolation", () => {
     test("Bob cannot delete uploads via project chain", async () => {
       const t = createTestEnv();
 
-      const { projectId, uploadId } = await t.run(async (ctx) => {
+      const { uploadId } = await t.run(async (ctx) => {
         const pid = await ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "",

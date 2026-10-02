@@ -9,7 +9,7 @@
   "scripts": {
     "test": "bun test tests",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src tests examples",
+    "lint": "eslint src tests examples --max-warnings 0",
     "demo": "bun examples/files.ts"
   },
   "devDependencies": {
