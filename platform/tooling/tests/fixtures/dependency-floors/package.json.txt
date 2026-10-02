@@ -1,0 +1,8 @@
+{
+  "name": "floors-fixture",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "devDependencies": {
+    "ms": "^2.1.0"
+  }
+}
