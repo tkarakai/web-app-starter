@@ -13,9 +13,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
-### Fixed
-
-- `platform:upgrade` no longer stops with "Target is missing required seam" when the target release drops an optional app that your app still has (as 3.0.0 does with `apps/landing-static`). Seams of such a retired app are skipped, so its files stay yours until the release's codemod or you remove them. No app action is required.
+## [3.0.0] - 2026-10-02
 
 ### Action required
 
@@ -42,6 +40,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
   in `app.config.ts` (`runtime.ports`, `tokenOverrides` scopes) and the landing-selection script.
   Deployment records no longer carry a `landingApp` field, and `deploy:setup` no longer creates
   static landing projects.
+
+### Fixed
+
+- `platform:upgrade` no longer stops with "Target is missing required seam" when the target release drops an optional app that your app still has (as 3.0.0 does with `apps/landing-static`). Seams of such a retired app are skipped, so its files stay yours until the release's codemod or you remove them. No app action is required.
 
 ## [2.1.2] - 2026-10-02
 
@@ -675,5 +677,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [2.1.1]: https://github.com/tkarakai/web-app-starter/compare/v2.1.0...v2.1.1
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.1.2...HEAD
 [2.1.2]: https://github.com/tkarakai/web-app-starter/compare/v2.1.1...v2.1.2
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/tkarakai/web-app-starter/compare/v2.1.2...v3.0.0

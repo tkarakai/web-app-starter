@@ -636,6 +636,54 @@
       "changedSeams": [
         "apps.landing-static.next.config.ts"
       ]
+    },
+    {
+      "version": "3.0.0",
+      "previous": "2.1.2",
+      "supportedBaseline": ">=2.0.0 <3.0.0",
+      "codemods": [
+        {
+          "id": "v3-remove-landing-static",
+          "path": "platform/tooling/codemods/v3-remove-landing-static.ts",
+          "touches": [
+            "apps/landing-static/",
+            ".github/workflows/ci-landing-static.yml",
+            ".github/workflows/ci-verify.yml",
+            "app.config.ts",
+            "package.json",
+            "turbo.json",
+            "tsconfig.json"
+          ]
+        }
+      ],
+      "migrations": [],
+      "env": [
+        {
+          "name": "VERCEL_PROJECT_ID_LANDING_STATIC",
+          "kind": "removed",
+          "secret": true,
+          "required": false
+        },
+        {
+          "name": "VERCEL_PROJECT_ID_LANDING_STATIC_STAGING",
+          "kind": "removed",
+          "secret": true,
+          "required": false
+        }
+      ],
+      "removedFiles": [
+        ".github/workflows/platform-ci-landing-static.yml",
+        ".github/scripts/platform-landing-app.sh"
+      ],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": [
+        "root.github.actions.build-app.action.yml",
+        "root.github.actions.deploy-vercel.action.yml",
+        "app.config.ts",
+        "package.json",
+        "turbo.json"
+      ]
     }
   ]
 }
