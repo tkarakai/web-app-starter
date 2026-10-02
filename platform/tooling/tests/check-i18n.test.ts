@@ -116,6 +116,11 @@ test("app message files are not held to the untranslated check", () => {
 
 test("every shipped platform catalog is translated", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
-  const problems = checkMessages(root, ["en"]);
-  assert.deepEqual(problems, []);
+  // Only the platform's own catalogs: an adopted app's messages and locale subset are its own
+  // (an overrides.json for "hu" must not fail this test), and check:i18n covers them.
+  const platformOnly = tree({});
+  const catalogs = path.join(platformOnly, "platform/packages/i18n");
+  fs.mkdirSync(catalogs, { recursive: true });
+  fs.symlinkSync(path.join(root, "platform/packages/i18n/messages"), path.join(catalogs, "messages"));
+  assert.deepEqual(checkMessages(platformOnly, ["en"]), []);
 });
