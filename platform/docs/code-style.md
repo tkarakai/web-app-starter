@@ -97,7 +97,7 @@ export const createItem = mutation({
 
 ## CSS / Styling
 
-- User-visible text in web, landing and landing-static belongs in locale messages,
+- User-visible text in web and landing belongs in locale messages,
   including errors, placeholders, accessible labels and metadata. The product name is
   not a message: read `appConfig.identity.productName` (`@web-app-starter/app-config`) and pass it
   to messages that mention it as `{productName}`. Shared components accept translated labels

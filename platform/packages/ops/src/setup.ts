@@ -194,9 +194,6 @@ export async function setup(o: Options, log: Log): Promise<Result> {
     tell("Enter a repository as owner/repository.");
   }
   const config = existing ?? defaultConfig(repository);
-  // A newly selected fallback needs its own mapping; never inherit landing's project.
-  const landing = defaultConfig(repository).apps["landing-static"] ? "landing-static" : "landing";
-  config.apps[landing] ??= { projects: {} };
   config.repository = repository;
   await githubApi(log).get(`/repos/${repository}`);
   config.workflowRef = (await ask(`Deployment workflow branch [${config.workflowRef}]: `)).trim() || config.workflowRef;

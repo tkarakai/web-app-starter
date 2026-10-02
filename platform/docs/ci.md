@@ -1,6 +1,6 @@
 # CI Guide
 
-See [landing selection and development commands](development.md) and
+See [development commands](development.md) and
 [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
@@ -82,27 +82,25 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 ### Reusable platform workflows and thin callers
 
 The logic lives in the platform zone as reusable workflows, `platform-*.yml`
-(`platform-ci-shared`, `-ci-web`, `-ci-admin`, `-ci-landing`, `-ci-landing-static`,
-`-ci-storybook`, `-security`, `-cd-staging`, `-cd-production`, `-cd-rollback`), and the
-composite actions in `.github/actions/`. They are replaced on platform upgrade. The app owns thin
-callers with the familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): triggers, the
-permissions they grant, `secrets: inherit` for deploys, and the `CI <App> Complete` job that
+(`platform-ci-shared`, `-ci-web`, `-ci-admin`, `-ci-landing`, `-ci-storybook`, `-security`,
+`-cd-staging`, `-cd-production`, `-cd-rollback`), and the composite actions in
+`.github/actions/`. They are replaced on platform upgrade. The app owns thin callers with the
+familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): triggers, the permissions they grant, `secrets: inherit` for deploys, and the `CI <App> Complete` job that
 branch rules require. Change triggers there, never in `platform-*.yml`.
 
 Deployment audit recording uses `.github/scripts/platform-record-ops.cjs`, which also
 ships through platform upgrades. An older app-owned `.github/scripts/record-ops.cjs`
 may remain after upgrading; the platform workflows no longer call it. Custom workflows
-that use the old helper should switch to the platform-owned path for landing selection support.
+that use the old helper should switch to the platform-owned path.
 
 - **The platform unit suite** (dev-script and ops tests, the starter upgrade rehearsal) runs in
   CI Shared only when `platform/**`, `.github/**`, `apps/demo/**`, `package.json` or `bun.lock`
   changed. Lint, typecheck, the zone check and contracts run on every PR.
 - **Actions stay pinned to full commit SHAs** (`bun run check:actions-pinned`, in CI Shared).
   Some accounts refuse unpinned actions.
-- **Removed reference apps are optional.** Landing CI checks the selected commit for its
-  app, and CI Shared skips the demo rehearsal when `apps/demo` is absent. Deploys and
-  rollbacks likewise inspect the selected commit for landing before building, checking
-  credentials or checking health. Web, admin and backend checks remain required.
+- **The demo app is optional.** CI Shared skips the demo rehearsal when `apps/demo` is absent.
+  Web, admin, landing and backend are required: deploys and rollbacks fail early when the
+  selected commit has no `apps/landing`.
 
 ### Platform update delivery
 
@@ -206,4 +204,4 @@ releasing it.
 
 ### Pull-request base branches
 
-App-owned `ci-*.yml` and `security.yml` callers run on all pull-request bases, including stacked and migration branches. They are upgrade seams: upstream trigger fixes merge against your baseline; intentional customization stays yours and conflicts require review. For required summary checks and installed landing variants, see the [branch-protection checklist](deployment-runbook.md#configure-branch-protection).
+App-owned `ci-*.yml` and `security.yml` callers run on all pull-request bases, including stacked and migration branches. They are upgrade seams: upstream trigger fixes merge against your baseline; intentional customization stays yours and conflicts require review. For required summary checks, see the [branch-protection checklist](deployment-runbook.md#configure-branch-protection).

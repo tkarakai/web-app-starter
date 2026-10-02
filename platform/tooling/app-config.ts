@@ -25,7 +25,7 @@ import {
   type AppId,
 } from "../packages/app-config/src/schema.ts";
 
-/** `landing-static` → `LANDING_STATIC`. */
+/** `landing` → `LANDING`. */
 function envSuffix(app: AppId): string {
   return app.toUpperCase().replace(/-/g, "_");
 }

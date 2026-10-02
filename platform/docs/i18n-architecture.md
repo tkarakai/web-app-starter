@@ -14,7 +14,7 @@ Keep experimental precompilation disabled: with next-intl 4.14.5, serialized pre
 prototype name such as `constructor` or `__proto__`. The ordinary translator handles those
 values correctly. Enabling this experimental feature requires separate upstream-fix verification.
 
-**Scope:** web, landing and landing-static localize their user-visible text.
+**Scope:** web and landing localize their user-visible text.
 Admin remains English-only and imports platform entries from
 `@web-app-starter/i18n/messages/en.json` where applicable (never app namespaces); it does not
 need locale routing.
@@ -28,9 +28,7 @@ ownership, stale overrides and untranslated platform strings (see "Message owner
 `apps/web/qa/tests/message-catalogues.test.ts` checks every shipped catalog, as merged, for ICU
 syntax and matching interpolation parameters. Run it through `bun run --cwd apps/web test`.
 The web app's `localized-controls.tsx` and `@web-app-starter/auth-ui` supply current-locale labels to shared
-primitives without making the design system depend on i18n. The static landing
-404 reads its URL locale after hydration because static hosting serves one
-`404.html`; its initial HTML uses the configured default locale and merged catalog.
+primitives without making the design system depend on i18n.
 
 ---
 
@@ -51,7 +49,7 @@ Each top-level namespace has exactly one owner, and the loader merges them at re
 - **Locale subset.** `i18n.locales` in `app.config.ts` lists the locales the apps ship (a subset of
   `allLocales` that includes `en`); routing, the language selector and the checks follow it. The
   platform keeps translating its own strings into all 15.
-- **Default locale.** Set `i18n.defaultLocale` to a shipped locale, for example `"hu"`. Omission keeps `"en"`; reordering `i18n.locales` never changes the default. Routing fallback, message loading, SEO x-default links and static landing redirects use this setting. English remains the catalog validation baseline and must stay in the shipped list.
+- **Default locale.** Set `i18n.defaultLocale` to a shipped locale, for example `"hu"`. Omission keeps `"en"`; reordering `i18n.locales` never changes the default. Routing fallback, message loading, SEO x-default links and the landing's root redirect use this setting. English remains the catalog validation baseline and must stay in the shipped list.
 - **Validation** (`bun run check:i18n`, `platform/tooling/check-i18n.ts`): platform files match the
   English keys; every shipped locale has an app file with the app's English keys; no app
   namespace has a platform namespace's name; every override names an existing platform string in
@@ -193,15 +191,14 @@ Request
 
 Auth redirects preserve the active locale by extracting it from the URL path before redirecting.
 
-### Landing apps
+### Landing app
 
-`landing` and `landing-static` are static exports (`output: "export"`), so they have no proxy. Every
+`landing` is a static export (`output: "export"`), so it has no proxy. Every
 locale is pre-rendered under `[locale]/`, whose root layout renders the document's `lang` and
 `dir` through the app-owned `DocumentShell`. These attributes are present without JavaScript;
 `DocumentLocale` only keeps them synchronized during client-side locale changes. The separate
 `(entry)` root layout uses the configured default locale while its page picks a locale in the
-browser. `landing-static` also uses `global-not-found.tsx` with `experimental.globalNotFound`
-for its shared static 404 document; its URL-specific translation still happens after hydration.
+browser.
 
 ### next-intl Middleware Configuration
 
@@ -569,8 +566,8 @@ When a user selects a language:
 message is development-only and the theme is already applied, but a document load avoids it: it
 hydrates the server HTML, so the theme script runs from the server with its nonce. State below the
 layout is discarded on a locale change either way. Use the router for navigation inside one locale.
-The two static landing apps keep a client-side switcher on purpose (`document-locale.spec.ts` requires
-the page to survive a switch) and so still show the message in development.
+The static landing app keeps a client-side switcher on purpose (`document-locale.spec.ts` requires
+the page to survive a switch) and so still shows the message in development.
 
 #### For Authenticated Users (Cross-Device Sync)
 
@@ -724,7 +721,7 @@ function MyComponent() {
 
 ### Localized Metadata
 
-In both reference landing apps, each page's `generateMetadata()` calls the app-owned
+In the reference landing app, each page's `generateMetadata()` calls the app-owned
 `src/lib/metadata.ts` helper with its own pathname. Canonical, OpenGraph URL and language
 alternates must identify that page, not the locale homepage. The helper uses the deployed
 `NEXT_PUBLIC_SITE_URL`, configured locales and trailing-slash export paths; `x-default` points

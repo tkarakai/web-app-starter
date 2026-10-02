@@ -64,25 +64,20 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       landing: ${{ steps.present.outputs.landing }}
-      landing-app: ${{ steps.present.outputs.landing-app }}
     steps:
-      - name: Check optional apps in the selected commit
+      - name: Checkout the selected commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_sha }}
           persist-credentials: false
-      - name: Checkout landing selection tooling
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.workflow_sha }}
-          path: .ops-workflow
-          sparse-checkout: .github/scripts
-          persist-credentials: false
       - id: present
+        name: Require the landing app
         run: |
-          LANDING_APP=$(bash .ops-workflow/.github/scripts/platform-landing-app.sh . --required)
+          if [ ! -f apps/landing/package.json ]; then
+            echo "::error::apps/landing is not installed in the selected commit."
+            exit 1
+          fi
           echo "landing=true" >> "$GITHUB_OUTPUT"
-          echo "landing-app=$LANDING_APP" >> "$GITHUB_OUTPUT"
 
       - name: Verify confirmation string
         if: inputs.confirm != 'deploy-production'
@@ -151,8 +146,8 @@ jobs:
   # Artifacts are content-addressed, so this resolves rather than rebuilds:
   # web and admin hash identically on staging and production, so their staging
   # artifacts are found and reused — production deploys the bytes staging tested.
-  # landing and landing-static hash their inlined, environment-specific config,
-  # so they legitimately miss here and are built for production.
+  # landing hashes its inlined, environment-specific config,
+  # so it legitimately misses here and is built for production.
   # A miss also covers an artifact that has aged past the 90-day retention.
   # See platform/docs/deployment-architecture.md
   build-web:
@@ -254,11 +249,11 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/build-app
         id: build
         with:
-          app: ${{ needs.validate.outputs.landing-app }}
+          app: landing
           environment: production
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets[needs.validate.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC' || 'VERCEL_PROJECT_ID_LANDING'] }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Attest provenance for anything actually built here ──────────
@@ -461,7 +456,7 @@ jobs:
       - uses: ./.ops-workflow/.github/actions/deploy-vercel
         id: deploy
         with:
-          app: ${{ needs.validate.outputs.landing-app }}
+          app: landing
           environment: production
           artifact-name: ${{ needs.build-landing.outputs.artifact-name }}
           tarball: ${{ needs.build-landing.outputs.tarball }}
@@ -474,7 +469,7 @@ jobs:
           expected-hash: ${{ needs.build-landing.outputs.input-hash }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets[needs.validate.outputs.landing-app == 'landing-static' && 'VERCEL_PROJECT_ID_LANDING_STATIC' || 'VERCEL_PROJECT_ID_LANDING'] }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
 
   # ─── Post-deploy health checks and tagging ───────────────────────
   post-deploy:
@@ -571,7 +566,6 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OPS_NEEDS: ${{ toJSON(needs) }}
-          OPS_LANDING_APP: ${{ needs.validate.outputs.landing-app }}
           OPS_ENVIRONMENT: production
           OPS_SHA: ${{ inputs.git_sha }}
           OPS_OPERATION: deploy

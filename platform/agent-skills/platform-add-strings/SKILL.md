@@ -5,7 +5,7 @@ description: Use to add or change user-visible text - UI labels, messages, error
 
 # Add translated strings
 
-User-visible text in `web`, `landing` and `landing-static` always comes from locale messages,
+User-visible text in `web` and `landing` always comes from locale messages,
 never from literals in components: labels, headings, errors, placeholders, accessible names and
 metadata. `admin` is English-only and reads the platform's English catalogue.
 

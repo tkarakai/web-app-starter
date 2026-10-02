@@ -140,7 +140,7 @@ rule() {
 }
 
 # Apps (in display order)
-for app_name in landing landing-static web admin storybook; do
+for app_name in landing web admin storybook; do
     pid=$(get_pid "next-${app_name}")
     if [ -n "$pid" ]; then
         url=$(get_app_url "$app_name")
@@ -217,7 +217,7 @@ done
 
 # Logs
 LOG_FILES=""
-for app_name in landing landing-static web admin storybook; do
+for app_name in landing web admin storybook; do
     pid=$(get_pid "next-${app_name}")
     if [ -n "$pid" ] && is_running "$pid"; then
         LOG_FILES="$LOG_FILES .next-${app_name}.log"

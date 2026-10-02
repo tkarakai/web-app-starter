@@ -10,7 +10,7 @@ import rawAppConfig from "../../../app.config.ts";
 import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const repo = fileURLToPath(new URL("../../..", import.meta.url));
-const apps = ["apps/web", "platform/apps/admin", "apps/landing", "apps/landing-static", "platform/apps/storybook"];
+const apps = ["apps/web", "platform/apps/admin", "apps/landing", "platform/apps/storybook"];
 const assets = { svg: "icon.svg", ico: "favicon.ico", appleTouchIcon: "apple-touch-icon.png" };
 
 /** A disposable checkout with the real script, config reader and config. */

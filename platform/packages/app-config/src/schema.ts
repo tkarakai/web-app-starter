@@ -17,7 +17,7 @@
  * them: it stands in for a separate business app in the starter-upgrade tests,
  * is copied out of the repository to run, and owns its own settings.
  */
-export const APP_IDS = ["landing", "web", "admin", "storybook", "landing-static"] as const;
+export const APP_IDS = ["landing", "web", "admin", "storybook"] as const;
 export type AppId = (typeof APP_IDS)[number];
 
 /**
@@ -31,7 +31,6 @@ export const APP_DIRS: Readonly<Record<AppId, string>> = {
   web: "apps/web",
   admin: "platform/apps/admin",
   storybook: "platform/apps/storybook",
-  "landing-static": "apps/landing-static",
 };
 
 /** Design-token overrides: CSS custom property name to value, e.g. `{ "--primary": "oklch(0.55 0.2 260)" }`. */

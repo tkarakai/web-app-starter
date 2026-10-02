@@ -101,9 +101,7 @@ Create six Vercel projects — three for staging and three for production. Each 
    | `my-app-admin-staging` | `platform/apps/admin` | **Next.js** | Staging |
    | `my-app-landing-staging` | `apps/landing` | **Next.js** | Staging |
 
-   The table assumes `apps/landing` is installed. If it has been removed, create **different** projects named `my-app-landing-static` and `my-app-landing-static-staging`, with root `apps/landing-static`, preset **Other**, build command `bun run build` and output directory `out`. Do not repurpose the `landing` projects. Only the selected variant is deployed; no toggle is needed.
-
-   Builds run `vercel build` from the monorepo root with the selected project root. Web/admin and the primary landing retain their Next.js preset; `landing-static` uses Vercel static hosting. Configure its `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` per environment; it needs no Convex variable. Point web's `LANDING_URL` at the selected landing's URL.
+   Builds run `vercel build` from the monorepo root with the project's root directory. Configure landing's `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` per environment; it needs no Convex variable. Point web's `LANDING_URL` at the landing's URL.
 
 **Manual CLI alternative:**
 
@@ -169,7 +167,7 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 
 Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
 
-In this repo, the **web app** (`apps/web`) and **admin app** (`platform/apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). Both landing apps hand off to web and do not connect to Convex. Retain `LANDING_URL` for marketing links and compatibility with app-owned HTTP consumers. Storybook does not connect to Convex.
+In this repo, the **web app** (`apps/web`) and **admin app** (`platform/apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The landing app hands off to web and does not connect to Convex. Retain `LANDING_URL` for marketing links and compatibility with app-owned HTTP consumers. Storybook does not connect to Convex.
 
 **Option A — Convex Dashboard (recommended for one-time setup):**
 
@@ -291,7 +289,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 | `CONVEX_SITE_URL` | Staging Convex Site URL |
 | `APP_ENVIRONMENT` | `staging` |
 
-**my-app-landing (production)** — backend-free marketing handoff (the same variables apply to landing-static):
+**my-app-landing (production)** — backend-free marketing handoff:
 
 | Variable | Value |
 |----------|-------|
@@ -337,9 +335,7 @@ These are used by the CD workflows to authenticate with Vercel when running `ver
 | `VERCEL_PROJECT_ID_LANDING` | landing production project ID | From step 2b |
 | `VERCEL_PROJECT_ID_WEB_STAGING` | web staging project ID | From step 2b |
 | `VERCEL_PROJECT_ID_ADMIN_STAGING` | admin staging project ID | From step 2b |
-| `VERCEL_PROJECT_ID_LANDING_STAGING` | landing staging project ID, when installed | From step 2b |
-| `VERCEL_PROJECT_ID_LANDING_STATIC` | Separate static landing production project ID, when primary landing is removed | From step 2b; Other preset, output `out` |
-| `VERCEL_PROJECT_ID_LANDING_STATIC_STAGING` | Separate static landing staging project ID, when primary landing is removed | From step 2b; Other preset, output `out` |
+| `VERCEL_PROJECT_ID_LANDING_STAGING` | landing staging project ID | From step 2b |
 
 > **Note:** All `VERCEL_PROJECT_ID_*` secrets must be **repository secrets** (not environment secrets) because the CD workflow build jobs run without an `environment:` context and can only access repository-level secrets.
 
@@ -362,12 +358,11 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
   - Required: `CI Shared Complete`
   - Required: `CI Web Complete`
   - Required: `CI Admin Complete`
-  - Required when `apps/landing` is installed: `CI Landing Complete`
-  - Required when `apps/landing-static` is installed: `CI Landing Static Complete`
+  - Required: `CI Landing Complete`
   - Required: `CI Storybook Complete`
 - [x] Require branches to be up to date before merging
 
-> **How it works:** See the [CI guide](ci.md#pull-request-base-branches) for trigger coverage and customization. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. When both landing apps are installed, both have PR CI, even though deployment selects only one. Copy exact check names from a completed PR run.
+> **How it works:** See the [CI guide](ci.md#pull-request-base-branches) for trigger coverage and customization. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. Copy exact check names from a completed PR run.
 >
 > On push to main (after a PR is merged), the unified `cd-staging.yml` workflow calls these same CI workflows as reusable workflows, then detects which apps changed, builds only those, and deploys to staging. It also sets a `ci/gate-passed` commit status that `cd-production.yml` checks before allowing production deploys.
 
@@ -431,7 +426,7 @@ Run through this checklist before the first deployment or any major infrastructu
 - [ ] Two Convex projects created: staging and production (step 2a)
 - [ ] Convex deployment URLs and deploy keys recorded for both projects (step 2a)
 - [ ] Six Vercel projects created: 3 staging + 3 production (step 2b)
-- [ ] Vercel Root Directory set to the app directory on all 6 projects (`apps/web`, the selected landing, `platform/apps/admin`; step 2b)
+- [ ] Vercel Root Directory set to the app directory on all 6 projects (`apps/web`, `apps/landing`, `platform/apps/admin`; step 2b)
 - [ ] Vercel Framework Preset set to **Next.js** on all 6 projects (step 2b)
 - [ ] Vercel automatic deployments disabled for all 6 projects (step 2b)
 - [ ] Convex environment variables set: `SITE_URL`, `ADMIN_SITE_URL`, `LANDING_URL`, `BETTER_AUTH_SECRET` (and `PASSKEY_RP_ID` if using cross-subdomain passkeys) per project (step 2c)

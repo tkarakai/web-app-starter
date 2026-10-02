@@ -106,7 +106,7 @@ The application uses three layers of rate limiting. See [rate-limiting-architect
 - `platform/packages/edge-rate-limit/` — Shared edge rate limiter (used by the web and admin proxies)
 - `platform/packages/auth-ui/src/components/auth-form.tsx` — Client-side 429 error handling
 
-> **Note**: `landing-static` is a fully static export and does not use edge rate limiting. Rate limiting for static deployments should be handled at the CDN/hosting layer.
+> **Note**: `landing` is a fully static export and does not use edge rate limiting. Rate limiting for static deployments should be handled at the CDN/hosting layer.
 
 **What happens when rate limited:**
 - **Auth endpoints**: HTTP 429, auth form shows "Too many attempts. Please wait a moment before trying again."

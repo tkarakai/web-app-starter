@@ -2,9 +2,8 @@
 // requested deployments fail. Log names only, never credentials.
 /* global console, process */
 function readiness(env) {
-  const landing = env.LANDING_APP === 'landing-static' ? 'LANDING_STATIC' : 'LANDING';
   const required = ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID_WEB_STAGING',
-    'VERCEL_PROJECT_ID_ADMIN_STAGING', `VERCEL_PROJECT_ID_${landing}_STAGING`, 'CONVEX_DEPLOY_KEY'];
+    'VERCEL_PROJECT_ID_ADMIN_STAGING', 'VERCEL_PROJECT_ID_LANDING_STAGING', 'CONVEX_DEPLOY_KEY'];
   const missing = required.filter(name => !env[name]);
   const configured = Object.keys(env).some(name => /^(VERCEL_|CONVEX_DEPLOY_KEY$)/.test(name) && env[name]);
   if (env.GITHUB_EVENT_NAME === 'push' && !configured) {

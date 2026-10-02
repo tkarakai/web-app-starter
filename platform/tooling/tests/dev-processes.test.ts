@@ -21,7 +21,7 @@ const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const ROOT = path.resolve(SCRIPTS, "../..");
 const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
-const CONFIG_FILES = [".github/scripts/platform-landing-app.sh", "app.config.ts", "platform/packages/app-config/src/schema.ts"];
+const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
@@ -89,11 +89,11 @@ async function waitFor(check: () => boolean): Promise<void> {
 test("default startup skips stripped apps and explicit missing apps fail before side effects", async () => {
   fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
   fs.writeFileSync(path.join(root, "platform/apps/storybook/package.json"), "{}");
-  // Stop at the first setup operation, after exercising the real selector and config reader.
+  // Stop at the first setup operation, after exercising the real app checks and config reader.
   fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
   const selected = await runScript("dev-start.sh", ["--ci"]);
   assert.equal(selected.status, 1, selected.stderr);
-  assert.match(selected.stderr, /No landing app is installed/);
+  assert.match(stripAnsi(selected.stdout), /App is not installed: landing/);
   assert.equal(fs.existsSync(path.join(root, "apps/landing")), false);
   const missing = await runScript("dev-start.sh", ["--ci", "--app=landing"]);
   assert.equal(missing.status, 1); assert.match(missing.stdout, /App is not installed: landing/);
@@ -185,7 +185,7 @@ test("status sizes its columns to the longest service name and keeps rows aligne
   const bin = path.join(root, "bin");
   fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, "bunx"), "#!/bin/bash\nprintf '%s\\n' http://127.0.0.1:6790/\n", { mode: 0o755 });
-  for (const [name, port] of [["landing-static", 3004], ["web", 3001]] as const) {
+  for (const [name, port] of [["landing", 3000], ["web", 3001]] as const) {
     track(`next-${name}`, spawnIn(root));
     fs.writeFileSync(path.join(root, `.next-${name}.log`), `ready on http://localhost:${port}\n`);
   }
@@ -195,13 +195,13 @@ test("status sizes its columns to the longest service name and keeps rows aligne
   const plain = stripAnsi(result.stdout);
   const { header, rows } = statusColumns(result.stdout);
   const byService = Object.fromEntries(rows.map((row) => [row[0], row]));
-  assert.deepEqual(byService["Landing-static"].slice(1, 3), ["up", "http://localhost:3004"]);
+  assert.deepEqual(byService.Landing.slice(1, 3), ["up", "http://localhost:3000"]);
   assert.deepEqual(byService.Web.slice(1, 3), ["up", "http://localhost:3001"]);
   assert.equal(byService["Convex UI"][1], "");
   assert.equal(byService["Convex UI"][2], "http://127.0.0.1:6790/");
   // Every value starts exactly where its header does, including rows with blank fields.
   for (const line of plain.split("\n")) {
-    const service = ["Landing-static", "Web", "Convex API", "Site API", "Convex UI"].find((name) => line.startsWith(`  ${name}`));
+    const service = ["Landing", "Web", "Convex API", "Site API", "Convex UI"].find((name) => line.startsWith(`  ${name}`));
     if (service === undefined) continue;
     assert.equal(line.slice(header[0] - 2, header[0]).trim(), "", line);
     assert.ok(line.slice(header[0], header[1]).trim() === service, `service column overflows: ${line}`);
@@ -416,7 +416,7 @@ test("predev fixture copies custom icon sources and still rejects missing assets
   for (const [name, content] of Object.entries({ "icon.svg": contents.svg, "favicon.ico": contents.ico, "apple-touch-icon.png": contents.appleTouchIcon })) {
     assert.equal(fs.readFileSync(path.join(publicDir, name), "utf8"), content);
   }
-  for (const app of ["apps/web", "platform/apps/admin", "apps/landing", "apps/landing-static"]) {
+  for (const app of ["apps/web", "platform/apps/admin", "apps/landing"]) {
     assert.equal(fs.existsSync(path.join(root, app)), false, `${app} remains absent`);
   }
 
@@ -445,9 +445,9 @@ test("predev fixture refuses icon symlinks outside the source checkout", () => {
   assert.equal(fs.readFileSync(outside, "utf8"), "outside icon");
 });
 
-for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run", "dev:landing-static"], ["run", "dev:landing"]]) {
-  const app = args.at(-1)?.includes("landing") ? "landing-static" : "storybook";
-  const appDir = app === "storybook" ? "platform/apps/storybook" : "apps/landing-static";
+for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run", "dev:landing"]]) {
+  const app = args.at(-1)?.includes("landing") ? "landing" : "storybook";
+  const appDir = app === "storybook" ? "platform/apps/storybook" : "apps/landing";
   test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 30_000 }, async () => {
     // Keep the public package scripts and predev helpers real. Only the external
     // server is substituted; this tests command wiring, not Next.js compilation.
@@ -517,30 +517,22 @@ test("nuke is limited to registered git worktrees and preserves state", async ()
   assert.equal(fs.readFileSync(state, "utf8"), "keep my data");
 });
 
-for (const installed of [["landing"], ["landing-static"], ["landing", "landing-static"]]) {
-  test(`default startup selects one landing from ${installed.join(", ")}`, async () => {
-    for (const app of installed) {
-      fs.mkdirSync(path.join(root, "apps", app), { recursive: true });
-      fs.writeFileSync(path.join(root, "apps", app, "package.json"), "{}");
-    }
-    fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
-    const selected = installed.includes("landing") ? "landing" : "landing-static";
-    const result = await runScript("dev-start.sh", ["--ci"]);
-    assert.equal(result.status, 17, result.stderr);
-    assert.ok(result.stdout.includes(`Selected landing: ${selected}\n`));
-    assert.ok(result.stdout.includes(`Apps: web=false admin=false landing=true storybook=false convex=false`));
-  });
-}
+test("default startup starts the landing app without a backend", async () => {
+  fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+  fs.mkdirSync(path.join(root, "apps/landing"), { recursive: true });
+  fs.writeFileSync(path.join(root, "apps/landing/package.json"), "{}");
+  const result = await runScript("dev-start.sh", ["--ci"]);
+  assert.equal(result.status, 17, result.stderr);
+  assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=false"));
+});
 
-for (const landing of ["landing", "landing-static"]) {
-  test(`explicit ${landing} startup requires no backend`, async () => {
-    fs.mkdirSync(path.join(root, "apps", landing), { recursive: true });
-    fs.writeFileSync(path.join(root, "apps", landing, "package.json"), "{}");
-    // Exercise the public launcher, stopping at its first setup operation.
-    fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
-    const result = await runScript("dev-start.sh", ["--ci", `--app=${landing}`]);
-    assert.equal(result.status, 17, result.stderr);
-    assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=false"));
-    assert.equal(fs.existsSync(path.join(root, `apps/${landing}/.env.local`)), false);
-  });
-}
+test("explicit landing startup requires no backend", async () => {
+  fs.mkdirSync(path.join(root, "apps/landing"), { recursive: true });
+  fs.writeFileSync(path.join(root, "apps/landing/package.json"), "{}");
+  // Exercise the public launcher, stopping at its first setup operation.
+  fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+  const result = await runScript("dev-start.sh", ["--ci", "--app=landing"]);
+  assert.equal(result.status, 17, result.stderr);
+  assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=false"));
+  assert.equal(fs.existsSync(path.join(root, "apps/landing/.env.local")), false);
+});

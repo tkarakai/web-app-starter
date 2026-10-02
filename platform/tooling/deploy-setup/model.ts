@@ -2,7 +2,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 export type Environment = "staging" | "production";
-export type App = "web" | "admin" | "landing" | "landing-static";
+export type App = "web" | "admin" | "landing";
 export type Project = { id: string; name: string; domain: string };
 export type Backend = { id: number; name: string; url: string };
 export type State = { schema: 1; repository: string; branch: string; prefix: string; team: string; convexTeam: string;
@@ -10,15 +10,14 @@ export type State = { schema: 1; repository: string; branch: string; prefix: str
 export const STATE_FILE = ".deploy-setup.json";
 export const ENVIRONMENTS: Environment[] = ["staging", "production"];
 export function apps(root: string): App[] {
-  const landing = existsSync(path.join(root, "apps/landing/package.json")) ? "landing" : "landing-static";
-  for (const dir of ["apps/web", "platform/apps/admin", `apps/${landing}`]) {
+  for (const dir of ["apps/web", "platform/apps/admin", "apps/landing"]) {
     if (!existsSync(path.join(root, dir, "package.json"))) throw Error(`Missing deployment app: ${dir}`);
   }
-  return ["web", "admin", landing];
+  return ["web", "admin", "landing"];
 }
 export function settings(app: App) {
   return { rootDirectory: app === "admin" ? "platform/apps/admin" : `apps/${app}`,
-    framework: app === "landing-static" ? null : "nextjs", outputDirectory: app === "landing-static" ? "out" : null,
+    framework: "nextjs", outputDirectory: null,
     buildCommand: "bun run build", installCommand: "bun install --frozen-lockfile", nodeVersion: "24.x" };
 }
 export function secretName(app: App, env: Environment): string {
@@ -33,14 +32,13 @@ export function values(state: State, installed: App[], env: Environment) {
   const backend = state.backends[env];
   if (!backend) throw Error(`Missing Convex ${env}`);
   const site = backend.url.replace(/\.convex\.cloud$/, ".convex.site");
-  const landing = installed.includes("landing") ? "landing" : "landing-static";
   return {
     vercel: {
-      web: { CONVEX_URL: backend.url, CONVEX_SITE_URL: site, LANDING_URL: origin(landing), APP_ENVIRONMENT: env },
+      web: { CONVEX_URL: backend.url, CONVEX_SITE_URL: site, LANDING_URL: origin("landing"), APP_ENVIRONMENT: env },
       admin: { CONVEX_URL: backend.url, CONVEX_SITE_URL: site, APP_ENVIRONMENT: env },
-      [landing]: { NEXT_PUBLIC_SITE_URL: origin(landing), NEXT_PUBLIC_WEB_APP_URL: origin("web") },
+      landing: { NEXT_PUBLIC_SITE_URL: origin("landing"), NEXT_PUBLIC_WEB_APP_URL: origin("web") },
     } as Partial<Record<App, Record<string, string>>>,
-    convex: { SITE_URL: `${origin("web")},${origin("admin")}`, ADMIN_SITE_URL: origin("admin"), LANDING_URL: origin(landing) },
+    convex: { SITE_URL: `${origin("web")},${origin("admin")}`, ADMIN_SITE_URL: origin("admin"), LANDING_URL: origin("landing") },
   };
 }
 export function safePath(root: string, file: string): string {
@@ -55,7 +53,7 @@ export function validateState(raw: State): State {
     || !/^[\w.-]+$/.test(raw.team) || !/^\d+$/.test(raw.convexTeam) || !raw.branch || /[\s~^:?*[\\]/.test(raw.branch)) throw Error("Invalid deployment setup state; check repository, branch and team IDs");
   const clean: State = { schema: 1, repository: raw.repository, branch: raw.branch, prefix: raw.prefix, team: raw.team, convexTeam: raw.convexTeam, projects: {}, backends: {} };
   for (const [key, p] of Object.entries(raw.projects ?? {})) {
-    if (!/^(web|admin|landing|landing-static)\/(staging|production)$/.test(key) || !/^prj_[\w]+$/.test(p.id) || !/^[a-z0-9-]+$/.test(p.name) || !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(p.domain)) throw Error("Invalid public project mapping");
+    if (!/^(web|admin|landing)\/(staging|production)$/.test(key) || !/^prj_[\w]+$/.test(p.id) || !/^[a-z0-9-]+$/.test(p.name) || !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(p.domain)) throw Error("Invalid public project mapping");
     clean.projects[key as keyof State["projects"]] = { id: p.id, name: p.name, domain: p.domain };
   }
   const projectIds = Object.values(clean.projects).map(project => project.id);
@@ -100,10 +98,6 @@ export function saveState(root: string, state: State): void {
   writePublicFile(root, STATE_FILE, `${JSON.stringify(validateState(state), null, 2)}\n`);
 }
 
-export function ciApps(root: string): App[] {
-  const selected = apps(root);
-  return [...selected, ...(["landing", "landing-static"] as const).filter(app => !selected.includes(app) && existsSync(path.join(root, `apps/${app}/package.json`)))];
-}
 export function proofContext(state: State, installed: App[]): string {
   return createHash("sha256").update(JSON.stringify({ repository: state.repository, branch: state.branch, team: state.team,
     backend: state.backends.staging, apps: [...installed].sort().map(app => [app, state.projects[`${app}/staging`]]) })).digest("hex");

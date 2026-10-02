@@ -11,7 +11,7 @@ when you build your own. This file is the app guide (it starts from
 
 A sample SaaS: users sign up, create projects with tasks and file uploads, and manage their
 account security. Admins onboard users and other admins, set security policy and read the audit
-trail. Two marketing sites and a component showcase complete it.
+trail. A marketing site and a component showcase complete it.
 
 ## Apps
 
@@ -20,14 +20,13 @@ trail. Two marketing sites and a component showcase complete it.
 | web | `apps/web` | The product: auth flows, projects dashboard, account settings |
 | admin | `platform/apps/admin` | Admin dashboard: onboarding, users, policy, audit trail |
 | landing | `apps/landing` | Marketing site, static export with locale routes |
-| landing-static | `apps/landing-static` | Fully static marketing site with client-side i18n |
 | storybook | `platform/apps/storybook` | Design-system showcase |
 | demo | `apps/demo` | Standalone UI/dispatch demo ([README](apps/demo/README.md)) |
 
 Each app keeps source in `src/` and tests in `qa/` (`qa/tests/` for unit and component tests,
 `qa/e2e/` for Playwright). Web and admin use the Convex project in
 `packages/backend/convex/`; the sample domain is `projects`, `tasks` and `files`.
-Both landing apps need no backend: they link to web's `/sign-up` and `/sign-in`, and web
+The landing app needs no backend: it links to web's `/sign-up` and `/sign-in`, and web
 owns the onboarding decision and waitlist form. Their name, ports,
 auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 

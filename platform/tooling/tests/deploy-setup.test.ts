@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { test } from "node:test";
-import { apps, ciApps, proofContext, writePublicFile, loadState, saveState, secretName, settings, values, type State } from "../deploy-setup/model.ts";
+import { apps, proofContext, writePublicFile, loadState, saveState, secretName, settings, values, type State } from "../deploy-setup/model.ts";
 import { HttpError, run, type Run } from "../deploy-setup/io.ts";
 import { checkSetup, convexEnv, requiredChecks, ensureBackend, ensureProject, storeSecret, type Request } from "../deploy-setup/providers.ts";
 const require = createRequire(import.meta.url);
@@ -17,48 +17,48 @@ test("staging skips only unconfigured automatic pushes, preserves legacy deploym
   assert.equal(readiness({ GITHUB_EVENT_NAME: "push", VERCEL_TOKEN: "present" }).status, "error");
   assert.equal(readiness({ GITHUB_EVENT_NAME: "push", DEPLOY_SETUP_STATE: "configuring", VERCEL_TOKEN: "present" }).status, "error");
   assert.equal(readiness({ GITHUB_EVENT_NAME: "push", DEPLOY_SETUP_STATE: "ready" }).status, "skip");
-  const complete = Object.fromEntries(["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID_WEB_STAGING", "VERCEL_PROJECT_ID_ADMIN_STAGING", "VERCEL_PROJECT_ID_LANDING_STATIC_STAGING", "CONVEX_DEPLOY_KEY"].map(k => [k, "present"]));
-  assert.equal(readiness({ ...complete, LANDING_APP: "landing-static" }).status, "ready");
+  const complete = Object.fromEntries(["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID_WEB_STAGING", "VERCEL_PROJECT_ID_ADMIN_STAGING", "VERCEL_PROJECT_ID_LANDING_STAGING", "CONVEX_DEPLOY_KEY"].map(k => [k, "present"]));
+  assert.equal(readiness(complete).status, "ready");
   for (const marker of ["", "configuring", "ready"]) for (const event of ["push", "workflow_dispatch"]) {
-    assert.equal(readiness({ ...complete, LANDING_APP: "landing-static", GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, "ready");
+    assert.equal(readiness({ ...complete, GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, "ready");
     assert.equal(readiness({ VERCEL_TOKEN: "present", GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, "error");
     assert.equal(readiness({ GITHUB_EVENT_NAME: event, DEPLOY_SETUP_STATE: marker }).status, event === "push" ? "skip" : "error");
   }
-  assert.deepEqual(readiness(complete).missing, ["VERCEL_PROJECT_ID_LANDING_STAGING"]);
+  assert.deepEqual(readiness({ ...complete, VERCEL_PROJECT_ID_LANDING_STAGING: "" }).missing, ["VERCEL_PROJECT_ID_LANDING_STAGING"]);
 });
-test("static-only topology has separate static projects and no Convex browser variable", t => {
+test("deployment topology requires landing, whose projects get no Convex browser variable", t => {
   const root = mkdtempSync(path.join(tmpdir(), "deploy-setup-")); t.after(() => rmSync(root, { recursive: true, force: true }));
-  for (const app of ["apps/web", "platform/apps/admin", "apps/landing-static"]) { mkdirSync(path.join(root, app), { recursive: true }); writeFileSync(path.join(root, app, "package.json"), "{}"); }
-  assert.deepEqual(apps(root), ["web", "admin", "landing-static"]);
-  assert.deepEqual([settings("landing-static").framework, settings("landing-static").outputDirectory], [null, "out"]);
-  assert.equal(secretName("landing-static", "staging"), "VERCEL_PROJECT_ID_LANDING_STATIC_STAGING");
-  const s = state(); for (const app of apps(root)) s.projects[`${app}/staging`] = { id: `prj_${app.replaceAll("-", "")}`, name: `app-${app}`, domain: `${app}.example.com` };
-  s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
-  const env = values(s, apps(root), "staging");
-  assert(!("NEXT_PUBLIC_CONVEX_SITE_URL" in env.vercel["landing-static"]!));
-  assert.equal(env.vercel.web!.LANDING_URL, "https://landing-static.example.com");
+  for (const app of ["apps/web", "platform/apps/admin"]) { mkdirSync(path.join(root, app), { recursive: true }); writeFileSync(path.join(root, app, "package.json"), "{}"); }
+  assert.throws(() => apps(root), /Missing deployment app: apps\/landing/);
   mkdirSync(path.join(root, "apps/landing")); writeFileSync(path.join(root, "apps/landing/package.json"), "{}");
   assert.deepEqual(apps(root), ["web", "admin", "landing"]);
+  assert.deepEqual([settings("landing").framework, settings("landing").outputDirectory], ["nextjs", null]);
+  assert.equal(secretName("landing", "staging"), "VERCEL_PROJECT_ID_LANDING_STAGING");
+  const s = state(); for (const app of apps(root)) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: `app-${app}`, domain: `${app}.example.com` };
+  s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
+  const env = values(s, apps(root), "staging");
+  assert(!("NEXT_PUBLIC_CONVEX_SITE_URL" in env.vercel.landing!));
+  assert.equal(env.vercel.web!.LANDING_URL, "https://landing.example.com");
   saveState(root, { ...s, token: "never-save-this" } as State);
   assert(!readFileSync(path.join(root, ".deploy-setup.json"), "utf8").includes("never-save-this"));
   assert.deepEqual(loadState(root), s);
   rmSync(path.join(root, ".deploy-setup.json")); symlinkSync(path.join(root, "apps/web/package.json"), path.join(root, ".deploy-setup.json"));
   assert.throws(() => saveState(root, s), /symlink/);
 });
-test("project creation is idempotent and cannot repurpose a primary landing project for static", async () => {
+test("project creation is idempotent and cannot repurpose another app's project", async () => {
   const s = state(); let created = false, writes = 0;
   const request: Request = async <T>(_endpoint: string, method = "GET", body?: unknown): Promise<T> => {
     if (_endpoint.endsWith("/domains")) return { domains: [{ name: "assigned-team.vercel.app" }] } as T;
     if (method === "POST") { writes++; created = true; assert(!JSON.stringify(body).includes("gitRepository")); }
     if (!created) throw new HttpError(404, "fixture");
-    return { id: "prj_static", name: "app-landing-static-staging", ...settings("landing-static") } as T;
+    return { id: "prj_landing", name: "app-landing-staging", ...settings("landing") } as T;
   };
-  await ensureProject(s, "landing-static", "staging", request);
-  await ensureProject(s, "landing-static", "staging", request);
+  await ensureProject(s, "landing", "staging", request);
+  await ensureProject(s, "landing", "staging", request);
   assert.equal(writes, 1);
-  assert.equal(s.projects["landing-static/staging"]!.domain, "assigned-team.vercel.app");
-  const wrong: Request = async <T>() => ({ id: "prj_old", name: "old", ...settings("landing") }) as T;
-  await assert.rejects(() => ensureProject(s, "landing-static", "staging", wrong), /rootDirectory/);
+  assert.equal(s.projects["landing/staging"]!.domain, "assigned-team.vercel.app");
+  const wrong: Request = async <T>() => ({ id: "prj_old", name: "old", ...settings("web") }) as T;
+  await assert.rejects(() => ensureProject(s, "landing", "staging", wrong), /rootDirectory/);
   const denied: Request = async () => { throw new HttpError(403, "fixture"); };
   await assert.rejects(() => ensureProject(s, "landing", "production", denied), /403/);
 });
@@ -101,9 +101,9 @@ test("branch setup adds checks without replacing existing review/access policy",
     if (args.includes("GET")) return JSON.stringify({ required_status_checks: { strict: false, contexts: ["Custom Business Tests"], checks: [{ context: "Custom Business Tests", app_id: 123 }] }, required_pull_request_reviews: { required_approving_review_count: 2 } });
     return "{}";
   };
-  await configureBranch(state(), ["web", "admin", "landing-static"], exec);
+  await configureBranch(state(), ["web", "admin", "landing"], exec);
   assert.equal(calls.length, 2);
-  assert.deepEqual(calls[1].body, { strict: false, checks: [{ context: "Custom Business Tests", app_id: 123 }, ...["CI Shared Complete", "CI Storybook Complete", "CI Web Complete", "CI Admin Complete", "CI Landing Static Complete"].map(context => ({ context }))] });
+  assert.deepEqual(calls[1].body, { strict: false, checks: [{ context: "Custom Business Tests", app_id: 123 }, ...["CI Shared Complete", "CI Storybook Complete", "CI Web Complete", "CI Admin Complete", "CI Landing Complete"].map(context => ({ context }))] });
   assert(!JSON.stringify(calls).includes('"restrictions"'));
 });
 
@@ -232,7 +232,7 @@ test("public atomic writes recover stale files and clean up after a failed renam
 });
 
 test("simulated branch inspection rejects every missing installed-app context", async () => {
-  const installed = ciApps(process.cwd());
+  const installed = apps(process.cwd());
   const required = requiredChecks(installed);
   for (const representation of ["contexts", "checks"] as const) for (const missing of [undefined, ...required]) {
     const contexts = required.filter(context => context !== missing);
@@ -249,10 +249,10 @@ test("simulated branch inspection rejects every missing installed-app context", 
 test("simulated staging proof requires authorization after topology, domain or project changes", async () => {
   const { stagingProof } = await import("../deploy-setup/proof.ts");
   for (const change of ["topology", "domain", "project", "backend", "legacy"] as const) {
-    const s = state(); let installed: ("web" | "admin" | "landing" | "landing-static")[] = ["web", "admin", "landing"];
+    const s = state(); let installed: ("web" | "admin" | "landing")[] = ["web", "admin", "landing"];
     s.projects["web/staging"] = { id: "prj_web", name: "web", domain: "web.example.com" };
     s.request = { id: "old-request", sha: "a".repeat(40), context: proofContext(s, installed) }; s.proof = "42";
-    if (change === "topology") installed = ["web", "admin", "landing-static"];
+    if (change === "topology") installed = ["web", "admin"];
     if (change === "domain") s.projects["web/staging"]!.domain = "new.example.com";
     if (change === "project") s.projects["web/staging"]!.id = "prj_new";
     if (change === "backend") s.backends.staging = { id: 2, name: "new", url: "https://new.convex.cloud" };
@@ -292,41 +292,37 @@ test("selected proof mappings allow unrelated ops apps but reject selected ident
   const { checkProofMappings, verifyServing } = await import("../deploy-setup/proof.ts");
   const root = mkdtempSync(path.join(tmpdir(), "deploy-selected-proof-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  for (const landing of ["landing", "landing-static"] as const) {
-    const installed = ["web", "admin", landing] as const;
-    const s = state(); s.proof = "42";
-    for (const app of installed) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.com` };
-    const config = { repository: s.repository, teamId: s.team, workflowRef: s.branch,
-      apps: Object.fromEntries([...installed, "other"].map(app => [app, { projects: { staging: {
-        id: `prj_${app}`, domain: `${app}.example.com`,
-      } } }])) };
-    const file = path.join(root, "ops.config.json");
-    const text = JSON.stringify(config); writeFileSync(file, text);
-    assert.doesNotThrow(() => checkProofMappings(s, [...installed], root));
-    let verifications = 0;
-    await verifyServing(s, [...installed], async () => { verifications++; return ""; }, root);
-    assert.equal(verifications, 1);
-    assert.equal(readFileSync(file, "utf8"), text);
-    for (const app of installed) for (const field of ["id", "domain"] as const) {
-      const changed = structuredClone(config); changed.apps[app].projects.staging[field] = "different";
-      writeFileSync(file, JSON.stringify(changed));
-      assert.throws(() => checkProofMappings(s, [...installed], root), /mappings differ/);
-    }
-    for (const app of installed) {
-      const changed = structuredClone(config); delete changed.apps[app];
-      writeFileSync(file, JSON.stringify(changed));
-      assert.throws(() => checkProofMappings(s, [...installed], root), /mappings differ/);
-    }
+  const installed = ["web", "admin", "landing"] as const;
+  const s = state(); s.proof = "42";
+  for (const app of installed) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.com` };
+  const config = { repository: s.repository, teamId: s.team, workflowRef: s.branch,
+    apps: Object.fromEntries([...installed, "other"].map(app => [app, { projects: { staging: {
+      id: `prj_${app}`, domain: `${app}.example.com`,
+    } } }])) };
+  const file = path.join(root, "ops.config.json");
+  const text = JSON.stringify(config); writeFileSync(file, text);
+  assert.doesNotThrow(() => checkProofMappings(s, [...installed], root));
+  let verifications = 0;
+  await verifyServing(s, [...installed], async () => { verifications++; return ""; }, root);
+  assert.equal(verifications, 1);
+  assert.equal(readFileSync(file, "utf8"), text);
+  for (const app of installed) for (const field of ["id", "domain"] as const) {
+    const changed = structuredClone(config); changed.apps[app].projects.staging[field] = "different";
+    writeFileSync(file, JSON.stringify(changed));
+    assert.throws(() => checkProofMappings(s, [...installed], root), /mappings differ/);
+  }
+  for (const app of installed) {
+    const changed = structuredClone(config); delete changed.apps[app];
+    writeFileSync(file, JSON.stringify(changed));
+    assert.throws(() => checkProofMappings(s, [...installed], root), /mappings differ/);
   }
 });
 
-test("both landing generators emit only backend-free marketing configuration", () => {
-  for (const landing of ["landing", "landing-static"] as const) {
-    const s = state();
-    for (const app of ["web", "admin", landing] as const) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.test` };
-    s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
-    const generated = values(s, ["web", "admin", landing], "staging");
-    assert.deepEqual(generated.vercel[landing], { NEXT_PUBLIC_SITE_URL: `https://${landing}.example.test`, NEXT_PUBLIC_WEB_APP_URL: "https://web.example.test" });
-    assert.equal(generated.vercel.web?.CONVEX_SITE_URL, "https://backend.convex.site");
-  }
+test("the landing generator emits only backend-free marketing configuration", () => {
+  const s = state();
+  for (const app of ["web", "admin", "landing"] as const) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.test` };
+  s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
+  const generated = values(s, ["web", "admin", "landing"], "staging");
+  assert.deepEqual(generated.vercel.landing, { NEXT_PUBLIC_SITE_URL: "https://landing.example.test", NEXT_PUBLIC_WEB_APP_URL: "https://web.example.test" });
+  assert.equal(generated.vercel.web?.CONVEX_SITE_URL, "https://backend.convex.site");
 });

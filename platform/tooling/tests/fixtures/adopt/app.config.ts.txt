@@ -32,7 +32,6 @@ const appConfig = {
       web: 3001,
       admin: 3002,
       storybook: 3003,
-      "landing-static": 3004,
     },
     // Better Auth's own default. Change it when another Better Auth app shares
     // the host (e.g. localhost). Changing it signs every existing user out.

@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import path from "node:path";
-import { apps, ciApps, ENVIRONMENTS, loadState, saveState, readPublicFile, writePublicFile, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
+import { apps, ENVIRONMENTS, loadState, saveState, readPublicFile, writePublicFile, secretName, STATE_FILE, validateState, values, type State } from "./deploy-setup/model.ts";
 import { ask, hidden, interactive, run } from "./deploy-setup/io.ts";
 import { checkSetup, convexEnv, configureBranch, convexAPI, ensureBackend, ensureDeployKey, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
 import { stagingProof, verifyServing, checkProofMappings } from "./deploy-setup/proof.ts";
@@ -120,7 +120,7 @@ async function configure(state: State, root: string) {
       await vercel(`/v10/projects/${project.id}/env?upsert=true`, "POST", Object.entries(config.vercel[app]!).map(([key, value]) => ({ key, value, type: "encrypted", target: ["production"] })));
     }
   }
-  await configureBranch(state, ciApps(root));
+  await configureBranch(state, apps(root));
   console.log(`Review production reviewers and branch rules: https://github.com/${state.repository}/settings/environments and /settings/branches. See platform/docs/deployment-runbook.md for required checks matching installed apps.`);
   await confirm("Production environment protections and branch rules reviewed/configured?");
   const protection = await github<{ protection_rules: { type: string }[] }>(state.repository, "environments/production");
@@ -130,7 +130,6 @@ async function configure(state: State, root: string) {
   if (current.repository && current.repository !== state.repository) throw Error("ops.config.json targets another repository; review it before continuing.");
   const mapped = Object.fromEntries(installed.map(app => [app, { projects: Object.fromEntries(ENVIRONMENTS.map(env => [env, { id: state.projects[`${app}/${env}`]!.id, domain: state.projects[`${app}/${env}`]!.domain }])) }]));
   const priorApps = { ...(current.apps as Record<string, unknown> ?? {}) };
-  for (const landing of ["landing", "landing-static"] as const) if (!installed.includes(landing)) delete priorApps[landing];
   await confirm("Save selected project mappings to ops.config.json? Automatic staging uses configured credentials.");
   writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...priorApps, ...mapped } }, null, 2)}\n`);
 }
@@ -155,7 +154,7 @@ export async function main(argv: string[]) {
   console.log("Start early: create accounts/choose billing at https://vercel.com/dashboard and https://dashboard.convex.dev; arrange DNS access and verify your sender at https://resend.com/domains. Tokens are entered later, locally with hidden prompts.");
   await loginChecks();
   const state = await identity(root);
-  console.log(`Repository: ${state.repository}; Vercel team: ${state.team}; Convex team: ${state.convexTeam}. Projects: ${installed.join(", ")} in staging and production. Vercel Git integration is not used. Static landing has its own Other/out projects.`);
+  console.log(`Repository: ${state.repository}; Vercel team: ${state.team}; Convex team: ${state.convexTeam}. Projects: ${installed.join(", ")} in staging and production. Vercel Git integration is not used.`);
   await confirm("Create/reuse these projects and configure their deployment settings?");
   await ignoreState(root); saveState(root, state);
   await configure(state, root);

@@ -7,7 +7,7 @@
 #
 # Next.js loads .env.local from the app directory, not the monorepo root, so each
 # app needs its own. dev-start.sh writes them — but only for the apps it starts,
-# so an app you have never run (landing-static, say) is left without one. Its
+# so an app you have never run (landing, say) is left without one. Its
 # build then fails the moment a route reads a required variable, which is easy to
 # hit through `bun run build` or `bun run test:e2e` since turbo builds every app.
 #
@@ -40,18 +40,13 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 APP_CONFIG_VARS=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
 eval "$APP_CONFIG_VARS"
 : "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
-LANDING_APP=$(bash "$PROJECT_DIR/.github/scripts/platform-landing-app.sh" "$PROJECT_DIR")
-LANDING_ORIGIN="$APP_CONFIG_ORIGIN_LANDING"
-if [ "$LANDING_APP" = landing-static ]; then LANDING_ORIGIN="$APP_CONFIG_ORIGIN_LANDING_STATIC"; fi
 
 # The local default for an app's URL key, or nothing.
 config_default() {
     case "$1:$2" in
-        web:LANDING_URL)                          echo "$LANDING_ORIGIN" ;;
+        web:LANDING_URL)                          echo "$APP_CONFIG_ORIGIN_LANDING" ;;
         landing:NEXT_PUBLIC_SITE_URL)             echo "$APP_CONFIG_ORIGIN_LANDING" ;;
-        landing-static:NEXT_PUBLIC_SITE_URL)      echo "$APP_CONFIG_ORIGIN_LANDING_STATIC" ;;
-        landing:NEXT_PUBLIC_WEB_APP_URL|landing-static:NEXT_PUBLIC_WEB_APP_URL)
-                                                  echo "$APP_CONFIG_ORIGIN_WEB" ;;
+        landing:NEXT_PUBLIC_WEB_APP_URL)          echo "$APP_CONFIG_ORIGIN_WEB" ;;
     esac
 }
 

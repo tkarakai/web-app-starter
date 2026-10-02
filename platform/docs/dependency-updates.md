@@ -288,7 +288,7 @@ Configure these on your repository (via `gh api` or Settings):
    could never merge anyway; squash/rebase only. `renovate.json` sets
    `automergeStrategy: "squash"` to match.
 3. **Required status checks on `main`** — the `*-complete` summary jobs from `ci-shared`, `ci-web`,
-   `ci-admin`, `ci-landing`, `ci-landing-static` and `ci-storybook`, with "require branches to be
+   `ci-admin`, `ci-landing` and `ci-storybook`, with "require branches to be
    up to date". If you use both classic branch protection and a ruleset, they are independent
    copies: a change to one is not a change to the other, so update and verify both:
 

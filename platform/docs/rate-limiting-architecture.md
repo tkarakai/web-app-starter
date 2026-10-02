@@ -148,7 +148,7 @@ try {
 - `platform/apps/admin/src/proxy.ts` — Admin app proxy integration
 - `@web-app-starter/edge-rate-limit` (`platform/packages/edge-rate-limit/`) — the shared rate limiter
 
-The landing apps are static exports with no server-side proxy; rate-limit them at the CDN or hosting layer.
+The landing app is a static export with no server-side proxy; rate-limit it at the CDN or hosting layer.
 
 ### Default Limits
 

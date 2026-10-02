@@ -37,7 +37,7 @@ export function inspectConfig(text: string): { draft: Config; issues: string[] }
   else if (raw.teamId !== undefined) issues.push("teamId is invalid; select an accessible Vercel team.");
   const apps = object(raw.apps);
   if (!apps || !Object.keys(apps).length) {
-    issues.push("apps is missing or invalid; setup will offer web, admin and the selected landing app.");
+    issues.push("apps is missing or invalid; setup will offer web, admin and landing.");
     return { draft, issues };
   }
   const recovered: Config["apps"] = {};
@@ -64,7 +64,7 @@ export function inspectConfig(text: string): { draft: Config; issues: string[] }
     }
   }
   if (Object.keys(recovered).length) draft.apps = recovered;
-  else issues.push("No valid app names were found; setup will offer web, admin and the selected landing app.");
+  else issues.push("No valid app names were found; setup will offer web, admin and landing.");
   if (tracked && !draft.teamId) issues.push("teamId is missing; select the Vercel team that owns the configured projects.");
   return { draft, issues };
 }

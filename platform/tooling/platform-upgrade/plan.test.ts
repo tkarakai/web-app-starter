@@ -6,7 +6,7 @@ import { gitText } from "./git.ts";
 import { fixture, write, git } from "./fixtures.ts";
 import { createReport } from "./report.ts";
 import { verifyDependencies } from "./verify.ts";
-test("upgrades deliver every deployment workflow's Ops recorder with static landing support", async () => {
+test("upgrades deliver every deployment workflow's Ops recorder", async () => {
   const f = fixture();
   const root = new URL("../../../", import.meta.url);
   const legacy = ".github/scripts/record-ops.cjs";
@@ -71,7 +71,7 @@ test("optional new deployment secrets are reported without blocking apps that do
   const f = fixture();
   write(f.app, "apps/web/env.ts", "export const value = process.env[key];\n");
   git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "existing dynamic lookup");
-  const secret = { name: "VERCEL_PROJECT_ID_LANDING_STATIC", kind: "new" as const, secret: true, required: false };
+  const secret = { name: "VERCEL_PROJECT_ID_PREVIEW", kind: "new" as const, secret: true, required: false };
   f.publish("2.0.1", entry => { entry.env.push(secret); });
   const { plan } = await f.plan("2.0.1");
   assert.deepEqual(plan.environment.changes, [{ ...secret, replacement: undefined }]);
