@@ -49,12 +49,82 @@ own rules.
 - **Platform manifests declare ranges (floors), not pins**, so an app can raise a shared
   dependency such as React without editing `platform/`.
 - **The product repo is the exception.** The platform is developed there, so its root
-  `renovate.json` overrides `ignorePaths` back to the defaults and raises platform floors
-  (`rangeStrategy: "bump"` for `platform/**`). An adopted app drops both.
+  `renovate.json` overrides `ignorePaths` back to the defaults and Renovate updates platform
+  manifests too (the preset's `bump` rule, below, raises their floors). An adopted app drops the
+  override.
 
 Check that an app configuration leaves the zone alone with a local lookup-only dry run of the
 preset (copy it over `renovate.json` first, then restore): no `packageFile` under `platform/` may
 appear in `LOG_LEVEL=debug LOG_FORMAT=json npx renovate --platform=local --dry-run=lookup`.
+
+## Direct dependency floors
+
+The rule: **direct `dependencies` and `devDependencies` floors equal the version `bun.lock`
+resolves and CI tests.** Peer ranges express intentional compatibility and are not narrowed.
+Transitive versions are controlled by `bun.lock`.
+
+Why it matters: CI installs from the committed lockfile, so a stale floor (`^16.3.3` while the
+lockfile holds 16.3.6) is harmless until something rebuilds the lockfile from scratch, which the
+weekly refresh does. The rebuild picks the newest version older than ten days that the ranges
+allow, so a security fix adopted early through the 12-hour exception can be dropped again when the
+floor still admits the vulnerable version. A manifest that ships to buyers should also state its
+real minimum.
+
+Two things keep floors true:
+
+- **Renovate** raises the floor itself on routine updates: the preset sets `rangeStrategy: "bump"`
+  for npm `dependencies` and `devDependencies`, and the update stays in the batched
+  "all non-major dependencies" group.
+- **`dependency-floors.ts`**, an offline script that copies locked versions into floors. It reads
+  the root `workspaces` globs, every matching `package.json` and `bun.lock`; it never reads
+  `node_modules` or the registry, and it never changes `bun.lock`'s `packages` section (a
+  floor raise never needs a re-resolution).
+
+```bash
+./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts           # check
+./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts --write   # raise stale floors
+```
+
+Exit codes: `0` in sync (or written), `1` stale floors in check mode, `2` error or conflict. The
+product repo has the shortcuts `bun run check:dependency-floors` and `bun run sync:dependency-floors`.
+
+What it checks and writes:
+
+- **Range forms:** exact (`16.3.6`), caret and tilde. A raise keeps the operator, so the upper
+  bound is unchanged: `^16.3.3` becomes `^16.3.6`, `~4.14.6` becomes `~4.14.8`. Exact pins are never
+  stale. Anything else (`>=`, `||`, wildcards, tags, prereleases) is reported as unsupported
+  and fails closed.
+- **Skipped, and listed in the output:** `peerDependencies`, `optionalDependencies`, `overrides`,
+  local protocols (`workspace:`, `file:`, `link:`) and non-registry specifiers (git, http(s), `npm:`
+  aliases).
+- **Errors:** a manifest range that differs from its copy in `bun.lock`'s `workspaces` section
+  (`bun install --frozen-lockfile` does not catch this; run `bun install`), a dependency missing
+  from the lockfile, an unsupported `lockfileVersion` (1 and 2 are supported).
+- **Conflicts:** when the locked version does not satisfy the range (usually a root `overrides`
+  pin), the script reports manifest, range, override and locked version and changes nothing.
+  Decide by hand which of the two is right.
+- **`--write` is all-or-nothing:** every edit is computed first, files are replaced through a
+  temporary file, `packages` is verified byte-identical afterwards, and every file is restored if
+  anything fails.
+
+**Product and adopted apps.** In the product repo (no `.platform-base.json`) every manifest is in
+scope and CI runs the check. In an adopted app the platform zone is neither read nor written, and
+the check is not part of CI: using it is **optional**, with the direct command above (the root
+shortcuts exist only in the product). An app that skips it keeps working; its floors can drift.
+
+**When to run `--write`:** at every moment the lockfile changes, in the same PR:
+
+1. **Lockfile refresh**, before deleting `bun.lock` (so the floors protect the rebuild) and again
+   after it. The exact sequence, including the known-good copy, is in the
+   [`platform-deps` skill](../agent-skills/platform-deps/SKILL.md), step 6.
+2. **Adopting a security fix** outside Renovate (an exploited-fix "Adopt now", or a manual
+   override bump), so the manifests carry the fixed minimum and not only the lockfile.
+3. **Any other lockfile rewrite** (`bun add`, resolving a `bun.lock` conflict, a major-upgrade
+   ticket).
+
+If a Renovate PR fails the product's check (rare, since `bump` already raises every manifest
+declaring the package), do not push to the `renovate/*` branch: open `deps/floors-<package>`
+from `main`, apply the same update, run `--write`, merge it and close the Renovate PR.
 
 ## Update & merge policy
 

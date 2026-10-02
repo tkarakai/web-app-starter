@@ -28,6 +28,17 @@
   },
   "packageRules": [
     {
+      "description": "Raise direct dependency floors to the adopted version, so a manifest range never admits a version older than the one that was tested (platform/docs/dependency-updates.md#direct-dependency-floors).",
+      "matchDatasources": [
+        "npm"
+      ],
+      "matchDepTypes": [
+        "dependencies",
+        "devDependencies"
+      ],
+      "rangeStrategy": "bump"
+    },
+    {
       "description": "Auto-merge non-major updates once CI is green",
       "matchUpdateTypes": [
         "minor",

@@ -13,14 +13,5 @@
     "**/test/**",
     "**/tests/**",
     "**/__fixtures__/**"
-  ],
-  "packageRules": [
-    {
-      "description": "Product repo only (adoption drops this rule and the ignorePaths override above): the platform is developed here, so Renovate updates platform/ too. Platform manifests declare ranges (floors), so raise the floor instead of leaving it behind.",
-      "matchFileNames": [
-        "platform/**"
-      ],
-      "rangeStrategy": "bump"
-    }
   ]
 }
