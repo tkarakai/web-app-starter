@@ -74,10 +74,23 @@ test("accepts a consistent baseline", () => {
 });
 
 test("reports each location that disagrees with .node-version", () => {
-  assert.match(check({ engines: ">=22.6" }).join("\n"), /engines\.node is ">=22\.6", expected "24\.x"/);
+  assert.match(check({ engines: ">=22.6" }).join("\n"), /engines\.node is ">=22\.6", expected "24\.x" or ">=24\.<minor> <25"/);
   assert.match(check({ actionNode: "22" }).join("\n"), /node-version default is "22"/);
   assert.match(check({ workflowNode: "26" }).join("\n"), /ci\.yml sets node-version "26"/);
   assert.match(check({ appTypes: "^25.2.3" }).join("\n"), /apps\/web\/package\.json has @types\/node "\^25\.2\.3"/);
+});
+
+test("accepts engines.node as the major's line or as a minimum minor within the major", () => {
+  assert.deepEqual(check({ engines: "24.x" }), []);
+  assert.deepEqual(check({ engines: ">=24.21 <25" }), []);
+  assert.deepEqual(check({ engines: ">=24.0 <25" }), []);
+});
+
+test("rejects engines.node ranges that leave the baseline major or lose the upper bound", () => {
+  for (const engines of [">=24.21", ">=24.21 <26", ">=24.21 <24", ">=23.5 <25", ">=25.1 <26", "^24.21.0", ">=24.21.1 <25", "24.21.0", ">=24 <25"]) {
+    assert.match(check({ engines }).join("\n"), /engines\.node is "[^"]+", expected "24\.x" or ">=24\.<minor> <25"/, engines);
+  }
+  assert.match(check({ nodeVersion: "26\n", engines: ">=24.21 <25", actionNode: "26", workflowNode: "26", dockerNode: "26", appTypes: "26.0.0" }).join("\n"), /expected "26\.x" or ">=26\.<minor> <27"/);
 });
 
 test("reports container images that disagree with the baseline", () => {
