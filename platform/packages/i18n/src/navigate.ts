@@ -7,7 +7,8 @@
  * A document load hydrates server-rendered HTML instead: the theme script runs from the server
  * (nonce included) and nothing warns. It also gives the new `<html lang dir>` straight from the
  * server. State below the layout was already discarded by the locale change, so nothing is lost.
- * Navigation inside one locale should keep using the router.
+ * Navigation inside one locale should keep using the router. The static landing apps switch locale
+ * on the client on purpose (their E2E requires it) and accept the development-only message.
  */
 export function navigateToLocalePath(path: string): void {
   window.location.assign(path);

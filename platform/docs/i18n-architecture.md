@@ -569,6 +569,8 @@ When a user selects a language:
 message is development-only and the theme is already applied, but a document load avoids it: it
 hydrates the server HTML, so the theme script runs from the server with its nonce. State below the
 layout is discarded on a locale change either way. Use the router for navigation inside one locale.
+The two static landing apps keep a client-side switcher on purpose (`document-locale.spec.ts` requires
+the page to survive a switch) and so still show the message in development.
 
 #### For Authenticated Users (Cross-Device Sync)
 
