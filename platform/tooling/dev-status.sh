@@ -86,16 +86,58 @@ if [ "$ANY_RUNNING" = false ]; then
     exit 0
 fi
 
+
 # ============================================================
 # DISPLAY
 # ============================================================
 
-echo ""
-echo -e "${GREEN}  Development Environment Status${NC}"
-echo ""
+# Rows are collected first so every column can be sized to its widest value.
+# Parallel arrays (bash 3.2 compatible): a leading blank line, then the cells.
+ROW_GAP=(); ROW_NAME=(); ROW_STATUS=(); ROW_STATUS_COLOR=(); ROW_URL=(); ROW_URL_COLOR=(); ROW_PID=()
 
-printf "  ${YELLOW}%-12s  %-6s  %-30s  %s${NC}\n" "SERVICE" "STATUS" "URL" "PID"
-printf "  ${YELLOW}%-12s  %-6s  %-30s  %s${NC}\n" "────────────" "──────" "──────────────────────────────" "─────"
+add_row() {
+    ROW_GAP+=("$1"); ROW_NAME+=("$2"); ROW_STATUS+=("$3"); ROW_STATUS_COLOR+=("$4")
+    ROW_URL+=("$5"); ROW_URL_COLOR+=("$6"); ROW_PID+=("$7")
+}
+
+# Longest displayed values before truncation. A URL with nothing after it is
+# never cut (it is a copy target); only cells that a later column follows are.
+MAX_SERVICE_WIDTH=24
+MAX_URL_WIDTH=40
+STATUS_WIDTH=6
+
+# widest MIN MAX value... : the longest value, within [MIN, MAX]
+widest() {
+    local width="$1" max="$2" value
+    shift 2
+    for value in "$@"; do
+        [ "${#value}" -gt "$width" ] && width="${#value}"
+    done
+    [ "$width" -gt "$max" ] && width="$max"
+    echo "$width"
+}
+
+# fit TEXT WIDTH : TEXT cut to WIDTH, ending in "..." when it was too long
+fit() {
+    local text="$1" width="$2"
+    if [ "${#text}" -gt "$width" ]; then
+        text="${text:0:$((width - 3))}..."
+    fi
+    printf '%s' "$text"
+}
+
+# cell TEXT WIDTH [COLOR] : TEXT in COLOR, padded with spaces (not colour codes) to WIDTH
+cell() {
+    local text
+    text=$(fit "$1" "$2")
+    printf '%b%s%b%*s' "${3:-}" "$text" "${3:+$NC}" $(($2 - ${#text})) ""
+}
+
+# rule WIDTH : a horizontal rule WIDTH characters wide
+rule() {
+    local i
+    for ((i = 0; i < $1; i++)); do printf '─'; done
+}
 
 # Apps (in display order)
 for app_name in landing landing-static web admin storybook; do
@@ -105,9 +147,9 @@ for app_name in landing landing-static web admin storybook; do
         # Capitalize first letter (bash 3.2 compatible)
         display_name="$(echo "${app_name:0:1}" | tr '[:lower:]' '[:upper:]')${app_name:1}"
         if is_running "$pid"; then
-            printf "  %-12s  ${GREEN}%-6s${NC}  ${BLUE}%-30s${NC}  %s\n" "$display_name" "up" "${url:-unknown}" "$pid"
+            add_row "" "$display_name" "up" "$GREEN" "${url:-unknown}" "$BLUE" "$pid"
         else
-            printf "  %-12s  ${RED}%-6s${NC}  %-30s  %s\n" "$display_name" "dead" "-" "$pid"
+            add_row "" "$display_name" "dead" "$RED" "-" "" "$pid"
         fi
     fi
 done
@@ -126,24 +168,52 @@ if [ -n "$CONVEX_PID" ]; then
         fi
     fi
 
-    echo ""
     if is_running "$CONVEX_PID"; then
         if [ -n "$CLOUD_PORT" ]; then
-            printf "  %-12s  ${GREEN}%-6s${NC}  ${BLUE}%-30s${NC}  %s\n" "Convex API" "up" "http://127.0.0.1:$CLOUD_PORT" "$CONVEX_PID"
+            add_row "gap" "Convex API" "up" "$GREEN" "http://127.0.0.1:$CLOUD_PORT" "$BLUE" "$CONVEX_PID"
         else
-            printf "  %-12s  ${GREEN}%-6s${NC}  %-30s  %s\n" "Convex API" "up" "unknown" "$CONVEX_PID"
+            add_row "gap" "Convex API" "up" "$GREEN" "unknown" "" "$CONVEX_PID"
         fi
         if [ -n "$SITE_PORT" ]; then
-            printf "  %-12s  ${GREEN}%-6s${NC}  ${BLUE}%-30s${NC}\n" "Site API" "up" "http://127.0.0.1:$SITE_PORT"
+            add_row "" "Site API" "up" "$GREEN" "http://127.0.0.1:$SITE_PORT" "$BLUE" ""
         fi
         DASHBOARD_URL=$(get_dashboard_url)
         if [ -n "$DASHBOARD_URL" ]; then
-            printf "  %-12s  ${DIM}%-6s${NC}  ${BLUE}%s${NC}\n" "Convex UI" "" "$DASHBOARD_URL"
+            add_row "" "Convex UI" "" "$DIM" "$DASHBOARD_URL" "$BLUE" ""
         fi
     else
-        printf "  %-12s  ${RED}%-6s${NC}  %-30s  %s\n" "Convex API" "dead" "-" "$CONVEX_PID"
+        add_row "gap" "Convex API" "dead" "$RED" "-" "" "$CONVEX_PID"
     fi
 fi
+
+SERVICE_WIDTH=$(widest 0 "$MAX_SERVICE_WIDTH" "SERVICE" "${ROW_NAME[@]}")
+# URL cells that are the last value on their row do not count towards the width.
+URL_CELLS=("URL")
+for i in "${!ROW_URL[@]}"; do
+    [ -n "${ROW_PID[$i]}" ] && URL_CELLS+=("${ROW_URL[$i]}")
+done
+URL_WIDTH=$(widest 0 "$MAX_URL_WIDTH" "${URL_CELLS[@]}")
+
+echo ""
+echo -e "${GREEN}  Development Environment Status${NC}"
+echo ""
+
+printf '  %s  %s  %s  %s\n' \
+    "$(cell SERVICE "$SERVICE_WIDTH" "$YELLOW")" "$(cell STATUS "$STATUS_WIDTH" "$YELLOW")" \
+    "$(cell URL "$URL_WIDTH" "$YELLOW")" "$(printf '%b%s%b' "$YELLOW" PID "$NC")"
+printf '  %b%s  %s  %s  %s%b\n' "$YELLOW" \
+    "$(rule "$SERVICE_WIDTH")" "$(rule "$STATUS_WIDTH")" "$(rule "$URL_WIDTH")" "─────" "$NC"
+
+for i in "${!ROW_NAME[@]}"; do
+    [ -n "${ROW_GAP[$i]}" ] && echo ""
+    line="  $(cell "${ROW_NAME[$i]}" "$SERVICE_WIDTH")  $(cell "${ROW_STATUS[$i]}" "$STATUS_WIDTH" "${ROW_STATUS_COLOR[$i]}")  "
+    if [ -n "${ROW_PID[$i]}" ]; then
+        line+="$(cell "${ROW_URL[$i]}" "$URL_WIDTH" "${ROW_URL_COLOR[$i]}")  ${ROW_PID[$i]}"
+    else
+        line+="$(printf '%b%s%b' "${ROW_URL_COLOR[$i]}" "${ROW_URL[$i]}" "${ROW_URL_COLOR[$i]:+$NC}")"
+    fi
+    printf '%s\n' "$line"
+done
 
 # Logs
 LOG_FILES=""
