@@ -21,6 +21,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- The web app's profile settings now check the result of Better Auth's `updateUser`, which returns failures as `{ error }` instead of throwing. A rejected name change shows the error toast, is audited as failed, and no longer saves the other preferences or reports "Profile updated" (the admin form already behaved this way). This is a reference-app change, so it does not replace a buyer's own profile form on upgrade; apps that copied it should apply the same check.
+
 - Starter-owned code is free of ESLint warnings, and every workspace lint script (now including `packages/backend`, which had none) runs with `--max-warnings 0`, so a new warning in an adopted app fails `bun run lint` instead of hiding in the noise. Unused test imports and parameters are removed, and the two locale checks in `userProfiles` use a typed guard instead of `as any`. No behaviour changes.
 
 - The planted development admin (`admin@admin.com`) now uses `admin!admin.comadmin@admin.comadmin#admin.com`, which satisfies the admin password policy (45 characters, zxcvbn score 4); the old password repeated the account email and scored 0. The planted user password is unchanged. `bun run dev` output and the development docs show the new password, and a backend test holds the planted admin password to the active policy. Accounts already seeded keep their password.
