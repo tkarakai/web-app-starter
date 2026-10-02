@@ -46,7 +46,9 @@ const appConfig = {
       appleTouchIcon: "platform/packages/design-system/assets/apple-touch-icon.png",
     },
     // CSS custom properties from platform/packages/design-system/tokens/, e.g.
-    // { "--primary": "oklch(0.55 0.2 260)" }.
+    // { "--primary": "oklch(0.55 0.2 260)" } for every app. To re-theme some apps only, key them
+    // by "*" (every app) or an app id, e.g.
+    // { "*": { "--radius": "0.25rem" }, web: { "--primary": "oklch(0.55 0.2 260)" } }.
     tokenOverrides: {},
     email: {
       lang: "en",

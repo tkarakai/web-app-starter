@@ -15,7 +15,7 @@ export default function DocumentShell({
     <html lang={locale} dir={getLocaleDirection(locale)} suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
         {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="landing-static" />}
-        <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
+        <BrandTokenStyle css={tokenOverrideCss(appConfig, "landing-static")} />
         {children}
       </body>
     </html>

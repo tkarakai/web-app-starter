@@ -140,7 +140,7 @@ export default async function LocaleLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="web" />}
-          <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
+          <BrandTokenStyle css={tokenOverrideCss(appConfig, "web")} />
           <OfflineBanner label={tOffline("message")} />
           <NextIntlClientProvider messages={messages}>
             <PublicConfigProvider value={publicConfig}>

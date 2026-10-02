@@ -22,10 +22,13 @@ export {
   AppConfigError,
   localOrigin,
   tokenOverrideCss,
+  tokenOverridesFor,
   validateAppConfig,
   type AppConfig,
   type ResolvedAppConfig,
   type AppId,
   type EmailPalette,
   type FeatureSwitches,
+  type ScopedTokenOverrides,
+  type TokenOverrides,
 } from "./schema.ts";

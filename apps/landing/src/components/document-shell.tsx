@@ -40,7 +40,7 @@ export default function DocumentShell({
     >
       <body className="flex min-h-screen flex-col">
         {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="landing" />}
-        <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
+        <BrandTokenStyle css={tokenOverrideCss(appConfig, "landing")} />
         {children}
       </body>
     </html>

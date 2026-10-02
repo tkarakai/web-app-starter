@@ -34,7 +34,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="storybook" />}
-          <BrandTokenStyle css={tokenOverrideCss(appConfig)} />
+          <BrandTokenStyle css={tokenOverrideCss(appConfig, "storybook")} />
           {children}
         </ThemeProvider>
       </body>
