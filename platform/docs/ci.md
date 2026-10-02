@@ -88,6 +88,17 @@ The logic lives in the platform zone as reusable workflows, `platform-*.yml`
 familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): triggers, the permissions they grant, `secrets: inherit` for deploys, and the `CI <App> Complete` job that
 branch rules require. Change triggers there, never in `platform-*.yml`.
 
+`CI <App> Complete` passes when the platform workflow succeeds, that is when every job in it
+succeeded or was skipped. Jobs are skipped when the PR touches no relevant files, and E2E is
+skipped on draft PRs and with `SKIP_E2E=true`; with `require_e2e` (CI Verify Commit) E2E always
+runs and must pass. The platform workflows have no summary job of their own: GitHub bills each job
+for at least a minute, so a seconds-long check is kept to the one the branch rules need.
+
+- **CI artifacts are kept small.** Playwright reports, sharded blob reports and visual snapshots
+  are uploaded only when E2E fails, and web's sharded reports are merged only then. Coverage
+  reports and the upgrade-rehearsal evidence are uploaded on every run. The repository variable
+  `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long all of them are kept.
+
 Deployment audit recording uses `.github/scripts/platform-record-ops.cjs`, which also
 ships through platform upgrades. An older app-owned `.github/scripts/record-ops.cjs`
 may remain after upgrading; the platform workflows no longer call it. Custom workflows
