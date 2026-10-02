@@ -370,9 +370,13 @@ bun run test            # Bun unit tests (across all workspaces)
 bun run test:unit       # Vitest component tests
 bun run test:convex     # Convex backend tests
 bun run setup:e2e       # Download Chromium before first E2E run / after Playwright upgrades
-bun run test:e2e        # Playwright E2E tests
-bun run test:all        # All test suites above (does not run setup:e2e)
+CI=true bun run test:e2e # Playwright E2E; one web worker avoids edge-rate-limit failures
+CI=true bun run test:all --concurrency=1 # All test suites above, serially (setup:e2e first)
 ```
+
+Use `CI=true` for full E2E runs: local parallel web workers share one IP and can exceed
+its 200-requests-per-minute edge limit, causing HTTP 429 and cascading test timeouts.
+Rate limiting remains enabled; see [reliable E2E execution](docs/testing.md#running-playwright-e2e-reliably).
 
 Development startup does not install browsers. After `bun install`, run
 `bun run setup:e2e` before the first E2E run (including local CI with E2E), and
@@ -388,7 +392,7 @@ the dedicated [setup-playwright action](../.github/actions/setup-playwright/acti
 Run the full CI check before pushing:
 
 ```bash
-bun run ci              # Full CI: lint, types, tests, build, e2e
+CI=true bun run ci      # Full CI: lint, types, tests, build, single-worker web E2E
 bun run ci:quick        # Skip E2E for faster feedback
 bun run ci:act          # Run in Docker via act (mirrors GitHub Actions)
 bun run ci:act:offline  # Offline mode (fast, no network required)

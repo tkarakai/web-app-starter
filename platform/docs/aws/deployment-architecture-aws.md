@@ -202,15 +202,14 @@ reads auth emails from.
 `E2E_BASE_URL` points Playwright at a deployed app instead of starting a dev server:
 
 ```bash
-E2E_BASE_URL=http://web.app.localhost:8080 \
+CI=true E2E_BASE_URL=http://web.app.localhost:8080 \
 CONVEX_SITE_URL=http://convex.localhost.floci.io:3311 \
 E2E_CONVEX_LOG=$PWD/infra/aws/local/.state/convex.log \
   bun run --cwd apps/web test:e2e
 ```
 
-Add `--workers=1`: parallel workers share the seed user's sign-in rate limit, against a
-deployed target as against `bun run dev`. The admin and passkey suites pass in full; a web test
-that fails here fails against `bun run dev` too.
+Follow the [E2E execution and disposable-target guidance](../testing.md#running-playwright-e2e-reliably)
+for worker settings, rate limits and troubleshooting.
 
 ### IAM
 

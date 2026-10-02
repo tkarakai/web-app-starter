@@ -419,11 +419,11 @@ Run through this checklist before the first deployment or any major infrastructu
 
 ### Code Readiness
 
-- [ ] All CI checks pass locally: `bun run ci`
+- [ ] All CI checks pass locally: follow the [local CI guidance](ci.md#local-ci-pre-push-checks)
 - [ ] No `console.log` debugging statements in production code
 - [ ] TypeScript strict mode passes: `bun run typecheck`
 - [ ] Linting passes: `bun run lint`
-- [ ] All tests pass: `bun run test:all`
+- [ ] All tests pass, including [browser tests](testing.md#running-playwright-e2e-reliably)
 - [ ] Production build succeeds: `bun run build`
 
 ### Infrastructure Readiness

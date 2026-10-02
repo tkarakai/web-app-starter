@@ -21,6 +21,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- E2E and full local CI guidance now uses `CI=true` for web's single-worker browser configuration, explains edge-rate-limit HTTP 429 failures under parallel local workers, and documents isolated-server recovery without weakening deployment limits.
+
 - Both reference landing apps export locale-specific document language/direction before hydration and page-specific canonical, OpenGraph and language-alternate URLs. Sitemaps match the canonical trailing-slash routes. These reference-app changes do not replace buyer-owned pages on platform upgrade; use the [i18n guide](docs/i18n-architecture.md#localized-metadata) when updating customized landing routes.
 
 - Waitlist joins validate email syntax in the shared mutation using the bulk-invitation policy, normalize before deduplication, and reject malformed addresses with `INVALID_EMAIL`. Optional arbitrary JSON metadata, its byte cap, and visitor IP limits are preserved.

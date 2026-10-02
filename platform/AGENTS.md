@@ -87,14 +87,14 @@ bun run dev:web              # Convex + web            bun run dev:admin      # 
 bun run dev:landing          # Selected landing        bun run dev:landing-static
 bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
-bun run ci                   # Full local CI: lint, types, tests, build, E2E
+CI=true bun run ci           # Full local CI; one web E2E worker avoids edge-rate-limit failures
 bun run ci:quick             # Same without E2E
 bun run lint                 # ESLint, all workspaces
 bun run typecheck            # TypeScript, all workspaces
 bun run test                 # Bun unit tests      (never bare `bun test`)
 bun run test:unit            # Vitest component tests
 bun run test:convex          # Convex backend tests
-bun run test:e2e             # Playwright E2E (see README "Tests" for browser setup)
+CI=true bun run test:e2e     # Playwright E2E; one web worker (docs/testing.md; setup:e2e first)
 bun run build                # Production build via Turborepo
 bun run check:zone           # Platform edits are recorded patches; seams keep their hooks
 bun run test:contracts       # Session isolation, endpoint authorization, headers, env
@@ -250,5 +250,5 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 
 ## Verification
 
-Before pushing, run `bun run ci` (or `bun run ci:quick` to skip E2E). Keep `lint`, `typecheck` and
-the test suites green.
+Before pushing, follow the [local CI guidance](docs/ci.md#local-ci-pre-push-checks).
+Keep `lint`, `typecheck` and the test suites green.

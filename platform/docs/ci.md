@@ -10,7 +10,7 @@ See [landing selection and development commands](development.md) and
 Run the same checks that GitHub Actions CI runs before pushing:
 
 ```bash
-bun run ci                   # Full CI check (runs everything)
+CI=true bun run ci           # Full CI check; supported single-worker web E2E
 bun run ci:quick             # Skip E2E tests for faster feedback
 ```
 
@@ -25,9 +25,16 @@ starter upgrade checks use the root scripts):
 7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
 8. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
 9. **Bundle size check** (all apps with `.size-limit.json`)
-10. **Playwright E2E tests** (reuses running development servers or starts them through each app's Playwright configuration)
+10. **Playwright E2E tests** (CI mode starts managed local services through each app's Playwright configuration and refuses to reuse an occupied local server; an explicit `E2E_BASE_URL` instead targets that disposable deployment)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
+
+Use `CI=true` for full local CI and standalone E2E (`CI=true bun run test:e2e`).
+Web's Playwright configuration then uses one worker and retries instead of local parallel
+workers that can exceed the per-IP edge rate limit and cause HTTP 429/locator timeouts.
+This selects test execution settings, not a rate-limit bypass; production defaults stay
+unchanged. See [running E2E reliably](testing.md#running-playwright-e2e-reliably) for server
+isolation and troubleshooting.
 
 With `CI=true`, the dev harness gives its anonymous local Convex backend a five-second query
 execution budget. This avoids one-second wall-clock timeouts while small shared runners compile
@@ -124,7 +131,7 @@ Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/
 **Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation) and bind-mount mode (`-b`) to make composite actions visible to act.
 
 **When to use which**:
-- `bun run ci` — Fast native checks, no Docker required
+- [Local CI script](#local-ci-pre-push-checks) — Fast native checks, no Docker required
 - `bun run ci:act` — Full GitHub Actions simulation in Docker
 - `bun run ci:act:offline` — Fast offline execution (no network required)
 
