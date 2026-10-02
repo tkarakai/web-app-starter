@@ -3,10 +3,10 @@
 import * as React from "react";
 import {
   flexRender,
-  getCoreRowModel,
-  useReactTable,
+  useTable,
+  type ColumnVisibilityState,
+  type RowSelectionState,
   type SortingState,
-  type VisibilityState,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
@@ -28,6 +28,7 @@ import { banUser, unbanUser, removeUser, setUserRole } from "@/lib/admin-api";
 import { useUsers } from "@/hooks/use-users";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { createColumns } from "./columns";
+import { usersTableFeatures } from "./table-features";
 import { FilterBar } from "./filter-bar";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { BanDialog } from "./ban-dialog";
@@ -58,7 +59,7 @@ const SORT_FIELD_MAP: Record<string, string> = {
 const CLIENT_SORT_COLUMNS = new Set(["status"]);
 
 /** Default column visibility — optional columns hidden by default. */
-const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
+const DEFAULT_COLUMN_VISIBILITY: ColumnVisibilityState = {
   image: false,
   updatedAt: false,
   emailVerified: false,
@@ -89,9 +90,9 @@ export function UsersDataTable() {
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>(DEFAULT_COLUMN_VISIBILITY);
+    React.useState<ColumnVisibilityState>(DEFAULT_COLUMN_VISIBILITY);
 
   // Debounce search input.
   React.useEffect(() => {
@@ -152,14 +153,14 @@ export function UsersDataTable() {
     [currentUserId, protectedEmails, debouncedSearch],
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: usersTableFeatures,
     data: sortedUsers,
     columns,
     state: { sorting, rowSelection, columnVisibility },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,
   });

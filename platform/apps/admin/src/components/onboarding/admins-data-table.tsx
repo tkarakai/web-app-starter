@@ -4,9 +4,9 @@ import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
   type SortingState,
 } from "@tanstack/react-table";
 import {
@@ -42,6 +42,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@web-app-starter/design-system";
+import { autoSortFns, baseTableFeatures, sortedRowModel } from "@/lib/table-features";
 import { ConfirmationDialog } from "../users/confirmation-dialog";
 import { InviteAdminDialog } from "./invite-admin-dialog";
 
@@ -108,9 +109,16 @@ const STATUS_BADGE: Record<
 // Column definitions
 // ---------------------------------------------------------------------------
 
+const adminsTableFeatures = tableFeatures({
+  ...baseTableFeatures,
+  rowSortingFeature,
+  sortedRowModel,
+  sortFns: autoSortFns,
+});
+
 function createColumns(
   onDelete: (entry: AdminInvitation) => void
-): ColumnDef<AdminInvitation>[] {
+): ColumnDef<typeof adminsTableFeatures, AdminInvitation>[] {
   return [
     {
       accessorKey: "email",
@@ -239,13 +247,12 @@ export function AdminsDataTable() {
     []
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: adminsTableFeatures,
     data: entries,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (row) => row._id,
   });
 

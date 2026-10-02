@@ -1,11 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "@repo/backend";
 
@@ -21,6 +17,7 @@ import {
   TooltipProvider,
 } from "@web-app-starter/design-system";
 import { columns } from "./columns";
+import { auditTableFeatures } from "./table-features";
 import { FilterBar } from "./filter-bar";
 
 const INITIAL_NUM_ITEMS = 50;
@@ -48,10 +45,10 @@ export function AuditTrailDataTable() {
   const isLoadingMore = status === "LoadingMore";
   const canLoadMore = status === "CanLoadMore";
 
-  const table = useReactTable({
+  const table = useTable({
+    features: auditTableFeatures,
     data: results,
     columns,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return (

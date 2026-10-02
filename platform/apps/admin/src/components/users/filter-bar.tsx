@@ -15,6 +15,7 @@ import {
 } from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 import { ColumnSelector } from "./column-selector";
+import type { usersTableFeatures } from "./table-features";
 
 type FilterBarProps = {
   searchValue: string;
@@ -25,7 +26,7 @@ type FilterBarProps = {
   onBatchBan: () => void;
   onBatchUnban: () => void;
   onBatchDelete: () => void;
-  table: Table<AdminUser>;
+  table: Table<typeof usersTableFeatures, AdminUser>;
   total: number;
   loading: boolean;
 };

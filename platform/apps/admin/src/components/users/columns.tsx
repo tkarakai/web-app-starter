@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import type { usersTableFeatures } from "./table-features";
 import {
   ArrowDown,
   ArrowUp,
@@ -197,7 +198,7 @@ type ColumnsConfig = {
   searchTerm?: string;
 };
 
-export function createColumns(config: ColumnsConfig): ColumnDef<AdminUser>[] {
+export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTableFeatures, AdminUser>[] {
   const { currentUserId, protectedEmails, searchTerm } = config;
 
   return [
