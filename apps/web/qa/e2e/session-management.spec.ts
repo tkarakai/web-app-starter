@@ -67,7 +67,6 @@ test.describe("Session Management Page", () => {
 
   test("sessions page shows loading skeleton initially", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
 
@@ -87,7 +86,6 @@ test.describe("Session Management Page", () => {
 
   test("sessions page displays page header with title", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
 
@@ -101,7 +99,6 @@ test.describe("Session Management Page", () => {
 
   test("sessions page has a back-to-dashboard button", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
 
@@ -126,7 +123,7 @@ test.describe("Session Management Page", () => {
     await expect(breadcrumb).toBeVisible({ timeout: 5000 });
   });
 
-  test("sessions page includes sidebar", async ({ page, context }) => {
+  test("sessions page includes sidebar", async ({ page }) => {
     await signInFresh(page);
 
     await page.goto("/en/dashboard/settings/sessions");
@@ -141,7 +138,6 @@ test.describe("Session Management Page", () => {
 test.describe("Session Management — mock API responses", () => {
   test("shows current session card when API returns sessions", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
     const currentToken = await currentSessionToken(page);
@@ -177,7 +173,6 @@ test.describe("Session Management — mock API responses", () => {
 
   test("shows revoke button only for non-current sessions", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
     const currentToken = await currentSessionToken(page);
@@ -227,7 +222,6 @@ test.describe("Session Management — mock API responses", () => {
 
   test("shows no-other-sessions message when only current session exists", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
     const currentToken = await currentSessionToken(page);
@@ -265,7 +259,6 @@ test.describe("Session Management — mock API responses", () => {
 
   test("displays error state when session fetch fails", async ({
     page,
-    context,
   }) => {
     await signInFresh(page);
 

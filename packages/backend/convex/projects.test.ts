@@ -1,8 +1,6 @@
 import { createTestEnv as createPlatformTest } from "./test.modules";
 import { expect, test, describe } from "vitest";
 
-import { api } from "./_generated/api";
-
 const mockUser = {
   _id: "test-user-123" as const,
   userId: "test-user-123",
