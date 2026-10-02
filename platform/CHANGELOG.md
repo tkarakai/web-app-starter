@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-10-02
+
 ### Fixed
 
 - The platform's i18n test `every shipped platform catalog is translated` no longer fails in an adopted app that ships a subset of locales. It checked the whole repository with the locale list `["en"]`, so an app with `i18n.locales: ["hu", "en"]` and a `hu` entry in `packages/messages/overrides.json` failed `bun run test:dev-scripts`, which `platform:upgrade` runs as a required check, and so could not complete an upgrade. The test now checks only the platform's own catalogs; `bun run check:i18n` keeps checking an app's messages against its configured locales. No app action is required.
@@ -633,5 +635,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [2.0.0]: https://github.com/tkarakai/web-app-starter/releases/tag/v2.0.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.1.0...HEAD
 [2.1.0]: https://github.com/tkarakai/web-app-starter/compare/v2.0.0...v2.1.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/tkarakai/web-app-starter/compare/v2.1.0...v2.1.1
