@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { describe, expect, test, vi } from "vitest";
 import { createColumns } from "../../src/components/waitlist/columns";
+import { waitlistTableFeatures } from "../../src/components/waitlist/table-features";
 import type { WaitlistEntry } from "../../src/components/waitlist/waitlist-actions-context";
 
 vi.mock("../../src/components/waitlist/token-viewer-dialog", () => ({ TokenViewerDialog: () => null }));
@@ -11,7 +12,7 @@ function MetadataCells({ meta }: { meta: string }) {
     ["superpowers", "excitement", "role", "company", "metadata"].includes(column.id ?? ""),
   );
   const entry = { _id: "entry", _creationTime: 0, email: "buyer@example.test", meta, status: "waiting", createdAt: 0, invitationExpired: false } as WaitlistEntry;
-  const table = useReactTable({ data: [entry], columns, getCoreRowModel: getCoreRowModel() });
+  const table = useTable({ features: waitlistTableFeatures, data: [entry], columns });
   return <div>{table.getRowModel().rows[0].getVisibleCells().map(cell => (
     <div key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
   ))}</div>;

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import type { auditTableFeatures } from "./table-features";
 import { ShieldCheck } from "lucide-react";
 
 import {
@@ -70,7 +71,7 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
-export const columns: ColumnDef<AuditEvent>[] = [
+export const columns: ColumnDef<typeof auditTableFeatures, AuditEvent>[] = [
   {
     accessorKey: "happenedAt",
     header: "Time",

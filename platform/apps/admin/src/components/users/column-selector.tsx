@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
+import type { usersTableFeatures } from "./table-features";
 
 const COLUMN_LABELS: Record<string, string> = {
   image: "Avatar",
@@ -27,7 +28,7 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 
 type ColumnSelectorProps = {
-  table: Table<AdminUser>;
+  table: Table<typeof usersTableFeatures, AdminUser>;
 };
 
 export function ColumnSelector({ table }: ColumnSelectorProps) {

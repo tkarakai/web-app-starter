@@ -3,9 +3,8 @@
 import * as React from "react";
 import {
   flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
+  useTable,
+  type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
 import { useMutation } from "convex/react";
@@ -30,6 +29,7 @@ import type {
 } from "./waitlist-actions-context";
 import { WaitlistActionsProvider } from "./waitlist-actions-context";
 import { createColumns } from "./columns";
+import { waitlistTableFeatures } from "./table-features";
 import { WaitlistFilterBar } from "./waitlist-filter-bar";
 import { ConfirmationDialog } from "../users/confirmation-dialog";
 import { WaitlistBatchDialog } from "./waitlist-batch-dialog";
@@ -60,9 +60,7 @@ export function WaitlistDataTable() {
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = React.useState<
-    Record<string, boolean>
-  >({});
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
   // Debounce search
   React.useEffect(() => {
@@ -109,14 +107,13 @@ export function WaitlistDataTable() {
     [debouncedSearch]
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: waitlistTableFeatures,
     data: filteredEntries,
     columns,
     state: { sorting, rowSelection },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (row) => row._id,
   });
 

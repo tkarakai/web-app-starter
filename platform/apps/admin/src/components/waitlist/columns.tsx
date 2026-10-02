@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import type { waitlistTableFeatures } from "./table-features";
 import {
   ArrowDown,
   ArrowUp,
@@ -238,7 +239,7 @@ type ColumnsConfig = {
 
 export function createColumns(
   config: ColumnsConfig
-): ColumnDef<WaitlistEntry>[] {
+): ColumnDef<typeof waitlistTableFeatures, WaitlistEntry>[] {
   const { searchTerm } = config;
 
   return [
