@@ -122,10 +122,10 @@
       "signupBlocked": "Die Registrierung ist derzeit nur mit Einladung möglich.",
       "signupBlockedDescription": "Treten Sie der Warteliste auf unserer Startseite bei, um Zugang anzufordern.",
       "goToWaitlist": "Zur Warteliste",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "Mit anderem Konto angemeldet",
+      "sessionConflictDescription": "Sie sind derzeit als {email} angemeldet. Diese Einladung gilt für ein anderes Konto.",
+      "signOutAndContinue": "Abmelden und neues Konto einrichten",
+      "cancel": "Abbrechen"
     },
     "forgotPassword": {
       "badge": "Passwort-Wiederherstellung",

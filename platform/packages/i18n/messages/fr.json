@@ -122,10 +122,10 @@
       "signupBlocked": "L'inscription est actuellement sur invitation uniquement.",
       "signupBlockedDescription": "Rejoignez la liste d'attente sur notre page d'accueil pour demander l'accès.",
       "goToWaitlist": "Rejoindre la liste d'attente",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "Un autre compte est connecté",
+      "sessionConflictDescription": "Vous êtes actuellement connecté en tant que {email}. Cette invitation est destinée à un autre compte.",
+      "signOutAndContinue": "Se déconnecter et configurer le nouveau compte",
+      "cancel": "Annuler"
     },
     "forgotPassword": {
       "badge": "Récupération du mot de passe",

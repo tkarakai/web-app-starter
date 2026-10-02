@@ -122,10 +122,10 @@
       "signupBlocked": "Rejestracja jest obecnie możliwa tylko na zaproszenie.",
       "signupBlockedDescription": "Dołącz do listy oczekujących na naszej stronie głównej, aby poprosić o dostęp.",
       "goToWaitlist": "Dołącz do listy oczekujących",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "Zalogowano na inne konto",
+      "sessionConflictDescription": "Jesteś obecnie zalogowany jako {email}. To zaproszenie jest przeznaczone dla innego konta.",
+      "signOutAndContinue": "Wyloguj się i skonfiguruj nowe konto",
+      "cancel": "Anuluj"
     },
     "forgotPassword": {
       "badge": "Odzyskiwanie hasła",

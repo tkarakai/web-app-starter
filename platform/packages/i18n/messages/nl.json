@@ -122,10 +122,10 @@
       "signupBlocked": "Registratie is momenteel alleen op uitnodiging.",
       "signupBlockedDescription": "Meld u aan voor de wachtlijst op onze homepage om toegang aan te vragen.",
       "goToWaitlist": "Aanmelden voor de wachtlijst",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "Ingelogd met een ander account",
+      "sessionConflictDescription": "U bent momenteel ingelogd als {email}. Deze uitnodiging is voor een ander account.",
+      "signOutAndContinue": "Uitloggen en nieuw account instellen",
+      "cancel": "Annuleren"
     },
     "forgotPassword": {
       "badge": "Wachtwoord herstellen",

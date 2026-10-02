@@ -122,10 +122,10 @@
       "signupBlocked": "目前仅限邀请注册。",
       "signupBlockedDescription": "请在首页加入候补名单以申请访问权限。",
       "goToWaitlist": "加入候补名单",
-      "sessionConflictTitle": "Different Account Signed In",
-      "sessionConflictDescription": "You are currently signed in as {email}. This invitation is for a different account.",
-      "signOutAndContinue": "Sign out and onboard new account",
-      "cancel": "Cancel"
+      "sessionConflictTitle": "已登录其他账号",
+      "sessionConflictDescription": "您当前已以 {email} 身份登录。此邀请适用于另一个账号。",
+      "signOutAndContinue": "退出登录并设置新账号",
+      "cancel": "取消"
     },
     "forgotPassword": {
       "badge": "找回密码",
