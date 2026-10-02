@@ -98,6 +98,12 @@ for at least a minute, so a seconds-long check is kept to the one the branch rul
   are uploaded only when E2E fails, and web's sharded reports are merged only then. Coverage
   reports and the upgrade-rehearsal evidence are uploaded on every run. The repository variable
   `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long all of them are kept.
+- **CI can run on your own runner.** The repository variable `PLATFORM_CI_RUNNER` names the
+  runner label every CI job (the platform CI workflows, the `CI <App> Complete` callers and CI
+  Verify Commit) runs on; unset, they use `ubuntu-latest`. The runner must be Ubuntu-like Linux
+  with passwordless `sudo`. Security and deployment workflows stay on GitHub-hosted runners. On a
+  private repository this removes most Actions minutes: see
+  [GitHub Actions on a private repository](private-repo-ci.md), including Mac setup.
 
 Deployment audit recording uses `.github/scripts/platform-record-ops.cjs`, which also
 ships through platform upgrades. An older app-owned `.github/scripts/record-ops.cjs`

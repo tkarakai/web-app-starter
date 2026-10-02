@@ -28,7 +28,7 @@ jobs:
   # ============================================================
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       demo: ${{ steps.present.outputs.demo }}
       backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
@@ -95,7 +95,7 @@ jobs:
   lint:
     name: Lint & Typecheck
     needs: [changes]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -158,7 +158,7 @@ jobs:
   # ============================================================
   test-convex:
     name: Backend Tests (Convex)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     needs: [changes]
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.root == 'true'
     steps:
@@ -177,7 +177,7 @@ jobs:
   # ============================================================
   contracts:
     name: Contracts
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -199,7 +199,7 @@ jobs:
     name: Starter Upgrade Rehearsal
     needs: [changes]
     if: needs.changes.outputs.platform == 'true' && needs.changes.outputs.demo == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
