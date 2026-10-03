@@ -89,9 +89,9 @@ familiar names (`ci-*.yml`, `cd-*.yml`, `security.yml`): triggers, the permissio
 branch rules require. Change triggers there, never in `platform-*.yml`.
 
 `CI <App> Complete` passes when the platform workflow succeeds, that is when every job in it
-succeeded or was skipped. Jobs are skipped when the PR touches no relevant files, and E2E is
-skipped on draft PRs and with `SKIP_E2E=true`; with `require_e2e` (CI Verify Commit) E2E always
-runs and must pass. The platform workflows have no summary job of their own: GitHub bills each job
+succeeded or was skipped. Jobs are skipped when the PR touches no relevant files. Whether E2E
+runs on a pull request is set by `PLATFORM_CI_PR_E2E` ([E2E on pull requests](#e2e-on-pull-requests));
+with `require_e2e` (CI Verify Commit, the staging deploy) E2E always runs and must pass. The platform workflows have no summary job of their own: GitHub bills each job
 for at least a minute, so a seconds-long check is kept to the one the branch rules need.
 
 - **CI artifacts are kept small.** Playwright reports, sharded blob reports and visual snapshots
@@ -118,6 +118,46 @@ that use the old helper should switch to the platform-owned path.
 - **The demo app is optional.** CI Shared skips the demo rehearsal when `apps/demo` is absent.
   Web, admin, landing and backend are required: deploys and rollbacks fail early when the
   selected commit has no `apps/landing`.
+
+### E2E on pull requests
+
+E2E is the slowest and, on a private repository, the most expensive part of CI
+([private-repo-ci.md](private-repo-ci.md)). The repository variable `PLATFORM_CI_PR_E2E` sets
+when it runs on pull requests (Settings → Secrets and variables → Actions → Variables):
+
+| `PLATFORM_CI_PR_E2E` | E2E on a ready PR | Before merge |
+|---|---|---|
+| `always` (default) | Runs on every push | `CI <App> Complete` includes E2E |
+| `on-demand` | Runs only when the PR has the `run-e2e` label | `CI <App> Complete` fails until E2E has passed on the PR head |
+| `off` | Skipped | Not enforced |
+
+- **Draft PRs** skip E2E in every mode, and don't fail.
+- **`on-demand`** is for teams that want E2E enforced before merge but run it once, when the PR
+  is final. Without the label, the **E2E Required** job fails and says how to request E2E. Add
+  the label (`gh pr edit --add-label run-e2e`): the **CI E2E Request** workflow
+  (`ci-e2e-request.yml`) re-runs the waiting checks, and E2E then runs on every later push while
+  the label stays. Iterate without the label and add it when you're done. The check
+  reads the labels when it runs, so re-running it by hand also works. Enforcement needs
+  `CI <App> Complete` as a required check with "Require branches to be up to date", so the
+  squash-merged tree is the one E2E tested ([branch protection](deployment-runbook.md#configure-branch-protection)).
+  On a private repository, branch protection needs a paid plan (Pro, Team or Enterprise). On
+  GitHub Free nothing blocks the merge and only the deploy gate below applies.
+  Pull requests from forks get a read-only token, so the label can't re-run their checks:
+  re-run them by hand.
+- **`off`** saves the most. Run E2E locally (`bun run ci`) instead.
+- **Deploys always run E2E**, whatever the mode. The staging deploy calls the CI workflows with
+  `require_e2e: true`, and production deploys only a commit whose staging CI passed
+  (`ci/gate-passed`). CI Verify Commit also forces E2E.
+- **`SKIP_E2E=true` is deprecated.** When `PLATFORM_CI_PR_E2E` is unset it still means `off` and
+  prints a warning; it stops working in the next major release. Replace it:
+  `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
+
+A value other than the three modes fails pull-request CI with an error naming the variable.
+
+It is a repository variable on GitHub, not a local setting: one value applies to everyone's CI
+runs in the repository, and only a repository admin can change it. `bun run adopt` and
+`bun run deploy:setup` ask for it on a private repository. Until it is set there, CI Web shows a
+notice on each pull-request run; setting it to `always` keeps the default and hides the notice.
 
 ### Platform update delivery
 
@@ -214,7 +254,7 @@ docker volume rm act-bun-cache act-playwright-cache act-toolcache
 Pull-request CI tests the PR head, not the squash-merged commit on main. The manual
 `ci-verify.yml` workflow (**CI Verify Commit**) runs on main only and calls the existing
 CI workflows with the tip's `git_sha` and `require_e2e: true` for app workflows,
-forcing E2E even when `SKIP_E2E` is set. Its final **Verified** job succeeds only
+forcing E2E whatever `PLATFORM_CI_PR_E2E` says. Its final **Verified** job succeeds only
 when every workflow succeeds. Called-workflow concurrency includes the caller name,
 so ordinary PR or deployment CI cannot cancel it. Run it on a commit before tagging or
 releasing it.

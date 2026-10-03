@@ -9,6 +9,7 @@ import { apps, ENVIRONMENTS, loadState, saveState, readPublicFile, writePublicFi
 import { ask, hidden, interactive, run } from "./deploy-setup/io.ts";
 import { checkSetup, convexEnv, configureBranch, convexAPI, ensureBackend, ensureDeployKey, ensureProject, github, secretNames, storeSecret, vercelAPI, type Request } from "./deploy-setup/providers.ts";
 import { stagingProof, verifyServing, checkProofMappings } from "./deploy-setup/proof.ts";
+import { applyPrE2e, describeModes, isMode, manualCommand, needsChoice, prE2eStatus } from "./ci-pr-e2e-setup.ts";
 import rawConfig from "../../app.config.ts";
 import { validateAppConfig } from "../packages/app-config/src/schema.ts";
 
@@ -133,6 +134,16 @@ async function configure(state: State, root: string) {
   await confirm("Save selected project mappings to ops.config.json? Automatic staging uses configured credentials.");
   writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...priorApps, ...mapped } }, null, 2)}\n`);
 }
+// Private repositories pay for Actions minutes: offer the pull-request E2E mode once (platform/docs/ci.md).
+async function choosePrE2e(state: State) {
+  const status = await prE2eStatus(state.repository, run).catch(() => undefined);
+  if (!status) { console.log(`Could not read the repository's Actions variables. To choose when E2E runs on pull requests: ${manualCommand(state.repository)}`); return; }
+  if (!needsChoice(status)) return;
+  for (const line of describeModes(state.repository, status)) console.log(line);
+  const answer = await ask("E2E on pull requests: always, on-demand or off [always]") || "always";
+  if (!isMode(answer)) throw Error(`"${answer}" is not a mode; rerun deploy:setup to choose again.`);
+  console.log(`Set ${(await applyPrE2e(state.repository, answer, status, run)).join(", ")}.`);
+}
 async function prove(state: State, root: string) {
   checkProofMappings(state, apps(root), root);
   await stagingProof(state, apps(root), { github: endpoint => github(state.repository, endpoint), run,
@@ -158,6 +169,7 @@ export async function main(argv: string[]) {
   await confirm("Create/reuse these projects and configure their deployment settings?");
   await ignoreState(root); saveState(root, state);
   await configure(state, root);
+  await choosePrE2e(state);
   await prove(state, root);
 }
 if (process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url) {

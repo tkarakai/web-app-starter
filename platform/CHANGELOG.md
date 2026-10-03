@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- The staging deploy runs E2E whatever the pull-request E2E setting, by calling the CI workflows
+  with `require_e2e: true`. Before, `SKIP_E2E=true` also skipped E2E in the staging deploy's CI,
+  so `ci/gate-passed`, which production requires, could pass on a commit no E2E had run on.
+  Apps that set `SKIP_E2E=true` now spend one full E2E run per merge to `main`. No app action
+  is required.
 - Web E2E shards in CI are balanced by duration. Playwright's `--shard` split the suite by
   test count, so the slow serial auth suites all landed in shard 1: about 7–9 minutes against
   2 minutes for shards 2 and 3. Each shard now runs whole spec files, assigned longest-first
@@ -33,6 +38,18 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- On a private repository, `bun run adopt` (new `--pr-e2e` flag) and `bun run deploy:setup` explain
+  what E2E costs in Actions minutes and offer to set `PLATFORM_CI_PR_E2E`. Until the variable is
+  set, CI Web shows a notice on each pull-request run of a private repository; set it to `always`
+  to keep the default and hide the notice.
+- `platform/AGENTS.md` tells agents how to open pull requests under each `PLATFORM_CI_PR_E2E`
+  mode: drafts on a private repository, and a green local `CI=true bun run ci` before marking
+  the PR ready or adding `run-e2e`.
+- Repository variable `PLATFORM_CI_PR_E2E` sets when E2E runs on pull requests: `always` (the
+  default, unchanged behaviour), `on-demand` (only with the `run-e2e` label, and the
+  `CI <App> Complete` check fails until E2E has passed on the PR head) or `off`. The new
+  app-owned `ci-e2e-request.yml` workflow re-runs the waiting checks when the label is added.
+  See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests).
 - Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
   artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
   default, follows it too.
@@ -54,6 +71,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Playwright version under test. GitHub-hosted runs are unchanged. No app action is required;
   runners set up from the earlier guide keep working, and moving to the image is described in
   [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md).
+
+### Deprecated
+
+- Repository variable `SKIP_E2E`. With `PLATFORM_CI_PR_E2E` unset, `SKIP_E2E=true` still skips
+  E2E on pull requests (as `off`) and prints a warning. It stops working in the next major
+  release. Replace it: `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
 
 ## [3.0.0] - 2026-10-02
 

@@ -1,0 +1,18 @@
+name: CI E2E Request
+
+# App-owned caller. The logic lives in the platform's reusable workflow
+# (platform-ci-e2e-request.yml, replaced on platform upgrade); edit the triggers here.
+# With PLATFORM_CI_PR_E2E=on-demand, the run-e2e label re-runs the PR's waiting E2E checks.
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  platform:
+    name: Platform
+    uses: ./.github/workflows/platform-ci-e2e-request.yml
