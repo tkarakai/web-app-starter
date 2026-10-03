@@ -63,19 +63,6 @@ repos carry `AGENTS.md`, `CLAUDE.md` and linked platform skills, so a share of t
 upgrade work is done by agents. That means no "see the docs for details", no "adjust as needed" —
 name the file, name the symbol, name the command.
 
-## Breaking-change budget
-
-**At most two majors per year**, and never two within one quarter.
-
-Every major costs every business app a scheduled, human-attended upgrade. The budget
-exists so that cost is a deliberate decision rather than an accumulation of individually
-reasonable ones. Practical consequences:
-
-- A breaking change that can wait, waits, and rides along with the next major.
-- We prefer a deprecation that keeps working over a rename that does not.
-- When we do spend a major, we batch into it every breaking change we have been
-  holding, so apps pay the upgrade tax once.
-
 ## LTS window
 
 **The current major is supported. The previous major receives security fixes for

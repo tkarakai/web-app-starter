@@ -15,8 +15,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
-- **Who is affected:** apps that set the repository variable `SKIP_E2E`. CI no longer reads it,
-  so with `PLATFORM_CI_PR_E2E` unset, pull requests run E2E again (`always`). **What to do:**
+- **Optional.** **Who is affected:** apps that set the repository variable `SKIP_E2E`. CI no
+  longer reads it, so with `PLATFORM_CI_PR_E2E` unset, pull requests run E2E again (`always`).
+  Nothing breaks; pull requests only spend more Actions minutes. **To keep skipping E2E on pull
+  requests:**
   `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
   **Done when:** `gh variable list` shows `PLATFORM_CI_PR_E2E` and no `SKIP_E2E`.
 
@@ -42,6 +44,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   runs only when E2E failed. Playwright reports, blob reports and visual snapshots are uploaded
   only when E2E fails. No app action is required. If your branch rules require the nested
   `Platform / CI <App> Complete` check rather than `CI <App> Complete`, require the latter.
+- `VERSIONING.md` no longer limits how many major releases ship in a year.
 
 ### Added
 
@@ -56,7 +59,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   default, unchanged behaviour), `on-demand` (only with the `run-e2e` label, and the
   `CI <App> Complete` check fails until E2E has passed on the PR head) or `off`. The new
   app-owned `ci-e2e-request.yml` workflow re-runs the waiting checks when the label is added.
-  See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests).
+  See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests). `platform:upgrade` adds
+  `ci-e2e-request.yml` and merges the `ci-verify.yml` runner change as seams.
 - Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
   artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
   default, follows it too.

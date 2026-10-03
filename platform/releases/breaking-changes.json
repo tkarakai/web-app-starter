@@ -51,6 +51,11 @@
       "hooks": []
     },
     {
+      "id": "root.github.workflows.ci-e2e-request.yml",
+      "path": ".github/workflows/ci-e2e-request.yml",
+      "hooks": []
+    },
+    {
       "id": "root.github.workflows.ci-landing-static.yml",
       "path": ".github/workflows/ci-landing-static.yml",
       "hooks": [],
@@ -70,6 +75,11 @@
     {
       "id": "root.github.workflows.ci-storybook.yml",
       "path": ".github/workflows/ci-storybook.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.workflows.ci-verify.yml",
+      "path": ".github/workflows/ci-verify.yml",
       "hooks": []
     },
     {
