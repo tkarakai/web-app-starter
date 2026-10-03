@@ -39,7 +39,10 @@ export const sampleTables = {
     projectId: v.id("projects"),
     ownerId: v.string(),
     createdAt: v.number(),
+    // Only the authenticated server upload path sets this. Legacy rows remain quarantined.
+    ownershipVersion: v.optional(v.literal(1)),
   })
     .index("by_owner", ["ownerId"])
-    .index("by_project", ["projectId"]),
+    .index("by_project", ["projectId"])
+    .index("by_storage", ["storageId"]),
 };

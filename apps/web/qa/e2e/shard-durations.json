@@ -12,6 +12,7 @@
   "forgot-password.spec.ts": 15,
   "locale-root.spec.ts": 1,
   "localization.spec.ts": 36,
+  "private-files.spec.ts": 20,
   "security-headers.spec.ts": 7,
   "session-lifecycle.spec.ts": 16,
   "session-management.spec.ts": 102,

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ChevronRight, Trash2, UploadCloud } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
@@ -34,8 +34,9 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
   const [open, setOpen] = React.useState(!collapsible);
   const t = useTranslations("uploads");
 
-  const generateUploadUrl = useMutationWithToast(api.files.generateUploadUrl);
-  const saveUpload = useMutationWithToast(api.files.saveUpload);
+  const uploadFile = useAction(api.files.uploadFile);
+  const downloadFile = useAction(api.files.downloadFile);
+  const tErrors = useTranslations("errors.convex");
   const deleteUpload = useMutationWithToast(api.files.deleteUpload);
   const uploads = useQuery(api.files.listUploads, { projectId }) ?? [];
 
@@ -53,21 +54,9 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
     setError(null);
 
     try {
-      const uploadUrl = await generateUploadUrl();
-      const result = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      if (!result.ok) {
-        throw new Error(t("errors.uploadFailed"));
-      }
-
-      const { storageId } = await result.json();
-
-      await saveUpload({
-        storageId,
+      await uploadFile({
+        bytes: await file.arrayBuffer(),
+        contentType: file.type || "application/octet-stream",
         name: file.name,
         projectId,
       });
@@ -79,6 +68,22 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
       setError(t("errors.uploadFailed"));
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownload = async (id: Id<"uploads">) => {
+    setError(null);
+    try {
+      const file = await downloadFile({ id });
+      const url = URL.createObjectURL(new Blob([file.bytes], { type: file.contentType }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      link.click();
+      // Allow the browser to consume the URL before releasing the local buffer.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setError(tErrors("serverError"));
     }
   };
 
@@ -117,22 +122,19 @@ export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps)
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {upload.url ? (
-                  <a
-                    href={upload.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-primary underline"
-                  >
-                    {t("view")}
-                  </a>
-                ) : (
-                  <span className="text-xs text-muted-foreground">{t("processing")}</span>
-                )}
+                <Button
+                  variant="link"
+                  size="sm"
+                  disabled={!upload.available}
+                  onClick={() => handleDownload(upload._id)}
+                >
+                  {t("view")}
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  disabled={!upload.available}
                   onClick={() => handleDelete(upload._id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
