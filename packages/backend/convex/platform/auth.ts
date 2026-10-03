@@ -17,7 +17,7 @@ import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
 import authSchema from "./betterAuth/schema";
-import { convexRateLimitPlugin, sendLimitedAuthEmail } from "./authRateLimits";
+import { convexRateLimitPlugin, sendAuthOtp, sendLimitedAuthEmail } from "./authRateLimits";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
@@ -705,23 +705,14 @@ export const createAuthOptions = (
           digits: 6,
         },
         otpOptions: {
-          async sendOTP({ user, otp }) {
-            await sendLimitedAuthEmail(ctx, {
-              to: user.email,
-              type: "email-otp",
-              urlOrCode: otp,
-            });
+          async sendOTP({ user }, endpoint) {
+            await sendAuthOtp(user.email, endpoint);
           },
         },
       }),
       emailOTP({
-        resendStrategy: "reuse",
-        sendVerificationOTP: async ({ email, otp }) => {
-          await sendLimitedAuthEmail(ctx, {
-            to: email,
-            type: "email-otp",
-            urlOrCode: otp,
-          });
+        sendVerificationOTP: async ({ email }, endpoint) => {
+          await sendAuthOtp(email, endpoint);
         },
       }),
       magicLink({

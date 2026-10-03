@@ -7,6 +7,8 @@ import { createAuthOptions } from "./auth";
 import { convexRateLimitPlugin, isAuthRequestLimited, trustedAuthIp } from "./authRateLimits";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
+import { AUTH_COOKIE_PREFIX } from "@web-app-starter/auth/cookies";
+import { createHmac } from "node:crypto";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const authModules = import.meta.glob("./betterAuth/**/*.*s");
@@ -33,7 +35,76 @@ async function fixture() {
   return { t, post };
 }
 
+async function otpUser(f: Awaited<ReturnType<typeof fixture>>, email: string, twoFactorEnabled = false) {
+  const now = Date.now();
+  return f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
+    name: "OTP", email, emailVerified: true, twoFactorEnabled, createdAt: now, updatedAt: now,
+  } } });
+}
+
+function signedCookie(name: string, value: string) {
+  const signature = createHmac("sha256", process.env.BETTER_AUTH_SECRET!).update(value).digest("base64");
+  return `${AUTH_COOKIE_PREFIX}.${name}=${encodeURIComponent(`${value}.${signature}`)}`;
+}
+
+async function twoFactorFixture(pending: boolean) {
+  const f = await fixture();
+  const user = await otpUser(f, "two-factor@example.test", true);
+  await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: {
+    userId: user._id, secret: "unused", backupCodes: "unused", verified: true,
+  } } });
+  const now = Date.now();
+  let cookie: string;
+  if (pending) {
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "verification", data: {
+      identifier: "pending-two-factor", value: user._id, expiresAt: now + 300000, createdAt: now, updatedAt: now,
+    } } });
+    cookie = signedCookie("two_factor", "pending-two-factor");
+  } else {
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
+      token: "otp-session", userId: user._id, expiresAt: now + 300000, createdAt: now, updatedAt: now,
+    } } });
+    cookie = signedCookie("session_token", "otp-session");
+  }
+  const post = (path: string, body: unknown) => f.t.fetch(`/api/auth/two-factor/${path}`, {
+    method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify(body),
+  });
+  return { ...f, post };
+}
+
 describe("auth email delivery budgets", () => {
+  test.each([false, true])("two-factor resends preserve delivered codes and return bounded exhaustion errors (pending=%s)", async pending => {
+    const f = await twoFactorFixture(pending);
+    const replies = await Promise.all(Array.from({ length: 6 }, () => f.post("send-otp", {})));
+    expect(replies.filter(r => r.status === 200)).toHaveLength(3);
+    expect(replies.filter(r => r.status === 429)).toHaveLength(3);
+    for (const response of replies.filter(r => r.status === 429)) expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
+    const codes = vi.mocked(sendAuthEmail).mock.calls.map(([message]) => message.urlOrCode);
+    expect(codes).toHaveLength(3);
+    expect(new Set(codes).size).toBe(1);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.error).not.toHaveBeenCalled();
+    expect((await f.post("verify-otp", { code: codes[0] })).status).toBe(200);
+  });
+
+  test.each(["recipient", "global", "daily"])("email OTP concurrent reset aliases preserve a delivered code under %s exhaustion", async budget => {
+    const f = await fixture();
+    await otpUser(f, "race@example.test");
+    if (budget !== "recipient") await f.t.run(ctx => ctx.db.insert("rateLimits", {
+      name: budget === "global" ? "authEmailGlobal" : "authEmailDaily", value: 2, ts: Date.now(),
+    }));
+    const replies = await Promise.all(Array.from({ length: 6 }, (_, i) => f.post(
+      i % 2 ? "/api/auth/email-otp/request-password-reset" : "/api/auth/email-otp/send-verification-otp",
+      { email: "race@example.test", type: "forget-password" },
+    )));
+    const codes = vi.mocked(sendAuthEmail).mock.calls.map(([message]) => message.urlOrCode);
+    expect(codes).toHaveLength(budget === "recipient" ? 3 : 2);
+    expect(new Set(codes).size).toBe(1);
+    expect(replies.filter(r => r.status === 429)).toHaveLength(budget === "recipient" ? 3 : 4);
+    expect((await f.post("/api/auth/email-otp/check-verification-otp", {
+      email: "race@example.test", type: "forget-password", otp: codes[0],
+    })).status).toBe(200);
+  });
   test("the installed magic-link route stops before delivery at its three-message burst", async () => {
     const f = await fixture();
     const replies = [];
@@ -129,6 +200,19 @@ describe("auth email delivery budgets", () => {
 });
 
 describe("auth route and ingress coverage", () => {
+  test("form and JSON password sign-in share the normalized recipient budget", async () => {
+    const f = await fixture();
+    const statuses = [];
+    for (let i = 0; i < 5; i++) {
+      const response = i % 2 ? await f.post("/api/auth/sign-in/email", { email: "form@example.test", password: "wrong" })
+        : await f.t.fetch("/api/auth/sign-in/email", {
+          method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", origin: process.env.SITE_URL! },
+          body: new URLSearchParams({ email: "Form@Example.Test", password: "wrong" }).toString(),
+        });
+      statuses.push(response.status);
+    }
+    expect(statuses).toEqual([401, 401, 401, 429, 429]);
+  });
   test("every installed HTTP endpoint is either explicitly read-only or persistently limited", async () => {
     const options = createAuthOptions({} as never);
     const routes = Object.values(getEndpoints({} as never, options).api)

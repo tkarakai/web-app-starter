@@ -1,9 +1,10 @@
 import type { GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import type { BetterAuthPlugin } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import type { FunctionReference } from "convex/server";
 
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { sendAuthEmail } from "./sendAuthEmail";
 import { sha256Hex } from "./tokenHash";
@@ -39,6 +40,20 @@ function retrySeconds(retryAt?: number): string {
   return String(Math.max(1, Math.ceil(((retryAt ?? Date.now() + 1000) - Date.now()) / 1000)));
 }
 
+const OTP_SEND_PATHS = new Set([
+  "/two-factor/send-otp", "/email-otp/send-verification-otp",
+  "/email-otp/request-password-reset", "/forget-password/email-otp",
+  "/email-otp/request-email-change",
+]);
+
+const otpAdapter = components.betterAuth.adapter as typeof components.betterAuth.adapter & {
+  reuseOtp: FunctionReference<"mutation", "public", {
+    identifier: string; value: string; expiresAt: number;
+  }, { id: string; identifier: string; value: string; expiresAt: number; createdAt: number; updatedAt: number }>;
+};
+
+type OtpDelivery = { recipient: string; code: () => string | undefined };
+
 export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterAuthPlugin => ({
   id: "convex-rate-limit",
   async onRequest(request) {
@@ -46,9 +61,11 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
     if (!isAuthRequestLimited(path, request.method)) return;
     let email: string | undefined;
     try {
-      const body: unknown = await request.clone().json();
+      const body: unknown = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "application/x-www-form-urlencoded"
+        ? Object.fromEntries(new URLSearchParams(await request.clone().text()))
+        : await request.clone().json();
       email = normalizeAuthRecipient(body && typeof body === "object" && "email" in body ? body.email : undefined);
-    } catch { /* Requests without a JSON email still consume the general request budget. */ }
+    } catch {}
     const ip = trustedAuthIp(request);
     const result = await requireActionCtx(convexCtx).runMutation(
       internal.platform.rateLimits.consumeAuthRequestBudget,
@@ -60,12 +77,52 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
       }),
     };
   },
+  hooks: { before: [{
+    matcher: context => OTP_SEND_PATHS.has(context.path ?? ""),
+    handler: createAuthMiddleware(async context => {
+      let recipient = normalizeAuthRecipient(context.path === "/email-otp/request-email-change" ? context.body?.newEmail : context.body?.email);
+      if (context.path === "/two-factor/send-otp") {
+        const session = await getSessionFromCtx(context);
+        if (session) recipient = normalizeAuthRecipient(session.user.email);
+        else {
+          const cookie = context.context.createAuthCookie("two_factor");
+          const key = await context.getSignedCookie(cookie.name, context.context.secret);
+          const challenge = key ? await context.context.internalAdapter.findVerificationValue(key) : null;
+          const user = challenge ? await context.context.internalAdapter.findUserById(challenge.value) : null;
+          recipient = normalizeAuthRecipient(user?.email);
+        }
+      }
+      if (!recipient) return;
+      await reserveAuthEmail(convexCtx, recipient);
+      let code: string | undefined;
+      const delivery: OtpDelivery = { recipient, code: () => code };
+      const adapter = context.context.internalAdapter;
+      return { context: { context: {
+        authOtpDelivery: delivery,
+        internalAdapter: {
+          ...adapter,
+          createVerificationValue: async (data: Parameters<typeof adapter.createVerificationValue>[0]) => {
+            const record = await requireActionCtx(convexCtx).runMutation(otpAdapter.reuseOtp, {
+              identifier: data.identifier, value: data.value, expiresAt: data.expiresAt.getTime(),
+            });
+            code = record.value.split(":")[0];
+            return { ...record, expiresAt: new Date(record.expiresAt), createdAt: new Date(record.createdAt), updatedAt: new Date(record.updatedAt) };
+          },
+        },
+      } } };
+    }),
+  }] },
 });
 
 /** Delivery budget is independent of route names, client headers and session transport. */
 export async function sendLimitedAuthEmail(ctx: GenericCtx<DataModel>, options: Parameters<typeof sendAuthEmail>[0]): Promise<void> {
   const recipient = normalizeAuthRecipient(options.to);
   if (!recipient) throw new Error("INVALID_EMAIL_RECIPIENT");
+  await reserveAuthEmail(ctx, recipient);
+  await sendAuthEmail({ ...options, to: recipient });
+}
+
+async function reserveAuthEmail(ctx: GenericCtx<DataModel>, recipient: string): Promise<void> {
   const reservation = await requireActionCtx(ctx).runMutation(internal.platform.rateLimits.reserveAuthEmail, {
     recipientKey: sha256Hex(recipient),
   });
@@ -76,6 +133,13 @@ export async function sendLimitedAuthEmail(ctx: GenericCtx<DataModel>, options: 
       "Retry-After": retrySeconds(reservation.retryAt), "Cache-Control": "no-store",
     });
   }
-  // No refunds or automatic retry on ambiguous provider failure: every attempt costs a token.
-  await sendAuthEmail({ ...options, to: recipient });
+}
+
+export async function sendAuthOtp(email: string, endpoint?: { context: unknown }): Promise<void> {
+  const delivery = (endpoint?.context as { authOtpDelivery?: OtpDelivery } | undefined)?.authOtpDelivery;
+  if (!delivery) throw new Error("AUTH_OTP_RESERVATION_REQUIRED");
+  if (delivery.recipient !== normalizeAuthRecipient(email)) throw new Error("INVALID_EMAIL_RECIPIENT");
+  const code = delivery.code();
+  if (!code) throw new Error("AUTH_OTP_CHALLENGE_REQUIRED");
+  await sendAuthEmail({ to: delivery.recipient, type: "email-otp", urlOrCode: code });
 }

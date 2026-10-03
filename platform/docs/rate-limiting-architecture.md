@@ -100,8 +100,10 @@ an ambiguous failure may already have delivered a message. There are no automati
 provider retries. A denied delivery reservation does not consume the other delivery buckets.
 Expired capacity refills normally; repeated denials do not extend the wait.
 
-OTP resend reuses the unexpired code so a throttled resend cannot replace a previously delivered
-OTP. The platform emits `AUTH_EMAIL_BUDGET_EXHAUSTED` with the budget name at most once per
+OTP send routes reserve delivery capacity before changing challenge state. Competing sends
+atomically reuse the unexpired code in the existing verification table, including two-factor
+OTP sends, so a throttled resend cannot replace a previously delivered OTP. The platform
+emits `AUTH_EMAIL_BUDGET_EXHAUSTED` with the budget name at most once per
 five minutes per deployment, with no recipient, code or message contents. Alert on this event
 in your log sink and monitor HTTP 429 volume and provider usage. A shared deployment budget
 can temporarily delay legitimate mail during abuse; choose capacity and operational alerts for
