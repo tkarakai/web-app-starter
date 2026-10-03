@@ -38,6 +38,7 @@ import type * as platform_onboardingType from "../platform/onboardingType.js";
 import type * as platform_parseUserAgent from "../platform/parseUserAgent.js";
 import type * as platform_passwordStrength from "../platform/passwordStrength.js";
 import type * as platform_rateLimits from "../platform/rateLimits.js";
+import type * as platform_recoveryCodes from "../platform/recoveryCodes.js";
 import type * as platform_securityPolicies from "../platform/securityPolicies.js";
 import type * as platform_sendAuthEmail from "../platform/sendAuthEmail.js";
 import type * as platform_sessions from "../platform/sessions.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   "platform/parseUserAgent": typeof platform_parseUserAgent;
   "platform/passwordStrength": typeof platform_passwordStrength;
   "platform/rateLimits": typeof platform_rateLimits;
+  "platform/recoveryCodes": typeof platform_recoveryCodes;
   "platform/securityPolicies": typeof platform_securityPolicies;
   "platform/sendAuthEmail": typeof platform_sendAuthEmail;
   "platform/sessions": typeof platform_sessions;

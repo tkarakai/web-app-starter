@@ -82,6 +82,14 @@ const rateLimitDefs = {
     capacity: 5,
   },
 
+  /** Recovery-secret reauthentication — shared across transports, keyed by user ID. */
+  authRecoverySecrets: {
+    kind: "token bucket",
+    rate: 5,
+    period: MINUTE,
+    capacity: 5,
+  },
+
   /** Verification email — keyed by IP to prevent email spam. */
   authVerificationEmail: {
     kind: "token bucket",

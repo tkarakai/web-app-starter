@@ -3,7 +3,7 @@
 import { hashPassword } from "better-auth/crypto";
 import { sha256Hex } from "./tokenHash";
 import { validatePasswordStrength } from "./passwordStrength";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
@@ -94,16 +94,18 @@ export const advanceOnboardingStep = mutation({
   args: { step: v.number() },
   handler: async (ctx, args) => {
 
-    // Sign-in may not have propagated yet. Leave progress unchanged until an
-    // authenticated retry; completion still requires the saved steps.
     const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return;
+    if (!user) throw new ConvexError("NOT_AUTHENTICATED");
 
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (!bound && user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
     if (!Number.isInteger(args.step) || args.step < 1 || args.step > 3) throw new Error("INVALID_STEP");
     if (args.step >= 2 && user.twoFactorEnabled !== true) throw new Error("MFA_REQUIRED");
-    return await ctx.runMutation(components.platform.adminInvitations.advanceOnboardingStep, { ...args, email: user.email });
+    await ctx.runMutation(components.platform.adminInvitations.advanceOnboardingStep, { ...args, email: user.email });
+    const saved = bound
+      ? await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id })
+      : await ctx.runQuery(components.platform.adminInvitations.getMyOnboardingStatus, { email: user.email });
+    if (!saved || saved.step !== args.step) throw new Error("ONBOARDING_PROGRESS_NOT_SAVED");
   },
 });
 

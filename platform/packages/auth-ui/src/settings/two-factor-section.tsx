@@ -29,7 +29,7 @@ import {
   toast,
 } from "@web-app-starter/design-system";
 
-type Step = "idle" | "password-enable" | "totp-uri" | "verify-code" | "backup-codes" | "password-disable" | "password-regenerate";
+type Step = "idle" | "password-enable" | "totp-uri" | "verify-code" | "backup-codes" | "password-disable" | "password-regenerate" | "password-view";
 
 export function TwoFactorSection() {
   const t2 = useTranslations("accountSecurity.twoFactor");
@@ -159,12 +159,11 @@ export function TwoFactorSection() {
   };
 
   const handleViewBackupCodes = async () => {
+    if (!password) return;
     setLoading(true);
     try {
-      // Use Convex action via the already-authenticated WebSocket connection.
-      // Better Auth v1.4.12 bug: viewBackupCodes has no HTTP path, so we call
-      // the server-side API through a Convex action instead of a direct fetch.
-      const codes = await fetchBackupCodes();
+      const codes = await fetchBackupCodes({ password });
+      setPassword("");
       setBackupCodes(codes ?? []);
       setStep("backup-codes");
     } catch {
@@ -223,7 +222,7 @@ export function TwoFactorSection() {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                onClick={handleViewBackupCodes}
+                onClick={() => { setPassword(""); setStep("password-view"); }}
                 disabled={loading}
               >
                 {loading ? tc("loading") : t2("viewBackupCodes")}
@@ -404,10 +403,10 @@ export function TwoFactorSection() {
     );
   }
 
-  // Password prompt for regenerating backup codes
-  if (step === "password-regenerate") {
+  // Require fresh password proof for each view or regeneration.
+  if (step === "password-regenerate" || step === "password-view") {
     return (
-      <form className="space-y-4 max-w-md" onSubmit={(e) => { e.preventDefault(); handleRegenerateBackupCodes(); }}>
+      <form className="space-y-4 max-w-md" onSubmit={(e) => { e.preventDefault(); void (step === "password-view" ? handleViewBackupCodes() : handleRegenerateBackupCodes()); }}>
         <p className="text-sm text-muted-foreground">{t2("enterPassword")}</p>
         <div className="space-y-2">
           <Label htmlFor="2fa-regen-password">{tcp("currentPassword")}</Label>
@@ -420,7 +419,7 @@ export function TwoFactorSection() {
         </div>
         <div className="flex gap-2">
           <Button type="submit" disabled={loading || !password}>
-            {loading ? tc("loading") : t2("regenerateBackupCodes")}
+            {loading ? tc("loading") : t2(step === "password-view" ? "viewBackupCodes" : "regenerateBackupCodes")}
           </Button>
           <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); }}>
             {tc("cancel")}

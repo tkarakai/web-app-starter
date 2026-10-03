@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
@@ -81,6 +82,20 @@ export function AdminOnboardingWizard() {
 
   // Onboarding status (for resume flow — always queries)
   const onboardingStatus = useQuery(api.platform.adminInvitations.getMyOnboardingStatus);
+
+  const persistStep = React.useCallback(async (nextStep: WizardStep) => {
+    // TOTP verification rotates the session. The provider refreshes its JWT
+    // asynchronously; retry only that temporary authentication failure.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await advanceOnboardingStep({ step: nextStep });
+        return;
+      } catch (error) {
+        if (!(error instanceof ConvexError) || error.data !== "NOT_AUTHENTICATED" || attempt >= 19) throw error;
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+    }
+  }, [advanceOnboardingStep]);
 
   // Mount logic: determine entry mode
   React.useEffect(() => {
@@ -217,9 +232,9 @@ export function AdminOnboardingWizard() {
     }).catch(() => {});
 
     // Persist verified progress before moving on; server completion checks it.
-    await advanceOnboardingStep({ step: 2 });
+    await persistStep(2);
     setStep(2);
-  }, [email, advanceOnboardingStep, postAuditEvent]);
+  }, [email, persistStep, postAuditEvent]);
 
   // Step 2 complete: backup codes acknowledged
   const handleBackupCodesComplete = React.useCallback(async () => {
@@ -231,9 +246,9 @@ export function AdminOnboardingWizard() {
       status: "succeeded",
     }).catch(() => {});
 
-    await advanceOnboardingStep({ step: 3 });
+    await persistStep(3);
     setStep(3);
-  }, [email, advanceOnboardingStep, postAuditEvent]);
+  }, [email, persistStep, postAuditEvent]);
 
   // Step 3 complete: passkey done or skipped
   const handlePasskeyComplete = React.useCallback(async (added: boolean) => {

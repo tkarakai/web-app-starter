@@ -21,6 +21,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Password reset revokes existing sessions. Viewing MFA recovery codes now requires the current
+  password on every request, with a shared per-account attempt limit; settings and resumed admin
+  enrollment provide the prompt. The legacy GET helper no longer discloses codes.
+
 - Reference project files now bind ownership at authenticated upload, authorize every download,
   and reject legacy or aliased objects during direct and cascade deletion.
 
@@ -33,6 +37,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Custom recovery-code viewers must pass the current password to `viewBackupCodes({ password })`
+  or use the authenticated POST helper with a password JSON body. Deploy backend and UI together.
+  Follow [account containment](docs/authentication-and-onboarding.md#containing-a-suspected-account-compromise)
+  when repairing an affected account; reset does not remove existing factors.
 
 - Apps retaining the sample file feature must port the authenticated upload/download flow and
   schema index, deploy frontend and backend together, and inventory legacy attachments before

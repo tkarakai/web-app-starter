@@ -295,6 +295,12 @@ export function registerPlatformRoutes(http: HttpRouter): void {
 
   http.route({
     path: "/api/two-factor/backup-codes",
+    method: "POST",
+    handler: viewBackupCodesHandler,
+  });
+
+  http.route({
+    path: "/api/two-factor/backup-codes",
     method: "OPTIONS",
     handler: httpAction(async (_ctx, request) => {
       return new Response(null, {

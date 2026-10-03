@@ -17,19 +17,21 @@ import {
   CopyableField,
   Input,
   Label,
+  PasswordInput,
   SlideTransition,
   toast,
 } from "@web-app-starter/design-system";
 
 interface BackupCodesStepProps {
-  /** Backup codes from TOTP verification (empty on resume flow) */
+  /** Optional supplied codes; the wizard passes none and requires fresh password proof. */
   backupCodes: string[];
   onComplete: () => Promise<void>;
 }
 
 export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: BackupCodesStepProps) {
   const [codes, setCodes] = React.useState<string[]>(initialCodes);
-  const [loading, setLoading] = React.useState(!initialCodes.length);
+  const [loading, setLoading] = React.useState(false);
+  const [password, setPassword] = React.useState("");
   const [saved, setSaved] = React.useState(false);
   const [subStep, setSubStep] = React.useState<0 | 1>(0);
   const [verifyCode1, setVerifyCode1] = React.useState("");
@@ -39,22 +41,19 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
 
   const viewBackupCodes = useAction(api.platform.auth.viewBackupCodes);
 
-  // Fetch backup codes on resume flow (when none are passed from Step 1)
-  React.useEffect(() => {
-    if (initialCodes.length > 0) return;
-
-    (async () => {
-      setLoading(true);
-      try {
-        const result = await viewBackupCodes();
-        setCodes(result ?? []);
-      } catch {
-        setError("Failed to load backup codes.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [initialCodes, viewBackupCodes]);
+  const handleLoad = async () => {
+    if (!password || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setCodes(await viewBackupCodes({ password }));
+      setPassword("");
+    } catch {
+      setError("Unable to load backup codes. Check your current password and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownload = () => {
     const content = [
@@ -99,11 +98,18 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
     }
   };
 
-  if (loading) {
+  if (!codes.length) {
     return (
-      <p className="text-center text-sm text-muted-foreground">
-        Loading backup codes...
-      </p>
+      <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void handleLoad(); }}>
+        <p className="text-sm text-muted-foreground">Enter your current password to view your backup codes.</p>
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+        <Label htmlFor="backup-codes-password">Current password</Label>
+        <PasswordInput id="backup-codes-password" value={password}
+          onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" autoFocus />
+        <Button type="submit" disabled={loading || !password}>
+          {loading ? "Loading..." : "View backup codes"}
+        </Button>
+      </form>
     );
   }
 

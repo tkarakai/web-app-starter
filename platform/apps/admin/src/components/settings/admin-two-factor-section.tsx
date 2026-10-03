@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useAction } from "convex/react";
+import { api } from "@repo/backend";
 import { ChevronDown, Copy, ShieldCheck, ShieldOff } from "lucide-react";
 
 import { authClient } from "@web-app-starter/auth/client";
@@ -22,7 +24,6 @@ import {
   PasswordInput,
   Separator,
   toast,
-  usePublicConfig,
 } from "@web-app-starter/design-system";
 
 type Step =
@@ -32,10 +33,11 @@ type Step =
   | "verify-code"
   | "backup-codes"
   | "password-disable"
-  | "password-regenerate";
+  | "password-regenerate"
+  | "password-view";
 
 export function AdminTwoFactorSection() {
-  const { convexSiteUrl } = usePublicConfig();
+  const fetchBackupCodes = useAction(api.platform.auth.viewBackupCodes);
   const [step, setStep] = React.useState<Step>("idle");
   const [enabled, setEnabled] = React.useState(false);
   const [password, setPassword] = React.useState("");
@@ -141,17 +143,12 @@ export function AdminTwoFactorSection() {
   };
 
   const handleViewBackupCodes = async () => {
+    if (!password) return;
     setLoading(true);
     try {
-      const response = await fetch(`${convexSiteUrl}/api/two-factor/backup-codes`, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        toast.error("Failed to load backup codes.");
-        return;
-      }
-      const data = (await response.json()) as { backupCodes?: string[] };
-      setBackupCodes(data.backupCodes ?? []);
+      const codes = await fetchBackupCodes({ password });
+      setBackupCodes(codes);
+      setPassword("");
       setStep("backup-codes");
     } catch {
       toast.error("Failed to load backup codes.");
@@ -207,7 +204,7 @@ export function AdminTwoFactorSection() {
         {enabled ? (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={handleViewBackupCodes} disabled={loading}>
+              <Button variant="outline" onClick={() => { setPassword(""); setStep("password-view"); }} disabled={loading}>
                 {loading ? "Loading..." : "View backup codes"}
               </Button>
               <Button variant="outline" onClick={() => setRegenerateDialogOpen(true)}>
@@ -401,7 +398,7 @@ export function AdminTwoFactorSection() {
     );
   }
 
-  if (step === "password-disable" || step === "password-regenerate") {
+  if (step === "password-disable" || step === "password-regenerate" || step === "password-view") {
     return (
       <form
         className="space-y-4 max-w-md"
@@ -409,6 +406,8 @@ export function AdminTwoFactorSection() {
           event.preventDefault();
           if (step === "password-disable") {
             void handleDisable();
+          } else if (step === "password-view") {
+            void handleViewBackupCodes();
           } else {
             void handleRegenerateBackupCodes();
           }
@@ -432,7 +431,7 @@ export function AdminTwoFactorSection() {
               ? "Working..."
               : step === "password-disable"
               ? "Disable"
-              : "Regenerate"}
+              : step === "password-view" ? "View backup codes" : "Regenerate"}
           </Button>
           <Button
             type="button"
@@ -475,7 +474,7 @@ export function AdminTwoFactorSection() {
         >
           Done
         </Button>
-        <Button type="button" variant="outline" onClick={handleViewBackupCodes}>
+        <Button type="button" variant="outline" onClick={() => { setPassword(""); setStep("password-view"); }}>
           Refresh codes
         </Button>
       </div>
