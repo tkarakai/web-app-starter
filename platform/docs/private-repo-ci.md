@@ -161,8 +161,11 @@ Linux builds. Don't use GitHub's native macOS runner for this: the workflows ass
 - [Colima](https://github.com/abiosoft/colima) (free, command line): `brew install colima docker docker-compose && colima start --cpu 6 --memory 10`
 
 **Give it enough memory.** An E2E job runs a Convex backend, a Next.js server and Chromium at
-once: plan for about **3 GB per runner**. In Docker Desktop, Settings → Resources → Memory:
-8 GB or more for two runners. OrbStack takes memory as needed; check its limit under Settings.
+once: plan for about **4 GB per runner**, plus whatever else you run in containers, because they all
+share the engine's memory limit. In Docker Desktop, Settings → Resources → Memory: 12 GB for two
+runners, 16 GB for three. Too little doesn't fail cleanly: E2E jobs fail at random, with Convex
+timing out ("Function execution timed out") or the app server dying mid-test
+(`ERR_CONNECTION_REFUSED`). OrbStack takes memory as needed; check its limit under Settings.
 
 **Step 2: create a token for the runner.** The runner container registers itself with GitHub on
 every start, so it needs a personal access token:
@@ -223,7 +226,8 @@ everything; if two jobs happen to fetch the same new version at the same moment 
 re-run it.
 
 **How many runners?** One runner runs one job at a time, and a PR push queues about 15–20 jobs.
-Two runners are a good start on a 16 GB Mac; three or four if you have 32 GB or more. More runners
+Two runners are a good start on a 16 GB Mac; three or four if you have 32 GB or more. With two
+runners, a PR push that touches everything takes about 10 minutes. More runners
 make CI finish sooner; they don't change what it costs, which is nothing.
 
 **Step 4: switch CI over.**
