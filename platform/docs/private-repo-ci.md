@@ -217,10 +217,10 @@ For a **repository runner**:
   That permission is what lets it create runner registration tokens.
 - **Classic**: the `repo` scope.
 
-For an **organization pool**, an organization owner creates a fine-grained token with the
+For an **organization pool**, an organization owner creates a fine-grained token (recommended) with the
 organization as resource owner and organization **Self-hosted runners: Read and write**
 permission, subject to the organization's token approval policy. A classic token needs
-`admin:org`; a repository-only token is insufficient. See the
+`admin:org` plus `repo` for private-repository access; a repository-only token is insufficient. See the
 [registration API permissions](https://docs.github.com/en/rest/actions/self-hosted-runners#create-a-registration-token-for-an-organization).
 
 Give it an expiry date and put a reminder in your calendar. Keep the credential outside git
@@ -323,7 +323,12 @@ docker compose build --pull && docker compose up -d --scale runner=2
 ```
 
 The same command picks up a new base image now and then. Taking a starter release that changes
-`platform/tooling/ci-runner/` means copying its two files again.
+`platform/tooling/ci-runner/` means refreshing the copied Dockerfile and `compose.yaml`. Preserve
+or reapply your local pool settings before rebuilding and recreating the runners: organization
+pools must retain `RUNNER_SCOPE: org`, `ORG_NAME`, and the removal of `REPO_URL` from the Compose
+environment ([organization setup](#on-a-mac-apple-silicon-or-intel)). Keep your `.env`, labels,
+runner name prefix, volume configuration and Compose project identity, and use your existing
+worker count instead of the example `--scale runner=2`.
 
 **Housekeeping.** Each new Node, Playwright or Convex version adds to the volumes, and old ones
 stay. Check with `docker system df -v`. To start a volume over, stop the runners and remove it;
