@@ -47,6 +47,56 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("administrator enrollment", () => {
+  test.each(["bootstrap", "admin"] as const)("%s enforces required passkeys for both stored policy representations", async kind => {
+    const t = fixture(); await invite(t, kind);
+    const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token });
+    await t.action(api.platform.adminInvitations.register, { capability: claim.capability, email, name: "Owner", password });
+    const account = (await user(t))!;
+    const owner = await session(t, account._id);
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: account._id }], update: { twoFactorEnabled: true } } });
+    await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: account._id, secret: "fixture", backupCodes: "fixture", verified: true } } });
+    await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
+    for (const value of ["required", JSON.stringify("required")]) {
+      if (value === "required") {
+        await t.mutation(components.platform.appSettings.set, { key: "adminPasskeyPolicy", value, userId: "existing-admin" });
+      } else {
+        await t.mutation(components.platform.appSettings.putRaw, { key: "adminPasskeyPolicy", value });
+      }
+      expect(await owner.query(api.platform.appSettings.getPublic, { key: "adminPasskeyPolicy" })).toBe("required");
+      await expect(owner.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("PASSKEY_REQUIRED");
+      expect(await user(t)).toMatchObject({ role: "user" });
+      expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toEqual({ completed: false, step: 3 });
+    }
+    await t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
+      userId: account._id, publicKey: "fixture", credentialID: "owner-passkey", counter: 0, deviceType: "singleDevice", backedUp: false,
+    } } });
+    await owner.mutation(api.platform.adminInvitations.completeOnboarding, {});
+    expect(await user(t)).toMatchObject({ role: "admin" });
+    expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toMatchObject({ completed: true });
+  });
+
+  test.each(["sent", "claiming"] as const)("old bootstrap links in %s state redirect and enroll through public APIs", async status => {
+    const t = fixture(); await invite(t);
+    if (status === "claiming") await t.mutation(api.platform.waitlistTokens.beginClaim, { token });
+    const validation = await t.query(api.platform.waitlistTokens.validate, { token });
+    expect(validation).toEqual({ valid: true, email, adminOnboardingUrl: `http://localhost:3001/onboarding?token=${token}` });
+    if (!validation.valid || !("adminOnboardingUrl" in validation)) throw new Error("Missing admin redirect");
+    const redirectedToken = new URL(validation.adminOnboardingUrl).searchParams.get("token")!;
+    expect(await t.query(api.platform.adminInvitations.validateToken, { token: redirectedToken })).toEqual({ valid: true, email });
+    const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token: redirectedToken });
+    await t.action(api.platform.adminInvitations.register, { capability: claim.capability, email, name: "Owner", password });
+    expect(await user(t)).toMatchObject({ role: "user" });
+    expect(await t.query(api.platform.waitlistTokens.validate, { token })).toMatchObject({ valid: false });
+  });
+
+  test.each(["expired", "revoked"] as const)("invalid %s bootstrap links do not redirect", async status => {
+    const t = fixture(); await invite(t);
+    await t.mutation(api.platform.waitlistTokens.beginClaim, { token });
+    if (status === "expired") vi.setSystemTime(Date.now() + 3600001);
+    else await t.mutation(internal.platform.bootstrap.rescue, { currentEmail: email, newEmail: email });
+    expect(await t.query(api.platform.waitlistTokens.validate, { token })).toMatchObject({ valid: false });
+  });
+
   test("competing registration requests cannot both consume the invitation", async () => {
     const t = fixture(); await invite(t);
     const first = await t.action(api.platform.adminInvitations.claimInvitation, { token });

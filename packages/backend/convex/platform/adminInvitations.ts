@@ -121,8 +121,8 @@ export const completeOnboarding = mutation({
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (bound) {
       if (!bound.completed && bound.step < 3) throw new Error("ONBOARDING_INCOMPLETE");
-      const policy = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "adminPasskeyPolicy" });
-      if (policy?.value === JSON.stringify("required")) {
+      const policy = await ctx.runQuery(components.platform.appSettings.getInternal, { key: "adminPasskeyPolicy" });
+      if (policy === "required") {
         const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "userId", value: user._id }] });
         if (!passkey) throw new Error("PASSKEY_REQUIRED");
       }
