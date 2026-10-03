@@ -487,19 +487,11 @@ Shows a table of all admin accounts (where `role === "admin"`). Same table compo
 
 #### Lost TOTP device, no backup codes, email still accessible
 
-1. Admin visits the recovery flow
-2. Enters their admin email
-3. System sends a recovery email
-4. Admin clicks link → authenticated with email only
-5. **Before any dashboard access**, forced through mandatory re-setup:
-   - Re-enter password to unlock TOTP setup
-   - New TOTP setup (same as §6.3, step 1)
-   - New backup codes generated and acknowledged (same as §6.3, step 2)
-6. Old TOTP secret invalidated
-7. Write audit event: `admin.recovery.email_bypass_used` with timestamp and IP
-8. Admin notified via email that a recovery was performed from [IP address]
-
-This path is deliberately conspicuous — a break-glass action, not a convenient shortcut.
+Email password reset does not bypass TOTP or authenticate the administrator. Use a previously
+registered trusted passkey if available; otherwise follow the separately authenticated
+deployment operator's recovery process described under
+[account containment](#containing-a-suspected-account-compromise). Factor recovery is a
+break-glass action, not an email-only shortcut into the dashboard.
 
 #### Email compromised, password + TOTP still available
 
@@ -511,18 +503,18 @@ This path is deliberately conspicuous — a break-glass action, not a convenient
 
 #### Total lockout
 
-Last resort requiring direct database access:
-1. Convex internal mutation clears `twoFactorEnabled` and resets onboarding state
-2. Admin re-authenticates via email recovery → forced through TOTP re-setup
-3. Write audit event: `admin.emergency_reset.executed` with `meta: { initiatedVia: "direct_db_script" }`
-
-Script documented in repo, runnable via `bunx convex run`.
+Use a separately authenticated deployment operator to verify ownership and recover access;
+the platform does not provide an email-only factor bypass or a turnkey emergency-reset script.
+Follow [account containment](#containing-a-suspected-account-compromise) for evidence
+preservation and replacement of untrusted credentials.
 
 ### 11.2 User Recovery
 
 #### Lost TOTP device (if 2FA was enabled)
 
-Same as admin flow — backup codes, then email recovery with forced TOTP re-setup. The flows are identical, just scoped to the web app.
+Use a backup code or a previously registered trusted passkey. If neither is available, follow
+[account containment](#containing-a-suspected-account-compromise); password reset alone does
+not recover a lost second factor.
 
 #### Forgot password
 

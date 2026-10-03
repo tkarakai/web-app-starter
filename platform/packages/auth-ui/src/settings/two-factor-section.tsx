@@ -403,7 +403,7 @@ export function TwoFactorSection() {
     );
   }
 
-  // Password prompt for regenerating backup codes
+  // Require fresh password proof for each view or regeneration.
   if (step === "password-regenerate" || step === "password-view") {
     return (
       <form className="space-y-4 max-w-md" onSubmit={(e) => { e.preventDefault(); void (step === "password-view" ? handleViewBackupCodes() : handleRegenerateBackupCodes()); }}>

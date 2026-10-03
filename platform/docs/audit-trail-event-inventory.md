@@ -325,10 +325,11 @@ rather than an email. **Neither is called from the admin UI** — the UI uses
 
 Step 3 emits two events: the passkey outcome, then `completed`.
 
-These are best-effort. `postAuditEvent` is `.catch(() => {})`-ed, and the paired
-`advanceOnboardingStep` / `completeOnboarding` mutations are too — the Convex auth session
-may not have propagated yet right after account creation. An audited step therefore does
-not guarantee the persisted step advanced.
+Audit writes are best-effort: `postAuditEvent` is `.catch(() => {})`-ed before progress
+persistence. The wizard waits for `advanceOnboardingStep` before advancing and for
+`completeOnboarding` before signing out; persistence failures remain retryable in the current
+step. An audited step therefore does not guarantee the persisted step advanced. See the
+progress regression coverage in `platform/apps/admin/qa/tests/admin-onboarding-progress.test.tsx`.
 
 ---
 

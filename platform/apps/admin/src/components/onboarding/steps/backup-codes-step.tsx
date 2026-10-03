@@ -23,7 +23,7 @@ import {
 } from "@web-app-starter/design-system";
 
 interface BackupCodesStepProps {
-  /** Backup codes from TOTP verification (empty on resume flow) */
+  /** Optional supplied codes; the wizard passes none and requires fresh password proof. */
   backupCodes: string[];
   onComplete: () => Promise<void>;
 }
