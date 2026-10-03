@@ -12,7 +12,7 @@ function run(command: string, environment: Record<string, string>, directory: st
   const output = path.join(directory, "output");
   fs.writeFileSync(output, "");
   const clean: Record<string, string | undefined> = { ...process.env, GITHUB_OUTPUT: output };
-  for (const name of ["PR_E2E", "SKIP_E2E", "REQUIRE_E2E", "EVENT_NAME", "DRAFT"]) delete clean[name];
+  for (const name of ["PR_E2E", "SKIP_E2E", "REQUIRE_E2E", "EVENT_NAME", "DRAFT", "REPO_PRIVATE"]) delete clean[name];
   const result = spawnSync("bash", [script, command], { env: { ...clean, ...environment }, encoding: "utf8" });
   return { ...result, output: fs.readFileSync(output, "utf8") };
 }
@@ -48,6 +48,22 @@ test("resolve maps the mode, drafts, forced runs and the deprecated SKIP_E2E", t
   assert.equal(invalid.status, 1);
   assert.equal(invalid.output, "");
   assert.match(invalid.stdout, /::error title=Invalid PLATFORM_CI_PR_E2E::'sometimes'/);
+});
+
+test("resolve notices a private repository that hasn't chosen a mode", t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-policy-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const pr = { EVENT_NAME: "pull_request", DRAFT: "false" };
+  const notice = /::notice title=E2E runs on every push to a ready PR::.*PLATFORM_CI_PR_E2E/;
+  assert.match(run("resolve", { ...pr, REPO_PRIVATE: "true" }, directory).stdout, notice);
+  const quiet: Record<string, string>[] = [
+    { ...pr, REPO_PRIVATE: "false" },
+    { ...pr },
+    { ...pr, REPO_PRIVATE: "true", PR_E2E: "always" },
+    { ...pr, REPO_PRIVATE: "true", SKIP_E2E: "true" },
+    { EVENT_NAME: "push", REPO_PRIVATE: "true" },
+  ];
+  for (const environment of quiet) assert.doesNotMatch(run("resolve", environment, directory).stdout, notice, JSON.stringify(environment));
 });
 
 test("label reads the pull request's labels live and fails without run-e2e", t => {

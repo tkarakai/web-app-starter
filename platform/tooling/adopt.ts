@@ -15,6 +15,8 @@
 //   --no-upstream             Don't add the `upstream` remote
 //   --skip-install            Don't run `bun install` after removing apps
 //   --skip-build              Don't run the build at the end
+//   --pr-e2e <mode>           When CI runs E2E on pull requests: always, on-demand or off. Asked on a
+//                             private repository (Actions minutes are metered); sets PLATFORM_CI_PR_E2E
 //   --yes                     Don't ask; use the options and defaults
 //
 // Steps (repo-separation §9): set values in app.config.ts; replace the root README, LICENSE,
@@ -23,7 +25,7 @@
 // .claude/skills and .agents/skills; write .platform-base.json and add the upstream remote; run
 // the zone check and a build; print what is yours and what is the platform's.
 // It never edits the platform zone.
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import {
   existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync,
   unlinkSync, writeFileSync,
@@ -34,6 +36,7 @@ import { pathToFileURL } from "node:url";
 
 import { BASE_FILE, SEAM_HOOKS, checkZone, type PlatformBase } from "./check-zone.ts";
 import { adoptionRelease, commandAt, type Command } from "./adopt-release.ts";
+import { applyPrE2e, describeModes, isMode, manualCommand, needsChoice, prE2eStatus, type Exec, type Mode } from "./ci-pr-e2e-setup.ts";
 
 export const STARTER_REPO = "tkarakai/web-app-starter";
 export const STARTER_URL = `https://github.com/${STARTER_REPO}.git`;
@@ -354,7 +357,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   return zone.errors.length;
 }
 
-type Parsed = Partial<AdoptOptions> & { yes: boolean };
+type Parsed = Partial<AdoptOptions> & { yes: boolean; prE2e?: Mode };
 
 export function parseArgs(argv: readonly string[]): Parsed {
   const parsed: Parsed = { yes: false };
@@ -383,6 +386,12 @@ export function parseArgs(argv: readonly string[]): Parsed {
       case "--skip-install": parsed.install = false; break;
       case "--skip-build": parsed.build = false; break;
       case "--yes": parsed.yes = true; break;
+      case "--pr-e2e": {
+        const mode = value();
+        if (!isMode(mode)) throw new Error(`--pr-e2e takes always, on-demand or off (got "${mode}")`);
+        parsed.prE2e = mode;
+        break;
+      }
       default: throw new Error(`unknown option ${arg}`);
     }
   }
@@ -395,6 +404,26 @@ function parseRemove(list: string): RemovableApp[] {
     if (!(REMOVABLE_APPS as readonly string[]).includes(app)) throw new Error(`--remove: "${app}" is not one of ${REMOVABLE_APPS.join(", ")}`);
   }
   return apps as RemovableApp[];
+}
+
+const gh: Exec = (file, args) => new Promise((resolve, reject) => {
+  execFile(file, args, { encoding: "utf8" }, (error, stdout) => error ? reject(error) : resolve(stdout.trim()));
+});
+
+/** After adoption: apply the chosen PR E2E mode, or remind a private repository that it has one to choose. */
+export async function settlePrE2e(repo: string, mode: Mode | undefined, exec: Exec, log: (line: string) => void): Promise<void> {
+  log("CI on pull requests");
+  const status = await prE2eStatus(repo, exec).catch(() => undefined);
+  if (!status) {
+    log(`  - Could not read ${repo}'s Actions variables (does it exist yet?). On a private repository, choose when E2E runs on pull requests: ${manualCommand(repo)}`);
+    return;
+  }
+  if (mode) {
+    log(`  - Set ${(await applyPrE2e(repo, mode, status, exec)).join(", ")} (shared by everyone's CI runs in ${repo})`);
+    return;
+  }
+  if (needsChoice(status)) log(`  - Private repository: E2E runs on every push to a ready PR. To spend fewer Actions minutes see platform/docs/private-repo-ci.md, then ${manualCommand(repo)}`);
+  else log(status.private ? `  - PLATFORM_CI_PR_E2E=${status.mode}` : "  - Public repository: Actions minutes are free; E2E runs on every ready PR");
 }
 
 async function main(argv: readonly string[]): Promise<number> {
@@ -419,12 +448,21 @@ async function main(argv: readonly string[]): Promise<number> {
     parsed.repo ??= await ask("Your GitHub repository (owner/name)", defaultRepo);
     parsed.remove ??= parseRemove(await ask(`Reference apps to remove (${REMOVABLE_APPS.join(", ")}; blank keeps all)`) ?? "");
     parsed.removeSample ??= (await ask("Remove the projects/tasks/uploads sample? (yes/no)", "no")) === "yes";
+    const status = parsed.repo && !parsed.prE2e ? await prE2eStatus(parsed.repo, gh).catch(() => undefined) : undefined;
+    if (parsed.repo && status && needsChoice(status)) {
+      for (const line of describeModes(parsed.repo, status)) process.stdout.write(`${line}\n`);
+      const mode = await ask("E2E on pull requests (always/on-demand/off)", "always") ?? "always";
+      if (!isMode(mode)) throw new Error(`"${mode}" is not one of always, on-demand, off`);
+      parsed.prE2e = mode;
+    }
     rl.close();
   }
   parsed.repo ??= defaultRepo;
   if (!parsed.name) throw new Error("--name is required");
   if (!parsed.repo) throw new Error(`--repo is required (origin is ${origin ?? "not set"}; name your own repository)`);
-  return adopt(root, { ...parsed, name: parsed.name, repo: parsed.repo }) === 0 ? 0 : 1;
+  const code = adopt(root, { ...parsed, name: parsed.name, repo: parsed.repo });
+  await settlePrE2e(parsed.repo, parsed.prE2e, gh, (line) => process.stdout.write(`${line}\n`));
+  return code === 0 ? 0 : 1;
 }
 
 if (process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url) {

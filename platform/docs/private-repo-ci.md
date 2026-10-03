@@ -99,7 +99,8 @@ Pushing once when it's green costs one CI run, not five. See [local CI](ci.md#lo
 ### 3. Run E2E on pull requests only when you ask for it
 
 The repository variable `PLATFORM_CI_PR_E2E` sets when E2E runs on pull requests
-([details](ci.md#e2e-on-pull-requests)):
+([details](ci.md#e2e-on-pull-requests)). It lives on GitHub and applies to everyone's CI runs in the
+repository. `bun run adopt` and `bun run deploy:setup` offer the choice, or set it yourself:
 
 ```bash
 gh variable set PLATFORM_CI_PR_E2E --body on-demand   # E2E once, when the PR is final

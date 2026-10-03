@@ -38,6 +38,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- On a private repository, `bun run adopt` (new `--pr-e2e` flag) and `bun run deploy:setup` explain
+  what E2E costs in Actions minutes and offer to set `PLATFORM_CI_PR_E2E`. Until the variable is
+  set, CI Web shows a notice on each pull-request run of a private repository; set it to `always`
+  to keep the default and hide the notice.
+- `platform/AGENTS.md` tells agents how to open pull requests under each `PLATFORM_CI_PR_E2E`
+  mode: drafts on a private repository, and a green local `CI=true bun run ci` before marking
+  the PR ready or adding `run-e2e`.
 - Repository variable `PLATFORM_CI_PR_E2E` sets when E2E runs on pull requests: `always` (the
   default, unchanged behaviour), `on-demand` (only with the `run-e2e` label, and the
   `CI <App> Complete` check fails until E2E has passed on the PR head) or `off`. The new

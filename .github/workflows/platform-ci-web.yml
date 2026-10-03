@@ -54,6 +54,8 @@ jobs:
           REQUIRE_E2E: ${{ inputs.require_e2e }}
           EVENT_NAME: ${{ github.event_name }}
           DRAFT: ${{ github.event.pull_request.draft }}
+          # Only web passes this: one cost notice per push on a private repository without a mode.
+          REPO_PRIVATE: ${{ github.event.repository.private }}
         run: ./platform/tooling/ci-e2e-policy.sh resolve
 
       - name: Detect file changes

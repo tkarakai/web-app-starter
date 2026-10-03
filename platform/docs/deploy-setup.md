@@ -31,6 +31,12 @@ CD. It adds required CI checks and PR review protection without replacing existi
 access/reviewer settings. Review existing required checks when removing an app: stale required
 checks are never deleted automatically. Read-only inspection requires the same app CI contexts as setup.
 
+On a private repository whose `PLATFORM_CI_PR_E2E` repository variable is unset, the wizard
+explains what E2E costs in Actions minutes and asks when CI should run it on pull requests:
+`always` (the default), `on-demand` or `off` ([E2E on pull requests](ci.md#e2e-on-pull-requests)).
+The variable applies to everyone's CI runs in the repository. Once it is set, reruns don't ask
+again; change it with `gh variable set PLATFORM_CI_PR_E2E`.
+
 ## Credentials and resuming
 
 There are two kinds of provider credentials:
