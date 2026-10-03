@@ -32,6 +32,9 @@ runs:
       uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       with:
         bun-version: ${{ inputs.bun-version }}
+        # A self-hosted runner keeps Bun in ~/.bun between jobs (see
+        # platform/docs/private-repo-ci.md): reuse it, never GitHub's cache.
+        no-cache: ${{ runner.environment == 'self-hosted' }}
 
     - name: Setup Bun (act)
       if: ${{ env.ACT }}
@@ -40,8 +43,10 @@ runs:
         BUN_VERSION: ${{ inputs.bun-version }}
       run: bash "${{ github.action_path }}/setup-bun-act.sh"
 
+    # Skipped on self-hosted runners too: their package cache persists between
+    # jobs, and restoring GitHub's copy would download it again every job.
     - name: Cache dependencies
-      if: ${{ !env.ACT }}
+      if: ${{ !env.ACT && runner.environment != 'self-hosted' }}
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.bun/install/cache

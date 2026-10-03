@@ -181,7 +181,7 @@ skipped and a **Paid feature skipped** notice explains why (`.github/actions/pai
 Deploy jobs name the `staging` and `production` environments but read only repository-level
 secrets, so they work on every plan.
 
-Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling both GitHub Actions and act-specific cache-aware setup automatically.
+Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling GitHub-hosted runners, [self-hosted runners](private-repo-ci.md#5-run-ci-on-your-own-machine-free-the-biggest-win) and act-specific cache-aware setup automatically.
 
 **Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation) and bind-mount mode (`-b`) to make composite actions visible to act.
 
