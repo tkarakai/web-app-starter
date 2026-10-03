@@ -113,18 +113,22 @@ jobs:
     uses: ./.github/workflows/platform-ci-web.yml
     with:
       git_sha: ${{ inputs.git_sha }}
+      # What deploys was E2E-tested, whatever PLATFORM_CI_PR_E2E says (ci/gate-passed gates production).
+      require_e2e: true
 
   ci-admin:
     needs: validate-source
     uses: ./.github/workflows/platform-ci-admin.yml
     with:
       git_sha: ${{ inputs.git_sha }}
+      require_e2e: true
 
   ci-landing:
     needs: validate-source
     uses: ./.github/workflows/platform-ci-landing.yml
     with:
       git_sha: ${{ inputs.git_sha }}
+      require_e2e: true
 
   # ─── CI Gate ────────────────────────────────────────────────────
   ci-gate:

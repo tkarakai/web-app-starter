@@ -81,7 +81,8 @@ gh pr create --draft          # open the PR as a draft
 gh pr ready                   # E2E runs once, on the version you want reviewed
 ```
 
-Every later push to a ready PR runs E2E again, so finish your iterations before `gh pr ready`.
+Every later push to a ready PR runs E2E again, so finish your iterations before `gh pr ready`,
+or use option 3 to run E2E only when you ask for it.
 To go back to draft: `gh pr ready --undo`.
 
 ### 2. Run CI locally before you push (free)
@@ -95,19 +96,31 @@ CI=true bun run ci            # the full suite, E2E included
 
 Pushing once when it's green costs one CI run, not five. See [local CI](ci.md#local-ci-pre-push-checks).
 
-### 3. Skip E2E on pull requests, verify before you release
+### 3. Run E2E on pull requests only when you ask for it
 
-If you run E2E locally anyway, set the repository variable `SKIP_E2E` to `true`. Pull requests
-then skip E2E entirely:
+The repository variable `PLATFORM_CI_PR_E2E` sets when E2E runs on pull requests
+([details](ci.md#e2e-on-pull-requests)):
 
 ```bash
-gh variable set SKIP_E2E --body true
+gh variable set PLATFORM_CI_PR_E2E --body on-demand   # E2E once, when the PR is final
+gh variable set PLATFORM_CI_PR_E2E --body off         # never on PRs: you run E2E locally
+gh variable delete PLATFORM_CI_PR_E2E                 # back to the default, always
 ```
 
-Before you deploy or tag a release, run **CI Verify Commit** on `main` (Actions → CI Verify
-Commit → Run workflow, or `gh workflow run ci-verify.yml --ref main`). It runs every check with E2E
-forced on, whatever `SKIP_E2E` says, so what you ship is still fully tested. It costs one full CI
-run, but only when you release.
+- **`on-demand`** keeps E2E as a merge requirement but runs it once. Push as often as you like
+  without it; the **CI <App> Complete** check stays red with an "E2E Required" message. When
+  the PR is ready, add the `run-e2e` label (`gh pr edit --add-label run-e2e`) and E2E runs on
+  the current head. This needs branch protection to block the merge, which a private
+  repository has only on a paid plan.
+- **`off`** skips E2E on pull requests entirely. Run `CI=true bun run ci` locally before you merge.
+
+Whatever you choose, **deploys still run E2E**: the staging deploy runs every check with E2E
+forced on, and production only deploys what passed there. That costs one full CI run per merge
+to `main`, not one per push. Before tagging a release you can also run **CI Verify Commit**
+(`gh workflow run ci-verify.yml --ref main`), which forces E2E the same way.
+
+If you set `SKIP_E2E=true` earlier, it still works as `off`, but it is deprecated:
+`gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
 
 ### 4. Keep artifact storage small
 
@@ -263,8 +276,8 @@ pushing (2), retention of 2 days (4), and one or two runners on your Mac (5). Ke
 push.
 
 **Small team on GitHub Team.** A shared Linux runner on a small server (5) handles everyone's
-PRs. Add `SKIP_E2E=true` with CI Verify Commit before releases (3) if PR feedback should be faster
-still. Set a team budget with alerts (6).
+PRs. Set `PLATFORM_CI_PR_E2E=on-demand` (3) so E2E runs once per PR, when it's ready for
+review, and still blocks the merge. Set a team budget with alerts (6).
 
 ## Related
 

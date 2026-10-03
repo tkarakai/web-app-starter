@@ -29,6 +29,7 @@ jobs:
     runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       should_run: ${{ steps.present.outputs.app == 'true' && (inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run) || 'false' }}
+      e2e: ${{ steps.act-all.outputs.e2e || steps.e2e.outputs.e2e }}
     steps:
       - name: Run all jobs in act
         if: ${{ env.ACT }}
@@ -36,6 +37,7 @@ jobs:
         run: |
           echo "Running in act — skipping change detection"
           echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "e2e=run" >> $GITHUB_OUTPUT
 
       - name: Checkout
         if: ${{ !env.ACT }}
@@ -52,6 +54,17 @@ jobs:
             echo "app=false" >> "$GITHUB_OUTPUT"
             echo "::notice::landing is not installed; skipping its CI."
           fi
+
+      - name: Resolve E2E policy
+        if: ${{ !env.ACT }}
+        id: e2e
+        env:
+          PR_E2E: ${{ vars.PLATFORM_CI_PR_E2E }}
+          SKIP_E2E: ${{ vars.SKIP_E2E }}
+          REQUIRE_E2E: ${{ inputs.require_e2e }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: ./platform/tooling/ci-e2e-policy.sh resolve
 
       - name: Detect file changes
         if: ${{ !env.ACT }}
@@ -168,13 +181,39 @@ jobs:
         run: cd apps/landing && bun run size
 
   # ============================================================
+  # E2E ON DEMAND (PLATFORM_CI_PR_E2E=on-demand)
+  # ============================================================
+  # Fails a ready PR without the run-e2e label, so `CI <App> Complete` can't pass
+  # until E2E has run on the head. Adding the label re-runs this job and E2E
+  # (platform-ci-e2e-request.yml).
+  e2e-required:
+    name: E2E Required
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    needs: [changes]
+    if: needs.changes.outputs.should_run == 'true' && needs.changes.outputs.e2e == 'on-demand'
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+          sparse-checkout: platform/tooling/ci-e2e-policy.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Check for the run-e2e label
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: ./platform/tooling/ci-e2e-policy.sh label
+
+  # ============================================================
   # E2E TESTS
   # ============================================================
   e2e:
     name: E2E Tests
     runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
-    needs: [changes, build]
-    if: needs.changes.outputs.should_run == 'true' && (inputs.require_e2e || (vars.SKIP_E2E != 'true' && github.event.pull_request.draft == false))
+    needs: [changes, build, e2e-required]
+    # `!cancelled()` lets E2E run when e2e-required was skipped (mode always or a forced run).
+    if: ${{ !cancelled() && needs.build.result == 'success' && (needs.changes.outputs.e2e == 'run' || needs.e2e-required.result == 'success') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
