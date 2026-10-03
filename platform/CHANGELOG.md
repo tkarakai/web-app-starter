@@ -15,6 +15,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Web E2E shards in CI are balanced by duration. Playwright's `--shard` split the suite by
+  test count, so the slow serial auth suites all landed in shard 1: about 7–9 minutes against
+  2 minutes for shards 2 and 3. Each shard now runs whole spec files, assigned longest-first
+  from the per-file seconds in `apps/web/qa/e2e/shard-durations.json`
+  (`platform/tooling/e2e-shard-plan.ts`, run in `platform-ci-web.yml`), so web E2E finishes in
+  about the time of an average shard. Spec files without a recorded duration are estimated from
+  their test count. No app action is required; refresh the durations as your suite changes
+  ([testing guide](docs/testing.md#web-e2e-shards-in-ci)).
 - Platform CI spends fewer billed Actions minutes and less artifact storage per push, which
   matters on private repositories. The platform CI workflows no longer run their own
   `CI <App> Complete` summary job; the caller's `CI <App> Complete` job, the one branch rules

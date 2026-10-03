@@ -82,6 +82,29 @@ interactive run may use `bun run --cwd apps/web test:e2e --workers=1`, but it st
 existing local server and does not enable CI retries. After a 429, wait for `Retry-After`
 or restart only the managed server for this checkout before retrying.
 
+### Web E2E shards in CI
+
+CI runs web E2E in four parallel shards (`platform-ci-web.yml`). Playwright's own `--shard`
+splits by test count, and the slow, serial auth suites would pile into one shard while the
+others finish early. So each shard runs **whole spec files**, assigned longest-first by the
+per-file seconds in `apps/web/qa/e2e/shard-durations.json`
+(`platform/tooling/e2e-shard-plan.ts`). The job log's "Plan this shard" step shows every
+shard's files and estimate.
+
+A new or renamed spec file without a recorded duration is estimated from its test count, so
+the plan never misses a test, but the balance drifts as the suite changes. When one web shard
+takes much longer than the others, refresh the durations from a full run:
+
+```bash
+cd apps/web
+CI=true PLAYWRIGHT_JSON_OUTPUT_FILE=/tmp/web-e2e.json bunx playwright test --project=chromium --reporter=json
+cd ../..
+./platform/tooling/node-ts.sh platform/tooling/e2e-shard-plan.ts record \
+  --report /tmp/web-e2e.json --out apps/web/qa/e2e/shard-durations.json
+```
+
+Only the proportions matter, so a local run works as well as a CI one. Commit the file.
+
 ## Playwright E2E Test Pattern
 
 ```typescript
