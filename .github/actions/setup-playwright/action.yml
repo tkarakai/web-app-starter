@@ -1,5 +1,5 @@
 name: "Setup Playwright"
-description: "Install Playwright Chromium browser with caching"
+description: "Install Playwright Chromium browser with caching (GitHub cache, or persistent folders on a self-hosted runner)"
 
 inputs:
   working-directory:
@@ -20,7 +20,7 @@ runs:
       run: echo "version=$(./node_modules/.bin/playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
 
     - name: Cache Playwright browsers
-      if: ${{ !env.ACT }}
+      if: ${{ !env.ACT && runner.environment != 'self-hosted' }}
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       id: playwright-cache
       with:
@@ -34,7 +34,7 @@ runs:
           ${{ runner.os }}-${{ runner.arch }}-playwright-chromium-
 
     - name: Install Playwright browsers
-      if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' || env.ACT }}
+      if: ${{ (steps.playwright-cache.outputs.cache-hit != 'true' && runner.environment != 'self-hosted') || env.ACT }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: ./node_modules/.bin/playwright install --with-deps chromium
@@ -44,3 +44,14 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: ./node_modules/.bin/playwright install-deps chromium
+
+    # Self-hosted runners keep browsers in ~/.cache/ms-playwright between jobs, and
+    # the starter's runner image (platform/tooling/ci-runner) ships the browser
+    # system libraries: no GitHub cache round trip, no apt on every job.
+    - name: Install Playwright browsers (self-hosted)
+      if: ${{ !env.ACT && runner.environment == 'self-hosted' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PLAYWRIGHT_VERSION: ${{ steps.pw.outputs.version }}
+      run: bash "${{ github.action_path }}/install-self-hosted.sh"
