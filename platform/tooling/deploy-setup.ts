@@ -139,10 +139,10 @@ async function choosePrE2e(state: State) {
   const status = await prE2eStatus(state.repository, run).catch(() => undefined);
   if (!status) { console.log(`Could not read the repository's Actions variables. To choose when E2E runs on pull requests: ${manualCommand(state.repository)}`); return; }
   if (!needsChoice(status)) return;
-  for (const line of describeModes(state.repository, status)) console.log(line);
+  for (const line of describeModes(state.repository)) console.log(line);
   const answer = await ask("E2E on pull requests: always, on-demand or off [always]") || "always";
   if (!isMode(answer)) throw Error(`"${answer}" is not a mode; rerun deploy:setup to choose again.`);
-  console.log(`Set ${(await applyPrE2e(state.repository, answer, status, run)).join(", ")}.`);
+  console.log(`Set ${(await applyPrE2e(state.repository, answer, run)).join(", ")}.`);
 }
 async function prove(state: State, root: string) {
   checkProofMappings(state, apps(root), root);

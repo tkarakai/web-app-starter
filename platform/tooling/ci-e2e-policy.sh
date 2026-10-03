@@ -2,10 +2,10 @@
 # E2E policy for the platform CI workflows (platform/docs/ci.md#e2e-on-pull-requests).
 #
 #   ci-e2e-policy.sh resolve   Decide this run's E2E: writes e2e=run|skip|on-demand to $GITHUB_OUTPUT.
-#                              Env: PR_E2E (vars.PLATFORM_CI_PR_E2E), SKIP_E2E (deprecated variable),
-#                              REQUIRE_E2E (inputs.require_e2e), EVENT_NAME, DRAFT, and REPO_PRIVATE
-#                              (set by one workflow only, so a private repository that hasn't chosen
-#                              a mode sees the notice once per push).
+#                              Env: PR_E2E (vars.PLATFORM_CI_PR_E2E), REQUIRE_E2E (inputs.require_e2e),
+#                              EVENT_NAME, DRAFT, and REPO_PRIVATE (set by one workflow only, so a
+#                              private repository that hasn't chosen a mode sees the notice once per
+#                              push).
 #   ci-e2e-policy.sh label     on-demand mode: succeed when the pull request has the run-e2e label.
 #                              Labels are read live, so a re-run sees a label added after the push.
 #                              Env: GITHUB_TOKEN, GITHUB_API_URL, GITHUB_REPOSITORY, PR_NUMBER.
@@ -25,10 +25,6 @@ resolve() {
   fi
 
   local mode="${PR_E2E:-}"
-  if [[ -z "$mode" && "${SKIP_E2E:-}" == "true" ]]; then
-    mode=off
-    echo "::warning title=SKIP_E2E is deprecated::Set the repository variable PLATFORM_CI_PR_E2E=off instead and delete SKIP_E2E. SKIP_E2E stops working in the next major release."
-  fi
   if [[ -z "$mode" && "${REPO_PRIVATE:-}" == "true" ]]; then
     echo "::notice title=E2E runs on every push to a ready PR::This private repository pays for Actions minutes, and E2E is most of each run. Set the repository variable PLATFORM_CI_PR_E2E to on-demand or off to spend less, or to always to keep this and hide this notice (platform/docs/private-repo-ci.md)."
   fi
