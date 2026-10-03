@@ -199,6 +199,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-convex-backend-
 
+      # Playwright's --shard splits by test count, so the slow serial auth suites
+      # pile into one shard while the others idle. Plan whole spec files by their
+      # recorded durations instead (apps/web/qa/e2e/shard-durations.json; new
+      # files are estimated). Every shard computes the same plan from the commit.
+      - name: Plan this shard
+        run: |
+          (cd apps/web && CI=true ./node_modules/.bin/playwright test --list --reporter=json --project=chromium) > "$RUNNER_TEMP/e2e-list.json"
+          ./platform/tooling/node-ts.sh platform/tooling/e2e-shard-plan.ts plan \
+            --list "$RUNNER_TEMP/e2e-list.json" \
+            --durations apps/web/qa/e2e/shard-durations.json \
+            --shard ${{ matrix.shard }}/${{ strategy.job-total }} \
+            --out "$RUNNER_TEMP/e2e-shard.txt"
+
       # Each shard boots its own Convex backend via the Playwright webServer,
       # so auth rate-limit counters stay per-shard and workers stay at 1.
       - name: Run Playwright tests
@@ -207,7 +220,7 @@ jobs:
           # Convex backend downloads from hitting GitHub's unauthenticated limit
           # at the same instant.
           sleep $(( (${{ matrix.shard }} - 1) * 20 ))
-          cd apps/web && bunx playwright test --project=chromium --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+          cd apps/web && bunx playwright test --project=chromium --test-list "$RUNNER_TEMP/e2e-shard.txt" --pass-with-no-tests
         env:
           CI: true
 

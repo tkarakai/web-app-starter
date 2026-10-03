@@ -1,0 +1,19 @@
+{
+  "a11y.spec.ts": 5,
+  "auth-flow.spec.ts": 13,
+  "auth-passkey.spec.ts": 73,
+  "auth-password.spec.ts": 108,
+  "auth-rate-limits.spec.ts": 11,
+  "auth-session.spec.ts": 64,
+  "auth-two-factor.spec.ts": 158,
+  "csp-validation.spec.ts": 15,
+  "email-verification.spec.ts": 17,
+  "example.spec.ts": 6,
+  "forgot-password.spec.ts": 15,
+  "locale-root.spec.ts": 1,
+  "localization.spec.ts": 36,
+  "security-headers.spec.ts": 7,
+  "session-lifecycle.spec.ts": 16,
+  "session-management.spec.ts": 102,
+  "xss-protection.spec.ts": 45
+}

@@ -35,11 +35,9 @@ export default defineConfig({
   // Sharded CI runs emit blob reports that a downstream job merges into one HTML
   // report; a local run still gets the HTML report directly.
   //
-  // Shard count lives in ci-web.yml. It is sized from a serial local run
-  // (~5.3 min for ~105 tests on a fast laptop) with generous headroom, because
-  // GitHub's runners are slower and each shard also pays a Convex + Next boot.
-  // If observed shard times land well under `timeout-minutes`, drop the matrix
-  // to 2 and halve the runner-minutes.
+  // CI runs four shards (platform-ci-web.yml). Each shard runs whole spec files,
+  // balanced by the per-file seconds in qa/e2e/shard-durations.json; refresh it
+  // when you add or slow down specs (platform/docs/testing.md).
   reporter: process.env.CI
     ? [["github"], ["blob"]]
     : [["html", { outputFolder: "qa/playwright-report" }]],
