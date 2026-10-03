@@ -7,6 +7,7 @@ import {
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
 } from "./platform/functions";
+import { requireFileAccess } from "./fileAccess";
 import { requireProjectAccess } from "./projectAccess";
 
 export const list = authedQuery({
@@ -116,6 +117,9 @@ export const remove = authedMutation({
       .query("uploads")
       .withIndex("by_project", (q) => q.eq("projectId", args.id))
       .collect();
+
+    // Refuse the entire cascade when a legacy or aliased object needs operator review.
+    for (const upload of uploads) await requireFileAccess(ctx, upload);
 
     for (const upload of uploads) {
       await ctx.storage.delete(upload.storageId);

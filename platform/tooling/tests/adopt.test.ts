@@ -152,8 +152,10 @@ test("sample removal replaces domain UI and retains account messages and platfor
   const dashboard = "apps/web/src/app/[locale]/(dashboard)/dashboard/";
   write(root, `${backend}schema.ts`, read(`${backend}schema.ts`));
   write(root, `${backend}platform/tables.ts`, "platform bytes");
-  for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts"]) write(root, `${backend}${file}`, "sample");
+  for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts", "fileAccess.ts", "file-ownership.test.ts"]) write(root, `${backend}${file}`, "sample");
   write(root, "apps/web/src/components/projects/app-sidebar.tsx", "sample");
+  write(root, "apps/web/qa/e2e/private-files.spec.ts", "sample browser test");
+  write(root, "apps/web/qa/e2e/shard-durations.json", JSON.stringify({ "private-files.spec.ts": 20, "auth-flow.spec.ts": 13 }));
   write(root, `${dashboard}dashboard-client.tsx`, "sample");
   for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`]) {
     write(root, file, 'import { AppSidebar } from "@/components/projects/app-sidebar";\n');
@@ -163,6 +165,10 @@ test("sample removal replaces domain UI and retains account messages and platfor
   cpSync(path.join(REPO, "platform/templates/adopt"), path.join(root, "platform/templates/adopt"), { recursive: true });
   removeSample(root);
   assert.equal(existsSync(path.join(root, `${backend}projects.ts`)), false);
+  for (const file of [`${backend}fileAccess.ts`, `${backend}file-ownership.test.ts`, "apps/web/qa/e2e/private-files.spec.ts"]) {
+    assert.equal(existsSync(path.join(root, file)), false);
+  }
+  assert.deepEqual(JSON.parse(readFileSync(path.join(root, "apps/web/qa/e2e/shard-durations.json"), "utf8")), { "auth-flow.spec.ts": 13 });
   assert.equal(existsSync(path.join(root, "apps/web/src/components/projects")), false);
   assert.equal(readFileSync(path.join(root, `${backend}platform/tables.ts`), "utf8"), "platform bytes");
   assert.deepEqual(JSON.parse(readFileSync(path.join(root, "packages/messages/en.json"), "utf8")), { dashboard: { account: "Settings" } });

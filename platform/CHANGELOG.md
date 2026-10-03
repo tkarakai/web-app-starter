@@ -21,6 +21,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Reference project files now bind ownership at authenticated upload, authorize every download,
+  and reject legacy or aliased objects during direct and cascade deletion.
+
 - Administrator enrollment now requires a single-use capability from the invitation link.
   The credential account and invitation claim are committed together, bound to the new user ID.
   New administrators receive privileges only after verified TOTP enrollment and completion of
@@ -30,6 +33,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Apps retaining the sample file feature must port the authenticated upload/download flow and
+  schema index, deploy frontend and backend together, and inventory legacy attachments before
+  reconciling them. Legacy files are quarantined; no automatic byte migration or deletion occurs.
+  Existing storage URLs require retirement of the old objects to revoke access. Follow
+  [private file storage](docs/private-file-storage.md).
 
 - **Who is affected:** apps with custom administrator signup code, or pending administrator
   invitations. **What to do:** deploy the backend and platform admin UI together. Custom clients

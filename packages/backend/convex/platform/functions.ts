@@ -55,7 +55,7 @@ export async function isEmailVerificationRequired(
  * Uses `authComponent.safeGetAuthUser` (returns undefined when
  * unauthenticated) and derives the canonical `ownerId`.
  */
-async function getAuth(ctx: QueryCtx) {
+export async function getAuth(ctx: QueryCtx) {
   const user = await authComponent.safeGetAuthUser(ctx);
   if (!user) return null;
 

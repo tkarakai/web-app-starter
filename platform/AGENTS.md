@@ -231,6 +231,7 @@ environment-specific and silently breaks artifact reuse
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |
 | Working on i18n, locales, translations or RTL | [docs/i18n-architecture.md](docs/i18n-architecture.md) |
 | Recording or reading audit events | [docs/audit-trail-architecture.md](docs/audit-trail-architecture.md), [docs/audit-trail-event-inventory.md](docs/audit-trail-event-inventory.md) |
+| Working on reference project files | [docs/private-file-storage.md](docs/private-file-storage.md) |
 | Changing schemas or running migrations | [docs/convex-migrations.md](docs/convex-migrations.md) |
 | Deploying, promoting, rolling back, or adding env vars | [docs/deployment-architecture.md](docs/deployment-architecture.md), [docs/deployment-runbook.md](docs/deployment-runbook.md), [docs/ops-cli.md](docs/ops-cli.md) |
 | Hosting on AWS instead of Vercel (`infra/aws`) | [docs/aws/deployment-architecture-aws.md](docs/aws/deployment-architecture-aws.md); Convex stays on Convex Cloud |

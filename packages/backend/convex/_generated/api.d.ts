@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as fileAccess from "../fileAccess.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
@@ -58,6 +59,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  fileAccess: typeof fileAccess;
   files: typeof files;
   http: typeof http;
   migrations: typeof migrations;

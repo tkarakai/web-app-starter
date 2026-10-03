@@ -1,5 +1,5 @@
+import { TextEncoder } from "node:util";
 import { createTestEnv as createPlatformTest } from "./test.modules";
-import type { GenericDatabaseWriter, SystemDataModel } from "convex/server";
 import { describe, expect, test } from "vitest";
 
 import { api, components } from "./_generated/api";
@@ -58,19 +58,11 @@ async function createFixture() {
     description: "Owner only",
     status: "todo",
   });
-  const storageId = await t.run(async (ctx) => {
-    const id = await ctx.storage.store(new Blob(["private attachment"], { type: "text/plain" }));
-    // convex-test 0.0.58 stores size/hash but omits Blob.type. Supply only
-    // that missing system metadata in the emulator; production never does this.
-    const storageDb = ctx.db as unknown as GenericDatabaseWriter<SystemDataModel>;
-    await storageDb.patch(id, { contentType: "text/plain" });
-    return id;
+  const uploadId = await owner.action(api.files.uploadFile, {
+    projectId, name: "private.txt", contentType: "text/plain",
+    bytes: new TextEncoder().encode("private attachment").buffer,
   });
-  const uploadId = await owner.mutation(api.files.saveUpload, {
-    projectId,
-    storageId,
-    name: "private.txt",
-  });
+  const storageId = await t.run(async (ctx) => (await ctx.db.get(uploadId))!.storageId);
 
   async function snapshot() {
     return t.run(async (ctx) => ({
@@ -129,7 +121,7 @@ describe("registered backend authorization contract", () => {
       { _id: f.taskId, title: "Private task" },
     ]);
     expect(await f.owner.query(api.files.listUploads, { projectId: f.projectId })).toMatchObject([
-      { _id: f.uploadId, name: "private.txt", url: expect.any(String) },
+      { _id: f.uploadId, name: "private.txt", available: true },
     ]);
   });
 
@@ -166,7 +158,7 @@ describe("registered backend authorization contract", () => {
     await f.owner.mutation(api.tasks.update, { id: f.taskId, status: "done" });
     expect(await f.owner.query(api.projects.get, { id: f.projectId })).toMatchObject({ name: "Renamed" });
     expect(await f.owner.query(api.tasks.listByProject, { projectId: f.projectId })).toMatchObject([{ status: "done" }]);
-    expect(await f.owner.mutation(api.files.generateUploadUrl, {})).toEqual(expect.any(String));
+    await expect(f.owner.mutation(api.files.generateUploadUrl, {})).rejects.toThrow("USE_AUTHENTICATED_UPLOAD");
 
     await f.owner.mutation(api.tasks.remove, { id: f.taskId });
     await f.owner.mutation(api.files.deleteUpload, { id: f.uploadId });
