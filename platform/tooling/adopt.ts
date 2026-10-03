@@ -419,7 +419,7 @@ export async function settlePrE2e(repo: string, mode: Mode | undefined, exec: Ex
     return;
   }
   if (mode) {
-    log(`  - Set ${(await applyPrE2e(repo, mode, status, exec)).join(", ")} (shared by everyone's CI runs in ${repo})`);
+    log(`  - Set ${(await applyPrE2e(repo, mode, exec)).join(", ")} (shared by everyone's CI runs in ${repo})`);
     return;
   }
   if (needsChoice(status)) log(`  - Private repository: E2E runs on every push to a ready PR. To spend fewer Actions minutes see platform/docs/private-repo-ci.md, then ${manualCommand(repo)}`);
@@ -450,7 +450,7 @@ async function main(argv: readonly string[]): Promise<number> {
     parsed.removeSample ??= (await ask("Remove the projects/tasks/uploads sample? (yes/no)", "no")) === "yes";
     const status = parsed.repo && !parsed.prE2e ? await prE2eStatus(parsed.repo, gh).catch(() => undefined) : undefined;
     if (parsed.repo && status && needsChoice(status)) {
-      for (const line of describeModes(parsed.repo, status)) process.stdout.write(`${line}\n`);
+      for (const line of describeModes(parsed.repo)) process.stdout.write(`${line}\n`);
       const mode = await ask("E2E on pull requests (always/on-demand/off)", "always") ?? "always";
       if (!isMode(mode)) throw new Error(`"${mode}" is not one of always, on-demand, off`);
       parsed.prE2e = mode;

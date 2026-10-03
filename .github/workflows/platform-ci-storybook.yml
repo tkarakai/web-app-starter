@@ -50,7 +50,6 @@ jobs:
         id: e2e
         env:
           PR_E2E: ${{ vars.PLATFORM_CI_PR_E2E }}
-          SKIP_E2E: ${{ vars.SKIP_E2E }}
           REQUIRE_E2E: ${{ inputs.require_e2e }}
           EVENT_NAME: ${{ github.event_name }}
           DRAFT: ${{ github.event.pull_request.draft }}

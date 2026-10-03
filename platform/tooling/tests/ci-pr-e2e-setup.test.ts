@@ -18,24 +18,24 @@ function fakeGh(repository: { private: boolean }, variables: { name: string; val
 
 test("status reads visibility and the shared variables; only an undecided private repository is asked", async () => {
   const unset = await prE2eStatus("acme/app", fakeGh({ private: true }, []).exec);
-  assert.deepEqual(unset, { private: true, mode: undefined, legacySkip: false });
+  assert.deepEqual(unset, { private: true, mode: undefined });
   assert.equal(needsChoice(unset), true);
-  const chosen = await prE2eStatus("acme/app", fakeGh({ private: true }, [{ name: "PLATFORM_CI_PR_E2E", value: "off" }, { name: "SKIP_E2E", value: "true" }]).exec);
-  assert.deepEqual(chosen, { private: true, mode: "off", legacySkip: true });
+  const chosen = await prE2eStatus("acme/app", fakeGh({ private: true }, [{ name: "OTHER", value: "x" }, { name: "PLATFORM_CI_PR_E2E", value: "off" }]).exec);
+  assert.deepEqual(chosen, { private: true, mode: "off" });
   assert.equal(needsChoice(chosen), false);
-  assert.equal(needsChoice({ private: false, legacySkip: false }), false);
-  assert.ok(describeModes("acme/app", { private: true, legacySkip: true }).some(line => /SKIP_E2E=true is set/.test(line)));
+  assert.equal(needsChoice({ private: false }), false);
+  assert.ok(describeModes("acme/app").some(line => /on-demand {2}only once the PR has the run-e2e label/.test(line)));
 });
 
-test("apply sets the mode, creates the label for on-demand and replaces SKIP_E2E", async () => {
+test("apply sets the mode and creates the label for on-demand", async () => {
   const gh = fakeGh({ private: true }, []);
-  assert.deepEqual(await applyPrE2e("acme/app", "on-demand", { private: true, legacySkip: true }, gh.exec), ["PLATFORM_CI_PR_E2E=on-demand", "label run-e2e", "deleted SKIP_E2E"]);
+  assert.deepEqual(await applyPrE2e("acme/app", "on-demand", gh.exec), ["PLATFORM_CI_PR_E2E=on-demand", "label run-e2e"]);
   assert.deepEqual(gh.calls[0], ["variable", "set", "PLATFORM_CI_PR_E2E", "--repo", "acme/app", "--body", "on-demand"]);
   assert.deepEqual(gh.calls[1]?.slice(0, 4), ["label", "create", "run-e2e", "--repo"]);
   assert.ok(gh.calls[1]?.includes("--force"));
-  assert.deepEqual(gh.calls[2], ["variable", "delete", "SKIP_E2E", "--repo", "acme/app"]);
+  assert.equal(gh.calls.length, 2);
   const always = fakeGh({ private: true }, []);
-  assert.deepEqual(await applyPrE2e("acme/app", "always", { private: true, legacySkip: false }, always.exec), ["PLATFORM_CI_PR_E2E=always"]);
+  assert.deepEqual(await applyPrE2e("acme/app", "always", always.exec), ["PLATFORM_CI_PR_E2E=always"]);
   assert.equal(always.calls.length, 1);
 });
 

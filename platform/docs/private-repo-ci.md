@@ -120,9 +120,6 @@ forced on, and production only deploys what passed there. That costs one full CI
 to `main`, not one per push. Before tagging a release you can also run **CI Verify Commit**
 (`gh workflow run ci-verify.yml --ref main`), which forces E2E the same way.
 
-If you set `SKIP_E2E=true` earlier, it still works as `off`, but it is deprecated:
-`gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
-
 ### 4. Keep artifact storage small
 
 E2E reports and screenshots are uploaded only when E2E fails, so green runs store little. All CI

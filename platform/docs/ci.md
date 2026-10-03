@@ -148,9 +148,6 @@ when it runs on pull requests (Settings → Secrets and variables → Actions �
 - **Deploys always run E2E**, whatever the mode. The staging deploy calls the CI workflows with
   `require_e2e: true`, and production deploys only a commit whose staging CI passed
   (`ci/gate-passed`). CI Verify Commit also forces E2E.
-- **`SKIP_E2E=true` is deprecated.** When `PLATFORM_CI_PR_E2E` is unset it still means `off` and
-  prints a warning; it stops working in the next major release. Replace it:
-  `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
 
 A value other than the three modes fails pull-request CI with an error naming the variable.
 

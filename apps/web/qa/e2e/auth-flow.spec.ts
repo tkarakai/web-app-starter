@@ -92,7 +92,7 @@ test.describe("Sign-In Flow", () => {
  *
  * These previously asserted #name / #password / #confirm-password on
  * /en/sign-up. That form has not existed under the default setting for a long
- * time, and the tests had been failing unnoticed because SKIP_E2E hid them.
+ * time, and the tests had been failing unnoticed because CI was skipping E2E.
  * They now cover the gate itself, which is the security-relevant behaviour:
  * a stranger must not be able to self-register.
  */

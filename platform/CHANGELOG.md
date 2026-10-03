@@ -13,13 +13,20 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Action required
+
+- **Who is affected:** apps that set the repository variable `SKIP_E2E`. CI no longer reads it,
+  so with `PLATFORM_CI_PR_E2E` unset, pull requests run E2E again (`always`). **What to do:**
+  `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
+  **Done when:** `gh variable list` shows `PLATFORM_CI_PR_E2E` and no `SKIP_E2E`.
+
 ### Changed
 
 - The staging deploy runs E2E whatever the pull-request E2E setting, by calling the CI workflows
   with `require_e2e: true`. Before, `SKIP_E2E=true` also skipped E2E in the staging deploy's CI,
   so `ci/gate-passed`, which production requires, could pass on a commit no E2E had run on.
-  Apps that set `SKIP_E2E=true` now spend one full E2E run per merge to `main`. No app action
-  is required.
+  Apps that skip E2E on pull requests now spend one full E2E run per merge to `main`. No app
+  action is required.
 - Web E2E shards in CI are balanced by duration. Playwright's `--shard` split the suite by
   test count, so the slow serial auth suites all landed in shard 1: about 7–9 minutes against
   2 minutes for shards 2 and 3. Each shard now runs whole spec files, assigned longest-first
@@ -72,11 +79,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
   runners set up from the earlier guide keep working, and moving to the image is described in
   [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md).
 
-### Deprecated
+### Removed
 
-- Repository variable `SKIP_E2E`. With `PLATFORM_CI_PR_E2E` unset, `SKIP_E2E=true` still skips
-  E2E on pull requests (as `off`) and prints a warning. It stops working in the next major
-  release. Replace it: `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
+- Repository variable `SKIP_E2E`. CI no longer reads it; `PLATFORM_CI_PR_E2E=off` replaces it
+  (see **Action required**).
 
 ## [3.0.0] - 2026-10-02
 

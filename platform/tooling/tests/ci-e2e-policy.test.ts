@@ -12,12 +12,12 @@ function run(command: string, environment: Record<string, string>, directory: st
   const output = path.join(directory, "output");
   fs.writeFileSync(output, "");
   const clean: Record<string, string | undefined> = { ...process.env, GITHUB_OUTPUT: output };
-  for (const name of ["PR_E2E", "SKIP_E2E", "REQUIRE_E2E", "EVENT_NAME", "DRAFT", "REPO_PRIVATE"]) delete clean[name];
+  for (const name of ["PR_E2E", "REQUIRE_E2E", "EVENT_NAME", "DRAFT", "REPO_PRIVATE"]) delete clean[name];
   const result = spawnSync("bash", [script, command], { env: { ...clean, ...environment }, encoding: "utf8" });
   return { ...result, output: fs.readFileSync(output, "utf8") };
 }
 
-test("resolve maps the mode, drafts, forced runs and the deprecated SKIP_E2E", t => {
+test("resolve maps the mode, drafts and forced runs", t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-policy-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const pr = { EVENT_NAME: "pull_request", DRAFT: "false" };
@@ -28,8 +28,6 @@ test("resolve maps the mode, drafts, forced runs and the deprecated SKIP_E2E", t
     [{ ...pr, PR_E2E: "off" }, "skip"],
     [{ ...pr, DRAFT: "true" }, "skip"],
     [{ ...pr, DRAFT: "true", PR_E2E: "on-demand" }, "skip"],
-    [{ ...pr, SKIP_E2E: "false" }, "run"],
-    [{ ...pr, SKIP_E2E: "true", PR_E2E: "on-demand" }, "on-demand"],
     [{ ...pr, PR_E2E: "off", REQUIRE_E2E: "true" }, "run"],
     [{ EVENT_NAME: "push", PR_E2E: "off" }, "run"],
     [{ EVENT_NAME: "workflow_dispatch", PR_E2E: "nonsense" }, "run"],
@@ -37,12 +35,7 @@ test("resolve maps the mode, drafts, forced runs and the deprecated SKIP_E2E", t
     const result = run("resolve", environment, directory);
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.equal(result.output, `e2e=${expected}\n`, JSON.stringify(environment));
-    assert.doesNotMatch(result.stdout, /deprecated/);
   }
-
-  const legacy = run("resolve", { ...pr, SKIP_E2E: "true" }, directory);
-  assert.equal(legacy.output, "e2e=skip\n");
-  assert.match(legacy.stdout, /::warning title=SKIP_E2E is deprecated::.*PLATFORM_CI_PR_E2E=off/);
 
   const invalid = run("resolve", { ...pr, PR_E2E: "sometimes" }, directory);
   assert.equal(invalid.status, 1);
@@ -60,7 +53,7 @@ test("resolve notices a private repository that hasn't chosen a mode", t => {
     { ...pr, REPO_PRIVATE: "false" },
     { ...pr },
     { ...pr, REPO_PRIVATE: "true", PR_E2E: "always" },
-    { ...pr, REPO_PRIVATE: "true", SKIP_E2E: "true" },
+    { ...pr, REPO_PRIVATE: "true", PR_E2E: "off" },
     { EVENT_NAME: "push", REPO_PRIVATE: "true" },
   ];
   for (const environment of quiet) assert.doesNotMatch(run("resolve", environment, directory).stdout, notice, JSON.stringify(environment));
