@@ -46,6 +46,11 @@
       "hooks": []
     },
     {
+      "id": "root.github.actions.setup-playwright.install-self-hosted.sh",
+      "path": ".github/actions/setup-playwright/install-self-hosted.sh",
+      "hooks": []
+    },
+    {
       "id": "root.github.workflows.ci-admin.yml",
       "path": ".github/workflows/ci-admin.yml",
       "hooks": []
