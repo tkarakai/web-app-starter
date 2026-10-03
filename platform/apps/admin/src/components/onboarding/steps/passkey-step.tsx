@@ -1,5 +1,7 @@
 "use client";
 
+import { useQuery } from "convex/react";
+import { api } from "@repo/backend";
 import * as React from "react";
 import { Check, KeyRound } from "lucide-react";
 
@@ -11,6 +13,8 @@ interface PasskeyStepProps {
 }
 
 export function PasskeyStep({ onComplete }: PasskeyStepProps) {
+  const policy = useQuery(api.platform.appSettings.getPublic, { key: "adminPasskeyPolicy" });
+  const required = policy === "required";
   const [name, setName] = React.useState("");
   const [adding, setAdding] = React.useState(false);
   const [added, setAdded] = React.useState(false);
@@ -68,9 +72,10 @@ export function PasskeyStep({ onComplete }: PasskeyStepProps) {
     return (
       <div className="space-y-4">
         <PasskeyUnsupportedAlert />
-        <Button className="w-full" type="button" onClick={() => handleComplete(false)} disabled={completing}>
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+        {required ? <p className="text-sm">A passkey is required. Resume setup in a browser that supports passkeys.</p> : <Button className="w-full" type="button" onClick={() => handleComplete(false)} disabled={completing || policy === undefined}>
           {completing ? "Completing setup..." : "Continue without passkey"}
-        </Button>
+        </Button>}
       </div>
     );
   }
@@ -84,6 +89,7 @@ export function PasskeyStep({ onComplete }: PasskeyStepProps) {
             Passkey added successfully
           </p>
         </div>
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
         <Button className="w-full" type="button" onClick={() => handleComplete(true)} disabled={completing}>
           {completing ? "Completing setup..." : "Complete setup"}
         </Button>
@@ -120,14 +126,14 @@ export function PasskeyStep({ onComplete }: PasskeyStepProps) {
         {adding ? "Adding passkey..." : "Add passkey"}
       </Button>
 
-      <button
+      {!required && <button
         type="button"
         className="w-full text-center text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
         onClick={() => handleComplete(false)}
-        disabled={completing}
+        disabled={completing || policy === undefined}
       >
         {completing ? "Completing..." : "Skip for now"}
-      </button>
+      </button>}
     </div>
   );
 }

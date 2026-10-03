@@ -3,6 +3,8 @@
 import { usePasswordStrength } from "@web-app-starter/auth-ui";
 import { translatePasswordStrength as t } from "@web-app-starter/i18n/password-strength";
 
+import { useAction } from "convex/react";
+import { api } from "@repo/backend";
 import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 
@@ -20,12 +22,13 @@ import {
 
 interface CreateAccountStepProps {
   email: string;
-  onBeforeSignUp?: () => Promise<void>;
+  onBeforeSignUp: () => Promise<string>;
   onComplete: (password: string) => Promise<void>;
   onBack: () => void;
 }
 
 export function CreateAccountStep({ email, onBeforeSignUp, onComplete, onBack }: CreateAccountStepProps) {
+  const register = useAction(api.platform.adminInvitations.register);
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -47,17 +50,9 @@ export function CreateAccountStep({ email, onBeforeSignUp, onComplete, onBack }:
     setLoading(true);
 
     try {
-      // Claim the invitation token before signup. This proves token
-      // possession and adds the email to adminEmails for auto-promotion.
-      if (onBeforeSignUp) {
-        await onBeforeSignUp();
-      }
-
-      const result = await authClient.signUp.email({
-        name: name.trim(),
-        email,
-        password,
-      });
+      const capability = await onBeforeSignUp();
+      await register({ capability, name: name.trim(), email, password });
+      const result = await authClient.signIn.email({ email, password });
 
       if (result.error) {
         const msg = formatAuthError(result.error, "Failed to create account");

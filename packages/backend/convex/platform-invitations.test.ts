@@ -24,7 +24,7 @@ describe("invitation app boundaries", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-  test("admin invitations do not promote an address until a valid token is claimed", async () => {
+  test("admin token exchange never promotes or allowlists an address", async () => {
     const { t, admin, member } = await fixture();
     const email = "future-admin@example.test";
     await expect(member.mutation(api.platform.adminInvitations.invite, { email })).rejects.toThrow("NOT_ADMIN");
@@ -33,10 +33,10 @@ describe("invitation app boundaries", () => {
     expect(page.page).toHaveLength(1);
     expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
     await t.mutation(internal.platform.adminInvitations.setToken, { adminInvitationId: page.page[0]._id, tokenHash: sha256Hex("secret"), expiresAt: Date.now() + 3600_000 });
-    await expect(t.mutation(api.platform.adminInvitations.claimInvitation, { token: "wrong" })).rejects.toThrow("TOKEN_NOT_FOUND");
+    await expect(t.action(api.platform.adminInvitations.claimInvitation, { token: "wrong" })).rejects.toThrow("INVALID_INVITATION");
     expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
-    await t.mutation(api.platform.adminInvitations.claimInvitation, { token: "secret" });
-    expect(await t.query(components.platform.adminEmails.list, {})).toMatchObject([{ email }]);
+    await t.action(api.platform.adminInvitations.claimInvitation, { token: "secret" });
+    expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
     expect(await t.query(internal.platform.adminInvitations.hasValidAdminInvitation, { email })).toBe(true);
     expect(await t.run(ctx => ctx.db.query("adminInvitations").collect())).toEqual([]);
   });
@@ -60,7 +60,9 @@ describe("invitation app boundaries", () => {
     await t.mutation(internal.platform.waitlistTokens.create, { waitlistEntryId: entryId, email: "buyer@example.test", tokenHash: sha256Hex("buyer-token"), expiresAt: Date.now() + 3600_000 });
     expect(await member.query(api.platform.waitlistTokens.listByEntry, { waitlistEntryId: entryId })).toBeNull();
     expect(await admin.query(api.platform.waitlistTokens.listByEntry, { waitlistEntryId: entryId })).toHaveLength(1);
+    expect(await t.query(api.platform.waitlistTokens.validate, { token: "buyer-token" })).toEqual({ valid: true, email: "buyer@example.test" });
     await t.mutation(api.platform.waitlistTokens.beginClaim, { token: "buyer-token" });
+    expect(await t.query(api.platform.waitlistTokens.validate, { token: "buyer-token" })).toEqual({ valid: false, reason: "ALREADY_USED" });
     await t.mutation(api.platform.waitlistTokens.finalizeClaim, { token: "buyer-token" });
     expect(await t.query(internal.platform.waitlistTokens.hasValidInvitation, { email: "buyer@example.test" })).toBe(true);
     expect(await t.run(ctx => ctx.db.query("waitlistEntries").collect())).toEqual([]);

@@ -61,6 +61,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      boundOnboarding: FunctionReference<
+        "query",
+        "internal",
+        { email: string; userId: string },
+        null | { completed: boolean; step: number },
+        Name
+      >;
       claimInvitation: FunctionReference<
         "mutation",
         "internal",
@@ -75,10 +82,38 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      consumeEnrollment: FunctionReference<
+        "mutation",
+        "internal",
+        { capabilityHash: string; email: string; userId: string },
+        null,
+        Name
+      >;
       createForSeed: FunctionReference<
         "mutation",
         "internal",
         { email: string },
+        null,
+        Name
+      >;
+      enrollment: FunctionReference<
+        "query",
+        "internal",
+        { capabilityHash: string; email: string },
+        { email: string; userId?: string },
+        Name
+      >;
+      exchangeEnrollment: FunctionReference<
+        "mutation",
+        "internal",
+        { capabilityHash: string; token: string },
+        { email: string; expiresAt: number },
+        Name
+      >;
+      finishBoundOnboarding: FunctionReference<
+        "mutation",
+        "internal",
+        { email: string; userId: string },
         null,
         Name
       >;
@@ -131,6 +166,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             onboardingStep?: number;
             status: "invited" | "claimed" | "completed";
             token?: string;
+            userId?: string;
           }>;
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
           splitCursor?: string | null;
@@ -144,11 +180,26 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      requiresEnrollment: FunctionReference<
+        "query",
+        "internal",
+        { email: string },
+        boolean,
+        Name
+      >;
       setToken: FunctionReference<
         "mutation",
         "internal",
         { adminInvitationId: string; expiresAt: number; tokenHash: string },
         null,
+        Name
+      >;
+      validateEnrollmentToken: FunctionReference<
+        "query",
+        "internal",
+        { token: string },
+        | { email: string; valid: true }
+        | { reason: "INVALID_INVITATION"; valid: false },
         Name
       >;
       validateToken: FunctionReference<
@@ -764,6 +815,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   createdAt: number;
                   email: string;
                   invitationExpiresAt?: number;
+                  invitationGeneration?: number;
                   invitedAt?: number;
                   meta: string;
                   status: "waiting" | "invited" | "claimed";
@@ -798,6 +850,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   onboardingStep?: number;
                   status: "invited" | "claimed" | "completed";
                   token?: string;
+                  userId?: string;
                 }>;
                 table: "adminInvitations";
               }
@@ -899,6 +952,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             email: string;
             invitationExpired: boolean;
             invitationExpiresAt?: number;
+            invitationGeneration?: number;
             invitedAt?: number;
             meta: string;
             status: "waiting" | "invited" | "claimed";
@@ -963,6 +1017,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             createdAt: number;
             email: string;
             invitationExpiresAt?: number;
+            invitationGeneration?: number;
             invitedAt?: number;
             meta: string;
             status: "waiting" | "invited" | "claimed";
@@ -985,6 +1040,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           email: string;
           expiresAt: number;
+          generation?: number;
           tokenHash: string;
           waitlistEntryId: string;
         },

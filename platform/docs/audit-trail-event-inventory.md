@@ -156,11 +156,11 @@ both delete the session row. No failure event exists for sign-out.
 - `resource`: `user:<userId>`
 - `status`: `succeeded`
 
-The `before` hook enforces signup gating (`SIGNUP_DISABLED` unless the mode is signup, or
-the email holds a valid waitlist or admin invitation) and auto-assigns `admin` to emails
-in `adminEmails`. A rejection there throws before the `after` hook, so **no
-`auth.sign_up` event is written** — only `auth.sign_up.requested` with a `failed.*`
-status records the attempt.
+An auth `before` hook rejection prevents the `after` hook, so **no `auth.sign_up` event
+is written** — only `auth.sign_up.requested` with a `failed.*` status records the attempt.
+Administrator enrollment follows the [bound enrollment contract](authentication-and-onboarding.md#6-admin-onboarding-flow):
+`adminInvitations.registerAccount` schedules the success event directly with
+`source: server:admin-enrollment`, using the same actor, user ID and resource fields above.
 
 ---
 
@@ -253,9 +253,12 @@ token deletions are not individually audited.
 Note the `resource` shape is inconsistent between the two — email for `sent`, entry ID for
 `deleted`.
 
-`invite` deliberately does **not** insert into `adminEmails`; that happens only in
-`claimInvitation`, so the admin role cannot be obtained without proving token possession.
-Token lookup is by `sha256Hex(token)`.
+For invitation acceptance and role activation, see the
+[administrator enrollment contract](authentication-and-onboarding.md#6-admin-onboarding-flow).
+`completeOnboarding` also schedules `admin.onboarding.completed` when completing bound
+enrollment: `source: server:admin-enrollment`, `resource: user:<userId>`, `status: succeeded`,
+with the recipient's email and user ID as actor and authenticated user. This is separate
+from the client wizard event catalogued below.
 
 ### Announcements — `packages/backend/convex/platform/announcements.ts`
 

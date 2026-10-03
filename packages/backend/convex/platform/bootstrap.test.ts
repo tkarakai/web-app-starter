@@ -9,8 +9,12 @@ const BOOTSTRAP_META = JSON.stringify({
   excitement: ["take-my-money"],
 });
 
+import authSchema from "./betterAuth/schema";
+const authModules = import.meta.glob("./betterAuth/**/*.*s");
 function createTestEnv() {
-  return createPlatformTest();
+  const t = createPlatformTest();
+  t.registerComponent("betterAuth", authSchema, authModules);
+  return t;
 }
 
 describe("bootstrap", () => {

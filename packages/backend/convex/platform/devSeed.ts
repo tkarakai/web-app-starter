@@ -59,12 +59,6 @@ export const setupDevUser = internalMutation({
     isAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
-    // Admin email entry (triggers auto-promotion in databaseHook).
-    // Skip if already exists (idempotent for retries after partial failure).
-    if (args.isAdmin) {
-      await ctx.runMutation(components.platform.adminEmails.ensure, { email: args.email });
-    }
-
     await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["dev-seed"], excitement: ["dev-seed"] }), token: `dev-seed-${args.email}`, ttlMs: 365 * 24 * 60 * 60_000 });
   },
 });
@@ -116,14 +110,7 @@ export const seed = internalAction({
         isAdmin: user.isAdmin,
       });
 
-      // 1b. For admin users, also create an adminInvitations entry
-      if (user.isAdmin) {
-        await ctx.runMutation(internal.platform.adminInvitations.createForSeed, {
-          email: user.email,
-        });
-      }
-
-      // 2. Create the user via Better Auth (hashes password, databaseHook promotes admin).
+      // 2. Create the user via Better Auth; local fixture privileges are assigned explicitly below.
       //    "User already exists" is expected on retry after partial failure — treat as success.
       const auth = createAuth(ctx);
       try {
@@ -154,11 +141,16 @@ export const seed = internalAction({
       const authForVerify = createAuth(ctx);
       const authContext = await authForVerify.$context;
       const existingUser = await authContext.internalAdapter.findUserByEmail(user.email);
-      if (existingUser && !existingUser.user.emailVerified) {
+      if (existingUser) {
         await authContext.internalAdapter.updateUser(
           existingUser.user.id,
-          { emailVerified: true },
+          { emailVerified: true, role: user.isAdmin ? "admin" : "user" },
         );
+      }
+
+      if (user.isAdmin) {
+        await ctx.runMutation(components.platform.adminEmails.ensure, { email: user.email });
+        await ctx.runMutation(internal.platform.adminInvitations.createForSeed, { email: user.email });
       }
 
       // 4. Finalize the invitation token

@@ -86,6 +86,12 @@ export function InvitationSignupForm({ token }: { token?: string }) {
     checkSession();
   }, [token, tokenValidation]);
 
+  React.useEffect(() => {
+    if (tokenValidation?.valid && "adminOnboardingUrl" in tokenValidation && tokenValidation.adminOnboardingUrl) {
+      window.location.replace(tokenValidation.adminOnboardingUrl);
+    }
+  }, [tokenValidation]);
+
   // No token provided
   if (!token) {
     return (

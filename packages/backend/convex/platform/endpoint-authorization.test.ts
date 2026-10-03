@@ -33,6 +33,7 @@ const ACCESS: Record<string, Access> = {
   "platform/adminInvitations:getMyOnboardingStatus": "user",
   "platform/adminInvitations:invite": "admin",
   "platform/adminInvitations:list": "admin",
+  "platform/adminInvitations:register": "public", // holder of a single-use enrollment capability
   "platform/adminInvitations:remove": "admin",
   "platform/adminInvitations:validateToken": "public",
   "platform/announcements:archive": "admin",

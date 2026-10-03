@@ -39,6 +39,7 @@ export const announcementFields = {
 };
 
 export const waitlistEntriesFields = {
+    invitationGeneration: v.optional(v.number()),
     email: v.string(),
     meta: v.string(), // App-owned JSON object, stored as a string
     status: v.union(
@@ -70,6 +71,7 @@ export const invitationTokensFields = {
   };
 
 export const adminInvitationsFields = {
+    userId: v.optional(v.string()),
     email: v.string(),
     token: v.optional(v.string()),
     status: v.union(
@@ -88,6 +90,10 @@ export default defineSchema({
   migrationState: defineTable({ name: v.string(), deployment: v.string(), phase: migrationPhaseValidator, startedAt: v.number(), verifiedAt: v.optional(v.number()), completedAt: v.optional(v.number()) }).index("by_name", ["name"]),
   migrationProgress: defineTable({ table: migrationTableValidator, cursor: v.union(v.string(), v.null()), complete: v.boolean() }).index("by_table", ["table"]),
   migrationRows: defineTable({ table: migrationTableValidator, legacyId: v.string(), componentId: v.string(), legacyCreationTime: v.number(), snapshot: v.string(), publishAt: v.optional(v.number()), unpublishAt: v.optional(v.number()), sourcePublishJobId: v.optional(v.string()), sourceUnpublishJobId: v.optional(v.string()), schedulesActivated: v.boolean() }).index("by_table_legacy", ["table", "legacyId"]).index("by_table", ["table"]).index("by_table_activated", ["table", "schedulesActivated"]),
+  adminEnrollments: defineTable({
+    email: v.string(), capabilityHash: v.string(), tokenHash: v.string(),
+    expiresAt: v.number(), userId: v.optional(v.string()),
+  }).index("by_capability", ["capabilityHash"]).index("by_expiresAt", ["expiresAt"]),
   adminEmails: defineTable({ email: v.string() }).index("by_email", ["email"]),
   adminInvitations: defineTable(adminInvitationsFields)
     .index("by_email", ["email"])

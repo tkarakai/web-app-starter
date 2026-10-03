@@ -6,27 +6,8 @@
  * let an operator seed the first admin from the Convex dashboard without
  * needing a UI.
  *
- * ## Functions
- *
- * - **initialize** — Seeds the first admin email, creates a waitlist entry,
- *   and sends an invitation token. Can only run once (guards against an
- *   existing `adminEmails` row).
- *
- * - **rescue** — Fixes a failed bootstrap (typo in email, expired token,
- *   etc.). Updates the admin email if needed, revokes old tokens, and resends
- *   a fresh invitation. Cannot run after the admin has already claimed the
- *   invite.
- *
- * - **status** — Read-only diagnostic that reports the current bootstrap state
- *   and an actionable hint (e.g. "token expired — run rescue").
- *
- * ## Usage (Convex dashboard → Functions → Run)
- *
- * ```
- * platform/bootstrap:initialize  { "email": "you@example.com" }
- * platform/bootstrap:status      {}
- * platform/bootstrap:rescue      { "currentEmail": "typo@...", "newEmail": "correct@..." }
- * ```
+ * Operator commands and rescue restrictions are documented in
+ * platform/docs/deployment-runbook.md#step-2-bootstrap-the-first-admin.
  *
  * All three functions are `internalMutation`/`internalQuery` — they are **not**
  * callable from the client. Run them from the Convex dashboard or via
@@ -55,6 +36,9 @@ function assertValidEmail(email: string): void {
 export const initialize = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
+    args.email = args.email.trim().toLowerCase();
+    const account = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: args.email }] });
+    if (account) throw new Error("BOOTSTRAP_ACCOUNT_EXISTS");
     const existing = await ctx.runQuery(components.platform.adminEmails.list, {});
     if (existing.length > 0) {
       throw new Error("BOOTSTRAP_ALREADY_INITIALIZED");
@@ -90,6 +74,12 @@ export const rescue = internalMutation({
     newEmail: v.string(),
   },
   handler: async (ctx, args) => {
+    args.currentEmail = args.currentEmail.trim().toLowerCase();
+    args.newEmail = args.newEmail.trim().toLowerCase();
+    for (const email of new Set([args.currentEmail, args.newEmail])) {
+      const account = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
+      if (account) throw new Error("BOOTSTRAP_ACCOUNT_EXISTS");
+    }
     // Guard: exactly one admin email must exist
     const adminEmails = await ctx.runQuery(components.platform.adminEmails.list, {});
     if (adminEmails.length === 0) {
@@ -101,19 +91,20 @@ export const rescue = internalMutation({
 
     // Guard: caller must prove they know the current email
     const adminRow = adminEmails[0];
-    if (adminRow.email !== args.currentEmail) {
+    if (adminRow.email.trim().toLowerCase() !== args.currentEmail) {
       throw new Error("BOOTSTRAP_EMAIL_MISMATCH");
     }
 
     assertValidEmail(args.newEmail);
-    const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.rescue, args);
+    const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.rescue, { currentEmail: adminRow.email, newEmail: args.newEmail });
     const emailChanged = args.newEmail !== args.currentEmail;
-    if (emailChanged) await ctx.runMutation(components.platform.adminEmails.replace, { id: adminRow._id, email: args.newEmail });
+    if (adminRow.email !== args.newEmail) await ctx.runMutation(components.platform.adminEmails.replace, { id: adminRow._id, email: args.newEmail });
 
+    const state = await ctx.runQuery(components.platform.waitlistBootstrap.state, { email: args.newEmail });
     await ctx.scheduler.runAfter(
       0,
       internal.platform.waitlistActions.generateTokenAndSendEmail,
-      { entryId, email: args.newEmail },
+      { entryId, email: args.newEmail, generation: state.waitlistEntry?.invitationGeneration },
     );
 
     return {

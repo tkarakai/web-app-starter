@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import type { AuditStatus } from "@repo/backend";
@@ -58,8 +58,7 @@ export function AdminOnboardingWizard() {
   const [showIntro, setShowIntro] = React.useState(true);
 
   // Once the wizard is actively running, stop the init effect from re-evaluating
-  // mode — reactive query changes (e.g. tokenResult → ALREADY_CLAIMED after
-  // claimInvitation) must not override the wizard.
+  // mode — token invalidation after registration must not override the wizard.
   const wizardActiveRef = React.useRef(false);
 
   // Password from Step 0 — kept in memory only for auto-enabling TOTP in Step 1
@@ -68,8 +67,8 @@ export function AdminOnboardingWizard() {
   // Backup codes from Step 1 TOTP verification
   const [backupCodes, setBackupCodes] = React.useState<string[]>([]);
 
-  // Convex mutations
-  const claimInvitation = useMutation(api.platform.adminInvitations.claimInvitation);
+  // Convex enrollment operations
+  const claimInvitation = useAction(api.platform.adminInvitations.claimInvitation);
   const advanceOnboardingStep = useMutation(api.platform.adminInvitations.advanceOnboardingStep);
   const completeOnboarding = useMutation(api.platform.adminInvitations.completeOnboarding);
   const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
@@ -180,20 +179,13 @@ export function AdminOnboardingWizard() {
     init();
   }, [token, tokenResult, onboardingStatus, router]);
 
-  // Pre-signup: claim the invitation token BEFORE creating the account.
-  // This proves token possession and adds the email to adminEmails so the
-  // auth signup hook will auto-promote to admin role.
+  const enrollmentRef = React.useRef<{ capability: string; expiresAt: number } | null>(null);
   const handleBeforeSignUp = React.useCallback(async () => {
-    if (token) {
-      try {
-        await claimInvitation({ token });
-      } catch (err) {
-        // If already claimed (e.g. retrying after a failed signup), the
-        // adminEmails entry already exists so signup will still promote.
-        if (err instanceof Error && err.message === "ALREADY_CLAIMED") return;
-        throw err;
-      }
+    if (!token) throw new Error("INVITATION_REQUIRED");
+    if (!enrollmentRef.current || enrollmentRef.current.expiresAt <= Date.now()) {
+      enrollmentRef.current = await claimInvitation({ token });
     }
+    return enrollmentRef.current.capability;
   }, [token, claimInvitation]);
 
   // Step 0 complete: account created
@@ -224,11 +216,8 @@ export function AdminOnboardingWizard() {
       status: "succeeded",
     }).catch(() => {});
 
-    // advanceOnboardingStep may fail with NOT_AUTHENTICATED if the Convex auth
-    // session hasn't propagated yet (same race as Step 0 → claimInvitation).
-    // This is non-critical — it only persists the step for resume. The TOTP
-    // setup itself is already complete through Better Auth.
-    await advanceOnboardingStep({ step: 2 }).catch(() => {});
+    // Persist verified progress before moving on; server completion checks it.
+    await advanceOnboardingStep({ step: 2 });
     setStep(2);
   }, [email, advanceOnboardingStep, postAuditEvent]);
 
@@ -242,7 +231,7 @@ export function AdminOnboardingWizard() {
       status: "succeeded",
     }).catch(() => {});
 
-    await advanceOnboardingStep({ step: 3 }).catch(() => {});
+    await advanceOnboardingStep({ step: 3 });
     setStep(3);
   }, [email, advanceOnboardingStep, postAuditEvent]);
 
@@ -269,10 +258,9 @@ export function AdminOnboardingWizard() {
       status: "succeeded",
     }).catch(() => {});
 
-    // completeOnboarding may fail if the Convex session hasn't synced yet
-    // (unlikely by Step 3, but possible). If it fails, the admin will
-    // resume onboarding at the passkey step on next sign-in.
-    await completeOnboarding({}).catch(() => {});
+    // The server verifies enrollment and grants privileges. Keep the wizard
+    // open if this fails so the recipient can retry without losing progress.
+    await completeOnboarding({});
 
     // Sign out so they sign in fresh with full security
     await authClient.signOut();

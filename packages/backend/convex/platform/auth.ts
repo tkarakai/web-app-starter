@@ -747,12 +747,10 @@ export const createAuthOptions = (
               throw new Error("SIGNUP_DISABLED");
             }
 
-            // Auto-assign "admin" role to users whose email is in the adminEmails table.
-            const adminEmails = await actionCtx.runQuery(
-              internal.platform.adminEmails.list,
-            );
-            if (adminEmails.some((row: { email: string }) => row.email === user.email)) {
-              return { data: { ...user, role: "admin", emailVerified: true } };
+            // Reserved administrator addresses require the bound enrollment flow.
+            // This applies to every account-creation method, including public signup.
+            if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
+              throw new Error("ADMIN_ENROLLMENT_REQUIRED");
             }
             return { data: user };
           },

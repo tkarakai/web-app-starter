@@ -124,6 +124,10 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 | `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
 | `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
 
+For administrator onboarding, use the platform admin wizard and its bound enrollment actions.
+Never grant roles or email verification from an email allowlist, or implement claim-then-public-signup.
+See [administrator onboarding](docs/authentication-and-onboarding.md#6-admin-onboarding-flow).
+
 For account security, compose `SecuritySection` (or `ChangePasswordForm`, `TwoFactorSection`,
 `PasskeySection` and `SessionsList`) from `@web-app-starter/auth-ui` under the protected layout.
 These components own the auth operations and localized feedback; your app owns the page around them.
