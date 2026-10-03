@@ -84,7 +84,7 @@ Details: [docs/development.md](docs/development.md#app-configuration-appconfigts
 ```bash
 bun run dev                  # Convex + core apps; seeds admin@admin.com and user@user.com
 bun run dev:web              # Convex + web            bun run dev:admin      # Convex + admin
-bun run dev:landing          # landing
+bun run dev:landing          # See development commands below
 bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
 CI=true bun run ci           # Full local CI; one web E2E worker avoids edge-rate-limit failures
@@ -199,6 +199,7 @@ artifact to one environment.
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | This app's public URL | landing |
 | `NEXT_PUBLIC_WEB_APP_URL` | Web app URL, for cross-app links | landing |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex HTTP URL for browser onboarding, waitlist and announcements | landing |
 
 Build-identity variables keep the `NEXT_PUBLIC_` prefix everywhere, because they describe the
 build: `NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_GIT_BRANCH`, `NEXT_PUBLIC_DEPLOY_TIMESTAMP`,

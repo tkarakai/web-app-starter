@@ -157,39 +157,48 @@ For users, sign-up *is* onboarding. The flow is simpler than admin onboarding be
 
 ### Onboarding ownership and landing handoff
 
-The reference landing app is a backend-free marketing site. Get started links to the web
-app's `/sign-up`, and Sign in links to `/sign-in`. The landing neither reads the onboarding
-mode nor requires a Convex URL. It no longer mounts a live announcement host;
-web and admin retain their announcement UI.
+The reference landing is a static export with dynamic browser features. It reads
+`NEXT_PUBLIC_CONVEX_SITE_URL/api/waitlist/status` after hydration: `publicWaitlist`
+shows the inline form, `publicSignup` offers localized web sign-up and sign-in links, and
+`inviteOnly` offers sign-in only. Unknown modes fail closed. While loading it shows a
+placeholder; backend failures show sign-in plus optional `NEXT_PUBLIC_BOOK_DEMO_URL` and
+`NEXT_PUBLIC_CONTACT_URL` links. Requests time out after eight seconds and failed loads retry
+with exponential backoff (5–60 seconds, at most ten retries), paused while hidden. Returning
+to the tab refreshes the mode. Registration and waitlist mutations still enforce the current
+mode at submission time.
 
-Web's `SignUpView` reads `CONVEX_SITE_URL/api/waitlist/status` on every request with
-`cache: "no-store"`. Admin mode changes apply to the next page request, without the former
-60-second stale-while-revalidate window. `publicSignup` renders account creation,
-`publicWaitlist` renders the shared `WaitlistForm` in web, and `inviteOnly` renders the
-invitation-only notice and sign-in link. Backend failures or unrecognized responses fail closed
-with that notice, never an open signup form. Backend mutations still enforce the mode at submit
-time; an already-open page does not grant permission after an admin changes it.
+Landing also mounts `AnnouncementBannerHost` when `features.announcements` is enabled.
+It polls `/api/announcements/active` every 15 seconds after each completed request, supports
+CTA and details, remembers dismissal by announcement ID, and offsets the header/content.
+The landing needs no application server in production: both features execute in the browser.
+Set its Convex HTTP URL at build time and allow its origin through Convex `LANDING_URL`.
+`bun run dev:landing` starts the local backend and wires both URLs.
 
-The email-only default needs no app code. For custom questions, export
-`createSignUpView({ waitlistForm: AppWaitlistForm })` as the page default from
-`@web-app-starter/auth-ui/views`. The app-owned client form component receives
-`convexSiteUrl` at request time and composes `WaitlistForm` from
-`@web-app-starter/auth-ui` with `children` (question controls), optional `meta` (a JSON
-object, default `{}`) and `disabled` (app validation). See
-`apps/web/src/components/waitlist-form.tsx` for the reference questions. The shared form
-posts directly from the visitor's browser to Convex, preserving per-visitor IP rate limiting;
-do not replace it with a server action that collapses visitors onto the server's IP.
-The form uses the existing web `PublicConfigProvider` for localized marketing legal links.
-Shared wording lives in `auth.waitlist`; use `packages/messages/overrides.json` to reword it.
-Sample question translations remain app-owned under `landing.waitlist` for compatibility.
+The reference web route's `LandingSignUpView` independently reads `CONVEX_SITE_URL/api/waitlist/status`
+with `cache: "no-store"` on every request. `publicSignup` renders account creation;
+`publicWaitlist` explains the restriction and links to the current locale on landing;
+`inviteOnly`, unknown responses and backend failures show the invitation-only notice and
+sign-in link. Backend failures never open registration. Use
+`export { LandingSignUpView as default } from "@web-app-starter/auth-ui/views"` in web's sign-up page.
 
-**Additive adoption:** platform upgrades do not replace buyer-owned pages, questions or layouts.
-Existing apps can keep their landing forms or opt into the web handoff by composing the new
-view and form. Copy/customize the web question wrapper before removing an old form. The old
-reference landing form, waitlist section and announcement host remain as unmounted app seams;
-if you still mount them, retain their app-owned environment wiring and build env declarations.
-Only remove a landing's Convex variable after removing its backend consumers. New default
-launcher and infrastructure generators no longer supply it. No stored-answer migration is needed.
+**App-owned forms:** customize `apps/landing/src/components/waitlist-form.tsx` and its
+`landing.waitlist` messages for your questions. Posts go directly from the browser to Convex,
+preserving per-visitor IP rate limits. Metadata and email validation remain enforced on the
+backend. `features.waitlist` controls visibility.
+
+Existing `SignUpView` consumers retain the email-only web form; this API stays compatible.
+Apps that deliberately host a waitlist in web can also use
+`createSignUpView({ waitlistForm: AppWaitlistForm })` and compose the shared
+`WaitlistForm` from `@web-app-starter/auth-ui` with `children`, optional object-valued
+`meta` and `disabled`. The retained web question wrapper is an example of this optional
+composition; the reference route uses the landing handoff.
+
+**Adoption:** platform upgrades preserve buyer-owned landing pages and forms. To restore this
+flow in an existing app, mount its announcement host, wire its browser mode selection and
+waitlist form, and switch web's route to `LandingSignUpView`. Retain custom questions, translations
+and branding. Add `NEXT_PUBLIC_CONVEX_SITE_URL` to landing's env template, hosting configuration
+and Turbo build `env`; rebuild the static site. Configure Convex `LANDING_URL` for its origin.
+The setup generator supplies this variable for new deployments. No stored-answer migration is needed.
 
 ### 7.1 Step 1 — Create Account (email + password)
 
@@ -428,7 +437,7 @@ and a domain with a dot); malformed addresses such as `anna@` return `INVALID_EM
 shared join mutation normalizes case/whitespace before lookup. Onboarding restrictions, deduplication
 and per-visitor rate limits still apply. Joining again does not replace stored answers.
 
-The reference wrapper in `apps/web/src/components/waitlist-form.tsx` asks for
+The reference landing form in `apps/landing/src/components/waitlist-form.tsx` asks for
 superpowers and excitement and offers role, company (120 characters) and use case
 (500 characters). These are sample-app choices, not platform-required fields. Change or
 remove them in your app and keep their translations in `packages/messages/`. The platform

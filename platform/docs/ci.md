@@ -76,7 +76,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 1. `ci-shared.yml` — Lint, typecheck, backend tests, and the required starter ownership checks and demo upgrade rehearsal (see `apps/demo/README.md`)
 2. `ci-web.yml` — Web app: unit tests, component tests, build, bundle size, E2E
 3. `ci-admin.yml` — Admin app: same checks as web
-4. `ci-landing.yml` — Landing app: same checks; its E2E dev server needs no backend
+4. `ci-landing.yml` — Landing app: same checks; its E2E launcher starts Convex for browser-side onboarding and announcements
 5. `ci-storybook.yml` — Storybook app: build, E2E
 
 ### Reusable platform workflows and thin callers

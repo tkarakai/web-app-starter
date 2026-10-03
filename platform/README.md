@@ -67,7 +67,7 @@ To start only a specific app:
 ```bash
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
-bun run dev:landing          # Landing only (no backend)
+bun run dev:landing          # Landing + Convex
 bun run dev:storybook        # Component storybook (no Convex)
 ```
 
@@ -272,7 +272,8 @@ CONVEX_SITE_URL=https://<deployment>.convex.site
 # at build time and keep the NEXT_PUBLIC_ prefix.
 NEXT_PUBLIC_SITE_URL=https://your-app-domain.com
 NEXT_PUBLIC_WEB_APP_URL=https://your-web-app-domain.com
-# Landing needs no Convex: Get started / Sign in hand off to web.
+NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
+# Landing reads onboarding and announcements in the browser and hosts the waitlist.
 ```
 
 3. Configure Convex env vars for that deployment:
@@ -447,7 +448,7 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 
 ### Environment differences
 
-- Local web/admin env uses `CONVEX_URL` and `CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`. The backend-free landing uses only `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` for app URLs.
+- Local web/admin env uses `CONVEX_URL` and `CONVEX_SITE_URL` pointing to localhost ports. Ports are dynamically assigned per deployment and automatically updated in `.env.local` by `bun run dev`. Landing inlines `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` for browser-side onboarding, waitlist and announcements.
 - Cloud env uses `https://<deployment>.convex.cloud` (API) and `https://<deployment>.convex.site` (site proxy).
 - `NEXT_PUBLIC_SITE_URL` is the landing's URL. Convex's `SITE_URL` contains the trusted web/admin origins. Web and admin derive their own origin from the request `Host` header.
 

@@ -475,6 +475,7 @@ for APP in web admin landing storybook; do
   if CONVEX_URL="${CONVEX_URL:-https://placeholder.convex.cloud}" \
      CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://placeholder.convex.site}" \
      LANDING_URL="${LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}" \
+     NEXT_PUBLIC_CONVEX_SITE_URL="${NEXT_PUBLIC_CONVEX_SITE_URL:-https://placeholder.convex.site}" \
      NEXT_PUBLIC_CONVEX_URL="${NEXT_PUBLIC_CONVEX_URL:-https://placeholder.convex.cloud}" \
      NEXT_PUBLIC_LANDING_URL="${NEXT_PUBLIC_LANDING_URL:-$APP_CONFIG_ORIGIN_LANDING}" \
      NEXT_PUBLIC_WEB_APP_URL="${NEXT_PUBLIC_WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}" \

@@ -118,8 +118,8 @@ test.describe("Sign-Up Flow (invitation-gated)", () => {
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 
-    // Invite-only visitors can still sign in; waitlist mode is rendered in web.
-    const cta = page.locator('main a[href="/sign-in"]');
+    // Invite-only visitors can still sign in; waitlist visitors get a link to the localized landing.
+    const cta = page.locator('main a[href="/en/sign-in"]');
     await expect(cta).toBeVisible({ timeout: 15_000 });
     await expect(cta).toHaveAttribute("href", /.+/);
   });

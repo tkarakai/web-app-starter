@@ -26,7 +26,7 @@ test("staging skips only unconfigured automatic pushes, preserves legacy deploym
   }
   assert.deepEqual(readiness({ ...complete, VERCEL_PROJECT_ID_LANDING_STAGING: "" }).missing, ["VERCEL_PROJECT_ID_LANDING_STAGING"]);
 });
-test("deployment topology requires landing, whose projects get no Convex browser variable", t => {
+test("deployment topology requires landing, whose projects get the Convex browser endpoint", t => {
   const root = mkdtempSync(path.join(tmpdir(), "deploy-setup-")); t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const app of ["apps/web", "platform/apps/admin"]) { mkdirSync(path.join(root, app), { recursive: true }); writeFileSync(path.join(root, app, "package.json"), "{}"); }
   assert.throws(() => apps(root), /Missing deployment app: apps\/landing/);
@@ -37,7 +37,7 @@ test("deployment topology requires landing, whose projects get no Convex browser
   const s = state(); for (const app of apps(root)) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: `app-${app}`, domain: `${app}.example.com` };
   s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
   const env = values(s, apps(root), "staging");
-  assert(!("NEXT_PUBLIC_CONVEX_SITE_URL" in env.vercel.landing!));
+  assert.equal(env.vercel.landing!.NEXT_PUBLIC_CONVEX_SITE_URL, "https://backend.convex.site");
   assert.equal(env.vercel.web!.LANDING_URL, "https://landing.example.com");
   saveState(root, { ...s, token: "never-save-this" } as State);
   assert(!readFileSync(path.join(root, ".deploy-setup.json"), "utf8").includes("never-save-this"));
@@ -318,11 +318,11 @@ test("selected proof mappings allow unrelated ops apps but reject selected ident
   }
 });
 
-test("the landing generator emits only backend-free marketing configuration", () => {
+test("the landing generator emits browser configuration for the deployment", () => {
   const s = state();
   for (const app of ["web", "admin", "landing"] as const) s.projects[`${app}/staging`] = { id: `prj_${app}`, name: app, domain: `${app}.example.test` };
   s.backends.staging = { id: 1, name: "backend", url: "https://backend.convex.cloud" };
   const generated = values(s, ["web", "admin", "landing"], "staging");
-  assert.deepEqual(generated.vercel.landing, { NEXT_PUBLIC_SITE_URL: "https://landing.example.test", NEXT_PUBLIC_WEB_APP_URL: "https://web.example.test" });
+  assert.deepEqual(generated.vercel.landing, { NEXT_PUBLIC_SITE_URL: "https://landing.example.test", NEXT_PUBLIC_WEB_APP_URL: "https://web.example.test", NEXT_PUBLIC_CONVEX_SITE_URL: "https://backend.convex.site" });
   assert.equal(generated.vercel.web?.CONVEX_SITE_URL, "https://backend.convex.site");
 });

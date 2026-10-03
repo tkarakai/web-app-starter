@@ -75,6 +75,7 @@ if [ -z "$SELECTED_APPS" ]; then
         exit 1
     fi
     START_LANDING=true
+    NEED_CONVEX=true
     if [ -f "$(app_dir storybook)/package.json" ]; then START_STORYBOOK=true; fi
 else
     # Parse comma-separated app names
@@ -91,6 +92,7 @@ else
                 ;;
             landing)
                 START_LANDING=true
+                NEED_CONVEX=true
                 ;;
             storybook)
                 START_STORYBOOK=true
@@ -274,8 +276,8 @@ get_convex_urls_from_backend_env() {
 # Update Convex URLs in an app's .env.local
 #
 # web and admin read these unprefixed at request time so their build artifacts
-# stay environment-agnostic and can be promoted between environments. Neither
-# landing app needs Convex URLs.
+# stay environment-agnostic and can be promoted between environments. Landing
+# inlines its public HTTP endpoint at build time for browser-side requests.
 # See platform/docs/deployment-architecture.md
 update_app_env_urls() {
     local env_file="$1"
@@ -672,6 +674,9 @@ if [ "$NEED_CONVEX" = true ]; then
         if [ "$START_ADMIN" = true ]; then
             update_app_env_urls "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "$CLOUD_PORT" "$SITE_PORT"
         fi
+        if [ "$START_LANDING" = true ]; then
+            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_CONVEX_SITE_URL" "http://127.0.0.1:$SITE_PORT"
+        fi
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi
@@ -803,6 +808,11 @@ start_next_app() {
         echo -e "  ${YELLOW}Port $preferred_port in use, using $actual_port${NC}"
     fi
 
+    # Convex may have created landing's env file before ensure-app-env can seed it.
+    # Set the known origin before Next loads its environment and compiles metadata.
+    if [ "$app_name" = landing ] && [ "$actual_port" != "0" ]; then
+        update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$actual_port"
+    fi
     (cd "$app_dir" && bunx next dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
     local next_pid=$!
     "$NODE_TS" "$PROCESS_HELPER" track "next-${app_name}" "$next_pid"
@@ -878,8 +888,8 @@ start_next_app() {
     # Sync this app's origin into Convex's SITE_URL.
     #
     # SITE_URL is a comma-separated list; the backend splits it and uses every
-    # entry as a trusted origin. Only web and admin call the backend.
-    if [ "$NEED_CONVEX" = true ] && { [ "$app_name" = web ] || [ "$app_name" = admin ]; } && [ -n "$next_port" ]; then
+    # entry as a trusted origin, including browser HTTP calls from landing.
+    if [ "$NEED_CONVEX" = true ] && { [ "$app_name" = web ] || [ "$app_name" = admin ] || [ "$app_name" = landing ]; } && [ -n "$next_port" ]; then
         local app_origin="http://localhost:$next_port"
         local existing_site_url
         existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
@@ -951,7 +961,7 @@ if [ "$START_LANDING" = true ]; then
     LANDING_APP_URL="$LAST_APP_URL"
 
     # The backend needs the landing URL for CORS and announcement links,
-    # even though the static landing itself never calls Convex.
+    # including the landing browser requests.
     if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
         if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
