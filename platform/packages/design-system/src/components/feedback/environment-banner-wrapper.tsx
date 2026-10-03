@@ -31,6 +31,7 @@ export function EnvironmentBannerWrapper({
   return (
     <EnvironmentBanner
       environment={environment || "development"}
+      platformVersion={process.env.NEXT_PUBLIC_PLATFORM_VERSION}
       gitSha={process.env.NEXT_PUBLIC_GIT_SHA}
       // Run-time, set per deployment. NEXT_PUBLIC_GIT_SHA is inlined and names the
       // commit that BUILT these bytes, which is not always the one deployed.

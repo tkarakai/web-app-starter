@@ -203,7 +203,9 @@ artifact to one environment.
 
 Build-identity variables keep the `NEXT_PUBLIC_` prefix everywhere, because they describe the
 build: `NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_GIT_BRANCH`, `NEXT_PUBLIC_DEPLOY_TIMESTAMP`,
-`NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_APP_NAME`. The dev environment banner lists every
+`NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_APP_NAME`. Next.js config also derives
+`NEXT_PUBLIC_PLATFORM_VERSION` from `platform/VERSION` for the dev/staging banner; no deployment
+variable is needed ([custom app setup](docs/development.md#environment-banner)). The dev environment banner lists every
 `NEXT_PUBLIC_*` variable present, including legacy names still set on Vercel projects; web and
 admin don't read those.
 
