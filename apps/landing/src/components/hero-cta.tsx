@@ -15,15 +15,7 @@ if (!WEB_APP_URL) {
 const BOOK_DEMO_URL = process.env.NEXT_PUBLIC_BOOK_DEMO_URL;
 const CONTACT_URL = process.env.NEXT_PUBLIC_CONTACT_URL;
 
-/**
- * Client component that checks onboarding mode on mount and renders one of:
- * waitlist form, sign-up + sign-in, or sign-in only.
- *
- * When Convex is unreachable, shows a fallback card (sign in, plus optional
- * book-demo and contact links) instead of onboarding, and retries
- * with exponential backoff (capped at 60 s, max 10 attempts). Retries
- * pause while the tab is hidden and resume when it becomes visible.
- */
+/** Do not offer signup before the backend's onboarding decision is available. */
 export function HeroCta() {
   const t = useTranslations("landing");
   const status = useOnboardingStatus();

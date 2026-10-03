@@ -199,7 +199,7 @@ Three consequences, and they are the whole point:
 | `*.md`, `qa/**` | **no** | documentation and tests do not change the build; excluded via `inputs` in `turbo.json` |
 | `CONVEX_URL`, `CONVEX_SITE_URL`, `LANDING_URL`, `APP_ENVIRONMENT`, … | **no** (`passThroughEnv`) | web and admin read these at request time; they are present during the build but never inlined, so they must not make the hash environment-specific |
 | `NEXT_PUBLIC_GIT_SHA`, `BUILD_ID`, `DEPLOY_TIMESTAMP`, … | **no** (`passThroughEnv`) | they change every commit; hashing them would defeat reuse entirely |
-| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL` for `landing` | **yes** | it is a static export: the values *are* inlined, so staging and production legitimately produce different artifacts |
+| Landing build configuration listed in `@repo/landing#build.env` in [`turbo.json`](../../turbo.json) | **yes** | it is a static export: the values *are* inlined, so staging and production legitimately produce different artifacts |
 
 ### Build identity vs deployed commit
 
