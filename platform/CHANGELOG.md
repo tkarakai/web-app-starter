@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-03
+
 ### Action required
 
 - **Optional.** **Who is affected:** apps that set the repository variable `SKIP_E2E`. CI no
@@ -81,7 +83,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   already has, and skip installing browser system libraries when the image was built for the
   Playwright version under test. GitHub-hosted runs are unchanged. No app action is required;
   runners set up from the earlier guide keep working, and moving to the image is described in
-  [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md).
+  [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md). `platform:upgrade` adds the
+  setup action's new `install-self-hosted.sh` as a seam.
 
 ### Removed
 
@@ -754,5 +757,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [2.1.2]: https://github.com/tkarakai/web-app-starter/compare/v2.1.1...v2.1.2
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...HEAD
 [3.0.0]: https://github.com/tkarakai/web-app-starter/compare/v2.1.2...v3.0.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...v3.1.0
