@@ -29,27 +29,40 @@ jobs:
             const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
               owner, repo, head_sha: headSha, event: 'pull_request', per_page: 100,
             });
+            const status = async (id) => (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: id })).data.status;
             let rerun = 0;
+            const failed = [];
             for (const run of runs) {
               if (run.id === context.runId) continue;
-              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
-                owner, repo, run_id: run.id, filter: 'latest', per_page: 100,
-              });
-              const waiting = jobs.some((job) => job.name.endsWith('E2E Required') && job.conclusion === 'failure');
-              if (!waiting) continue;
-              // A run still building can't be re-run: cancel it, then re-run its failed and cancelled jobs.
-              if (run.status !== 'completed') {
-                await github.rest.actions.cancelWorkflowRun({ owner, repo, run_id: run.id });
-                for (let i = 0; i < 24; i++) {
-                  const { data } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id });
-                  if (data.status === 'completed') break;
-                  await new Promise((resolve) => setTimeout(resolve, 5000));
+              try {
+                const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                  owner, repo, run_id: run.id, filter: 'latest', per_page: 100,
+                });
+                const waiting = jobs.some((job) => job.name.endsWith('E2E Required') && job.conclusion === 'failure');
+                if (!waiting) continue;
+                // A run still building can't be re-run: cancel it, then re-run its failed and cancelled
+                // jobs. The listing may be stale, so read the status again; a run that finishes in
+                // between rejects the cancel, which is fine.
+                if (await status(run.id) !== 'completed') {
+                  try {
+                    await github.rest.actions.cancelWorkflowRun({ owner, repo, run_id: run.id });
+                  } catch (error) {
+                    if (error.status !== 409) throw error;
+                  }
+                  for (let i = 0; i < 24 && await status(run.id) !== 'completed'; i++) {
+                    await new Promise((resolve) => setTimeout(resolve, 5000));
+                  }
                 }
+                await github.rest.actions.reRunWorkflowFailedJobs({ owner, repo, run_id: run.id });
+                core.info(`Re-ran ${run.name}: ${run.html_url}`);
+                rerun++;
+              } catch (error) {
+                core.warning(`Could not re-run ${run.name} (${run.html_url}): ${error.message}`);
+                failed.push(run.name);
               }
-              await github.rest.actions.reRunWorkflowFailedJobs({ owner, repo, run_id: run.id });
-              core.info(`Re-ran ${run.name}: ${run.html_url}`);
-              rerun++;
             }
-            if (rerun === 0) {
+            if (failed.length) {
+              core.setFailed(`Re-run these by hand (Actions → the run → Re-run failed jobs): ${failed.join(', ')}`);
+            } else if (rerun === 0) {
               core.notice('No CI run on this commit is waiting for E2E. Runs that start from now on see the label.');
             }
