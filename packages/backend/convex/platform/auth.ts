@@ -3,7 +3,7 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
-import { symmetricDecrypt } from "better-auth/crypto";
+import { v } from "convex/values";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
@@ -23,6 +23,7 @@ import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTem
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
+import { readBackupCodes } from "./recoveryCodes";
 
 // ---------------------------------------------------------------------------
 // Auth endpoint rate limiting via convex-helpers (persistent, OCC-safe).
@@ -535,6 +536,7 @@ export const createAuthOptions = (
     },
     emailAndPassword: {
       enabled: true,
+      revokeSessionsOnPasswordReset: true,
       minPasswordLength: getMinPasswordLength("user"),
       // requireEmailVerification is kept false here so Better Auth does not
       // block sign-ins at the protocol level. Enforcement is done at the
@@ -853,52 +855,14 @@ export const getCurrentUser = query({
  * connection. This avoids cross-origin HTTP / httpOnly cookie issues that
  * affect direct fetches to the Convex site URL.
  *
- * We query the Better Auth adapter directly instead of calling
- * `auth.api.viewBackupCodes()` because the `@convex-dev/better-auth` convex
- * plugin has a bug where its afterHook matcher accesses `ctx.path.startsWith()`
- * without optional chaining, crashing when there is no HTTP request context.
+ * Every disclosure requires the current password, including resumed enrollment.
+ * Never expose Better Auth's server-only viewBackupCodes API directly.
  */
 export const viewBackupCodes = action({
-  args: {},
-  handler: async (ctx): Promise<string[]> => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) throw new Error("NOT_AUTHENTICATED");
-
-    const result = await ctx.runQuery(
-      components.betterAuth.adapter.findMany,
-      {
-        model: "twoFactor" as const,
-        where: [
-          {
-            field: "userId",
-            operator: "eq" as const,
-            value: user._id as string,
-          },
-        ],
-        paginationOpts: { cursor: null, numItems: 1 },
-      },
-    );
-
-    const page =
-      (result as { page?: Array<{ backupCodes: string }> }).page ?? [];
-    if (page.length === 0) return [];
-
-    const raw = page[0].backupCodes;
-
-    // Try plain JSON first (freshly generated codes).
-    // Fall back to symmetric decryption (Better Auth encrypts codes after
-    // any backup code is consumed, and some versions encrypt by default).
-    try {
-      const plain = JSON.parse(raw);
-      if (Array.isArray(plain)) return plain as string[];
-    } catch {
-      // not plain JSON — try decryption
-    }
-
-    const secret = process.env.BETTER_AUTH_SECRET;
-    if (!secret) throw new Error("BETTER_AUTH_SECRET not configured");
-
-    const decrypted = await symmetricDecrypt({ key: secret, data: raw });
-    return JSON.parse(decrypted) as string[];
+  args: { password: v.optional(v.string()) },
+  handler: async (ctx, { password }): Promise<string[]> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || typeof identity.sessionId !== "string") throw new Error("NOT_AUTHENTICATED");
+    return await readBackupCodes(ctx, identity.subject, identity.sessionId, password);
   },
 });

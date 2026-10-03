@@ -131,7 +131,7 @@ Admins who abandon the onboarding wizard at any point can resume later. The mult
 | B | Opened link, closed before creating account | `invited` | No account | Open invitation link | Step 0 |
 | C | Created account (Step 0 done) | `claimed`, step=1 | Password, no 2FA | Sign in: Email → Password | Step 1 (TOTP) — shows password prompt |
 | D | Started TOTP, closed before verifying code | `claimed`, step=1 | Password, 2FA secret unverified | Sign in: Email → Password | Step 1 — calls `enable()` again with new secret |
-| E | Verified TOTP (Step 1 done) | `claimed`, step=2 | Password + 2FA | Sign in: Email → Password → TOTP | Step 2 (Backup Codes) — re-fetches codes from server |
+| E | Verified TOTP (Step 1 done) | `claimed`, step=2 | Password + 2FA | Sign in: Email → Password → TOTP | Step 2 (Backup Codes) — asks for the current password before fetching codes |
 | F | Saved backup codes (Step 2 done) | `claimed`, step=3 | Password + 2FA | Sign in: Email → Password → TOTP | Step 3 (Passkey) |
 | G | Completed all steps | `completed` | Full setup | Sign in normally | No redirect — full dashboard access |
 | H | Established legacy admin with no invitation record | None | Varies | Sign in normally | Existing account policy applies |
@@ -540,7 +540,49 @@ weak password.
 
 On success, the form keeps its confirmation visible when consuming the token
 invalidates the strength query, then directs the user to sign in. Password reset
-does not disable the account's existing two-factor authentication.
+revokes all existing sessions, including the resetting browser's session. Convex checks the
+session record on each authorized query/mutation and actions recheck before disclosing recovery
+secrets, so an unexpired Convex JWT does not preserve access after its session is deleted.
+Open subscriptions lose authorization on reevaluation. Work already committed before revocation
+cannot be undone. The user signs in again with the new password and any existing second factor;
+reset does not disable that factor or silently remove passkeys.
+
+#### Viewing and replacing recovery codes
+
+Viewing codes in web/admin settings requires the current password on **every** request. Resumed
+administrator enrollment has the same prompt; uninterrupted enrollment uses the codes returned
+when TOTP was enabled with the password. Regeneration and TOTP enrollment also verify the current
+password through Better Auth. The view operation shares a five-attempt, five-per-minute token
+bucket per account across sessions and transports. Failed passwords consume attempts.
+
+Custom clients call `api.platform.auth.viewBackupCodes({ password })` over authenticated Convex,
+or `POST /api/two-factor/backup-codes` with authenticated headers and JSON `{ "password": "..." }`.
+The old GET helper returns 405 and never returns codes. Do not put passwords in URLs, logs or
+persistent browser storage. Use the provided settings components to get the prompt automatically.
+
+#### Containing a suspected account compromise
+
+1. From a trusted device, preserve the relevant audit events and timestamps before making changes.
+   Protect an exported copy independently of the affected account. Identify unfamiliar sign-ins,
+   password changes, passkeys and factor changes; do not copy live credentials into the incident log.
+2. Complete a password reset through the verified mailbox. Successful reset revokes every existing
+   session. If the mailbox is compromised, secure it first and use a separately authenticated
+   deployment operator to restrict the account while ownership is verified.
+3. Sign in again and inspect Security → Passkeys. Remove unfamiliar credentials, or all existing
+   passkeys if their provenance cannot be established, then register replacements on trusted devices.
+   Reset alone does **not** revoke passkeys or rotate the TOTP seed/recovery codes.
+4. Replace a suspected TOTP secret by disabling and reenabling TOTP with the current password,
+   verify the new authenticator and save the new recovery set. Otherwise regenerate backup codes;
+   this invalidates the entire previous set. Keep another verified administrator available when
+   repairing an administrator's factors. If no trusted sign-in factor remains, use the separately
+   authenticated deployment operator's recovery process; do not disable verification for everyone.
+5. Revoke other sessions once more after factor cleanup, check the audit trail for activity during
+   recovery, and verify the owner's new sign-in works while old sessions and recovery codes fail.
+   Record the actions and retain the evidence according to the application's incident policy.
+
+Do not rotate `BETTER_AUTH_SECRET` as an ordinary account-reset operation. It encrypts factor
+material as well as protecting authentication state; any deployment-wide rotation needs a planned
+migration/re-enrollment procedure and independent evidence preservation.
 
 #### Account issues
 

@@ -90,5 +90,15 @@ test.describe("Admin TOTP enrolment", () => {
     for (const code of backupCodes) {
       expect(code).not.toHaveLength(0);
     }
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.getByRole("button", { name: "View backup codes", exact: true }).click();
+    await expect(page.locator("#admin-2fa-action-password")).toBeVisible();
+    await expect(codesPanel).toHaveCount(0);
+    await fillStable(page, "#admin-2fa-action-password", "wrong password");
+    await page.locator('form:has(#admin-2fa-action-password) button[type="submit"]').click();
+    await expect(page.getByText("Failed to load backup codes.")).toBeVisible();
+    await fillStable(page, "#admin-2fa-action-password", user.password);
+    await page.locator('form:has(#admin-2fa-action-password) button[type="submit"]').click();
+    await expect(codesPanel.locator("code")).toHaveText(backupCodes);
   });
 });

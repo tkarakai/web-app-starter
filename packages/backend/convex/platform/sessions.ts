@@ -2,6 +2,7 @@ import { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } from "@web-app-start
 
 import { httpAction } from "../_generated/server";
 import { createAuth } from "./auth";
+import { readBackupCodes } from "./recoveryCodes";
 import { parseUserAgent } from "./parseUserAgent";
 import type { DeviceInfo } from "./parseUserAgent";
 
@@ -244,14 +245,17 @@ export const revokeOtherSessionsHandler = httpAction(async (_ctx, request) => {
 });
 
 // ---------------------------------------------------------------------------
-// HTTP action: GET /api/two-factor/backup-codes — view existing backup codes
+// HTTP action: POST /api/two-factor/backup-codes — reauthenticate and view codes
 // ---------------------------------------------------------------------------
-// Better Auth v1.4.12 has a bug where viewBackupCodes is registered without
-// an HTTP path, making it inaccessible via the client. This endpoint wraps
-// the server-side auth.api.viewBackupCodes() call.
+// The old GET route is retained only to reject callers that omit fresh proof.
 
 export const viewBackupCodesHandler = httpAction(async (_ctx, request) => {
-  const cors = corsHeaders(request);
+  const cors = { ...corsHeaders(request), "Cache-Control": "no-store" };
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "REAUTHENTICATION_REQUIRED" }), {
+      status: 405, headers: { ...cors, Allow: "POST" },
+    });
+  }
   const sessionToken = getSessionToken(request);
   if (!sessionToken) {
     return new Response(JSON.stringify({ error: "NOT_AUTHENTICATED" }), {
@@ -274,17 +278,19 @@ export const viewBackupCodesHandler = httpAction(async (_ctx, request) => {
   }
 
   try {
-    const result = await auth.api.viewBackupCodes({
-      body: { userId: session.user.id },
-    });
+    const body: unknown = await request.json();
+    const password = body && typeof body === "object" && "password" in body &&
+      typeof body.password === "string" ? body.password : undefined;
+    const backupCodes = await readBackupCodes(_ctx, session.user.id, session.session.id, password);
     return new Response(
-      JSON.stringify({ backupCodes: result.backupCodes ?? [] }),
+      JSON.stringify({ backupCodes }),
       { status: 200, headers: cors },
     );
-  } catch {
+  } catch (error) {
+    const rateLimited = error instanceof Error && error.message.includes("RATE_LIMITED");
     return new Response(
-      JSON.stringify({ error: "BACKUP_CODES_NOT_FOUND" }),
-      { status: 400, headers: cors },
+      JSON.stringify({ error: rateLimited ? "RATE_LIMITED" : "REAUTHENTICATION_REQUIRED" }),
+      { status: rateLimited ? 429 : 403, headers: cors },
     );
   }
 });

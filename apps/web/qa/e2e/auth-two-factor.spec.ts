@@ -132,6 +132,19 @@ test.describe("TOTP enrolment and challenge", () => {
     expect(secret).toMatch(/^[A-Z2-7]{16,}$/);
     // Codes must be distinct — a duplicate would silently halve recovery.
     expect(new Set(backupCodes).size).toBe(backupCodes.length);
+
+    await openSecurityTab(page, "2fa");
+    await page.getByRole("button", { name: /view backup codes/i }).click();
+    const prompt = page.locator("[id='2fa-regen-password']");
+    await expect(prompt).toBeVisible();
+    await expect(page.locator('[data-slot="copyable-field"] pre')).toHaveCount(0);
+    await fillStable(page, "[id='2fa-regen-password']", "wrong password");
+    await page.locator('form:has([id="2fa-regen-password"]) button[type="submit"]').click();
+    await expect(page.getByText(/error/i).first()).toBeVisible();
+    await expect(prompt).toBeVisible();
+    await fillStable(page, "[id='2fa-regen-password']", user.password);
+    await page.locator('form:has([id="2fa-regen-password"]) button[type="submit"]').click();
+    await expect(page.locator('[data-slot="copyable-field"] pre').first()).toHaveText(backupCodes.join("\n"));
   });
 
   test("requires a TOTP code at sign-in once enrolled", async ({ page }) => {
