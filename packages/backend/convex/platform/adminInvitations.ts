@@ -94,9 +94,8 @@ export const advanceOnboardingStep = mutation({
   args: { step: v.number() },
   handler: async (ctx, args) => {
 
-    // Auth session may not have propagated yet during onboarding (race with
-    // Better Auth sign-up). This mutation is non-critical — it only persists
-    // the step for resume-on-abandon — so silently bail out if unauthenticated.
+    // Sign-in may not have propagated yet. Leave progress unchanged until an
+    // authenticated retry; completion still requires the saved steps.
     const user = await authComponent.safeGetAuthUser(ctx);
     if (!user) return;
 

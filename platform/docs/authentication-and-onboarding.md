@@ -13,11 +13,13 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 | How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |
 | Password required | Yes — see §5 | Yes — see §5 |
 | 2FA (TOTP) | Mandatory — cannot access dashboard without it | Admin-configurable: optional or mandatory |
-| Passkey | Optional (recommended) | Optional (if enabled by admin) |
+| Passkey | Required or optional according to `adminPasskeyPolicy` | Optional (if enabled by admin) |
 | Magic link sign-in | Not available | Admin-configurable: enabled or disabled |
 | Can access the other app | No | No |
 
-**Enforcement:** The admin app's middleware rejects sessions where `user.role !== "admin"`. The web app's middleware rejects sessions where `user.role === "admin"`. This is not a UI-only restriction — it is enforced at the session/middleware level.
+**Enforcement:** The admin dashboard's server layout redirects bound, incomplete enrollment
+to the wizard before checking the admin role; see §14 for the route checks. The web app
+rejects sessions where `user.role === "admin"`.
 
 ## 3. Authentication Architecture
 
@@ -143,7 +145,8 @@ The wizard has four steps:
 1. **TOTP setup**: scan the QR code (or copy the manual key) and verify a 6-digit code. A resumed
    wizard asks for the password first.
 2. **Backup codes**: download or copy them, confirm they are saved, and enter two of them.
-3. **Passkey** (optional): register one, or skip for now.
+3. **Passkey**: register one; skipping is available only when `adminPasskeyPolicy` is optional.
+   If required and the browser does not support passkeys, resume in a supported browser.
 
 Completing the wizard signs the admin out and sends them to `/sign-in` for a full login. Each
 step writes an `admin.onboarding.*` audit event (§12).
@@ -364,11 +367,10 @@ userSession: {
 From the admin app's **Manage > Onboarding** page (Admins tab), an admin clicks "Invite Admin". This opens a form with a **single email address field** (not multi-email like user invitations).
 
 The `invite` mutation:
-1. Validates the email and checks for existing invitations (rejects if already claimed/completed, allows re-invite if expired)
+1. Validates the email and rejects existing accounts and bound claimed/completed invitations; expired invitations and legacy unbound claims may be re-invited
 2. Creates or updates the `adminInvitations` row with `status: "invited"`
-3. Ensures the email is in the `adminEmails` table (so the auth hook auto-promotes them to admin role on signup)
-4. Writes audit event: `admin.invitation.sent` with `meta: { inviteeEmail }`
-5. Schedules an `internalAction` (`adminInvitationActions.generateTokenAndSendEmail`) which:
+3. Writes audit event: `admin.invitation.sent` with `meta: { inviteeEmail }`
+4. Schedules an `internalAction` (`adminInvitationActions.generateTokenAndSendEmail`) which:
    - Generates a 32-byte crypto-random token (64 hex chars)
    - Stores only the token's SHA-256 hash + expiry (default 7 days, configurable via `invitationTokenExpiryDays` in `appSettings`) on the invitation row
    - Builds onboarding URL: `{ADMIN_SITE_URL}/onboarding?token={token}` (`ADMIN_SITE_URL` is required)
@@ -383,11 +385,9 @@ in `packages/backend/convex/platform/emailTransport.test.ts`; it does not verify
 
 ### 9.2 Accepting an Admin Invitation
 
-When the invited person clicks the link:
-1. The onboarding wizard validates the token via `validateToken` query (checks: exists, not already claimed/completed, not expired)
-2. Email is extracted from the token validation response and pre-filled in the account creation form
-3. The admin onboarding wizard starts at step 0 (§6.3) with the email pre-filled and non-editable
-4. After account creation, the token is claimed (§6.1) and the full onboarding flow continues
+The link opens the bound enrollment flow in §6. Previously issued bootstrap links on the
+web app redirect to that flow while still valid, including links left in `claiming` state
+before account creation.
 
 ### 9.4 User Invitations (comparison)
 
@@ -604,14 +604,16 @@ The admin app uses three route groups with different auth levels:
 
 ```
 1. Valid Better Auth session exists                       → else redirect to /api/auth/clear-session
-2. user.role === "admin"                                  → else redirect to /api/auth/clear-session
-3. user.banned !== true                                   → else redirect to /forbidden
-4. adminInvitations.getMyOnboardingStatus.completed       → else redirect to /onboarding
+2. No incomplete onboarding returned by getMyOnboardingStatus → else redirect to /onboarding
+3. user.role === "admin"                                  → else redirect to /api/auth/clear-session
+4. user.banned !== true                                   → else redirect to /forbidden
 ```
 
-Step 4 queries `getMyOnboardingStatus` which looks up the admin's invitation record by email. If the status is not `"completed"` (i.e., `"claimed"` with an in-progress `onboardingStep`), the admin is redirected to `/onboarding` to continue the wizard. Admins with no invitation record (e.g., bootstrap admins with `status: "completed"`, or admins created before Stage 6) pass through — `getMyOnboardingStatus` returns `{ completed: true }` for admins with no record or with `status: "completed"`.
-
-> **Note:** This check uses invitation status, NOT `twoFactorEnabled`. This is intentional — it ensures ALL onboarding steps are enforced (TOTP, backup codes, passkey decision), not just 2FA. Stage 7 will add the `twoFactorEnabled` check for forced enrollment of existing admins who were never invited.
+Step 2 resolves enrollment by email and bound user ID, so the pending account can resume
+while it still has the `user` role. Established legacy administrators retain the invitation
+status fallback; no invitation record returns `{ completed: true }`. A user with no bound
+enrollment receives `null` and still must pass the role check. The enrollment completion
+requirements are defined in §6; the layout uses that saved result.
 
 ### Web App
 

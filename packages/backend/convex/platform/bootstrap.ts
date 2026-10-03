@@ -6,27 +6,8 @@
  * let an operator seed the first admin from the Convex dashboard without
  * needing a UI.
  *
- * ## Functions
- *
- * - **initialize** — Seeds the first admin email, creates a waitlist entry,
- *   and sends an invitation token. Can only run once (guards against an
- *   existing `adminEmails` row).
- *
- * - **rescue** — Fixes a failed bootstrap (typo in email, expired token,
- *   etc.). Updates the admin email if needed, revokes old tokens, and resends
- *   a fresh invitation. Cannot run after the admin has already claimed the
- *   invite.
- *
- * - **status** — Read-only diagnostic that reports the current bootstrap state
- *   and an actionable hint (e.g. "token expired — run rescue").
- *
- * ## Usage (Convex dashboard → Functions → Run)
- *
- * ```
- * platform/bootstrap:initialize  { "email": "you@example.com" }
- * platform/bootstrap:status      {}
- * platform/bootstrap:rescue      { "currentEmail": "typo@...", "newEmail": "correct@..." }
- * ```
+ * Operator commands and rescue restrictions are documented in
+ * platform/docs/deployment-runbook.md#step-2-bootstrap-the-first-admin.
  *
  * All three functions are `internalMutation`/`internalQuery` — they are **not**
  * callable from the client. Run them from the Convex dashboard or via

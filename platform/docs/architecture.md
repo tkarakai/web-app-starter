@@ -186,8 +186,9 @@ from `@repo/backend`. Do not query these tables through the app database.
 
 Wrappers resolve Better Auth sessions, enforce roles and rate limits, and schedule the
 app's email transport. The component owns token hashes, claim/revoke transitions and
-onboarding state. An admin invitation grants the admin-email entry only after a valid
-token is claimed. Bootstrap, local seeds and E2E fixtures use the same component storage.
+onboarding state. See [administrator enrollment](authentication-and-onboarding.md#6-admin-onboarding-flow)
+for the account-binding and activation contract. Bootstrap, local seeds and E2E fixtures
+use the same component storage.
 
 For paginated waitlist and admin-invitation queries, import `usePaginatedQuery` from
 `convex-helpers/react`. Loaded pages are not reactive, and cursors contain index values
@@ -201,7 +202,7 @@ not shorten visible pages or cause entries to be skipped.
 `adminEmails` is stored in the platform component. The admin-only
 `api.platform.adminEmails.listProtected` wrapper returns addresses; backend auth hooks
 use `internal.platform.adminEmails.list`. Its rows have the exported `AdminEmail` type.
-Signup promotion, protected-admin changes and password-reset policy lookup read this API,
+Protected-admin changes and password-reset policy lookup read this API,
 so they use the same state as invitation claims and bootstrap. Component functions are
 trusted backend entry points and cannot be called directly by clients.
 

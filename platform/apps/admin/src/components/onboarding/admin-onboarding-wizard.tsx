@@ -58,8 +58,7 @@ export function AdminOnboardingWizard() {
   const [showIntro, setShowIntro] = React.useState(true);
 
   // Once the wizard is actively running, stop the init effect from re-evaluating
-  // mode — reactive query changes (e.g. tokenResult → ALREADY_CLAIMED after
-  // claimInvitation) must not override the wizard.
+  // mode — token invalidation after registration must not override the wizard.
   const wizardActiveRef = React.useRef(false);
 
   // Password from Step 0 — kept in memory only for auto-enabling TOTP in Step 1
@@ -68,7 +67,7 @@ export function AdminOnboardingWizard() {
   // Backup codes from Step 1 TOTP verification
   const [backupCodes, setBackupCodes] = React.useState<string[]>([]);
 
-  // Convex mutations
+  // Convex enrollment operations
   const claimInvitation = useAction(api.platform.adminInvitations.claimInvitation);
   const advanceOnboardingStep = useMutation(api.platform.adminInvitations.advanceOnboardingStep);
   const completeOnboarding = useMutation(api.platform.adminInvitations.completeOnboarding);
@@ -217,10 +216,7 @@ export function AdminOnboardingWizard() {
       status: "succeeded",
     }).catch(() => {});
 
-    // advanceOnboardingStep may fail with NOT_AUTHENTICATED if the Convex auth
-    // session hasn't propagated yet (same race as Step 0 → claimInvitation).
-    // This is non-critical — it only persists the step for resume. The TOTP
-    // setup itself is already complete through Better Auth.
+    // Persist verified progress before moving on; server completion checks it.
     await advanceOnboardingStep({ step: 2 });
     setStep(2);
   }, [email, advanceOnboardingStep, postAuditEvent]);
