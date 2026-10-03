@@ -4,7 +4,8 @@ import { v } from "convex/values";
 /**
  * The sample domain's tables: projects with tasks and file uploads. App-owned;
  * `schema.ts` spreads them in. Delete this file, its spread in `schema.ts`, and
- * `projects.ts`, `tasks.ts`, `files.ts` and `projectAccess.ts` to strip the sample.
+ * `projects.ts`, `tasks.ts`, `files.ts`, `projectAccess.ts` and `fileAccess.ts`,
+ * along with their sample tests, to strip the sample backend.
  */
 export const sampleTables = {
   projects: defineTable({
