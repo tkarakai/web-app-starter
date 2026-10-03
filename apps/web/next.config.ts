@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { getGitBranch } from "@web-app-starter/design-system/build-utils";
+import { getGitBranch, getPlatformVersion } from "@web-app-starter/design-system/build-utils";
 
 const monorepoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   reactStrictMode: true,
   env: {
+    NEXT_PUBLIC_PLATFORM_VERSION: getPlatformVersion(monorepoRoot),
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
   transpilePackages: ["@web-app-starter/app-config", "@web-app-starter/design-system", "@web-app-starter/auth", "@web-app-starter/auth-ui", "@repo/backend", "@web-app-starter/edge-rate-limit", "@web-app-starter/i18n", "@repo/messages"],

@@ -153,3 +153,17 @@ bun run dev:stop && bun run dev:web
 # Ensure you pass the glob as second arg to convexTest()
 # convexTest(schema, import.meta.glob("./**/*.*s"))
 ```
+
+## Environment banner
+
+With `features.environmentBanner` enabled, `EnvironmentBannerWrapper` displays development
+and staging build metadata, including `starter vX.Y.Z` from `platform/VERSION`. Production
+remains hidden. The version describes the built artifact and stays the same when promoted.
+
+The supplied Next.js configurations populate `NEXT_PUBLIC_PLATFORM_VERSION` automatically;
+do not set it in deployment environments. For a custom app, import `getPlatformVersion` from
+`@web-app-starter/design-system/build-utils` and add
+`NEXT_PUBLIC_PLATFORM_VERSION: getPlatformVersion(monorepoRoot)` to the Next.js `env` config,
+where `monorepoRoot` is the absolute repository root. Keep `platform/VERSION` in the root
+`turbo.json` `globalDependencies` so a version change invalidates cached builds. Restart dev
+after a platform upgrade. Direct `EnvironmentBanner` users can pass `platformVersion`.

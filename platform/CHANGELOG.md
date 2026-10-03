@@ -13,6 +13,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- Development and staging banners show the installed starter platform version in the
+  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
+  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
+
 ### Fixed
 
 - Reference project files now bind ownership at authenticated upload, authorize every download,

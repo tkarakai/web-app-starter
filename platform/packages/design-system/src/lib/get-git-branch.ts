@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { execSync } from "node:child_process";
 
 /**
@@ -18,4 +20,9 @@ export function getGitBranch(): string {
   } catch {
     return "";
   }
+}
+
+/** Read the installed starter version for build-time banner metadata. */
+export function getPlatformVersion(monorepoRoot: string): string {
+  return readFileSync(join(monorepoRoot, "platform/VERSION"), "utf8").trim();
 }

@@ -43,6 +43,8 @@ interface EnvironmentBannerProps
   extends Omit<React.ComponentProps<"div">, "children">,
     VariantProps<typeof environmentBannerVariants> {
   environment: Environment
+  /** Installed starter version baked into this build. */
+  platformVersion?: string
   gitSha?: string
   /** Commit currently deployed. Differs from `gitSha` when a content-addressed
    * artifact was reused because the app's inputs did not change. */
@@ -138,7 +140,7 @@ function CopyButton({
   async function handleCopy(e: React.MouseEvent) {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(value)
+      await window.navigator.clipboard.writeText(value)
       setCopied(true)
       toast.success(message)
       setTimeout(() => setCopied(false), 2000)
@@ -175,6 +177,7 @@ function Pipe() {
 
 function EnvironmentBanner({
   environment,
+  platformVersion,
   gitSha,
   deployedCommit,
   gitBranch,
@@ -238,6 +241,7 @@ function EnvironmentBanner({
   // Collapsed bar: terse status fragments separated by pipes
   const statusParts: string[] = [label]
   if (appName) statusParts.push(appName)
+  if (platformVersion) statusParts.push(`starter v${platformVersion}`)
   if (gitBranch) statusParts.push(gitBranch)
   if (shortSha) statusParts.push(shortSha)
 
@@ -245,6 +249,7 @@ function EnvironmentBanner({
   const metadataItems = [
     { key: "env", val: environment },
     appName ? { key: "app", val: appName } : null,
+    platformVersion ? { key: "starter", val: `v${platformVersion}` } : null,
     gitBranch ? { key: "branch", val: gitBranch } : null,
     shortSha
       ? { key: shortDeployed ? "built from" : "commit", val: shortSha, copyVal: gitSha }
