@@ -9,6 +9,7 @@ import { rateLimit } from "./rateLimits";
 import { sha256Hex } from "./tokenHash";
 export const create = internalMutation({
   args: {
+    generation: v.optional(v.number()),
     waitlistEntryId: v.string(),
     tokenHash: v.string(),
     email: v.string(),
@@ -22,7 +23,13 @@ export const create = internalMutation({
 export const validate = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.runQuery(components.platform.waitlistTokens.validate, args);
+    const result = await ctx.runQuery(components.platform.waitlistTokens.validate, args);
+    if (result.valid && await ctx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: result.email })) {
+      const origin = process.env.ADMIN_SITE_URL?.trim();
+      if (!origin) throw new Error("ADMIN_SITE_URL_REQUIRED");
+      return { ...result, adminOnboardingUrl: `${origin}/onboarding?token=${encodeURIComponent(args.token)}` };
+    }
+    return result;
   },
 });
 

@@ -91,7 +91,25 @@ There are exactly two ways to begin admin onboarding:
 
 There is no self-signup for admin accounts. The admin app's sign-up page does not exist — only the onboarding flow, which requires either a bootstrap token or a valid invitation link.
 
-**Email verification is handled by the entry point itself.** When an admin clicks an invitation link, their email is verified by the act of clicking the link. The auth hook in `auth.ts` (`user.create.before`) sets `emailVerified: true` on accounts whose email is in the `adminEmails` table. The bootstrap process similarly establishes the email as verified. There is no separate "verify your email" step in the admin onboarding wizard.
+**Email ownership must be proved during account creation.** The wizard exchanges the invitation
+for a random, single-use enrollment capability valid for at most ten minutes. It submits that
+capability with the intended email, name and password. The backend validates password strength
+and the breach check, then creates the verified credential account and consumes the invitation
+in one transaction. The invitation is bound to the created user ID. Merely appearing in
+`adminEmails`, opening the link, or exchanging it does not grant administrator privileges.
+
+The new account initially has the ordinary `user` role. The backend grants `admin` only to
+that bound user after verified TOTP enrollment, recovery-code acknowledgment, and a passkey
+when admin policy requires one. Completion is checked on the server; skipping wizard pages
+does not activate privileges. An interrupted enrollment resumes after password sign-in.
+An expired capability can be exchanged again using the still-valid original invitation.
+A lost registration response can be retried without creating a second account or changing its
+password. No separate email-verification message is needed for this flow.
+
+Custom clients use `claimInvitation` as a Convex action, submit its `capability` to the
+`adminInvitations.register` action, then use normal password sign-in. Raw
+`/api/auth/sign-up/email` rejects reserved administrator addresses. Neither token nor capability
+belongs in application logs or persistent browser storage.
 
 ### 6.1 Invitation lifecycle
 
@@ -114,7 +132,7 @@ Admins who abandon the onboarding wizard at any point can resume later. The mult
 | E | Verified TOTP (Step 1 done) | `claimed`, step=2 | Password + 2FA | Sign in: Email → Password → TOTP | Step 2 (Backup Codes) — re-fetches codes from server |
 | F | Saved backup codes (Step 2 done) | `claimed`, step=3 | Password + 2FA | Sign in: Email → Password → TOTP | Step 3 (Passkey) |
 | G | Completed all steps | `completed` | Full setup | Sign in normally | No redirect — full dashboard access |
-| H | No invitation record (e.g. bootstrap admin) | None | Varies | Sign in normally | No redirect (Stage 7 handles forced enrollment) |
+| H | Established legacy admin with no invitation record | None | Varies | Sign in normally | Existing account policy applies |
 
 ### 6.3 Admin onboarding steps
 

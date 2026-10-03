@@ -13,6 +13,28 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Administrator enrollment now requires a single-use capability from the invitation link.
+  The credential account and invitation claim are committed together, bound to the new user ID.
+  New administrators receive privileges only after verified TOTP enrollment and completion of
+  setup (and a passkey when policy requires it). Protected email addresses alone never grant
+  roles or email verification. Bootstrap rescue invalidates old capabilities and queued deliveries.
+
+### Action required
+
+- **Who is affected:** apps with custom administrator signup code, or pending administrator
+  invitations. **What to do:** deploy the backend and platform admin UI together. Custom clients
+  must call the action `api.platform.adminInvitations.claimInvitation({ token })`, then
+  `register({ capability, email, name, password })`, and sign in normally; ordinary email signup
+  cannot create reserved administrator accounts. `claimInvitation` is now an action returning a
+  ten-minute capability, and no longer promotes an email. Existing bootstrap links route to the
+  admin wizard. For an expired bootstrap link run `platform/bootstrap:rescue`; for an abandoned
+  legacy admin claim with no account, invite the address again. Existing accounts are never replaced
+  or automatically promoted. **Done when:** the invited recipient completes enrollment and can
+  sign in as administrator; an unauthenticated signup cannot claim that address. See
+  [administrator onboarding](docs/authentication-and-onboarding.md#6-admin-onboarding-flow).
+
 ## [3.1.0] - 2026-10-03
 
 ### Action required

@@ -114,7 +114,10 @@ describe("component invitations", () => {
     await t.mutation(api.adminInvitations.setToken, { adminInvitationId: delivery.adminInvitationId, tokenHash: sha256Hex("admin-secret"), expiresAt: Date.now() + 1000 });
     expect(await t.query(api.adminInvitations.validateToken, { token: "admin-secret" })).toEqual({ valid: true, email: "new@example.test" });
     expect(await t.mutation(api.adminInvitations.claimInvitation, { token: "admin-secret" })).toEqual({ email: "new@example.test" });
-    await expect(t.mutation(api.adminInvitations.claimInvitation, { token: "admin-secret" })).rejects.toThrow("ALREADY_CLAIMED");
+    expect(await t.query(api.adminEmails.list, {})).toEqual([]);
+    await t.mutation(api.adminInvitations.exchangeEnrollment, { token: "admin-secret", capabilityHash: "test-capability" });
+    await t.mutation(api.adminInvitations.consumeEnrollment, { capabilityHash: "test-capability", email: "new@example.test", userId: "bound-user" });
+    await expect(t.mutation(api.adminInvitations.claimInvitation, { token: "admin-secret" })).rejects.toThrow("INVALID_INVITATION");
     await t.mutation(api.adminInvitations.advanceOnboardingStep, { email: "new@example.test", step: 3 });
     expect(await t.query(api.adminInvitations.getMyOnboardingStatus, { email: "new@example.test" })).toEqual({ completed: false, step: 3 });
     await t.mutation(api.adminInvitations.completeOnboarding, { email: "new@example.test" });
@@ -128,7 +131,7 @@ describe("component invitations", () => {
     const first = await t.mutation(api.adminInvitations.invite, { email: "new@example.test", identity });
     await t.mutation(api.adminInvitations.setToken, { adminInvitationId: first.adminInvitationId, tokenHash: sha256Hex("expired"), expiresAt: Date.now() - 1 });
     expect(await t.query(api.adminInvitations.validateToken, { token: "expired" })).toEqual({ valid: false, reason: "EXPIRED" });
-    await expect(t.mutation(api.adminInvitations.claimInvitation, { token: "expired" })).rejects.toThrow("TOKEN_EXPIRED");
+    await expect(t.mutation(api.adminInvitations.claimInvitation, { token: "expired" })).rejects.toThrow("INVALID_INVITATION");
     expect(await t.mutation(api.adminInvitations.invite, { email: "new@example.test", identity })).toEqual(first);
     expect(await t.query(api.adminInvitations.validateToken, { token: "expired" })).toEqual({ valid: false, reason: "NOT_FOUND" });
   });

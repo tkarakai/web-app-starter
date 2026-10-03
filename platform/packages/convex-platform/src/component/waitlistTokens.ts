@@ -15,6 +15,7 @@ const CLAIMING_TTL_MS = 15 * 60_000; // 15 minutes
 
 export const create = mutation({
   args: {
+    generation: v.optional(v.number()),
     waitlistEntryId: v.id("waitlistEntries"),
     tokenHash: v.string(),
     email: v.string(),
@@ -22,6 +23,8 @@ export const create = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const entry = await ctx.db.get(args.waitlistEntryId);
+    if (!entry || entry.email !== args.email || (entry.invitationGeneration ?? 0) !== (args.generation ?? 0)) throw new Error("STALE_INVITATION_DELIVERY");
     // The `token` field stores a SHA-256 hash, not the raw token.
     await ctx.db.insert("invitationTokens", {
       waitlistEntryId: args.waitlistEntryId,

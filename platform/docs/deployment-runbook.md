@@ -501,11 +501,15 @@ CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
 ```
 
 This will:
-1. Add the email to the `adminEmails` table
+1. Reserve the intended address in `adminEmails` (this grants no account privileges)
 2. Create a waitlist entry and mark it as "invited"
 3. Send an invitation email (requires `RESEND_API_KEY`; without it the invitation action fails with `EMAIL_DELIVERY_NOT_CONFIGURED`; set the key, then resend with `platform/bootstrap:rescue`, passing the same email as both `currentEmail` and `newEmail`)
 
-**Check your email** for the invitation link and complete registration to claim the admin account.
+**Check your email** for the invitation link. It opens the admin onboarding wizard: create your
+password account, verify TOTP, acknowledge your recovery codes, and add a passkey if required.
+The account remains unprivileged until the backend accepts completed enrollment. If you stop
+midway, sign in to the admin app to resume. Previously issued bootstrap links still lead to the
+same secure enrollment flow.
 
 **Check bootstrap status** at any time:
 
@@ -527,6 +531,12 @@ CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
 CONVEX_DEPLOY_KEY='prod:your-staging-deploy-key' \
   bunx convex run platform/bootstrap:rescue '{"currentEmail": "you@example.com", "newEmail": "you@example.com"}'
 ```
+
+Rescue revokes old outstanding tokens and their enrollment capabilities before scheduling a
+replacement. Delayed delivery jobs from the previous invitation cannot reactivate it. Delivery
+failure leaves the old link invalid; correct the mail configuration and run rescue again. Rescue
+refuses if either address already has an account, even if an old invitation record looks pending;
+it is not an account-reset or account-takeover tool.
 
 > **Note:** All bootstrap functions are `internalMutation`/`internalQuery` — they cannot be called from the client. The `rescue` function cannot be used after the admin has claimed the invitation (i.e. completed registration). Repeat this bootstrap step for production after promoting in Step 4.
 

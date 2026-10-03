@@ -83,6 +83,7 @@ export const rescue = mutation({
       // Reset existing entry
       await ctx.db.patch(waitlistEntry._id, {
         email: args.newEmail,
+        invitationGeneration: (waitlistEntry.invitationGeneration ?? 0) + 1,
         status: "waiting",
         invitedAt: undefined,
         invitationExpiresAt: undefined,
@@ -92,6 +93,7 @@ export const rescue = mutation({
       // Edge case: entry was manually deleted — recreate
       entryId = await ctx.db.insert("waitlistEntries", {
         email: args.newEmail,
+        invitationGeneration: 1,
         meta: BOOTSTRAP_META,
         status: "waiting",
         createdAt: now,

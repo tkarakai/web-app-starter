@@ -24,7 +24,7 @@ describe("invitation app boundaries", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-  test("admin invitations do not promote an address until a valid token is claimed", async () => {
+  test("admin token exchange never promotes or allowlists an address", async () => {
     const { t, admin, member } = await fixture();
     const email = "future-admin@example.test";
     await expect(member.mutation(api.platform.adminInvitations.invite, { email })).rejects.toThrow("NOT_ADMIN");
@@ -33,10 +33,10 @@ describe("invitation app boundaries", () => {
     expect(page.page).toHaveLength(1);
     expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
     await t.mutation(internal.platform.adminInvitations.setToken, { adminInvitationId: page.page[0]._id, tokenHash: sha256Hex("secret"), expiresAt: Date.now() + 3600_000 });
-    await expect(t.mutation(api.platform.adminInvitations.claimInvitation, { token: "wrong" })).rejects.toThrow("TOKEN_NOT_FOUND");
+    await expect(t.action(api.platform.adminInvitations.claimInvitation, { token: "wrong" })).rejects.toThrow("INVALID_INVITATION");
     expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
-    await t.mutation(api.platform.adminInvitations.claimInvitation, { token: "secret" });
-    expect(await t.query(components.platform.adminEmails.list, {})).toMatchObject([{ email }]);
+    await t.action(api.platform.adminInvitations.claimInvitation, { token: "secret" });
+    expect(await t.query(components.platform.adminEmails.list, {})).toEqual([]);
     expect(await t.query(internal.platform.adminInvitations.hasValidAdminInvitation, { email })).toBe(true);
     expect(await t.run(ctx => ctx.db.query("adminInvitations").collect())).toEqual([]);
   });

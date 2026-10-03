@@ -80,9 +80,6 @@ export const prepareE2eInvitation = internalMutation({
       throw new Error("E2E_EMAIL_REJECTED");
     }
 
-    if (args.isAdmin) {
-      await ctx.runMutation(components.platform.adminEmails.ensure, { email: args.email });
-    }
 
     await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["e2e"], excitement: ["e2e"] }), token: `e2e-fixture-${args.email}`, ttlMs: 24 * 60 * 60_000 });
   },
@@ -156,8 +153,9 @@ export const createE2eUser = httpAction(async (ctx, request) => {
   const authForVerify = createAuth(ctx);
   const authContext = await authForVerify.$context;
   const existing = await authContext.internalAdapter.findUserByEmail(email);
-  if (existing && !existing.user.emailVerified) {
-    await authContext.internalAdapter.updateUser(existing.user.id, { emailVerified: true });
+  if (existing) {
+    await authContext.internalAdapter.updateUser(existing.user.id, { emailVerified: true, role: isAdmin ? "admin" : "user" });
+    if (isAdmin) await ctx.runMutation(components.platform.adminEmails.ensure, { email });
   }
 
   await ctx.runMutation(internal.platform.e2eFixtures.finalizeE2eInvitation, { email });

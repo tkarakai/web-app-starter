@@ -21,6 +21,7 @@ const DEFAULT_EXPIRY_DAYS = 7;
 export const generateTokenAndSendEmail = internalAction({
   args: {
     entryId: v.string(),
+    generation: v.optional(v.number()),
     email: v.string(),
   },
   handler: async (ctx, args) => {
@@ -44,6 +45,7 @@ export const generateTokenAndSendEmail = internalAction({
     const tokenHash = sha256Hex(token);
     await ctx.runMutation(internal.platform.waitlistTokens.create, {
       waitlistEntryId: args.entryId,
+      generation: args.generation,
       tokenHash,
       email: args.email,
       expiresAt,
@@ -54,8 +56,10 @@ export const generateTokenAndSendEmail = internalAction({
     if (!siteUrlRaw) {
       throw new Error("Missing required environment variable: SITE_URL");
     }
-    const siteUrl = siteUrlRaw.split(",")[0].trim();
-    const signupUrl = `${siteUrl}/signup-with-invitation?token=${token}`;
+    const protectedAdmin = await ctx.runQuery(internal.platform.adminInvitations.requiresEnrollment, { email: args.email });
+    const siteUrl = protectedAdmin ? process.env.ADMIN_SITE_URL?.trim() : siteUrlRaw.split(",")[0].trim();
+    if (!siteUrl) throw new Error("Missing required environment variable: ADMIN_SITE_URL");
+    const signupUrl = protectedAdmin ? `${siteUrl}/onboarding?token=${token}` : `${siteUrl}/signup-with-invitation?token=${token}`;
 
     // Load custom email template (if any), otherwise use default
     const customTemplate = (await ctx.runQuery(

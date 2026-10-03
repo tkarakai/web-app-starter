@@ -26,6 +26,9 @@ export default async function DashboardLayout({
     redirect("/api/auth/clear-session");
   }
 
+  const pending = await fetchAuthQuery(api.platform.adminInvitations.getMyOnboardingStatus);
+  if (pending && !pending.completed) redirect("/onboarding");
+
   // Verify user has admin role (fetchAuthQuery returns the actual data)
   const user = await fetchAuthQuery(api.platform.auth.getCurrentUser);
   if (!user || (user as Record<string, unknown>).role !== "admin") {
