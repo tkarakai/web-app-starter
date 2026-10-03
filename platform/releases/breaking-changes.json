@@ -46,8 +46,18 @@
       "hooks": []
     },
     {
+      "id": "root.github.actions.setup-playwright.install-self-hosted.sh",
+      "path": ".github/actions/setup-playwright/install-self-hosted.sh",
+      "hooks": []
+    },
+    {
       "id": "root.github.workflows.ci-admin.yml",
       "path": ".github/workflows/ci-admin.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.workflows.ci-e2e-request.yml",
+      "path": ".github/workflows/ci-e2e-request.yml",
       "hooks": []
     },
     {
@@ -70,6 +80,11 @@
     {
       "id": "root.github.workflows.ci-storybook.yml",
       "path": ".github/workflows/ci-storybook.yml",
+      "hooks": []
+    },
+    {
+      "id": "root.github.workflows.ci-verify.yml",
+      "path": ".github/workflows/ci-verify.yml",
       "hooks": []
     },
     {
@@ -683,6 +698,55 @@
         "app.config.ts",
         "package.json",
         "turbo.json"
+      ]
+    },
+    {
+      "version": "3.1.0",
+      "previous": "3.0.0",
+      "supportedBaseline": ">=2.0.0 <3.1.0",
+      "codemods": [],
+      "migrations": [],
+      "env": [
+        {
+          "name": "SKIP_E2E",
+          "kind": "removed",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_CI_PR_E2E",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_CI_RUNNER",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_CI_ARTIFACT_RETENTION_DAYS",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        }
+      ],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": [
+        "root.github.actions.setup-bun.action.yml",
+        "root.github.actions.setup-playwright.action.yml",
+        "root.github.actions.setup-playwright.install-self-hosted.sh",
+        "root.github.workflows.ci-admin.yml",
+        "root.github.workflows.ci-e2e-request.yml",
+        "root.github.workflows.ci-landing.yml",
+        "root.github.workflows.ci-shared.yml",
+        "root.github.workflows.ci-storybook.yml",
+        "root.github.workflows.ci-verify.yml",
+        "root.github.workflows.ci-web.yml",
+        "package.json"
       ]
     }
   ]
