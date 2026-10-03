@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- The staging deploy runs E2E whatever the pull-request E2E setting, by calling the CI workflows
+  with `require_e2e: true`. Before, `SKIP_E2E=true` also skipped E2E in the staging deploy's CI,
+  so `ci/gate-passed`, which production requires, could pass on a commit no E2E had run on.
+  Apps that set `SKIP_E2E=true` now spend one full E2E run per merge to `main`. No app action
+  is required.
 - Web E2E shards in CI are balanced by duration. Playwright's `--shard` split the suite by
   test count, so the slow serial auth suites all landed in shard 1: about 7–9 minutes against
   2 minutes for shards 2 and 3. Each shard now runs whole spec files, assigned longest-first
@@ -33,6 +38,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Repository variable `PLATFORM_CI_PR_E2E` sets when E2E runs on pull requests: `always` (the
+  default, unchanged behaviour), `on-demand` (only with the `run-e2e` label, and the
+  `CI <App> Complete` check fails until E2E has passed on the PR head) or `off`. The new
+  app-owned `ci-e2e-request.yml` workflow re-runs the waiting checks when the label is added.
+  See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests).
 - Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
   artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
   default, follows it too.
@@ -46,6 +56,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md): how Actions minutes and storage
   work on a private repository, what the starter's CI costs per push, and how to spend less, with
   step-by-step self-hosted runner setup for a Mac.
+
+### Deprecated
+
+- Repository variable `SKIP_E2E`. With `PLATFORM_CI_PR_E2E` unset, `SKIP_E2E=true` still skips
+  E2E on pull requests (as `off`) and prints a warning. It stops working in the next major
+  release. Replace it: `gh variable set PLATFORM_CI_PR_E2E --body off && gh variable delete SKIP_E2E`.
 
 ## [3.0.0] - 2026-10-02
 
