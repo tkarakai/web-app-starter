@@ -25,6 +25,7 @@ export default function EnvironmentBannerShowcase() {
         <EnvironmentBanner
           environment="development"
           position="static"
+          platformVersion={process.env.NEXT_PUBLIC_PLATFORM_VERSION}
           appName="web"
           gitBranch="feat/environment-banner"
           gitSha="a1b2c3d4e5f6789012345678"
@@ -40,6 +41,7 @@ export default function EnvironmentBannerShowcase() {
         <EnvironmentBanner
           environment="staging"
           position="static"
+          platformVersion={process.env.NEXT_PUBLIC_PLATFORM_VERSION}
           appName="web"
           gitBranch="main"
           gitSha="9876543fedcba0123456789a"
@@ -73,6 +75,7 @@ export default function EnvironmentBannerShowcase() {
         <EnvironmentBanner
           environment="staging"
           position="static"
+          platformVersion={process.env.NEXT_PUBLIC_PLATFORM_VERSION}
           appName="admin"
           gitBranch="release/v2.1.0"
           gitSha="deadbeefcafe1234567890ab"
