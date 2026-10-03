@@ -117,7 +117,9 @@
       ]
     },
     "@web-app-starter/starter-sidebar-policy#build": {
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
     "@repo/landing#build": {
       "dependsOn": [
@@ -137,7 +139,8 @@
         "NEXT_PUBLIC_SITE_URL",
         "NEXT_PUBLIC_WEB_APP_URL",
         "NEXT_PUBLIC_BOOK_DEMO_URL",
-        "NEXT_PUBLIC_CONTACT_URL"
+        "NEXT_PUBLIC_CONTACT_URL",
+        "NEXT_PUBLIC_CONVEX_SITE_URL"
       ],
       "passThroughEnv": [
         "CONVEX_URL",

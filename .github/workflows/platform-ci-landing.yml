@@ -175,6 +175,7 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: ${{ env.APP_CONFIG_ORIGIN_LANDING }}
           NEXT_PUBLIC_WEB_APP_URL: ${{ env.APP_CONFIG_ORIGIN_WEB }}
+          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
 
       - name: Check bundle size
         run: cd apps/landing && bun run size

@@ -55,20 +55,3 @@ test.describe("Footer", () => {
     ).toBeVisible();
   });
 });
-
-test.describe("Backend-free handoff", () => {
-  test("always offers web sign-up and sign-in without backend requests", async ({ page }) => {
-    const calls: string[] = [];
-    await page.route("**/api/**", (route) => { calls.push(route.request().url()); return route.abort(); });
-    await page.goto("/");
-
-    await expect(
-      page.getByRole("link", { name: "Get started" }),
-    ).toHaveAttribute("href", /\/sign-up$/);
-    await page.waitForLoadState("networkidle");
-    expect(calls).toEqual([]);
-    await expect(
-      page.getByRole("link", { name: "Sign in" }).first(),
-    ).toHaveAttribute("href", /\/sign-in$/);
-  });
-});

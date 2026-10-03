@@ -195,6 +195,7 @@ artifact to one environment.
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | This app's public URL | landing |
 | `NEXT_PUBLIC_WEB_APP_URL` | Web app URL, for cross-app links | landing |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Convex HTTP URL for browser onboarding, waitlist and announcements | landing |
 
 Build-identity variables keep the `NEXT_PUBLIC_` prefix everywhere, because they describe the
 build: `NEXT_PUBLIC_GIT_SHA`, `NEXT_PUBLIC_GIT_BRANCH`, `NEXT_PUBLIC_DEPLOY_TIMESTAMP`,

@@ -26,7 +26,7 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <main
-      className="relative flex min-h-screen items-center justify-center"
+      className="relative flex min-h-screen items-center justify-center pt-[calc(6rem+var(--announcement-banner-h,0px))] pb-12"
       style={{ background: "var(--glow-warm)" }}
     >
       <SiteHeader />

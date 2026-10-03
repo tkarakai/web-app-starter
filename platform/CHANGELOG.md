@@ -13,6 +13,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- The reference landing again provides browser-side announcements and onboarding while remaining a static export: inline waitlist, signup/sign-in or sign-in-only controls, and backend-outage fallback with retry. The reference web sign-up view links waitlist visitors back to the localized landing. The existing `SignUpView` and explicit `createSignUpView` APIs remain available for apps that choose to keep forms in web. Existing email/metadata validation and rate limits remain.
+- Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
+
+### Adoption
+
+- App-owned landing pages are preserved on upgrade. To adopt the restored flow, follow [onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff): mount the announcement and waitlist UI, use web’s `LandingSignUpView`, and add the matching Convex HTTP URL to landing’s env template, Turbo build env and hosting configuration before rebuilding. Set Convex `LANDING_URL` to the landing origin. No data migration is required.
+
 ## [3.1.0] - 2026-10-03
 
 ### Action required

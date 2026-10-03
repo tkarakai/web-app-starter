@@ -7,6 +7,7 @@ export {
   ResetPasswordView,
   SignInView,
   SignUpView,
+  LandingSignUpView,
   createSignUpView,
   VerifyEmailView,
 } from "./auth-views";

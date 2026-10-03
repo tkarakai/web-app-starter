@@ -224,7 +224,7 @@ created, and both images are built.
 
 - sign in to web and admin (password, and a passkey if you use them)
 - sign out and sign in again, so the auth cookie round trip works over HTTPS
-- submit the web waitlist form (checks the Convex HTTP routes and CORS)
+- submit the landing waitlist form (checks the Convex HTTP routes and CORS)
 - trigger an email (password reset), so Resend links point at the AWS web host once `--replace-origins` has run
 
 ---
@@ -261,7 +261,7 @@ lists the Vercel web URL first, so emails link to Vercel.
 3. Keep the Vercel projects until the AWS deployment has been stable for a while, then remove them
    and disable the Vercel CD workflows.
 
-**Checkpoint 7**: sign-in, email links and the web waitlist work on the public names, and
+**Checkpoint 7**: sign-in, email links and the landing waitlist work on the public names, and
 the Vercel URLs are no longer accepted by Convex.
 
 ---

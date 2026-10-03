@@ -16,7 +16,7 @@ for (const mode of ["all", "web", "admin", "landing"]) {
       fs.mkdirSync(path.join(root, dir), { recursive: true });
     }
     fs.writeFileSync(path.join(root, "bin/bunx"), '#!/bin/bash\nprintf "%s\\n" "$*" >> "$PROJECT_DIR/convex-calls"\n', { mode: 0o755 });
-    const needConvex = mode !== "landing";
+    const needConvex = true;
     const result = spawnSync("bash", ["-eu", "-c", `
       start_next_app() { LAST_APP_URL="http://localhost:$(( $2 + 10 ))"; }
       update_env_var() { printf '%s=%s\\n' "$2" "$3" >> "$1"; }
@@ -34,8 +34,7 @@ for (const mode of ["all", "web", "admin", "landing"]) {
     } });
     assert.equal(result.status, 0, result.stderr);
     const calls = fs.existsSync(path.join(root, "convex-calls")) ? fs.readFileSync(path.join(root, "convex-calls"), "utf8").trim().split("\n") : [];
-    if (!needConvex) assert.deepEqual(calls, [], "starting only a landing must not call Convex");
-    else assert.deepEqual(calls.filter(call => call.startsWith("convex env set LANDING_URL ")), [
+    assert.deepEqual(calls.filter(call => call.startsWith("convex env set LANDING_URL ")), [
       `convex env set LANDING_URL http://localhost:${mode === "all" || mode === "landing" ? 43014 : 43004}`,
     ]);
   });

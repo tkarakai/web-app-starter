@@ -100,8 +100,9 @@ There is no `SITE_URL` for the apps: they derive their origin from the `Host` he
 ALB forwards unchanged (`routing.http.preserve_host_header.enabled`).
 
 landing build (`deploy-landing.sh`): `NEXT_PUBLIC_SITE_URL` (landing URL), `NEXT_PUBLIC_WEB_APP_URL`
-(web URL). Landing needs no Convex URL. Optional app-owned marketing link variables can be
-retained for customized pages; the default CTA hands off to web.
+(web URL) and `NEXT_PUBLIC_CONVEX_SITE_URL` (Convex HTTP URL). These are baked into the static
+export for browser-side onboarding, waitlist submission and announcement polling. Optional
+`NEXT_PUBLIC_BOOK_DEMO_URL` and `NEXT_PUBLIC_CONTACT_URL` supply backend-outage fallback links.
 
 Convex deployment (`deploy-convex.sh`): the AWS web, admin and landing origins are added to
 `SITE_URL`, `ADMIN_SITE_URL` and `LANDING_URL`, the comma-separated allow-lists Better Auth and
