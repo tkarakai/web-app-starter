@@ -303,7 +303,7 @@ Notes:
 
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
-`--port app=N`, `--remove demo`, `--remove-sample`, `--yes`).
+`--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--yes`).
 Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
@@ -324,6 +324,10 @@ For example, clone with
 4. Links the platform skills into `.claude/skills/` and `.agents/skills/`.
 5. Writes `.platform-base.json` (platform version and commit) and, if absent, adds a main-only, no-tags `upstream` remote (omit with `--no-upstream`). Existing remotes are unchanged; see [existing repositories](#existing-repositories) to narrow their fetches. It also sets `gh` to your app repository when its remote is configured, or prints the command to run afterward.
 6. Runs the zone check and a build, and prints what is yours and what is the platform's.
+7. On a private repository, where GitHub Actions minutes are billed, asks when CI should run E2E
+   on pull requests (`--pr-e2e`) and sets the repository variable `PLATFORM_CI_PR_E2E`, which
+   applies to everyone's CI runs in the repository. Without an answer it prints the command for
+   later. See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests).
 
 CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
 and rollback inspect the selected commit, so removing landing does not require a landing

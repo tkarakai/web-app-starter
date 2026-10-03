@@ -253,3 +253,23 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 
 Before pushing, follow the [local CI guidance](docs/ci.md#local-ci-pre-push-checks).
 Keep `lint`, `typecheck` and the test suites green.
+
+### Pull requests and E2E
+
+E2E is most of what CI costs, and on a private repository GitHub bills every minute
+([private-repo-ci.md](docs/private-repo-ci.md)). The repository variable `PLATFORM_CI_PR_E2E`
+decides when CI runs E2E on pull requests ([E2E on pull requests](docs/ci.md#e2e-on-pull-requests)).
+Check it and the repository's visibility before opening a PR:
+`gh repo view --json visibility` and `gh variable list`.
+
+- **Private repository with the default (`always`):** open the PR as a draft
+  (`gh pr create --draft`). Drafts skip E2E, but every push to a ready PR runs it. Before
+  `gh pr ready`, run the full suite locally with E2E (`CI=true bun run ci`) and keep it green,
+  because once the PR is ready CI is where E2E is checked.
+- **`on-demand`:** E2E runs in CI only once the PR has the `run-e2e` label. Run `CI=true bun run ci`
+  locally first, then add the label when the PR is final (`gh pr edit --add-label run-e2e`).
+- **`off`:** CI never runs E2E on PRs, so `CI=true bun run ci` locally is the only E2E check
+  before merge. Never skip it.
+- **Public repository:** Actions minutes are free; open ready PRs as usual.
+
+Change `PLATFORM_CI_PR_E2E` only when the user asks: it applies to everyone's CI runs in the repository.

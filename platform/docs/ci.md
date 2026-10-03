@@ -154,6 +154,11 @@ when it runs on pull requests (Settings → Secrets and variables → Actions �
 
 A value other than the three modes fails pull-request CI with an error naming the variable.
 
+It is a repository variable on GitHub, not a local setting: one value applies to everyone's CI
+runs in the repository, and only a repository admin can change it. `bun run adopt` and
+`bun run deploy:setup` ask for it on a private repository. Until it is set there, CI Web shows a
+notice on each pull-request run; setting it to `always` keeps the default and hides the notice.
+
 ### Platform update delivery
 
 The app-owned `update-platform.yml` calls `platform-update.yml` to discover releases, verify
