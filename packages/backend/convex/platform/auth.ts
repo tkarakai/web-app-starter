@@ -17,95 +17,13 @@ import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
 import type { AuditStatus } from "./auditTrailConstants";
 import authSchema from "./betterAuth/schema";
-import { sendAuthEmail } from "./sendAuthEmail";
+import { convexRateLimitPlugin, sendLimitedAuthEmail } from "./authRateLimits";
 import type { EmailTemplate } from "./emailTemplates";
 import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTemplates";
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 import { readBackupCodes } from "./recoveryCodes";
-
-// ---------------------------------------------------------------------------
-// Auth endpoint rate limiting via convex-helpers (persistent, OCC-safe).
-// Better Auth's built-in rate limiting uses either "memory" (no-op in Convex
-// HTTP actions) or "database" (causes OCC conflicts). This mapping lets a
-// custom onRequest plugin enforce equivalent limits via convex-helpers'
-// token-bucket implementation, which handles concurrent writes correctly.
-// ---------------------------------------------------------------------------
-
-type RateLimitKeySource = "ip" | "email";
-
-const AUTH_RATE_LIMIT_MAP: Record<string, { name: string; keyFrom: RateLimitKeySource }> = {
-  "/sign-in/email": { name: "authSignIn", keyFrom: "email" },
-  "/sign-up/email": { name: "authSignUp", keyFrom: "ip" },
-  "/request-password-reset": { name: "authPasswordResetRequest", keyFrom: "ip" },
-  "/reset-password": { name: "authPasswordReset", keyFrom: "ip" },
-  "/send-verification-email": { name: "authVerificationEmail", keyFrom: "ip" },
-  "/email-otp/send-verification-otp": { name: "authEmailOtp", keyFrom: "ip" },
-  "/magic-link/send-magic-link": { name: "authMagicLink", keyFrom: "ip" },
-};
-
-function extractIp(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
-
-/**
- * Better Auth plugin that enforces persistent, OCC-safe rate limits via
- * convex-helpers' token-bucket system. Replaces Better Auth's built-in
- * rate limiting which cannot work reliably in Convex HTTP actions.
- */
-const convexRateLimitPlugin = (
-  convexCtx: GenericCtx<DataModel>,
-): BetterAuthPlugin => ({
-  id: "convex-rate-limit",
-  async onRequest(request) {
-    const url = new URL(request.url);
-    const path = url.pathname.replace(/^\/api\/auth/, "");
-    const config = AUTH_RATE_LIMIT_MAP[path];
-    if (!config) return;
-
-    let key: string;
-    if (config.keyFrom === "email") {
-      try {
-        const body = (await request.clone().json()) as Record<string, unknown>;
-        const email = (body.email as string | undefined)?.trim().toLowerCase();
-        key = email || extractIp(request);
-      } catch {
-        key = extractIp(request);
-      }
-    } else {
-      key = extractIp(request);
-    }
-
-    const actionCtx = requireActionCtx(convexCtx);
-    const result = await actionCtx.runMutation(
-      internal.platform.rateLimits.consumeAuthRateLimit,
-      { name: config.name, key },
-    );
-
-    if (!result.ok) {
-      const retryAfter = Math.ceil(((result.retryAt ?? Date.now() + 1000) - Date.now()) / 1000);
-      return {
-        response: new Response(
-          JSON.stringify({
-            error: { message: "Too many requests. Please try again later." },
-          }),
-          {
-            status: 429,
-            headers: {
-              "Content-Type": "application/json",
-              "Retry-After": String(retryAfter),
-            },
-          },
-        ),
-      };
-    }
-  },
-});
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -544,7 +462,7 @@ export const createAuthOptions = (
       // without requiring an async createAuth factory.
       requireEmailVerification: false,
       sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
-        await sendAuthEmail({
+        await sendLimitedAuthEmail(ctx, {
           to: user.email,
           type: "reset-password",
           urlOrCode: url,
@@ -587,7 +505,7 @@ export const createAuthOptions = (
             verification_link: url,
             link_expiry: linkExpiry,
           });
-          await sendAuthEmail({
+          await sendLimitedAuthEmail(ctx, {
             to: user.email,
             type: "custom",
             subject: rendered.subject,
@@ -595,7 +513,7 @@ export const createAuthOptions = (
             text: rendered.text,
           });
         } else {
-          await sendAuthEmail({
+          await sendLimitedAuthEmail(ctx, {
             to: user.email,
             type: "verification",
             urlOrCode: url,
@@ -788,7 +706,7 @@ export const createAuthOptions = (
         },
         otpOptions: {
           async sendOTP({ user, otp }) {
-            await sendAuthEmail({
+            await sendLimitedAuthEmail(ctx, {
               to: user.email,
               type: "email-otp",
               urlOrCode: otp,
@@ -797,8 +715,9 @@ export const createAuthOptions = (
         },
       }),
       emailOTP({
+        resendStrategy: "reuse",
         sendVerificationOTP: async ({ email, otp }) => {
-          await sendAuthEmail({
+          await sendLimitedAuthEmail(ctx, {
             to: email,
             type: "email-otp",
             urlOrCode: otp,
@@ -807,7 +726,7 @@ export const createAuthOptions = (
       }),
       magicLink({
         sendMagicLink: async ({ email, url }) => {
-          await sendAuthEmail({
+          await sendLimitedAuthEmail(ctx, {
             to: email,
             type: "magic-link",
             urlOrCode: url,
@@ -822,13 +741,13 @@ export const createAuthOptions = (
     // option works reliably in Convex HTTP actions:
     //   - "database" causes OCC conflicts under concurrent requests
     //   - "memory" is a no-op (state doesn't persist between invocations)
-    // Instead, the convexRateLimitPlugin above enforces equivalent per-endpoint
-    // limits via convex-helpers' token-bucket system, which is OCC-safe.
+    // Instead, request and actual-delivery budgets use Convex token buckets.
     rateLimit: { enabled: false },
     advanced: {
       // Must match `cookiePrefix` in @web-app-starter/auth/server; both read app.config.ts.
       cookiePrefix: AUTH_COOKIE_PREFIX,
       ipAddress: {
+        // Session metadata only; auth budgets use trustedAuthIp's explicit ingress policy.
         ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
       },
     },
