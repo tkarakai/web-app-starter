@@ -9,8 +9,11 @@ const platformVersion = readFileSync(
 test("the app banner displays the installed starter version", async ({ page }) => {
   await page.goto("/components/button");
   const banner = page.getByRole("status", { name: "Environment: development" });
-  await expect(banner.getByRole("button")).toContainText(`starter v${platformVersion}`);
-  await banner.hover();
+  const trigger = banner.getByRole("button", { name: /^DEV/ });
+  await expect(trigger).toContainText(`starter v${platformVersion}`);
+  await trigger.focus();
+  await trigger.press("Enter");
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
   await expect(banner.getByText("starter", { exact: true })).toBeVisible();
   await expect(banner.getByText(`v${platformVersion}`, { exact: true })).toBeVisible();
 });
