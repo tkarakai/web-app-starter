@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@web-app-starter/design-system";
 
 import { WaitlistForm } from "./waitlist-form";
@@ -11,6 +11,7 @@ if (!WEB_APP_URL) {
 }
 
 export function WaitlistSection() {
+  const locale = useLocale();
   const t = useTranslations("landing.waitlist");
 
   return (
@@ -19,7 +20,7 @@ export function WaitlistSection() {
       <p className="text-sm text-muted-foreground">
         {t("alreadySignedUp")}{" "}
         <Button variant="link" asChild className="h-auto p-0 text-sm">
-          <a href={`${WEB_APP_URL}/sign-in`}>{t("signIn")}</a>
+          <a href={`${WEB_APP_URL!.replace(/\/$/, "")}/${locale}/sign-in`}>{t("signIn")}</a>
         </Button>
       </p>
     </div>

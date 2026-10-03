@@ -8,6 +8,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { getLocaleDirection, type Locale, locales } from "@web-app-starter/i18n";
 import DocumentShell from "@/components/document-shell";
 import { DocumentLocale } from "@/components/document-locale";
+import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { Footer } from "@/components/footer";
 
 // Titles use the product name from app.config.ts; it is not a translation.
@@ -72,6 +73,7 @@ export default async function LocaleLayout({
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <NextIntlClientProvider messages={messages}>
           <DocumentLocale lang={locale} dir={dir} />
+          <AnnouncementBannerHost />
           <div className="flex-1">{children}</div>
           <Footer />
         </NextIntlClientProvider>

@@ -46,22 +46,23 @@ asks to replace the App. `--fallback` documents the manual-CI/workflow-file limi
 
 ## Waitlist questions
 
-`features.waitlist` controls feature visibility. Questions and answer validation belong to
-app code, not `app.config.ts` or the platform backend. The reference form is
-`apps/web/src/components/waitlist-form.tsx`; keep or replace its sample questions and
-app-owned translations. It composes `WaitlistForm` from `@web-app-starter/auth-ui` with
-optional `meta` (a JSON object), `children` and `disabled` for question validation.
-Export `createSignUpView({ waitlistForm: AppWaitlistForm })` from your sign-up page; the
-factory comes from `@web-app-starter/auth-ui/views` and supplies the runtime `convexSiteUrl`.
-Re-export `SignUpView` for the email-only default (existing page re-exports keep working).
-The shared form serializes metadata; direct HTTP callers submit `meta: JSON.stringify(answers)` or `meta: "{}"`.
-No backend patch, migration or new config key is needed.
+`features.waitlist` controls visibility. Questions and answer validation belong to app
+code, not `app.config.ts` or the platform backend. Customize the reference form at
+`apps/landing/src/components/waitlist-form.tsx` and its app-owned `landing.waitlist` messages.
+It posts directly from the browser to Convex, preserving visitor IP rate limits; direct HTTP
+callers submit `meta: JSON.stringify(answers)` or `meta: "{}"`.
 
-The landing hands off to web `/sign-up` and `/sign-in`, with no backend dependency.
-Web reads onboarding mode uncached and fails closed on backend error. Adoption is additive:
-keep buyer-owned questions and pages until deliberately switching them to the shared form.
-The unmounted legacy landing form and announcement host can remain; remove their Convex env
-wiring only after their consumers are removed. Default launcher/infra no longer generates it.
+Landing reads onboarding mode in the browser and shows the inline waitlist, web signup/sign-in
+links, or sign-in only. It remains a static export. Keep `NEXT_PUBLIC_CONVEX_SITE_URL` in the
+landing env template, Turbo build env and deployment configuration, and its origin in Convex
+`LANDING_URL`. The launcher starts Convex for landing; deploy setup supplies the public URL.
+Announcements are browser-polled when `features.announcements` is enabled.
+
+The reference web route's `LandingSignUpView` checks mode uncached and links waitlist visitors to the localized
+landing. It fails closed on backend errors. Existing apps may explicitly retain an in-web form
+using `createSignUpView({ waitlistForm: AppWaitlistForm })` and the shared `WaitlistForm`
+with `children`, optional object-valued `meta` and `disabled`. Keep custom questions and
+pages during adoption; platform upgrades do not replace app-owned UI.
 
 Read the [waitlist metadata contract](../../docs/authentication-and-onboarding.md#waitlist-metadata-contract)
 for the 16,384-byte UTF-8 cap, object-only root, prohibited keys and admin display behavior.

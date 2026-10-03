@@ -273,6 +273,7 @@ function run(root: string, command: string, args: string[], env: Record<string, 
 const BUILD_PLACEHOLDERS: Record<string, string> = {
   CONVEX_URL: process.env.CONVEX_URL ?? "https://placeholder.convex.cloud",
   CONVEX_SITE_URL: process.env.CONVEX_SITE_URL ?? "https://placeholder.convex.site",
+  NEXT_PUBLIC_CONVEX_SITE_URL: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "https://placeholder.convex.site",
   NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL ?? "https://placeholder.convex.cloud",
 };
 

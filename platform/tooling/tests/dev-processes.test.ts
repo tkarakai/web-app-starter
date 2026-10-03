@@ -462,6 +462,26 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
     fs.writeFileSync(path.join(bindir, "bunx"), "#!/usr/bin/env node\nconsole.log('Local: http://localhost:3999');\nconsole.log('Ready in 1ms');\nsetTimeout(() => {}, 300000);\n", { mode: 0o755 });
     fs.writeFileSync(path.join(bindir, "npx"), '#!/bin/bash\nif [ "$1" = "--version" ]; then echo fixture; exit 0; fi\necho "Unexpected package download during dev startup" >&2\nexit 127\n', { mode: 0o755 });
 
+    if (app === "landing") {
+      // Substitute Convex's executable boundary too: landing now needs its HTTP endpoint.
+      fs.mkdirSync(path.join(root, "packages/backend"), { recursive: true });
+      fs.mkdirSync(path.join(root, "node_modules/.bin"), { recursive: true });
+      fs.writeFileSync(path.join(root, "node_modules/.bin/esbuild"), "#!/bin/sh\necho 0.25.0\n", { mode: 0o755 });
+      fs.writeFileSync(path.join(bindir, "npx"), `#!/usr/bin/env node
+if (process.argv[2] === '--version') { console.log('fixture'); process.exit(0); }
+if (process.argv.slice(2).join(' ') !== 'convex dev') process.exit(127);
+(await import('node:fs')).writeFileSync('.env.local', 'CONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
+console.log('Convex functions ready');
+setTimeout(() => {}, 300000);
+`, { mode: 0o755 });
+      fs.writeFileSync(path.join(bindir, "bunx"), `#!/usr/bin/env node
+if (process.argv[2] === 'convex') { console.log('fixture'); process.exit(0); }
+console.log('Local: http://localhost:3999');
+console.log('Ready in 1ms');
+setTimeout(() => {}, 300000);
+`, { mode: 0o755 });
+    }
+
     const log = path.join(root, "bun-start.log");
     const output = fs.openSync(log, "w");
     const launcher = spawn("bun", args, {
@@ -481,7 +501,8 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
       if (args[0] === "dev") {
         assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
       }
-      assert.deepEqual(Object.keys(manager.readRecords(root)), [`next-${app}`]);
+      assert.deepEqual(Object.keys(manager.readRecords(root)).sort(), (app === "landing" ? ["convex", "next-landing"] : ["next-storybook"]));
+      if (app === "landing") assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /NEXT_PUBLIC_CONVEX_SITE_URL=http:\/\/127\.0\.0\.1:43211/);
       const status = await runScript("dev-status.sh");
       assert.match(status.stdout, new RegExp(app));
     } finally {
@@ -517,22 +538,22 @@ test("nuke is limited to registered git worktrees and preserves state", async ()
   assert.equal(fs.readFileSync(state, "utf8"), "keep my data");
 });
 
-test("default startup starts the landing app without a backend", async () => {
+test("default startup starts landing with its browser backend", async () => {
   fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
   fs.mkdirSync(path.join(root, "apps/landing"), { recursive: true });
   fs.writeFileSync(path.join(root, "apps/landing/package.json"), "{}");
   const result = await runScript("dev-start.sh", ["--ci"]);
   assert.equal(result.status, 17, result.stderr);
-  assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=false"));
+  assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=true"));
 });
 
-test("explicit landing startup requires no backend", async () => {
+test("explicit landing startup starts its browser backend", async () => {
   fs.mkdirSync(path.join(root, "apps/landing"), { recursive: true });
   fs.writeFileSync(path.join(root, "apps/landing/package.json"), "{}");
   // Exercise the public launcher, stopping at its first setup operation.
   fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
   const result = await runScript("dev-start.sh", ["--ci", "--app=landing"]);
   assert.equal(result.status, 17, result.stderr);
-  assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=false"));
+  assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=true"));
   assert.equal(fs.existsSync(path.join(root, "apps/landing/.env.local")), false);
 });

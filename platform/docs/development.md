@@ -1,6 +1,6 @@
 # Development Workflow
 
-The default dev launcher, local CI and deployment workflows require `apps/landing`. `bun run dev:landing` starts it on its own, through the managed launcher, logs and stop/status commands. The landing app runs without a Convex backend. See [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff) for the marketing-to-web flow.
+The default dev launcher, local CI and deployment workflows require `apps/landing`. `bun run dev:landing` starts it on its own, through the managed launcher, logs and stop/status commands. The landing app remains a static export; its browser-side onboarding, waitlist and announcements use Convex. `dev:landing` starts Convex and supplies its public HTTP URL. See [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff) for the marketing-to-web flow.
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
@@ -13,7 +13,7 @@ bun run dev                  # Starts installed core apps; skips apps removed du
 # Start a specific app + Convex (ports: runtime.ports in app.config.ts)
 bun run dev:web              # Convex + web app
 bun run dev:admin            # Convex + admin app
-bun run dev:landing          # Landing only (no backend)
+bun run dev:landing          # Landing + Convex
 bun run dev:storybook        # Component storybook only (no Convex)
 
 # Check service status
@@ -25,10 +25,10 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
-Whenever web or admin starts Convex, the launcher also sets the
+Whenever web, admin or landing starts Convex, the launcher also sets the
 backend's `LANDING_URL` to the landing's actual URL, or its configured local
 origin if it is not started. The backend needs this for CORS and announcement links
-even though the landing is static. Starting the landing alone needs no Convex.
+from the browser even though landing is statically hosted. Starting landing alone also starts Convex.
 
 ### App configuration (`app.config.ts`)
 

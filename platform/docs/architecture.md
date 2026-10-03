@@ -12,7 +12,8 @@ own component:
 | Route file (`apps/web/src/app/`) | Re-exports from `@web-app-starter/auth-ui` |
 |---|---|
 | `[locale]/(auth)/layout.tsx` | `AuthLayout` (`/views`): `GuestGuard` + system theme |
-| `[locale]/(auth)/sign-in`, `sign-up`, `forgot-password`, `reset-password` pages | `SignInView`, `SignUpView`, `ForgotPasswordView`, `ResetPasswordView` (`/views`) |
+| `[locale]/(auth)/sign-in`, `forgot-password`, `reset-password` pages | `SignInView`, `ForgotPasswordView`, `ResetPasswordView` (`/views`) |
+| `[locale]/(auth)/sign-up/page.tsx` | See [onboarding ownership and view selection](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff) |
 | `[locale]/(verify-email)/verify-email/page.tsx` | `VerifyEmailView` (`/views`) |
 | `[locale]/(invitation)/layout.tsx`, `signup-with-invitation/page.tsx` | `PublicAuthLayout`, `InvitationSignupView` (`/views`) |
 | `[locale]/(dashboard)/layout.tsx` | `ProtectedLayout` (`/views`) |

@@ -101,7 +101,7 @@ Create six Vercel projects — three for staging and three for production. Each 
    | `my-app-admin-staging` | `platform/apps/admin` | **Next.js** | Staging |
    | `my-app-landing-staging` | `apps/landing` | **Next.js** | Staging |
 
-   Builds run `vercel build` from the monorepo root with the project's root directory. Configure landing's `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_WEB_APP_URL` per environment; it needs no Convex variable. Point web's `LANDING_URL` at the landing's URL.
+   Builds run `vercel build` from the monorepo root with the project's root directory. Configure landing's `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_APP_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` per environment; the static build inlines them for browser requests. Point web's `LANDING_URL` at the landing's URL.
 
 **Manual CLI alternative:**
 
@@ -167,7 +167,7 @@ Also note each project's **auto-assigned Vercel URL** (visible in each project's
 
 Now that both Convex projects and Vercel projects exist, you know all the URLs. Set environment variables on each Convex project.
 
-In this repo, the **web app** (`apps/web`) and **admin app** (`platform/apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The landing app hands off to web and does not connect to Convex. Retain `LANDING_URL` for marketing links and compatibility with app-owned HTTP consumers. Storybook does not connect to Convex.
+In this repo, the **web app** (`apps/web`) and **admin app** (`platform/apps/admin`) authenticate against Convex — their URLs go in `SITE_URL` (Better Auth trusted origins). The admin app's URL also goes in `ADMIN_SITE_URL` (used for admin-specific CORS and invitation email links). The static landing calls Convex HTTP endpoints from the browser for onboarding, waitlist and announcements. Set `LANDING_URL` to its origin for CORS and marketing links. Storybook does not connect to Convex.
 
 **Option A — Convex Dashboard (recommended for one-time setup):**
 
@@ -237,7 +237,7 @@ CONVEX_DEPLOY_KEY='prod:your-production-deploy-key' \
 >
 > **How `PASSKEY_RP_ID` works:** Passkeys use a single relying party ID (RP ID). If web/admin must both use passkeys, set `PASSKEY_RP_ID` to a shared parent domain (for example `staging.example.com` for `web.staging.example.com` and `admin.staging.example.com`). With default `*.vercel.app` hostnames, this shared RP setup is generally not viable; use custom domains.
 >
-> **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). The default landings make no such requests; this remains available for custom app-owned consumers. Web waitlist requests use the web origin in `SITE_URL`.
+> **How `LANDING_URL` works:** The HTTP router in `packages/backend/convex/http.ts` reads `LANDING_URL` to build the CORS allowed-origins list for the waitlist API endpoints (`/api/waitlist/status`, `/api/waitlist/join`). Landing makes these requests from the browser, so `LANDING_URL` must include its exact origin. The announcement endpoint uses the same CORS allow-list. Optional web waitlist consumers use the web origin in `SITE_URL`.
 >
 > **Why `RESEND_API_KEY` is required here:** Without it, auth and invitation emails fall back to being logged to the console, and that fallback runs only in local development (every `SITE_URL` origin on `http://localhost`; see `packages/backend/convex/platform/developmentOnly.ts`). On a hosted deployment, sending an email without `RESEND_API_KEY` throws `EMAIL_DELIVERY_NOT_CONFIGURED`, so sign-up verification, password reset and invitations fail until it is set.
 
@@ -289,12 +289,13 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 | `CONVEX_SITE_URL` | Staging Convex Site URL |
 | `APP_ENVIRONMENT` | `staging` |
 
-**my-app-landing (production)** — backend-free marketing handoff:
+**my-app-landing (production)** — static export with browser-side Convex features:
 
 | Variable | Value |
 |----------|-------|
 | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` |
 | `NEXT_PUBLIC_WEB_APP_URL` | `https://web.yourdomain.com` |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Production Convex HTTP URL (`https://xxx.convex.site`) |
 
 **my-app-landing-staging:**
 
@@ -302,6 +303,7 @@ Set environment variables for each Vercel project. Use the Convex URLs recorded 
 |----------|-------|
 | `NEXT_PUBLIC_SITE_URL` | `https://my-app-landing-staging.vercel.app` |
 | `NEXT_PUBLIC_WEB_APP_URL` | `https://my-app-web-staging.vercel.app` |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Staging Convex HTTP URL (`https://yyy.convex.site`) |
 
 Set these in each project's Settings → Environment Variables using the **Production** scope.
 
@@ -846,7 +848,7 @@ No automated alerting is configured by default. Options by team size:
 | App shows stale content | CDN cache or browser cache | Hard refresh; check Vercel deployment URL directly |
 | Auth not working after deploy | `SITE_URL` mismatch in Convex env vars | Verify `SITE_URL` matches the actual web/admin app URL(s) |
 | Passkey registration fails with RP ID/domain error | RP ID does not match current app hostname | Set `PASSKEY_RP_ID` to a shared parent domain and use custom web/admin subdomains under it |
-| Waitlist form CORS errors on web | `SITE_URL` missing the web origin | Verify `SITE_URL` includes the web app URL |
+| Waitlist or announcement CORS errors on landing | `LANDING_URL` missing the landing origin | Verify Convex `LANDING_URL` includes the exact landing origin and rebuild landing with the matching `NEXT_PUBLIC_CONVEX_SITE_URL` |
 | `BETTER_AUTH_SECRET` error | Secret not set or empty | Run `bunx convex env list` in the target project (set `CONVEX_DEPLOYMENT` first) |
 | Vercel build fails | Missing environment variables | Check Vercel dashboard > Project > Settings > Environment Variables |
 | Rollback fails on schema | New data incompatible with old schema | Roll forward instead; see [Schema Migrations](#8-schema-migrations) and [Emergency re-widen runbook](./convex-migrations.md#if-production-broke-because-the-narrowed-schema-reached-it-before-data-was-migrated) |

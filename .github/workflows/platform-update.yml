@@ -93,6 +93,7 @@ jobs:
       CONVEX_AGENT_MODE: anonymous
       CONVEX_URL: http://127.0.0.1:3210
       CONVEX_SITE_URL: http://127.0.0.1:3211
+      NEXT_PUBLIC_CONVEX_SITE_URL: http://127.0.0.1:3211
       NEXT_PUBLIC_CONVEX_URL: http://127.0.0.1:3210
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
     steps:
