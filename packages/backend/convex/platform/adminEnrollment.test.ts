@@ -47,6 +47,22 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("administrator enrollment", () => {
+  test("backup-step progress rejects stale authentication and persists on authenticated retry", async () => {
+    const t = fixture(); await invite(t, "admin");
+    const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token });
+    await t.action(api.platform.adminInvitations.register, { capability: claim.capability, email, name: "Owner", password });
+    const account = (await user(t))!;
+    const owner = await session(t, account._id);
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: account._id }], update: { twoFactorEnabled: true } } });
+    await expect(t.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 2 })).rejects.toThrow("NOT_AUTHENTICATED");
+    expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toEqual({ completed: false, step: 1 });
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "userId", value: account._id }], update: { expiresAt: Date.now() - 1, token: "expired-session" } } });
+    await expect(owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 2 })).rejects.toThrow("NOT_AUTHENTICATED");
+    const refreshed = await session(t, account._id);
+    await refreshed.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 2 });
+    expect(await refreshed.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toEqual({ completed: false, step: 2 });
+  });
+
   test.each(["bootstrap", "admin"] as const)("%s enforces required passkeys for both stored policy representations", async kind => {
     const t = fixture(); await invite(t, kind);
     const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token });
