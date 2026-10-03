@@ -1,7 +1,20 @@
 # CI Guide
 
-See [development commands](development.md) and
-[onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
+This guide owns **what CI checks, workflow behavior and local pre-push testing**. For
+**private-repository costs, runner installation and sharing runners across repositories**, use
+[the private CI and runner guide](private-repo-ci.md). Keep runner setup instructions there.
+
+## Choose how to run checks
+
+| Method | Execution | Results | Guide |
+|---|---|---|---|
+| `CI=true bun run ci` / `bun run ci:quick` | Native tools in your checkout | Local feedback before pushing | [Pre-push checks](#local-ci-pre-push-checks) |
+| `bun run ci:act` | Local workflow simulation in Docker | Local debugging; does not publish GitHub PR checks | [act](#running-github-actions-locally-with-act) |
+| GitHub Actions on self-hosted runners | GitHub schedules jobs on your registered machine or containers | Real PR checks and Actions logs, like hosted runners | [Runner setup](private-repo-ci.md#5-run-ci-on-your-own-machine-free-the-biggest-win) |
+
+For several trusted private repos, consider one **GitHub Free organization** and a shared runner
+pool; see [choosing runner scope](private-repo-ci.md#choose-repository-or-organization-scope).
+Local test commands and `act` do not register a runner or satisfy GitHub required checks.
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
@@ -44,7 +57,9 @@ unchanged.
 
 Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
 
-> **Note**: Security checks (CodeQL, dependency audit, secrets scan), Lighthouse audits, and CI gate are only run in GitHub Actions CI, not locally.
+> **Note**: The native local CI script does not run Security checks (CodeQL, dependency audit,
+> secrets scan), Lighthouse audits or the GitHub CI gate. Runner location is a separate choice;
+> the platform keeps Security and deployment jobs GitHub-hosted by default.
 
 ## Running GitHub Actions Locally with `act`
 
@@ -78,6 +93,15 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 3. `ci-admin.yml` — Admin app: same checks as web
 4. `ci-landing.yml` — Landing app: same checks; its E2E launcher starts Convex for browser-side onboarding and announcements
 5. `ci-storybook.yml` — Storybook app: build, E2E
+
+Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`)
+for shared setup. They handle GitHub-hosted runners, [self-hosted runners](private-repo-ci.md#5-run-ci-on-your-own-machine-free-the-biggest-win)
+and act-specific cache setup. `.actrc` uses native ARM64 containers on Apple Silicon (no emulation)
+and bind-mount mode (`-b`) to make composite actions visible to act.
+
+For repeated runs without downloads, see [offline act](#offline-ci-mode-act).
+
+## GitHub Actions workflows
 
 ### Reusable platform workflows and thin callers
 
@@ -177,15 +201,6 @@ skipped and a **Paid feature skipped** notice explains why (`.github/actions/pai
 
 Deploy jobs name the `staging` and `production` environments but read only repository-level
 secrets, so they work on every plan.
-
-Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`) for shared setup steps, handling GitHub-hosted runners, [self-hosted runners](private-repo-ci.md#5-run-ci-on-your-own-machine-free-the-biggest-win) and act-specific cache-aware setup automatically.
-
-**Configuration**: `.actrc` uses native ARM64 containers on Apple Silicon (no emulation) and bind-mount mode (`-b`) to make composite actions visible to act.
-
-**When to use which**:
-- [Local CI script](#local-ci-pre-push-checks) — Fast native checks, no Docker required
-- `bun run ci:act` — Full GitHub Actions simulation in Docker
-- `bun run ci:act:offline` — Fast offline execution (no network required)
 
 ## Offline CI Mode (act)
 

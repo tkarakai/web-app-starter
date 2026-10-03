@@ -224,8 +224,8 @@ environment-specific and silently breaks artifact reuse
 | When you are... | Read |
 |---|---|
 | Writing or changing tests (unit, component, E2E, backend) | [docs/testing.md](docs/testing.md) |
-| Working on CI, GitHub Actions, act or offline mode | [docs/ci.md](docs/ci.md) |
-| Running CI on a private repository: Actions minutes, storage, a self-hosted runner | [docs/private-repo-ci.md](docs/private-repo-ci.md) |
+| Understanding checks, E2E policy, native pre-push CI, act or offline mode | [docs/ci.md](docs/ci.md) |
+| Private CI costs, installing local runners, or sharing an organization pool (including GitHub Free) | [docs/private-repo-ci.md](docs/private-repo-ci.md) |
 | Writing components, Convex functions or styles | [docs/code-style.md](docs/code-style.md) |
 | Working on auth, route protection, rate limiting or React patterns | [docs/architecture.md](docs/architecture.md), [docs/authentication-and-onboarding.md](docs/authentication-and-onboarding.md), [docs/rate-limiting-architecture.md](docs/rate-limiting-architecture.md) |
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |
