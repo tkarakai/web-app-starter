@@ -90,14 +90,28 @@ describe("recovery-secret reauthentication", () => {
     expect((await f.http("/api/two-factor/backup-codes", { password }, f.second.session.token)).status).toBe(429);
     await expect(f.second.caller.action(api.platform.auth.viewBackupCodes, { password })).rejects.toThrow("RATE_LIMITED");
   });
-  test.each(["revoked", "expired", "banned", "unverified"])("a %s session cannot disclose codes even with the correct password", async (state) => {
+  test.each([true, false])("unverified accounts require the same password proof across transports (encrypted=%s)", async (encrypted) => {
+    const f = await fixture(encrypted);
+    await f.t.mutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: { emailVerified: false } },
+    });
+    for (const args of [{}, { password: "wrong" }]) {
+      await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, args)).rejects.toThrow("REAUTHENTICATION_REQUIRED");
+      expect((await f.http("/api/two-factor/backup-codes", args)).status).toBe(403);
+    }
+    await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, { password })).resolves.toEqual(codes);
+    const response = await f.http("/api/two-factor/backup-codes", { password });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ backupCodes: codes });
+  });
+  test.each(["revoked", "expired", "banned"])("a %s session cannot disclose codes even with the correct password", async (state) => {
     const f = await fixture();
     if (state === "revoked") await f.t.mutation(components.betterAuth.adapter.deleteOne, {
       input: { model: "session", where: [{ field: "_id", value: f.first.session._id }] },
     });
     if (state === "expired") vi.setSystemTime(Date.now() + 8 * 86400000);
-    if (state === "banned" || state === "unverified") await f.t.mutation(components.betterAuth.adapter.updateOne, {
-      input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: state === "banned" ? { banned: true } : { emailVerified: false } },
+    if (state === "banned") await f.t.mutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: { banned: true } },
     });
     await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, { password })).rejects.toThrow("NOT_AUTHENTICATED");
   });

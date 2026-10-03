@@ -18,7 +18,7 @@ export const snapshot = internalQuery({
     const user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "user", where: [{ field: "_id", value: userId }],
     });
-    if (!user || user.banned || !user.emailVerified) throw new Error("NOT_AUTHENTICATED");
+    if (!user || user.banned) throw new Error("NOT_AUTHENTICATED");
     const credential = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "account", where: [
         { field: "userId", value: userId }, { field: "providerId", value: "credential" },

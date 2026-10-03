@@ -549,10 +549,11 @@ reset does not disable that factor or silently remove passkeys.
 
 #### Viewing and replacing recovery codes
 
-Viewing codes in web/admin settings requires the current password on **every** request. Resumed
-administrator enrollment has the same prompt; uninterrupted enrollment uses the codes returned
-when TOTP was enabled with the password. Regeneration and TOTP enrollment also verify the current
-password through Better Auth. The view operation shares a five-attempt, five-per-minute token
+Viewing codes in web/admin settings requires the current password on **every** request. Both
+initial and resumed administrator enrollment prompt for the current password at the backup-code
+step. The wizard does not retain the codes returned when TOTP is enabled, and TOTP verification
+does not return codes, so that step loads them with fresh password proof. Regeneration and TOTP
+enrollment also verify the current password through Better Auth. The view operation shares a five-attempt, five-per-minute token
 bucket per account across sessions and transports. Failed passwords consume attempts.
 
 Custom clients call `api.platform.auth.viewBackupCodes({ password })` over authenticated Convex,
