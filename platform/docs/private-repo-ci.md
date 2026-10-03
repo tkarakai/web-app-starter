@@ -146,7 +146,7 @@ to run on `main` and on the weekly schedule only.
 
 The CI jobs expect an **Ubuntu-like Linux machine with passwordless `sudo`**: Playwright installs
 browser system libraries with `apt`. The easiest way to get exactly that, on any computer, is a
-runner in a container.
+runner in a container, and the starter ships one ready to build: `platform/tooling/ci-runner/`.
 
 #### On a Mac (Apple Silicon or Intel)
 
@@ -174,39 +174,53 @@ every start, so it needs a personal access token:
 
 Give it an expiry date and put a reminder in your calendar.
 
-**Step 3: start the runners.** Create a folder outside your repository, for example
-`~/ci-runner/`, with a `.env` file holding the token:
+**Step 3: build the runner image and start the runners.** Copy the starter's runner files into a
+folder outside your repository, for example `~/ci-runner/`:
+
+```bash
+mkdir -p ~/ci-runner
+cp platform/tooling/ci-runner/Dockerfile platform/tooling/ci-runner/compose.yaml ~/ci-runner/
+(cd apps/web && ./node_modules/.bin/playwright --version)    # e.g. "Version 1.63.0"
+```
+
+Next to them, create a `.env` file with the token, your repository and that Playwright version:
 
 ```bash
 GITHUB_RUNNER_PAT=github_pat_...
+REPO_URL=https://github.com/<owner>/<repo>
+PLAYWRIGHT_VERSION=1.63.0
 ```
 
-and this `compose.yaml`. It uses the community-maintained
-[docker-github-actions-runner](https://github.com/myoung34/docker-github-actions-runner) image,
-which wraps GitHub's official runner:
-
-```yaml
-services:
-  runner:
-    image: myoung34/github-runner:ubuntu-noble
-    restart: always
-    environment:
-      REPO_URL: https://github.com/<owner>/<repo>
-      RUNNER_SCOPE: repo
-      ACCESS_TOKEN: ${GITHUB_RUNNER_PAT}
-      LABELS: starter-ci
-      RUNNER_NAME_PREFIX: mac-ci
-      EPHEMERAL: "true"        # a fresh registration for every job
-```
+Then build the image and start two runners:
 
 ```bash
 cd ~/ci-runner
+docker compose build                      # a minute or two, once
 docker compose up -d --scale runner=2     # two runners work on two jobs at once
 docker compose logs -f                    # watch them register and pick up jobs
 ```
 
 After a minute, the runners appear under the repository's **Settings → Actions → Runners** as
 idle, with the `starter-ci` label.
+
+The image is the community-maintained
+[docker-github-actions-runner](https://github.com/myoung34/docker-github-actions-runner) image,
+which wraps GitHub's official runner, plus the system libraries and fonts Playwright's Chromium
+needs. Everything else stays out of the image and in Docker volumes that every runner on the
+machine shares:
+
+| Volume | Holds | Downloaded |
+|---|---|---|
+| `toolcache` | Node | once per Node major version |
+| `bun` | Bun and its package cache | once per Bun version; packages once per lockfile change |
+| `playwright` | Playwright's Chromium | once per Playwright upgrade |
+| `convex` | the Convex local backend | once per Convex backend release |
+
+On GitHub's machines every job downloads all of that again from GitHub's cache, about 9 GB per PR
+push. Your runners download each version once and then reuse it, and they don't use the
+repository's 10 GB cache quota either. The first run after starting fresh volumes still downloads
+everything; if two jobs happen to fetch the same new version at the same moment and one fails,
+re-run it.
 
 **How many runners?** One runner runs one job at a time, and a PR push queues about 15–20 jobs.
 Two runners are a good start on a 16 GB Mac; three or four if you have 32 GB or more. More runners
@@ -230,17 +244,51 @@ and fail after 24 hours. Some habits that help:
 - Leaving for a trip? `gh variable delete PLATFORM_CI_RUNNER` puts CI back on GitHub's machines
   while you're away.
 
-**Housekeeping.** Images and build output accumulate. Prune now and then with
-`docker system prune`. To update the runner image: `docker compose pull && docker compose up -d --scale runner=2`.
-To stop: `docker compose down`, then delete any leftover offline runners under Settings → Actions → Runners.
+**After a Playwright upgrade**, E2E jobs show a "Rebuild the CI runner image" notice and install
+the browser system libraries themselves, which costs about 20 seconds per job. Update
+`PLAYWRIGHT_VERSION` in `.env` and rebuild:
+
+```bash
+docker compose build --pull && docker compose up -d --scale runner=2
+```
+
+The same command picks up a new base image now and then. Taking a starter release that changes
+`platform/tooling/ci-runner/` means copying its two files again.
+
+**Housekeeping.** Each new Node, Playwright or Convex version adds to the volumes, and old ones
+stay. Check with `docker system df -v`. To start a volume over, stop the runners and remove it;
+the next jobs download what they need again:
+
+```bash
+docker compose down
+docker volume ls                          # names start with the folder name, e.g. ci-runner_playwright
+docker volume rm ci-runner_playwright     # or all four
+docker compose up -d --scale runner=2
+```
+
+Prune images and build output now and then with `docker system prune`. To stop:
+`docker compose down`, then delete any leftover offline runners under Settings → Actions → Runners.
+
+**What the shared volumes mean for security.** A job can change what later jobs find in the
+volumes, so a malicious pull request could leave a tampered binary behind for the next run. That
+is acceptable only because a self-hosted runner belongs on a private repository whose writers you
+trust (see the warning above). If you suspect a run, remove the volumes.
 
 #### On a Linux machine or server
 
-Use the same `compose.yaml` with Docker on any x86-64 or arm64 Linux host. Or install GitHub's
-runner directly on an Ubuntu machine whose user has passwordless `sudo`
+Use the same runner files and `compose.yaml` with Docker on any x86-64 or arm64 Linux host. Or
+install GitHub's runner directly on an Ubuntu machine whose user has passwordless `sudo`
 ([adding a self-hosted runner](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)),
-and add the label `starter-ci` when you configure it. A 4-core, 8 GB server comfortably runs two
-runners. More: [about self-hosted runners](https://docs.github.com/en/actions/concepts/runners/self-hosted-runners).
+and add the label `starter-ci` when you configure it. Its home folder keeps Node, Bun, the
+packages and the browsers between jobs by itself. To skip installing the browser system libraries
+in every E2E job, install them once and record the version, as the runner image does:
+
+```bash
+(cd apps/web && sudo ./node_modules/.bin/playwright install-deps chromium)
+echo "playwright=1.63.0" | sudo tee /etc/starter-ci-runner    # the version installed
+```
+
+A 4-core, 8 GB server comfortably runs two runners. More: [about self-hosted runners](https://docs.github.com/en/actions/concepts/runners/self-hosted-runners).
 
 ### 6. Set a budget, so you're never stuck
 

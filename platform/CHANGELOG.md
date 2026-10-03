@@ -46,6 +46,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md): how Actions minutes and storage
   work on a private repository, what the starter's CI costs per push, and how to spend less, with
   step-by-step self-hosted runner setup for a Mac.
+- A runner image for self-hosted CI, `platform/tooling/ci-runner/` (a `Dockerfile` and a
+  `compose.yaml`, built locally): GitHub's runner plus Playwright's browser system libraries, with
+  Node, Bun, packages, browsers and the Convex local backend kept in shared Docker volumes. On a
+  self-hosted runner the setup actions and web E2E now skip GitHub's cache, reuse what the runner
+  already has, and skip installing browser system libraries when the image was built for the
+  Playwright version under test. GitHub-hosted runs are unchanged. No app action is required;
+  runners set up from the earlier guide keep working, and moving to the image is described in
+  [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md).
 
 ## [3.0.0] - 2026-10-02
 
