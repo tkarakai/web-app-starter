@@ -1,6 +1,9 @@
 # GitHub Actions on a private repository: minutes, storage and your own runner
 
-> Practical guide. For how the CI workflows are built, see [ci.md](ci.md).
+This guide owns **private-repository costs, runner installation, sharing and upkeep**.
+[The CI guide](ci.md) owns **what runs, E2E policy, local pre-push commands and act simulation**.
+Self-hosted runners execute real jobs scheduled by GitHub and publish PR checks; running
+`bun run ci` or `act` locally does not.
 
 Most apps built on the starter live in a **private** GitHub repository. That's the right call, but
 it changes one thing you may not have noticed while you were exploring the public starter: on a
@@ -87,14 +90,9 @@ To go back to draft: `gh pr ready --undo`.
 
 ### 2. Run CI locally before you push (free)
 
-The same checks run on your machine:
-
-```bash
-bun run ci:quick              # everything except E2E: a few minutes
-CI=true bun run ci            # the full suite, E2E included
-```
-
-Pushing once when it's green costs one CI run, not five. See [local CI](ci.md#local-ci-pre-push-checks).
+Use the [native pre-push checks](ci.md#local-ci-pre-push-checks) for fast feedback, or
+[act](ci.md#running-github-actions-locally-with-act) to debug workflows in Docker. Pushing once
+when local checks are green avoids repeated remote runs; it does not replace GitHub PR checks.
 
 ### 3. Run E2E on pull requests only when you ask for it
 
@@ -159,6 +157,37 @@ The CI jobs expect an **Ubuntu-like Linux machine with passwordless `sudo`**: Pl
 browser system libraries with `apt`. The easiest way to get exactly that, on any computer, is a
 runner in a container, and the starter ships one ready to build: `platform/tooling/ci-runner/`.
 
+#### Choose repository or organization scope
+
+**For several private repos with the same trusted maintainers, prefer one GitHub Free
+organization and an organization-level pool.** The default runner group can serve selected
+repositories; a paid plan is not needed for this shared pool. Four workers then run at most four
+jobs concurrently across those repos, instead of reserving four workers for each repo.
+
+| Scope | Who can use the runners | Use it when |
+|---|---|---|
+| Repository | One repository, whether personally or organization owned | One project, or separate capacity and trust boundaries |
+| Organization | Allowed repositories in the same organization, including on GitHub Free | Several trusted private projects sharing capacity |
+| Enterprise | Multiple organizations allowed by an enterprise account | Sharing across organizations under Enterprise |
+
+Personal accounts have no account-wide runner pool. Their repos need separate registrations
+and containers, although those containers can use the same Mac and image. Multiple Free
+organizations also need separate pools; moving related repos into **one** organization enables
+sharing. Restrict the default group's repository access to the private repos you intend to serve.
+Repository access policy grants access; a matching runner label alone does not.
+
+See GitHub's [runner scopes](https://docs.github.com/en/actions/concepts/runners/self-hosted-runners)
+and [group access settings](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access).
+This recommendation needs only the default group. Private-repo branch protection and required
+reviewers remain paid features ([plans](https://docs.github.com/en/get-started/learning-about-github/githubs-plans)).
+
+The setup below defaults to repository scope. To share an organization pool, create an
+organization registration credential and adjust the **copied** Compose file as described below.
+Moving a repository does not turn its existing runners into organization runners: re-register
+the pool at organization scope, then enable it for each selected repo. Review GitHub's
+[repository transfer checklist](https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository)
+before moving a repo, including integrations and references to its old owner/name.
+
 #### On a Mac (Apple Silicon or Intel)
 
 You'll run a Linux runner inside a container. On Apple Silicon it runs natively as arm64 Linux,
@@ -181,12 +210,21 @@ timing out ("Function execution timed out") or the app server dying mid-test
 **Step 2: create a token for the runner.** The runner container registers itself with GitHub on
 every start, so it needs a personal access token:
 
+For a **repository runner**:
+
 - **Fine-grained** (recommended): [create one](https://github.com/settings/personal-access-tokens/new)
   with access to **only this repository** and the permission **Administration: Read and write**.
   That permission is what lets it create runner registration tokens.
 - **Classic**: the `repo` scope.
 
-Give it an expiry date and put a reminder in your calendar.
+For an **organization pool**, an organization owner creates a fine-grained token (recommended) with the
+organization as resource owner and organization **Self-hosted runners: Read and write**
+permission, subject to the organization's token approval policy. A classic token needs
+`admin:org` plus `repo` for private-repository access; a repository-only token is insufficient. See the
+[registration API permissions](https://docs.github.com/en/rest/actions/self-hosted-runners#create-a-registration-token-for-an-organization).
+
+Give it an expiry date and put a reminder in your calendar. Keep the credential outside git
+and restrict the `.env` file to its owner (`chmod 600 .env`).
 
 **Step 3: build the runner image and start the runners.** Copy the starter's runner files into a
 folder outside your repository, for example `~/ci-runner/`:
@@ -205,6 +243,21 @@ REPO_URL=https://github.com/<owner>/<repo>
 PLAYWRIGHT_VERSION=1.63.0
 ```
 
+For **organization scope**, use an organization-capable token in that file and add
+`ORG_NAME=<your-org>`. In the copied `compose.yaml`, remove the `REPO_URL` environment line,
+change `RUNNER_SCOPE: repo` to `RUNNER_SCOPE: org`, and add:
+
+```yaml
+      ORG_NAME: ${ORG_NAME:?set ORG_NAME in .env}
+```
+
+The remaining environment, volumes and image settings stay the same. Merely adding
+`RUNNER_SCOPE` to `.env` does not override the template's hard-coded value. These are the
+runner image's [organization settings](https://github.com/myoung34/docker-github-actions-runner/wiki/Usage#org-runners).
+Use a separate folder/Compose project for each independent pool so their cache volumes stay
+separate. When changing registration scope, wait for active jobs to finish, stop the old pool,
+update its configuration and credentials, then recreate it.
+
 Then build the image and start two runners:
 
 ```bash
@@ -214,14 +267,15 @@ docker compose up -d --scale runner=2     # two runners work on two jobs at once
 docker compose logs -f                    # watch them register and pick up jobs
 ```
 
-After a minute, the runners appear under the repository's **Settings → Actions → Runners** as
-idle, with the `starter-ci` label.
+After a minute, the runners appear under the repository's (or organization's)
+**Settings → Actions → Runners** as idle, with the `starter-ci` label. For an organization pool,
+use **Settings → Actions → Runner groups → Default → Repository access** to select its repos.
 
 The image is the community-maintained
 [docker-github-actions-runner](https://github.com/myoung34/docker-github-actions-runner) image,
 which wraps GitHub's official runner, plus the system libraries and fonts Playwright's Chromium
 needs. Everything else stays out of the image and in Docker volumes that every runner on the
-machine shares:
+Compose project shares:
 
 | Volume | Holds | Downloaded |
 |---|---|---|
@@ -241,7 +295,8 @@ Two runners are a good start on a 16 GB Mac; three or four if you have 32 GB or 
 runners, a PR push that touches everything takes about 10 minutes. More runners
 make CI finish sooner; they don't change what it costs, which is nothing.
 
-**Step 4: switch CI over.**
+**Step 4: switch CI over.** Run this for **each** repository allowed to use the pool
+(from that repository's checkout, or add `--repo <org>/<repo>`):
 
 ```bash
 gh variable set PLATFORM_CI_RUNNER --body starter-ci
@@ -268,7 +323,12 @@ docker compose build --pull && docker compose up -d --scale runner=2
 ```
 
 The same command picks up a new base image now and then. Taking a starter release that changes
-`platform/tooling/ci-runner/` means copying its two files again.
+`platform/tooling/ci-runner/` means refreshing the copied Dockerfile and `compose.yaml`. Preserve
+or reapply your local pool settings before rebuilding and recreating the runners: organization
+pools must retain `RUNNER_SCOPE: org`, `ORG_NAME`, and the removal of `REPO_URL` from the Compose
+environment ([organization setup](#on-a-mac-apple-silicon-or-intel)). Keep your `.env`, labels,
+runner name prefix, volume configuration and Compose project identity, and use your existing
+worker count instead of the example `--scale runner=2`.
 
 **Housekeeping.** Each new Node, Playwright or Convex version adds to the volumes, and old ones
 stay. Check with `docker system df -v`. To start a volume over, stop the runners and remove it;
@@ -287,7 +347,9 @@ Prune images and build output now and then with `docker system prune`. To stop:
 **What the shared volumes mean for security.** A job can change what later jobs find in the
 volumes, so a malicious pull request could leave a tampered binary behind for the next run. That
 is acceptable only because a self-hosted runner belongs on a private repository whose writers you
-trust (see the warning above). If you suspect a run, remove the volumes.
+trust (see the warning above). An organization pool extends that trust to every allowed repo:
+one repo's job can affect another repo's cached tools. Use separate pools and cache volumes for
+different trust boundaries. If you suspect a run, remove the volumes.
 
 #### On a Linux machine or server
 
@@ -324,6 +386,11 @@ For most commercial apps that isn't an option, and that's fine. Use the options 
 pushing (2), retention of 2 days (4), and one or two runners on your Mac (5). Keep a small budget
 (6) as a safety net. Your GitHub-hosted usage drops to the Security workflow, a few minutes per
 push.
+
+**Several projects on GitHub Free.** Keep related private repos with the same trusted maintainers
+in one Free organization and share an organization-level pool ([scope choice](#choose-repository-or-organization-scope)).
+Select the allowed repos and set `PLATFORM_CI_RUNNER` in each. Start with two workers and scale
+within the host's resources; four workers means four concurrent jobs across the whole pool.
 
 **Small team on GitHub Team.** A shared Linux runner on a small server (5) handles everyone's
 PRs. Set `PLATFORM_CI_PR_E2E=on-demand` (3) so E2E runs once per PR, when it's ready for
