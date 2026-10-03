@@ -140,7 +140,7 @@ function CopyButton({
   async function handleCopy(e: React.MouseEvent) {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(value)
+      await window.navigator.clipboard.writeText(value)
       setCopied(true)
       toast.success(message)
       setTimeout(() => setCopied(false), 2000)
