@@ -9,6 +9,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
+import { openMigrationFile } from "./open-migration-file.ts";
 
 export function transform(source: string): string {
   if (!source.includes("/api/dev/e2e-user")) return source;
@@ -35,12 +36,10 @@ export function transform(source: string): string {
   return result;
 }
 export function migrate(root: string, check = false): string[] {
-  const relative = "apps/web/qa/e2e/helpers/fixtures.ts", file = path.join(root, relative);
-  if (!fs.existsSync(file)) return [];
-  if (!fs.realpathSync(file).startsWith(fs.realpathSync(root) + path.sep)) throw Error("Fixture client escapes the app root");
-  const fd = fs.openSync(file, (check ? fs.constants.O_RDONLY : fs.constants.O_RDWR) | fs.constants.O_NOFOLLOW);
+  const relative = "apps/web/qa/e2e/helpers/fixtures.ts";
+  const fd = openMigrationFile(root, relative, check);
+  if (fd === undefined) return [];
   try {
-  if (!fs.fstatSync(fd).isFile()) throw Error("Fixture client must be a regular file");
   const source = fs.readFileSync(fd, "utf8"), content = transform(source);
   if (content === source) return [];
   if (!check) { fs.writeSync(fd, content, 0, "utf8"); fs.ftruncateSync(fd, Buffer.byteLength(content)); }

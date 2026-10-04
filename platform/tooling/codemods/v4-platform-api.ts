@@ -8,14 +8,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
+import { openMigrationFile } from "./open-migration-file.ts";
 const modules = ["authRateLimits", "localFixtures", "recoveryCodes"] as const;
 export function migrate(root: string, check = false): string[] {
-  const relative = "packages/backend/convex/_generated/api.d.ts", file = path.join(root, relative);
-  if (!fs.existsSync(file)) throw Error("Regenerate the custom Convex API format for v4 before upgrading; see platform/docs/upgrading-v4.md");
-  if (!fs.realpathSync(file).startsWith(fs.realpathSync(root) + path.sep)) throw Error("Generated API must be a regular file inside the app");
-  const fd = fs.openSync(file, (check ? fs.constants.O_RDONLY : fs.constants.O_RDWR) | fs.constants.O_NOFOLLOW);
+  const relative = "packages/backend/convex/_generated/api.d.ts";
+  const fd = openMigrationFile(root, relative, check);
+  if (fd === undefined) throw Error("Regenerate the custom Convex API format for v4 before upgrading; see platform/docs/upgrading-v4.md");
   try {
-  if (!fs.fstatSync(fd).isFile()) throw Error("Generated API must be a regular file");
   const source = fs.readFileSync(fd, "utf8"); let content = source;
   const marker = "declare const fullApi: ApiFromModules<{\n";
   if (!source.includes("THIS CODE IS AUTOMATICALLY GENERATED.") || source.split(marker).length !== 2) throw Error("Unknown Convex API declaration format; regenerate for v4 before upgrading");
