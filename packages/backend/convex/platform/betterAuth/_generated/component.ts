@@ -61,6 +61,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   impersonatedBy?: null | string;
                   ipAddress?: null | string;
                   primaryVerifiedAt?: null | number;
+                  recoveryFactorId?: null | string;
                   recoveryOnly?: null | boolean;
                   strongFactorId?: null | string;
                   strongFactorType?: null | string;
@@ -260,6 +261,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorId"
                     | "strongFactorType"
                     | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -681,6 +683,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorId"
                     | "strongFactorType"
                     | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1218,6 +1221,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   impersonatedBy?: null | string;
                   ipAddress?: null | string;
                   primaryVerifiedAt?: null | number;
+                  recoveryFactorId?: null | string;
                   recoveryOnly?: null | boolean;
                   strongFactorId?: null | string;
                   strongFactorType?: null | string;
@@ -1246,6 +1250,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorId"
                     | "strongFactorType"
                     | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1760,6 +1765,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   impersonatedBy?: null | string;
                   ipAddress?: null | string;
                   primaryVerifiedAt?: null | number;
+                  recoveryFactorId?: null | string;
                   recoveryOnly?: null | boolean;
                   strongFactorId?: null | string;
                   strongFactorType?: null | string;
@@ -1788,6 +1794,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorId"
                     | "strongFactorType"
                     | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

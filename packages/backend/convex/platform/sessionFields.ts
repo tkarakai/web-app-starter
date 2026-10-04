@@ -8,6 +8,7 @@ export const sessionFields = {
   strongFactorId: { type: "string", required: false, input: false, returned: false },
   strongFactorType: { type: "string", required: false, input: false, returned: false },
   recoveryOnly: { type: "boolean", required: false, input: false, returned: false },
+  recoveryFactorId: { type: "string", required: false, input: false, returned: false },
 } as const;
 
 export const ADMIN_SESSION_MS = 4 * 60 * 60 * 1000;

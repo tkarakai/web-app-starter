@@ -22,6 +22,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Gates preserve admitted setup and unsaved backup codes in memory through fresh verification;
   password-consuming routes share an account attempt budget, and passkey responses omit
   server-only session proof.
+  Recovery completion requires the password-authorized replacement authenticator, and email
+  OTP enrollment rotation preserves the original administrator deadline without granting strong proof.
 
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
 

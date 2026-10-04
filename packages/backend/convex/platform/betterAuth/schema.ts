@@ -59,6 +59,7 @@ export const tables = {
     strongFactorId: v.optional(v.union(v.null(), v.string())),
     strongFactorType: v.optional(v.union(v.null(), v.string())),
     recoveryOnly: v.optional(v.union(v.null(), v.boolean())),
+    recoveryFactorId: v.optional(v.union(v.null(), v.string())),
   })
     .index("expiresAt", ["expiresAt"])
     .index("expiresAt_userId", ["expiresAt","userId"])

@@ -3,6 +3,7 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
 import { parseSessionOutput } from "better-auth/db";
+import { symmetricDecrypt } from "better-auth/crypto";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
@@ -30,6 +31,7 @@ const SENSITIVE = new Set([
   "/passkey/delete-passkey", "/passkey/update-passkey", "/email-otp/request-email-change", "/email-otp/change-email",
 ]);
 const PASSWORD_PROOF = new Set(["/verify-password", "/change-password", "/delete-user", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes"]);
+const ACTIVE_SESSION_ROTATION = new Set(["/change-password", "/two-factor/disable", "/two-factor/enable", "/two-factor/verify-totp", "/two-factor/verify-otp"]);
 // These methods have no supported platform flow. Installing a plugin is not authorization.
 const DISABLED = new Set([
   "/sign-in/email-otp", "/sign-in/social", "/callback/:id", "/link-social", "/unlink-account",
@@ -53,7 +55,7 @@ function refuse(code: string): never {
 
 /** A factory per authentication request: verified evidence never escapes that request. */
 export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
-  let factorBefore: { id: string; userId: string; kind: "totp" | "passkey" } | undefined;
+  let factorBefore: { id: string; userId: string; kind: "totp" | "passkey"; secret?: string } | undefined;
   let passwordBefore: string | undefined;
   let passkeyVerified = false;
   let rotationSource: AuthSession | null = null;
@@ -79,7 +81,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       if (user && (await readPolicies(convexCtx, user)).scope === "admin") return endpoint.json({ status: true });
     }
     const pair = await endpointSession(endpoint);
-    if (["/change-password", "/two-factor/disable", "/two-factor/enable", "/two-factor/verify-totp"].includes(path)) rotationSource = pair;
+    if (ACTIVE_SESSION_ROTATION.has(path)) rotationSource = pair;
     if (path === "/passkey/verify-authentication") {
       const id = endpoint.body?.response?.id;
       if (typeof id === "string") {
@@ -98,7 +100,8 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       }
       if (userId) {
         const factor = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: userId }] });
-        if (factor) factorBefore = { id: factor._id, userId, kind: "totp" };
+        if (factor) factorBefore = { id: factor._id, userId, kind: "totp", secret: factor.secret };
+        if (pair?.session.recoveryOnly && (path !== "/two-factor/verify-totp" || !factor || pair.session.recoveryFactorId !== factor._id)) refuse("RECOVERY_REQUIRED");
         if (path !== "/two-factor/send-otp") {
           const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "authStepUp", key: userId });
           if (!limit.ok) throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many verification attempts." });
@@ -118,7 +121,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "authStepUp", key: pair.user._id });
       if (!limit.ok) throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many verification attempts." });
     }
-    if (path === "/verify-password") {
+    if (path === "/verify-password" || path === "/two-factor/enable" && pair.session.recoveryOnly) {
       const account = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: pair.user._id }, { field: "providerId", value: "credential" }] });
       passwordBefore = account?.password ?? undefined;
     }
@@ -142,6 +145,22 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
   const after = createAuthMiddleware(async endpoint => {
     if (endpoint.context.returned instanceof APIError) return;
     const path = endpoint.path ?? "";
+    if (path === "/two-factor/enable" && rotationSource?.session.recoveryOnly) {
+      const pair = endpoint.context.newSession ?? endpoint.context.session;
+      if (!pair || pair.user.id !== rotationSource.user._id || !passwordBefore) refuse("NOT_AUTHENTICATED");
+      const factor = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: pair.user.id }] });
+      const output = endpoint.context.returned as { totpURI: string };
+      const secret = new URL(output.totpURI).searchParams.get("secret");
+      if (!factor || !secret) refuse("RECOVERY_REQUIRED");
+      const plaintext = await symmetricDecrypt({ key: endpoint.context.secretConfig, data: factor.secret });
+      const bits = Array.from(new TextEncoder().encode(plaintext), byte => byte.toString(2).padStart(8, "0")).join("");
+      const encoded = (bits + "0000").match(/.{5}/g)!.map(chunk => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[parseInt(chunk, 2)]).join("");
+      if (encoded !== secret) refuse("RECOVERY_REQUIRED");
+      await actionCtx().runMutation(internal.platform.sessionAssurance.bindRecoveryReplacement, {
+        userId: pair.user.id, sessionId: pair.session.id, factorId: factor._id, factorSecret: factor.secret, passwordHash: passwordBefore,
+      });
+      return;
+    }
     if (path === "/passkey/generate-authenticate-options") {
       return endpoint.json({ ...(endpoint.context.returned as Record<string, unknown>), userVerification: "required" });
     }
@@ -157,6 +176,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       userId: pair.user.id, sessionId: pair.session.id, kind,
       ...(kind === "password" ? { passwordHash: passwordBefore } : {}),
       ...(kind === "totp" || kind === "passkey" ? { factorId: factorBefore!.id } : {}),
+      ...(kind === "totp" ? { factorSecret: factorBefore!.secret } : {}),
     });
     if (path === "/passkey/verify-authentication") {
       const output = endpoint.context.returned as { session: typeof pair.session };
@@ -169,7 +189,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     const path = endpoint?.path ?? "";
     let data: Record<string, unknown>;
     const existing = endpoint?.context.session;
-    if (existing?.user.id === session.userId && ["/change-password", "/two-factor/disable", "/two-factor/enable", "/two-factor/verify-totp"].includes(path)) {
+    if (existing?.user.id === session.userId && ACTIVE_SESSION_ROTATION.has(path)) {
       // Better Auth deletes the original session before password-change rotation.
       // Preserve only proof captured by this request's live-session check, never
       // the client body or the newly allocated session creation time.

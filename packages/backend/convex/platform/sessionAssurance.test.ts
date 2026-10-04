@@ -2,9 +2,12 @@ import { createHash, createHmac, generateKeyPairSync, randomUUID, sign } from "n
 import { hashPassword } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { getEndpoints } from "better-auth/api";
+import { requireActionCtx } from "@convex-dev/better-auth/utils";
+import { getFunctionName } from "convex/server";
+import * as assuranceHooks from "./authAssurance";
 import { createAuthOptions } from "./auth";
 import { authRoutePolicy } from "./authAssurance";
-import { api, components } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
@@ -277,9 +280,9 @@ describe("backend session assurance through authentication endpoints", () => {
     const result = await response.json();
     expect(response.status, JSON.stringify(result)).toBe(200);
     const { session, client } = await f.caller(result.session.token);
-    for (const field of ["assuranceVersion", "authMethod", "authenticatedAt", "primaryVerifiedAt", "strongVerifiedAt", "strongFactorId", "strongFactorType", "recoveryOnly"]) expect(result.session).not.toHaveProperty(field);
+    for (const field of ["assuranceVersion", "authMethod", "authenticatedAt", "primaryVerifiedAt", "strongVerifiedAt", "strongFactorId", "strongFactorType", "recoveryOnly", "recoveryFactorId"]) expect(result.session).not.toHaveProperty(field);
     expect(session).toMatchObject({ authMethod: "passkey", strongFactorId: passkey.key._id, strongFactorType: "passkey", recoveryOnly: false });
-    const forged = await f.request("/update-session", { assuranceVersion: 99, authenticatedAt: Date.now() + 86400000, primaryVerifiedAt: 1, strongVerifiedAt: 1, strongFactorId: "forged", strongFactorType: "totp", authMethod: "password", recoveryOnly: true }, result.session.token);
+    const forged = await f.request("/update-session", { assuranceVersion: 99, authenticatedAt: Date.now() + 86400000, primaryVerifiedAt: 1, strongVerifiedAt: 1, strongFactorId: "forged", strongFactorType: "totp", authMethod: "password", recoveryOnly: true, recoveryFactorId: "forged" }, result.session.token);
     expect(forged.status).toBe(400);
     expect((await f.caller(result.session.token)).session).toEqual(session);
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ allowed: true, strong: true, hasTotp: false });
@@ -460,4 +463,137 @@ test("recovery TOTP replacement shares the password account budget", async () =>
   for (let i = 0; i < 5; i++) expect((await f.request("/two-factor/enable", { password: "wrong" }, recovery.token)).status).toBe(400);
   expect((await f.request("/two-factor/enable", { password }, recovery.token)).status).toBe(429);
   expect((await f.request("/verify-password", { password }, enrolled.token)).status).toBe(429);
+});
+
+async function recoveryFixture(role = "user") {
+  const f = await fixture(role);
+  const enrolled = await f.enroll((await f.signIn()).body.token);
+  const login = await f.signIn();
+  const cookie = login.response.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+  const response = await f.request("/two-factor/verify-backup-code", { code: enrolled.codes[0] }, undefined, cookie);
+  expect(response.status).toBe(200);
+  const recovery = await response.json();
+  vi.setSystemTime(Date.now() + 60_000);
+  return { ...f, enrolled, recovery, recoveryCaller: await f.caller(recovery.token) };
+}
+
+test("an original TOTP, another factor and password reauthentication cannot clear recovery", async () => {
+  const f = await recoveryFixture();
+  expect((await f.request("/verify-password", { password }, f.recovery.token)).status).toBe(200);
+  expect((await f.request("/two-factor/verify-totp", { code: totp(f.enrolled.uri) }, f.recovery.token)).status).toBe(403);
+  const factor = await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] });
+  await expect(f.t.mutation(internal.platform.sessionAssurance.recordProof, { userId: f.user._id, sessionId: f.recoveryCaller.session._id, kind: "totp", factorId: factor!._id, factorSecret: factor!.secret })).rejects.toThrow("RECOVERY_REQUIRED");
+  await expect(f.t.mutation(internal.platform.sessionAssurance.recordProof, { userId: f.user._id, sessionId: f.recoveryCaller.session._id, kind: "passkey", factorId: "another-factor" })).rejects.toThrow("RECOVERY_REQUIRED");
+  expect((await f.request("/update-session", { recoveryOnly: false, recoveryFactorId: factor!._id }, f.recovery.token)).status).toBe(403);
+  expect(await f.recoveryCaller.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "recovery", allowed: false });
+  await expect(f.recoveryCaller.client.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow();
+});
+
+test.each([false, true])("password-authorized replacement resumes and preserves its binding through native rotation (rotate=%s)", async rotate => {
+  const f = await recoveryFixture();
+  if (rotate) {
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "userId", value: f.user._id }], update: { verified: false } } });
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: { twoFactorEnabled: false } } });
+  }
+  expect((await f.request("/two-factor/enable", { password: "wrong" }, f.recovery.token)).status).toBe(400);
+  expect((await f.caller(f.recovery.token)).session.recoveryFactorId).toBeFalsy();
+  const enabled = await f.request("/two-factor/enable", { password }, f.recovery.token);
+  const replacement = await enabled.json();
+  expect(enabled.status, JSON.stringify(replacement)).toBe(200);
+  const pending = await f.caller(f.recovery.token);
+  const factor = await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] });
+  expect(pending.session).toMatchObject({ recoveryOnly: true, recoveryFactorId: factor!._id });
+  expect(await pending.client.query(api.projects.list, {})).toBeNull();
+  vi.setSystemTime(Date.now() + 6 * 60_000);
+  const verified = await f.request("/two-factor/verify-totp", { code: totp(replacement.totpURI) }, f.recovery.token);
+  expect(verified.status, await verified.clone().text()).toBe(200);
+  const sessions = await f.t.query(components.betterAuth.adapter.findMany, { model: "session", where: [{ field: "userId", value: f.user._id }], paginationOpts: { cursor: null, numItems: 100 } });
+  const fresh = sessions.page.find(row => row.strongFactorId === factor!._id)!;
+  expect(fresh).toMatchObject({ recoveryOnly: false, recoveryFactorId: "", authenticatedAt: pending.session.authenticatedAt, authMethod: pending.session.authMethod, primaryVerifiedAt: pending.session.primaryVerifiedAt });
+  const caller = await f.caller(fresh.token);
+  expect(await caller.client.query(api.projects.list, {})).toEqual([]);
+  await expect(caller.client.action(api.platform.auth.viewBackupCodes, { password })).resolves.toEqual(replacement.backupCodes);
+  if (rotate) expect(fresh.token).not.toBe(f.recovery.token);
+});
+
+test.each(["password", "secret", "factor", "session", "user"])("replacement binding rejects a racing %s change", async change => {
+  const f = await recoveryFixture();
+  const response = await f.request("/two-factor/enable", { password }, f.recovery.token);
+  expect(response.status).toBe(200);
+  const factor = (await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] }))!;
+  const args = { userId: f.user._id, sessionId: f.recoveryCaller.session._id, factorId: factor._id, factorSecret: factor.secret, passwordHash };
+  await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: f.recoveryCaller.session._id }], update: { recoveryFactorId: "" } } });
+  if (change === "password") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "account", where: [{ field: "userId", value: f.user._id }], update: { password: "changed-after-check" } } });
+  if (change === "secret") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { secret: "changed-after-check" } } });
+  if (change === "factor") await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }] } });
+  if (change === "session") await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "session", where: [{ field: "_id", value: f.recoveryCaller.session._id }] } });
+  if (change === "user") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { userId: "another-user" } } });
+  await expect(f.t.mutation(internal.platform.sessionAssurance.bindRecoveryReplacement, args)).rejects.toThrow();
+  await expect(f.t.mutation(internal.platform.sessionAssurance.recordProof, { userId: f.user._id, sessionId: f.recoveryCaller.session._id, kind: "totp", factorId: factor._id, factorSecret: factor.secret })).rejects.toThrow();
+  expect(await f.recoveryCaller.client.query(api.projects.list, {})).toBeNull();
+});
+
+test("a second replacement in another session cannot satisfy the recovery binding", async () => {
+  const f = await recoveryFixture();
+  const first = await f.request("/two-factor/enable", { password }, f.recovery.token);
+  expect(first.status).toBe(200);
+  vi.setSystemTime(Date.now() + 60_000);
+  expect((await f.request("/two-factor/verify-totp", { code: totp((await first.json()).totpURI) }, f.enrolled.token)).status).toBe(200);
+  const second = await f.request("/two-factor/enable", { password }, f.enrolled.token);
+  expect(second.status).toBe(200);
+  const replacement = await second.json();
+  expect((await f.request("/two-factor/verify-totp", { code: totp(replacement.totpURI) }, f.recovery.token)).status).toBe(403);
+  expect(await f.recoveryCaller.client.query(api.projects.list, {})).toBeNull();
+});
+
+test("administrator active-session OTP enrollment and TOTP preserve the four-hour deadline", async () => {
+  const f = await fixture("admin");
+  const initial = (await f.signIn()).body.token;
+  const start = (await f.caller(initial)).session.authenticatedAt!;
+  vi.setSystemTime(start + 239 * 60_000);
+  expect((await f.request("/verify-password", { password }, initial)).status).toBe(200);
+  const source = (await f.caller(initial)).session;
+  const enabled = await f.request("/two-factor/enable", { password }, initial);
+  const setup = await enabled.json(); expect(enabled.status).toBe(200);
+  expect((await f.request("/two-factor/send-otp", {}, initial)).status).toBe(200);
+  const code = vi.mocked(sendAuthEmail).mock.calls.at(-1)![0].urlOrCode;
+  const verified = await f.request("/two-factor/verify-otp", { code }, initial);
+  const body = await verified.json(); expect(verified.status, JSON.stringify(body)).toBe(200);
+  expect(body.token).not.toBe(initial);
+  const rotated = await f.caller(body.token);
+  expect(rotated.session).toMatchObject({ authenticatedAt: source.authenticatedAt, primaryVerifiedAt: source.primaryVerifiedAt, authMethod: source.authMethod, strongVerifiedAt: source.strongVerifiedAt, recoveryOnly: source.recoveryOnly, expiresAt: start + 4 * 3600000 });
+  expect(await rotated.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ allowed: false, strong: false });
+  expect((await f.request("/two-factor/verify-totp", { code: totp(setup.totpURI) }, body.token)).status).toBe(200);
+  expect(await rotated.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ allowed: true, strong: true });
+  await expect(rotated.client.mutation(api.platform.appSettings.set, { key: "adminMfaRequired", value: "true" })).resolves.toBeNull();
+  vi.setSystemTime(start + 4 * 3600000 + 1);
+  expect(await rotated.client.query(api.platform.auth.getCurrentUser, {})).toBeNull();
+  expect((await f.request("/admin/list-users", undefined, body.token)).status).toBe(403);
+});
+
+test.each(["password", "factor", "session"])("HTTP replacement cannot complete after a %s race during successful password checking", async change => {
+  const f = await recoveryFixture();
+  const createHooks = assuranceHooks.createAssuranceHooks;
+  let raced = false;
+  const spy = vi.spyOn(assuranceHooks, "createAssuranceHooks").mockImplementation(ctx => {
+    const action = requireActionCtx(ctx);
+    const runMutation: typeof action.runMutation = async (ref, args) => {
+      if (!raced && getFunctionName(ref) === "platform/sessionAssurance:bindRecoveryReplacement") {
+        raced = true;
+        if (change === "password") await action.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "account", where: [{ field: "userId", value: f.user._id }], update: { password: "changed-after-successful-check" } } });
+        if (change === "factor") await action.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] } });
+        if (change === "session") await action.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "session", where: [{ field: "_id", value: f.recoveryCaller.session._id }] } });
+      }
+      return action.runMutation(ref, args);
+    };
+    return createHooks({ ...action, runMutation });
+  });
+  try {
+    const response = await f.request("/two-factor/enable", { password }, f.recovery.token);
+    expect(raced).toBe(true);
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(await f.recoveryCaller.client.query(api.projects.list, {})).toBeNull();
+    const session = await f.t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "_id", value: f.recoveryCaller.session._id }] });
+    expect(session?.recoveryFactorId).toBeFalsy();
+  } finally { spy.mockRestore(); }
 });

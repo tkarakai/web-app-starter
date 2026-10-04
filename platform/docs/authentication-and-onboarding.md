@@ -371,7 +371,8 @@ do not supply strong session proof. An email-only session for an MFA account can
 but cannot read application data, administer users, or replace the factor.
 
 Administrator sessions have a **four-hour absolute lifetime**, measured from authentication.
-Routine refresh, password verification, password changes and factor-related session rotation do
+Routine refresh, password verification, password changes and factor-related session rotation,
+including active-session email OTP enrollment, do
 not restart that clock. A new full sign-in starts a new session. User sessions retain the normal
 seven-day lifetime. Expired, revoked or banned sessions fail live backend checks, including calls
 using an earlier Convex JWT. An already delivered response cannot be withdrawn from a client;
@@ -396,6 +397,9 @@ A backup-code sign-in creates a **recovery-only session**. Use the current passw
 lost TOTP authenticator, verify a code from the replacement, and save the new backup codes.
 Password verification by itself does not clear recovery status. Recovery does not authorize adding
 passkeys, changing policy, exporting old recovery codes or accessing ordinary application data.
+The session is bound to the replacement created by its successful current-password setup request;
+verification of the original authenticator or a replacement created in another session does not
+complete recovery. Setup can resume on that session while the bound factor remains current.
 If a required passkey is also lost, an authorized administrator must adjust that policy or restore
 access through the deployment's support process; the recovery code does not waive it.
 
