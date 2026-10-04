@@ -53,7 +53,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   New administrators receive privileges only after verified TOTP enrollment and completion of
   setup (and a passkey when policy requires it). Protected email addresses alone never grant
   roles or email verification. Bootstrap rescue invalidates old capabilities and queued deliveries.
-- The reference landing again provides browser-side announcements and onboarding while remaining a static export: inline waitlist, signup/sign-in or sign-in-only controls, and backend-outage fallback with retry. The reference web sign-up view links waitlist visitors back to the localized landing. The existing `SignUpView` and explicit `createSignUpView` APIs remain available for apps that choose to keep forms in web. Existing email/metadata validation and rate limits remain.
+- The reference landing again provides browser-side announcements and onboarding while remaining a static export: inline waitlist, signup/sign-in or sign-in-only controls, and backend-outage fallback with retry. The reference web sign-up view renders the shared app-owned waitlist form inline. The existing `SignUpView` and explicit `createSignUpView` APIs remain available for apps that choose to keep forms in web. Existing email/metadata validation and rate limits remain.
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required

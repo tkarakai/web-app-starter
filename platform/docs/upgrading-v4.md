@@ -77,6 +77,9 @@ no stored attachments needs no data copy. Source upgrades preserve and quarantin
 
 ## Shared UI, landing artifacts and Security
 
+App-owned landing pages are preserved. To adopt the restored onboarding and announcements,
+follow [onboarding ownership and landing handoff](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
+
 Move shared onboarding behavior tests and coverage into `packages/onboarding`, retaining
 consumer wiring tests. Run `bun run test:shared-packages` and ensure the package is listed with
 real source coverage. Preserve the app's form fields, translations and branding.
