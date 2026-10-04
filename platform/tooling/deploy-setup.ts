@@ -134,7 +134,7 @@ async function configure(state: State, root: string) {
   await confirm("Save selected project mappings to ops.config.json? Automatic staging uses configured credentials.");
   writePublicFile(root, "ops.config.json", `${JSON.stringify({ ...current, repository: state.repository, workflowRef: state.branch, teamId: state.team, apps: { ...priorApps, ...mapped } }, null, 2)}\n`);
 }
-// Private repositories pay for Actions minutes: offer the pull-request E2E mode once (platform/docs/ci.md).
+// Private repositories pay for Actions minutes: offer the pull-request E2E mode once (platform/docs/ci-github.md).
 async function choosePrE2e(state: State) {
   const status = await prE2eStatus(state.repository, run).catch(() => undefined);
   if (!status) { console.log(`Could not read the repository's Actions variables. To choose when E2E runs on pull requests: ${manualCommand(state.repository)}`); return; }

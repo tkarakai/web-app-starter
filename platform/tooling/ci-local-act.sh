@@ -47,7 +47,7 @@
 # First run (online): Downloads and installs all tools to Docker volumes
 # Subsequent runs: Uses cached tools from volumes (works offline)
 #
-# See platform/docs/ci.md "Offline CI Mode (act)" for full documentation.
+# See platform/docs/ci-pre-push.md "Offline CI mode act" for full documentation.
 # =============================================================================
 #
 

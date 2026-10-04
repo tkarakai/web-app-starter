@@ -430,7 +430,7 @@ export async function settlePrE2e(repo: string, mode: Mode | undefined, exec: Ex
     log(`  - Set ${(await applyPrE2e(repo, mode, exec)).join(", ")} (shared by everyone's CI runs in ${repo})`);
     return;
   }
-  if (needsChoice(status)) log(`  - Private repository: E2E runs on every push to a ready PR. To spend fewer Actions minutes see platform/docs/private-repo-ci.md, then ${manualCommand(repo)}`);
+  if (needsChoice(status)) log(`  - Private repository: E2E runs on every push to a ready PR. To spend fewer Actions minutes see platform/docs/ci-github.md, then ${manualCommand(repo)}`);
   else log(status.private ? `  - PLATFORM_CI_PR_E2E=${status.mode}` : "  - Public repository: Actions minutes are free; E2E runs on every ready PR");
 }
 

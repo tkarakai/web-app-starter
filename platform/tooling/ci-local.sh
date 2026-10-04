@@ -17,7 +17,7 @@
 # Uses Turborepo to orchestrate across all workspace packages.
 # Runs per-app when possible so failures show exactly which app broke.
 #
-# Check inventory and browser-skip behavior: platform/docs/ci.md.
+# Check inventory and browser-skip behavior: platform/docs/ci-pre-push.md.
 # Shared check profiles: platform/tooling/ci-checks.ts.
 #
 # NOT included (CI-only):

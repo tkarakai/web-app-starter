@@ -13,6 +13,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Changed
+
+- CI documentation is organized by task: [GitHub workflows and policy](docs/ci-github.md),
+  [developer pre-push checks](docs/ci-pre-push.md), and [local worker operation](docs/ci-workers.md).
+  Private-repository cost controls are part of the GitHub guide.
+
 ### Added
 
 - A local GitHub Actions worker manager prepares images without a registry, isolates each job
@@ -23,7 +29,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Operators of the old optional Compose workers must stop them and revoke their registration
   credential before adopting the new manager. Shared writable cache volumes are no longer the
-  supported worker setup. Follow [local workers](docs/local-ci-workers.md) and verify the
+  supported worker setup. Follow [local workers](docs/ci-workers.md) and verify the
   diagnostic before enabling routing. GitHub-hosted CI needs no action.
 
 ## [4.0.0] - 2026-10-04
@@ -187,7 +193,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   default, unchanged behaviour), `on-demand` (only with the `run-e2e` label, and the
   `CI <App> Complete` check fails until E2E has passed on the PR head) or `off`. The new
   app-owned `ci-e2e-request.yml` workflow re-runs the waiting checks when the label is added.
-  See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests). `platform:upgrade` adds
+  See [E2E on pull requests](docs/ci-github.md#e2e-on-pull-requests). `platform:upgrade` adds
   `ci-e2e-request.yml` and merges the `ci-verify.yml` runner change as seams.
 - Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
   artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
@@ -199,7 +205,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   GitHub-hosted runners. The Playwright browser and Convex backend caches are now keyed by CPU
   architecture as well, so arm64 and x64 runners don't restore each other's binaries; the first
   run after upgrading downloads them once.
-- [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md): how Actions minutes and storage
+- [`platform/docs/ci-github.md`](docs/ci-github.md): how Actions minutes and storage
   work on a private repository, what the starter's CI costs per push, and how to spend less, with
   step-by-step self-hosted runner setup for a Mac.
 - A runner image for self-hosted CI, `platform/tooling/ci-runner/` (a `Dockerfile` and a
@@ -209,7 +215,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   already has, and skip installing browser system libraries when the image was built for the
   Playwright version under test. GitHub-hosted runs are unchanged. No app action is required;
   runners set up from the earlier guide keep working, and moving to the image is described in
-  [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md). `platform:upgrade` adds the
+  [`platform/docs/ci-github.md`](docs/ci-github.md). `platform:upgrade` adds the
   setup action's new `install-self-hosted.sh` as a seam.
 
 ### Removed
@@ -619,7 +625,7 @@ published or tagged; it is retained only as historical context.
   is `true`. The platform unit suite runs only when the platform changed.
   `bun run check:actions-pinned` (in CI) requires full commit SHAs for every action.
   **If you edited these workflows:** move your trigger and permission changes to the callers
-  and take the platform's `platform-*.yml`. Guide: `platform/docs/ci.md`.
+  and take the platform's `platform-*.yml`. Guide: `platform/docs/ci-github.md`.
 - `platform/config/renovate-preset.json`: the platform's Renovate policy (cooldown, grouping,
   automerge, holds) as a preset. It ignores the platform zone (`platform/**`,
   `.github/workflows/platform-*.yml`, `.github/actions/**`), so Renovate never edits it in your

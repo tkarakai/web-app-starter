@@ -57,7 +57,7 @@ jobs:
   # ─── Paid features ─────────────────────────────────────────────
   # Artifact attestations are free on public repositories only (user-owned private
   # repositories can't use them on any plan). They run when the repository is public or
-  # PLATFORM_ATTESTATIONS is "true", otherwise skip with a notice (platform/docs/ci.md).
+  # PLATFORM_ATTESTATIONS is "true", otherwise skip with a notice (platform/docs/ci-github.md).
   paid-features:
     needs: preflight
     if: needs.preflight.outputs.ready == 'true'

@@ -3,7 +3,7 @@ description: >-
   Decide whether a GitHub feature that is free only on public repositories (code scanning,
   dependency review, artifact attestations) can run here: yes on a public repository, or when
   the repository variable that enables it is "true". Otherwise emit a visible notice, so the
-  workflow still passes on GitHub Free with a private repository. See platform/docs/ci.md.
+  workflow still passes on GitHub Free with a private repository. See platform/docs/ci-github.md.
 
 inputs:
   feature:
@@ -42,7 +42,7 @@ runs:
         if [[ "$visibility" == "public" || "$ENABLED" == "true" ]]; then
           echo "enabled=true" >> "$GITHUB_OUTPUT"
         else
-          msg="$FEATURE skipped: this $visibility repository has not enabled it. Once the plan allows it, set the repository variable $VARIABLE=true (platform/docs/ci.md)."
+          msg="$FEATURE skipped: this $visibility repository has not enabled it. Once the plan allows it, set the repository variable $VARIABLE=true (platform/docs/ci-github.md)."
           echo "::notice title=Paid feature skipped::$msg"
           echo "$msg" >> "$GITHUB_STEP_SUMMARY"
           echo "enabled=false" >> "$GITHUB_OUTPUT"

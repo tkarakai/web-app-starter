@@ -46,7 +46,7 @@ runs:
       run: ./node_modules/.bin/playwright install-deps chromium
 
     # Managed workers use baked browsers and system libraries; external runners
-    # retain the persistent-cache fallback. See platform/docs/local-ci-workers.md.
+    # retain the persistent-cache fallback. See platform/docs/ci-workers.md.
     - name: Install Playwright browsers (self-hosted)
       if: ${{ !env.ACT && runner.environment == 'self-hosted' }}
       shell: bash

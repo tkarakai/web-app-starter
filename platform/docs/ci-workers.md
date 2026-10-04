@@ -1,14 +1,19 @@
-# Disposable local GitHub Actions workers
+# Local CI workers for GitHub Actions
+
+Use this guide when you operate the machine that executes GitHub CI jobs. Developers who only
+push code need the [pre-push guide](ci-pre-push.md); repository workflow policy and costs are in
+[CI on GitHub Actions](ci-github.md).
 
 The worker manager is a host background process that watches GitHub's queue, prepares local
 Docker images, and launches a new container for each job. GitHub schedules the actual jobs and
 records their results. The manager keeps its administrative credential outside worker containers.
 
 Images are stored only in your Docker engine. There is no prepared-image registry to configure
-or maintain. Buildx/BuildKit 0.13 or newer is required for multiple local exporters. Initial builds download upstream Node images, GitHub runner/Bun/Convex releases,
-Playwright browsers and npm packages. Warm jobs reuse those bytes locally.
+or maintain. Buildx/BuildKit 0.13 or newer is required for multiple local exporters. Initial builds
+download upstream Node images, GitHub runner/Bun/Convex releases, Playwright browsers and npm
+packages. Warm jobs reuse those bytes locally.
 
-## Set up before using local CI
+## Set up workers before enabling routing
 
 1. Use a **reviewed checkout** of your application's trusted branch. Installing a manager gives
    that checkout host-level authority. The supporting workflows must be adopted too.
@@ -49,7 +54,8 @@ Playwright browsers and npm packages. Warm jobs reuse those bytes locally.
 8. Run `starter-workers enable`. Only now does normal app CI request your pool. Summary jobs,
    Security and deployment workflows remain hosted. Other developers just push code normally.
 
-One installation owns one repository. To select another state directory use
+One installation owns one repository and persists a unique pool ID, independent of installations
+on other machines. To select another state directory use
 `STARTER_WORKERS_HOME` consistently; the installed command points to the most recently installed
 pool. Organization-wide shared registration is not supported. Use dedicated CI hosts when
 running code from people you do not trust; containers still share the Linux kernel.
@@ -61,7 +67,7 @@ For local Docker testing without a GitHub credential:
 ```sh
 bun run ci:workers:setup --local-only
 starter-workers check --install  # two fresh workers, browser/backend/network checks, offline install
-starter-workers check --quick    # adds native CI without E2E
+starter-workers check --quick    # adds native CI without browser tests
 starter-workers check --ci       # adds full native CI, including E2E
 ```
 
@@ -91,14 +97,18 @@ For developing the public starter itself, setup accepts `--public-branch your-br
 branch matches the explicit branch; `enable` refuses public diagnostic pools. Fork PRs and automatic
 public workloads are never admitted. Do not change that branch without reviewing its code.
 
-Local checks and GitHub workers use the **same image preparation function and container launcher**. A local proof binds the committed source SHA, immutable image ID and canonical runtime-policy hash for 24 hours. Dispatch the same branch you locally checked; both diagnostic workers assert those expected identities. Recording the run requires its unique local proof ID. Runtime-policy changes, replacement images and a new local check invalidate earlier certification.
+Local checks and GitHub workers use the **same image preparation function and container launcher**.
+A local proof binds the committed source SHA, immutable image ID and canonical runtime-policy hash
+for 24 hours. Dispatch the same branch you locally checked; both diagnostic workers assert those
+expected identities. Recording the run requires its unique local proof ID. Runtime-policy changes,
+replacement images and a new local check invalidate earlier certification.
 With the same branch, dependency inputs, architecture and tool revision they reuse the same local
 immutable image ID. Every launch records image ID and a hash of its runtime policy in the private
 `evidence/` directory; workflow steps also expose `STARTER_WORKER_IMAGE` and `STARTER_WORKER_RUNTIME`.
 Fresh container IDs, addresses and one-job registration data naturally differ. GitHub-hosted
 `ubuntu-latest` is a separate environment and is not claimed to be identical.
 
-## A day of development
+## Dependency reuse during development
 
 The manager reads the exact source revision from authenticated GitHub run/job metadata and the
 workflow's source label. No checked-out application code runs on the host. Git reads blobs from
@@ -114,7 +124,9 @@ a bare repository, with hooks disabled; builds use the installed fixed recipe.
 | Job failure/cancellation | Delete the container and its private state |
 
 The fingerprint covers the complete lockfile, manifests, local package/patch contents and immutable
-tool image. Seed installation disables lifecycle scripts. Actual jobs run the frozen offline
+tool image. The declared Node minimum minor participates in the tool profile; preparation validates
+the actual runtime before promotion. Supported engine ranges are a whole major (`24.x`) or a
+minimum minor within it (`>=24.21 <25`). Seed installation disables lifecycle scripts. Actual jobs run the frozen offline
 install and postinstall against their own source. Jobs never export their modified caches as images.
 Tools are exported once to both Docker and a private local OCI layout with matching filesystem layers
 and configuration. Seed builds consume that layout by manifest digest, so cache eviction cannot
@@ -122,20 +134,14 @@ rerun tool installation under a retained image identity. Refresh downloads and d
 stay in separate temporary candidate directories. The tool pointer and dependency environment are
 promoted together in the catalog only after disposable exact-source frozen offline validation.
 The selected Convex backend is baked in and passed explicitly to the local backend launcher, so
-normal starts do not discover/download another backend version each time. Keep the worker proxy and tool variables in `turbo.json`'s `globalPassThroughEnv`; Turbo's strict environment filtering otherwise removes them from builds and tests.
+normal starts do not discover/download another backend version each time. Keep the worker proxy
+and tool variables in `turbo.json`'s `globalPassThroughEnv`; Turbo's strict environment filtering
+otherwise removes them from builds and tests.
 
 This recipe supports public npm packages, workspace dependencies and repository-local `file:`
 packages. Custom `.npmrc`/`bunfig.toml`, Git dependencies and external tarball sources are rejected
 with an explanation; do not solve that by copying credentials into the image. Add a reviewed recipe
 and credential separation before enabling private package registries.
-
-Workers run as UID 1001, without sudo, Docker access, host mounts or Linux capabilities. They use
-private shared memory, explicit memory/CPU/PID limits, no-new-privileges and a Chromium-compatible
-seccomp profile. A separate trusted namespace holder enforces outbound firewall rules; an HTTP(S)
-proxy permits public traffic and refuses private/loopback/metadata destinations. Local application
-servers communicate over the worker's own loopback. Raw external network connections and services
-on your host are inaccessible. Workflows requiring Docker containers/services or private-network
-services need a separate reviewed execution policy.
 
 ## Operate and maintain
 
@@ -168,30 +174,31 @@ installation remains in `previous`. Run `starter-workers check --install`, then
 
 A failed/cancelled job loses its private overlay. On manager restart, abandoned containers/networks
 and owned GitHub registrations are reconciled. Job diagnostic logs and launch evidence stay outside
-workers and expire after seven days. Only this pool's labeled resources are touched.
+workers and expire after seven days. Retention preserves the live service `manager.log`. Only this pool's labeled resources are touched.
 
 ## Image and layer cleanup
 
 Idle daily cleanup retains active images plus the two newest environments in each branch scope.
 Other unused environments expire after seven days. PR seeds can all expire after seven idle days,
 and become eligible 48 hours after the PR closes, provided they have not been used within 24 hours.
-Recent catalog use reserves a prepared image while its first container is being registered. Last use comes from the manager catalog, rather
-than Docker's image creation timestamp. A conservative image-size budget can pause admission even
+Recent catalog use reserves a prepared image while its first container is being registered.
+Last use comes from the manager catalog, rather than Docker's image creation timestamp. A conservative image-size budget can pause admission even
 when layers are shared; adjust it after inspecting `docker system df` and `starter-workers images`.
 
 Failed preparations remove their candidate tags and staging directories immediately. Cleanup also
 collects orphan seed tags, abandoned candidate tags/directories and unused OCI layouts after a crash.
 Retained environments and active workers protect their images and tool layouts. Old unreferenced
 tool images and cached tool selections expire after seven days. Layouts occupy host disk in addition
-to Docker storage; allow space for both. Legacy build/download staging is removed during cleanup. BuildKit uses a pool-specific builder
-with a separate cache budget of approximately one third of the configured image budget, and cleanup
+to Docker storage; allow space for both. Legacy build/download staging is removed during cleanup.
+BuildKit uses a pool-specific builder with a separate cache budget of approximately one third of the configured image budget, and cleanup
 prunes old cache only in that builder. Deleting an image/tag releases layers only when nothing else
 references them. Never use blanket `docker system prune` or `image prune -a` to operate this pool.
 
 ## Pause, return to hosted CI, or remove
 
-`starter-workers pause --drain` waits for a fresh manager acknowledgement after pending admission completes and all running work finishes. The manager must be running to acknowledge the pause. Routing stays local;
-new jobs wait. `starter-workers resume` reopens admission.
+`starter-workers pause --drain` waits for a fresh manager acknowledgement after pending admission
+completes and all running work finishes. The manager must be running to acknowledge the pause.
+Routing stays local; new jobs wait. `starter-workers resume` reopens admission.
 
 Before taking the machine offline, run `starter-workers hosted`. It restores the previous routing
 setting, refusing to overwrite a newer setting written by someone else. Already queued jobs do
@@ -204,15 +211,15 @@ the GitHub token. Prepared images and the dedicated BuildKit builder are retaine
 and remove only that pool's tags and builder if you want to reclaim everything. Other Docker
 resources are untouched.
 
-Vendor contracts: [GitHub JIT runners](https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-a-repository),
-[Docker run controls](https://docs.docker.com/reference/cli/docker/container/run/),
-[Bun frozen/offline installs](https://bun.sh/docs/pm/cli/install), and
-[Playwright sandbox profile](https://github.com/microsoft/playwright/blob/v1.63.0/utils/docker/seccomp_profile.json).
-The shipped seccomp profile adds `chroot` for Chromium's unprivileged user-namespace sandbox;
-it does not grant the worker a host capability.
+## Isolation and assignment checks
 
-Each new installation persists a unique pool ID, independent of the repository or home path on other machines. The declared `engines.node` minimum minor participates in the tool profile; preparation validates the actual Node runtime before promotion. Supported engine ranges are a whole major (`24.x`) or a minimum minor within it (`>=24.21 <25`). Disposable log retention preserves the live service `manager.log`.
-
+Workers run as UID 1001, without sudo, Docker access, host mounts or Linux capabilities. They use
+private shared memory, explicit memory/CPU/PID limits, no-new-privileges and a Chromium-compatible
+seccomp profile. A separate trusted namespace holder enforces outbound firewall rules; an HTTP(S)
+proxy permits public traffic and refuses private/loopback/metadata destinations. Local application
+servers communicate over the worker's own loopback. Raw external network connections and services
+on your host are inaccessible. Workflows requiring Docker containers/services or private-network
+services need a separate reviewed execution policy.
 
 GitHub runner labels select a worker; they do not authorize an assignment. Before
 starting each GitHub worker, the host copies its admitted repository ID/name,
@@ -238,3 +245,12 @@ PAT, and delete its dedicated cache volumes after identifying them with `docker 
 Remove the old `PLATFORM_CI_RUNNER` variable before enabling the manager. Do not reuse those
 writable volumes as image seeds. Complete setup and certification above before switching routing;
 other tools using Docker on the machine are unaffected.
+
+## References
+
+Vendor contracts: [GitHub JIT runners](https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-a-repository),
+[Docker run controls](https://docs.docker.com/reference/cli/docker/container/run/),
+[Bun frozen/offline installs](https://bun.sh/docs/pm/cli/install), and
+[Playwright sandbox profile](https://github.com/microsoft/playwright/blob/v1.63.0/utils/docker/seccomp_profile.json).
+The shipped seccomp profile adds `chroot` for Chromium's unprivileged user-namespace sandbox;
+it does not grant the worker a host capability.
