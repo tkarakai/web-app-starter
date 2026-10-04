@@ -185,7 +185,7 @@ landing and web. The reference questions are optional: email alone is sufficient
 The shared platform `WaitlistForm` owns submission, feedback and legal links; the app
 owns questions and object-valued metadata. Posts go directly from the browser to Convex,
 preserving per-visitor IP rate limits and backend validation. Web passes its request-time
-Convex URL; landing's wrapper supplies build-time configuration through `PublicConfigProvider`.
+Convex HTTP origin; landing's wrapper supplies build-time configuration through `PublicConfigProvider`.
 The landing provider's unused `convexUrl` is empty because the form only needs the HTTP origin.
 
 **Adoption:** upgrades preserve buyer-owned forms. Put your form in a shared app package,
@@ -433,8 +433,8 @@ and a domain with a dot); malformed addresses such as `anna@` return `INVALID_EM
 shared join mutation normalizes case/whitespace before lookup. Onboarding restrictions, deduplication
 and per-visitor rate limits still apply. Joining again does not replace stored answers.
 
-The reference landing form in `apps/landing/src/components/waitlist-form.tsx` asks for
-superpowers and excitement and offers role, company (120 characters) and use case
+The shared reference form in `packages/onboarding/waitlist-form.tsx` offers optional
+superpowers, excitement, role, company (120 characters) and use case
 (500 characters). These are sample-app choices, not platform-required fields. Change or
 remove them in your app and keep their translations in `packages/messages/`. The platform
 validates the transport and safety boundary, not your business rules; if answers drive
