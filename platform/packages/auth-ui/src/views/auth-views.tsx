@@ -89,9 +89,9 @@ export async function SignUpView() {
   return renderSignUpView(WaitlistForm);
 }
 
-/** Reference-app signup: send waitlist visitors to the localized landing form. */
+/** Compatibility entry point: accept waitlist email on this page. */
 export async function LandingSignUpView() {
-  return renderSignUpView();
+  return renderSignUpView(WaitlistForm);
 }
 
 /** Compose an app-owned question form into a route with the same onboarding gate. */
@@ -103,35 +103,30 @@ export function createSignUpView({ waitlistForm }: {
   };
 }
 
-/** Gate account creation on every request; the default waitlist lives on landing. */
-async function renderSignUpView(Waitlist?: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>) {
+/** Gate account creation on every request; accept waitlist submissions in place. */
+async function renderSignUpView(Waitlist: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>) {
   const ts = await getTranslations("auth.signIn");
   const ti = await getTranslations("auth.invitation");
   const onboardingType = await fetchOnboardingType();
   const locale = await getLocale();
-  const waitlistUrl = `${landingUrl().replace(/\/$/, "")}/${locale}/`;
 
   return (
     <AuthPageShell namespace="auth.signUp" background="var(--glow-cool)">
       {onboardingType === "publicSignup" ? (
         <AuthForm mode="sign-up" />
-      ) : onboardingType === "publicWaitlist" && Waitlist ? (
+      ) : onboardingType === "publicWaitlist" ? (
         <Waitlist convexSiteUrl={process.env.CONVEX_SITE_URL!} />
       ) : (
         <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
           <CardHeader>
             <CardTitle>{ti("signupBlocked")}</CardTitle>
             <CardDescription>
-              {onboardingType === "publicWaitlist" ? ti("signupBlockedDescription") : ts("description")}
+              {ts("description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              {onboardingType === "publicWaitlist" ? (
-                <a href={waitlistUrl}>{ti("goToWaitlist")}</a>
-              ) : (
-                <a href={`/${locale}/sign-in`}>{ts("cta")}</a>
-              )}
+              <a href={`/${locale}/sign-in`}>{ts("cta")}</a>
             </Button>
           </CardContent>
         </Card>

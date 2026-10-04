@@ -28,7 +28,7 @@ Each app keeps source in `src/` and tests in `qa/` (`qa/tests/` for unit and com
 `packages/backend/convex/`; the sample domain is `projects`, `tasks` and `files`.
 Landing is a static export with browser-side announcements and onboarding: it hosts the
 waitlist form and links to web for authentication. Web checks onboarding on each sign-up
-request and links waitlist visitors back to the localized landing. Their name, ports,
+request and accepts waitlist submissions inline using the same form as landing. Their name, ports,
 auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
 ## Our conventions
