@@ -7,7 +7,7 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { request as httpRequest } from "node:http";
 import { appJWT, parseApp, repository, storeApp, verifyInstallation, PERMISSIONS, type Api, type Gh, type Repository } from "../setup-updates/github.ts";
 import { appManifest, startSetup } from "../setup-updates/server.ts";
-import { GUARD, RECORD, guardCaller, saveRecord, updateStatus } from "../setup-updates/state.ts";
+import { GUARD, RECORD, guardCaller, readRecord, saveRecord, updateStatus } from "../setup-updates/state.ts";
 import { argumentsFor, installCaller, enableFallback, main } from "../setup-updates.ts";
 const keys = generateKeyPairSync("rsa", { modulusLength: 2048 }), pem = keys.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 const app = { id: 123, slug: "fixture-updater", pem };
@@ -205,4 +205,21 @@ test("recommended owner flow validates a real loopback handshake before enabling
     assert.equal(api.calls.filter(c=>c.args[1]==="set").at(-1)?.args.at(-1),"app");assert.equal(writes[0].input,pem);
     assert(!fs.readFileSync(path.join(root,RECORD),"utf8").includes(pem));
   } finally {session.close();}
+});
+
+test("worker-only setup preserves credential mode, existing App identity and caller customisations", async t => {
+  const root = setupRoot(t), api = setupGh({ id: "123", key: true, mode: "app" }), cwd = process.cwd();
+  process.chdir(root); t.after(() => process.chdir(cwd));
+  installCaller(root); saveRecord(root, "app", "owner/app", "configured", [], { app: { id: "123" }, validation: "authenticated-installation" });
+  const caller = fs.readFileSync(path.join(root, ".github/workflows/update-platform.yml"), "utf8");
+  assert.equal(await main(["--workers", "hosted", "--yes"], api.run), 0);
+  const state = readRecord(root)!;
+  assert.equal(state.mode, "app"); assert.equal(state.app?.id, "123"); assert.equal(state.validation, "authenticated-installation");
+  assert.equal(state.workers?.choice, "hosted"); assert.equal(state.workers?.status, "configured");
+  assert.equal(fs.readFileSync(path.join(root, ".github/workflows/update-platform.yml"), "utf8"), caller);
+  assert(!api.calls.some(c => c.args[1] === "set" || c.args.includes("PUT")));
+  assert.equal(await main(["--workers", "local"], api.run), 0);
+  assert.equal(readRecord(root)?.workers?.status, "pending");
+  assert.equal(await main(["--app", "--yes"], api.run), 0);
+  assert.equal(readRecord(root)?.workers?.choice, "local"); // credential setup preserves worker intent
 });

@@ -16,22 +16,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ### Added
 
 - Guided hosted/local worker choice in platform update setup, with two prepared Docker installations, real GitHub worker tests before routing changes, resumable setup and read-only worker readiness. Existing routing and credentials are preserved unless explicitly changed.
-
-### Fixed
-
-- Reference web onboarding E2E tests now set and restore their required policy instead
-  of assuming a retained local backend is invitation-only. Session coverage verifies
-  guest-page navigation after an authentication broadcast.
-- Adoption now offers App, limited built-in token or deferred update delivery. New callers
-  pause scheduling until explicit owner setup completes, preserving caller customisations
-  and credentials. App-owned intent, human/JSON live readiness, consented fallback API setup
-  with preserved token defaults, and interrupted-App handoff make setup resumable.
-- Delivery permission failures distinguish PR creation from approval, expose existing-branch
-  draft/report recovery after a push, and preflight settings without administration grants.
-  Token-created PRs may require owner approval of CI runs; a green review-plan job is not upgrade verification.
-
-### Added
-
 - Platform updates can run on your own computers using separate prepared-image installations for verification and tools-only publication, authenticated to the exact repository, source, run, attempt, event and job; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
 
 ### Fixed
@@ -46,6 +30,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Delivery permission failures distinguish PR creation from approval, expose existing-branch
   draft/report recovery after a push, and preflight settings without administration grants.
   Token-created PRs may require owner approval of CI runs; a green review-plan job is not upgrade verification.
+
 
 ## [4.0.0] - 2026-10-04
 

@@ -145,11 +145,13 @@ export async function main(args: string[]): Promise<void> {
     case 'check': return args.includes('--github') ? githubCheck(c, args) : localCheck(c, args);
     case 'proof': {
       const proof = await localProof(c);
-      const heartbeat = await readJson<{ polled?: string; paused?: boolean; error?: string }>(path.join(home, 'status.json'), {});
+      const heartbeat = await readJson<{ pid?: number; polled?: string; paused?: boolean; error?: string }>(path.join(home, 'status.json'), {});
       const age = Date.now() - Date.parse(heartbeat.polled ?? '');
+      let alive = false;
+      if (heartbeat.pid && heartbeat.pid > 0) { try { process.kill(heartbeat.pid, 0); alive = true; } catch { /* A stopped service is not ready. */ } }
       print({ ...proof, repository: c.repo, role: c.updateRole, workflow: c.updateWorkflow,
         localOnly: c.localOnly, publicBranch: c.publicBranch,
-        managerHealthy: !c.paused && !heartbeat.paused && !heartbeat.error && age >= 0 && age < 60_000 }); return;
+        managerHealthy: alive && await exists(path.join(home, 'daemon.lock')) && !c.paused && !heartbeat.paused && !heartbeat.error && age >= 0 && age < 60_000 }); return;
     }
     case 'refresh': return localCheck(c, c.updateRole === 'deliver' ? [...args, '--refresh'] : [...args, '--refresh', '--install']);
     case 'status': do { print(await status()); if (!args.includes('--watch')) break; await new Promise(resolve => setTimeout(resolve, 5000)); } while (args.includes('--watch')); return;

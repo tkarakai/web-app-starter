@@ -119,8 +119,9 @@ manager credential on the host as described in the worker guide. Use each instal
 `starter-workers` command inside its state directory; the convenience command in PATH points
 to the most recently installed one. Verification can run `check --install`; delivery accepts
 `check` only and never runs app installation or CI. Do not use ordinary `enable` or
-`check --github` for updater installations. The operator must run acceptance through the
-reviewed updater caller and inspect exact source/run/attempt and image evidence.
+`check --github` for updater installations. The guided setup runs the dedicated worker diagnostic and inspects exact
+source/run/attempt and image evidence. Then run the reviewed updater caller to check actual
+delivery credentials and PR creation. Custom caller filenames require manual operator acceptance.
 
 Use the absolute wrapper for each installation; these commands retain the app checkout as cwd:
 
@@ -131,7 +132,8 @@ Use the absolute wrapper for each installation; these commands retain the app ch
 "$HOME/.local/share/starter-update-deliver/starter-workers" status
 ```
 
-Only after acceptance, configure these repository variables in
+Guided setup configures these automatically after its successful diagnostic. For custom
+installations, configure them only after operator acceptance in
 **Settings → Secrets and variables → Actions**:
 
 - `PLATFORM_UPDATE_RUNNER`: the verification installation's **pool ID** (discovery and verification).

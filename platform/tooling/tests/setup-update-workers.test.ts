@@ -1,4 +1,6 @@
 import test from 'node:test';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { configureWorkers, certifyWorkers, setWorkerRouting, validateProofs, type Proofs, type WorkerHost } from '../setup-updates/workers.ts';
 import { workerStatus, WORKER_VARIABLES, type WorkerRecord } from '../setup-updates/worker-state.ts';
@@ -118,4 +120,18 @@ test('guided setup waits for its dispatched test and enables without copying a r
   f.host.watch = async (repository, id) => { assert.equal(repository, repo); watched.push(id); assert.equal(f.variables.size, 0); };
   await configureWorkers({ choice: 'local', root: '/app', repo }, f.run, r => records.push(r), f.host);
   assert.deepEqual(watched, ['42']); assert.equal(records.at(-1)?.status, 'configured');
+});
+
+test('diagnostic workflow requires manual dispatch and separates verification from tools-only delivery', () => {
+  const file = fileURLToPath(new URL('../../../.github/workflows/platform-update-workers-check.yml', import.meta.url));
+  const workflow = JSON.parse(execFileSync('bun', ['-e', 'console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))', file], { encoding: 'utf8' }));
+  assert.deepEqual(Object.keys(workflow.on), ['workflow_dispatch']);
+  assert.deepEqual(Object.keys(workflow.jobs), ['check', 'verify', 'deliver']);
+  assert.equal(workflow.jobs.verify.needs, 'check'); assert.equal(workflow.jobs.deliver.needs, 'verify');
+  assert.deepEqual(workflow.permissions, { contents: 'read' }); assert.deepEqual(workflow.jobs.deliver.permissions, {});
+  for (const [name, job] of Object.entries(workflow.jobs) as [string, { 'runs-on': string[]; steps: { uses?: string }[] }][]) {
+    assert.equal(job['runs-on'].length, 6); assert.equal(job['runs-on'][0], 'self-hosted'); assert.equal(job['runs-on'].at(-1), 'starter-update-' + name);
+    if (name !== 'verify') assert(job.steps.every(step => !step.uses));
+  }
+  assert.equal(workflow.jobs.verify.steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/checkout@')).with['persist-credentials'], false);
 });
