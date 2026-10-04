@@ -47,6 +47,102 @@ test('guided preparation resumes authenticated incomplete installations for both
     assert.deepEqual(calls, [role === 'verify' ? ['check', '--install'] : ['check']]);
   }
 });
+test('installed artifact truncation and missing receipts resume both roles without replacing identity or credentials', t => {
+  const root = temporaryRoot(t);
+  const modules = fileURLToPath(new URL('../ci-workers/', import.meta.url));
+  const workers = fileURLToPath(new URL('../setup-updates/workers.ts', import.meta.url));
+  execFileSync(process.execPath, ['--input-type=module', '-e', `
+    import fs from 'node:fs/promises';
+    import path from 'node:path';
+    import assert from 'node:assert/strict';
+    import { execFileSync } from 'node:child_process';
+    const { install, installationComplete, serviceDefinition } = await import(${JSON.stringify(modules + 'service.ts')});
+    const { workerHost } = await import(${JSON.stringify(workers)});
+    const home = process.env.STARTER_WORKERS_HOME;
+    await fs.mkdir(home, { recursive: true });
+    for (const role of ['verify', 'deliver']) {
+      const c = { repo: 'owner/app', updateRole: role, updateWorkflow: '.github/workflows/update-platform.yml', pool: 'starter-' + role, localOnly: false, paused: false, docker: '/usr/bin/docker' };
+      const configuration = JSON.stringify(c), credential = 'existing-private-manager-token';
+      await fs.writeFile(path.join(home, 'config.json'), configuration);
+      await fs.writeFile(path.join(home, 'token'), credential);
+      await install(c);
+      assert.equal(await installationComplete(c.pool), true);
+      await fs.rm(serviceDefinition(c.pool));
+      await fs.mkdir(serviceDefinition(c.pool));
+      await assert.rejects(install(c), { code: 'EISDIR' });
+      assert.equal(await installationComplete(c.pool), false);
+      await fs.rm(serviceDefinition(c.pool), { recursive: true });
+      const artifacts = [path.join(home, 'starter-workers'), path.join(home, 'current/cli.ts'), serviceDefinition(c.pool), path.join(home, 'installation.json')];
+      for (const artifact of [...artifacts, null]) {
+        if (artifact) await fs.writeFile(artifact, 'truncated');
+        else await fs.rm(path.join(home, 'installation.json'));
+        assert.equal(await installationComplete(c.pool), false);
+        const calls = [];
+        const host = workerHost({ root: process.cwd(), repo: c.repo, choice: 'local' }, async (directory, args) => {
+          assert.equal(directory, home); calls.push(args);
+          if (args[0] === 'setup') await install(c);
+          if (args[0] === 'service') {
+            assert.equal(await installationComplete(c.pool), true);
+            await fs.writeFile(path.join(home, 'daemon.lock'), 'running');
+            await fs.writeFile(path.join(home, 'status.json'), JSON.stringify({ polled: new Date().toISOString() }));
+          }
+        });
+        await host.prepare(role, home);
+        assert.deepEqual(calls, [['setup'], role === 'verify' ? ['check', '--install'] : ['check'], ['service', 'start']]);
+        assert.equal(await fs.readFile(path.join(home, 'config.json'), 'utf8'), configuration);
+        assert.equal(await fs.readFile(path.join(home, 'token'), 'utf8'), credential);
+        execFileSync(path.join(home, 'starter-workers'), ['--help']);
+        calls.length = 0;
+        await host.prepare(role, home);
+        assert.deepEqual(calls, [role === 'verify' ? ['check', '--install'] : ['check']]);
+        const wrapper = path.join(home, 'starter-workers'), contents = await fs.readFile(wrapper);
+        await fs.writeFile(wrapper, 'truncated while running');
+        calls.length = 0;
+        await host.prepare(role, home);
+        assert.deepEqual(calls, [role === 'verify' ? ['check', '--install'] : ['check']]);
+        await assert.rejects(install(c), /Stop the manager/);
+        assert.equal(await fs.readFile(wrapper, 'utf8'), 'truncated while running');
+        await fs.writeFile(wrapper, contents);
+        assert.equal(await installationComplete(c.pool), true);
+        await fs.rm(path.join(home, 'daemon.lock'));
+        calls.length = 0;
+        await host.prepare(role, home);
+        assert.deepEqual(calls, [role === 'verify' ? ['check', '--install'] : ['check'], ['service', 'start']]);
+        await fs.rm(path.join(home, 'daemon.lock'));
+      }
+    }
+  `], { env: { ...process.env, HOME: root, STARTER_WORKERS_HOME: path.join(root, 'installation') }, stdio: 'pipe' });
+});
+test('last successful worker test survives pending, offline, dispatched and hosted transitions independently of readiness', async t => {
+  const root = temporaryRoot(t), cwd = process.cwd(), f = fixture();
+  fs.writeFileSync(path.join(root, '.platform-base.json'), '{}');
+  const historical = { runId: 42, sha, proof: f.proof, checkedAt: '2026-10-04T12:00:00Z' };
+  const seed = () => {
+    f.variables.set(WORKER_VARIABLES.verify, f.p.verify.pool);
+    f.variables.set(WORKER_VARIABLES.deliver, f.p.deliver.pool);
+    saveRecord(root, 'deferred', repo, 'deferred', [], { workers: { choice: 'local', status: 'configured', pools: { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, test: historical, ownerActions: [] } });
+  };
+  process.chdir(root); t.after(() => process.chdir(cwd));
+  for (const scenario of ['consent', 'offline', 'dispatch', 'hosted'] as const) {
+    seed();
+    f.host.prepare = async () => { assert.deepEqual(readRecord(root)!.workers!.test, historical); };
+    f.host.watch = async () => { assert.deepEqual(readRecord(root)!.workers!.test, historical); throw Error('Interrupted'); };
+    const offline: Gh = () => { throw Error('Offline'); };
+    const args = ['--workers', scenario === 'hosted' ? 'hosted' : 'local', ...(scenario === 'consent' ? [] : ['--yes'])];
+    const run = scenario === 'offline' ? offline : f.run;
+    assert.equal(await main(args, run, undefined, f.host), scenario === 'offline' || scenario === 'dispatch' ? 2 : 0);
+    const saved = readRecord(root)!.workers!;
+    assert.deepEqual(saved.test, historical);
+    const status = workerStatus(repo, saved, run);
+    assert.deepEqual(status.lastTest, historical);
+    assert.equal(status.readiness, scenario === 'hosted' ? 'ready' : scenario === 'offline' ? 'unknown' : 'blocked');
+    assert(summary(updateStatus(root, repo, run)).includes('Last worker test: run=42; source=' + sha));
+  }
+  seed();
+  assert.equal(await main(['--workers', 'local', '--worker-run', '42', '--yes'], f.run, undefined, f.host), 0);
+  assert.notEqual(readRecord(root)!.workers!.test!.checkedAt, historical.checkedAt);
+  assert.equal(workerStatus(repo, readRecord(root)!.workers, f.run).readiness, 'ready');
+});
 test('pending consent and interrupted monitoring retain executable recovery arguments and resume the existing test', async t => {
   const root = temporaryRoot(t), cwd = process.cwd(), f = fixture();
   fs.writeFileSync(path.join(root, '.platform-base.json'), '{}');

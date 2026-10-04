@@ -34,6 +34,7 @@ export function saveRecord(root: string, mode: DeliveryMode, repo: string, statu
   const previous = readRecord(root);
   demand(!previous || previous.repository.toLowerCase() === repo.toLowerCase(), "Saved update repository differs; inspect the record before changing identity");
   const state: RecordState = { schemaVersion: 1, mode, repository: repo, source: previous?.source ?? "tkarakai/web-app-starter", caller: CALLER, settings: "https://github.com/" + repo + "/settings/actions", status, lastCheck: new Date().toISOString(), ownerActions, workers: previous?.workers, ...(previous?.mode === mode ? { app: previous.app, validation: previous.validation } : {}), ...extra };
+  if (state.workers && !state.workers.test && previous?.workers?.test) state.workers = { ...state.workers, test: previous.workers.test };
   const file = safePath(root, RECORD); fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(state, null, 2) + "\n"); return state;
 }

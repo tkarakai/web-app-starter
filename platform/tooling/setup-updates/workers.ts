@@ -5,7 +5,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { demand } from '../platform-upgrade/metadata.ts';
 import { hash, updaterCheckWorkflow, type Config } from '../ci-workers/core.ts';
 import { proofId, type Proof } from '../ci-workers/proof.ts';
-import { serviceDefinition } from '../ci-workers/service.ts';
+import { installationComplete } from '../ci-workers/service.ts';
 import type { Gh } from './github.ts';
 import { WORKER_VARIABLES, workerCommand, workerVariables, type WorkerChoice, type WorkerRecord } from './worker-state.ts';
 
@@ -91,8 +91,8 @@ export function workerHost(options: WorkerOptions, command?: (home: string, args
         demand(c.repo.toLowerCase() === options.repo.toLowerCase() && c.updateRole === role && c.updateWorkflow === '.github/workflows/update-platform.yml' && !c.publicBranch, 'Selected installation is for another repository, role or diagnostic branch');
         demand(!c.paused, 'Selected worker installation is paused. Resume it explicitly before setup.');
         const stopped = !fs.existsSync(path.join(home, 'daemon.lock'));
-        const installed = [path.join(home, 'starter-workers'), path.join(home, 'current/cli.ts'), serviceDefinition(c.pool)].every(file => fs.existsSync(file));
-        if (c.localOnly || stopped && !installed) await invoke(home, ['setup']);
+        if (stopped && (c.localOnly || !await installationComplete(c.pool, home))) await invoke(home, ['setup']);
+        demand(!c.localOnly || stopped, 'Stop the unauthenticated manager before resuming setup.');
       } else await invoke(home, ['setup', '--repo', options.repo, '--update-role', role, '--update-workflow', '.github/workflows/update-platform.yml']);
       await invoke(home, role === 'verify' ? ['check', '--install'] : ['check']);
       if (!fs.existsSync(path.join(home, 'daemon.lock'))) await invoke(home, ['service', 'start']);

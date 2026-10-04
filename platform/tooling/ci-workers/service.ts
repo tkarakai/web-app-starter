@@ -2,14 +2,26 @@ import path from 'node:path';
 import os from 'node:os';
 import { cp, mkdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { assert, command, exists, hash, home, type Config } from './core.ts';
+import { assert, command, exists, hash, home, save, type Config } from './core.ts';
 
 const xml = (s: string): string => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
 const shell = (s: string): string => `'${s.replaceAll("'", "'\\''")}'`;
 export function serviceDefinition(pool: string): string {
   return process.platform === 'darwin' ? path.join(os.homedir(), 'Library/LaunchAgents', pool + '.plist') : path.join(os.homedir(), '.config/systemd/user', pool + '.service');
 }
+async function installationDigests(pool: string, directory: string): Promise<string[]> {
+  return Promise.all([path.join(directory, 'starter-workers'), path.join(directory, 'current/cli.ts'), serviceDefinition(pool)].map(async file => hash(await readFile(file))));
+}
+export async function installationComplete(pool: string, directory: string = home): Promise<boolean> {
+  try {
+    const receipt = JSON.parse(await readFile(path.join(directory, 'installation.json'), 'utf8'));
+    const digests = await installationDigests(pool, directory);
+    return receipt.pool === pool && JSON.stringify(receipt.digests) === JSON.stringify(digests);
+  } catch { return false; }
+}
 export async function install(c: Config): Promise<string> {
+  assert(!await exists(path.join(home, 'daemon.lock')), 'Stop the manager before installing');
+  await rm(path.join(home, 'installation.json'), { force: true });
   const source = path.dirname(fileURLToPath(import.meta.url));
   const target = path.join(home, 'versions', `${Date.now()}-${hash(source).slice(0, 8)}`);
   await mkdir(target, { recursive: true, mode: 0o700 }); await cp(source, target, { recursive: true });
@@ -33,6 +45,7 @@ export async function install(c: Config): Promise<string> {
     const quote = (s: string): string => '"' + s.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('%', '%%') + '"';
     await writeFile(serviceDefinition(c.pool), `[Unit]\nDescription=Starter local workers\n[Service]\nExecStart=${quote(wrapper)} serve\nEnvironment=${quote(`PATH=${environmentPath}`)}\nRestart=on-failure\nRestartSec=30\nTimeoutStopSec=7200\n[Install]\nWantedBy=default.target\n`);
   }
+  await save(path.join(home, 'installation.json'), { pool: c.pool, digests: await installationDigests(c.pool, home) });
   return wrapper;
 }
 export async function service(c: Config, start: boolean): Promise<void> {
