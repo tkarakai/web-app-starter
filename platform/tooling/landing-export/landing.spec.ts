@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createServer, type Server } from "node:http";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, openSync, fstatSync, closeSync } from "node:fs";
 import { resolve, extname, sep } from "node:path";
 import { once } from "node:events";
 
@@ -12,10 +12,17 @@ test.beforeAll(async () => {
     try {
       let file = resolve(root, "." + decodeURIComponent(new URL(req.url!, "http://localhost").pathname));
       if (!file.startsWith(root + sep)) throw new Error("outside export");
-      if (statSync(file).isDirectory()) file = resolve(file, "index.html");
-      const types: Record<string, string> = { ".html": "text/html", ".css": "text/css", ".js": "application/javascript", ".svg": "image/svg+xml", ".json": "application/json" };
-      res.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
-      res.end(readFileSync(file));
+      let fd = openSync(file, "r");
+      try {
+        if (fstatSync(fd).isDirectory()) {
+          closeSync(fd); fd = -1;
+          file = resolve(file, "index.html");
+          fd = openSync(file, "r");
+        }
+        const types: Record<string, string> = { ".html": "text/html", ".css": "text/css", ".js": "application/javascript", ".svg": "image/svg+xml", ".json": "application/json" };
+        res.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
+        res.end(readFileSync(fd));
+      } finally { if (fd !== -1) closeSync(fd); }
     } catch { res.writeHead(404); res.end("not found"); }
   });
   server.listen(0, "127.0.0.1"); await once(server, "listening");

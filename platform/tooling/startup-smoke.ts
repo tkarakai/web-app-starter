@@ -84,11 +84,18 @@ console.log('Convex functions ready');setInterval(()=>{},1000);
   for (const app of ["web", "landing"]) {
     const log = fs.readFileSync(join(fixture, `.next-${app}.log`), "utf8");
     const url = log.match(/http:\/\/localhost:\d+/)?.[0]; assert.ok(url, log);
-    const response = await fetch(url); assert.equal(response.status, 200, logs);
+    const origin = new URL(`http://127.0.0.1:${new URL(url).port}`);
+    const response = await fetch(origin, { redirect: "error" }); assert.equal(response.status, 200, logs);
     const html = await response.text(); assert.ok(html.includes(`${app} fixture`));
     const styles = [...html.matchAll(/href="([^"]+\.css(?:\?[^"]*)?)"/g)]; assert.ok(styles.length, html);
     let css = "";
-    for (const [, href] of styles) { const asset: Response = await fetch(new URL(href.replaceAll("&amp;", "&"), url)); assert.equal(asset.status, 200); css += await asset.text(); }
+    for (const [, href] of styles) {
+      const assetUrl = new URL(href.replaceAll("&amp;", "&"), origin);
+      if (assetUrl.origin !== origin.origin || assetUrl.username || assetUrl.password) {
+        throw new Error("Fixture assets must use the loopback origin without credentials");
+      }
+      const asset: Response = await fetch(assetUrl, { redirect: "error" }); assert.equal(asset.status, 200); css += await asset.text();
+    }
     assert.match(css, /workspace-proof/);
   }
   assert.equal(fs.readFileSync(join(fixture, "installs.log"), "utf8"), "install\n", "one preflight install per public command");

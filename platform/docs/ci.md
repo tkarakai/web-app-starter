@@ -67,6 +67,11 @@ Use `bun run ci:quick` to skip browser tests (E2E and the export smoke) when you
 
 Run `./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts online` for the published advisory and Bun registry audit checks. Registry errors, missing tools/lockfiles and malformed audit output fail; high/critical findings fail, while lower severities warn. There is no audit fallback that reports success after an error. The **Security Complete** job requires every applicable scan to succeed; require this context in branch protection alongside the app/shared CI gates. Paid CodeQL/dependency review may skip only when unavailable (dependency review also skips outside PRs).
 
+On public repositories, require both **Security Complete** and the standalone **CodeQL** check.
+Security Complete verifies that the scan jobs executed successfully; successful CodeQL analysis
+and upload do not mean the results are alert-free. The standalone CodeQL check enforces the
+repository's code-scanning alert policy and can fail even when scan execution succeeded.
+
 All app CI and staging deployment selectors consume `.github/platform-impact.json`, the authoritative path policy. Shared packages, including new `packages/*`, platform packages and CI/tooling changes select all app consumers and backend tests/deployment. App-only changes remain scoped. Documentation outside those paths does not select app work; platform documentation still selects the shared platform checks.
 
 ## Running GitHub Actions Locally with `act`
