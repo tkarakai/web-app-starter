@@ -69,6 +69,8 @@ test("rewriteRenovate points the preset at the app's repo and drops product-only
 });
 
 test("helpers: slug, repoFromUrl, parseArgs", () => {
+  assert.equal(parseArgs(["--updates", "app", "--yes"]).updates, "app");
+  assert.throws(() => parseArgs(["--updates", "unattended"]), /app, fallback or deferred/);
   assert.equal(slug("Acme Tasks!"), "acme-tasks");
   assert.equal(slug("!!!"), "app");
   assert.equal(repoFromUrl("git@github.com:acme/app.git"), "acme/app");
@@ -110,6 +112,19 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "release");
   const commit = git(root, "rev-parse", "HEAD");
+  // Existing-repository adoption preserves recorded intent and caller customisations.
+  const repaired=mkdtempSync(path.join(tmpdir(), "adopt-existing-updates-"));
+  t.after(()=>rmSync(repaired,{recursive:true,force:true}));
+  execFileSync("git",["clone","--quiet",root,repaired]);
+  const record={schemaVersion:1,mode:"fallback",repository:"acme/acme-app",source:"tkarakai/web-app-starter",caller:".github/workflows/update-platform.yml",settings:"https://github.com/acme/acme-app/settings/actions",status:"configured",lastCheck:"2026-10-01T00:00:00Z",ownerActions:[]};
+  write(repaired,".github/update-delivery.json",JSON.stringify(record));
+  const custom=read("platform/templates/update-platform.yml").replace("23 5 * * 1-5","0 9 * * 2").replace("policy: minor","policy: patch");
+  write(repaired,".github/workflows/update-platform.yml",custom);
+  git(repaired,"add","-A");git(repaired,"commit","-qm","existing app intent");
+  assert.equal(adopt(repaired,{name:"Acme",repo:"acme/acme-app",build:false},()=>{}, {release:()=>({version:read("platform/VERSION").trim(),commit}),command:()=>""}),0);
+  assert.equal(readFileSync(path.join(repaired,".github/workflows/update-platform.yml"),"utf8"),custom);
+  assert.deepEqual(JSON.parse(readFileSync(path.join(repaired,".github/update-delivery.json"),"utf8")),record);
+
 
   write(root, "README.md", "Uncommitted work\n");
   assert.throws(() => adopt(root, { name: "Acme", repo: "acme/acme-app", build: false }), /clean checkout/);
@@ -126,6 +141,8 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.equal(at("README.md").split("\n")[0], "# Acme $& Co");
   assert.equal(at("CLAUDE.md"), read("platform/templates/CLAUDE.md"));
   assert.equal(at(".github/workflows/update-platform.yml"), read("platform/templates/update-platform.yml"));
+  assert.equal(JSON.parse(at(".github/update-delivery.json")).mode, "deferred");
+  assert.match(at("AGENTS.md"), /update-delivery.json/);
   assert.match(at("renovate.json"), /local>acme\/acme-app\/\/platform\/config\/renovate-preset/);
   assert.equal(existsSync(path.join(root, "apps/demo")), false);
   assert.equal(existsSync(path.join(root, "apps/landing/package.json")), true);

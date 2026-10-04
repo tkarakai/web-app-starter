@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/onboarding";
 
 /**
  * Email Verification Flow E2E Tests
@@ -134,16 +134,13 @@ test.describe("Reset Password Page", () => {
 });
 
 test.describe("Sign-Up with Email Verification", () => {
-  /**
-   * This asserted a self-service sign-up form. Under the default
-   * `onboardingType` of `inviteOnly` that form does not render at all, so there
-   * is no sign-up path here to verify an email for. Coverage of the gate itself
-   * lives in `auth-flow.spec.ts`; the invitation flow is what would need a
-   * dedicated test, and it needs an admin-issued invitation to exercise.
-   */
+  // Gate coverage uses explicit inviteOnly policy; invited registration needs
+  // a separate admin-issued invitation to exercise email verification.
   test("does not expose an unverified self-service sign-up path", async ({
     page,
+    onboarding,
   }) => {
+    await onboarding.setMode("inviteOnly");
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 

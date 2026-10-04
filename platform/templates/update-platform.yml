@@ -14,6 +14,8 @@ permissions:
   issues: write
 jobs:
   update:
+    # Owner setup enables scheduled delivery; existing Apps can be validated by manual dispatch.
+    if: ${{ vars.PLATFORM_UPDATE_DELIVERY == 'app' || vars.PLATFORM_UPDATE_DELIVERY == 'fallback' || (github.event_name == 'workflow_dispatch' && vars.PLATFORM_UPDATER_APP_ID != '') }}
     uses: ./.github/workflows/platform-update.yml
     with:
       policy: minor

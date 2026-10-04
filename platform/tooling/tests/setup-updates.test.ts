@@ -7,7 +7,8 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { request as httpRequest } from "node:http";
 import { appJWT, parseApp, repository, storeApp, verifyInstallation, PERMISSIONS, type Api, type Gh, type Repository } from "../setup-updates/github.ts";
 import { appManifest, startSetup } from "../setup-updates/server.ts";
-import { argumentsFor, installCaller } from "../setup-updates.ts";
+import { GUARD, RECORD, guardCaller, saveRecord, updateStatus } from "../setup-updates/state.ts";
+import { argumentsFor, installCaller, enableFallback, main } from "../setup-updates.ts";
 const keys = generateKeyPairSync("rsa", { modulusLength: 2048 }), pem = keys.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 const app = { id: 123, slug: "fixture-updater", pem };
 const repo: Repository = { id: 42, full_name: "owner/app", owner: { login: "owner", type: "User" }, permissions: { admin: true } };
@@ -115,10 +116,93 @@ test("actual CLI check is read-only; fallback and existing-App runs preserve set
   fs.writeFileSync(stub, `#!/usr/bin/env node\nconst a=process.argv.slice(2),existing=process.env.SETUP_EXISTING==='true'; require('fs').appendFileSync(process.env.SETUP_CALLS,JSON.stringify(a)+'\\n'); let value; if(a[0]==='repo')value={nameWithOwner:'owner/app'}; else if(a[0]==='variable'&&a[1]==='list')value=existing?[{name:'PLATFORM_UPDATER_APP_ID',value:'123'}]:[]; else if(a[0]==='secret'&&a[1]==='list')value=existing?[{name:'PLATFORM_UPDATER_PRIVATE_KEY'}]:[]; else if(a[0]==='api')value=a[1].endsWith('/workflow')?{can_approve_pull_request_reviews:false}:${JSON.stringify(repo)}; else throw Error('unexpected mutation'); process.stdout.write(JSON.stringify(value));\n`, { mode: 0o755 });
   const script = fileURLToPath(new URL("../setup-updates.ts", import.meta.url)), log = path.join(root, "calls.jsonl");
   const invoke = (args: string[], existing = false) => spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8", timeout: 10_000, env: { ...process.env, PATH: path.join(root, "bin") + path.delimiter + process.env.PATH, SETUP_CALLS: log, SETUP_EXISTING: String(existing) } });
-  const check = invoke(["--check"], true); assert.equal(check.status, 0, check.stderr); assert.equal(JSON.parse(check.stdout).privateKeyPresent, true); assert(!fs.existsSync(path.join(root, ".github")));
-  const fallback = invoke(["--fallback"]); assert.equal(fallback.status, 0, fallback.stderr); assert.match(fallback.stdout, /Approve and run/); assert.match(fallback.stdout, /settings\/actions/);
+  const check = invoke(["--check", "--json"], true); assert.equal(check.status, 0, check.stderr); assert.equal(JSON.parse(check.stdout).observed.privateKeyPresent, true); assert(!fs.existsSync(path.join(root, ".github")));
+  const fallback = invoke(["--fallback"]); assert.equal(fallback.status, 0, fallback.stderr); assert.match(fallback.stdout, /manual PR CI/); assert.match(fallback.stdout, /settings\/actions/);
   const caller = path.join(root, ".github/workflows/update-platform.yml"); fs.writeFileSync(caller, "custom schedule\n");
-  const existing = invoke([], true); assert.equal(existing.status, 0, existing.stderr); assert.match(existing.stdout, /settings already exist/); assert.equal(fs.readFileSync(caller, "utf8"), "custom schedule\n");
-  const refuse = invoke(["--fallback"], true); assert.equal(refuse.status, 1); assert.match(refuse.stderr, /leaves credentials intact/);
+  const existing = invoke(["--app"], true); assert.equal(existing.status, 0, existing.stderr); assert.match(existing.stdout, /readiness: unknown/); assert.equal(fs.readFileSync(caller, "utf8"), "custom schedule\n");
+  const refuse = invoke(["--fallback"], true); assert.equal(refuse.status, 0); assert.match(refuse.stdout, /App ID still selects/);
   assert(!fs.readFileSync(log, "utf8").split("\n").filter(Boolean).some(line => /"set"|"delete"/.test(line)));
+});
+
+function setupRoot(t: { after: (fn: () => void) => void }): string {
+  const root=fs.mkdtempSync(path.join(os.tmpdir(), "update-state-")); t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  fs.mkdirSync(path.join(root,"platform/templates"),{recursive:true}); fs.writeFileSync(path.join(root,".platform-base.json"),"{}");
+  fs.copyFileSync(new URL("../../templates/update-platform.yml",import.meta.url),path.join(root,"platform/templates/update-platform.yml"));
+  return root;
+}
+function setupGh(options: { mode?: string; id?: string; key?: boolean; allowed?: boolean; deny?: boolean; offline?: boolean } = {}) {
+  const calls: { args: string[]; input?: string }[]=[];
+  let allowed=options.allowed??false, mode=options.mode, id=options.id, key=options.key;
+  const run: Gh=(args,input)=>{
+    calls.push({args,input}); if(options.offline)throw Error("offline");
+    if(args[0]==="repo")return JSON.stringify({nameWithOwner:"owner/app"});
+    if(args[0]==="variable"&&args[1]==="list")return JSON.stringify([...(mode?[{name:"PLATFORM_UPDATE_DELIVERY",value:mode}]:[]),...(id?[{name:"PLATFORM_UPDATER_APP_ID",value:id}]:[])]);
+    if(args[0]==="secret"&&args[1]==="list")return JSON.stringify(key?[{name:"PLATFORM_UPDATER_PRIVATE_KEY"}]:[]);
+    if(args[0]==="variable"&&args[1]==="set"){if(args[2]==="PLATFORM_UPDATER_APP_ID")id=args.at(-1);else mode=args.at(-1);return "";}
+    if(args[0]==="secret"&&args[1]==="set"){key=true;return "";}
+    if(args[0]==="api"&&args[1].endsWith("/workflow")){
+      if(args.includes("PUT")){if(options.deny)throw Error("organisation policy denied"); const body=JSON.parse(input!);assert.equal(body.default_workflow_permissions,"read");allowed=body.can_approve_pull_request_reviews;return "";}
+      return JSON.stringify({default_workflow_permissions:"read",can_approve_pull_request_reviews:allowed});
+    }
+    if(args[0]==="api")return JSON.stringify(repo);
+    throw Error("Unexpected operation "+args.join(" "));
+  }; return {run,calls};
+}
+test("fallback consent preserves read defaults, verifies API result, and denial leaves pending intent",async t=>{
+  const root=setupRoot(t), api=setupGh(), cwd=process.cwd();process.chdir(root);t.after(()=>process.chdir(cwd));
+  await main(["--repo","owner/app","--fallback"],api.run);
+  assert(!api.calls.some(c=>c.args.includes("PUT")||c.args[1]==="set"));
+  assert.equal(updateStatus(root,"owner/app",api.run).readiness,"blocked");
+  assert.equal(await main(["--fallback","--yes"],api.run),0);
+  const status=updateStatus(root,"owner/app",api.run);assert.equal(status.readiness,"ready");assert.equal(status.observed.defaultWorkflowPermissions,"read");
+  const puts=api.calls.filter(c=>c.args.includes("PUT")).length;
+  assert.equal(await main(["--fallback","--yes"],api.run),0);assert.equal(api.calls.filter(c=>c.args.includes("PUT")).length,puts);
+  const denied=setupGh({deny:true});assert.equal(await main(["--fallback","--yes"],denied.run),2);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root,RECORD),"utf8")).status,"pending");assert.equal(denied.calls.filter(c=>c.args[1]==="set").at(-1)?.args.at(-1),"deferred");
+});
+test("offline defer is recoverable, check never writes, and partial App credentials never activate fallback",async t=>{
+  const root=setupRoot(t), offline=setupGh({offline:true}), cwd=process.cwd();process.chdir(root);t.after(()=>process.chdir(cwd));
+  assert.equal(await main(["--repo","owner/app","--defer"],offline.run),0);
+  const before=fs.readFileSync(path.join(root,RECORD),"utf8"); assert.equal(await main(["--check","--json"],offline.run),0);assert.equal(fs.readFileSync(path.join(root,RECORD),"utf8"),before);
+  assert.equal(updateStatus(root,"owner/app",offline.run).readiness,"unknown");
+  const partial=setupGh({id:"123"});assert.equal(await main(["--app","--yes"],partial.run),2);
+  assert.equal(updateStatus(root,"owner/app",partial.run).readiness,"blocked");assert.equal(partial.calls.filter(c=>c.args[1]==="set").at(-1)?.args.at(-1),"deferred");
+  const complete=setupGh({id:"123",key:true,mode:"app"});assert.equal(await main(["--app","--yes"],complete.run),0);
+  assert.equal(updateStatus(root,"owner/app",complete.run).observed.appAuthentication,"unknown");assert(!complete.calls.some(c=>c.args[1]==="set"));
+});
+test("guard preserves a custom schedule, policy and merge intent; unsupported conditions require owner handoff",t=>{
+  const root=setupRoot(t);installCaller(root);const file=path.join(root,".github/workflows/update-platform.yml");
+  const custom=fs.readFileSync(file,"utf8").replace("23 5 * * 1-5","0 9 * * 2").replace("policy: minor","policy: patch").replace("auto-merge: false","auto-merge: true").replace("    if: "+GUARD+"\n","");
+  fs.writeFileSync(file,custom);assert.equal(guardCaller(root),true);assert.equal(guardCaller(root),true);
+  const text=fs.readFileSync(file,"utf8");assert(text.includes("0 9 * * 2"));assert(text.includes("policy: patch"));assert(text.includes("auto-merge: true"));
+  fs.writeFileSync(file,custom.replace("  update:\n","  update:\n"+"\n".repeat(10000)));assert.equal(guardCaller(root),true);
+  fs.writeFileSync(file,custom.replace("  update:\n","  update:\n    if: some_custom_condition\n"));const before=fs.readFileSync(file,"utf8");assert.equal(guardCaller(root),false);assert.equal(fs.readFileSync(file,"utf8"),before);
+  saveRecord(root,"fallback","owner/app","pending",[]);const unknown=updateStatus(root,"owner/app",setupGh({offline:true}).run);assert.equal(unknown.readiness,"unknown");
+  assert.throws(()=>enableFallback("owner/app",()=>JSON.stringify({can_approve_pull_request_reviews:false})),/inspect workflow permissions/);
+});
+
+test("recommended owner flow validates a real loopback handshake before enabling delivery, with a non-secret recovery record",async t=>{
+  const root=setupRoot(t), api=setupGh(), request=fixtureAPI(), cwd=process.cwd();process.chdir(root);t.after(()=>process.chdir(cwd));
+  let receive!: (session: Awaited<ReturnType<typeof startSetup>>) => void;
+  const ready=new Promise<Awaited<ReturnType<typeof startSetup>>>(resolve=>{receive=resolve;});
+  const writes: {args:string[];input?:string}[]=[];
+  const run: Gh=(args,input)=>{
+    if(args[1]==="set" && (args[0]==="secret"||args.includes("PLATFORM_UPDATER_APP_ID"))){writes.push({args,input});return api.run(args,input);}
+    return api.run(args,input);
+  };
+  const finished=main(["--repo","owner/app","--app","--yes","--no-open"],run,async options=>{
+    const session=await startSetup({...options,request:request.request,timeoutMs:15_000});receive(session);return session;
+  });
+  const session=await ready, url=new URL(session.url), state=url.searchParams.get("state")!;
+  try {
+    assert(!api.calls.some(c=>c.args[1]==="set"));
+    await fetch(url.origin+"/callback?state="+state+"&code="+"e".repeat(40));
+    const pending=fs.readFileSync(path.join(root,RECORD),"utf8");assert.match(pending,/fixture-updater/);assert(!pending.includes(pem));
+    assert(!api.calls.some(c=>c.args[1]==="set"));
+    await fetch(url.origin+"/installed?state="+state,{method:"POST",headers:{Origin:url.origin}});
+    assert.equal(await finished,0);
+    const record=JSON.parse(fs.readFileSync(path.join(root,RECORD),"utf8"));assert.equal(record.validation,"authenticated-installation");assert.equal(record.status,"configured");
+    assert.equal(api.calls.filter(c=>c.args[1]==="set").at(-1)?.args.at(-1),"app");assert.equal(writes[0].input,pem);
+    assert(!fs.readFileSync(path.join(root,RECORD),"utf8").includes(pem));
+  } finally {session.close();}
 });

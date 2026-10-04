@@ -39,5 +39,12 @@ auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
 ## Upgrading the platform
 
+Before diagnosing or changing update delivery, inspect the app-owned `.github/update-delivery.json`
+and run `bun run platform:setup-updates --check --json`. Intent and live readiness are separate;
+missing credentials do not select fallback. See `platform/docs/setup-updates.md`. Preserve
+credentials, caller customisations and auto-merge intent. Obtain explicit owner consent before
+switching identities or enabling repository-wide permissions. An existing update branch must
+be resumed from its saved report with `--relocate`; do not merge report-only drafts.
+
 An app built from this repository takes newer platform releases with `platform/UPGRADING.md`;
 read `platform/CHANGELOG.md` for the release you are taking.

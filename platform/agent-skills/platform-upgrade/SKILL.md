@@ -10,6 +10,12 @@ JSON/Markdown report. The report is the inventory of pending work; its immutable
 mutable state are validated by the tool. Never edit report JSON, invent a baseline, skip required
 checks or mark a migration complete without deployment-specific evidence.
 
+Before diagnosing or reconfiguring delivery, read `.github/update-delivery.json` and run
+`bun run platform:setup-updates --check --json`; see `platform/docs/setup-updates.md`.
+Separate intent from live capability. Never silently replace credentials, enable repository
+permissions or switch to fallback. Git author metadata is not the App identity. A green
+preparation job may only have produced a plan; inspect report outcome/stage/checks.
+
 ## Start from the right state
 
 - In a draft update PR, check out its existing `platform-update/vX.Y.Z` branch. Before editing

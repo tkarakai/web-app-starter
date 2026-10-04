@@ -1,62 +1,124 @@
 # Set up automatic platform updates
 
-From an adopted app, run:
+Adoption offers three choices. `bun run adopt --updates app --yes` explicitly authorises the
+App setup described below; `--updates fallback --yes` authorises the limited token setup.
+Interactive adoption explains the scope and asks before remote changes. Non-interactive adoption
+without an explicit choice records **deferred**; it never treats `--yes` alone as permission to
+configure update delivery. Local app development and manual upgrades work offline.
 
-```sh
-bun run platform:setup-updates
-```
+| Choice | What it does |
+| --- | --- |
+| App (recommended) | Repository-only App creates PRs, triggers their CI and can deliver workflow changes. GitHub asks you to authorise registration/installation. You still review and merge. |
+| Built-in token | Enables Actions PR creation without an App. Workflow changes need a manual upgrade; PR CI may require owner approval. |
+| Deferred | Pauses scheduled delivery until owner setup. Manual upgrades remain available. |
 
-You need the project's Node version, the GitHub CLI (`gh`) signed in, and administration access
-to your app repository. `--repo owner/repo` selects it explicitly; otherwise the helper uses the
-current repository. The [update workflow](update-delivery.md) must already be in your platform.
-
-The helper preserves an existing app-owned update caller and adds the template if it is missing.
-Review and commit that file. It opens a local setup page; `--no-open` prints its URL for you to
-open yourself. Keep the terminal running through these steps:
-
-1. **Create the App.** GitHub asks you to confirm its name. The registration presets a private
-   App owned by the app repository's account or organisation, with Contents, Pull requests,
-   Workflows and Issues write access. It has no webhook subscriptions.
-2. **Install it.** Select **Only select repositories**, then choose this app repository only.
-   The helper verifies that actual installation and its permissions, rather than trusting the
-   browser's installation ID. Extra repositories or broader permissions must be corrected.
-3. **Save configuration.** After verification, the helper stores the App ID in repository variable
-   `PLATFORM_UPDATER_APP_ID` and its private key in Actions secret `PLATFORM_UPDATER_PRIVATE_KEY`
-   using `gh`. The key travels through stdin to GitHub's encrypted secret transport and is never
-   written to a local file, browser page or log. The helper closes after success or timeout.
-4. **Run it.** After committing the caller, open **Actions → Update platform → Run workflow**.
-   A release within policy becomes a verified PR or review draft; a major becomes an issue.
-
-GitHub's registration handshake expires after one hour; the helper times out after 55 minutes.
-If registration was created but setup was interrupted, inspect your GitHub App settings before
-creating another App. You can finish manually using [the workflow's credential names and
-permissions](update-delivery.md#credentials). Do not paste the key into chat or commit it.
-If the key was stored but writing the ID failed, the helper prints the public App ID to set.
-
-## Existing configuration
+## Inspect first, including in existing apps
 
 ```sh
 bun run platform:setup-updates --check
+bun run platform:setup-updates --check --json
 ```
 
-This reads only the App ID, presence of the secret, and local caller. It cannot read the stored
-private key or certify that the key is valid; the workflow checks it when minting a token.
-Ordinary setup preserves existing complete credentials. Partial settings stop with instructions.
-`--replace` explicitly registers and installs a new App before replacing those two settings;
-it does not delete the old GitHub App. Use it only when you intend that credential change.
+These commands are read-only. They show recorded intent separately from observed variables,
+secret **presence**, PR-creation capability, local caller and readiness (`ready`, `blocked`,
+`unknown`, `deferred`). An inaccessible API means **unknown**, not success. Status works without
+administration access; some settings require an administrator to inspect. No stored key is read,
+and its presence cannot prove validity. Only authenticated installation/token validation proves
+that; even a previously validated App can later be revoked. Check its next workflow token-mint
+result. Git author `platform-updater[bot]` is metadata, not the API identity.
 
-## GitHub token fallback
+`.github/update-delivery.json` is an **app-owned, non-secret** record preserved on platform
+replacement. It holds mode, repository/source, caller/settings pointers, setup status, last check,
+public App identity when known, and pending owner actions. Schedule, policy and auto-merge remain
+in the caller rather than being duplicated in the record. `vars.PLATFORM_SOURCE_REPOSITORY` in
+that caller is the live source override; the record's source is the default source. Commit the
+record and caller, and keep the app's `AGENTS.md` pointing to them. A check never rewrites intent.
+
+## Owner setup and consent
 
 ```sh
-bun run platform:setup-updates --fallback
+bun run platform:setup-updates --app --yes       # recommended guided setup
+bun run platform:setup-updates --fallback --yes  # limited built-in token
+bun run platform:setup-updates --defer --yes     # pause delivery; preserve credentials
 ```
 
-Fallback installs or preserves the caller and reports the repository's Actions setting. Enable
-**Allow GitHub Actions to create and approve pull requests** in repository Actions settings if
-it is off; the helper does not silently change that permission. No App or secret is created.
+Without `--yes`, a selected mode only records pending intent and prepares a guarded caller
+locally. It prints the scope and resumable owner command. It does not change remote permissions
+or create an App. `--repo owner/repo` selects the app explicitly, including offline. Complete remote
+setup with the project's Node version and authenticated `gh` with the required repository access.
+Do not give the scheduled updater administration access to configure itself.
 
-Fallback PRs may need **Approve and run** for CI. Workflow-file changes become issues with a
-manual upgrade command because `GITHUB_TOKEN` cannot push them. If an App ID is already present,
-the helper refuses to switch modes implicitly: remove `PLATFORM_UPDATER_APP_ID` explicitly first.
-It leaves the private key secret intact. See [update delivery](update-delivery.md) for review,
-recovery and auto-merge rules.
+The helper adds a missing caller and preserves existing schedule, policy, auto-merge and inputs.
+For a standard older caller it adds only this delivery gate:
+
+```yaml
+if: ${{ vars.PLATFORM_UPDATE_DELIVERY == 'app' || vars.PLATFORM_UPDATE_DELIVERY == 'fallback' || (github.event_name == 'workflow_dispatch' && vars.PLATFORM_UPDATER_APP_ID != '') }}
+```
+
+Scheduled delivery is paused until owner setup sets `PLATFORM_UPDATE_DELIVERY=app` or `fallback`.
+A manual dispatch with an existing App ID can validate its credentials while scheduling stays
+paused. Existing custom job conditions are not overwritten: the helper records an owner action
+and refuses activation until you incorporate the gate with your existing condition. Commit the
+local guard to make it effective on GitHub. For an unguarded existing caller, disable **Update
+platform** in Actions while repairing it; recording deferred intent alone cannot disable an old
+remote caller. `--defer --yes` sets the remote mode to `deferred` without deleting credentials.
+
+Remote failures (offline, missing administration access, organisation/enterprise policy, partial
+credentials) record pending owner work and return exit 2. Adoption reports this without blocking
+unrelated local development. Incomplete consented setup attempts to pause the delivery-mode gate; credentials and caller
+customisations are preserved. If policy/access also prevents pausing, the summary explicitly
+asks the owner to disable the workflow while repairing it. Offline deferred intent does not
+assert that a remote schedule is paused. Check the record and settings before retrying.
+
+## Dedicated updater App
+
+`--app --yes` reuses the browser manifest helper. `--no-open` prints its **loopback** URL; open it
+on the same machine or use an SSH tunnel for headless handoff. Leave the terminal running.
+
+1. **Register.** GitHub asks you to confirm the App. The private manifest requests only Contents,
+   Pull requests, Workflows and Issues write, with no webhook subscriptions.
+2. **Install.** Choose **Only select repositories**, then this app repository only. Organisation
+   approval may be required. The helper verifies actual installation scope and exact permissions,
+   authenticates with the private key and mints/revokes a short-lived verification token.
+3. **Save.** ID goes to `PLATFORM_UPDATER_APP_ID`; key goes via `gh` stdin and GitHub's encrypted
+   transport to `PLATFORM_UPDATER_PRIVATE_KEY`. The key never goes to a file, page, log or chat.
+4. **Activate.** Successful guided validation saves the public identity and enables the caller's
+   mode variable. Commit the caller/record, then manually run **Actions → Update platform**.
+   Keep auto-merge off unless you deliberately change the caller.
+
+Existing complete credentials are preserved, with validity reported unknown; setup does not
+create another App or enable a paused schedule from presence alone. Run **Update platform**
+manually, confirm token minting succeeds, then deliberately activate that existing identity:
+
+```sh
+gh variable set PLATFORM_UPDATE_DELIVERY --repo owner/repo --body app
+bun run platform:setup-updates --app --yes
+```
+
+The second command records the existing live mode. Partial credentials require manual repair.
+A registered App's public ID/URL are saved before secret storage, so interrupted setup can be
+handed off safely. The session expires after 55 minutes. Inspect the saved App URL/settings,
+finish installation and save the key manually through the encrypted secret command if needed;
+never blindly register another App. If secret storage succeeded but ID storage failed, set the
+saved public ID with `gh variable set PLATFORM_UPDATER_APP_ID --repo owner/repo --body ID`.
+`--replace --yes` deliberately registers a replacement; it does not delete the previous App.
+
+## Built-in token fallback
+
+`--fallback --yes` explicitly consents to the repository-wide **Allow GitHub Actions to create
+and approve pull requests** capability. This is not exclusive to the updater. The updater
+**creates** PRs; it does not submit a review approval, change auto-merge intent, or deploy.
+The helper reads existing workflow permissions, enables only that capability using GitHub's API,
+preserves `default_workflow_permissions` (including restricted `read`), and reads back the result
+before enabling delivery. Higher-level policy or insufficient access leaves setup pending with
+`https://github.com/owner/repo/settings/actions` and an administrator action.
+
+An existing App ID prevents switching implicitly. Remove that variable explicitly before
+selecting fallback; setup preserves the private-key secret. Built-in-token PRs can create approval-required workflow runs on
+`opened`, `synchronize` and `reopened`. An owner with write access can select **Approve workflows
+to run** in the PR banner; inspect every required result before merging. Other token-triggered
+events (such as labels) do not start CI. Approval of a workflow run, approval of a PR review, and
+permission for Actions to create PRs are separate things. Enabling the PR switch does not remove
+CI approval requirements or grant workflow-file delivery. See [GitHub workflow triggers](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+
+See [update delivery](update-delivery.md) for truthful verification and existing-branch recovery.

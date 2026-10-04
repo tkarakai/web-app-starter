@@ -27,16 +27,17 @@ async function prepared(review = false, workflowChange = false) {
   write(artifact, "discovery/discovery.json", JSON.stringify({ schemaVersion: 1, source: "owner/platform", installed: "2.0.0", severity: "none", target: { version: "2.0.1" } }));
   return { f, report, file, artifact };
 }
-async function deliver(p: Awaited<ReturnType<typeof prepared>>, changes: Record<string, string> = {}, options: { duplicate?: boolean; protected?: boolean; advanced?: boolean } = {}) {
+async function deliver(p: Awaited<ReturnType<typeof prepared>>, changes: Record<string, string> = {}, options: { duplicate?: boolean; protected?: boolean; advanced?: boolean; prDenied?: boolean; prSwitch?: boolean; settingUnknown?: boolean; existingIssue?: boolean } = {}) {
   const clone = temp(); git(clone, "init", "-q"); git(clone, "fetch", "-q", p.f.app, "HEAD"); git(clone, "checkout", "-q", "--detach", "FETCH_HEAD");
   const env = { RUNNER_TEMP: p.artifact, CHECK_RESULT: "success", VERIFY_RESULT: "success", SOURCE: "owner/platform", TARGET: "2.0.1", MAJOR: "", BASE_HEAD: p.report.plan.app.head, BASE_BRANCH: "main", APP_TOKEN: "fixture-token", AUTO_MERGE: "true", ...changes };
   const issues: Input[] = [], prs: Input[] = [], pushes: string[][] = [], merges: Input[] = [], errors: string[] = [];
   const github = {
-    paginate: async () => [], graphql: async (_: string, data: Input) => { merges.push(data); },
+    request: async () => { if(options.settingUnknown)throw Object.assign(Error("no administration access"),{status:403});return {data:{can_approve_pull_request_reviews:options.prSwitch??true}}; },
+    paginate: async () => options.existingIssue ? [{number:13,title:"Platform v2.0.1 delivery needs attention"}] : [], graphql: async (_: string, data: Input) => { merges.push(data); },
     rest: {
-      pulls: { list: async () => ({ data: options.duplicate ? [{ html_url: "existing" }] : [] }), create: async (data: Input) => { prs.push(data); return { data: { number: 1, html_url: "created", node_id: "PR_fixture" } }; } },
+      pulls: { list: async () => ({ data: options.duplicate ? [{ html_url: "existing" }] : [] }), create: async (data: Input) => { prs.push(data); if(options.prDenied)throw Object.assign(Error("GitHub Actions is not permitted to create or approve pull requests"),{status:403}); return { data: { number: 1, html_url: "created", node_id: "PR_fixture" } }; } },
       repos: { getBranch: async () => ({ data: { commit: { sha: options.advanced ? "a".repeat(40) : env.BASE_HEAD }, protected: options.protected ?? false, protection: { required_status_checks: { contexts: ["CI"] } } } }) },
-      issues: { listForRepo: async () => [], getLabel: async () => ({}), createLabel: async () => ({}), addLabels: async () => ({}), create: async (data: Input) => { issues.push(data); } },
+      issues: { listForRepo: async () => [], update: async (data: Input) => {issues.push(data);}, getLabel: async () => ({}), createLabel: async () => ({}), addLabels: async () => ({}), create: async (data: Input) => { issues.push(data); } },
     },
   };
   await vm.runInNewContext("(async()=>{\n" + deliveryScript + "\n})()", {
@@ -65,7 +66,7 @@ test("delivery applies the exact artifact, opens a ready PR, and only enables au
 });
 test("review gates produce drafts with portable recovery; token fallback explains manual CI", async () => {
   const p = await prepared(true), result = await deliver(p, { APP_TOKEN: "" });
-  assert.equal(result.prs[0].draft, true); assert.match(String(result.prs[0].body), /--relocate/); assert.match(String(result.prs[0].body), /Approve and run/); assert.equal(result.merges.length, 0);
+  assert.equal(result.prs[0].draft, true); assert.match(String(result.prs[0].body), /--relocate/); assert.match(String(result.prs[0].body), /Approve workflows to run/); assert.equal(result.merges.length, 0);
   const change = await prepared(false, true), fallback = await deliver(change, { APP_TOKEN: "" });
   assert.equal(fallback.pushes.length, 0); assert.equal(fallback.prs.length, 0); assert.match(String(fallback.issues[0].title), /workflow-capable token/);
 });
@@ -84,4 +85,13 @@ test("major releases, verifier failures, tampered artifacts and a stale app base
 test("packaging refuses unexpected files or a failed verifier", async () => {
   const p = await prepared(); write(p.f.app, "unplanned.txt", "unexpected");
   assert.throws(() => packageUpgrade(p.f.app, temp(), p.file), /files changed/);
+});
+
+test("disabled PR permission fails before push; unknown least-privilege permission and PR failure preserve branch recovery",async()=>{
+  const p=await prepared(true);
+  const blocked=await deliver(p,{APP_TOKEN:""},{prSwitch:false});assert.equal(blocked.pushes.length,0);assert.match(String(blocked.issues[0].body),/PR creation is disabled/);
+  const failed=await deliver(p,{APP_TOKEN:""},{settingUnknown:true,prDenied:true});assert.equal(failed.pushes.length,1);assert.equal(failed.merges.length,0);
+  const body=String(failed.issues[0].body);assert.match(body,/failed to create draft PR/);assert.match(body,/default branch installed version remains v2.0.0/);assert.match(body,/--resume upgrade-report.json --relocate/);assert.match(body,/compare\/main/);assert.match(body,/github-actions\[bot\]/);assert.match(body,/needs-review/);assert(!body.includes("--to v2.0.1"));
+  const dedup=await deliver(p,{APP_TOKEN:""},{settingUnknown:true,prDenied:true,existingIssue:true});assert.equal(dedup.issues[0].issue_number,13);assert.match(String(dedup.issues[0].body),/Latest workflow evidence/);
+  const mismatch=await deliver(p,{APP_TOKEN:"",DELIVERY_MODE:"app"});assert.equal(mismatch.pushes.length,0);assert.match(String(mismatch.issues[0].body),/never silently switch/);
 });

@@ -85,6 +85,14 @@ interactive run may use `bun run --cwd apps/web test:e2e --workers=1`, but it st
 existing local server and does not enable CI retries. After a 429, wait for `Retry-After`
 or restart only the managed server for this checkout before retrying.
 
+The local backend retains admin settings across launcher restarts. Tests that depend on
+onboarding policy must select their mode explicitly rather than assume the default.
+Web's `qa/e2e/helpers/onboarding.ts` provides a disposable admin session separate from the
+guest browser, checks the local backend URL, and restores the prior effective policy in
+fixture teardown, including after assertion failures. Use its `onboarding.setMode(...)`
+fixture for mode-dependent tests. It requires one worker because policy is shared by all
+browser contexts; CI shards each have their own backend.
+
 ### Web E2E shards in CI
 
 CI runs web E2E in four parallel shards (`platform-ci-web.yml`). Playwright's own `--shard`

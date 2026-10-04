@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { demand } from "./platform-upgrade/metadata.ts";
 import { gh, repository, configured, type Gh } from "./setup-updates/github.ts";
 import { startSetup } from "./setup-updates/server.ts";
+import { MODE_VARIABLE, guardCaller, isDeliveryMode, readRecord, saveRecord, summary, updateStatus, type DeliveryMode } from "./setup-updates/state.ts";
 
 export function installCaller(root: string): boolean {
   const destination = path.join(root, ".github/workflows/update-platform.yml");
@@ -21,58 +22,122 @@ export function installCaller(root: string): boolean {
   try { fs.writeFileSync(descriptor, template); } finally { fs.closeSync(descriptor); }
   return true;
 }
-export type Options = { repo?: string; check: boolean; fallback: boolean; replace: boolean; open: boolean };
+export type Options = { repo?: string; check: boolean; json: boolean; fallback: boolean; mode?: DeliveryMode; replace: boolean; open: boolean; yes: boolean };
 export function argumentsFor(args: string[]): Options {
-  const options: Options = { check: false, fallback: false, replace: false, open: true };
+  const options: Options = { check: false, json: false, fallback: false, replace: false, open: true, yes: false };
   for (let i = 0; i < args.length; i++) {
     const value = args[i];
     if (value === "--repo") { demand(!options.repo && args[i + 1], "--repo needs one owner/repo"); options.repo = args[++i]; }
     else if (value === "--check") options.check = true;
-    else if (value === "--fallback") options.fallback = true;
+    else if (value === "--json") options.json = true;
+    else if (["--app", "--fallback", "--defer"].includes(value)) {
+      demand(!options.mode, "Choose one delivery mode"); options.mode = value === "--defer" ? "deferred" : value.slice(2) as DeliveryMode;
+      options.fallback = options.mode === "fallback";
+    }
+    else if (value === "--yes") options.yes = true;
     else if (value === "--replace") options.replace = true;
     else if (value === "--no-open") options.open = false;
     else throw Error("Unknown option: " + value);
   }
-  demand(!(options.check && (options.fallback || options.replace)), "--check is read-only and cannot configure updates");
+  demand(!(options.check && (options.mode || options.replace || options.yes)), "--check is read-only and cannot configure updates");
+  demand(!options.json || options.check, "--json requires --check");
   demand(!(options.fallback && options.replace), "Fallback does not replace App credentials; remove the App ID variable explicitly if switching modes");
+  demand(!options.replace || !options.mode || options.mode === "app", "--replace is for App setup only");
   if (options.repo) demand(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(options.repo), "Repository must be owner/repo");
   return options;
 }
-export const HELP = `Usage: bun run platform:setup-updates [--repo owner/repo] [--no-open]
-  --check       Read configuration status only; never reads the stored private key
-  --fallback    Install/preserve the caller and explain GITHUB_TOKEN setup
-  --replace     Explicitly configure a new App over existing updater settings
-Requires an adopted app, Node 24 and authenticated gh with repository administration access.
-Registration and installation open in your browser; select only this app repository.
+export const HELP = `Usage: bun run platform:setup-updates [--repo owner/repo]
+  --check [--json] Read-only live readiness and recorded intent; never reads a stored key
+  --app           Guided repository-only App setup (recommended); --no-open prints a local URL
+  --fallback      Built-in token: limited workflow delivery and manual PR CI
+  --defer         Pause delivery without deleting credentials; manual updates remain available
+  --yes           Explicit owner consent to the selected mode's remote changes
+  --replace       Explicitly register a new App; preserve existing credentials otherwise
+Without --yes, setup records pending intent and prepares a guarded caller locally.
+Fallback --yes enables the repository-wide create/approve PR capability, preserves default
+workflow permissions, and does not submit approvals or enable auto-merge.
 `;
-export async function main(argv: string[], run: Gh = gh): Promise<number> {
+/** Change only the PR capability after owner consent, preserving restricted token defaults. */
+export function enableFallback(repo: string, run: Gh): void {
+  const endpoint = "repos/" + repo + "/actions/permissions/workflow";
+  const before = JSON.parse(run(["api", endpoint]));
+  demand(["read", "write"].includes(before.default_workflow_permissions) && typeof before.can_approve_pull_request_reviews === "boolean", "Could not inspect workflow permissions");
+  if (!before.can_approve_pull_request_reviews) run(["api", endpoint, "--method", "PUT", "--input", "-"], JSON.stringify({ default_workflow_permissions: before.default_workflow_permissions, can_approve_pull_request_reviews: true }));
+  const after = JSON.parse(run(["api", endpoint]));
+  demand(after.can_approve_pull_request_reviews === true && after.default_workflow_permissions === before.default_workflow_permissions, "GitHub did not confirm PR creation with the existing token defaults; ask the repository/organisation administrator");
+}
+export async function main(argv: string[], run: Gh = gh, setup: typeof startSetup = startSetup): Promise<number> {
   if (argv.includes("--help")) { process.stdout.write(HELP); return 0; }
   const options = argumentsFor(argv), root = fs.realpathSync(process.cwd());
   demand(fs.existsSync(path.join(root, ".platform-base.json")), "Run setup in an adopted app repository");
-  const selected = options.repo ?? JSON.parse(run(["repo", "view", "--json", "nameWithOwner"])).nameWithOwner;
-  demand(typeof selected === "string" && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(selected), "Could not determine owner/repo");
-  const repo = repository(JSON.parse(run(["api", "repos/" + selected]))), existing = configured(repo.full_name, run);
-  if (options.check) { process.stdout.write(JSON.stringify({ repo: repo.full_name, appId: existing.id ?? null, privateKeyPresent: existing.key, callerPresent: fs.existsSync(path.join(root, ".github/workflows/update-platform.yml")), note: "Stored key validity is checked when the workflow mints its token." }, null, 2) + "\n"); return 0; }
-  const added = installCaller(root); process.stdout.write(added ? "Added .github/workflows/update-platform.yml; review and commit it.\n" : "Preserved your existing update caller.\n");
-  if (options.fallback) {
-    demand(!existing.id, "An App ID is already configured. Fallback leaves credentials intact; remove PLATFORM_UPDATER_APP_ID explicitly if switching to GITHUB_TOKEN.");
-    const settings = JSON.parse(run(["api", "repos/" + repo.full_name + "/actions/permissions/workflow"]));
-    process.stdout.write("GITHUB_TOKEN fallback: workflow-file changes become manual-upgrade issues; PR CI may need Approve and run.\n");
-    if (!settings.can_approve_pull_request_reviews) process.stdout.write("Enable Allow GitHub Actions to create and approve pull requests in https://github.com/" + repo.full_name + "/settings/actions before running updates.\n");
-    return 0;
+  const previous = readRecord(root);
+  let selected = options.repo ?? previous?.repository;
+  if (!selected) { try { selected = JSON.parse(run(["repo", "view", "--json", "nameWithOwner"])).nameWithOwner; } catch { /* Offline checks are unknown. */ } }
+  if (options.check) {
+    const status = updateStatus(root, selected, run);
+    process.stdout.write(options.json ? JSON.stringify(status, null, 2) + "\n" : summary(status)); return 0;
   }
-  if ((existing.id || existing.key) && !options.replace) {
-    demand(existing.id && existing.key, "Updater settings are incomplete. Correct them manually or pass --replace to configure a new App explicitly.");
-    process.stdout.write("Updater App settings already exist and were preserved. Run Actions → Update platform to verify them; use --replace only to configure a new App.\n"); return 0;
+  demand(typeof selected === "string" && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(selected), "Select your app with --repo owner/repo (works offline)");
+  demand(!previous || previous.repository.toLowerCase() === selected.toLowerCase(), "Saved update repository differs; inspect the record before changing identity");
+  const mode = options.mode ?? (options.replace ? "app" : previous?.mode ?? "app");
+  demand(isDeliveryMode(mode), "Invalid delivery mode");
+  const added = installCaller(root), guarded = guardCaller(root);
+  process.stdout.write(added ? "Added update caller; scheduled delivery waits for owner setup.\n" : "Preserved caller schedule, policy and auto-merge intent.\n");
+  const pending = mode === "deferred" ? [] : ["Resume owner setup: bun run platform:setup-updates --repo " + selected + " --" + mode + " --yes"];
+  if (!guarded) pending.push("Custom caller could not be safely guarded. Disable it in Actions while setup is pending, or add the delivery-mode guard documented in setup-updates.md.");
+  saveRecord(root, mode, selected, mode === "deferred" ? "deferred" : "pending", pending);
+  const print = () => process.stdout.write(summary(updateStatus(root, selected, run)));
+  if (!options.yes) {
+    process.stdout.write(HELP + "\nNo remote settings changed. Existing live delivery is preserved; commit the local guard to pause an unconfigured caller.\n"); print(); return 0;
   }
-  const session = await startSetup({ repo, run });
-  process.stdout.write("Open updater setup: " + session.url + "\nLeave this terminal running through registration and installation.\n");
-  if (options.open) {
-    try { if (process.platform === "darwin") execFileSync("open", [session.url], { stdio: "ignore" }); else if (process.platform === "win32") execFileSync("cmd.exe", ["/c", "start", "", session.url], { stdio: "ignore" }); else execFileSync("xdg-open", [session.url], { stdio: "ignore" }); }
-    catch { process.stdout.write("Automatic browser opening was unavailable; use the URL above.\n"); }
+  try {
+    if (mode === "deferred") {
+      run(["variable", "set", MODE_VARIABLE, "--repo", selected, "--body", "deferred"]);
+      saveRecord(root, mode, selected, "deferred", pending); print(); return 0;
+    }
+    demand(guarded, "Review and guard your custom caller before enabling scheduled delivery");
+    const repo = repository(JSON.parse(run(["api", "repos/" + selected]))), existing = configured(repo.full_name, run);
+    if (mode === "fallback") {
+      demand(!existing.id, "An App ID is already configured. Remove PLATFORM_UPDATER_APP_ID explicitly before switching to GITHUB_TOKEN; the key is preserved.");
+      process.stdout.write("Owner consent: enable repository-wide GITHUB_TOKEN PR creation/approval capability. This updater creates PRs; it submits no approvals. Default token permissions and auto-merge intent are preserved.\n");
+      enableFallback(repo.full_name, run);
+      run(["variable", "set", MODE_VARIABLE, "--repo", selected, "--body", mode]);
+      saveRecord(root, mode, selected, "configured", []); print(); return 0;
+    }
+    if ((existing.id || existing.key) && !options.replace) {
+      demand(existing.id && existing.key, "Updater settings are incomplete. Repair the existing App manually or pass --replace to register a new App explicitly.");
+      // Preserve an already enabled App. Newly recorded credentials need authenticated workflow validation first.
+      const live = updateStatus(root, selected, run);
+      saveRecord(root, mode, selected, live.observed.mode === "app" ? "configured" : "pending", ["Stored App-key validity is unknown. Dispatch Update platform to validate it, then set PLATFORM_UPDATE_DELIVERY=app only after successful token minting."], { app: { id: existing.id } });
+      process.stdout.write("Existing App preserved; no replacement and no automatic activation from secret presence.\n"); print(); return 0;
+    }
+    demand(!previous?.app || options.replace, "A previously registered App is recorded. Finish its installation/credentials manually or use --replace deliberately; see the saved App URL.");
+    process.stdout.write("Owner consent: register/install a private updater App on " + selected + " only, with Contents, Pull requests, Workflows and Issues write. GitHub asks you to authorise registration/installation. You still review and merge updates.\n");
+    const session = await setup({ repo, run, onRegistered: app => {
+      saveRecord(root, mode, selected!, "pending", ["App registered. Finish installation in the open setup session. If interrupted, inspect the existing App and finish credentials manually; do not register a duplicate."], { app: { id: String(app.id), url: "https://github.com/apps/" + app.slug } });
+    } });
+    process.stdout.write("Open updater setup: " + session.url + "\nLeave this terminal running through registration and installation.\n");
+    if (options.open) {
+      try { if (process.platform === "darwin") execFileSync("open", [session.url], { stdio: "ignore" }); else if (process.platform === "win32") execFileSync("cmd.exe", ["/c", "start", "", session.url], { stdio: "ignore" }); else execFileSync("xdg-open", [session.url], { stdio: "ignore" }); }
+      catch { process.stdout.write("Automatic browser opening unavailable; use the URL above on this host (or an SSH tunnel).\n"); }
+    }
+    const cancel = () => session.close(); process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
+    try {
+      const result = await session.done;
+      saveRecord(root, mode, selected, "pending", ["Credentials saved; finish activation with owner setup if interrupted."], { app: { id: String(result.id), url: "https://github.com/apps/" + result.slug }, validation: "authenticated-installation" });
+      run(["variable", "set", MODE_VARIABLE, "--repo", selected, "--body", mode]);
+      saveRecord(root, mode, selected, "configured", [], { app: { id: String(result.id), url: "https://github.com/apps/" + result.slug }, validation: "authenticated-installation" });
+      print(); return 0;
+    } finally { process.off("SIGINT", cancel); process.off("SIGTERM", cancel); }
+  } catch {
+    const action = "Setup incomplete. Check gh auth status, repository/organisation policy and " + "https://github.com/" + selected + "/settings/actions. Repair partial App credentials rather than registering duplicates; see platform/docs/setup-updates.md. Resume the selected setup command with --yes when authorised.";
+    let pause = "Existing live delivery could not be confirmed paused. Disable Update platform in Actions if it is still active while repairing setup.";
+    if (guarded) {
+      try { run(["variable", "set", MODE_VARIABLE, "--repo", selected, "--body", "deferred"]); pause = "Delivery-mode gate paused scheduling; commit the guarded caller if it is new."; }
+      catch { /* Do not claim a remote pause when policy/access prevents it. */ }
+    }
+    saveRecord(root, mode, selected, "pending", [...pending, action, pause]);
+    process.stderr.write(action + "\n"); print(); return 2;
   }
-  const cancel = () => session.close(); process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
-  try { const result = await session.done; process.stdout.write("Configured App " + result.id + " (https://github.com/apps/" + result.slug + ") for " + repo.full_name + ".\nRun Actions → Update platform after committing the caller.\n"); return 0; }
-  finally { process.off("SIGINT", cancel); process.off("SIGTERM", cancel); }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) main(process.argv.slice(2)).then(code => { process.exitCode = code; }).catch(error => { process.stderr.write("setup-updates: " + (error instanceof Error ? error.message : "Setup failed") + "\n"); process.exitCode = 1; });
