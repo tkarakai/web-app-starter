@@ -715,7 +715,7 @@ if [ "$NEED_CONVEX" = true ]; then
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi
 
-    DASHBOARD_URL=$(get_dashboard_url)
+    DASHBOARD_URL=$(get_dashboard_url) || exit 1
 
     echo -e "${GREEN}✔ Convex ready (PID: $CONVEX_PID)${NC}"
     echo -e "  ${BLUE}Deployment:${NC} $DEPLOYMENT_NAME"

@@ -17,7 +17,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export type ProcessRecord = { pid: number; started: string };
-export type Records = Record<string, ProcessRecord>;
+export type ServiceRecord = ProcessRecord & { owned?: ProcessRecord[] };
+export type Records = Record<string, ServiceRecord>;
 
 const RECORDS = ".dev-processes.json";
 
@@ -91,6 +92,15 @@ function matches(root: string, record: Partial<ProcessRecord>): boolean {
     && identity(pid) === started && inside(root, cwd(pid));
 }
 
+function identities(record: ServiceRecord): ProcessRecord[] {
+  return [record, ...(record.owned ?? [])];
+}
+
+function retained(records: ProcessRecord[]): ServiceRecord {
+  const [first, ...owned] = [...new Map(records.map(record => [record.pid, record])).values()];
+  return { pid: first.pid, started: first.started, ...(owned.length ? { owned } : {}) };
+}
+
 export function readRecords(root: string): Records {
   const file = path.join(root, RECORDS);
   let content: string;
@@ -128,15 +138,29 @@ export function track(root: string, name: string, pid: number): void {
       try {
         const records = readRecords(root);
         const previous = records[name];
-        if (previous && previous.pid !== pid && matches(root, previous)) {
+        if (previous && previous.pid !== pid && identities(previous).some(owner => matches(root, owner))) {
           throw new Error(`Cannot replace live ownership for ${name}; stop the existing service first.`);
         }
-        records[name] = record;
+        records[name] = { ...record, ...(previous?.owned ? { owned: previous.owned } : {}) };
         writeRecords(root, records);
       } catch (error) {
         // Registration failed: stop the newly launched, identity-checked tree
         // without relying on a record that could not be saved.
-        terminateRecords(root, tree(root, record, ancestors()).reverse());
+        const owned = tree(root, record, ancestors()).reverse();
+        try {
+          terminateRecords(root, owned);
+        } finally {
+          const surviving = owned.filter(owner => matches(root, owner));
+          if (surviving.length) {
+            const records = readRecords(root);
+            const previous = records[name];
+            records[name] = retained([
+              ...(previous ? identities(previous).filter(owner => matches(root, owner)) : []),
+              ...surviving,
+            ]);
+            writeRecords(root, records);
+          }
+        }
         throw error;
       }
       return;
@@ -169,22 +193,28 @@ function signalVerified(root: string, record: ProcessRecord, signal: "SIGTERM" |
 
 export function stop(root: string, name?: string, expectedPid?: number): void {
   const records = readRecords(root);
-  const selected = Object.entries(records).filter(([key, record]) => (name === undefined || key === name) && (expectedPid === undefined || record.pid === expectedPid));
+  const selected = Object.entries(records).filter(([key, record]) => (name === undefined || key === name) && (expectedPid === undefined || identities(record).some(owner => owner.pid === expectedPid)));
   if (expectedPid !== undefined && selected.length === 0) return;
   const protectedPids = ancestors();
   const targets = new Map<number, ProcessRecord>();
+  const services = new Map<string, ProcessRecord[]>();
   for (const [service, record] of selected) {
-    const owned = tree(root, record, protectedPids);
+    const owned = identities(record).flatMap(owner => tree(root, owner, protectedPids));
+    services.set(service, owned);
     if (!owned.length) console.log(`Skipping stopped or unverified ${service} (PID ${record.pid}).`);
     for (const owner of owned) targets.set(owner.pid, owner);
+    if (owned.length) records[service] = retained(owned);
   }
   // Snapshot descendants before signalling their parents; recheck identity
   // and checkout directory before every signal, including forced termination.
   const ordered = [...targets.values()].reverse();
+  writeRecords(root, records);
   terminateRecords(root, ordered);
   const stopped = new Set<string>();
-  for (const [service, record] of selected) {
-    if (!matches(root, record)) { delete records[service]; stopped.add(service); }
+  for (const [service, owned] of services) {
+    const surviving = owned.filter(owner => matches(root, owner));
+    if (surviving.length) records[service] = retained(surviving);
+    else { delete records[service]; stopped.add(service); }
   }
   writeRecords(root, records);
 
@@ -199,6 +229,8 @@ function terminateRecords(root: string, ordered: ProcessRecord[]): void {
   const deadline = Date.now() + 3000;
   while (Date.now() < deadline && ordered.some(record => matches(root, record))) sleep(50);
   for (const record of ordered) signalVerified(root, record, "SIGKILL");
+  const killDeadline = Date.now() + 3000;
+  while (Date.now() < killDeadline && ordered.some(record => matches(root, record))) sleep(50);
 }
 
 function cleanLegacyRecords(root: string, stopped: Set<string>, name?: string, retained = new Set<string>()): void {
@@ -263,16 +295,20 @@ export function main(argv: string[]): number {
   if (command === "running") {
     const [name, pid] = [rest[0], integer(rest[1])];
     const records = readRecords(root);
-    const candidates: Partial<ProcessRecord>[] = name === "*" ? Object.values(records) : [records[name ?? ""] ?? {}];
+    const candidates = (name === "*" ? Object.values(records) : records[name ?? ""] ? [records[name ?? ""]] : []).flatMap(identities);
     return candidates.some((record) => record.pid === pid && matches(root, record)) ? 0 : 1;
   }
   if (command === "records") {
-    for (const [service, record] of Object.entries(readRecords(root))) console.log(`${service}:${record.pid}`);
+    for (const [service, record] of Object.entries(readRecords(root))) {
+      const live = identities(record).find(owner => matches(root, owner));
+      console.log(`${service}:${(live ?? record).pid}`);
+    }
     return 0;
   }
   if (command === "list") {
     for (const [service, record] of Object.entries(readRecords(root))) {
-      if (matches(root, record)) console.log(`${service}: ${record.pid}`);
+      const live = identities(record).find(owner => matches(root, owner));
+      if (live) console.log(`${service}: ${live.pid}`);
     }
     return 0;
   }

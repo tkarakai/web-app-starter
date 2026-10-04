@@ -178,7 +178,7 @@ if [ -n "$CONVEX_PID" ]; then
         if [ -n "$SITE_PORT" ]; then
             add_row "" "Site API" "up" "$GREEN" "http://127.0.0.1:$SITE_PORT" "$BLUE" ""
         fi
-        DASHBOARD_URL=$(get_dashboard_url)
+        DASHBOARD_URL=$(get_dashboard_url) || exit 1
         if [ -n "$DASHBOARD_URL" ]; then
             add_row "" "Convex UI" "" "$DIM" "$DASHBOARD_URL" "$BLUE" ""
         fi
