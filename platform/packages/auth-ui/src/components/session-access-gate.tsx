@@ -32,7 +32,9 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   const [now, setNow] = React.useState(0);
   const [panel, setPanel] = React.useState<"totp" | "recovery" | "passkey" | null>(null);
   const [password, setPassword] = React.useState("");
+  const passwordId = React.useId();
   const [code, setCode] = React.useState("");
+  const codeId = React.useId();
   const [backup, setBackup] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(false);
@@ -84,8 +86,12 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
     <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>
   </CardContent></Card>;
   const display = (content: React.ReactNode, granted = false) => <>
-    <div hidden={!granted}>{(admitted || granted) ? children : null}</div>
-    <div hidden={!panelAllowed}>{panelContent}</div>
+    <React.Activity mode={granted ? "visible" : "hidden"}>
+      <div>{(admitted || granted) ? children : null}</div>
+    </React.Activity>
+    <React.Activity mode={panelAllowed ? "visible" : "hidden"}>
+      <div>{panelContent}</div>
+    </React.Activity>
     {content}
   </>;
   if (status == null || now === 0 || currentStatus == null) return display(<p role="status">{tc("loading")}</p>);
@@ -105,12 +111,12 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
       : live && status.reason === "passkey_enrollment" && recent ? <Button onClick={() => setPanel("passkey")}>{t("addPasskey")}</Button>
       : live ? <>
         {needsPassword ? <form className="space-y-3" onSubmit={event => { event.preventDefault(); void verify("password"); }}>
-          <Label htmlFor="session-password">{tp("currentPassword")}</Label>
-          <PasswordInput id="session-password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} disabled={busy} />
+          <Label htmlFor={passwordId}>{tp("currentPassword")}</Label>
+          <PasswordInput id={passwordId} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} disabled={busy} />
           <Button disabled={busy || !password}>{t("verify")}</Button>
         </form> : status.hasTotp && status.reason !== "passkey_verification" ? <form className="space-y-3" onSubmit={event => { event.preventDefault(); void verify(backup ? "backup" : "totp"); }}>
-          <Label htmlFor="session-code">{backup ? t2("backupCodes") : t2("enterCode")}</Label>
-          {backup ? <Input id="session-code" value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
+          <Label htmlFor={codeId}>{backup ? t2("backupCodes") : t2("enterCode")}</Label>
+          {backup ? <Input id={codeId} value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
             : <OtpInput aria-label={t2("enterCode")} value={code} onChange={setCode} disabled={busy} />}
           <Button disabled={busy || !code}>{t("verify")}</Button>
           <Button type="button" variant="ghost" onClick={() => { setBackup(!backup); setCode(""); }}>{backup ? t2("enterCode") : t2("backupCodes")}</Button>

@@ -22,6 +22,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Gates preserve admitted setup and unsaved backup codes in memory through fresh verification;
   password-consuming routes share an account attempt budget, and passkey responses omit
   server-only session proof.
+  Suspended gate content also hides its portals and releases modal interaction locks while
+  retaining forms and setup state for fresh verification.
   Recovery completion requires the password-authorized replacement authenticator, and email
   OTP enrollment rotation preserves the original administrator deadline without granting strong proof.
 

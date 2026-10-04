@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, isInaccessible, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import english from "@web-app-starter/i18n/messages/en.json";
@@ -41,7 +41,7 @@ it.each([false, true])("continues with the same backup codes through nested time
   expect(codes).toHaveValue("same-first-code\nsame-second-code");
   await act(async () => vi.advanceTimersByTime(300001));
   expect(codes).not.toBeVisible();
-  const password = screen.getAllByLabelText(english.accountSecurity.changePassword.currentPassword).find(field => !field.closest("[hidden]"))!;
+  const password = screen.getAllByLabelText(english.accountSecurity.changePassword.currentPassword).find(field => !isInaccessible(field))!;
   fireEvent.change(password, { target: { value: "secret" } });
   await act(async () => fireEvent.submit(password.closest("form")!));
   mocks.status = undefined; result.rerender(view());

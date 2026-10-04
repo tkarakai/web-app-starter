@@ -409,6 +409,9 @@ its progress and backup-code acknowledgement while the recipient verifies their 
 Web and admin gates retain previously admitted setup state and unsaved backup codes in memory
 through recent-proof expiry and token rotation, hiding protected content until access is restored.
 Limited sessions do not mount ordinary protected consumers before their first admission.
+Denied retained content is suspended with React Activity, including its portals and active
+effects, so modal focus, pointer and scroll locks do not obstruct fresh verification. Authorized
+content resumes with its in-memory state; no setup secrets are persisted in browser storage.
 
 For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
 `packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
