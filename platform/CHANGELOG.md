@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- Platform updates can run on your own computers using separate prepared-image installations for verification and tools-only publication, authenticated to the exact repository, source, run, attempt, event and job; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
+
 ### Fixed
 
 - Reference web onboarding E2E tests now set and restore their required policy instead

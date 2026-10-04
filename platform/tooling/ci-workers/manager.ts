@@ -103,7 +103,7 @@ export async function serve(): Promise<void> {
     for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => { stop = true; });
     await lock('mutation', async () => { await reconcile(c); });
     let credential = await token();
-    const repo = await api<{ id: number; private: boolean }>(`/repos/${c.repo}`, credential);
+    const repo = await api<{ id: number; private: boolean; default_branch: string }>(`/repos/${c.repo}`, credential);
     assert(repo.private || c.publicBranch, 'Public repositories require an explicit diagnostic branch; normal local routing is private-repository only');
     // Reconcile only registrations created by this installation, never somebody else's runners.
     const registrations = await api<{ runners: { id: number; name: string }[] }>(`/repos/${c.repo}/actions/runners?per_page=100`, credential);
@@ -143,6 +143,7 @@ export async function serve(): Promise<void> {
               if (stop || c.paused || active.size >= c.concurrency) break;
               const request = sourceRequest(c, run, job, repo.id);
               if (!request) continue;
+              if (c.updateRole && !c.publicBranch && run.head_branch !== repo.default_branch) continue;
               if (run.event === 'pull_request' && request.sha !== run.head_sha) {
                 const commit = await api<{ parents: { sha: string }[] }>(`/repos/${c.repo}/git/commits/${request.sha}`, credential);
                 const pr = run.pull_requests[0];
@@ -155,13 +156,13 @@ export async function serve(): Promise<void> {
               const current = await api<Job>(`/repos/${c.repo}/actions/jobs/${job.id}`, credential);
               c = await config();
               if (stop || c.paused || current.status !== 'queued') continue;
-              const expected = assignment(c, run, request.sha, repo.id);
+              const expected = assignment(c, run, request.sha, repo.id, request.job);
               const name = `${c.pool}-${job.id}-${Date.now()}`;
               const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
-                name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`], work_folder: '_work',
+                name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`, ...(request.job ? [`starter-update-${request.job}`, `starter-attempt-${run.run_attempt}`] : [])], work_folder: '_work',
               });
               const runningConfig = c, runningToken = credential;
-              const task = launch(c, environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
+              const task = launch(c, c.updateRole === 'deliver' ? environment.tools : environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
                 .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
                 .finally(async () => { await api(`/repos/${runningConfig.repo}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined); active.delete(job.id); activeRuns.delete(job.id); });
               active.set(job.id, task); activeRuns.set(job.id, run.id);
