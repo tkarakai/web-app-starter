@@ -38,12 +38,14 @@ export function migrate(root: string, check = false): string[] {
   const relative = "apps/web/qa/e2e/helpers/fixtures.ts", file = path.join(root, relative);
   if (!fs.existsSync(file)) return [];
   if (!fs.realpathSync(file).startsWith(fs.realpathSync(root) + path.sep)) throw Error("Fixture client escapes the app root");
-  const stat = fs.lstatSync(file);
-  if (!stat.isFile() || stat.isSymbolicLink()) throw Error("Fixture client must be a regular file");
-  const source = fs.readFileSync(file, "utf8"), content = transform(source);
+  const fd = fs.openSync(file, (check ? fs.constants.O_RDONLY : fs.constants.O_RDWR) | fs.constants.O_NOFOLLOW);
+  try {
+  if (!fs.fstatSync(fd).isFile()) throw Error("Fixture client must be a regular file");
+  const source = fs.readFileSync(fd, "utf8"), content = transform(source);
   if (content === source) return [];
-  if (!check) fs.writeFileSync(file, content, { mode: stat.mode });
+  if (!check) { fs.writeSync(fd, content, 0, "utf8"); fs.ftruncateSync(fd, Buffer.byteLength(content)); }
   return [relative];
+  } finally { fs.closeSync(fd); }
 }
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   try {

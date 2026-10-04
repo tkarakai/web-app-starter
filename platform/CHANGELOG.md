@@ -54,7 +54,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Before planning v4, follow [Adopting v4](docs/upgrading-v4.md). Run
   `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-local-fixture-clients.ts`
-  for app-owned local fixture clients (also run by the updater); `--check` and local auth E2E
+  for app-owned local fixture clients and
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-platform-api.ts` for generated
+  platform API bindings (both also run by the updater); `--check` and local auth E2E
   must pass. Custom auth forms and retained sample file code need the explicit interface
   and validation steps in that guide. No hosted data or configuration is changed automatically.
 

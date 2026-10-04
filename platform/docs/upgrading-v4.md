@@ -18,6 +18,17 @@ zero and local auth E2E creates a disposable account. Remove `DEV_SEED_ENABLED`,
 `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from every hosted Convex deployment; the hosted
 deploy preflight refuses these variables. This does not disable local fixtures.
 
+## Generated API bindings
+
+The updater runs `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-platform-api.ts`
+to extend Convex’s generated declaration with the three new internal platform modules. It
+preserves app-owned bindings and fails on an unknown declaration format. This makes platform
+source verification possible before deploying a backend. Both codemods support read-only
+`--check`. If you add app-owned backend modules while porting the file feature, run Convex
+codegen against a disposable local checkout containing the target platform and your app source
+before planning; retain its generated declarations. Never hand-edit generated API types or
+change the installed platform baseline to bypass verification.
+
 ## Custom authentication clients
 
 Applications using the platform auth UI receive its changes automatically. For custom admin
