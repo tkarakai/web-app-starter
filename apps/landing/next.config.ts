@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_PLATFORM_VERSION: getPlatformVersion(monorepoRoot),
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
-  transpilePackages: ["@web-app-starter/app-config", "@web-app-starter/design-system", "@web-app-starter/design-patterns", "@web-app-starter/i18n", "@repo/messages"],
+  transpilePackages: ["@repo/onboarding", "@web-app-starter/app-config", "@web-app-starter/design-system", "@web-app-starter/design-patterns", "@web-app-starter/i18n", "@repo/messages"],
   images: {
     unoptimized: true,
   },

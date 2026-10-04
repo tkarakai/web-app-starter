@@ -54,7 +54,9 @@
       "version": "0.1.0",
       "dependencies": {
         "@repo/messages": "workspace:*",
+        "@repo/onboarding": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
+        "@web-app-starter/auth-ui": "workspace:*",
         "@web-app-starter/design-patterns": "workspace:*",
         "@web-app-starter/design-system": "workspace:*",
         "@web-app-starter/i18n": "workspace:*",
@@ -91,6 +93,7 @@
         "@convex-dev/better-auth": "0.12.5",
         "@repo/backend": "workspace:*",
         "@repo/messages": "workspace:*",
+        "@repo/onboarding": "workspace:*",
         "@types/qrcode": "^1.5.6",
         "@web-app-starter/app-config": "workspace:*",
         "@web-app-starter/auth": "workspace:*",
@@ -164,6 +167,21 @@
       "version": "0.0.0",
       "devDependencies": {
         "typescript": "6.0.3",
+      },
+    },
+    "packages/onboarding": {
+      "name": "@repo/onboarding",
+      "version": "0.0.0",
+      "dependencies": {
+        "@web-app-starter/auth-ui": "workspace:*",
+        "@web-app-starter/design-system": "workspace:*",
+        "lucide-react": "^1.47.0",
+        "next-intl": "^4.14.8",
+        "react": "^19.3.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.3.0",
+        "typescript": "^6.0.3",
       },
     },
     "platform/apps/admin": {
@@ -895,6 +913,8 @@
     "@repo/landing": ["@repo/landing@workspace:apps/landing"],
 
     "@repo/messages": ["@repo/messages@workspace:packages/messages"],
+
+    "@repo/onboarding": ["@repo/onboarding@workspace:packages/onboarding"],
 
     "@repo/storybook": ["@repo/storybook@workspace:platform/apps/storybook"],
 

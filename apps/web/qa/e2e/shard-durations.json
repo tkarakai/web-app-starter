@@ -16,5 +16,6 @@
   "security-headers.spec.ts": 7,
   "session-lifecycle.spec.ts": 16,
   "session-management.spec.ts": 102,
-  "xss-protection.spec.ts": 45
+  "xss-protection.spec.ts": 45,
+  "waitlist-signup.spec.ts": 20
 }

@@ -174,31 +174,27 @@ The landing needs no application server in production: both features execute in 
 Set its Convex HTTP URL at build time and allow its origin through Convex `LANDING_URL`.
 `bun run dev:landing` starts the local backend and wires both URLs.
 
-The reference web route's `LandingSignUpView` independently reads `CONVEX_SITE_URL/api/waitlist/status`
-with `cache: "no-store"` on every request. `publicSignup` renders account creation;
-`publicWaitlist` explains the restriction and links to the current locale on landing;
-`inviteOnly`, unknown responses and backend failures show the invitation-only notice and
-sign-in link. Backend failures never open registration. Use
-`export { LandingSignUpView as default } from "@web-app-starter/auth-ui/views"` in web's sign-up page.
+The reference web route uses `createSignUpView({ waitlistForm: AppWaitlistForm })` and
+reads `CONVEX_SITE_URL/api/waitlist/status` uncached on every request. `publicSignup`
+renders account creation; `publicWaitlist` renders the same app-owned form as landing,
+without a cross-app navigation. Invite-only, unknown responses and backend failures stay closed.
+The compatible `SignUpView` and `LandingSignUpView` entry points accept email inline too.
 
-**App-owned forms:** customize `apps/landing/src/components/waitlist-form.tsx` and its
-`landing.waitlist` messages for your questions. Posts go directly from the browser to Convex,
-preserving per-visitor IP rate limits. Metadata and email validation remain enforced on the
-backend. `features.waitlist` controls visibility.
+**App-owned forms:** customize `packages/onboarding/waitlist-form.tsx` once for both
+landing and web. The reference questions are optional: email alone is sufficient.
+The shared platform `WaitlistForm` owns submission, feedback and legal links; the app
+owns questions and object-valued metadata. Posts go directly from the browser to Convex,
+preserving per-visitor IP rate limits and backend validation. Web passes its request-time
+Convex URL; landing's wrapper supplies build-time configuration through `PublicConfigProvider`.
+The landing provider's unused `convexUrl` is empty because the form only needs the HTTP origin.
 
-Existing `SignUpView` consumers retain the email-only web form; this API stays compatible.
-Apps that deliberately host a waitlist in web can also use
-`createSignUpView({ waitlistForm: AppWaitlistForm })` and compose the shared
-`WaitlistForm` from `@web-app-starter/auth-ui` with `children`, optional object-valued
-`meta` and `disabled`. The retained web question wrapper is an example of this optional
-composition; the reference route uses the landing handoff.
-
-**Adoption:** platform upgrades preserve buyer-owned landing pages and forms. To restore this
-flow in an existing app, mount its announcement host, wire its browser mode selection and
-waitlist form, and switch web's route to `LandingSignUpView`. Retain custom questions, translations
-and branding. Add `NEXT_PUBLIC_CONVEX_SITE_URL` to landing's env template, hosting configuration
-and Turbo build `env`; rebuild the static site. Configure Convex `LANDING_URL` for its origin.
-The setup generator supplies this variable for new deployments. No stored-answer migration is needed.
+**Adoption:** upgrades preserve buyer-owned forms. Put your form in a shared app package,
+import it from landing and compose web's route with `createSignUpView`. This composition
+already exists in v3.1.0, so app-owned adoption needs no platform patch. Keep custom branding,
+questions, locales and legal links. Add the workspace dependency and transpilation entry to
+both apps. Keep landing's announcement host and browser mode selection. Configure landing's
+`NEXT_PUBLIC_CONVEX_SITE_URL` at build time and allow its origin in Convex `LANDING_URL`.
+No stored-answer migration is needed.
 
 ### 7.1 Step 1 — Create Account (email + password)
 
