@@ -75,5 +75,6 @@ The reference app removed unused `eslint-config-next`; remove it in your app onl
 confirming your ESLint configuration does not import it. Compatible transitive security patches
 must still respect the twelve-hour release-age policy. Review and retire equivalent native
 Security workflow patches. After a successful PR run, require its **Security Complete** context
-alongside the existing app/shared gates (or enforce the same merge rule where the hosting plan
-has no branch protection). Finish with full local CI and the PR checks before merging.
+and the standalone **CodeQL** context alongside the existing app/shared gates (or enforce the
+same merge rule where the hosting plan has no branch protection). Security Complete verifies
+that applicable scans executed successfully; CodeQL separately enforces the alert policy. Finish with full local CI and the PR checks before merging.
