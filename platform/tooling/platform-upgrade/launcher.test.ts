@@ -45,6 +45,11 @@ test("stable launcher runs the pinned target tool; real dry-run, apply and resum
   const clonedReport = path.join(clone, "upgrade-report.json");
   const refused = invoke(["--resume", clonedReport], clone); assert.equal(refused.status, 1); assert.match(refused.stderr, /relocate/);
   const done = invoke(["--resume", clonedReport, "--relocate"], clone); assert.equal(done.status, 0, done.stdout + done.stderr); assert.equal(readReport(clonedReport).outcome, "verified");
+  // The terminal completion and delivered Markdown report are public handoff contracts.
+  for (const output of [done.stdout, fs.readFileSync(clonedReport.replace(/\.json$/, ".md"), "utf8")]) {
+    assert.match(output, /bun install --frozen-lockfile/);
+    assert.match(output, /each local checkout/);
+  }
   assert.equal(readReport(clonedReport).plan.digest, originalDigest);
   assert.equal(JSON.parse(fs.readFileSync(path.join(clone, ".platform-base.json"), "utf8")).version, "2.0.2");
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8")).version, "2.0.1");

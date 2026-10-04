@@ -32,6 +32,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
   supported worker setup. Follow [local workers](docs/ci-workers.md) and verify the
   diagnostic before enabling routing. GitHub-hosted CI needs no action.
 
+### Fixed
+
+- Development launchers validate selected workspaces and execute checkout-local Next.js and Convex
+  binaries before services start, rejecting missing or ancestor dependencies with a frozen-install
+  instruction. Status and retry use identity-backed process records even when the legacy PID file
+  is absent; failed registration cleans up the newly started process tree.
+- Upgrade reports, developer guidance and agent handoffs explicitly require a per-checkout
+  `bun install --frozen-lockfile` after pulling dependency or workspace changes, including when
+  another worktree or CI already verified the upgrade.
+
 ## [4.0.0] - 2026-10-04
 
 ### Added

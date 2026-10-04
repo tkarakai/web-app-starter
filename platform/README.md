@@ -110,7 +110,13 @@ This lists verified development services across this repository’s worktrees an
 
 ### Development process isolation
 
-The launcher requires Node.js 22.6 or newer (it runs `platform/tooling/dev-processes.ts` through `platform/tooling/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+The launcher requires Node.js 22.6 or newer (it runs `platform/tooling/dev-processes.ts` through `platform/tooling/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records service process start identities in ignored `.dev-processes.json`; `.dev-pids` is a legacy compatibility file. Status, retry and stop use the identity records even when `.dev-pids` is absent. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+
+Failed startup cleans up only services newly launched by that invocation. Cleanup records verified
+descendants before signalling and waits for termination; surviving processes retain their ownership
+records even if their launcher exits. If cleanup reports survivors, retry `bun run dev:stop` before
+restarting. Cleanup preserves local Convex database state. The process ownership regression coverage
+lives in `platform/tooling/tests/dev-processes.test.ts`.
 
 - `bun run dev:stop` stops verified services in this checkout.
 - `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.

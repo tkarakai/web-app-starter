@@ -33,7 +33,7 @@ Unlike Rails, Django, Prisma, or Flyway, **Convex has no built-in migration runn
 
 Breaking schema changes require **two PRs**. The core idea: first make the schema accept both old and new shapes ("widen"), then after all environments have been migrated, tighten the schema back ("narrow").
 
-**Migrations run automatically** on every deploy and every `bun run dev` startup. The deploy-convex CI/CD action and dev-start.sh both run `npx convex run migrations` after Convex is ready. You never need to run migration commands manually.
+**Migrations run automatically** on every deploy and every `bun run dev` startup. The deploy-convex CI/CD action and dev-start.sh invoke the Convex CLI's `run migrations` after Convex is ready. You never need to run migration commands manually.
 
 **Two rules:**
 

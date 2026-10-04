@@ -8,7 +8,9 @@ if [ "${CI:-}" = "true" ]; then
     export DATABASE_UDF_USER_TIMEOUT_SECONDS="${DATABASE_UDF_USER_TIMEOUT_SECONDS:-5}"
 fi
 export CONVEX_AGENT_MODE=anonymous
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+convex_bin=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-dev-deps.ts" bin "$PWD" convex)
 if [ -n "${CONVEX_LOCAL_BACKEND_VERSION:-}" ]; then
-    exec npx convex dev --local-backend-version "$CONVEX_LOCAL_BACKEND_VERSION"
+    exec node "$convex_bin" dev --local-backend-version "$CONVEX_LOCAL_BACKEND_VERSION"
 fi
-exec npx convex dev
+exec node "$convex_bin" dev

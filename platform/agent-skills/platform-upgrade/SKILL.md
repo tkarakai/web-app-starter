@@ -101,6 +101,10 @@ notes; skipped browser jobs are not passing browser evidence. Merge or deploy on
 authorization. Report the target, preserved app choices, verification results and anything
 still awaiting an operator; do not describe a draft as an installed upgrade.
 
+Include the [per-checkout dependency refresh](../../docs/development.md#after-pulling-dependency-or-workspace-changes)
+step and link in the completion/merge/pull handoff, even when the launcher can repair stale installs
+automatically.
+
 ## Example task
 
 “Finish the draft platform update PR. Keep our app name, teal branding, ports and cookie prefix;

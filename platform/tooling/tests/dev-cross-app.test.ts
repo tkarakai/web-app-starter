@@ -15,7 +15,7 @@ for (const mode of ["all", "web", "admin", "landing"]) {
     for (const dir of ["apps/web", "platform/apps/admin", "apps/landing", "packages/backend", "bin"]) {
       fs.mkdirSync(path.join(root, dir), { recursive: true });
     }
-    fs.writeFileSync(path.join(root, "bin/bunx"), '#!/bin/bash\nprintf "%s\\n" "$*" >> "$PROJECT_DIR/convex-calls"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(root, "bin/convex.cjs"), "require('fs').appendFileSync(process.env.PROJECT_DIR+'/convex-calls', 'convex '+process.argv.slice(2).join(' ')+'\\n');");
     const needConvex = true;
     const result = spawnSync("bash", ["-eu", "-c", `
       start_next_app() { LAST_APP_URL="http://localhost:$(( $2 + 10 ))"; }
@@ -23,7 +23,7 @@ for (const mode of ["all", "web", "admin", "landing"]) {
       ${startup}
     `], { encoding: "utf8", env: {
       ...process.env, PATH: path.join(root, "bin") + path.delimiter + process.env.PATH,
-      PROJECT_DIR: root, APP_CONFIG_DIR_LANDING: "apps/landing",
+      PROJECT_DIR: root, CONVEX_BIN: path.join(root, "bin/convex.cjs"), APP_CONFIG_DIR_LANDING: "apps/landing",
       APP_CONFIG_PORT_LANDING: "43004", APP_CONFIG_ORIGIN_LANDING: "http://localhost:43004",
       APP_CONFIG_PORT_WEB: "43000", APP_CONFIG_PORT_ADMIN: "43001",
       APP_CONFIG_DIR_WEB: "apps/web", APP_CONFIG_ORIGIN_WEB: "http://localhost:43000",
