@@ -41,8 +41,8 @@ before hashing; plus tags and dots are not stripped. Keys contain hashes, not em
 | Auth requests | 1,000/minute | 250 | Deployment |
 | Verified ingress IP requests | 100/minute | 50 | IP, only when configured as described below |
 | Password sign-in / email OTP verification | 3/10 seconds | 3 | Normalized recipient |
-| Signup / email OTP password reset | 5/minute | 5 | Normalized recipient and route budget |
-| Magic link, verification, OTP send, password-reset request | 3/minute | 3 | Normalized recipient and route budget |
+| Signup / email OTP password reset | 5/minute | 5 | Normalized recipient, separate named request budgets |
+| Magic link, verification, OTP send, password-reset request | 3/minute | 3 | Normalized recipient, separate named request budgets |
 | Auth email reservations | 3/minute | 3 | Normalized recipient across message types |
 | Auth email reservations | 60/minute | 20 | Deployment |
 | Auth email reservations | 1,000/24 hours | 1,000 | Deployment |
@@ -53,6 +53,13 @@ The 24-hour budget refills about one token every 86.4 seconds. Set provider-side
 billing alerts as well; invitation and other transactional mail have separate delivery paths.
 Recovery-code password reauthentication has its own shared per-account 5/minute, burst-5 budget.
 Better Auth's own OTP/TOTP challenge-attempt checks remain in place.
+
+Routes mapped to the same request budget share its capacity: password sign-in and email-OTP
+verification share `authSignIn`; password-reset link requests, email-OTP reset requests and
+the deprecated reset alias share `authPasswordResetRequest`. The authoritative route mapping
+is `AUTH_RECIPIENT_LIMITS` in `packages/backend/convex/platform/rateLimits.ts`. Recipient
+request keys are extracted from JSON and form-encoded email bodies; unreadable bodies still
+consume deployment and any configured trusted-IP request budgets.
 
 ### Deployment configuration and IP trust
 
@@ -98,6 +105,7 @@ OTP sends reserve capacity after request/session validation and send eligibility
 changing challenge state. Ineligible requests consume request budgets only. A later failure or
 concurrent account change can still prevent delivery after a reservation; reservations are not refunded.
 Competing sends atomically reuse an unexpired code with remaining verification attempts.
+Reuse retains its original expiry and attempt count.
 A resend replaces an exhausted or expired challenge; email OTP and two-factor OTP retain their
 separate attempt limits. A throttled resend preserves the last delivered code, including when
 the library attempts a delete-and-retry fallback after challenge creation fails. The platform
