@@ -3,8 +3,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// Shared by native CI, GitHub CI and the upgrade verifier. Online provider checks
-// (registry audit, published advisories, CodeQL) have their own explicit profile.
+// Shared by native CI, GitHub CI and the upgrade verifier. The online profile
+// covers registry audit and published advisories; CodeQL stays in GitHub Security.
 export const CHECKOUT_CHECKS = ["check:runtime-baseline", "check:agent-skills", "check:actions-pinned", "check:i18n"] as const;
 export const PLATFORM_CHECKS = ["typecheck:dev-scripts", "lint:dev-scripts", "test:dev-scripts", "test:ops", "test:auth-ui", "test:shared-packages"] as const;
 export const UPGRADE_CHECKS = [...CHECKOUT_CHECKS, ...PLATFORM_CHECKS, "lint", "typecheck", "test", "test:unit", "test:convex", "test:contracts", "build", "test:startup", "test:landing-artifacts", "test:e2e"] as const;

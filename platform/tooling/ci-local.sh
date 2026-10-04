@@ -17,16 +17,8 @@
 # Uses Turborepo to orchestrate across all workspace packages.
 # Runs per-app when possible so failures show exactly which app broke.
 #
-# Phases (per-app when possible for granular pass/fail):
-#   1. TypeScript check (all packages)
-#   2. ESLint (all packages)
-#   3. Bun unit tests (per app: web, admin, landing)
-#   4. Component tests + coverage (per app: web, admin, landing)
-#   5. Convex backend tests (backend)
-#   6. Starter package ownership and upgrade tests + real demo rehearsal
-#   7. Production build (per app: web, admin, landing, storybook)
-#   8. Bundle size check (per app: apps with .size-limit.json)
-#   9. E2E tests (per app: web, admin, landing, storybook) — skip with --skip-e2e
+# Check inventory and browser-skip behavior: platform/docs/ci.md.
+# Shared check profiles: platform/tooling/ci-checks.ts.
 #
 # NOT included (CI-only):
 #   - Security checks (CodeQL, dependency audit, secrets scan)
@@ -38,7 +30,7 @@
 # Artifacts are saved to .ci-local-artifacts/ for local inspection.
 #
 # Usage: bun run ci
-#        bun run ci:quick             # Skip E2E tests
+#        bun run ci:quick             # Skip E2E and export browser tests
 #        bun run ci:reset-coverage    # Reset coverage thresholds to 0, then run
 #
 # Flags can be combined: ./platform/tooling/ci-local.sh --skip-e2e --reset-coverage

@@ -24,23 +24,24 @@ Run the local checks before pushing; GitHub adds the online provider checks desc
 
 ```bash
 CI=true bun run ci           # Full CI check; supported single-worker web E2E
-bun run ci:quick             # Skip E2E tests for faster feedback
+bun run ci:quick             # Skip E2E and export browser tests
 ```
 
 The `bun run ci` command runs these checks in order (workspace checks use `turbo`;
 starter upgrade checks use the root scripts):
-1. **Shared checkout and platform inventory** (`platform/tooling/ci-checks.ts`): runtime, skills, pinned Actions, i18n, zone, dependency floors in the product, tooling typecheck/lint/tests, ops, auth UI and shared-package coverage. Native CI and GitHub execute the same inventory.
-2. **Public startup smoke** (`bun run test:startup`): a stale Bun workspace installation, real Next/Tailwind pages and CSS, and a compile-failure cleanup check.
-3. **Authorization contracts** (`bun run test:contracts`).
-4. **TypeScript check** (`bun run typecheck:dev-scripts`, `turbo typecheck`)
-5. **ESLint** (`bun run lint:dev-scripts`, `turbo lint`)
-6. **Development-script behavior and Bun unit tests** (`bun run test:dev-scripts`, `turbo test`)
+
+1. **Workspace TypeScript check** (`turbo typecheck`).
+2. **Workspace ESLint** (`turbo lint`).
+3. **Shared checkout and platform inventory** (`platform/tooling/ci-checks.ts`): runtime, skills, pinned Actions, i18n, zone, dependency floors in the product, tooling typecheck/lint/tests, ops, auth UI and shared-package coverage. Native CI and GitHub execute the same inventory.
+4. **Authorization contracts** (`bun run test:contracts`).
+5. **Public startup smoke** (`bun run test:startup`): a stale Bun workspace installation, real Next/Tailwind pages and CSS, and a compile-failure cleanup check. Only this isolated regression stubs the backend executable; normal E2E uses the real local backend.
+6. **Bun unit tests** (`turbo test`, per app).
 7. **Vitest component tests with coverage** (`turbo test:coverage`)
 8. **Coverage summary display** + artifact saving
 9. **Convex backend tests** (`turbo test:convex`)
 10. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
 11. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
-12. **Built landing browser smoke** (`bun run test:landing-artifacts`): builds configured and missing-configuration variants, serves `apps/landing/out`, loads real assets, checks hydration and submits the waitlist through a controlled HTTP response fixture. Native and GitHub CI execute both variants through the same command.
+12. **Built landing browser smoke** (`bun run test:landing-artifacts`): see [shared UI and production artifacts](testing.md#shared-ui-and-production-artifacts).
 13. **Bundle size check** (all apps with `.size-limit.json`)
 14. **Playwright E2E tests** (CI mode starts managed local services through each app's Playwright configuration and refuses to reuse an occupied local server; an explicit `E2E_BASE_URL` instead targets that disposable deployment)
 
@@ -62,12 +63,11 @@ unchanged.
 Use `bun run ci:quick` to skip browser tests (E2E and the export smoke) when you need faster feedback. The script will exit on the first failure with a clear error message.
 
 > **Note**: The native local CI script does not run Security checks (CodeQL, dependency audit,
-> secrets scan), Lighthouse audits or the GitHub CI gate. Runner location is a separate choice;
-> Security honors `PLATFORM_CI_RUNNER`, with native Linux amd64/arm64 secret scanning.
+> secrets scan), Lighthouse audits or the GitHub CI gate. Runner location is a separate choice.
 
 Run `./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts online` for the published advisory and Bun registry audit checks. Registry errors, missing tools/lockfiles and malformed audit output fail; high/critical findings fail, while lower severities warn. There is no audit fallback that reports success after an error. The **Security Complete** job requires every applicable scan to succeed; require this context in branch protection alongside the app/shared CI gates. Paid CodeQL/dependency review may skip only when unavailable (dependency review also skips outside PRs).
 
-All app CI and staging deployment selectors consume `.github/platform-impact.json`. Shared packages, including new `packages/*`, platform packages and CI/tooling changes select all app consumers and backend tests/deployment. App-only changes remain scoped; documentation-only changes do not select app work.
+All app CI and staging deployment selectors consume `.github/platform-impact.json`, the authoritative path policy. Shared packages, including new `packages/*`, platform packages and CI/tooling changes select all app consumers and backend tests/deployment. App-only changes remain scoped. Documentation outside those paths does not select app work; platform documentation still selects the shared platform checks.
 
 ## Running GitHub Actions Locally with `act`
 
@@ -123,7 +123,7 @@ branch rules require. Change triggers there, never in `platform-*.yml`.
 `CI <App> Complete` passes when the platform workflow succeeds, that is when every job in it
 succeeded or was skipped. Jobs are skipped when the PR touches no relevant files. Whether E2E
 runs on a pull request is set by `PLATFORM_CI_PR_E2E` ([E2E on pull requests](#e2e-on-pull-requests));
-with `require_e2e` (CI Verify Commit, the staging deploy) E2E always runs and must pass. The platform workflows have no summary job of their own: GitHub bills each job
+with `require_e2e` (CI Verify Commit, the staging deploy) E2E always runs and must pass. The app/shared platform CI workflows have no summary job of their own: GitHub bills each job
 for at least a minute, so a seconds-long check is kept to the one the branch rules need.
 
 - **CI artifacts are kept small.** Playwright reports, sharded blob reports and visual snapshots
@@ -131,9 +131,9 @@ for at least a minute, so a seconds-long check is kept to the one the branch rul
   reports and the upgrade-rehearsal evidence are uploaded on every run. The repository variable
   `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long all of them are kept.
 - **CI can run on your own runner.** The repository variable `PLATFORM_CI_RUNNER` names the
-  runner label every CI job (the platform CI workflows, the `CI <App> Complete` callers and CI
-  Verify Commit) runs on; unset, they use `ubuntu-latest`. The runner must be Ubuntu-like Linux
-  with passwordless `sudo`. Security and deployment workflows stay on GitHub-hosted runners. On a
+  runner label every CI job (the platform CI workflows, the `CI <App> Complete` callers, CI
+  Verify Commit and Security) runs on; unset, they use `ubuntu-latest`. The runner must be Ubuntu-like Linux
+  with passwordless `sudo`. Security scans use native Linux amd64/arm64 TruffleHog without Docker. Deployment workflows stay on GitHub-hosted runners. On a
   private repository this removes most Actions minutes: see
   [GitHub Actions on a private repository](private-repo-ci.md), including Mac setup.
 
@@ -142,9 +142,9 @@ ships through platform upgrades. An older app-owned `.github/scripts/record-ops.
 may remain after upgrading; the platform workflows no longer call it. Custom workflows
 that use the old helper should switch to the platform-owned path.
 
-- **The platform unit suite** (dev-script and ops tests, the starter upgrade rehearsal) runs in
-  CI Shared only when `platform/**`, `.github/**`, `apps/demo/**`, `package.json` or `bun.lock`
-  changed. Lint, typecheck, the zone check and contracts run on every PR.
+- **The platform checks and starter upgrade rehearsal** use the shared path policy described
+  above; the rehearsal also requires the demo to be present. Workspace lint, typecheck,
+  checkout checks and contracts run on every PR.
 - **Actions stay pinned to full commit SHAs** (`bun run check:actions-pinned`, in CI Shared).
   Some accounts refuse unpinned actions.
 - **The demo app is optional.** CI Shared skips the demo rehearsal when `apps/demo` is absent.

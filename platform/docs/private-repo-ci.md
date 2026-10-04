@@ -134,7 +134,7 @@ Old artifacts can be deleted under **Actions → (a run) → Artifacts**, or in 
 
 GitHub doesn't count minutes on **self-hosted runners**. Any machine you already own can run the
 starter's CI: a Mac you work on, a spare Linux box, a small cloud server. Set one repository
-variable and all CI jobs (CI Shared, Web, Admin, Landing, Storybook, and CI Verify Commit) run
+variable and all CI jobs (including Security; see the [runner policy](ci.md#reusable-platform-workflows-and-thin-callers)) run
 there instead of on GitHub's machines:
 
 ```bash
@@ -142,10 +142,8 @@ gh variable set PLATFORM_CI_RUNNER --body starter-ci     # the label your runner
 gh variable delete PLATFORM_CI_RUNNER                    # back to GitHub-hosted runners
 ```
 
-The Security workflow and deployments stay on GitHub-hosted runners: the secrets scan needs Docker,
-and deployment credentials shouldn't live on a personal machine. Security costs about 3 minutes
-per push. To save those as well, edit the triggers in your app-owned `.github/workflows/security.yml`
-to run on `main` and on the weekly schedule only.
+Deployments stay on GitHub-hosted runners so deployment credentials need not live on a personal
+machine. Keep Security enabled on pull requests so its required completion gate can run.
 
 > **Security first: only ever attach a self-hosted runner to a private repository.** On a public
 > repository, anyone can open a pull request from a fork and run code on your machine. On a private
@@ -384,8 +382,8 @@ For most commercial apps that isn't an option, and that's fine. Use the options 
 
 **Solo developer on GitHub Free.** Draft PRs while you work (1), `bun run ci:quick` before
 pushing (2), retention of 2 days (4), and one or two runners on your Mac (5). Keep a small budget
-(6) as a safety net. Your GitHub-hosted usage drops to the Security workflow, a few minutes per
-push.
+(6) as a safety net. CI and Security no longer consume GitHub-hosted minutes; deployment jobs
+still do.
 
 **Several projects on GitHub Free.** Keep related private repos with the same trusted maintainers
 in one Free organization and share an organization-level pool ([scope choice](#choose-repository-or-organization-scope)).

@@ -22,7 +22,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ### Action required
 
 - Add **Security Complete** to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
-- App-owned shared UI must carry its behavior tests and a package-local `test:coverage` command (see [testing](docs/testing.md#shared-ui-and-production-artifacts)). Port the reference onboarding coverage and landing fallback as appropriate to your app. Build the landing with Convex configuration before `test:landing-export`; also test an empty-configuration build with `EXPORT_EXPECT_CONFIGURED=false`.
+- Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
 
 ### Fixed
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
