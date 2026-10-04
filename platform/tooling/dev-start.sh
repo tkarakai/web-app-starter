@@ -16,6 +16,11 @@ PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
 NODE_TS="$SCRIPT_DIR/node-ts.sh"
 source "$SCRIPT_DIR/dev-dashboard.sh"
 
+# Every public root/named/direct entry point reconciles dependencies once, before
+# config imports or services. Bun lifecycle hooks do not cover named commands.
+"$SCRIPT_DIR/ensure-local-deps.sh" --quiet
+"$SCRIPT_DIR/ensure-app-env.sh" --quiet
+
 # Ports and local origins come from app.config.ts (APP_CONFIG_* variables).
 # The reader validates the config first, so a bad value stops here.
 APP_CONFIG_VARS=$("$NODE_TS" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
@@ -124,6 +129,29 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING storybook=$START_STORYBOOK convex=$NEED_CONVEX"
 fi
 
+STARTED_SERVICES=()
+TSCONFIG_WATCHER_PID=""
+cleanup_on_exit() {
+    local status=$? entry name pid
+    trap - EXIT INT TERM
+    if [ "$NON_INTERACTIVE" = true ] || [ "$status" -ne 0 ]; then
+        for entry in "${STARTED_SERVICES[@]}"; do
+            name=${entry%:*}; pid=${entry##*:}
+            "$NODE_TS" "$PROCESS_HELPER" stop --name "$name" --pid "$pid" || true
+        done
+        [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
+    fi
+    if [ -n "${TSCONFIG_WATCHER_PID:-}" ]; then
+        kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        TSCONFIG_WATCHER_PID=""
+    fi
+    exit "$status"
+}
+trap cleanup_on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 echo -e "${BLUE}  Starting Development Environment...${NC}"
 
 cd "$PROJECT_DIR"
@@ -137,15 +165,6 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "  - npx version: $(npx --version 2>/dev/null || echo 'not found')"
     echo "  - HOME: $HOME"
     echo ""
-fi
-
-# ============================================================
-# ENSURE LOCAL DEPENDENCIES (worktree isolation)
-# ============================================================
-if [ "$NON_INTERACTIVE" = false ]; then
-    "$SCRIPT_DIR/ensure-local-deps.sh" --quiet
-else
-    echo "[CI MODE] Skipping ensure-local-deps.sh (not needed in CI)"
 fi
 
 # ============================================================
@@ -533,6 +552,7 @@ if [ "$NEED_CONVEX" = true ]; then
         CONVEX_PID=$!
     fi
     "$NODE_TS" "$PROCESS_HELPER" track convex "$CONVEX_PID"
+    STARTED_SERVICES+=("convex:$CONVEX_PID")
     echo "convex:$CONVEX_PID" > "$PID_FILE"
 
     MAX_WAIT=30
@@ -547,6 +567,7 @@ if [ "$NEED_CONVEX" = true ]; then
             if [ -n "$TSCONFIG_WATCHER_PID" ]; then
                 kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
                 wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+                TSCONFIG_WATCHER_PID=""
             fi
             printf "\n"
             echo -e "${RED}✖ Convex process exited${NC}"
@@ -575,6 +596,7 @@ if [ "$NEED_CONVEX" = true ]; then
             if [ -n "$TSCONFIG_WATCHER_PID" ]; then
                 kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
                 wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+                TSCONFIG_WATCHER_PID=""
             fi
             printf "\n"
             echo -e "${RED}✖ Convex failed during startup${NC}"
@@ -625,6 +647,7 @@ if [ "$NEED_CONVEX" = true ]; then
         if [ -n "$TSCONFIG_WATCHER_PID" ]; then
             kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
             wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+            TSCONFIG_WATCHER_PID=""
         fi
         terminate_pid_with_timeout "$CONVEX_PID" 3
         rm -f "$PID_FILE"
@@ -636,6 +659,7 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ -n "$TSCONFIG_WATCHER_PID" ]; then
         kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
+        TSCONFIG_WATCHER_PID=""
         # Check if restore happened
         if [ "$(cat "$CONVEX_TSCONFIG" 2>/dev/null)" = "$CONVEX_TSCONFIG_CONTENT" ]; then
             echo -e "  ${GREEN}✔${NC} convex/tsconfig.json protected (Convex CLI overwrites it on init)"
@@ -816,6 +840,7 @@ start_next_app() {
     (cd "$app_dir" && bunx next dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
     local next_pid=$!
     "$NODE_TS" "$PROCESS_HELPER" track "next-${app_name}" "$next_pid"
+    STARTED_SERVICES+=("next-${app_name}:$next_pid")
     echo "next-${app_name}:$next_pid" >> "$PID_FILE"
 
     local max_wait=60
@@ -834,8 +859,7 @@ start_next_app() {
             exit 1
         fi
 
-        if grep -q "Ready in" "$log_file" 2>/dev/null || \
-           grep -q "Local:" "$log_file" 2>/dev/null; then
+        if grep -q "Ready in" "$log_file" 2>/dev/null; then
             next_ready=true
             break
         fi
@@ -912,7 +936,7 @@ start_next_app() {
     # Export the URL so callers can use it (e.g. to configure cross-app links)
     LAST_APP_URL="$next_url"
 
-    echo -e "${GREEN}✔ Next.js ($app_name) ready (PID: $next_pid)${NC}"
+    echo -e "${GREEN}✔ Next.js ($app_name) listening; checking pages next (PID: $next_pid)${NC}"
     echo -e "  ${BLUE}App URL:${NC}    $next_url"
 }
 
@@ -924,6 +948,7 @@ LAST_APP_URL=""
 WEB_APP_URL=""
 ADMIN_APP_URL=""
 LANDING_APP_URL=""
+STORYBOOK_APP_URL=""
 APP_URLS=""  # Comma-separated list of all app URLs for Better Auth
 
 if [ "$START_WEB" = true ]; then
@@ -979,6 +1004,7 @@ fi
 
 if [ "$START_STORYBOOK" = true ]; then
     start_next_app "storybook" "$APP_CONFIG_PORT_STORYBOOK"
+    STORYBOOK_APP_URL="$LAST_APP_URL"
 fi
 
 # ============================================================
@@ -1063,24 +1089,30 @@ WARM_PIDS=()
 WARM_LABELS=()
 
 # Warm up each app by hitting the pages users actually visit first.
-# Use -L to follow redirects (proxy redirects / → /sign-in for unauthed users)
-# and --max-time to avoid hanging if something is wrong.
+# Follow redirects and retry compilation responses within a bounded readiness window.
 if [ "$START_WEB" = true ] && [ -n "$WEB_APP_URL" ]; then
-    curl -sL --max-time 30 -o /dev/null "$WEB_APP_URL/sign-in" 2>/dev/null &
+    "$NODE_TS" "$SCRIPT_DIR/http-ready.ts" "$WEB_APP_URL/sign-in" &
     WARM_PIDS+=($!)
     WARM_LABELS+=("web /sign-in")
 fi
 if [ "$START_ADMIN" = true ] && [ -n "$ADMIN_APP_URL" ]; then
-    curl -sL --max-time 30 -o /dev/null "$ADMIN_APP_URL/sign-in" 2>/dev/null &
+    "$NODE_TS" "$SCRIPT_DIR/http-ready.ts" "$ADMIN_APP_URL/sign-in" &
     WARM_PIDS+=($!)
     WARM_LABELS+=("admin /sign-in")
 fi
 if [ "$START_LANDING" = true ] && [ -n "$LANDING_APP_URL" ]; then
-    curl -sL --max-time 30 -o /dev/null "$LANDING_APP_URL" 2>/dev/null &
+    "$NODE_TS" "$SCRIPT_DIR/http-ready.ts" "$LANDING_APP_URL" &
     WARM_PIDS+=($!)
     WARM_LABELS+=("landing /")
 fi
 
+if [ "$START_STORYBOOK" = true ] && [ -n "$STORYBOOK_APP_URL" ]; then
+    "$NODE_TS" "$SCRIPT_DIR/http-ready.ts" "$STORYBOOK_APP_URL" &
+    WARM_PIDS+=($!)
+    WARM_LABELS+=("storybook /")
+fi
+
+WARM_FAILED=false
 # Wait for all warm-up requests to complete
 for i in "${!WARM_PIDS[@]}"; do
     pid=${WARM_PIDS[$i]}
@@ -1088,14 +1120,20 @@ for i in "${!WARM_PIDS[@]}"; do
     if wait "$pid" 2>/dev/null; then
         echo -e "  ${GREEN}✔${NC} $label"
     else
-        echo -e "  ${YELLOW}⚠${NC} $label (timed out — will compile on first visit)"
+        echo -e "  ${RED}✖${NC} $label failed to compile or respond successfully; inspect .next-*.log"
+        WARM_FAILED=true
     fi
 done
 
 # ============================================================
 # SUMMARY (delegates to dev-status.sh for a single source of truth)
 # ============================================================
-"$SCRIPT_DIR/dev-status.sh"
+if [ "$WARM_FAILED" = true ]; then
+    echo "Development pages are NOT ready. Servers remain available for hot reload in interactive mode."
+    if [ "$NON_INTERACTIVE" = true ]; then exit 1; fi
+else
+    "$SCRIPT_DIR/dev-status.sh"
+fi
 
 # ============================================================
 # FOREGROUND MODE (CI/Playwright)
@@ -1105,14 +1143,6 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Press Ctrl+C to stop"
     echo ""
 
-    cleanup() {
-        echo ""
-        echo "[CI MODE] Shutting down..."
-        "$SCRIPT_DIR/dev-stop.sh"
-        exit 0
-    }
-
-    trap cleanup SIGINT SIGTERM EXIT
 
     # Stream all log files
     LOG_FILES=""

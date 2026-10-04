@@ -9,7 +9,7 @@ import { secretValueFile } from "./ownership.ts";
 import { reportAppRoot, decisionFor, unresolved, type Report } from "./report.ts";
 import { workingFiles } from "./plan.ts";
 
-export const REQUIRED_CHECKS = ["check:runtime-baseline", "check:agent-skills", "check:actions-pinned", "check:i18n", "lint:dev-scripts", "typecheck:dev-scripts", "test:dev-scripts", "lint", "typecheck", "test", "test:unit", "test:convex", "test:contracts", "build", "test:e2e"] as const;
+export { UPGRADE_CHECKS as REQUIRED_CHECKS } from "../ci-checks.ts";
 export function candidateBase(report: Report): PlatformBase {
   return { version: report.plan.target.version, commit: report.plan.target.commit, patches: report.plan.patches.filter(patch => {
     const gate = report.plan.gates.find(row => row.id === "patch:" + patch.path);

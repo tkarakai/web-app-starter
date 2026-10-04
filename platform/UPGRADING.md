@@ -191,9 +191,10 @@ review; it does not bypass source, dependency, advisory or contract verification
 ## Verify and recover
 
 Verification uses a separate candidate baseline, preserving the installed record throughout.
-It checks zone/hooks, env references and resolved dependencies, then runs the app's root scripts:
-`check:runtime-baseline`, `check:agent-skills`, `check:actions-pinned`, `check:i18n`,
-`lint:dev-scripts`, `typecheck:dev-scripts`, `test:dev-scripts`, `lint`, `typecheck`, `test`, `test:unit`, `test:convex`, `test:contracts`, `build`, `test:e2e`.
+It checks zone/hooks, env references and resolved dependencies, then runs the app's root scripts
+from the authoritative `UPGRADE_CHECKS` inventory in
+[`tooling/ci-checks.ts`](tooling/ci-checks.ts), including shared-package coverage, startup
+and both landing artifact variants. See [production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
 Before you run it, know what these scripts need:
 
 - **`lint` runs with `--max-warnings 0`** in every workspace (since 2.1.0), so a warning in your

@@ -1,0 +1,39 @@
+{
+  "web": [
+    "apps/web/**"
+  ],
+  "admin": [
+    "platform/apps/admin/**"
+  ],
+  "landing": [
+    "apps/landing/**"
+  ],
+  "storybook": [
+    "platform/apps/storybook/**"
+  ],
+  "backend": [
+    "packages/backend/**",
+    "platform/packages/convex-platform/**"
+  ],
+  "root": [
+    "packages/**",
+    "platform/packages/**",
+    "platform/config/**",
+    "platform/tooling/**",
+    ".github/**",
+    "package.json",
+    "bun.lock",
+    "turbo.json",
+    "app.config.ts",
+    "tsconfig.json",
+    "eslint.config.mjs"
+  ],
+  "platform": [
+    "platform/**",
+    ".github/**",
+    "packages/**",
+    "apps/demo/**",
+    "package.json",
+    "bun.lock"
+  ]
+}

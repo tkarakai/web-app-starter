@@ -395,10 +395,12 @@ Run the full CI check before pushing:
 
 ```bash
 CI=true bun run ci      # Full CI: lint, types, tests, build, single-worker web E2E
-bun run ci:quick        # Skip E2E for faster feedback
+bun run ci:quick        # Quick local checks; see the CI guide
 bun run ci:act          # Run in Docker via act (mirrors GitHub Actions)
 bun run ci:act:offline  # Offline mode (fast, no network required)
 ```
+
+See the [CI guide](docs/ci.md#local-ci-pre-push-checks) for the check inventory and skipped browser checks.
 
 ## Conventions
 

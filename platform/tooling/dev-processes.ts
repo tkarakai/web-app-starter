@@ -155,9 +155,10 @@ function signalVerified(root: string, record: ProcessRecord, signal: "SIGTERM" |
   }
 }
 
-export function stop(root: string, name?: string): void {
+export function stop(root: string, name?: string, expectedPid?: number): void {
   const records = readRecords(root);
-  const selected = Object.entries(records).filter(([key]) => name === undefined || key === name);
+  const selected = Object.entries(records).filter(([key, record]) => (name === undefined || key === name) && (expectedPid === undefined || record.pid === expectedPid));
+  if (expectedPid !== undefined && selected.length === 0) return;
   const protectedPids = ancestors();
   const targets = new Map<number, ProcessRecord>();
   for (const [service, record] of selected) {
@@ -234,8 +235,8 @@ export function main(argv: string[]): number {
     return 0;
   }
   if (command === "stop") {
-    if (rest.length && (rest[0] !== "--name" || rest.length !== 2)) throw new Error("Usage: stop [--name NAME]");
-    stop(root, rest[1]);
+    if (rest.length && (rest[0] !== "--name" || (rest.length !== 2 && !(rest.length === 4 && rest[2] === "--pid")))) throw new Error("Usage: stop [--name NAME [--pid PID]]");
+    stop(root, rest[1], rest[3] === undefined ? undefined : integer(rest[3]));
     return 0;
   }
   if (command === "running") {

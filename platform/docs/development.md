@@ -1,5 +1,7 @@
 # Development Workflow
 
+Root development commands and each app's `dev` script reconcile the committed workspace graph with `bun install --frozen-lockfile` before loading app configuration or starting services. This repairs links after a pull or platform upgrade even when `node_modules` already exists; a manifest/lock mismatch stops startup without rewriting the lockfile. The launchers own this preflight, so a root `predev` hook is unnecessary. The managed root launcher requires successful page HTTP responses after redirects for readiness, not just Next’s listening message. Compilation failures remain visible in interactive development; CI fails and cleans up only processes started by that invocation.
+
 The default dev launcher, local CI and deployment workflows require `apps/landing`. `bun run dev:landing` starts it on its own, through the managed launcher, logs and stop/status commands. The landing app remains a static export; its browser-side onboarding, waitlist and announcements use Convex. `dev:landing` starts Convex and supplies its public HTTP URL. See [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff) for the marketing-to-web flow.
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
