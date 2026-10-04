@@ -21,6 +21,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Authentication routes use durable request budgets, and all auth email callbacks share recipient
+  and deployment delivery budgets. Magic-link requests use the installed route, provider failures
+  consume attempts, and OTP resend preserves usable unexpired codes and renews exhausted ones.
+  Request and unconditional delivery exhaustion return 429 with `Retry-After`; public conditional
+  mail retains its normal acknowledgement to protect account privacy. Bounded logs support alerts.
+
 - Password reset revokes existing sessions. Viewing MFA recovery codes now requires the current
   password on every request, with a shared per-account attempt limit; settings and resumed admin
   enrollment provide the prompt. The legacy GET helper no longer discloses codes.
@@ -37,6 +43,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Review auth email budgets against expected traffic and provider quotas, and update custom
+  clients and ingress configuration according to the
+  [rate-limiting configuration and exhaustion guidance](docs/rate-limiting-architecture.md#deployment-configuration-and-ip-trust).
 
 - Custom recovery-code viewers must pass the current password to `viewBackupCodes({ password })`
   or use the authenticated POST helper with a password JSON body. Deploy backend and UI together.

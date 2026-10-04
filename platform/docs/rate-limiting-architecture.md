@@ -9,67 +9,111 @@ Rate limiting is implemented at three layers, each targeting a different attack 
 ```
 Client Request
   │
-  ▼
-┌─────────────────────────────────────┐
-│  Layer 3: Edge Proxy                │  ← Per-IP, in-memory, first line of defense
-│  (Next.js proxy.ts)                 │
-│  apps/web/src/proxy.ts              │
-│  platform/apps/admin/src/proxy.ts            │
-└──────────────┬──────────────────────┘
-               │
-  ┌────────────┴────────────┐
-  │                         │
-  ▼                         ▼
-┌──────────────┐    ┌──────────────────┐
-│ Page Routes  │    │ /api/auth/*      │
-│ (React)      │    │ (Better Auth)    │
-└──────┬───────┘    └────────┬─────────┘
-       │                     │
-       ▼                     ▼
-┌──────────────┐    ┌──────────────────┐
-│  Layer 2     │    │  Layer 1         │  ← Per-IP, database-backed
-│  Convex      │    │  Better Auth     │
-│  Mutations   │    │  Rate Limiting   │
-│  (per-user)  │    │                  │
-└──────────────┘    └──────────────────┘
+  ├─ Page request → Layer 3: Edge Proxy → React page
+  │                 Per-IP, in-memory
+  │
+  ├─ Auth request → Layer 1: Auth request and email budgets → Better Auth
+  │                 Recipient/deployment, database-backed
+  │                 Includes direct Convex HTTP requests; bypasses edge proxy
+  │
+  └─ Authenticated mutation → Layer 2: Convex mutation budget → Mutation
+                               Per-user, database-backed
 ```
 
-## Layer 1: Better Auth (Authentication Endpoints)
+## Layer 1: Authentication requests and email delivery
 
-**Scope**: All Better Auth HTTP endpoints (`/api/auth/*`)
+Better Auth's built-in limiter is disabled. The platform uses durable Convex token buckets in
+its app-level `rateLimits` table, through `platform/authRateLimits.ts` and
+`platform/rateLimits.ts` in the backend. Separate mutations commit request usage before the
+handler runs and atomically reserve email capacity before calling the email provider.
+Limits apply across instances and survive restarts.
 
-**How it works**: Better Auth's built-in rate limiting, configured in the `betterAuth()` options. Uses the `rateLimit` table automatically provisioned by the `@convex-dev/better-auth` Convex component. Rate limiting is per-IP address, extracted from the `x-forwarded-for` header.
+Every auth route, including installed plugin endpoints and unknown routes, consumes the
+request budget. OPTIONS and an explicit GET allowlist for session polling, Convex tokens/key
+discovery and health/error pages are exempt. Email-producing callbacks also share delivery
+budgets, independent of the route or claimed client IP. Recipients are trimmed and lowercased
+before hashing; plus tags and dots are not stripped. Keys contain hashes, not email addresses.
 
-**Configuration file**: `packages/backend/convex/platform/auth.ts`
+### Default limits
 
-### Default Limits
+| Budget | Refill | Burst | Scope |
+| --- | --- | --- | --- |
+| Auth requests | 1,000/minute | 250 | Deployment |
+| Verified ingress IP requests | 100/minute | 50 | IP, only when configured as described below |
+| Password sign-in / email OTP verification | 3/10 seconds | 3 | Normalized recipient |
+| Signup / email OTP password reset | 5/minute | 5 | Normalized recipient, separate named request budgets |
+| Magic link, verification, OTP send, password-reset request | 3/minute | 3 | Normalized recipient, separate named request budgets |
+| Auth email reservations | 3/minute | 3 | Normalized recipient across message types |
+| Auth email reservations | 60/minute | 20 | Deployment |
+| Auth email reservations | 1,000/24 hours | 1,000 | Deployment |
 
-| Endpoint | Window | Max Requests | Purpose |
-|----------|--------|-------------|---------|
-| Global (all auth endpoints) | 60s | 100 | General abuse prevention |
-| `/sign-in/email` | 10s | 3 | Brute-force protection |
-| `/sign-up/email` | 60s | 5 | Spam account prevention |
-| `/get-session` | — | Unlimited | Required for real-time session polling |
+These are token buckets with continuous refill, not calendar windows or hard rolling-window
+quotas. A full bucket permits its initial burst plus tokens replenished during a period.
+The 24-hour budget refills about one token every 86.4 seconds. Set provider-side quotas and
+billing alerts as well; invitation and other transactional mail have separate delivery paths.
+Recovery-code password reauthentication has its own shared per-account 5/minute, burst-5 budget.
+Better Auth's own OTP/TOTP challenge-attempt checks remain in place.
 
-### Environment Variables
+Routes mapped to the same request budget share its capacity: password sign-in and email-OTP
+verification share `authSignIn`; password-reset link requests, email-OTP reset requests and
+the deprecated reset alias share `authPasswordResetRequest`. The authoritative route mapping
+is `AUTH_RECIPIENT_LIMITS` in `packages/backend/convex/platform/rateLimits.ts`. Recipient
+request keys are extracted from JSON and form-encoded email bodies; unreadable bodies still
+consume deployment and any configured trusted-IP request budgets.
 
-Set via `convex env set <KEY> <VALUE>`:
+### Deployment configuration and IP trust
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AUTH_RATE_LIMIT_WINDOW` | `60` | Global window in seconds |
-| `AUTH_RATE_LIMIT_MAX` | `100` | Global max requests per window |
-| `AUTH_RATE_LIMIT_SIGNIN_WINDOW` | `10` | Sign-in window in seconds |
-| `AUTH_RATE_LIMIT_SIGNIN_MAX` | `3` | Sign-in max attempts per window |
-| `AUTH_RATE_LIMIT_SIGNUP_WINDOW` | `60` | Sign-up window in seconds |
-| `AUTH_RATE_LIMIT_SIGNUP_MAX` | `5` | Sign-up max attempts per window |
+Set these on the Convex deployment, from `packages/backend/`, using `bunx convex env set`:
 
-### What Happens When Rate Limited
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `AUTH_EMAIL_RATE_PER_MINUTE` | `60` | Deployment email reservation capacity replenished per minute |
+| `AUTH_EMAIL_BURST` | `20` | Deployment short-term email capacity |
+| `AUTH_EMAIL_RATE_PER_DAY` | `1000` | Long-term reservation capacity and refill per 24 hours |
+| `AUTH_TRUSTED_IP_HEADER` | Unset | Optional verified ingress-overwritten single-IP header |
 
-- **Server**: Returns HTTP 429 with `X-Retry-After` header (seconds until retry).
-- **Client**: The `authClient` global `onError` handler logs a warning to the console. The `signIn.email()` / `signUp.email()` call returns `{ error: { status: 429, message: "Too many requests" } }`.
-- **User sees**: The auth form displays "Too many attempts. Please wait a moment before trying again." The form button returns to its normal state.
-- **Recovery**: Automatic — wait for the window to expire, then retry.
+Size email budgets for expected enrollment/reset volume and the provider's quota. Defaults
+are active without configuration. The old `AUTH_RATE_LIMIT_*` variables do not configure
+this implementation.
+
+Leave `AUTH_TRUSTED_IP_HEADER` unset unless you have verified that **every reachable ingress**
+(including a direct Convex HTTP URL) overwrites that header with one authoritative IP address.
+A client-supplied `X-Forwarded-For` or `X-Real-IP` is not proof of origin. Comma-separated
+chains and malformed addresses are ignored. No hosting-specific overwrite guarantee is assumed;
+verify it using real requests before enabling the additional IP budget. Recipient and deployment
+budgets apply regardless of headers, so rotating a forged header cannot evade those limits.
+Better Auth's session IP metadata is separate and is not used to choose these buckets.
+
+### Exhaustion, failures and monitoring
+
+A denied request budget returns HTTP 429 with `Retry-After` in seconds and `Cache-Control: no-store`.
+Honor that delay, surface the error in custom clients and require an explicit later retry.
+Delivery-budget denials on public conditional-mail routes retain the normal HTTP 200 body
+and headers: verification email (including custom templates), password-reset links, and
+email-OTP verification/reset requests, including the deprecated reset alias. This prevents
+exhaustion from revealing whether an account exists or is verified, even when concurrent
+requests consume the last capacity. Email-OTP sign-in also follows this contract when signup
+is disabled. Acknowledgement does not promise delivery; retry later if no email arrives.
+Unconditional sends, including two-factor OTP and signup-enabled email-OTP sign-in, retain
+HTTP 429 and the retry headers on delivery denial. Ineligible requests spend no mail tokens.
+There is no unbounded retry queue. Provider failures still consume reserved capacity, because
+an ambiguous failure may already have delivered a message. There are no automatic refunds or
+provider retries. A denied delivery reservation does not consume the other delivery buckets.
+Expired capacity refills normally; repeated denials do not extend the wait.
+
+OTP sends reserve capacity after request/session validation and send eligibility checks, before
+changing challenge state. Ineligible requests consume request budgets only. A later failure or
+concurrent account change can still prevent delivery after a reservation; reservations are not refunded.
+Competing sends atomically reuse an unexpired code with remaining verification attempts.
+Reuse retains its original expiry and attempt count.
+A resend replaces an exhausted or expired challenge; email OTP and two-factor OTP retain their
+separate attempt limits. A throttled resend preserves the last delivered code, including when
+the library attempts a delete-and-retry fallback after challenge creation fails. The platform
+emits `AUTH_EMAIL_BUDGET_EXHAUSTED` with the budget name at most once per
+five minutes per deployment, with no recipient, code or message contents. Alert on this event
+in your log sink and monitor HTTP 429 volume and provider usage. A shared deployment budget
+can temporarily delay legitimate mail during abuse; choose capacity and operational alerts for
+your app's traffic. No remote log-alert integration is installed automatically.
 
 ---
 
@@ -180,7 +224,7 @@ The in-memory IP tracker has a configurable maximum size (default 10,000 entries
 
 - **Per-instance only**: Each serverless/edge instance has its own counter. The effective limit scales with the number of instances.
 - **Not persistent**: Counters reset on deployment. This is acceptable because the edge layer is a first line of defense, not the primary rate limiting.
-- **Excluded routes**: API routes (`/api/*`), static assets (`/_next/static/*`, `/_next/image/*`), and prefetch requests are not rate limited at the edge. API routes are protected by Layer 1 (Better Auth).
+- **Excluded routes**: API routes (`/api/*`), static assets (`/_next/static/*`, `/_next/image/*`), and prefetch requests are not rate limited at the edge. Auth API routes are protected by Layer 1; other API routes need their own protection.
 
 ### What Happens When Rate Limited
 
@@ -215,19 +259,22 @@ These headers allow clients and monitoring tools to track rate limit status proa
 
 You can set artificially low rate limits to manually trigger rate limiting in a running dev environment.
 
-### Layer 1: Better Auth (sign-in/sign-up)
+### Layer 1: Authentication email
 
-Set via the Convex CLI (run from `packages/backend/`):
+Use a disposable local deployment and a local email sink (never real recipients). Defaults
+allow three magic-link requests to the same address in a burst; the fourth returns 429.
+Rotate recipients to test the shared burst, or temporarily lower its capacity:
 
 ```bash
 cd packages/backend
-bunx convex env set AUTH_RATE_LIMIT_SIGNIN_WINDOW 10
-bunx convex env set AUTH_RATE_LIMIT_SIGNIN_MAX 1
-bunx convex env set AUTH_RATE_LIMIT_SIGNUP_WINDOW 10
-bunx convex env set AUTH_RATE_LIMIT_SIGNUP_MAX 1
+bunx convex env set AUTH_EMAIL_RATE_PER_MINUTE 1
+bunx convex env set AUTH_EMAIL_BURST 1
 ```
 
-**Test**: Go to `/sign-in`, attempt to sign in twice within 10 seconds. The second attempt returns HTTP 429 and the form shows "Too many attempts. Please wait a moment before trying again."
+Send to two different fixture addresses via `/api/auth/sign-in/magic-link`; the second must
+not reach the email sink, even with a different forwarded-IP header. Wait for `Retry-After`
+and retry. Backend regressions also cover concurrency, provider failure and installed routes:
+`bun run --cwd packages/backend test:convex convex/platform/authRateLimits.test.ts` from the repo root.
 
 ### Layer 2: Convex Mutations
 
@@ -264,10 +311,8 @@ Remove the Convex environment variables (they fall back to code defaults):
 
 ```bash
 cd packages/backend
-bunx convex env unset AUTH_RATE_LIMIT_SIGNIN_WINDOW
-bunx convex env unset AUTH_RATE_LIMIT_SIGNIN_MAX
-bunx convex env unset AUTH_RATE_LIMIT_SIGNUP_WINDOW
-bunx convex env unset AUTH_RATE_LIMIT_SIGNUP_MAX
+bunx convex env unset AUTH_EMAIL_RATE_PER_MINUTE
+bunx convex env unset AUTH_EMAIL_BURST
 bunx convex env unset MUTATION_RATE_LIMIT_RATE
 bunx convex env unset MUTATION_RATE_LIMIT_PERIOD
 bunx convex env unset MUTATION_RATE_LIMIT_CAPACITY
