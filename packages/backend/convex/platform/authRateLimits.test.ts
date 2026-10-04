@@ -1,4 +1,5 @@
 import { getEndpoints } from "better-auth/api";
+import { hashPassword } from "better-auth/crypto";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { components, internal } from "../_generated/api";
@@ -73,6 +74,37 @@ async function twoFactorFixture(pending: boolean) {
 }
 
 describe("auth email delivery budgets", () => {
+  test("bearer password sign-in and two-factor enrollment deliver bounded usable OTPs", async () => {
+    const f = await fixture();
+    const email = "bearer-otp@example.test";
+    const password = "violet compass timber waterfall oyster constellation";
+    const user = await otpUser(f, email);
+    const now = Date.now();
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "account", data: {
+      userId: user._id, accountId: user._id, providerId: "credential",
+      password: await hashPassword(password), createdAt: now, updatedAt: now,
+    } } });
+    const signedIn = await f.post("/api/auth/sign-in/email", { email, password });
+    expect(signedIn.status).toBe(200);
+    const { token } = await signedIn.json();
+    expect(token).toEqual(expect.any(String));
+    const post = (path: string, body: unknown) => f.t.fetch(`/api/auth/two-factor/${path}`, {
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    expect((await post("enable", { password })).status).toBe(200);
+    const replies = await Promise.all(Array.from({ length: 6 }, () => post("send-otp", {})));
+    expect(replies.filter(r => r.status === 200)).toHaveLength(3);
+    expect(replies.filter(r => r.status === 429)).toHaveLength(3);
+    for (const response of replies.filter(r => r.status === 429)) expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
+    const codes = vi.mocked(sendAuthEmail).mock.calls.map(([message]) => message.urlOrCode);
+    expect(codes).toHaveLength(3);
+    expect(new Set(codes).size).toBe(1);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.error).not.toHaveBeenCalled();
+    expect((await post("verify-otp", { code: codes[0] })).status).toBe(200);
+  });
+
   test.each([false, true])("two-factor resends preserve delivered codes and return bounded exhaustion errors (pending=%s)", async pending => {
     const f = await twoFactorFixture(pending);
     const replies = await Promise.all(Array.from({ length: 6 }, () => f.post("send-otp", {})));

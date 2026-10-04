@@ -2,6 +2,7 @@ import type { GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { bearer } from "better-auth/plugins/bearer";
 import type { FunctionReference } from "convex/server";
 
 import { components, internal } from "../_generated/api";
@@ -53,6 +54,7 @@ const otpAdapter = components.betterAuth.adapter as typeof components.betterAuth
 };
 
 type OtpDelivery = { recipient: string; code: () => string | undefined };
+const bearerSessionHook = bearer().hooks.before[0];
 
 export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterAuthPlugin => ({
   id: "convex-rate-limit",
@@ -82,7 +84,12 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
     handler: createAuthMiddleware(async context => {
       let recipient = normalizeAuthRecipient(context.path === "/email-otp/request-email-change" ? context.body?.newEmail : context.body?.email);
       if (context.path === "/two-factor/send-otp") {
-        const session = await getSessionFromCtx(context);
+        // Before-hook header returns are merged only after all hooks finish.
+        // Use the same bearer conversion as Convex before resolving this session.
+        const bearerContext = await bearerSessionHook.handler({ ...context, returnHeaders: false });
+        const session = await getSessionFromCtx({
+          ...context, headers: bearerContext?.context.headers ?? context.headers,
+        });
         if (session) recipient = normalizeAuthRecipient(session.user.email);
         else {
           const cookie = context.context.createAuthCookie("two_factor");
