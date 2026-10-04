@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- Platform update discovery/verification and PR delivery can use independently configured trusted Linux runners. GitHub-hosted runners remain the default; see [update delivery](docs/update-delivery.md#trusted-linux-workers).
+
 ### Fixed
 
 - Convex and authentication HTTP routes now enforce live session assurance, current security
@@ -42,8 +46,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ## [4.0.0] - 2026-10-04
 
 ### Added
-
-- Platform update discovery/verification and PR delivery can use independently configured trusted Linux runners. GitHub-hosted runners remain the default; see [update delivery](docs/update-delivery.md#trusted-linux-workers).
 
 - Development and staging banners show the installed starter platform version in the
   collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
