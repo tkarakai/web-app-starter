@@ -40,7 +40,7 @@ import { adoptionRelease, commandAt, type Command } from "./adopt-release.ts";
 import { applyPrE2e, describeModes, isMode, manualCommand, needsChoice, prE2eStatus, type Exec, type Mode } from "./ci-pr-e2e-setup.ts";
 
 import { installCaller, main as setupUpdates } from "./setup-updates.ts";
-import { isDeliveryMode, saveRecord, type DeliveryMode } from "./setup-updates/state.ts";
+import { isDeliveryMode, readRecord, saveRecord, type DeliveryMode } from "./setup-updates/state.ts";
 
 export const STARTER_REPO = "tkarakai/web-app-starter";
 export const STARTER_URL = `https://github.com/${STARTER_REPO}.git`;
@@ -295,6 +295,8 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   if (existsSync(at(BASE_FILE))) throw new Error(`${BASE_FILE} exists: this repository is already adopted`);
   if (!/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error(`--repo must be owner/name (got "${options.repo}")`);
   if (git(root, ["status", "--porcelain"]) !== "") throw new Error("Adoption needs a clean checkout; commit or preserve your work first");
+  const previousUpdates = readRecord(root);
+  if (previousUpdates && previousUpdates.repository.toLowerCase() !== options.repo.toLowerCase()) throw new Error("Saved update repository differs; inspect the record before adoption");
   const { commit, version } = (services.release ?? adoptionRelease)(root, options.fromRelease);
   log(`Pre-adoption checklist for https://github.com/${options.repo}/settings/installations and /settings/hooks:`);
   log("  - Review installed GitHub Apps, webhooks and Git-connected hosts (Vercel, Cloudflare, Netlify, etc.).");
@@ -314,7 +316,10 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   log(`  - renovate.json extends local>${options.repo}//platform/config/renovate-preset`);
 
   const callerAdded = installCaller(root);
-  saveRecord(root, options.updates ?? "deferred", options.repo, options.updates && options.updates !== "deferred" ? "pending" : "deferred", ["Complete owner setup: bun run platform:setup-updates --repo " + options.repo + " --" + (options.updates === "fallback" ? "fallback" : "app") + " --yes"]);
+  const updateMode = options.updates ?? previousUpdates?.mode ?? "deferred";
+  if (!previousUpdates || previousUpdates.mode !== updateMode) {
+    saveRecord(root, updateMode, options.repo, updateMode === "deferred" ? "deferred" : "pending", updateMode === "deferred" ? [] : ["Complete owner setup: bun run platform:setup-updates --repo " + options.repo + " --" + updateMode + " --yes"]);
+  }
   log(callerAdded ? "  - update-platform.yml: scheduled delivery paused until owner setup" : "  - existing update caller preserved; inspect its live readiness before enabling delivery");
 
   log("3. Reference apps");
@@ -487,7 +492,7 @@ async function main(argv: readonly string[]): Promise<number> {
   if (!parsed.repo) throw new Error(`--repo is required (origin is ${origin ?? "not set"}; name your own repository)`);
   const code = adopt(root, { ...parsed, name: parsed.name, repo: parsed.repo });
   try {
-    const setupMode = parsed.updates ?? "deferred";
+    const setupMode = parsed.updates ?? readRecord(root)?.mode ?? "deferred";
     await setupUpdates(["--repo", parsed.repo, setupMode === "deferred" ? "--defer" : "--" + setupMode, ...(parsed.yes && parsed.updates ? ["--yes"] : [])]);
   } catch { process.stdout.write("Update setup is pending; local adoption completed. Resume bun run platform:setup-updates --check.\n"); }
   await settlePrE2e(parsed.repo, parsed.prE2e, gh, (line) => process.stdout.write(`${line}\n`));
