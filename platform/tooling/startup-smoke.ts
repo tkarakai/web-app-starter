@@ -18,9 +18,14 @@ const write = (file: string, content: string) => { const path = join(fixture, fi
 const json = (file: string, value: unknown) => write(file, JSON.stringify(value, null, 2));
 const command = (args: string[]) => execFileSync("bun", args, { cwd: fixture, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
 let child: ChildProcess | undefined, logs = "";
+let childClosed = false;
+let unrelated: ChildProcess | undefined;
+const unrelatedRoot = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "starter-unrelated-backend-")));
 async function shutdown() {
   if (child && child.exitCode === null && child.signalCode === null) {
-    const done = once(child, "exit");
+    // Bun can exit before its shell finishes the EXIT trap. Wait for inherited
+    // output pipes to close before running a second ownership cleanup.
+    const done = once(child, "close");
     try { process.kill(-child.pid!, "SIGTERM"); } catch { /* Already exited. */ }
     await Promise.race([done, new Promise(resolve => setTimeout(resolve, 10_000))]);
   }
@@ -29,7 +34,9 @@ async function shutdown() {
 }
 function launch(args: string[], timeout = "30000") {
   logs = "";
+  childClosed = false;
   child = spawn("bun", args, { cwd: fixture, detached: true, env: { ...process.env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
+  child.once("close", () => { childClosed = true; });
   child.stdout!.on("data", data => { logs += String(data); }); child.stderr!.on("data", data => { logs += String(data); });
 }
 async function until(check: () => boolean, ms = 90_000) {
@@ -38,7 +45,7 @@ async function until(check: () => boolean, ms = 90_000) {
   throw new Error("Startup smoke timed out\n" + logs);
 }
 try {
-  const tools = ["package.json", "node-ts.sh", "dev-start.sh", "dev-convex.sh", "dev-processes.ts", "dev-stop.sh", "dev-status.sh", "dev-dashboard.sh", "app-config.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh", "local-fixtures.ts", "http-ready.ts"];
+  const tools = ["package.json", "node-ts.sh", "dev-start.sh", "dev-convex.sh", "dev-processes.ts", "dev-stop.sh", "dev-status.sh", "dev-dashboard.sh", "app-config.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh", "local-fixtures.ts", "http-ready.ts", "local-dev-deps.ts"];
   for (const name of tools) write("platform/tooling/" + name, fs.readFileSync(join(source, "platform/tooling", name), "utf8"));
   for (const file of ["platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"]) write(file, fs.readFileSync(join(source, file), "utf8"));
   for (const icon of Object.values(appConfig.brand.icons)) {
@@ -53,10 +60,9 @@ try {
   json("packages/backend/package.json", { name: "@repo/backend", dependencies: { convex: "workspace:*" } });
   json("packages/convex/package.json", { name: "convex", version: "0.0.0", bin: "bin.cjs" });
   write("packages/convex/bin.cjs", "#!/usr/bin/env node\nif(process.argv[2]==='env' && process.argv[3]==='set' && process.argv[4]==='--force'){require('fs').readFileSync(0,'utf8');} else if(process.argv[3]==='get')console.log('fixture');");
-  write("bin/npx", `#!/usr/bin/env node
-if(process.argv[2]==='--version'){console.log('fixture');process.exit(0);}
-if(process.argv.slice(2).join(' ')!=='convex dev')process.exit(127);
-const fs=await import('node:fs');
+  write("packages/convex/bin.cjs", `#!/usr/bin/env node
+if(process.argv[2]!=='dev'){console.log('fixture');process.exit(0);}
+const fs=require('node:fs');
 fs.writeFileSync('.env.local','CONVEX_DEPLOYMENT=anonymous:startup-smoke\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
 fs.mkdirSync('.convex/local/default',{recursive:true});
 fs.writeFileSync('.convex/local/default/config.json',JSON.stringify({deploymentName:'startup-smoke',adminKey:'local-fixture',ports:{cloud:43210,site:43211}}));
@@ -102,12 +108,31 @@ console.log('Convex functions ready');setInterval(()=>{},1000);
   await shutdown();
   write("packages/onboarding/styles.css", '@import "missing-startup-fixture-package";');
   launch(["run", "dev:landing"], "2500");
-  await until(() => child!.exitCode !== null, 60_000);
+  await until(() => childClosed, 60_000);
   assert.notEqual(child!.exitCode, 0, logs);
   assert.match(logs, /NOT ready/);
   assert.deepEqual(readRecords(fixture), {});
-  console.log("Real startup smoke passed: stale workspace repaired once; web/landing HTML + CSS compiled; invalid CSS failed CI and cleaned up.");
+  write("packages/onboarding/styles.css", ".workspace-proof { color: rgb(12, 34, 56); }");
+  write("apps/landing/next.config.mjs", "throw new Error('FORCED_LATER_CONFIG_FAILURE');");
+  const database = join(fixture, "packages/backend/.convex/local/default/database-proof");
+  fs.writeFileSync(database, "preserve local database");
+  unrelated = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd: unrelatedRoot, stdio: "ignore" });
+  launch(["dev", "--app=web,landing"], "2500");
+  await until(() => childClosed, 60_000);
+  assert.notEqual(child!.exitCode, 0, logs);
+  assert.match(fs.readFileSync(join(fixture, ".next-web.log"), "utf8"), /Ready/);
+  assert.match(fs.readFileSync(join(fixture, ".next-landing.log"), "utf8"), /FORCED_LATER_CONFIG_FAILURE/);
+  assert.deepEqual(readRecords(fixture), {});
+  assert.equal(fs.readFileSync(database, "utf8"), "preserve local database");
+  assert.equal(unrelated.exitCode, null);
+  assert.equal(unrelated.signalCode, null);
+  process.kill(unrelated.pid!, 0);
+  console.log("Real startup smoke passed: stale workspace repaired once; web/landing HTML + CSS compiled; invalid CSS and later app config failures cleaned up while preserving unrelated processes and local database state.");
 } finally {
   await shutdown();
+  if (unrelated && unrelated.exitCode === null && unrelated.signalCode === null) {
+    const done = once(unrelated, "exit"); unrelated.kill("SIGKILL"); await done;
+  }
+  fs.rmSync(unrelatedRoot, { recursive: true, force: true });
   fs.rmSync(fixture, { recursive: true, force: true });
 }

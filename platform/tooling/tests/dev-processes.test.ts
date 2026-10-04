@@ -9,7 +9,6 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import mutableFs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
-import * as os from "node:os";
 import * as path from "node:path";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -19,7 +18,7 @@ import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts", "local-dev-deps.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
 const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"];
 
@@ -32,12 +31,21 @@ function install(checkout: string): void {
     fs.mkdirSync(path.dirname(path.join(checkout, name)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, name), path.join(checkout, name));
   }
-  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module" }));
+  for (const [name, source] of Object.entries({next: "const {createServer}=require('node:http');const server=createServer((req,res)=>res.end('fixture'));server.listen(0,()=>{console.log('Local: http://localhost:'+server.address().port);console.log('Ready in 1ms');});", convex: "console.log('fixture');"})) {
+    const pkg = path.join(checkout, "packages", name);
+    fs.mkdirSync(pkg, {recursive:true});
+    fs.writeFileSync(path.join(pkg,"package.json"),JSON.stringify({name,version:"0.0.0",bin:{[name]:"fixture.cjs"}}));
+    fs.writeFileSync(path.join(pkg,"fixture.cjs"),source);
+  }
+  fs.mkdirSync(path.join(checkout,"packages/backend"),{recursive:true});
+  fs.writeFileSync(path.join(checkout,"packages/backend/package.json"),'{"name":"@repo/backend","dependencies":{"convex":"workspace:*"}}');
+  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module", workspaces:["packages/*"], dependencies:{next:"workspace:*",convex:"workspace:*"} }));
+  execFileSync("bun", ["install"], {cwd:checkout,stdio:"pipe"});
 }
 
 function installPredev(checkout: string, source = ROOT): void {
   const original = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
-  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module", scripts: original.scripts, packageManager: original.packageManager, workspaces: ["apps/*", "platform/apps/*"] }));
+  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module", scripts: original.scripts, packageManager: original.packageManager, workspaces: ["apps/*", "platform/apps/*", "packages/*"], dependencies: {next:"workspace:*",convex:"workspace:*"} }));
   const manifest = JSON.parse(fs.readFileSync(path.join(checkout, "package.json"), "utf8"));
   delete manifest.scripts.postinstall;
   fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify(manifest));
@@ -81,6 +89,120 @@ function track(name: string, child: ChildProcess, checkout = root): void {
   fs.appendFileSync(path.join(checkout, ".dev-pids"), `${name}:${child.pid}\n`);
 }
 
+test("status finds live ownership when the legacy PID file is missing", async () => {
+  const child = spawnIn(root);
+  await waitFor(() => Boolean(manager.identity(child.pid!)));
+  track("convex", child);
+  fs.unlinkSync(path.join(root, ".dev-pids"));
+  const status = await runScript("dev-status.sh");
+  assert.match(stripAnsi(status.stdout), /Convex API\s+up/);
+  manager.stop(root);
+  assert.equal(await alive(child), false);
+  assert.deepEqual(manager.readRecords(root), {});
+});
+
+test("registration failure stops only the newly launched process and keeps earlier ownership", async () => {
+  const existing = spawnIn(root), fresh = spawnIn(root), unrelated = spawnIn(foreign);
+  await waitFor(() => Boolean(manager.identity(fresh.pid!)));
+  track("existing", existing);
+  const rename = mock.method(mutableFs, "renameSync", () => { throw new Error("fixture registration failure"); });
+  syncBuiltinESMExports();
+  try {
+    assert.throws(() => manager.track(root, "fresh", fresh.pid!), /fixture registration failure/);
+  } finally {
+    rename.mock.restore();
+    syncBuiltinESMExports();
+  }
+  assert.equal(await alive(fresh), false);
+  assert.equal(await alive(existing), true);
+  assert.equal(await alive(unrelated), true);
+  assert.deepEqual(Object.keys(manager.readRecords(root)), ["existing"]);
+});
+
+test("a process surviving termination retains its authoritative and legacy records", async () => {
+  const child = spawnIn(root);
+  await waitFor(() => Boolean(manager.identity(child.pid!)));
+  track("convex", child);
+  const kill = mock.method(process, "kill", () => true);
+  try { assert.throws(() => manager.stop(root), /survived termination/); } finally { kill.mock.restore(); }
+  assert.equal(await alive(child), true);
+  assert.equal(manager.readRecords(root).convex.pid, child.pid);
+  assert.match(fs.readFileSync(path.join(root, ".dev-pids"), "utf8"), /convex:/);
+  manager.stop(root);
+  assert.equal(await alive(child), false);
+});
+
+test("surviving descendants remain discoverable after their launcher exits", async () => {
+  const parent = spawnIn(root, "const {spawn}=require('node:child_process'); const fs=require('node:fs'); "
+    + "const children=[spawn('sleep',['300'],{stdio:'ignore'}),spawn('sleep',['300'],{stdio:'ignore'})]; "
+    + "fs.writeFileSync('children.json',JSON.stringify(children.map(p=>p.pid))); setInterval(()=>{},1000);");
+  await waitFor(() => fs.existsSync(path.join(root, "children.json")));
+  const children = JSON.parse(fs.readFileSync(path.join(root, "children.json"), "utf8")) as number[];
+  track("convex", parent);
+  const originalKill = process.kill.bind(process);
+  const kill = mock.method(process, "kill", (pid: number, signal?: Parameters<typeof process.kill>[1]) => {
+    if (children.includes(pid)) return true;
+    return originalKill(pid, signal);
+  });
+  try { assert.throws(() => manager.stop(root), /survived termination/); } finally { kill.mock.restore(); }
+  await waitFor(() => exited(parent));
+  const record = manager.readRecords(root).convex;
+  assert.deepEqual(new Set([record.pid, ...(record.owned ?? []).map(owner => owner.pid)]), new Set(children));
+  fs.unlinkSync(path.join(root, ".dev-pids"));
+  const status = await runScript("dev-status.sh");
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(stripAnsi(status.stdout), /Convex API\s+up/);
+  for (const pid of children) assert.equal(manager.main(["--root", root, "running", "convex", String(pid)]), 0);
+  const fresh = spawnIn(root);
+  await waitFor(() => Boolean(manager.identity(fresh.pid!)));
+  assert.throws(() => manager.track(root, "convex", fresh.pid!), /Cannot replace live ownership/);
+  assert.equal(await alive(fresh), false);
+  assert.equal((await runScript("dev-stop.sh")).status, 0);
+  for (const pid of children) assert.equal(manager.identity(pid), "");
+  assert.deepEqual(manager.readRecords(root), {});
+});
+
+for (const descendant of [false, true]) test(`registration failure persists surviving ${descendant ? "descendants" : "launchers"} without losing earlier ownership`, async () => {
+  const existing = spawnIn(root), fresh = spawnIn(root, descendant
+    ? "const p=require('node:child_process').spawn('sleep',['300'],{stdio:'ignore'}); require('node:fs').writeFileSync('child.pid',String(p.pid)); setInterval(()=>{},1000);"
+    : undefined);
+  await waitFor(() => Boolean(manager.identity(fresh.pid!)));
+  if (descendant) await waitFor(() => fs.existsSync(path.join(root, "child.pid")));
+  const survivor = descendant ? Number(fs.readFileSync(path.join(root, "child.pid"), "utf8")) : fresh.pid!;
+  track("existing", existing);
+  const originalRename = mutableFs.renameSync;
+  let fail = true;
+  const rename = mock.method(mutableFs, "renameSync", (...args: Parameters<typeof fs.renameSync>) => {
+    if (fail) { fail = false; throw new Error("fixture registration failure"); }
+    return originalRename(...args);
+  });
+  const originalKill = process.kill.bind(process);
+  const kill = mock.method(process, "kill", (pid: number, signal?: Parameters<typeof process.kill>[1]) => pid === survivor ? true : originalKill(pid, signal));
+  syncBuiltinESMExports();
+  try {
+    assert.throws(() => manager.track(root, "fresh", fresh.pid!), /fixture registration failure/);
+  } finally {
+    rename.mock.restore(); kill.mock.restore(); syncBuiltinESMExports();
+  }
+  assert.equal(manager.readRecords(root).fresh.pid, survivor);
+  assert.equal(manager.readRecords(root).existing.pid, existing.pid);
+  fs.unlinkSync(path.join(root, ".dev-pids"));
+  assert.equal(manager.main(["--root", root, "running", "fresh", String(survivor)]), 0);
+  manager.stop(root);
+  assert.equal(manager.identity(survivor), "");
+  assert.equal(await alive(fresh), false);
+  assert.equal(await alive(existing), false);
+});
+
+test("stop waits for forced termination before dropping ownership", async () => {
+  const child = spawnIn(root, "process.on('SIGTERM',()=>{}); require('node:fs').writeFileSync('ready',''); setInterval(()=>{},1000);");
+  await waitFor(() => fs.existsSync(path.join(root, "ready")));
+  track("convex", child);
+  manager.stop(root);
+  assert.equal(manager.identity(child.pid!), "");
+  assert.deepEqual(manager.readRecords(root), {});
+});
+
 async function waitFor(check: () => boolean): Promise<void> {
   const deadline = Date.now() + 12_000;
   while (Date.now() < deadline) {
@@ -105,7 +227,7 @@ test("default startup skips stripped apps and explicit missing apps fail before 
 });
 
 beforeEach(() => {
-  temp = fs.mkdtempSync(path.join(os.tmpdir(), "dev process isolation "));
+  temp = fs.mkdtempSync(path.join(ROOT, ".dev-process-test-"));
   base = fs.realpathSync(temp);
   root = path.join(base, "client");
   foreign = path.join(base, "client-other"); // Prefix matches must not count.
@@ -143,12 +265,14 @@ for (const scenario of [
     const bin = path.join(root, "bin");
     fs.mkdirSync(bin);
     const invocation = path.join(root, "dashboard-command");
-    fs.writeFileSync(path.join(bin, "bunx"), `#!/bin/bash
-printf '%s\\n' "$PWD" "$@" > "$DASHBOARD_TEST_INVOCATION"
-printf '%s\\n' "$DASHBOARD_TEST_URL"
-echo 'diagnostic output' >&2
-exit "$DASHBOARD_TEST_CODE"
-`, { mode: 0o755 });
+    fs.writeFileSync(path.join(root, "packages/convex/fixture.cjs"), `
+const fs = require('node:fs');
+fs.writeFileSync(process.env.DASHBOARD_TEST_INVOCATION, [process.cwd(), ...process.argv.slice(2)].join('\\n') + '\\n');
+console.log(process.env.DASHBOARD_TEST_URL);
+console.error('diagnostic output');
+process.exit(Number(process.env.DASHBOARD_TEST_CODE));
+`);
+    fs.writeFileSync(path.join(bin, "bunx"), "#!/bin/bash\nexit 99\n", { mode: 0o755 });
     const convex = spawnIn(root);
     track("convex", convex);
     const result = await runScript("dev-status.sh", [], root, {
@@ -160,7 +284,7 @@ exit "$DASHBOARD_TEST_CODE"
     });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stderr, "");
-    assert.equal(fs.readFileSync(invocation, "utf8"), `${backend}\nconvex\ndashboard\n--no-open\n`);
+    assert.equal(fs.readFileSync(invocation, "utf8"), `${backend}\ndashboard\n--no-open\n`);
     if (scenario.url) {
       assert.ok(result.stdout.includes("Convex UI"));
       assert.ok(result.stdout.includes(scenario.url));
@@ -168,6 +292,36 @@ exit "$DASHBOARD_TEST_CODE"
       assert.ok(!result.stdout.includes("Convex UI"));
     }
     assert.ok(!result.stdout.includes("diagnostic output"));
+  });
+}
+
+for (const dependency of ["missing", "ancestor", "external-link"]) {
+  test(`status rejects ${dependency} Convex dependencies without invoking fallback executables`, async () => {
+    const convex = spawnIn(root);
+    await waitFor(() => Boolean(manager.identity(convex.pid!)));
+    track("convex", convex);
+    fs.rmSync(path.join(root, "node_modules"), { recursive: true, force: true });
+    fs.rmSync(path.join(root, "packages/backend/node_modules"), { recursive: true, force: true });
+    const marker = path.join(root, "fallback-invoked");
+    const outside = path.join(base, "node_modules/convex");
+    fs.mkdirSync(outside, { recursive: true });
+    const forbidden = `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');`;
+    if (dependency !== "missing") {
+      fs.writeFileSync(path.join(outside, "package.json"), '{"name":"convex","bin":"cli.cjs"}');
+      fs.writeFileSync(path.join(outside, "cli.cjs"), forbidden);
+    }
+    if (dependency === "external-link") {
+      fs.mkdirSync(path.join(root, "node_modules"));
+      fs.symlinkSync(outside, path.join(root, "node_modules/convex"));
+    }
+    const bin = path.join(root, "bin");
+    fs.mkdirSync(bin);
+    for (const name of ["bunx", "convex"]) fs.writeFileSync(path.join(bin, name), `#!/usr/bin/env node\n${forbidden}`, { mode: 0o755 });
+    const result = await runScript("dev-status.sh", [], root, { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Development dependencies:/);
+    assert.equal(fs.existsSync(marker), false);
+    assert.equal(await alive(convex), true);
   });
 }
 
@@ -188,7 +342,7 @@ test("status sizes its columns to the longest service name and keeps rows aligne
   fs.mkdirSync(path.join(root, "packages/backend"), { recursive: true });
   const bin = path.join(root, "bin");
   fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(bin, "bunx"), "#!/bin/bash\nprintf '%s\\n' http://127.0.0.1:6790/\n", { mode: 0o755 });
+  fs.writeFileSync(path.join(root, "packages/convex/fixture.cjs"), "console.log('http://127.0.0.1:6790/');\n");
   for (const [name, port] of [["landing", 3000], ["web", 3001]] as const) {
     track(`next-${name}`, spawnIn(root));
     fs.writeFileSync(path.join(root, `.next-${name}.log`), `ready on http://localhost:${port}\n`);
@@ -371,7 +525,9 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   const outsider = spawnIn(foreign);
   const previous = spawnIn(root);
   track("next-storybook", previous);
+  fs.unlinkSync(path.join(root, ".dev-pids"));
   fs.mkdirSync(path.join(root, "platform/apps/storybook"), { recursive: true });
+  fs.writeFileSync(path.join(root,"platform/apps/storybook/package.json"),'{"name":"@repo/storybook"}');
   fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
   const bindir = path.join(root, "fake-bin");
   fs.mkdirSync(bindir);
@@ -383,7 +539,7 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   const log = path.join(root, "start.log");
   const output = fs.openSync(log, "w");
   const launcher = spawn("bash", [path.join(root, "platform/tooling/dev-start.sh"), "--ci", "--app=storybook"], {
-    cwd: root, env: { ...process.env, PATH: bindir + path.delimiter + process.env.PATH },
+    cwd: root, env: { ...process.env, CONVEX_LOCAL_BACKEND_VERSION: undefined, PATH: bindir + path.delimiter + process.env.PATH },
     stdio: ["ignore", output, output], detached: true,
   });
   processes.push(launcher);
@@ -471,17 +627,9 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
       fs.mkdirSync(path.join(root, "packages/backend"), { recursive: true });
       fs.mkdirSync(path.join(root, "node_modules/.bin"), { recursive: true });
       fs.writeFileSync(path.join(root, "node_modules/.bin/esbuild"), "#!/bin/sh\necho 0.25.0\n", { mode: 0o755 });
-      fs.writeFileSync(path.join(bindir, "npx"), `#!/usr/bin/env node
-if (process.argv[2] === '--version') { console.log('fixture'); process.exit(0); }
-if (process.argv.slice(2).join(' ') !== 'convex dev') process.exit(127);
-const fs = await import('node:fs');
-fs.writeFileSync('.env.local', 'CONVEX_DEPLOYMENT=anonymous:process-fixture\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
-fs.mkdirSync('.convex/local/default', { recursive: true });
-fs.writeFileSync('.convex/local/default/config.json', JSON.stringify({ deploymentName: 'process-fixture', adminKey: 'synthetic-local-key', ports: { cloud: 43210, site: 43211 } }));
-console.log('Convex functions ready');
-setTimeout(() => {}, 300000);
-`, { mode: 0o755 });
+      fs.writeFileSync(path.join(root,"packages/convex/fixture.cjs"), "if(process.argv[2]!=='dev'){console.log('fixture');process.exit(0);}\nconst fs = require('node:fs');\nfs.writeFileSync('.env.local', 'CONVEX_DEPLOYMENT=anonymous:process-fixture\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');\nfs.mkdirSync('.convex/local/default', { recursive: true });\nfs.writeFileSync('.convex/local/default/config.json', JSON.stringify({ deploymentName: 'process-fixture', adminKey: 'synthetic-local-key', ports: { cloud: 43210, site: 43211 } }));\nconsole.log('Convex functions ready');\nsetTimeout(() => {}, 300000);\n");
       fs.mkdirSync(path.join(root, "packages/backend/node_modules/.bin"), { recursive: true });
+      fs.rmSync(path.join(root, "packages/backend/node_modules/.bin/convex"), { force: true });
       fs.writeFileSync(path.join(root, "packages/backend/node_modules/.bin/convex"), `#!/usr/bin/env node
 const fs = require('node:fs');
 if (process.argv.slice(2, 5).join(' ') !== 'env set --force') process.exit(127);
@@ -499,7 +647,7 @@ const {createServer} = await import('node:http'); const server = createServer((r
       // prune hand-written node_modules/.bin entries.
       const bins = ["node_modules/.bin/esbuild", "packages/backend/node_modules/.bin/convex"];
       const content = Object.fromEntries(bins.map(file => [file, fs.readFileSync(path.join(root, file), "utf8")]));
-      fs.writeFileSync(path.join(root, "fixture-install.cjs"), `const fs=require('node:fs'),path=require('node:path');for(const [file,source] of Object.entries(${JSON.stringify(content)})){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,source,{mode:0o755});}`);
+      fs.writeFileSync(path.join(root, "fixture-install.cjs"), `const fs=require('node:fs'),path=require('node:path');for(const [file,source] of Object.entries(${JSON.stringify(content)})){fs.mkdirSync(path.dirname(file),{recursive:true});fs.rmSync(file,{force:true});fs.writeFileSync(file,source,{mode:0o755});}`);
       const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
       manifest.scripts.postinstall = "node fixture-install.cjs";
       fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
@@ -509,7 +657,7 @@ const {createServer} = await import('node:http'); const server = createServer((r
     const output = fs.openSync(log, "w");
     const launcher = spawn("bun", args, {
       cwd: root,
-      env: { ...process.env, PATH: bindir + path.delimiter + process.env.PATH },
+      env: { ...process.env, CONVEX_LOCAL_BACKEND_VERSION: undefined, PATH: bindir + path.delimiter + process.env.PATH },
       stdio: ["ignore", output, output], detached: true,
     });
     processes.push(launcher);
@@ -537,6 +685,12 @@ const {createServer} = await import('node:http'); const server = createServer((r
       // The process group belongs exclusively to this fixture. Stop the Bun
       // wrapper, launcher, and log tail even when a startup assertion fails.
       try { process.kill(-(launcher.pid as number), "SIGTERM"); } catch { /* Already exited. */ }
+      // A shell exit trap can still be clearing ownership when Bun forwards
+      // the same signal. Repeated group termination must not abort cleanup.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+        try { process.kill(-(launcher.pid as number), "SIGTERM"); } catch { /* Already exited. */ }
+      }
       await waitFor(() => exited(launcher));
     }
     await waitFor(() => Object.keys(manager.readRecords(root)).length === 0);
@@ -588,7 +742,9 @@ test("explicit landing startup starts its browser backend", async () => {
 
 test("a prior launch cannot stop a replacement record with the same service name", async () => {
   const original = spawnIn(root), replacement = spawnIn(root);
-  track("next-storybook", original); track("next-storybook", replacement);
+  track("next-storybook", original);
+  manager.stop(root, "next-storybook", original.pid);
+  track("next-storybook", replacement);
   manager.stop(root, "next-storybook", original.pid);
   assert.ok(await alive(replacement));
   assert.equal(manager.readRecords(root)["next-storybook"].pid, replacement.pid);

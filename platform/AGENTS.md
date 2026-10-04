@@ -89,6 +89,7 @@ bun run dev:storybook        # storybook               bun run dev:status / dev:
 
 CI=true bun run ci           # Full local CI; one web E2E worker avoids edge-rate-limit failures
 bun run ci:quick             # Same without browser tests
+bun run ci:workers:setup     # Optional disposable local GitHub workers; docs/ci-workers.md
 bun run lint                 # ESLint, all workspaces
 bun run typecheck            # TypeScript, all workspaces
 bun run test                 # Bun unit tests      (never bare `bun test`)
@@ -229,8 +230,9 @@ environment-specific and silently breaks artifact reuse
 | When you are... | Read |
 |---|---|
 | Writing or changing tests (unit, component, E2E, backend) | [docs/testing.md](docs/testing.md) |
-| Understanding checks, E2E policy, native pre-push CI, act or offline mode | [docs/ci.md](docs/ci.md) |
-| Private CI costs, installing local runners, or sharing an organization pool (including GitHub Free) | [docs/private-repo-ci.md](docs/private-repo-ci.md) |
+| GitHub workflow behavior, required checks, E2E policy or private CI costs | [docs/ci-github.md](docs/ci-github.md) |
+| Native pre-push checks, act debugging or cached local execution | [docs/ci-pre-push.md](docs/ci-pre-push.md) |
+| Installing, certifying or operating disposable local GitHub workers | [docs/ci-workers.md](docs/ci-workers.md) |
 | Writing components, Convex functions or styles | [docs/code-style.md](docs/code-style.md) |
 | Working on auth, route protection, rate limiting or React patterns | [docs/architecture.md](docs/architecture.md), [docs/authentication-and-onboarding.md](docs/authentication-and-onboarding.md), [docs/rate-limiting-architecture.md](docs/rate-limiting-architecture.md) |
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |
@@ -264,14 +266,14 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 
 ## Verification
 
-Before pushing, follow the [local CI guidance](docs/ci.md#local-ci-pre-push-checks).
+Before pushing, follow the [local CI guidance](docs/ci-pre-push.md#local-ci-pre-push-checks).
 Keep `lint`, `typecheck` and the test suites green.
 
 ### Pull requests and E2E
 
 E2E is most of what CI costs, and on a private repository GitHub bills every minute
-([private-repo-ci.md](docs/private-repo-ci.md)). The repository variable `PLATFORM_CI_PR_E2E`
-decides when CI runs E2E on pull requests ([E2E on pull requests](docs/ci.md#e2e-on-pull-requests)).
+([ci-github.md](docs/ci-github.md)). The repository variable `PLATFORM_CI_PR_E2E`
+decides when CI runs E2E on pull requests ([E2E on pull requests](docs/ci-github.md#e2e-on-pull-requests)).
 Check it and the repository's visibility before opening a PR:
 `gh repo view --json visibility` and `gh variable list`.
 

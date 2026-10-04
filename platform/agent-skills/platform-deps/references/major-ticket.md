@@ -146,7 +146,7 @@ High-risk, so the user decides, whatever the tier:
    there, then `bun install --minimum-release-age=864000` (`43200` for a twelve-hour security
    fix). Then run `./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts --write`
    so every floor matches the new lockfile (required in the product, optional in an adopted app;
-   see `SKILL.md` step 6). Follow the migration guide, then the [local CI guidance](../../../docs/ci.md#local-ci-pre-push-checks). Performance is an informal check: bundle
+   see `SKILL.md` step 6). Follow the migration guide, then the [local CI guidance](../../../docs/ci-pre-push.md#local-ci-pre-push-checks). Performance is an informal check: bundle
    sizes stay within the size-limit budgets, and nothing in the diff or the release notes
    suggests a slowdown. If the app turns out broken, reject; some changes can only be judged by
    trying them.

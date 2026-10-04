@@ -110,7 +110,13 @@ This lists verified development services across this repository’s worktrees an
 
 ### Development process isolation
 
-The launcher requires Node.js 22.6 or newer (it runs `platform/tooling/dev-processes.ts` through `platform/tooling/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records its own service PIDs and process start identities in ignored `.dev-pids` and `.dev-processes.json` files. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+The launcher requires Node.js 22.6 or newer (it runs `platform/tooling/dev-processes.ts` through `platform/tooling/node-ts.sh`) and the usual `ps`, `pgrep`, and `lsof` utilities. Each checkout records service process start identities in ignored `.dev-processes.json`; `.dev-pids` is a legacy compatibility file. Status, retry and stop use the identity records even when `.dev-pids` is absent. Start, restart, and stop verify the identity and working directory before signalling a process or its descendants. Unrelated Convex servers, other clones, and unregistered processes are left alone; there is no machine-wide orphan cleanup.
+
+Failed startup cleans up only services newly launched by that invocation. Cleanup records verified
+descendants before signalling and waits for termination; surviving processes retain their ownership
+records even if their launcher exits. If cleanup reports survivors, retry `bun run dev:stop` before
+restarting. Cleanup preserves local Convex database state. The process ownership regression coverage
+lives in `platform/tooling/tests/dev-processes.test.ts`.
 
 - `bun run dev:stop` stops verified services in this checkout.
 - `bun run dev:stop:convex` stops only this checkout's verified Convex process tree.
@@ -196,7 +202,7 @@ when you take a newer release. Everything else is yours.
 ├── infra/aws/                 # Optional AWS hosting
 └── .github/
     ├── actions/               # Composite actions (build, deploy, setup)
-    └── workflows/             # platform-*.yml (reusable, platform-owned); ci-*, cd-*, security.yml callers (yours; see docs/ci.md)
+    └── workflows/             # platform-*.yml (reusable, platform-owned); ci-*, cd-*, security.yml callers (yours; see docs/ci-github.md)
 ```
 
 ## Shared packages
@@ -328,7 +334,7 @@ For example, clone with
 7. On a private repository, where GitHub Actions minutes are billed, asks when CI should run E2E
    on pull requests (`--pr-e2e`) and sets the repository variable `PLATFORM_CI_PR_E2E`, which
    applies to everyone's CI runs in the repository. Without an answer it prints the command for
-   later. See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests).
+   later. See [E2E on pull requests](docs/ci-github.md#e2e-on-pull-requests).
 
 CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
 and rollback inspect the selected commit, so removing landing does not require a landing
@@ -395,12 +401,14 @@ Run the full CI check before pushing:
 
 ```bash
 CI=true bun run ci      # Full CI: lint, types, tests, build, single-worker web E2E
-bun run ci:quick        # Quick local checks; see the CI guide
+bun run ci:quick        # Skip E2E and export browser tests
 bun run ci:act          # Run in Docker via act (mirrors GitHub Actions)
-bun run ci:act:offline  # Offline mode (fast, no network required)
+bun run ci:act:offline  # Reuse cached images, Actions and tools
 ```
 
-See the [CI guide](docs/ci.md#local-ci-pre-push-checks) for the check inventory and skipped browser checks.
+Use [pre-push CI](docs/ci-pre-push.md) for local commands and debugging,
+[CI on GitHub Actions](docs/ci-github.md) for workflows, gates and costs, and
+[local CI workers](docs/ci-workers.md) to operate the machine that executes GitHub jobs.
 
 ## Conventions
 

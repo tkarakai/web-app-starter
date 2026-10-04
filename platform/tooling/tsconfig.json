@@ -18,6 +18,7 @@
     "platform-upgrade/*.ts",
     "update-check.ts",
     "setup-updates/*.ts",
-    "deploy-setup/*.ts"
+    "deploy-setup/*.ts",
+    "ci-workers/*.ts"
   ]
 }

@@ -364,9 +364,9 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
   - Required: `CI Storybook Complete`
 - [x] Require branches to be up to date before merging
 
-With `PLATFORM_CI_PR_E2E=on-demand`, these checks also require E2E to have passed on the PR head ([E2E on pull requests](ci.md#e2e-on-pull-requests)). On a private repository, branch protection needs a paid plan.
+With `PLATFORM_CI_PR_E2E=on-demand`, these checks also require E2E to have passed on the PR head ([E2E on pull requests](ci-github.md#e2e-on-pull-requests)). On a private repository, branch protection needs a paid plan.
 
-> **How it works:** See the [CI guide](ci.md#pull-request-base-branches) for trigger coverage and customization. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. Copy exact check names from a completed PR run.
+> **How it works:** See the [CI guide](ci-github.md#pull-request-base-branches) for trigger coverage and customization. Require the summary checks for the installed apps; remove a deleted app’s required check from branch protection. Copy exact check names from a completed PR run.
 >
 > On push to main (after a PR is merged), the unified `cd-staging.yml` workflow calls these same CI workflows as reusable workflows, with E2E always on whatever `PLATFORM_CI_PR_E2E` says, then detects which apps changed, builds only those, and deploys to staging. It also sets a `ci/gate-passed` commit status that `cd-production.yml` checks before allowing production deploys.
 
@@ -418,7 +418,7 @@ Run through this checklist before the first deployment or any major infrastructu
 
 ### Code Readiness
 
-- [ ] All CI checks pass locally: follow the [local CI guidance](ci.md#local-ci-pre-push-checks)
+- [ ] All CI checks pass locally: follow the [local CI guidance](ci-pre-push.md#local-ci-pre-push-checks)
 - [ ] No `console.log` debugging statements in production code
 - [ ] TypeScript strict mode passes: `bun run typecheck`
 - [ ] Linting passes: `bun run lint`

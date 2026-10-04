@@ -11,7 +11,7 @@ permissions:
 jobs:
   # Paid features: CodeQL and dependency review are free on public repositories and need
   # GitHub Code Security on private ones. They run when the repository is public or the
-  # repository variable PLATFORM_CODE_SECURITY is "true" (platform/docs/ci.md), and are
+  # repository variable PLATFORM_CODE_SECURITY is "true" (platform/docs/ci-github.md), and are
   # otherwise skipped with a visible notice, so the workflow works on GitHub Free.
   paid-features:
     name: Paid Features

@@ -17,7 +17,36 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Platform update discovery/verification and PR delivery can run on your own computers using independently configured self-hosted Linux runners; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
 
+## [4.0.0] - 2026-10-04
+
+### Changed
+
+- CI documentation is organized by task: [GitHub workflows and policy](docs/ci-github.md),
+  [developer pre-push checks](docs/ci-pre-push.md), and [local worker operation](docs/ci-workers.md).
+  Private-repository cost controls are part of the GitHub guide.
+
+### Added
+
+- A local GitHub Actions worker manager prepares images without a registry, isolates each job
+  in a new container, keeps registration credentials on the host, and supports branch diagnostics,
+  offline dependency seeds and targeted cleanup. Setup infers the repository from the checkout.
+
+- Development and staging banners show the installed starter platform version in the
+  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
+  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
+
 ### Fixed
+
+- Development launcher exit traps finish ownership cleanup when Bun forwards repeated
+  termination signals, preserving unrelated processes and checkout state.
+
+- Development launchers validate selected workspaces and execute checkout-local Next.js and Convex
+  binaries before services start, rejecting missing or ancestor dependencies with a frozen-install
+  instruction. Status and retry use identity-backed process records even when the legacy PID file
+  is absent; failed registration cleans up the newly started process tree.
+- Upgrade reports, developer guidance and agent handoffs explicitly require a per-checkout
+  `bun install --frozen-lockfile` after pulling dependency or workspace changes, including when
+  another worktree or CI already verified the upgrade.
 
 - Convex and authentication HTTP routes now enforce live session assurance, current security
   policy and an absolute four-hour administrator lifetime. TOTP and user-verified passkeys
@@ -32,26 +61,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
   OTP enrollment rotation preserves the original administrator deadline without granting strong proof.
 
 - ES256 passkey authentication uses one ASN.1 schema registry, avoiding mismatched parser state.
-
-### Action required
-
-- Deploy the updated authentication backend and UI together. Existing sessions without verified
-  session proof must reauthenticate or sign in again. App-owned administrative mutations must use
-  `adminMutation`; custom auth screens must support limited sessions and fresh verification as
-  described in [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
-  Required passkeys now require current-session passkey authentication. Email-OTP sign-in, social
-  account/token routes and admin impersonation are unavailable; password reset and email
-  verification remain supported.
-
-## [4.0.0] - 2026-10-04
-
-### Added
-
-- Development and staging banners show the installed starter platform version in the
-  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
-  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
-
-### Fixed
 
 - Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
 - Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
@@ -88,6 +97,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- Operators of the old optional Compose workers must stop them and revoke their registration
+  credential before adopting the new manager. Shared writable cache volumes are no longer the
+  supported worker setup. Follow [local workers](docs/ci-workers.md) and verify the
+  diagnostic before enabling routing. GitHub-hosted CI needs no action.
+
+- Deploy the updated authentication backend and UI together. Existing sessions without verified
+  session proof must reauthenticate or sign in again. App-owned administrative mutations must use
+  `adminMutation`; custom auth screens must support limited sessions and fresh verification as
+  described in [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+  Required passkeys now require current-session passkey authentication. Email-OTP sign-in, social
+  account/token routes and admin impersonation are unavailable; password reset and email
+  verification remain supported.
+
 - Add **Security Complete** and the standalone **CodeQL** context to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
 - Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
 
@@ -96,7 +118,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   and commit required manual app-owned preparation for custom fixture clients, auth forms
   and retained sample file code. The installed v3.1.0 checkout does not contain the v4
   codemods. After applying target source and resolving seam conflicts, the updater automatically
-  runs `v4-local-fixture-clients.ts` and `v4-platform-api.ts`; generated platform bindings need
+  runs the release's codemods; see the guide for onboarding dependency cleanup and preservation.
+  Generated platform bindings need
   the target platform modules present. Then run the guide's read-only `--check` commands and
   acceptance tests, including local auth E2E, before deployment or merge. Preserve the immutable
   plan constraints in [UPGRADING.md](UPGRADING.md). No hosted data or configuration is changed automatically.
@@ -181,7 +204,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   default, unchanged behaviour), `on-demand` (only with the `run-e2e` label, and the
   `CI <App> Complete` check fails until E2E has passed on the PR head) or `off`. The new
   app-owned `ci-e2e-request.yml` workflow re-runs the waiting checks when the label is added.
-  See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests). `platform:upgrade` adds
+  See [E2E on pull requests](docs/ci-github.md#e2e-on-pull-requests). `platform:upgrade` adds
   `ci-e2e-request.yml` and merges the `ci-verify.yml` runner change as seams.
 - Repository variable `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long CI
   artifacts are kept. The upgrade-rehearsal evidence, previously kept for GitHub's 90-day
@@ -193,7 +216,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   GitHub-hosted runners. The Playwright browser and Convex backend caches are now keyed by CPU
   architecture as well, so arm64 and x64 runners don't restore each other's binaries; the first
   run after upgrading downloads them once.
-- [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md): how Actions minutes and storage
+- [`platform/docs/ci-github.md`](docs/ci-github.md): how Actions minutes and storage
   work on a private repository, what the starter's CI costs per push, and how to spend less, with
   step-by-step self-hosted runner setup for a Mac.
 - A runner image for self-hosted CI, `platform/tooling/ci-runner/` (a `Dockerfile` and a
@@ -203,7 +226,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   already has, and skip installing browser system libraries when the image was built for the
   Playwright version under test. GitHub-hosted runs are unchanged. No app action is required;
   runners set up from the earlier guide keep working, and moving to the image is described in
-  [`platform/docs/private-repo-ci.md`](docs/private-repo-ci.md). `platform:upgrade` adds the
+  [`platform/docs/ci-github.md`](docs/ci-github.md). `platform:upgrade` adds the
   setup action's new `install-self-hosted.sh` as a seam.
 
 ### Removed
@@ -613,7 +636,7 @@ published or tagged; it is retained only as historical context.
   is `true`. The platform unit suite runs only when the platform changed.
   `bun run check:actions-pinned` (in CI) requires full commit SHAs for every action.
   **If you edited these workflows:** move your trigger and permission changes to the callers
-  and take the platform's `platform-*.yml`. Guide: `platform/docs/ci.md`.
+  and take the platform's `platform-*.yml`. Guide: `platform/docs/ci-github.md`.
 - `platform/config/renovate-preset.json`: the platform's Renovate policy (cooldown, grouping,
   automerge, holds) as a preset. It ignores the platform zone (`platform/**`,
   `.github/workflows/platform-*.yml`, `.github/actions/**`), so Renovate never edits it in your

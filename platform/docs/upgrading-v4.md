@@ -30,7 +30,8 @@ deploy preflight refuses these variables. This does not disable local fixtures.
 ## Generated API bindings
 
 After target source application, the updater runs `v4-platform-api.ts`
-to extend Convex’s generated declaration with the three new internal platform modules. Those
+to extend Convex’s generated declaration with the seven new platform modules: `authAssurance`, `authRateLimits`, `localFixtures`,
+`recoveryCodes`, `sessionAssurance`, `sessionFields` and `sessionPolicy`. Those
 modules must be present in the app checkout; running the target script against v3.1.0 source
 alone cannot prepare their bindings. It
 preserves app-owned bindings and fails on an unknown declaration format. This makes platform
@@ -59,6 +60,26 @@ Review the new optional `AUTH_TRUSTED_IP_HEADER`, `AUTH_EMAIL_RATE_PER_MINUTE`, 
 and `AUTH_EMAIL_RATE_PER_DAY` configuration against the
 [auth rate-limit contract](rate-limiting-architecture.md#deployment-configuration-and-ip-trust).
 
+## Session assurance compatibility
+
+Deploy the authentication backend and UI together. Existing sessions without verified proof
+must reauthenticate or sign in again. Custom auth screens must handle limited enrollment and
+recovery sessions and fresh verification; app-owned administrator mutations must use
+`adminMutation`. Required passkeys need current-session passkey authentication. Email-OTP
+sign-in, social account/token routes and admin impersonation are unavailable; password reset
+and email verification remain supported. Follow
+[session assurance](authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+
+Before planning, port the reference `apps/web/src/components/settings/account-client.tsx`
+compatibility while preserving your app's tabs and unsaved account/setup state through fresh
+verification. Port the session-proof helpers and assertions in app-owned auth E2E and backend
+tests; identity-only test sessions no longer prove assurance. Follow
+`packages/backend/convex/authorization-contract.test.ts`: register the Better Auth component,
+create a session with assurance fields through its adapter, and pass its `sessionId` to
+`withIdentity`. Run local auth E2E and backend
+session-policy tests against the target source, covering reauthentication, limited setup,
+recovery and administrator expiry before deployment or merge.
+
 ## App-owned sample files
 
 If the app retains the sample file feature, port the release's
@@ -77,11 +98,21 @@ no stored attachments needs no data copy. Source upgrades preserve and quarantin
 
 ## Shared UI, landing artifacts and Security
 
-App-owned landing pages are preserved. To adopt the restored onboarding and announcements,
+App-owned landing pages and forms are preserved. The updater runs
+`v4-onboarding-dependency.ts`: if `packages/onboarding` is absent, it removes the
+reference app’s newly introduced `@repo/onboarding: "workspace:*"` dependency from
+web and landing manifests and its entry in literal `transpilePackages` arrays.
+It does not create or overwrite an app-owned form. Existing onboarding workspaces are
+left unchanged, including custom CSS exports. Review custom transpilation expressions
+manually; the codemod leaves them unchanged. After the updater's codemod step, run
+`./platform/tooling/node-ts.sh platform/tooling/codemods/v4-onboarding-dependency.ts --check`
+from the app root; it writes nothing and exits non-zero if entries still need removal.
+To adopt the restored onboarding and announcements,
 follow [onboarding ownership and landing handoff](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
-Move shared onboarding behavior tests and coverage into `packages/onboarding`, retaining
-consumer wiring tests. Run `bun run test:shared-packages` and ensure the package is listed with
+If your app shares onboarding through `packages/onboarding`, move its behavior tests and
+coverage into that package, retaining consumer wiring tests. Apps that retain separate
+forms should keep their existing behavior coverage. Run `bun run test:shared-packages` and ensure the package is listed with
 real source coverage. Preserve the app's form fields, translations and branding.
 Run `bun run test:landing-artifacts` to build and exercise both configuration variants; custom
 landings must handle missing Convex configuration without throwing in the browser.
@@ -94,3 +125,16 @@ Security workflow patches. After a successful PR run, require its **Security Com
 and the standalone **CodeQL** context alongside the existing app/shared gates (or enforce the
 same merge rule where the hosting plan has no branch protection). Security Complete verifies
 that applicable scans executed successfully; CodeQL separately enforces the alert policy. Finish with full local CI and the PR checks before merging.
+
+## Local workers and checkout dependencies
+
+Operators using the retired optional Compose workers must stop that Compose project, remove its
+GitHub runner registrations and revoke its registration PAT before switching routing. Remove the
+old `PLATFORM_CI_RUNNER` variable. Follow [local workers](ci-workers.md#migrate-from-the-retired-compose-runner)
+for setup, `starter-workers check --install`, the successful GitHub diagnostic and certification,
+then `starter-workers enable`. Done when the diagnostic passes and normal jobs use fresh managed
+containers; GitHub-hosted users need no worker migration.
+
+After pulling the upgraded app into each checkout or worktree, run `bun install --frozen-lockfile`
+there before starting services. Verification in another checkout does not install local dependencies.
+Done when startup accepts the checkout-local Next.js and Convex binaries and reports HTTP readiness.

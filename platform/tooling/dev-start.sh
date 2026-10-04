@@ -129,16 +129,38 @@ if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Apps: web=$START_WEB admin=$START_ADMIN landing=$START_LANDING storybook=$START_STORYBOOK convex=$NEED_CONVEX"
 fi
 
+# Validate every selected workspace before starting Convex or any application.
+for selected in web admin landing storybook; do
+    flag="START_$(echo "$selected" | tr '[:lower:]' '[:upper:]')"
+    if [ "${!flag}" = true ]; then
+        "$NODE_TS" "$SCRIPT_DIR/local-dev-deps.ts" check "$(app_dir "$selected")"
+        "$NODE_TS" "$SCRIPT_DIR/local-dev-deps.ts" bin "$(app_dir "$selected")" next >/dev/null
+    fi
+done
+if [ "$NEED_CONVEX" = true ]; then
+    "$NODE_TS" "$SCRIPT_DIR/local-dev-deps.ts" check "$PROJECT_DIR/packages/backend"
+    CONVEX_BIN=$("$NODE_TS" "$SCRIPT_DIR/local-dev-deps.ts" bin "$PROJECT_DIR/packages/backend" convex)
+fi
+
 STARTED_SERVICES=()
 TSCONFIG_WATCHER_PID=""
 cleanup_on_exit() {
-    local status=$? entry name pid
-    trap - EXIT INT TERM
+    local status=$? entry name pid cleanup_pid
+    trap - EXIT
+    # Bun can forward a termination signal after the foreground process group
+    # has already received it. Finish ownership cleanup despite that repeat.
+    trap '' INT TERM
     if [ "$NON_INTERACTIVE" = true ] || [ "$status" -ne 0 ]; then
+        # Cleanup interpreters must also leave the foreground group: Node
+        # restores signal dispositions inherited from the shell at startup.
+        set -m
         for entry in "${STARTED_SERVICES[@]}"; do
             name=${entry%:*}; pid=${entry##*:}
-            "$NODE_TS" "$PROCESS_HELPER" stop --name "$name" --pid "$pid" || true
+            "$NODE_TS" "$PROCESS_HELPER" stop --name "$name" --pid "$pid" &
+            cleanup_pid=$!
+            wait "$cleanup_pid" || true
         done
+        set +m
         [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
     fi
     if [ -n "${TSCONFIG_WATCHER_PID:-}" ]; then
@@ -405,7 +427,8 @@ echo ""
 
 # Check if we already have processes running from THIS project
 HAS_RUNNING_PROCESSES=false
-if [ -f "$PID_FILE" ]; then
+PROCESS_ROWS=$("$NODE_TS" "$PROCESS_HELPER" records)
+if [ -n "$PROCESS_ROWS" ] || [ -f "$PID_FILE" ]; then
     RUNNING_PIDS=""
     while IFS= read -r line; do
         name=$(echo "$line" | cut -d':' -f1)
@@ -416,7 +439,7 @@ if [ -f "$PID_FILE" ]; then
         elif [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
             echo "Skipping unverified $name PID $pid. Stop pre-upgrade servers from their original terminal if needed."
         fi
-    done < "$PID_FILE"
+    done < <(printf '%s\n' "$PROCESS_ROWS"; [ ! -f "$PID_FILE" ] || cat "$PID_FILE")
 
     if [ "$HAS_RUNNING_PROCESSES" = true ]; then
         if [ "$FORCE_RESTART" = true ] || [ ! -t 0 ]; then
@@ -444,8 +467,6 @@ if [ -f "$PID_FILE" ]; then
                 exit 0
             fi
         fi
-    else
-        rm -f "$PID_FILE"
     fi
 fi
 
@@ -453,7 +474,7 @@ fi
 # Convex backend is never an orphan just because it isn't in our PID file.
 terminate_pid_with_timeout() {
     local pid="$1"
-    "$NODE_TS" "$PROCESS_HELPER" stop --name convex
+    "$NODE_TS" "$PROCESS_HELPER" stop --name convex --pid "$pid"
     wait "$pid" 2>/dev/null || true
 }
 
@@ -543,7 +564,7 @@ if [ "$NEED_CONVEX" = true ]; then
 
     if [ "$NON_INTERACTIVE" = true ]; then
         echo "[CI MODE] Convex state dir: $CONVEX_STATE_DIR"
-        echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 npx convex dev (from $CONVEX_DIR)"
+        echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 local Convex CLI dev (from $CONVEX_DIR)"
         (cd "$CONVEX_DIR" && CONVEX_VERBOSE=1 bash "$SCRIPT_DIR/dev-convex.sh" > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
         echo "[CI MODE] Convex process started with PID: $CONVEX_PID"
@@ -575,14 +596,12 @@ if [ "$NEED_CONVEX" = true ]; then
                 echo ""
                 print_convex_upgrade_fix
                 echo ""
-                rm -f "$PID_FILE"
                 exit 1
             fi
             echo -e "${RED}  Log output:${NC}"
             cat "$PROJECT_DIR/.convex-dev.log"
             echo ""
             echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
-            rm -f "$PID_FILE"
             exit 1
         fi
 
@@ -606,7 +625,6 @@ if [ "$NEED_CONVEX" = true ]; then
             echo ""
             echo -e "${YELLOW}  Tip: Use 'bun dev:stop' to stop any running instances.${NC}"
             terminate_pid_with_timeout "$CONVEX_PID" 3
-            rm -f "$PID_FILE"
             exit 1
         fi
 
@@ -650,7 +668,6 @@ if [ "$NEED_CONVEX" = true ]; then
             TSCONFIG_WATCHER_PID=""
         fi
         terminate_pid_with_timeout "$CONVEX_PID" 3
-        rm -f "$PID_FILE"
         exit 1
     fi
 
@@ -707,7 +724,7 @@ if [ "$NEED_CONVEX" = true ]; then
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi
 
-    DASHBOARD_URL=$(get_dashboard_url)
+    DASHBOARD_URL=$(get_dashboard_url) || exit 1
 
     echo -e "${GREEN}✔ Convex ready (PID: $CONVEX_PID)${NC}"
     echo -e "  ${BLUE}Deployment:${NC} $DEPLOYMENT_NAME"
@@ -728,8 +745,8 @@ if [ "$NEED_CONVEX" = true ]; then
     fi
 
     AUTH_SECRET_SET=false
-    if (cd "$CONVEX_DIR" && bunx convex env get BETTER_AUTH_SECRET > /dev/null 2>&1); then
-        EXISTING_SECRET=$(cd "$CONVEX_DIR" && bunx convex env get BETTER_AUTH_SECRET 2>/dev/null)
+    if (cd "$CONVEX_DIR" && node "$CONVEX_BIN" env get BETTER_AUTH_SECRET > /dev/null 2>&1); then
+        EXISTING_SECRET=$(cd "$CONVEX_DIR" && node "$CONVEX_BIN" env get BETTER_AUTH_SECRET 2>/dev/null)
         if [ -n "$EXISTING_SECRET" ] && [ "$EXISTING_SECRET" != "undefined" ]; then
             AUTH_SECRET_SET=true
         fi
@@ -738,7 +755,7 @@ if [ "$NEED_CONVEX" = true ]; then
     if [ "$AUTH_SECRET_SET" = false ]; then
         echo -e "  ${YELLOW}Generating BETTER_AUTH_SECRET...${NC}"
         NEW_SECRET=$(openssl rand -base64 32)
-        if ! (cd "$CONVEX_DIR" && bunx convex env set BETTER_AUTH_SECRET "$NEW_SECRET" 2>&1); then
+        if ! (cd "$CONVEX_DIR" && node "$CONVEX_BIN" env set BETTER_AUTH_SECRET "$NEW_SECRET" 2>&1); then
             echo -e "  ${RED}Failed to set BETTER_AUTH_SECRET${NC}"
             if [ "$NON_INTERACTIVE" = true ]; then
                 echo "[CI MODE] This might be expected if Convex env commands aren't available"
@@ -759,17 +776,17 @@ if [ "$NEED_CONVEX" = true ]; then
     # Sync current git branch so TOTP issuer includes it in dev
     CURRENT_GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
     if [ -n "$CURRENT_GIT_BRANCH" ]; then
-        (cd "$CONVEX_DIR" && bunx convex env set GIT_BRANCH "$CURRENT_GIT_BRANCH" > /dev/null 2>&1) || true
+        (cd "$CONVEX_DIR" && node "$CONVEX_BIN" env set GIT_BRANCH "$CURRENT_GIT_BRANCH" > /dev/null 2>&1) || true
     fi
     # The seed (and the console fallback for auth emails) runs only when every
     # SITE_URL origin is loopback HTTP (convex/platform/developmentOnly.ts). A fresh
     # backend, as in CI, has no SITE_URL yet: the real origins are synced once
     # the apps are up, below. Give it a provisional local value until then.
-    EXISTING_SITE_URL=$(cd "$CONVEX_DIR" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
+    EXISTING_SITE_URL=$(cd "$CONVEX_DIR" && node "$CONVEX_BIN" env get SITE_URL 2>/dev/null | tr -d '\r\n')
     if [ -z "$EXISTING_SITE_URL" ] || [ "$EXISTING_SITE_URL" = "undefined" ]; then
-        (cd "$CONVEX_DIR" && bunx convex env set SITE_URL "$APP_CONFIG_ORIGIN_WEB" > /dev/null 2>&1) || true
+        (cd "$CONVEX_DIR" && node "$CONVEX_BIN" env set SITE_URL "$APP_CONFIG_ORIGIN_WEB" > /dev/null 2>&1) || true
     fi
-    SEED_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run platform/devSeed:seed 2>&1) || true
+    SEED_OUTPUT=$(cd "$CONVEX_DIR" && node "$CONVEX_BIN" run platform/devSeed:seed 2>&1) || true
     if echo "$SEED_OUTPUT" | grep -q "Already seeded"; then
         echo -e "  ${GREEN}✔${NC} Dev users already exist"
     elif echo "$SEED_OUTPUT" | grep -q "Dev seed complete"; then
@@ -783,7 +800,7 @@ if [ "$NEED_CONVEX" = true ]; then
     # ============================================================
     echo ""
     echo -e "${GREEN}▶ Running pending migrations...${NC}"
-    MIGRATION_OUTPUT=$(cd "$CONVEX_DIR" && bunx convex run migrations 2>&1) || true
+    MIGRATION_OUTPUT=$(cd "$CONVEX_DIR" && node "$CONVEX_BIN" run migrations 2>&1) || true
     if echo "$MIGRATION_OUTPUT" | grep -q "Migration .* already done"; then
         echo -e "  ${GREEN}✔${NC} No pending migrations"
     elif [ -z "$MIGRATION_OUTPUT" ]; then
@@ -837,7 +854,8 @@ start_next_app() {
     if [ "$app_name" = landing ] && [ "$actual_port" != "0" ]; then
         update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$actual_port"
     fi
-    (cd "$app_dir" && bunx next dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
+    local next_bin; next_bin=$("$NODE_TS" "$SCRIPT_DIR/local-dev-deps.ts" bin "$app_dir" next)
+    (cd "$app_dir" && exec node "$next_bin" dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
     local next_pid=$!
     "$NODE_TS" "$PROCESS_HELPER" track "next-${app_name}" "$next_pid"
     STARTED_SERVICES+=("next-${app_name}:$next_pid")
@@ -916,7 +934,7 @@ start_next_app() {
     if [ "$NEED_CONVEX" = true ] && { [ "$app_name" = web ] || [ "$app_name" = admin ] || [ "$app_name" = landing ]; } && [ -n "$next_port" ]; then
         local app_origin="http://localhost:$next_port"
         local existing_site_url
-        existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && bunx convex env get SITE_URL 2>/dev/null | tr -d '\r\n')
+        existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env get SITE_URL 2>/dev/null | tr -d '\r\n')
 
         local merged_site_url="$app_origin"
         if [ -n "$existing_site_url" ] && [ "$existing_site_url" != "$app_origin" ]; then
@@ -926,7 +944,7 @@ start_next_app() {
             esac
         fi
 
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$merged_site_url" > /dev/null 2>&1); then
+        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$merged_site_url" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex ($merged_site_url)"
         else
             echo -e "  ${YELLOW}⚠${NC} Failed to sync SITE_URL to Convex"
@@ -968,7 +986,7 @@ if [ "$START_ADMIN" = true ]; then
 
     # Sync ADMIN_SITE_URL to Convex so CORS and admin invitation links work
     if [ "$NEED_CONVEX" = true ] && [ -n "$ADMIN_APP_URL" ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "$ADMIN_APP_URL" > /dev/null 2>&1); then
+        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set ADMIN_SITE_URL "$ADMIN_APP_URL" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL synced to Convex"
         else
             echo -e "  ${YELLOW}⚠${NC} Failed to sync ADMIN_SITE_URL to Convex"
@@ -988,7 +1006,7 @@ if [ "$START_LANDING" = true ]; then
     # The backend needs the landing URL for CORS and announcement links,
     # including the landing browser requests.
     if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
+        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
         else
             echo -e "  ${YELLOW}⚠${NC} Failed to sync LANDING_URL to Convex"
@@ -1039,14 +1057,14 @@ if [ "$NEED_CONVEX" = true ]; then
 
     # Seed ADMIN_SITE_URL in Convex when admin is not started
     if [ "$START_ADMIN" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set ADMIN_SITE_URL "$APP_CONFIG_ORIGIN_ADMIN" > /dev/null 2>&1); then
+        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set ADMIN_SITE_URL "$APP_CONFIG_ORIGIN_ADMIN" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL defaulted to $APP_CONFIG_ORIGIN_ADMIN in Convex"
         fi
     fi
 
     # Seed LANDING_URL in Convex when landing is not started
     if [ "$START_LANDING" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set LANDING_URL "$APP_CONFIG_ORIGIN_LANDING" > /dev/null 2>&1); then
+        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set LANDING_URL "$APP_CONFIG_ORIGIN_LANDING" > /dev/null 2>&1); then
             echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING in Convex"
         fi
     fi
@@ -1060,7 +1078,7 @@ fi
 if [ "$NEED_CONVEX" = true ] && [ -n "$APP_URLS" ]; then
     echo ""
     echo -e "${GREEN}▶ Updating Better Auth with app origins...${NC}"
-    if (cd "$PROJECT_DIR/packages/backend" && bunx convex env set SITE_URL "$APP_URLS" > /dev/null 2>&1); then
+    if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$APP_URLS" > /dev/null 2>&1); then
         echo -e "  ${GREEN}✔${NC} SITE_URL set to: $APP_URLS"
     else
         echo -e "  ${YELLOW}⚠${NC} Failed to set SITE_URL to: $APP_URLS"

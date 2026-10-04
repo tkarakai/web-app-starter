@@ -124,7 +124,7 @@ done
 log "${BLUE}Synchronizing dependencies from bun.lock...${NC}"
 if ! bun install --frozen-lockfile; then
     log_always "${RED}Dependency installation failed; no development services were started.${NC}"
-    log_always "Resolve the install error, then retry. Keep package.json and bun.lock in sync."
+    log_always "Resolve the install error, then run bun install --frozen-lockfile in this checkout and retry. Keep package.json and bun.lock in sync."
     exit 1
 fi
 
