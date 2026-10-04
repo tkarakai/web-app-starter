@@ -3,7 +3,6 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
-import type { FunctionReference } from "convex/server";
 
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
@@ -46,12 +45,6 @@ const OTP_SEND_PATHS = new Set([
   "/email-otp/request-password-reset", "/forget-password/email-otp",
   "/email-otp/request-email-change",
 ]);
-
-const otpAdapter = components.betterAuth.adapter as typeof components.betterAuth.adapter & {
-  reuseOtp: FunctionReference<"mutation", "public", {
-    identifier: string; value: string; expiresAt: number; allowedAttempts: number;
-  }, { id: string; identifier: string; value: string; expiresAt: number; createdAt: number; updatedAt: number }>;
-};
 
 type OtpDelivery = { recipient: string; code: () => string | undefined };
 const bearerSessionHook = bearer().hooks.before[0];
@@ -139,7 +132,7 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
               // The endpoint has now validated the request/session/proofs, but has not
               // changed its challenge. Reserve before the atomic reuse/replacement.
               await reserveAuthEmail(convexCtx, recipient);
-              const record = await requireActionCtx(convexCtx).runMutation(otpAdapter.reuseOtp, {
+              const record = await requireActionCtx(convexCtx).runMutation(components.betterAuth.adapter.reuseOtp, {
                 identifier: data.identifier, value: data.value, expiresAt: data.expiresAt.getTime(), allowedAttempts,
               });
               code = record.value.split(":")[0];
