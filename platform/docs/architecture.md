@@ -98,12 +98,12 @@ The application uses three layers of rate limiting. See [rate-limiting-architect
 | Layer | Scope | Storage | Config |
 |-------|-------|---------|--------|
 | **Auth requests and delivery** | Auth endpoints and actual auth email attempts | Convex DB (app `rateLimits` table) | `packages/backend/convex/platform/authRateLimits.ts` and `rateLimits.ts` — recipient and deployment budgets; optional verified ingress IP |
-| **Convex Functions** | All `authedMutation` calls | Convex DB (`rateLimits` table) | `packages/backend/convex/platform/rateLimits.ts` — env vars via `convex env set` |
+| **Convex Functions** | [Authenticated mutation builders](rate-limiting-architecture.md#layer-2-convex-functions-mutations) | Convex DB (`rateLimits` table) | `packages/backend/convex/platform/rateLimits.ts` — env vars via `convex env set` |
 | **Edge Proxy** | HTTP page requests (web, admin) | In-memory `Map` (per-instance, capped) | `apps/web/src/proxy.ts`, `platform/apps/admin/src/proxy.ts` — use the shared `@web-app-starter/edge-rate-limit` package |
 
 **Key files:**
 - `packages/backend/convex/platform/rateLimits.ts` — Convex rate limit definitions
-- `packages/backend/convex/platform/functions.ts` — Global mutation rate limit in `authedMutation`
+- `packages/backend/convex/platform/functions.ts` — Authenticated mutation builders
 - `platform/packages/edge-rate-limit/` — Shared edge rate limiter (used by the web and admin proxies)
 - `platform/packages/auth-ui/src/components/auth-form.tsx` — Client-side 429 error handling
 

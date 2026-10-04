@@ -125,13 +125,13 @@ your app's traffic. No remote log-alert integration is installed automatically.
 
 ## Layer 2: Convex Functions (Mutations)
 
-**Scope**: All authenticated mutations (every function built with `authedMutation`)
+**Scope**: All mutations built with `authedMutation` or `adminMutation`
 
-**How it works**: Uses `convex-helpers/server/rateLimit` with `defineRateLimits`. A single global rate limit (`mutationGlobal`) is checked in the `authedMutation` builder, so every mutation call is rate limited per user. The token state is stored in the `rateLimits` table in the Convex database (persistent, works across all Convex instances).
+**How it works**: Uses `convex-helpers/server/rateLimit` with `defineRateLimits`. Both builders check the global per-user `mutationGlobal` budget after authorization. The token state is stored in the `rateLimits` table in the Convex database (persistent, works across all Convex instances).
 
 **Configuration files**:
 - `packages/backend/convex/platform/rateLimits.ts` — Rate limit definitions
-- `packages/backend/convex/platform/functions.ts` — Integration in `authedMutation`
+- `packages/backend/convex/platform/functions.ts` — Integration in both mutation builders
 - `packages/backend/convex/schema.ts` — `rateLimitTables` spread into schema
 
 ### Default Limits

@@ -92,11 +92,11 @@ Used by server-side code: auth hooks, admin mutations, cron jobs, internal servi
 - Audit trail constructs `source = "server:" + sourceDetail`
 - `authenticatedUserId` is optional — null for system/cron events
 
-### `postEvent` — Client-Side (authedMutation)
+### `postEvent` — Client-Side (mutation)
 
 Used by authenticated web clients via the Convex WebSocket.
 
-- Requires valid session (enforced by `authedMutation` wrapper)
+- Checks `getAuth` under the [live session policy](authentication-and-onboarding.md#86-enrollment-recovery-and-custom-endpoints); unauthorized calls return without writing an event
 - Caller provides `sourceDetail` optionally (e.g. `"dashboard"`, `"settings"`)
 - Audit trail constructs `source = "web:" + (sourceDetail ?? "")`
 - `authenticatedUserId` is auto-injected from the session — caller cannot override
@@ -131,7 +131,7 @@ Requiring authentication for audit logging would create a blind spot over exactl
 
 ### How They Flow
 
-All unauthenticated events go through `insertEvent` (internalMutation) → `server:*` source. They **cannot** go through `postEvent` (which requires an authenticated session via `authedMutation`).
+All unauthenticated events go through `insertEvent` (internalMutation) → `server:*` source. They **cannot** go through `postEvent` (which checks authorization as described above).
 
 ```
 Unauthenticated user action
@@ -370,7 +370,7 @@ Both enums are **runtime-enforced** — the audit trail throws if an unknown act
 |---------|-------------|
 | **Identity** | `authenticatedUserId` is injected from the verified session — cannot be forged |
 | **Source** | Transport prefix (`web:`/`server:`) is set by the entry point — cannot be spoofed |
-| **Authentication** | `postEvent` requires a valid session (via `authedMutation`) |
+| **Authentication** | `postEvent` checks authorization through `getAuth` (see its entry point above) |
 | **Authorization for reads** | `list` query returns empty for non-admin users |
 | **Append-only** | No update or delete mutations exist |
 

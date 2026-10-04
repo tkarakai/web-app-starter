@@ -45,8 +45,8 @@ No magic link option for admins.
 
 | Method | TOTP required at login? | Notes |
 |---|---|---|
-| **Password** | **If 2FA is enabled for the user** | Depends on admin policy + user choice |
-| **Magic link** | **If 2FA is enabled for the user** | Only available if admin has enabled magic link |
+| **Password** | **According to live factor policy (§8.5)** | Depends on admin policy + user choice |
+| **Magic link** | **According to live factor policy (§8.5)** | Only available if admin has enabled magic link |
 | **Passkey** | **No** | Passkey is inherently two-factor; TOTP is never required on top |
 
 **Why no TOTP with passkey login (for either account type):** A passkey inherently provides two authentication factors — possession of the device/key and biometric verification or device PIN. Requiring TOTP on top of a passkey adds friction without meaningful security benefit. TOTP remains relevant for password and magic link logins, where the sign-in method is single-factor.
@@ -221,7 +221,10 @@ enter the current password, scan the QR code, verify a code and save backup code
 
 ### 7.5 Optional: Passkey Registration
 
-If the admin has passkeys enabled (`userPasskeyPolicy: "optional"`), the user can add a passkey from their security settings at any time. Same WebAuthn flow as admin passkey registration.
+Passkey registration uses the same WebAuthn flow as admin enrollment. Its availability,
+required enrollment and fresh-verification rules follow
+[session assurance](#85-session-assurance-and-reauthentication); required enrollment is
+presented by the [shared gate](#86-enrollment-recovery-and-custom-endpoints).
 
 ## 8. Login Flow (Multi-Step, Both Apps)
 
@@ -698,7 +701,9 @@ All onboarding, login, and recovery events are recorded in the `auditTrail` tabl
 
 ### User Sign-Up
 
-No special intro needed. The sign-up form is standard: email, password (with strength meter), submit. Additional security options (2FA, passkey) are available from account settings after sign-up.
+The sign-up form asks for email and password (with strength meter). Subsequent factor setup
+follows the [user security policy](#33-admin-controlled-security-policies-for-users) and
+[shared enrollment gate](#86-enrollment-recovery-and-custom-endpoints).
 
 ## 14. Route Middleware
 
