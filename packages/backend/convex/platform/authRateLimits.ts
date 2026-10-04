@@ -49,7 +49,7 @@ const OTP_SEND_PATHS = new Set([
 
 const otpAdapter = components.betterAuth.adapter as typeof components.betterAuth.adapter & {
   reuseOtp: FunctionReference<"mutation", "public", {
-    identifier: string; value: string; expiresAt: number;
+    identifier: string; value: string; expiresAt: number; allowedAttempts: number;
   }, { id: string; identifier: string; value: string; expiresAt: number; createdAt: number; updatedAt: number }>;
 };
 
@@ -84,8 +84,15 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
   hooks: { before: [{
     matcher: context => OTP_SEND_PATHS.has(context.path ?? ""),
     handler: createAuthMiddleware(async context => {
+      const twoFactor = context.path === "/two-factor/send-otp";
+      const changeEmail = context.path === "/email-otp/request-email-change";
+      const options = context.context.getPlugin(twoFactor ? "two-factor" : "email-otp")?.options as {
+        allowedAttempts?: number; otpOptions?: { allowedAttempts?: number };
+        disableSignUp?: boolean; changeEmail?: { enabled?: boolean };
+      } | undefined;
+      const allowedAttempts = twoFactor ? options?.otpOptions?.allowedAttempts || 5 : options?.allowedAttempts || 3;
       let recipient = normalizeAuthRecipient(context.path === "/email-otp/request-email-change" ? context.body?.newEmail : context.body?.email);
-      if (context.path === "/two-factor/send-otp") {
+      if (twoFactor) {
         // Before-hook header returns are merged only after all hooks finish.
         // Use the same bearer conversion as Convex before resolving this session.
         const bearerContext = await bearerSessionHook.handler({ ...context, returnHeaders: false });
@@ -102,8 +109,21 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
         }
       }
       if (!recipient) return;
-      await reserveAuthEmail(convexCtx, recipient);
+      if (!twoFactor) {
+        // Match the installed endpoint's delivery eligibility before spending shared capacity.
+        // The endpoint still owns validation and its non-enumerating response.
+        if (changeEmail) {
+          if (!options?.changeEmail?.enabled) return;
+          if (await context.context.internalAdapter.findUserByEmail(recipient)) return;
+        } else {
+          const rawEmail = typeof context.body?.email === "string" ? context.body.email.toLowerCase() : "";
+          const sendRoute = context.path === "/email-otp/send-verification-otp";
+          const signup = sendRoute && context.body?.type === "sign-in" && !options?.disableSignUp;
+          if (!signup && !await context.context.internalAdapter.findUserByEmail(rawEmail)) return;
+        }
+      }
       let code: string | undefined;
+      let creationFailure: unknown;
       const delivery: OtpDelivery = { recipient, code: () => code };
       const adapter = context.context.internalAdapter;
       return { context: { context: {
@@ -111,11 +131,29 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
         internalAdapter: {
           ...adapter,
           createVerificationValue: async (data: Parameters<typeof adapter.createVerificationValue>[0]) => {
-            const record = await requireActionCtx(convexCtx).runMutation(otpAdapter.reuseOtp, {
-              identifier: data.identifier, value: data.value, expiresAt: data.expiresAt.getTime(),
-            });
-            code = record.value.split(":")[0];
-            return { ...record, expiresAt: new Date(record.expiresAt), createdAt: new Date(record.createdAt), updatedAt: new Date(record.updatedAt) };
+            if (!/^(2fa|email-verification|sign-in|forget-password|change-email)-otp-/.test(data.identifier)
+              || (changeEmail && !data.identifier.startsWith("change-email-otp-"))) {
+              return adapter.createVerificationValue(data);
+            }
+            try {
+              // The endpoint has now validated the request/session/proofs, but has not
+              // changed its challenge. Reserve before the atomic reuse/replacement.
+              await reserveAuthEmail(convexCtx, recipient);
+              const record = await requireActionCtx(convexCtx).runMutation(otpAdapter.reuseOtp, {
+                identifier: data.identifier, value: data.value, expiresAt: data.expiresAt.getTime(), allowedAttempts,
+              });
+              code = record.value.split(":")[0];
+              return { ...record, expiresAt: new Date(record.expiresAt), createdAt: new Date(record.createdAt), updatedAt: new Date(record.updatedAt) };
+            } catch (error) {
+              creationFailure = error;
+              throw error;
+            }
+          },
+          deleteVerificationByIdentifier: async (identifier: string) => {
+            // Email OTP retries creation by deleting the old row after any creation error.
+            // A denied reservation or failed transaction must preserve the delivered proof.
+            if (creationFailure) throw creationFailure;
+            return adapter.deleteVerificationByIdentifier(identifier);
           },
         },
       } } };

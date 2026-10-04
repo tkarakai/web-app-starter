@@ -74,6 +74,75 @@ async function twoFactorFixture(pending: boolean) {
 }
 
 describe("auth email delivery budgets", () => {
+  test("email OTP resend replaces an exhausted three-attempt challenge with a usable code", async () => {
+    const f = await fixture();
+    const email = "exhausted-email@example.test";
+    await otpUser(f, email);
+    expect((await f.post("/api/auth/email-otp/request-password-reset", { email })).status).toBe(200);
+    for (let i = 0; i < 3; i++) expect((await f.post("/api/auth/email-otp/check-verification-otp", {
+      email, type: "forget-password", otp: "wrong",
+    })).status).toBe(400);
+    vi.setSystemTime(Date.now() + 10001);
+    expect((await f.post("/api/auth/email-otp/request-password-reset", { email })).status).toBe(200);
+    const code = vi.mocked(sendAuthEmail).mock.calls.at(-1)![0].urlOrCode;
+    expect((await f.post("/api/auth/email-otp/check-verification-otp", {
+      email, type: "forget-password", otp: code,
+    })).status).toBe(200);
+  });
+
+  test("two-factor resend replaces an exhausted five-attempt challenge with a usable code", async () => {
+    const f = await twoFactorFixture(false);
+    expect((await f.post("send-otp", {})).status).toBe(200);
+    for (let i = 0; i < 5; i++) expect((await f.post("verify-otp", { code: "wrong" })).status).toBe(401);
+    expect((await f.post("send-otp", {})).status).toBe(200);
+    const code = vi.mocked(sendAuthEmail).mock.calls.at(-1)![0].urlOrCode;
+    expect((await f.post("verify-otp", { code })).status).toBe(200);
+  });
+
+  test.each([
+    ["/email-otp/request-password-reset", undefined, 200],
+    ["/forget-password/email-otp", undefined, 200],
+    ["/email-otp/send-verification-otp", "email-verification", 200],
+    ["/email-otp/send-verification-otp", "forget-password", 200],
+    ["/email-otp/send-verification-otp", "change-email", 400],
+    ["/email-otp/send-verification-otp", "sign-in", 400],
+  ] as const)("ineligible %s (%s) requests do not spend delivery capacity", async (path, type, status) => {
+    const f = await fixture();
+    for (let i = 0; i < 24; i++) {
+      const email = type === "sign-in" ? `invalid-${i}` : `nonexistent-${i}@example.test`;
+      expect((await f.post(`/api/auth${path}`, { email, type })).status).toBe(status);
+    }
+    expect(sendAuthEmail).not.toHaveBeenCalled();
+    const limits = await f.t.run(ctx => ctx.db.query("rateLimits").collect());
+    expect(limits.filter(limit => ["authEmailRecipient", "authEmailGlobal", "authEmailDaily", "authEmailAlert"].includes(limit.name))).toEqual([]);
+    expect((await f.post(magicPath, { email: "eligible@example.test" })).status).toBe(200);
+    expect(sendAuthEmail).toHaveBeenCalledTimes(1);
+  });
+
+  test("disabled email-change requests leave deployment mail capacity available", async () => {
+    const f = await twoFactorFixture(false);
+    for (let i = 0; i < 24; i++) {
+      const response = await f.t.fetch("/api/auth/email-otp/request-email-change", {
+        method: "POST", headers: { "content-type": "application/json", cookie: signedCookie("session_token", "otp-session") },
+        body: JSON.stringify({ newEmail: `new-${i}@example.test` }),
+      });
+      expect(response.status).toBe(400);
+    }
+    expect(sendAuthEmail).not.toHaveBeenCalled();
+    const limits = await f.t.run(ctx => ctx.db.query("rateLimits").collect());
+    expect(limits.filter(limit => ["authEmailRecipient", "authEmailGlobal", "authEmailDaily", "authEmailAlert"].includes(limit.name))).toEqual([]);
+    expect((await f.post("send-otp", {})).status).toBe(200);
+    expect(sendAuthEmail).toHaveBeenCalledTimes(1);
+  });
+
+  test("OTP sign-in for a new address still reserves capacity and sends the challenge", async () => {
+    const f = await fixture();
+    expect((await f.post("/api/auth/email-otp/send-verification-otp", {
+      email: "new-otp@example.test", type: "sign-in",
+    })).status).toBe(200);
+    expect(sendAuthEmail).toHaveBeenCalledTimes(1);
+  });
+
   test("bearer password sign-in and two-factor enrollment deliver bounded usable OTPs", async () => {
     const f = await fixture();
     const email = "bearer-otp@example.test";
