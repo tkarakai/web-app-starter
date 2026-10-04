@@ -3,18 +3,36 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Assignment } from './assignment.ts';
 import { assert, docker, hash, home, label, type Config } from './core.ts';
 
 export const recipe = path.join(path.dirname(fileURLToPath(import.meta.url)), 'recipe');
 export function runtimePolicy(c: Config): Record<string, unknown> {
   return { user: '1001:1001', capabilities: [], noNewPrivileges: true, network: 'filtered-proxy-v1',
-    mounts: [], cpus: c.cpus, memoryGiB: c.memoryGiB, pids: 2048, shmGiB: 1, seccomp: hash(readFileSync(path.join(recipe, 'seccomp.json'))), protocol: 1 };
+    mounts: [], cpus: c.cpus, memoryGiB: c.memoryGiB, pids: 2048, shmGiB: 1, seccomp: hash(readFileSync(path.join(recipe, 'seccomp.json'))), jobAuthorization: 'root-owned-start-hook-v1', protocol: 1 };
 }
-export async function launch(c: Config, image: string, mode: string[], input?: string, beforeStart?: (name: string) => Promise<void>, runId?: number): Promise<string> {
+function assignmentArchive(expected: Assignment): Buffer {
+  const data = Buffer.from(JSON.stringify(expected));
+  const header = Buffer.alloc(512);
+  header.write('assignment.json');
+  for (const [offset, width, value] of [[100, 8, 0o444], [108, 8, 0], [116, 8, 0], [124, 12, data.length], [136, 12, 0]]) {
+    header.write(value.toString(8).padStart(width - 1, '0') + '\0', offset, width);
+  }
+  header.fill(0x20, 148, 156);
+  header.write('0', 156);
+  header.write('ustar\0', 257);
+  header.write('00', 263);
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  header.write(checksum.toString(8).padStart(6, '0') + '\0 ', 148, 8);
+  return Buffer.concat([header, data, Buffer.alloc((512 - data.length % 512) % 512 + 1024)]);
+}
+export async function launch(c: Config, image: string, mode: string[], input?: string, beforeStart?: (name: string) => Promise<void>, expected?: Assignment): Promise<string> {
   assert(/^sha256:[a-f0-9]{64}$/.test(image), 'Launch requires immutable local image ID');
+  assert(mode[0] !== 'github' || (mode.length === 1 && expected), 'GitHub launch requires an expected assignment');
+  assert(!expected || mode[0] === 'github', 'Expected assignment is only valid for GitHub workers');
   const id = `${c.pool}-${randomUUID().slice(0, 12)}`;
   const net = `${id}-net`, proxy = `${id}-proxy`, guard = `${id}-guard`, worker = `${id}-worker`;
-  const ownership = ['--label', `${label}=${c.pool}`, '--label', `${label}.lease=${id}`, ...(runId ? ['--label', `${label}.run=${runId}`] : [])];
+  const ownership = ['--label', `${label}=${c.pool}`, '--label', `${label}.lease=${id}`, ...(expected ? ['--label', `${label}.run=${expected.runId}`] : [])];
   try {
     await docker(c, ['network', 'create', '--internal', ...ownership, net]);
     await docker(c, ['create', '--name', proxy, ...ownership, '--network', net, '--user', 'proxy', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '256m', '--pids-limit', '128', '--entrypoint', '/usr/sbin/squid', image, '-N', '-f', '/opt/starter/squid.conf']);
@@ -37,9 +55,16 @@ export async function launch(c: Config, image: string, mode: string[], input?: s
       '--cpus', String(c.cpus), '--memory', `${c.memoryGiB}g`, '--memory-swap', `${c.memoryGiB}g`, '--pids-limit', '2048', '--shm-size', '1g',
       '--env', `STARTER_WORKER_IMAGE=${image}`, '--env', `STARTER_WORKER_RUNTIME=${policy}`,
       ...['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY'].flatMap(k => ['--env', `${k}=http://${proxyAddress}:3128`]),
-      '--env', 'NODE_USE_ENV_PROXY=1', '--env', 'NO_PROXY=localhost,127.0.0.1,::1', '--env', 'no_proxy=localhost,127.0.0.1,::1', image, ...mode]);
+      '--env', 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/starter/job-started.sh', '--env', 'NODE_USE_ENV_PROXY=1', '--env', 'NO_PROXY=localhost,127.0.0.1,::1', '--env', 'no_proxy=localhost,127.0.0.1,::1', image, ...mode]);
     const actual = JSON.parse(await docker(c, ['inspect', worker])) as { Image: string; Mounts: unknown[]; HostConfig: { Privileged: boolean; RestartPolicy: { Name: string } } }[];
     assert(actual[0].Image === image && actual[0].Mounts.length === 0 && !actual[0].HostConfig.Privileged && actual[0].HostConfig.RestartPolicy.Name === 'no', 'Container launch policy mismatch');
+    if (expected) {
+      const directory = path.join(home, 'evidence');
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      const file = path.join(directory, `${id}-assignment.json`);
+      await writeFile(file, JSON.stringify(expected), { mode: 0o444 });
+      await docker(c, ['cp', '-', `${worker}:/opt/starter/`], { input: assignmentArchive(expected) });
+    }
     if (beforeStart) await beforeStart(worker);
     await mkdir(path.join(home, 'evidence'), { recursive: true, mode: 0o700 });
     await writeFile(path.join(home, 'evidence', `${id}.json`), JSON.stringify({ image, policy, settings: runtimePolicy(c), created: new Date().toISOString(), mode: mode[0] }), { mode: 0o600 });

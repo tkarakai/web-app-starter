@@ -19,7 +19,7 @@ export interface Environment {
 }
 export interface ToolImage { image: string; manifest: string; created: string; }
 export interface Catalog { toolchains?: Record<string, ToolImage>; environments: Environment[]; lastRefresh?: string; tools?: string; toolsCreated?: string; }
-export interface Run { id: number; head_sha: string; head_branch: string; event: string;
+export interface Run { id: number; run_attempt: number; head_sha: string; head_branch: string; event: string;
   pull_requests: { number: number; head: { sha: string; repo: { id: number } }; base: { sha: string; repo: { id: number } } }[];
 }
 export interface Job { id: number; status: string; labels: string[]; }

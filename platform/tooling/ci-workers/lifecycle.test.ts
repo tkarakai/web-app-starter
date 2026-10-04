@@ -24,7 +24,7 @@ const state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : { calls:
 const args = process.argv.slice(4);
 state.calls.push(args);
 let output = '', failure = false;
-if (args[0] === 'info') output = JSON.stringify({ OSType: 'linux', Architecture: 'arm64' });
+if (args[0] === 'info') output = JSON.stringify({ OSType: 'linux', Architecture: 'arm64', MemTotal: 32 * 1024 ** 3, NCPU: 8 });
 if (args[0] === 'buildx' && args[1] === 'build') {
   state.builds++;
   const id = 'sha256:' + String(state.builds).padStart(64, '0');
@@ -85,7 +85,12 @@ if (args[0] === 'create' && args.includes('--cpus')) {
   const imageIndex = args.findIndex(a => /^sha256:/.test(a));
   state.workers[id] = { image: args[imageIndex], mode: args[imageIndex + 1], env: args.flatMap((a, i) => a === '--env' ? [args[i + 1]] : []) };
 }
-if (args[0] === 'cp') {
+if (args[0] === 'cp' && args[1] === '-') {
+  const archive = fs.readFileSync(0);
+  const octal = (offset, width) => parseInt(archive.subarray(offset, offset + width).toString().replaceAll('\\0', ''), 8);
+  state.assignment = { uid: octal(108, 8), gid: octal(116, 8), mode: octal(100, 8), expected: JSON.parse(archive.subarray(512, 512 + octal(124, 12))) };
+}
+if (args[0] === 'cp' && args[1] !== '-') {
   state.source = cp.execFileSync('tar', ['-xOf', args[1], 'source.txt'], { encoding: 'utf8' });
 }
 if (args[0] === 'start' && args[1] === '-ai') {
@@ -396,5 +401,125 @@ assert.equal(state.pauseRequest, request);
 assert.equal(state.paused, true);
 assert.deepEqual(state.active, []);
 assert.equal(await core.exists(path.join(core.home, 'source.git')), false);
+`);
+});
+
+test('authentication finishing after drain preserves pause, acknowledgement and current owned fields', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+Object.defineProperty(process, 'platform', { value: 'linux' });
+Object.defineProperty(process.stdin, 'isTTY', { value: true });
+process.stdin.setRawMode = () => process.stdin;
+process.stdin.resume = () => process.stdin;
+process.stdin.pause = () => process.stdin;
+globalThis.fetch = async () => Response.json({ private: true });
+await core.save(path.join(core.home, 'config.json'), { ...c, concurrency: 1, paused: false, localOnly: true, tokenExpiry: 'old' });
+await fs.mkdir(path.join(core.home, 'daemon.lock'));
+const { main } = await import(path.join(base, 'cli.ts'));
+const authenticating = main(['auth', 'replace']);
+for (let n = 0; n < 100 && process.stdin.listenerCount('data') === 0; n++) await new Promise(resolve => setTimeout(resolve, 10));
+assert(process.stdin.listenerCount('data') > 0);
+const drain = main(['pause', '--drain']);
+for (let n = 0; n < 100 && !(await core.config()).paused; n++) await new Promise(resolve => setTimeout(resolve, 10));
+const paused = await core.config();
+await core.save(path.join(core.home, 'status.json'), { pauseRequest: paused.pauseRequest, paused: true, active: [] });
+await drain;
+const { updateConfig } = await import(path.join(base, 'manager.ts'));
+await updateConfig(async () => ({ tokenExpiry: 'newer' }));
+await main(['config', 'set', 'cpus', '3']);
+process.stdin.emit('data', Buffer.from('dummy-fixture-credential-123456789\\n'));
+await authenticating;
+const result = await core.config();
+assert.equal(result.paused, true);
+assert.equal(result.pauseRequest, paused.pauseRequest);
+assert.equal(result.tokenExpiry, 'newer');
+assert.equal(result.cpus, 3);
+assert.equal(result.localOnly, false);
+await updateConfig(async current => {
+  assert.equal(current.paused, true);
+  await assert.rejects(main(['resume']), /Another worker operation/);
+  return { enabled: false };
+});
+assert.equal((await core.config()).paused, true);
+`);
+});
+
+test('routing lookup failures preserve enabled state and confirmed absence or presence restores hosted routing', async t => {
+  const dir = await fixture(t);
+  await writeFile(path.join(dir, 'gh'), `#!${process.execPath}
+import fs from 'node:fs';
+import path from 'node:path';
+const file = path.join(process.env.STARTER_WORKERS_HOME, 'gh.json');
+const state = JSON.parse(fs.readFileSync(file));
+const args = process.argv.slice(2); state.calls.push(args);
+fs.writeFileSync(file, JSON.stringify(state));
+if (state.fail) { console.error('network/auth failed'); process.exit(1); }
+if (args[1] === 'list') process.stdout.write(JSON.stringify(state.variables));
+`, { mode: 0o755 });
+  await run(dir, `
+process.env.PATH = ${JSON.stringify(dir)} + ':' + process.env.PATH;
+await core.save(path.join(core.home, 'config.json'), { ...c, enabled: true, paused: true, pauseRequest: 'ack' });
+const { main } = await import(path.join(base, 'cli.ts'));
+const { routingVariables } = await import(path.join(base, 'github.ts'));
+await core.save(path.join(core.home, 'gh.json'), { calls: [], fail: true, variables: [] });
+await assert.rejects(main(['hosted']), /failed/);
+await assert.rejects(routingVariables(c), /failed/);
+Object.defineProperty(process, 'platform', { value: 'linux' });
+await fs.writeFile(path.join(core.home, 'credential'), 'dummy');
+const { runtimePolicy } = await import(path.join(base, 'runtime.ts'));
+const { proofId } = await import(path.join(base, 'proof.ts'));
+const local = { sha: '${'a'.repeat(40)}', image: '${image}', runtime: core.hash(JSON.stringify(runtimePolicy(c))), pool: c.pool, key: 'key', scope: 'branch-test', checked: new Date().toISOString() };
+const proof = { ...local, id: proofId(local) };
+await core.save(path.join(core.home, 'local-check.json'), proof);
+await core.save(path.join(core.home, 'github-check.json'), { ...proof, certified: local.checked });
+await core.save(path.join(core.home, 'catalog.json'), { environments: [{ key: local.key, source: local.sha, image: local.image, scope: local.scope, used: local.checked }] });
+await core.save(path.join(core.home, 'status.json'), { polled: local.checked, paused: false });
+await assert.rejects(main(['enable']), /failed/);
+assert.equal((await core.config()).enabled, true);
+assert.equal((await core.readJson(path.join(core.home, 'gh.json'))).calls.some(a => a[1] !== 'list'), false);
+for (const variables of [[], [{ name: 'PLATFORM_CI_WORKER_POOL', value: c.pool }]]) {
+  await core.save(path.join(core.home, 'gh.json'), { calls: [], variables });
+  await main(['hosted']);
+  const current = await core.config();
+  assert.equal(current.enabled, false); assert.equal(current.paused, true); assert.equal(current.pauseRequest, 'ack');
+  const calls = (await core.readJson(path.join(core.home, 'gh.json'))).calls;
+  assert.equal(calls.some(a => a[1] === 'delete'), variables.length > 0);
+}
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_WORKER_POOL', value: 'other' }] });
+await assert.rejects(main(['hosted']), /Routing changed elsewhere/);
+globalThis.fetch = async () => Response.json({ content: Buffer.from('starter-source-').toString('base64') });
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_RUNNER', value: 'legacy' }] });
+await assert.rejects(main(['enable']), /Remove legacy/);
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_WORKER_POOL', value: 'previous' }] });
+await main(['enable']);
+assert.equal((await core.config()).enabled, true);
+assert.equal((await core.config()).previousRouting, 'previous');
+assert.equal((await core.config()).pauseRequest, 'ack');
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_WORKER_POOL', value: c.pool }] });
+await main(['hosted']);
+assert.equal((await core.config()).enabled, false);
+assert((await core.readJson(path.join(core.home, 'gh.json'))).calls.some(a => a[1] === 'set' && a.includes('previous')));
+`);
+});
+
+test('GitHub launch requires immutable expected assignment before creating resources', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const { launch } = await import(path.join(base, 'runtime.ts'));
+await assert.rejects(launch(c, '${image}', ['github'], 'dummy'), /expected assignment/);
+assert.equal(await core.exists(path.join(core.home, 'docker.json')), false);
+`);
+});
+
+test('GitHub launch copies expected identity with explicit root ownership and read-only mode', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const { launch } = await import(path.join(base, 'runtime.ts'));
+const expected = { repository: c.repo, repositoryId: 7, runId: 123, runAttempt: 2, sha: '${'a'.repeat(40)}', event: 'push', ref: 'refs/heads/main' };
+await launch(c, '${image}', ['github'], 'dummy', undefined, expected);
+const state = await core.readJson(path.join(core.home, 'docker.json'));
+assert.deepEqual(state.assignment, { uid: 0, gid: 0, mode: 0o444, expected });
+const worker = Object.values(state.workers)[0];
+assert(worker.env.includes('ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/starter/job-started.sh'));
 `);
 });

@@ -47,3 +47,9 @@ export async function remoteSource(c: Config, sha: string, credential: string): 
   await command('git', ['-C', mirror, 'fetch', '--no-tags', '--depth=1', `https://github.com/${c.repo}.git`, sha], { env });
   return mirror;
 }
+
+export async function routingVariables(c: Pick<Config, 'repo'>): Promise<Map<string, string>> {
+  const data: unknown = JSON.parse(await command('gh', ['variable', 'list', '--repo', c.repo, '--json', 'name,value']));
+  assert(Array.isArray(data) && data.every(v => v && typeof v.name === 'string' && typeof v.value === 'string'), 'Invalid repository variable response');
+  return new Map(data.map(v => [v.name as string, v.value as string]));
+}

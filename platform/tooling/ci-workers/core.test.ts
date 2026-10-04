@@ -8,7 +8,7 @@ import { runtimePolicy } from './runtime.ts';
 
 const c = { pool: 'pool', cpus: 4, memoryGiB: 8 } as Config;
 const sha = 'a'.repeat(40);
-const run: Run = { id: 42, head_sha: sha, event: 'workflow_dispatch', head_branch: 'feature', pull_requests: [] };
+const run: Run = { id: 42, run_attempt: 1, head_sha: sha, event: 'workflow_dispatch', head_branch: 'feature', pull_requests: [] };
 const job = { id: 1, status: 'queued', labels: ['self-hosted', 'pool', `starter-source-${sha}`, 'starter-run-42'] };
 test('repository inference accepts GitHub SSH and HTTPS without executing remote content', () => {
   for (const remote of ['git@github.com:owner/repo.git', 'https://github.com/owner/repo.git', 'ssh://git@github.com/owner/repo']) assert.equal(repository(remote), 'owner/repo');

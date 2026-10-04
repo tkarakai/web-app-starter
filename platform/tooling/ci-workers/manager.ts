@@ -1,5 +1,6 @@
 import { mkdtemp, readFile, readdir, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { assignment } from './assignment.ts';
 import { api, remoteSource, token } from './github.ts';
 import { prepare, rotateLogs } from './images.ts';
 import { launch, reconcile } from './runtime.ts';
@@ -28,6 +29,15 @@ export async function lock<T>(name: string, action: () => Promise<T>): Promise<T
     }
     try { return await action(); } finally { await rm(path.join(directory, owner), { force: true }); await rmdir(directory).catch((error: NodeJS.ErrnoException) => { if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code!)) throw error; }); }
   } finally { await rm(staging, { recursive: true, force: true }); }
+}
+export async function updateConfig(action: (current: Readonly<Config>) => Promise<Partial<Config>>): Promise<Config> {
+  return lock('configuration', async () => {
+    const current = await config();
+    const patch = await action(current);
+    const updated = { ...current, ...patch };
+    await save(path.join(home, 'config.json'), updated);
+    return updated;
+  });
 }
 export async function cleanup(c: Config, dryRun: boolean): Promise<string[]> {
   const state = await catalog();
@@ -145,12 +155,13 @@ export async function serve(): Promise<void> {
               const current = await api<Job>(`/repos/${c.repo}/actions/jobs/${job.id}`, credential);
               c = await config();
               if (stop || c.paused || current.status !== 'queued') continue;
+              const expected = assignment(c, run, request.sha, repo.id);
               const name = `${c.pool}-${job.id}-${Date.now()}`;
               const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
                 name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`], work_folder: '_work',
               });
               const runningConfig = c, runningToken = credential;
-              const task = launch(c, environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, run.id)
+              const task = launch(c, environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
                 .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
                 .finally(async () => { await api(`/repos/${runningConfig.repo}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined); active.delete(job.id); activeRuns.delete(job.id); });
               active.set(job.id, task); activeRuns.set(job.id, run.id);

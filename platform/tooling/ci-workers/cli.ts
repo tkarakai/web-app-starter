@@ -5,9 +5,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { assert, catalog, command, config, docker, exists, hash, home, installationPool, readJson, repository, save, validateRepo, type Config } from './core.ts';
-import { api, storeToken, token } from './github.ts';
+import { api, routingVariables, storeToken, token } from './github.ts';
 import { prepare } from './images.ts';
-import { cleanup, lock, serve, status } from './manager.ts';
+import { cleanup, lock, serve, status, updateConfig } from './manager.ts';
 import { launch, runtimePolicy } from './runtime.ts';
 import { localProof, proofId, certify, type Proof } from './proof.ts';
 import { install, removeConvenienceCommand, service } from './service.ts';
@@ -33,7 +33,7 @@ async function hiddenToken(): Promise<string> {
     process.stdin.on('data', onData);
   });
 }
-async function authenticate(c: Config): Promise<void> {
+async function authenticate(c: Config, expiry?: string): Promise<Config> {
   const credential = await hiddenToken();
   const repo = await api<{ private: boolean }>(`/repos/${c.repo}`, credential);
   assert(repo.private || c.publicBranch, 'Normal local workers require a private repository. Use --public-branch only for a manually dispatched reviewed diagnostic branch.');
@@ -41,15 +41,17 @@ async function authenticate(c: Config): Promise<void> {
   await api(`/repos/${c.repo}/actions/runs?per_page=1`, credential);
   await api(`/repos/${c.repo}/contents/package.json`, credential);
   await api(`/repos/${c.repo}/pulls?per_page=1`, credential);
-  await storeToken(credential);
-  c.localOnly = false;
-  await save(path.join(home, 'config.json'), c);
+  return updateConfig(async current => {
+    assert(current.repo === c.repo && current.pool === c.pool, 'Installation changed during authentication');
+    await storeToken(credential);
+    return { localOnly: false, ...(expiry !== undefined ? { tokenExpiry: expiry } : {}) };
+  });
 }
 async function setup(args: string[]): Promise<void> {
   if (await exists(path.join(home, 'config.json'))) {
-    const existing = await config();
+    let existing = await config();
     assert(!await exists(path.join(home, 'daemon.lock')), 'Manager is already running; use check or update');
-    if (existing.localOnly && !args.includes('--local-only')) await authenticate(existing);
+    if (existing.localOnly && !args.includes('--local-only')) existing = await authenticate(existing, option(args, 'token-expires'));
     await localCheck(existing, ['check', '--install']);
     print(await install(existing));
     if (!existing.localOnly) await service(existing, true);
@@ -66,11 +68,14 @@ async function setup(args: string[]): Promise<void> {
   await mkdir(home, { recursive: true, mode: 0o700 }); await chmod(home, 0o700);
   const fs = await statfs(home);
   assert(fs.bavail * fs.bsize > 12 * 1024 ** 3, 'At least 12 GiB free disk is required for initial preparation');
-  const c: Config = { version: 1, repo, pool: installationPool(), docker: dockerPath, context,
+  let c: Config = { version: 1, repo, pool: installationPool(), docker: dockerPath, context,
     concurrency: 1, cpus: Math.min(4, info.NCPU), memoryGiB: Math.min(8, Math.floor(info.MemTotal / 1024 ** 3) - 2), diskGiB: 40,
     paused: false, localOnly: true, publicBranch: option(args, 'public-branch'), tokenExpiry: option(args, 'token-expires'), installedAt: new Date().toISOString() };
-  await save(path.join(home, 'config.json'), c);
-  if (!args.includes('--local-only')) await authenticate(c);
+  await lock('configuration', async () => {
+    assert(!await exists(path.join(home, 'config.json')), 'Another setup created this installation');
+    await save(path.join(home, 'config.json'), c);
+  });
+  if (!args.includes('--local-only')) c = await authenticate(c);
   const wrapper = await install(c);
   print(`Repository: ${repo}\nInstalled: ${wrapper}\nAdd ${path.dirname(wrapper)} to PATH. Docker context: ${context}.\nPreparing the committed revision; uncommitted files are not included.`);
   const sha = await command('git', ['-C', root, 'rev-parse', 'HEAD']);
@@ -126,11 +131,11 @@ export async function main(args: string[]): Promise<void> {
     print('starter-workers setup [--local-only] [--repo owner/name] [--public-branch branch] [--token-expires YYYY-MM-DD]\ncheck [--ref revision] [--install|--quick|--ci] | check --github [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable | hosted | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nupdate --from CHECKOUT | uninstall\nOne repository per STARTER_WORKERS_HOME. All builds stay in the local Docker engine.'); return;
   }
   if (verb === 'setup') return setup(args);
-  const c = await config();
+  let c = await config();
   switch (verb) {
     case 'serve': return serve();
     case 'service': assert(['start', 'stop'].includes(args[1]), 'Use service start|stop'); return service(c, args[1] === 'start');
-    case 'auth': assert(args[1] === 'replace', 'Use auth replace'); c.tokenExpiry = option(args, 'token-expires') ?? c.tokenExpiry; return authenticate(c);
+    case 'auth': assert(args[1] === 'replace', 'Use auth replace'); await authenticate(c, option(args, 'token-expires')); return;
     case 'check': return args.includes('--github') ? githubCheck(c, args) : localCheck(c, args);
     case 'refresh': return localCheck(c, [...args, '--refresh', '--install']);
     case 'status': do { print(await status()); if (!args.includes('--watch')) break; await new Promise(resolve => setTimeout(resolve, 5000)); } while (args.includes('--watch')); return;
@@ -139,7 +144,7 @@ export async function main(args: string[]): Promise<void> {
     case 'cleanup': print(await lock('mutation', () => cleanup(c, args.includes('--dry-run')))); return;
     case 'pause': case 'resume':
       assert(!args.includes('--drain') || verb === 'pause', '--drain requires pause');
-      c.paused = verb === 'pause'; c.pauseRequest = randomUUID(); await save(path.join(home, 'config.json'), c);
+      c = await updateConfig(async () => ({ paused: verb === 'pause', pauseRequest: randomUUID() }));
       if (args.includes('--drain')) {
         for (;;) {
           const heartbeat = await readJson<{ pauseRequest?: string; paused?: boolean; active?: number[]; error?: string }>(path.join(home, 'status.json'), {});
@@ -152,33 +157,39 @@ export async function main(args: string[]): Promise<void> {
     case 'config': {
       const key = args[2]; const value = Number(args[3]);
       assert(args[1] === 'set' && ['concurrency', 'memoryGiB', 'cpus', 'diskGiB'].includes(key) && Number.isInteger(value) && value >= 1 && value <= 512, 'Use config set concurrency|memoryGiB|cpus|diskGiB NUMBER');
-      Object.assign(c, { [key]: value });
-      const engine = JSON.parse(await docker(c, ['info', '--format', '{{json .}}'])) as { MemTotal: number; NCPU: number };
-      assert(c.concurrency * c.memoryGiB + 1 <= engine.MemTotal / 1024 ** 3 && c.concurrency * c.cpus <= engine.NCPU && c.diskGiB >= 12, 'Configured workers exceed Docker CPU/memory capacity, or disk budget is below 12 GiB');
-      await save(path.join(home, 'config.json'), c); return;
+      await updateConfig(async current => {
+        const next = { ...current, [key]: value };
+        const engine = JSON.parse(await docker(next, ['info', '--format', '{{json .}}'])) as { MemTotal: number; NCPU: number };
+        assert(next.concurrency * next.memoryGiB + 1 <= engine.MemTotal / 1024 ** 3 && next.concurrency * next.cpus <= engine.NCPU && next.diskGiB >= 12, 'Configured workers exceed Docker CPU/memory capacity, or disk budget is below 12 GiB');
+        return { [key]: value };
+      }); return;
     }
     case 'enable': {
-      assert(!c.publicBranch && !c.localOnly, 'Normal routing requires a private repository and active manager');
-      const local = await localProof(c);
-      const proof = await readJson<Proof & { certified: string }>(path.join(home, 'github-check.json'));
-      assert(proof.id === local.id && proof.sha === local.sha && proof.image === local.image && proof.runtime === local.runtime && Date.now() - Date.parse(proof.certified) >= 0 && Date.now() - Date.parse(proof.certified) < 86400_000, 'A current matching GitHub certification is required');
-      const state = await readJson<{ polled: string; error?: string; paused?: boolean }>(path.join(home, 'status.json'), { polled: '' });
-      assert(Date.now() - Date.parse(state.polled) < 60_000 && !state.error && !state.paused, 'Manager must be healthy and accepting work before enabling');
-      const legacy = await command('gh', ['variable', 'get', 'PLATFORM_CI_RUNNER', '--repo', c.repo]).catch(() => '');
-      assert(!legacy, 'Remove legacy PLATFORM_CI_RUNNER routing before enabling managed workers');
-      const workflow = await api<{ content: string }>(`/repos/${c.repo}/contents/.github/workflows/platform-ci-web.yml`, await token());
-      assert(Buffer.from(workflow.content, 'base64').toString().includes('starter-source-'), 'Adopt supporting workflows on the default branch before enabling');
-      const previous = await command('gh', ['variable', 'get', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo]).catch(() => '');
-      if (!c.enabled) c.previousRouting = previous;
-      await command('gh', ['variable', 'set', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo, '--body', c.pool]);
-      c.enabled = true; await save(path.join(home, 'config.json'), c); return;
+      await updateConfig(async c => {
+        assert(!c.publicBranch && !c.localOnly, 'Normal routing requires a private repository and active manager');
+        const local = await localProof(c);
+        const proof = await readJson<Proof & { certified: string }>(path.join(home, 'github-check.json'));
+        assert(proof.id === local.id && proof.sha === local.sha && proof.image === local.image && proof.runtime === local.runtime && Date.now() - Date.parse(proof.certified) >= 0 && Date.now() - Date.parse(proof.certified) < 86400_000, 'A current matching GitHub certification is required');
+        const state = await readJson<{ polled: string; error?: string; paused?: boolean }>(path.join(home, 'status.json'), { polled: '' });
+        assert(Date.now() - Date.parse(state.polled) < 60_000 && !state.error && !state.paused, 'Manager must be healthy and accepting work before enabling');
+        const routing = await routingVariables(c);
+        const legacy = routing.get('PLATFORM_CI_RUNNER');
+        assert(!legacy, 'Remove legacy PLATFORM_CI_RUNNER routing before enabling managed workers');
+        const workflow = await api<{ content: string }>(`/repos/${c.repo}/contents/.github/workflows/platform-ci-web.yml`, await token());
+        assert(Buffer.from(workflow.content, 'base64').toString().includes('starter-source-'), 'Adopt supporting workflows on the default branch before enabling');
+        const previous = routing.get('PLATFORM_CI_WORKER_POOL') ?? '';
+        await command('gh', ['variable', 'set', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo, '--body', c.pool]);
+        return { enabled: true, ...(!c.enabled ? { previousRouting: previous } : {}) };
+      }); return;
     }
     case 'hosted': {
-      const current = await command('gh', ['variable', 'get', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo]).catch(() => '');
-      assert(!current || current === c.pool, 'Routing changed elsewhere; refusing to overwrite it');
-      if (c.previousRouting) await command('gh', ['variable', 'set', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo, '--body', c.previousRouting]);
-      else if (current) await command('gh', ['variable', 'delete', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo]);
-      c.enabled = false; await save(path.join(home, 'config.json'), c);
+      await updateConfig(async c => {
+        const current = (await routingVariables(c)).get('PLATFORM_CI_WORKER_POOL');
+        assert(!current || current === c.pool, 'Routing changed elsewhere; refusing to overwrite it');
+        if (c.previousRouting) await command('gh', ['variable', 'set', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo, '--body', c.previousRouting]);
+        else if (current) await command('gh', ['variable', 'delete', 'PLATFORM_CI_WORKER_POOL', '--repo', c.repo]);
+        return { enabled: false };
+      });
       print('Routing restored for new runs. Existing queued jobs retain their labels: cancel and start fresh runs if needed.'); return;
     }
     case 'update': {

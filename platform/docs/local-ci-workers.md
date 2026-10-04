@@ -211,3 +211,21 @@ The shipped seccomp profile adds `chroot` for Chromium's unprivileged user-names
 it does not grant the worker a host capability.
 
 Each new installation persists a unique pool ID, independent of the repository or home path on other machines. The declared `engines.node` minimum minor participates in the tool profile; preparation validates the actual Node runtime before promotion. Supported engine ranges are a whole major (`24.x`) or a minimum minor within it (`>=24.21 <25`). Disposable log retention preserves the live service `manager.log`.
+
+
+GitHub runner labels select a worker; they do not authorize an assignment. Before
+starting each GitHub worker, the host copies its admitted repository ID/name,
+run ID/attempt, source, event and ref into a root-owned file under `/opt/starter`.
+The fixed `ACTIONS_RUNNER_HOOK_JOB_STARTED` shell hook uses an absolute Node
+interpreter and validates the runner's default GitHub contexts and event payload
+against that file. Job environment variables cannot supply the expected identity.
+PR validation binds the event's head/base repository IDs and commits and handles
+GitHub's merge SHA separately from the run's head SHA. Public diagnostic pools
+accept only the configured reviewed branch's manual dispatch.
+
+The runner downloads action metadata before this hook executes. A rejected hook
+prevents action/container pre and main steps, but does not prevent those metadata
+downloads. This system is intended for reviewed private-repository workflows and
+an explicit reviewed public diagnostic branch; it offers no hostile public
+multitenancy guarantee. See [GitHub's hook documentation](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/run-scripts)
+and [the runner's ordering](https://github.com/actions/runner/blob/v2.337.0/src/Runner.Worker/JobExtension.cs).
