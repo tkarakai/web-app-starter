@@ -115,7 +115,7 @@ export async function serve(): Promise<void> {
         for (const runId of new Set(activeRuns.values())) {
           const current = await api<{ status: string }>(`/repos/${c.repo}/actions/runs/${runId}`, credential);
           if (current.status === 'completed') {
-            const names = (await docker(c, ['ps', '-aq', '--filter', `label=${label}=${c.pool}`, '--filter', `label=${label}.run=${runId}`, '--format', '{{.Names}}'])).split('\n').filter(n => n.endsWith('-worker'));
+            const names = (await docker(c, ['ps', '-a', '--filter', `label=${label}=${c.pool}`, '--filter', `label=${label}.run=${runId}`, '--format', '{{.Names}}'])).split('\n').filter(n => n.endsWith('-worker'));
             for (const name of names) await docker(c, ['stop', '--time', '10', name]);
           }
         }
