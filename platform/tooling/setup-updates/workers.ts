@@ -5,8 +5,9 @@ import { execFileSync, spawn } from 'node:child_process';
 import { demand } from '../platform-upgrade/metadata.ts';
 import { hash, updaterCheckWorkflow, type Config } from '../ci-workers/core.ts';
 import { proofId, type Proof } from '../ci-workers/proof.ts';
+import { serviceDefinition } from '../ci-workers/service.ts';
 import type { Gh } from './github.ts';
-import { WORKER_VARIABLES, workerVariables, type WorkerChoice, type WorkerRecord } from './worker-state.ts';
+import { WORKER_VARIABLES, workerCommand, workerVariables, type WorkerChoice, type WorkerRecord } from './worker-state.ts';
 
 export type Pools = { verify: string; deliver: string };
 export type WorkerProof = Proof & { repository: string; role: 'verify' | 'deliver'; workflow: string; localOnly: boolean; publicBranch?: string; managerHealthy: boolean };
@@ -64,12 +65,12 @@ export type WorkerHost = {
   prepare(role: 'verify' | 'deliver', home: string): Promise<void>;
   proof(role: 'verify' | 'deliver', home: string): WorkerProof;
 };
-function host(options: WorkerOptions): WorkerHost {
+export function workerHost(options: WorkerOptions, command?: (home: string, args: string[]) => Promise<void>): WorkerHost {
   const git = (...args: string[]) => execFileSync('git', ['-C', options.root, ...args], { encoding: 'utf8' }).trim();
-  const invoke = (home: string, args: string[]) => new Promise<void>((resolve, reject) => {
+  const invoke = command ?? ((home: string, args: string[]) => new Promise<void>((resolve, reject) => {
     const child = spawn(path.join(options.root, 'platform/tooling/node-ts.sh'), [path.join(options.root, 'platform/tooling/ci-workers/cli.ts'), ...args], { cwd: options.root, env: { ...process.env, STARTER_WORKERS_HOME: home }, stdio: 'inherit' });
     child.on('error', reject); child.on('exit', code => code === 0 ? resolve() : reject(Error('Worker command did not finish. Inspect the output above; routing is unchanged.')));
-  });
+  }));
   return {
     async watch(repo, runId) {
       await new Promise<void>((resolve, reject) => {
@@ -89,7 +90,9 @@ function host(options: WorkerOptions): WorkerHost {
         const c = JSON.parse(fs.readFileSync(file, 'utf8')) as Config;
         demand(c.repo.toLowerCase() === options.repo.toLowerCase() && c.updateRole === role && c.updateWorkflow === '.github/workflows/update-platform.yml' && !c.publicBranch, 'Selected installation is for another repository, role or diagnostic branch');
         demand(!c.paused, 'Selected worker installation is paused. Resume it explicitly before setup.');
-        if (c.localOnly) await invoke(home, ['setup']);
+        const stopped = !fs.existsSync(path.join(home, 'daemon.lock'));
+        const installed = [path.join(home, 'starter-workers'), path.join(home, 'current/cli.ts'), serviceDefinition(c.pool)].every(file => fs.existsSync(file));
+        if (c.localOnly || stopped && !installed) await invoke(home, ['setup']);
       } else await invoke(home, ['setup', '--repo', options.repo, '--update-role', role, '--update-workflow', '.github/workflows/update-platform.yml']);
       await invoke(home, role === 'verify' ? ['check', '--install'] : ['check']);
       if (!fs.existsSync(path.join(home, 'daemon.lock'))) await invoke(home, ['service', 'start']);
@@ -109,9 +112,9 @@ function host(options: WorkerOptions): WorkerHost {
     },
   };
 }
-export async function configureWorkers(options: WorkerOptions, run: Gh, persist: (state: WorkerRecord) => void, local: WorkerHost = host(options)): Promise<void> {
+export async function configureWorkers(options: WorkerOptions, run: Gh, persist: (state: WorkerRecord) => void, local: WorkerHost = workerHost(options)): Promise<void> {
+  persist({ choice: options.choice, status: 'pending', homes: options.homes, ownerActions: ['Resume ' + workerCommand(options.repo, options.choice, options.homes, options.runId) + '.'] });
   const before = workerVariables(options.repo, run), homes = options.homes ?? workerHomes(options.repo);
-  persist({ choice: options.choice, status: 'pending', ownerActions: ['Resume bun run platform:setup-updates --workers ' + options.choice + ' --yes.'] });
   if (options.choice === 'hosted') {
     setWorkerRouting(options.repo, before, { verify: '', deliver: '' }, run);
     persist({ choice: 'hosted', status: 'configured', ownerActions: [] });
@@ -140,8 +143,8 @@ export async function configureWorkers(options: WorkerOptions, run: Gh, persist:
       dispatched = runs.find(r => r.display_title === 'Updater worker check ' + proof && r.head_sha === sha)?.id.toString();
       if (!dispatched) await new Promise(resolve => setTimeout(resolve, 2000));
     }
-    const action = 'In Actions, watch “Updater worker check ' + proof + '”. After it passes, run bun run platform:setup-updates --workers local --worker-run ' + (dispatched ?? 'RUN_ID') + ' --yes' + (options.homes ? ' (include the same --verify-home and --deliver-home paths)' : '') + '. Routing is unchanged until that command confirms the test.';
-    persist({ choice: 'local', status: 'pending', pools, ownerActions: [action] });
+    const action = 'In Actions, watch “Updater worker check ' + proof + '”. After it passes, run ' + workerCommand(options.repo, 'local', options.homes, dispatched ?? 'RUN_ID') + '. Routing is unchanged until that command confirms the test.';
+    persist({ choice: 'local', status: 'pending', homes: options.homes, pools, ownerActions: [action] });
     process.stdout.write(action + '\n');
     if (!dispatched || !local.watch) return;
     await local.watch(options.repo, dispatched);
@@ -153,6 +156,6 @@ export async function configureWorkers(options: WorkerOptions, run: Gh, persist:
   const latest = JSON.parse(run(['api', 'repos/' + options.repo + '/commits/' + encodeURIComponent(repo.default_branch)]));
   demand(latest.sha === sha, 'Default branch changed during the test; repeat local worker setup');
   setWorkerRouting(options.repo, before, pools, run);
-  persist({ choice: 'local', status: 'configured', pools, test, ownerActions: [] });
+  persist({ choice: 'local', status: 'configured', homes: options.homes, pools, test, ownerActions: [] });
   process.stdout.write('Both local installations passed the GitHub test. Scheduled update jobs now use these pools.\n');
 }

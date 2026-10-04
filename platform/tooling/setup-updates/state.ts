@@ -121,6 +121,8 @@ export function summary(status: Status): string {
     "Schedule (UTC): " + schedule + "; policy: " + (status.observed.policy ?? "inspect caller") + "; auto-merge: " + (status.observed.autoMerge ?? "inspect caller"),
     "Update workers: " + status.workers.choice + "; readiness: " + status.workers.readiness + "; recorded choice: " + (status.intent?.workers?.choice ?? "none"),
     "Worker pools: verify=" + (status.workers.pools?.verify || "GitHub-hosted / unknown") + "; deliver=" + (status.workers.pools?.deliver || "GitHub-hosted / unknown"),
+    "Worker host availability: " + status.workers.availability,
+    "Last worker test: " + (status.workers.lastTest ? "run=" + status.workers.lastTest.runId + "; source=" + status.workers.lastTest.sha + "; proof=" + status.workers.lastTest.proof + "; checked=" + status.workers.lastTest.checkedAt : "none"),
     ...status.workers.ownerActions.map(action => "Worker action: " + action),
     ...status.ownerActions.map(action => "Owner action: " + action),
     "Intent: " + RECORD + "; schedule/policy/auto-merge authority: " + CALLER,

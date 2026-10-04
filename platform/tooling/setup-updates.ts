@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { configureWorkers, type WorkerHost } from "./setup-updates/workers.ts";
-import { workerVariables, type WorkerChoice, type WorkerRecord } from "./setup-updates/worker-state.ts";
+import { workerCommand, workerVariables, type WorkerChoice, type WorkerRecord } from "./setup-updates/worker-state.ts";
 import { pathToFileURL } from "node:url";
 import { demand } from "./platform-upgrade/metadata.ts";
 import { gh, repository, configured, type Gh } from "./setup-updates/github.ts";
@@ -125,18 +125,19 @@ export async function main(argv: string[], run: Gh = gh, setup: typeof startSetu
       const state = readRecord(root)!;
       saveRecord(root, state.mode, selected!, state.status, state.ownerActions, { workers });
     };
+    const homes = options.verifyHome && options.deliverHome ? { verify: options.verifyHome, deliver: options.deliverHome } : undefined;
     if (!options.yes || mode === "deferred" && !workerOnly) {
-      persist({ choice: options.workers, status: "pending", ownerActions: ["Resume bun run platform:setup-updates --workers " + options.workers + " --yes."] });
+      persist({ choice: options.workers, status: "pending", homes, ownerActions: ["Resume " + workerCommand(selected!, options.workers, homes, options.workerRun) + "."] });
       process.stdout.write("Worker choice recorded; existing routing preserved.\n"); return 0;
     }
     try {
-      await configureWorkers({ choice: options.workers, root, repo: selected!, runId: options.workerRun, ...(options.verifyHome && options.deliverHome ? { homes: { verify: options.verifyHome, deliver: options.deliverHome } } : {}) }, run, persist, local);
+      await configureWorkers({ choice: options.workers, root, repo: selected!, runId: options.workerRun, homes }, run, persist, local);
       process.stdout.write(summary(updateStatus(root, selected, run)));
       return readRecord(root)?.workers?.status === "configured" ? 0 : 2;
     } catch (error) {
       const action = error instanceof Error ? error.message : "Worker setup failed; inspect both installations before retrying.";
       const saved = readRecord(root)?.workers;
-      persist({ ...saved, choice: options.workers, status: "pending", ownerActions: [action] });
+      persist({ ...saved, choice: options.workers, status: "pending", ownerActions: [...(saved?.ownerActions ?? []), action] });
       process.stderr.write(action + "\n"); return 2;
     }
   }

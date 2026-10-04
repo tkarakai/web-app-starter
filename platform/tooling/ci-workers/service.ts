@@ -6,6 +6,9 @@ import { assert, command, exists, hash, home, type Config } from './core.ts';
 
 const xml = (s: string): string => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
 const shell = (s: string): string => `'${s.replaceAll("'", "'\\''")}'`;
+export function serviceDefinition(pool: string): string {
+  return process.platform === 'darwin' ? path.join(os.homedir(), 'Library/LaunchAgents', pool + '.plist') : path.join(os.homedir(), '.config/systemd/user', pool + '.service');
+}
 export async function install(c: Config): Promise<string> {
   const source = path.dirname(fileURLToPath(import.meta.url));
   const target = path.join(home, 'versions', `${Date.now()}-${hash(source).slice(0, 8)}`);
@@ -22,20 +25,20 @@ export async function install(c: Config): Promise<string> {
   const environmentPath = `${path.dirname(c.docker)}:${path.dirname(process.execPath)}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`;
   if (process.platform === 'darwin') {
     const directory = path.join(os.homedir(), 'Library/LaunchAgents'); await mkdir(directory, { recursive: true });
-    await writeFile(path.join(directory, `${c.pool}.plist`), `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>${c.pool}</string><key>ProgramArguments</key><array><string>${xml(wrapper)}</string><string>serve</string></array><key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(environmentPath)}</string></dict><key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ThrottleInterval</key><integer>30</integer><key>StandardOutPath</key><string>${xml(path.join(home, 'logs/manager.log'))}</string><key>StandardErrorPath</key><string>${xml(path.join(home, 'logs/manager.log'))}</string></dict></plist>\n`);
+    await writeFile(serviceDefinition(c.pool), `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>${c.pool}</string><key>ProgramArguments</key><array><string>${xml(wrapper)}</string><string>serve</string></array><key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(environmentPath)}</string></dict><key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ThrottleInterval</key><integer>30</integer><key>StandardOutPath</key><string>${xml(path.join(home, 'logs/manager.log'))}</string><key>StandardErrorPath</key><string>${xml(path.join(home, 'logs/manager.log'))}</string></dict></plist>\n`);
   } else {
     assert(process.platform === 'linux', 'Supported hosts: macOS and Linux');
     const directory = path.join(os.homedir(), '.config/systemd/user'); await mkdir(directory, { recursive: true });
     // systemd quoted arguments use backslash escaping, not shell single quotes.
     const quote = (s: string): string => '"' + s.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('%', '%%') + '"';
-    await writeFile(path.join(directory, `${c.pool}.service`), `[Unit]\nDescription=Starter local workers\n[Service]\nExecStart=${quote(wrapper)} serve\nEnvironment=${quote(`PATH=${environmentPath}`)}\nRestart=on-failure\nRestartSec=30\nTimeoutStopSec=7200\n[Install]\nWantedBy=default.target\n`);
+    await writeFile(serviceDefinition(c.pool), `[Unit]\nDescription=Starter local workers\n[Service]\nExecStart=${quote(wrapper)} serve\nEnvironment=${quote(`PATH=${environmentPath}`)}\nRestart=on-failure\nRestartSec=30\nTimeoutStopSec=7200\n[Install]\nWantedBy=default.target\n`);
   }
   return wrapper;
 }
 export async function service(c: Config, start: boolean): Promise<void> {
   if (process.platform === 'darwin') {
     const target = `gui/${process.getuid!()}`;
-    if (start) await command('/bin/launchctl', ['bootstrap', target, path.join(os.homedir(), 'Library/LaunchAgents', `${c.pool}.plist`)]);
+    if (start) await command('/bin/launchctl', ['bootstrap', target, serviceDefinition(c.pool)]);
     else await command('/bin/launchctl', ['bootout', `${target}/${c.pool}`]);
   } else {
     await command('systemctl', ['--user', 'daemon-reload']);

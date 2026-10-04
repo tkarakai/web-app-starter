@@ -1,15 +1,87 @@
 import test from 'node:test';
+import fs from 'node:fs';
+import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
-import { configureWorkers, certifyWorkers, setWorkerRouting, validateProofs, type Proofs, type WorkerHost } from '../setup-updates/workers.ts';
+import { configureWorkers, certifyWorkers, setWorkerRouting, validateProofs, workerHost, type Proofs, type WorkerHost } from '../setup-updates/workers.ts';
 import { workerStatus, WORKER_VARIABLES, type WorkerRecord } from '../setup-updates/worker-state.ts';
 import { hash, updaterCheckWorkflow } from '../ci-workers/core.ts';
 import { proofId } from '../ci-workers/proof.ts';
-import { argumentsFor } from '../setup-updates.ts';
+import { argumentsFor, main } from '../setup-updates.ts';
+import { readRecord, saveRecord, summary, updateStatus } from '../setup-updates/state.ts';
 import type { Gh } from '../setup-updates/github.ts';
 
 const sha = 'a'.repeat(40), repo = 'owner/app';
+function temporaryRoot(t: test.TestContext): string {
+  const root = fs.mkdtempSync(path.join(process.cwd(), '.worker-review-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  return root;
+}
+function recoveryArguments(action: string): string[] {
+  const command = action.slice(action.indexOf('bun run platform:setup-updates ') + 'bun run platform:setup-updates '.length).split('. Routing')[0].replace(/\.$/, '');
+  return JSON.parse(execFileSync('/bin/sh', ['-c', 'set -- ' + command + '; exec node -e \'console.log(JSON.stringify(process.argv.slice(1)))\' -- "$@"'], { encoding: 'utf8' }));
+}
+test('guided preparation resumes authenticated incomplete installations for both roles', async t => {
+  const root = temporaryRoot(t);
+  for (const role of ['verify', 'deliver'] as const) {
+    const home = path.join(root, role); fs.mkdirSync(home);
+    const config = { repo, updateRole: role, updateWorkflow: '.github/workflows/update-platform.yml', pool: 'starter-' + role, localOnly: false, paused: false };
+    fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify(config));
+    fs.writeFileSync(path.join(home, 'token'), 'private-manager-credential');
+    const calls: string[][] = [];
+    const host = workerHost({ choice: 'local', root, repo }, async (selectedHome, args) => {
+      assert.equal(selectedHome, home); calls.push(args);
+      if (args[0] === 'setup') {
+        assert.deepEqual(args, ['setup']);
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(home, 'config.json'), 'utf8')), config);
+        assert.equal(fs.readFileSync(path.join(home, 'token'), 'utf8'), 'private-manager-credential');
+        fs.writeFileSync(path.join(home, 'daemon.lock'), 'running');
+        fs.writeFileSync(path.join(home, 'status.json'), JSON.stringify({ polled: new Date().toISOString() }));
+      }
+    });
+    await host.prepare(role, home);
+    assert.deepEqual(calls, [['setup'], role === 'verify' ? ['check', '--install'] : ['check']]);
+    calls.length = 0;
+    await host.prepare(role, home);
+    assert.deepEqual(calls, [role === 'verify' ? ['check', '--install'] : ['check']]);
+  }
+});
+test('pending consent and interrupted monitoring retain executable recovery arguments and resume the existing test', async t => {
+  const root = temporaryRoot(t), cwd = process.cwd(), f = fixture();
+  fs.writeFileSync(path.join(root, '.platform-base.json'), '{}');
+  saveRecord(root, 'deferred', repo, 'deferred', []);
+  process.chdir(root); t.after(() => process.chdir(cwd));
+  const homes = { verify: path.join(root, "verify's $pool"), deliver: path.join(root, 'deliver `pool`') };
+  const args = ['--repo', repo, '--workers', 'local', '--verify-home', homes.verify, '--deliver-home', homes.deliver];
+  assert.equal(await main(args, f.run, undefined, f.host), 0);
+  let saved = readRecord(root)!.workers!;
+  assert.deepEqual(argumentsFor(recoveryArguments(saved.ownerActions[0])), argumentsFor([...args, '--yes']));
+  f.host.watch = async () => { throw Error('Monitoring interrupted'); };
+  assert.equal(await main([...args, '--yes'], f.run, undefined, f.host), 2);
+  saved = readRecord(root)!.workers!;
+  assert.deepEqual(saved.homes, homes);
+  assert(saved.ownerActions.includes('Monitoring interrupted'));
+  const resume = recoveryArguments(saved.ownerActions[0]);
+  assert.deepEqual(argumentsFor(resume), argumentsFor([...args, '--worker-run', '42', '--yes']));
+  const status = workerStatus(repo, saved, f.run);
+  assert(status.ownerActions.includes(saved.ownerActions[0]));
+  f.prepared.length = 0;
+  assert.equal(await main(resume, f.run, undefined, f.host), 0);
+  assert.deepEqual(f.prepared, []);
+  assert.equal(f.calls.filter(c => c.args[1].endsWith('/dispatches')).length, 1);
+  assert.equal(readRecord(root)!.workers!.test!.runId, 42);
+});
+test('human worker status includes unknown availability and the recorded test identities and time', t => {
+  const root = temporaryRoot(t), f = fixture();
+  const checkedAt = '2026-10-04T12:00:00Z';
+  saveRecord(root, 'deferred', repo, 'deferred', [], { workers: { choice: 'local', status: 'configured', pools: { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, test: { runId: 42, sha, proof: f.proof, checkedAt }, ownerActions: [] } });
+  const output = summary(updateStatus(root, repo, f.run));
+  assert(output.includes('Worker host availability: unknown'));
+  assert(output.includes('Last worker test: run=42; source=' + sha + '; proof=' + f.proof + '; checked=' + checkedAt));
+  saveRecord(root, 'deferred', repo, 'deferred', [], { workers: undefined });
+  assert(summary(updateStatus(root, undefined, () => { throw Error('offline'); })).includes('Last worker test: none'));
+});
 function proofs(): Proofs {
   const make = (role: 'verify' | 'deliver') => {
     const p = { sha, role, image: 'sha256:' + (role === 'verify' ? 'b' : 'c').repeat(64), runtime: 'd'.repeat(64), key: role, scope: 'update-' + role, pool: 'starter-' + (role === 'verify' ? '1' : '2').repeat(32), checked: new Date().toISOString(), repository: repo, workflow: '.github/workflows/update-platform.yml', localOnly: false, managerHealthy: true };
