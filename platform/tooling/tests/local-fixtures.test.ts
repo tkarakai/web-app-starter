@@ -37,21 +37,30 @@ test("fixture provisioning uses a private secret file and stdin, reuses only the
   const directory = fs.mkdtempSync(path.join(tmpdir(), "local-fixture-test-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const file = path.join(directory, "fixture.env");
+  const readFixture = () => {
+    const descriptor = fs.openSync(file, "r");
+    try {
+      const contents = fs.readFileSync(descriptor, "utf8");
+      assert.equal(fs.fstatSync(descriptor).mode & 0o777, 0o600);
+      return contents;
+    } finally {
+      fs.closeSync(descriptor);
+    }
+  };
   const calls: { args: string[]; input?: string }[] = [];
   const command = (args: string[], input?: string) => { calls.push({ args, input }); return ""; };
   provisionFixtures(command, "anonymous", file, "http://127.0.0.1:3211");
-  const original = parseEnv(fs.readFileSync(file, "utf8"));
+  const original = parseEnv(readFixture());
   assert.match(original.DEV_FIXTURE_SECRET!, /^[a-f0-9]{64}$/);
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.deepEqual(calls[0].args, ["env", "set", "--force"]);
   assert.equal(parseEnv(calls[0].input!).DEV_FIXTURE_SECRET, original.DEV_FIXTURE_SECRET);
   provisionFixtures(command, "anonymous", file, "http://127.0.0.1:3211");
-  assert.equal(parseEnv(fs.readFileSync(file, "utf8")).DEV_FIXTURE_SECRET, original.DEV_FIXTURE_SECRET);
+  assert.equal(parseEnv(readFixture()).DEV_FIXTURE_SECRET, original.DEV_FIXTURE_SECRET);
   provisionFixtures(command, "anonymous", file, "http://127.0.0.1:3213");
-  const rotated = fs.readFileSync(file, "utf8");
+  const rotated = readFixture();
   assert.notEqual(parseEnv(rotated).DEV_FIXTURE_SECRET, original.DEV_FIXTURE_SECRET);
   assert.throws(() => provisionFixtures(() => { throw new Error("backend unavailable"); }, "anonymous", file, "http://127.0.0.1:3215"));
-  assert.equal(fs.readFileSync(file, "utf8"), rotated);
+  assert.equal(readFixture(), rotated);
 });
 
 test("hosted command checks only the explicit deployment key, captures failures and never prints credentials", async t => {
