@@ -9,14 +9,14 @@ export interface EventPayload {
 export function verifyAssignment(expected: Assignment, context: Record<string, string | undefined>, payload: EventPayload): void {
   assert.match(expected.sha, /^[a-f0-9]{40}$/);
   for (const key of ['repositoryId', 'runId', 'runAttempt'] as const) assert(Number.isSafeInteger(expected[key]) && expected[key] > 0);
-  assert.equal(context.GITHUB_REPOSITORY, expected.repository);
+  assert.equal(context.GITHUB_REPOSITORY?.toLowerCase(), expected.repository.toLowerCase());
   assert.equal(context.GITHUB_REPOSITORY_ID, String(expected.repositoryId));
   assert.equal(context.GITHUB_RUN_ID, String(expected.runId));
   assert.equal(context.GITHUB_RUN_ATTEMPT, String(expected.runAttempt));
   assert.equal(context.GITHUB_EVENT_NAME, expected.event);
   assert.equal(context.GITHUB_REF, expected.ref);
   assert.equal(payload.repository?.id, expected.repositoryId);
-  assert.equal(payload.repository?.full_name, expected.repository);
+  assert.equal(payload.repository?.full_name?.toLowerCase(), expected.repository.toLowerCase());
   if (expected.publicBranch !== undefined) {
     assert.equal(expected.event, 'workflow_dispatch');
     assert.equal(expected.ref, `refs/heads/${expected.publicBranch}`);

@@ -42,3 +42,19 @@ test('PR assignment validates merge context separately from the authenticated ru
   assert.throws(() => assignment(c, { ...prRun, pull_requests: [{ ...prRun.pull_requests[0], head: { sha: head, repo: { id: 8 } } }] }, merge, 7));
   assert.throws(() => assignment(c, { ...prRun, head_sha: merge }, merge, 7));
 });
+
+
+test('repository casing is independent in configuration, runner context and payload while IDs remain exact', () => {
+  for (const repository of ['owner/repo', 'Owner/Repo', 'OWNER/REPO']) {
+    const expected = assignment({ ...c, repo: repository }, run, head, 7);
+    for (const actual of ['owner/repo', 'oWnEr/rEpO']) {
+      for (const full_name of ['owner/repo', 'OWNER/Repo']) {
+        const actualContext = { ...context, GITHUB_REPOSITORY: actual };
+        const actualPayload = { ...payload, repository: { id: 7, full_name } };
+        verifyAssignment(expected, actualContext, actualPayload);
+        assert.throws(() => verifyAssignment(expected, { ...actualContext, GITHUB_REPOSITORY_ID: '8' }, actualPayload));
+        assert.throws(() => verifyAssignment(expected, actualContext, { ...actualPayload, repository: { id: 8, full_name } }));
+      }
+    }
+  }
+});

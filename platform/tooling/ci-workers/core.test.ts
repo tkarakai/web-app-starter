@@ -93,7 +93,7 @@ test('decoded JSONC lock and manifest sources reject private URLs and unsupporte
   await writeFile(path.join(dir, 'package.json'), JSON.stringify({ ...root, engines: { node: '>=24.22 <25' } }));
   assert.equal((await check(JSON.stringify(lock))).nodeFloor, 22);
   await assert.rejects(check(JSON.stringify({ ...lock, lockfileVersion: 99 })));
-  await assert.rejects(check(JSON.stringify(lock).replace('\"lockfileVersion\":1', '\"lockfileVersion\":1,\"lockfileVersion\":1')), /Duplicate/);
-  await writeFile(path.join(dir, 'package.json'), JSON.stringify(root).replace('\"packageManager\":', '\"packageManager\":\"bun@1.0.0\",\"packageManager\":'));
+  await assert.rejects(check(JSON.stringify(lock).replace('"lockfileVersion":1', '"lockfileVersion":1,"lockfileVersion":1')), /Duplicate/);
+  await writeFile(path.join(dir, 'package.json'), JSON.stringify(root).replace('"packageManager":', '"packageManager":"bun@1.0.0","packageManager":'));
   await assert.rejects(check(JSON.stringify(lock)), /Duplicate/);
 });

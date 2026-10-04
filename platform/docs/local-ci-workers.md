@@ -121,7 +121,7 @@ rerun tool installation under a retained image identity. Refresh downloads and d
 stay in separate temporary candidate directories. The tool pointer and dependency environment are
 promoted together in the catalog only after disposable exact-source frozen offline validation.
 The selected Convex backend is baked in and passed explicitly to the local backend launcher, so
-normal starts do not discover/download another backend version each time.
+normal starts do not discover/download another backend version each time. Keep the worker proxy and tool variables in `turbo.json`'s `globalPassThroughEnv`; Turbo's strict environment filtering otherwise removes them from builds and tests.
 
 This recipe supports public npm packages, workspace dependencies and repository-local `file:`
 packages. Custom `.npmrc`/`bunfig.toml`, Git dependencies and external tarball sources are rejected
