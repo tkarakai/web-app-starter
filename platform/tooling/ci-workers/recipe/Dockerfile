@@ -34,4 +34,3 @@ ENV PATH=/usr/local/bin:/usr/bin:/bin
 USER 1001:1001
 WORKDIR /work
 ENTRYPOINT ["/usr/bin/tini", "--", "/opt/starter/entrypoint.sh"]
-

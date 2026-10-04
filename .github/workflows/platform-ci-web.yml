@@ -213,8 +213,9 @@ jobs:
       # `convex dev` in anonymous mode downloads its local backend binary from
       # GitHub releases UNAUTHENTICATED. Four shards booting at once hit
       # "403 API rate limit exceeded" and the webServer never starts. Cache the
-      # binary so at most the first run downloads it. Self-hosted runners keep
-      # it in a persistent folder instead (platform/docs/ci-pre-push.md).
+      # binary so at most the first run downloads it. Managed workers bake it
+      # into the image; external self-hosted runners retain their own cache
+      # (platform/docs/ci-workers.md).
       - name: Cache Convex local backend
         if: ${{ env.ACT || runner.environment != 'self-hosted' }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

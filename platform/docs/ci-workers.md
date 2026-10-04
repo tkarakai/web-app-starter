@@ -89,10 +89,11 @@ starter-workers check --github --run RUN_ID
 ```
 
 The diagnostic is an explicit mode of the existing `ci-verify.yml`, so its branch version can be
-dispatched before merge. It does **not** pass release verification: the normal main-only resolve
-and release jobs are skipped. Two sequential GitHub jobs verify the same image ID/runtime policy,
-absence of the preceding job's files, sandboxed Chromium, the backend executable, and a frozen
-offline install at the requested source SHA. No repository routing variable changes.
+dispatched before merge. It does **not** pass full commit verification: the normal main-only
+resolve, app/shared CI and **Verified** jobs are skipped. Two sequential GitHub jobs verify the
+same image ID/runtime policy, absence of the preceding job's files, sandboxed Chromium, the
+backend executable, and a frozen offline install at the requested source SHA. No repository
+routing variable changes.
 
 For developing the public starter itself, setup accepts `--public-branch your-branch` alongside
 `--local-only` or the token prompt. That installation accepts only manual dispatches whose GitHub
@@ -254,5 +255,6 @@ Vendor contracts: [GitHub JIT runners](https://docs.github.com/en/rest/actions/s
 [Docker run controls](https://docs.docker.com/reference/cli/docker/container/run/),
 [Bun frozen/offline installs](https://bun.sh/docs/pm/cli/install), and
 [Playwright sandbox profile](https://github.com/microsoft/playwright/blob/v1.63.0/utils/docker/seccomp_profile.json).
-The shipped seccomp profile adds `chroot` for Chromium's unprivileged user-namespace sandbox;
-it does not grant the worker a host capability.
+The shipped profile's attribution and modification notice are in
+[THIRD_PARTY_NOTICES.md](../tooling/ci-workers/recipe/THIRD_PARTY_NOTICES.md).
+It does not grant the worker a host capability.
