@@ -175,6 +175,7 @@ test("guard preserves a custom schedule, policy and merge intent; unsupported co
   const custom=fs.readFileSync(file,"utf8").replace("23 5 * * 1-5","0 9 * * 2").replace("policy: minor","policy: patch").replace("auto-merge: false","auto-merge: true").replace("    if: "+GUARD+"\n","");
   fs.writeFileSync(file,custom);assert.equal(guardCaller(root),true);assert.equal(guardCaller(root),true);
   const text=fs.readFileSync(file,"utf8");assert(text.includes("0 9 * * 2"));assert(text.includes("policy: patch"));assert(text.includes("auto-merge: true"));
+  fs.writeFileSync(file,custom.replace("  update:\n","  update:\n"+"\n".repeat(10000)));assert.equal(guardCaller(root),true);
   fs.writeFileSync(file,custom.replace("  update:\n","  update:\n    if: some_custom_condition\n"));const before=fs.readFileSync(file,"utf8");assert.equal(guardCaller(root),false);assert.equal(fs.readFileSync(file,"utf8"),before);
   saveRecord(root,"fallback","owner/app","pending",[]);const unknown=updateStatus(root,"owner/app",setupGh({offline:true}).run);assert.equal(unknown.readiness,"unknown");
   assert.throws(()=>enableFallback("owner/app",()=>JSON.stringify({can_approve_pull_request_reviews:false})),/inspect workflow permissions/);

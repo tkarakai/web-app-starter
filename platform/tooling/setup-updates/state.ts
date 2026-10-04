@@ -36,21 +36,31 @@ export function saveRecord(root: string, mode: DeliveryMode, repo: string, statu
   const file = safePath(root, RECORD); fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(state, null, 2) + "\n"); return state;
 }
-function callerJobs(text: string): RegExpMatchArray[] {
-  const job = /^( {2}[\w-]+:\n)((?: {4}.*\n|\s*\n)*?)(?= {2}\S|$)/gm;
-  return [...text.matchAll(job)].filter(row => /^ {4}uses: ["']?\.\/\.github\/workflows\/platform-update\.yml["']?\s*$/m.test(row[2]));
+type CallerJob = { index: number; headerLength: number; body: string };
+function callerJobs(text: string): CallerJob[] {
+  const jobs: CallerJob[] = [];
+  let current: CallerJob | undefined, offset = 0;
+  for (const line of text.split("\n")) {
+    if (/^ {2}[\w-]+:[ \t\r]*$/.test(line)) {
+      current = { index: offset, headerLength: line.length + 1, body: "" }; jobs.push(current);
+    } else if (current && (line.startsWith("    ") || !line.trim() || line.trimStart().startsWith("#"))) {
+      current.body += line + "\n";
+    } else current = undefined;
+    offset += line.length + 1;
+  }
+  return jobs.filter(row => /^ {4}uses: ["']?\.\/\.github\/workflows\/platform-update\.yml["']?[ \t\r]*$/m.test(row.body));
 }
 function callerIsGuarded(text: string): boolean {
   const jobs = callerJobs(text);
-  return jobs.length === 1 && jobs[0][2].split("\n").some(line => line.trimEnd() === "    if: " + GUARD);
+  return jobs.length === 1 && jobs[0].body.split("\n").some(line => line.trimEnd() === "    if: " + GUARD);
 }
 /** Add only a delivery gate to a standard caller. Preserve every schedule, input and existing condition. */
 export function guardCaller(root: string): boolean {
   const file = safePath(root, CALLER), text = fs.readFileSync(file, "utf8");
   if (callerIsGuarded(text)) return true;
   const candidates = callerJobs(text);
-  if (candidates.length !== 1 || /^ {4}if:/m.test(candidates[0][2])) return false;
-  const row = candidates[0], offset = row.index! + row[1].length;
+  if (candidates.length !== 1 || /^ {4}if:/m.test(candidates[0].body)) return false;
+  const row = candidates[0], offset = row.index + row.headerLength;
   fs.writeFileSync(file, text.slice(0, offset) + "    if: " + GUARD + "\n" + text.slice(offset)); return true;
 }
 export type Status = {
