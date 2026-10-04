@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import { chmod, mkdir, rm, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -7,7 +8,7 @@ import { api, storeToken, token } from './github.ts';
 import { prepare } from './images.ts';
 import { cleanup, lock, serve, status } from './manager.ts';
 import { launch } from './runtime.ts';
-import { install, service } from './service.ts';
+import { install, removeConvenienceCommand, service } from './service.ts';
 
 const print = (v: unknown): void => { process.stdout.write(typeof v === 'string' ? v + '\n' : JSON.stringify(v, null, 2) + '\n'); };
 function option(args: string[], name: string): string | undefined { const i = args.indexOf(`--${name}`); if (i < 0) return; assert(args[i + 1] && !args[i + 1].startsWith('--'), `--${name} requires a value`); return args[i + 1]; }
@@ -167,7 +168,7 @@ export async function main(args: string[]): Promise<void> {
     case 'update': {
       const root = path.resolve(option(args, 'from') ?? '.');
       assert(!await exists(path.join(home, 'daemon.lock')), 'Pause --drain and service stop before updating');
-      await command(process.execPath, [path.join(root, 'platform/tooling/ci-workers/cli.ts'), 'install-update', '--from', root]);
+      await command(process.execPath, [path.join(root, 'platform/tooling/ci-workers/cli.ts'), 'install-update', '--from', root], { timeout: 2 * 3600_000 });
       print('Manager updated. Run check before service start; previous installation remains in ~/.local/share/starter-workers/previous.'); return;
     }
     case 'install-update': {
@@ -183,12 +184,12 @@ export async function main(args: string[]): Promise<void> {
         await command('/usr/bin/security', ['delete-generic-password', '-a', 'starter-workers', '-s', home]).catch(() => undefined);
         await rm(path.join(os.homedir(), 'Library/LaunchAgents', `${c.pool}.plist`), { force: true });
       } else await rm(path.join(os.homedir(), '.config/systemd/user', `${c.pool}.service`), { force: true });
-      await rm(path.join(os.homedir(), '.local/bin/starter-workers'), { force: true });
+      await removeConvenienceCommand();
       await rm(home, { recursive: true, force: true });
       print('Installation and credential removed. Prepared Docker images retained. Revoke the dedicated GitHub token.'); return;
     default: throw new Error(`Unknown command: ${verb}; use --help`);
   }
 }
-if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+if (process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url) {
   main(process.argv.slice(2)).catch(error => { process.stderr.write(`${String(error)}\n`); process.exitCode = 1; });
 }

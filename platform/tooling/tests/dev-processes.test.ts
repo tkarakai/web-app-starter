@@ -379,7 +379,7 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   const log = path.join(root, "start.log");
   const output = fs.openSync(log, "w");
   const launcher = spawn("bash", [path.join(root, "platform/tooling/dev-start.sh"), "--ci", "--app=storybook"], {
-    cwd: root, env: { ...process.env, PATH: bindir + path.delimiter + process.env.PATH },
+    cwd: root, env: { ...process.env, CONVEX_LOCAL_BACKEND_VERSION: undefined, PATH: bindir + path.delimiter + process.env.PATH },
     stdio: ["ignore", output, output], detached: true,
   });
   processes.push(launcher);
@@ -496,7 +496,7 @@ setTimeout(() => {}, 300000);
     const output = fs.openSync(log, "w");
     const launcher = spawn("bun", args, {
       cwd: root,
-      env: { ...process.env, PATH: bindir + path.delimiter + process.env.PATH },
+      env: { ...process.env, CONVEX_LOCAL_BACKEND_VERSION: undefined, PATH: bindir + path.delimiter + process.env.PATH },
       stdio: ["ignore", output, output], detached: true,
     });
     processes.push(launcher);

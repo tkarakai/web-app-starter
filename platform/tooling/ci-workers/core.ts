@@ -52,13 +52,30 @@ export async function command(executable: string, args: string[], options: {
   cwd?: string; input?: string | Buffer; env?: Record<string, string | undefined>; timeout?: number; stream?: boolean; raw?: boolean;
 } = {}): Promise<string> {
   return await new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { cwd: options.cwd, env: options.env ?? process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(executable, args, { cwd: options.cwd, env: options.env ?? process.env, stdio: ['pipe', 'pipe', 'pipe'], detached: true });
     let stdout = '', stderr = '';
-    const timer = setTimeout(() => child.kill('SIGKILL'), options.timeout ?? 120_000);
-    child.stdout.on('data', (data: Buffer) => { stdout += data.toString(); if (options.stream) process.stdout.write(data); if (stdout.length > 64 * 1024 * 1024) child.kill('SIGKILL'); });
+    let cancelled = false;
+    let escalation: ReturnType<typeof setTimeout> | undefined;
+    const killGroup = (signal: NodeJS.Signals): void => {
+      if (!child.pid) return;
+      try { process.kill(-child.pid, signal); } catch { return; }
+    };
+    const terminate = (): void => {
+      cancelled = true;
+      killGroup('SIGTERM');
+      escalation ??= setTimeout(() => killGroup('SIGKILL'), 10_000);
+    };
+    const finish = (): void => {
+      clearTimeout(timer); clearTimeout(escalation);
+      if (cancelled) killGroup('SIGKILL');
+      process.off('SIGTERM', terminate); process.off('SIGINT', terminate);
+    };
+    process.on('SIGTERM', terminate); process.on('SIGINT', terminate);
+    const timer = setTimeout(terminate, options.timeout ?? 120_000);
+    child.stdout.on('data', (data: Buffer) => { stdout += data.toString(); if (options.stream) process.stdout.write(data); if (stdout.length > 64 * 1024 * 1024) terminate(); });
     child.stderr.on('data', (data: Buffer) => { stderr = (stderr + data.toString()).slice(-16000); if (options.stream) process.stderr.write(data); });
-    child.on('error', error => { clearTimeout(timer); reject(error); });
-    child.on('close', code => { clearTimeout(timer); if (code === 0) resolve(options.raw ? stdout : stdout.trim()); else reject(new Error(`${path.basename(executable)} ${args[0]} failed (${code}): ${stderr}`)); });
+    child.on('error', error => { finish(); reject(error); });
+    child.on('close', code => { finish(); if (code === 0 && !cancelled) resolve(options.raw ? stdout : stdout.trim()); else reject(new Error(`${path.basename(executable)} ${args[0]} failed (${code}): ${stderr}`)); });
     child.stdin.on('error', () => { /* exit status reports a failed receiver */ });
     child.stdin.end(options.input);
   });

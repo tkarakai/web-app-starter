@@ -1,6 +1,6 @@
 import path from 'node:path';
 import os from 'node:os';
-import { cp, mkdir, readlink, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { assert, command, exists, hash, home, type Config } from './core.ts';
 
@@ -15,8 +15,9 @@ export async function install(c: Config): Promise<string> {
   const replacement = path.join(home, 'current.next'); await rm(replacement, { force: true }); await symlink(target, replacement);
   const { rename } = await import('node:fs/promises'); await rename(replacement, current);
   const bin = path.join(os.homedir(), '.local/bin'); await mkdir(bin, { recursive: true });
-  const wrapper = path.join(bin, 'starter-workers');
+  const wrapper = path.join(home, 'starter-workers');
   await writeFile(wrapper, `#!/bin/sh\nexport STARTER_WORKERS_HOME=${shell(home)}\nexec ${shell(process.execPath)} ${shell(path.join(current, 'cli.ts'))} "$@"\n`, { mode: 0o755 });
+  await cp(wrapper, path.join(bin, 'starter-workers'));
   await mkdir(path.join(home, 'logs'), { recursive: true, mode: 0o700 });
   const environmentPath = `${path.dirname(c.docker)}:${path.dirname(process.execPath)}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`;
   if (process.platform === 'darwin') {
@@ -40,4 +41,10 @@ export async function service(c: Config, start: boolean): Promise<void> {
     await command('systemctl', ['--user', 'daemon-reload']);
     await command('systemctl', ['--user', start ? 'enable' : 'disable', '--now', `${c.pool}.service`]);
   }
+}
+
+export async function removeConvenienceCommand(): Promise<void> {
+  const wrapper = path.join(os.homedir(), '.local/bin/starter-workers');
+  const owned = path.join(home, 'starter-workers');
+  if (await exists(wrapper) && await exists(owned) && await readFile(wrapper, 'utf8') === await readFile(owned, 'utf8')) await rm(wrapper, { force: true });
 }

@@ -1,7 +1,7 @@
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { api } from './github.ts';
-import { assert, catalog, docker, exists, hash, home, label, save, type Config, type Environment } from './core.ts';
+import { assert, catalog, command, docker, exists, hash, home, label, save, type Config, type Environment } from './core.ts';
 import { inputs, writeInputs, type Inputs } from './source.ts';
 import { launch, recipe } from './runtime.ts';
 
@@ -69,7 +69,6 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean): Prom
   const tools: Tools = { key: identity, created: new Date().toISOString(), args: [`NODE_IMAGE=${nodeImage}`, `BUN_VERSION=${input.bun}`, `PLAYWRIGHT_VERSION=${input.playwright}`, `BACKEND_VERSION=${backend}`, `TOOL_KEY=${identity}`] };
   tools.image = await build(c, directory, tools, 'tools', `${c.pool}:tools-${identity.slice(0, 20)}`);
   await launch(c, tools.image, ['smoke']);
-  await save(meta, tools);
   return { tools, directory };
 }
 export async function prepare(c: Config, git: string, sha: string, scope: string, refresh = false): Promise<Environment> {
@@ -82,16 +81,24 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
     try { await docker(c, ['image', 'inspect', existing.image]); existing.used = new Date().toISOString(); await save(path.join(home, 'catalog.json'), state); return existing; }
     catch { state.environments = state.environments.filter(e => e !== existing); }
   }
-  await rm(path.join(directory, 'inputs'), { recursive: true, force: true });
-  await writeInputs(path.join(directory, 'inputs'), input);
-  const image = await build(c, directory, tools, 'worker', `${c.pool}:seed-${key.slice(0, 24)}`);
-  await launch(c, image, ['smoke']);
-  const environment: Environment = { key, image, tools: tools.image!, scope, source: sha, created: new Date().toISOString(), used: new Date().toISOString(), bytes: Number(await docker(c, ['image', 'inspect', '-f', '{{.Size}}', image])) };
-  state.environments.push(environment); state.tools = tools.image; state.toolsCreated = tools.created;
-  await save(path.join(home, 'catalog.json'), state);
-  // Manifests are private source. Remove their staging copy after the fixed recipe completes.
-  await rm(path.join(directory, 'inputs'), { recursive: true, force: true });
-  return environment;
+  const source = await mkdtemp(path.join(home, 'validation-'));
+  try {
+    await rm(path.join(directory, 'inputs'), { recursive: true, force: true });
+    await writeInputs(path.join(directory, 'inputs'), input);
+    const image = await build(c, directory, tools, 'worker', `${c.pool}:seed-${key.slice(0, 24)}`);
+    await launch(c, image, ['smoke']);
+    const archive = path.join(source, 'source.tar');
+    await command('git', ['-C', git, 'archive', '--format=tar', '-o', archive, sha]);
+    await launch(c, image, ['exec', '/bin/bash', '-c', 'tar --no-same-owner -xf /work/source.tar -C /work && rm /work/source.tar && bun install --offline --frozen-lockfile'], undefined, async name => { await docker(c, ['cp', archive, `${name}:/work/source.tar`]); });
+    const environment: Environment = { key, image, tools: tools.image!, scope, source: sha, created: new Date().toISOString(), used: new Date().toISOString(), bytes: Number(await docker(c, ['image', 'inspect', '-f', '{{.Size}}', image])) };
+    state.environments.push(environment); state.tools = tools.image; state.toolsCreated = tools.created;
+    await save(path.join(directory, 'tools.json'), tools);
+    await save(path.join(home, 'catalog.json'), state);
+    return environment;
+  } finally {
+    await rm(source, { recursive: true, force: true });
+    await rm(path.join(directory, 'inputs'), { recursive: true, force: true });
+  }
 }
 export async function rotateLogs(): Promise<void> {
   for (const folder of ['logs', 'evidence']) {

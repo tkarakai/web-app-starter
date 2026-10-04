@@ -37,7 +37,7 @@ export async function launch(c: Config, image: string, mode: string[], input?: s
       '--cpus', String(c.cpus), '--memory', `${c.memoryGiB}g`, '--memory-swap', `${c.memoryGiB}g`, '--pids-limit', '2048', '--shm-size', '1g',
       '--env', `STARTER_WORKER_IMAGE=${image}`, '--env', `STARTER_WORKER_RUNTIME=${policy}`,
       ...['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY'].flatMap(k => ['--env', `${k}=http://${proxyAddress}:3128`]),
-      '--env', 'NO_PROXY=localhost,127.0.0.1,::1', '--env', 'no_proxy=localhost,127.0.0.1,::1', image, ...mode]);
+      '--env', 'NODE_USE_ENV_PROXY=1', '--env', 'NO_PROXY=localhost,127.0.0.1,::1', '--env', 'no_proxy=localhost,127.0.0.1,::1', image, ...mode]);
     const actual = JSON.parse(await docker(c, ['inspect', worker])) as { Image: string; Mounts: unknown[]; HostConfig: { Privileged: boolean; RestartPolicy: { Name: string } } }[];
     assert(actual[0].Image === image && actual[0].Mounts.length === 0 && !actual[0].HostConfig.Privileged && actual[0].HostConfig.RestartPolicy.Name === 'no', 'Container launch policy mismatch');
     if (beforeStart) await beforeStart(worker);
@@ -46,11 +46,14 @@ export async function launch(c: Config, image: string, mode: string[], input?: s
     const output = await docker(c, ['start', '-ai', worker], { input, timeout: 2 * 3600_000 });
     return output;
   } finally {
-    const logs = await docker(c, ['logs', worker]).catch(() => 'Container did not start');
-    await mkdir(path.join(home, 'logs'), { recursive: true, mode: 0o700 });
-    await writeFile(path.join(home, 'logs', `${id}.log`), logs.slice(-4 * 1024 * 1024), { mode: 0o600 });
-    for (const container of [worker, guard, proxy]) await docker(c, ['rm', '-f', container]).catch(() => undefined);
-    await docker(c, ['network', 'rm', net]).catch(() => undefined);
+    try {
+      const logs = await docker(c, ['logs', worker]).catch(() => 'Container did not start');
+      await mkdir(path.join(home, 'logs'), { recursive: true, mode: 0o700 });
+      await writeFile(path.join(home, 'logs', `${id}.log`), logs.slice(-4 * 1024 * 1024), { mode: 0o600 });
+    } finally {
+      for (const container of [worker, guard, proxy]) await docker(c, ['rm', '-f', container]).catch(() => undefined);
+      await docker(c, ['network', 'rm', net]).catch(() => undefined);
+    }
   }
 }
 export async function reconcile(c: Config): Promise<void> {

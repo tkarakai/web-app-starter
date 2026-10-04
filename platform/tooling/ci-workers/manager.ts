@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, statfs, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { api, remoteSource, token } from './github.ts';
 import { prepare, rotateLogs } from './images.ts';
@@ -7,17 +7,27 @@ import { assert, catalog, config, docker, expiredEnvironments, hash, home, label
 
 export async function lock<T>(name: string, action: () => Promise<T>): Promise<T> {
   const directory = path.join(home, `${name}.lock`);
-  try { await mkdir(directory, { mode: 0o700 }); }
-  catch (error) {
-    if ((error as { code?: string }).code !== 'EEXIST') throw error;
-    const pid = Number(await readFile(path.join(directory, 'pid'), 'utf8').catch(() => '0'));
-    let alive = true;
-    if (pid > 0) { try { process.kill(pid, 0); } catch (error) { alive = (error as { code?: string }).code !== 'ESRCH'; } }
-    assert(!alive, `Another worker operation holds ${name}; wait for it to finish`);
-    await rm(directory, { recursive: true }); await mkdir(directory, { mode: 0o700 });
-  }
-  await writeFile(path.join(directory, 'pid'), String(process.pid));
-  try { return await action(); } finally { await rm(directory, { recursive: true, force: true }); }
+  const staging = await mkdtemp(path.join(home, `${name}.owner-`));
+  const owner = path.basename(staging);
+  try {
+    await writeFile(path.join(staging, owner), String(process.pid), { mode: 0o600 });
+    for (;;) {
+      try { await rename(staging, directory); break; }
+      catch (error) {
+        if (!['EEXIST', 'ENOTEMPTY'].includes((error as { code: string }).code)) throw error;
+        const owners = await readdir(directory).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return []; throw error; });
+        for (const file of owners) {
+          const pid = Number(await readFile(path.join(directory, file), 'utf8').catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return '0'; throw error; }));
+          let alive = false;
+          if (pid > 0) { try { process.kill(pid, 0); alive = true; } catch (error) { alive = (error as NodeJS.ErrnoException).code !== 'ESRCH'; } }
+          assert(!alive, `Another worker operation holds ${name}; wait for it to finish`);
+          await rm(path.join(directory, file), { force: true });
+        }
+        await rmdir(directory).catch((error: NodeJS.ErrnoException) => { if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code!)) throw error; });
+      }
+    }
+    try { return await action(); } finally { await rm(path.join(directory, owner), { force: true }); await rmdir(directory).catch((error: NodeJS.ErrnoException) => { if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code!)) throw error; }); }
+  } finally { await rm(staging, { recursive: true, force: true }); }
 }
 export async function cleanup(c: Config, dryRun: boolean): Promise<string[]> {
   const state = await catalog();
