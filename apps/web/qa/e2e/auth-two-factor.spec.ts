@@ -62,7 +62,9 @@ async function enableTwoFactor(
   await expect(page.locator("[id='2fa-password']")).toBeVisible({ timeout: 15_000 });
 
   await fillStable(page, "[id='2fa-password']", password);
+  const enabledResponse = page.waitForResponse((response) => response.url().endsWith("/two-factor/enable"));
   await page.locator(`form:has([id='2fa-password']) button[type="submit"]`).click();
+  const issued = await (await enabledResponse).json() as { backupCodes: string[] };
 
   // Step: totp-uri. The QR code is primary; the base32 secret sits behind a
   // "Can't scan? Enter this key manually" collapsible, so it is not in the DOM
@@ -83,7 +85,9 @@ async function enableTwoFactor(
   expect(secret, "TOTP secret should be rendered for manual entry").toMatch(/^[A-Z2-7]{16,}$/);
 
   await awaitStableTotpWindow();
+  const rotatedResponse = page.waitForResponse((response) => response.url().endsWith("/two-factor/verify-totp"));
   await fillOtp(page, generateTotp(secret));
+  expect((await rotatedResponse).status()).toBe(200);
 
   // Step: backup-codes — shown once, after the code verifies.
   const codesField = page.locator('[data-slot="copyable-field"] pre');
@@ -94,6 +98,12 @@ async function enableTwoFactor(
     .filter(Boolean);
 
   expect(backupCodes.length, "enrolment should issue backup codes").toBeGreaterThan(0);
+  expect(backupCodes).toEqual(issued.backupCodes);
+  // Let the rotated session reconnect subscriptions and Activity effects. A
+  // transient display before reconnection previously hid the lost setup state.
+  await page.waitForTimeout(4_000);
+  await expect(page.getByRole("tab", { name: "Security", exact: true })).toHaveAttribute("data-state", "active");
+  await expect(codesField.first()).toHaveText(issued.backupCodes.join("\n"));
 
   return { secret, backupCodes };
 }

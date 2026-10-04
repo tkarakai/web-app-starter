@@ -6,10 +6,10 @@ import { AuthGuard } from "../../src/components/auth-guard";
 import { AuthGuard as AdminAuthGuard } from "../../../../apps/admin/src/components/auth/auth-guard";
 import { SecuritySection } from "../../src/settings/security-section";
 
-const mocks = vi.hoisted(() => ({ status: undefined as Record<string, unknown> | undefined, enable: vi.fn(), totp: vi.fn(), verify: vi.fn() }));
-vi.mock("convex/react", () => ({ useQuery: () => mocks.status, useAction: () => vi.fn() }));
+const mocks = vi.hoisted(() => ({ status: undefined as Record<string, unknown> | undefined, enable: vi.fn(), totp: vi.fn(), verify: vi.fn(), search: new URLSearchParams() }));
+vi.mock("convex/react", () => ({ useQuery: () => mocks.status, useAction: () => vi.fn(), useMutation: () => vi.fn() }));
 vi.mock("@convex-dev/better-auth/nextjs/client", () => ({ usePreloadedAuthQuery: () => ({ name: "Test", email: "test@example.test" }) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => new URLSearchParams("tab=2fa") }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => mocks.search }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: {
   useSession: () => ({ data: { user: {} } }), getSession: async () => ({ data: { user: { twoFactorEnabled: false } } }),
   $fetch: mocks.verify, twoFactor: { enable: mocks.enable, verifyTotp: mocks.totp }, signOut: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("../../src/components/localized-controls", () => ({
 }));
 function ready() { return { allowed: true, reason: "ready", hasTotp: false, hasPasskey: false, strongForChanges: false, recent: true, recentUntil: Date.now() + 300000, primaryRecentUntil: Date.now() + 300000, expiresAt: Date.now() + 3600000, passkeyPolicy: "optional" }; }
 beforeEach(() => {
-  vi.useFakeTimers(); mocks.status = ready();
+  vi.useFakeTimers(); mocks.status = ready(); mocks.search = new URLSearchParams();
   mocks.enable.mockResolvedValue({ data: { totpURI: "otpauth://totp/Test?secret=AAAA", backupCodes: ["same-first-code", "same-second-code"] } });
   mocks.totp.mockResolvedValue({ data: {} }); mocks.verify.mockResolvedValue({ data: { status: true } });
 });
@@ -31,6 +31,8 @@ it.each([false, true])("continues with the same backup codes through nested time
   const Guard = admin ? AdminAuthGuard : AuthGuard;
   const view = () => <NextIntlClientProvider locale="en" messages={english}><Guard preloadedUser={{} as never}><SecuritySection /></Guard></NextIntlClientProvider>;
   const result = render(view());
+  await act(async () => {});
+  fireEvent.mouseDown(screen.getByRole("tab", { name: english.accountSecurity.twoFactor.title }), { button: 0 });
   await act(async () => {});
   fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.twoFactor.enable }));
   fireEvent.change(screen.getByLabelText(english.accountSecurity.changePassword.currentPassword), { target: { value: "secret" } });

@@ -64,3 +64,19 @@ describe("audit trail table", () => {
     expect(mocks.page.loadMore).toHaveBeenCalledTimes(1);
   });
 });
+
+test("restores an open metadata popover after subscription reload", async () => {
+  const results = [{ ...event("a", "user.signed_in", "ada@example.test", "succeeded", 3000), meta: '{"detail":"Retained metadata"}' }];
+  const view = renderTable(results);
+  fireEvent.click(screen.getByRole("button", { name: "View details" }));
+  const metadata = await screen.findByText(/Retained metadata/);
+  expect(metadata).toBeVisible();
+  mocks.page.results = [];
+  mocks.page.status = "LoadingFirstPage";
+  view.rerender(<AuditTrailDataTable />);
+  expect(metadata).not.toBeVisible();
+  mocks.page.results = results;
+  mocks.page.status = "Exhausted";
+  view.rerender(<AuditTrailDataTable />);
+  expect(await screen.findByText(/Retained metadata/)).toBeVisible();
+});
