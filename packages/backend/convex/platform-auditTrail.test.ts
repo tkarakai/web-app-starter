@@ -43,7 +43,7 @@ describe("platform/auditTrail wrappers", () => {
         } },
       });
       const session = await t.mutation(components.betterAuth.adapter.create, {
-        input: { model: "session", data: {
+        input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now,
           userId: user._id, token: name, expiresAt: now + 60_000, createdAt: now, updatedAt: now,
         } },
       });

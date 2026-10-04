@@ -122,6 +122,8 @@ const rateLimitDefs = {
     period: MINUTE,
     capacity: 5,
   },
+  /** Password/factor step-up attempts, including already-authenticated sessions. */
+  authStepUp: { kind: "token bucket", rate: 5, period: MINUTE, capacity: 5 },
 
   /** Verification email — keyed by normalized recipient. */
   authVerificationEmail: {

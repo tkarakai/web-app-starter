@@ -19,7 +19,7 @@ async function fixture() {
       } },
     });
     const session = await t.mutation(components.betterAuth.adapter.create, {
-      input: { model: "session", data: {
+      input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now,
         userId: account._id, token: `${name}-session`, createdAt: now, updatedAt: now,
         expiresAt: now + 3600_000,
       } },

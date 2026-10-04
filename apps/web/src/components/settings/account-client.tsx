@@ -37,9 +37,14 @@ export function AccountClient() {
     searchParams.get("tab") === "security" ? "security" : "profile",
   );
 
+  const urlTab = searchParams.get("tab");
+  const previousUrlTab = React.useRef(urlTab);
   React.useEffect(() => {
-    setTab(searchParams.get("tab") === "security" ? "security" : "profile");
-  }, [searchParams]);
+    // Activity reconnects effects; only navigation should replace local selection.
+    if (previousUrlTab.current === urlTab) return;
+    previousUrlTab.current = urlTab;
+    setTab(urlTab === "security" ? "security" : "profile");
+  }, [urlTab]);
 
   const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;

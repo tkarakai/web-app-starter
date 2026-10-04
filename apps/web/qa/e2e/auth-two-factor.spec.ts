@@ -62,7 +62,9 @@ async function enableTwoFactor(
   await expect(page.locator("[id='2fa-password']")).toBeVisible({ timeout: 15_000 });
 
   await fillStable(page, "[id='2fa-password']", password);
+  const enabledResponse = page.waitForResponse((response) => response.url().endsWith("/two-factor/enable"));
   await page.locator(`form:has([id='2fa-password']) button[type="submit"]`).click();
+  const issued = await (await enabledResponse).json() as { backupCodes: string[] };
 
   // Step: totp-uri. The QR code is primary; the base32 secret sits behind a
   // "Can't scan? Enter this key manually" collapsible, so it is not in the DOM
@@ -83,7 +85,9 @@ async function enableTwoFactor(
   expect(secret, "TOTP secret should be rendered for manual entry").toMatch(/^[A-Z2-7]{16,}$/);
 
   await awaitStableTotpWindow();
+  const rotatedResponse = page.waitForResponse((response) => response.url().endsWith("/two-factor/verify-totp"));
   await fillOtp(page, generateTotp(secret));
+  expect((await rotatedResponse).status()).toBe(200);
 
   // Step: backup-codes — shown once, after the code verifies.
   const codesField = page.locator('[data-slot="copyable-field"] pre');
@@ -94,6 +98,12 @@ async function enableTwoFactor(
     .filter(Boolean);
 
   expect(backupCodes.length, "enrolment should issue backup codes").toBeGreaterThan(0);
+  expect(backupCodes).toEqual(issued.backupCodes);
+  // Let the rotated session reconnect subscriptions and Activity effects. A
+  // transient display before reconnection previously hid the lost setup state.
+  await page.waitForTimeout(4_000);
+  await expect(page.getByRole("tab", { name: "Security", exact: true })).toHaveAttribute("data-state", "active");
+  await expect(codesField.first()).toHaveText(issued.backupCodes.join("\n"));
 
   return { secret, backupCodes };
 }
@@ -193,7 +203,7 @@ test.describe("TOTP enrolment and challenge", () => {
     await expectSignedIn(page);
   });
 
-    test("accepts a backup code at the challenge and burns it", async ({ page }) => {
+  test("accepts a backup code for restricted recovery and burns it", async ({ page }) => {
     const user = await createDisposableUser();
     await signIn(page, user.email, user.password);
     const { backupCodes } = await enableTwoFactor(page, user.password);
@@ -213,9 +223,12 @@ test.describe("TOTP enrolment and challenge", () => {
     await submitBackupCode(page);
 
     await expectSignedIn(page);
+    await expect(page.getByText("Use your password to set up a new authenticator, then save the replacement backup codes.")).toBeVisible();
+    await expect(page.locator('[data-slot="sidebar-footer"]')).not.toBeVisible();
 
     // Single-use: the same code must not work a second time.
-    await signOut(page);
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/sign-in/);
     await throttleSignIn();
     await submitEmailStep(page, user.email);
     await submitPassword(page, user.password);

@@ -3,6 +3,7 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { v } from "convex/values";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
@@ -24,6 +25,9 @@ import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 import { readBackupCodes } from "./recoveryCodes";
+import { createAssuranceHooks } from "./authAssurance";
+import { sessionFields } from "./sessionFields";
+import { identitySession } from "./sessionPolicy";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -437,6 +441,7 @@ export const createAuthOptions = (
 ) => {
   const { siteUrl, siteUrls } = getSiteUrls();
   const passkeyRpId = getPasskeyRpId();
+  const assurance = createAssuranceHooks(ctx);
 
   // Shared across the plugin's onRequest and the top-level hooks.after within
   // this single request invocation.  Captured in onRequest (before the token is
@@ -448,9 +453,10 @@ export const createAuthOptions = (
     database: authComponent.adapter(ctx),
     session: {
       // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
-      // Admin sessions (4 hours) are enforced at the middleware level.
+      // The backend policy also enforces an absolute four-hour administrator lifetime.
       expiresIn: 60 * 60 * 24 * 7,  // 7 days
       updateAge: 60 * 60,            // 1 hour
+      additionalFields: sessionFields,
     },
     emailAndPassword: {
       enabled: true,
@@ -586,6 +592,7 @@ export const createAuthOptions = (
     databaseHooks: {
       session: {
         create: {
+          before: assurance.beforeCreate,
           after: async (session) => {
             const actionCtx = requireActionCtx(ctx);
             const s = session as Record<string, unknown>;
@@ -692,6 +699,7 @@ export const createAuthOptions = (
       },
     },
     plugins: [
+      assurance.plugin,
       convexRateLimitPlugin(ctx),
       emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
       multiOriginPlugin(siteUrls),
@@ -724,7 +732,22 @@ export const createAuthOptions = (
           });
         },
       }),
-      passkey(passkeyRpId ? { rpID: passkeyRpId } : undefined),
+      passkey({
+        ...(passkeyRpId ? { rpID: passkeyRpId } : {}),
+        authenticatorSelection: { userVerification: "required" },
+        registration: {
+          afterVerification: async ({ verification }) => {
+            if (!verification.registrationInfo?.userVerified) {
+              throw new APIError("FORBIDDEN", { code: "PASSKEY_USER_VERIFICATION_REQUIRED", message: "Verify your identity with your authenticator." });
+            }
+          },
+        },
+        authentication: {
+          afterVerification: async ({ verification }) => {
+            await assurance.verifyPasskey(verification.authenticationInfo.userVerified);
+          },
+        },
+      }),
       haveIBeenPwned(),
       convex({ authConfig }),
     ],
@@ -753,7 +776,7 @@ export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
     try {
-      return await authComponent.getAuthUser(ctx);
+      return (await identitySession(ctx))?.user ?? null;
     } catch {
       return null;
     }

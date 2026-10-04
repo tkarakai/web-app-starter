@@ -462,6 +462,19 @@
       "loadError": "Sitzungen konnten nicht geladen werden.",
       "revokeError": "Sitzung konnte nicht beendet werden.",
       "revokeAllError": "Sitzungen konnten nicht beendet werden."
+    },
+    "session": {
+      "title": "Identität bestätigen",
+      "description": "Schließen Sie die erforderliche Verifizierung ab, um fortzufahren.",
+      "expired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an.",
+      "failed": "Verifizierung fehlgeschlagen. Prüfen Sie Ihre Angaben und versuchen Sie es erneut.",
+      "verifyEmail": "E-Mail bestätigen",
+      "enrollment": "Schließen Sie Ihre Administrator-Einladung auf der Verwaltungsseite ab.",
+      "recovery": "Richten Sie mit Ihrem Passwort einen neuen Authenticator ein und speichern Sie die neuen Backup-Codes.",
+      "addPasskey": "Passkey hinzufügen",
+      "usePasskey": "Passkey verwenden",
+      "verify": "Bestätigen",
+      "continue": "Weiter"
     }
   }
 }

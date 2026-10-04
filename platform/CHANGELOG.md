@@ -13,6 +13,32 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Convex and authentication HTTP routes now enforce live session assurance, current security
+  policy and an absolute four-hour administrator lifetime. TOTP and user-verified passkeys
+  provide factor proof; sensitive changes require recent verification. Limited enrollment and
+  backup-code recovery sessions have guided setup, and unsupported login methods are disabled.
+  Gates preserve admitted setup and unsaved backup codes in memory through fresh verification;
+  password-consuming routes share an account attempt budget, and passkey responses omit
+  server-only session proof.
+  Suspended gate content also hides its portals and releases modal interaction locks while
+  retaining forms and setup state for fresh verification.
+  Recovery completion requires the password-authorized replacement authenticator, and email
+  OTP enrollment rotation preserves the original administrator deadline without granting strong proof.
+
+- ES256 passkey authentication uses one ASN.1 schema registry, avoiding mismatched parser state.
+
+### Action required
+
+- Deploy the updated authentication backend and UI together. Existing sessions without verified
+  session proof must reauthenticate or sign in again. App-owned administrative mutations must use
+  `adminMutation`; custom auth screens must support limited sessions and fresh verification as
+  described in [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+  Required passkeys now require current-session passkey authentication. Email-OTP sign-in, social
+  account/token routes and admin impersonation are unavailable; password reset and email
+  verification remain supported.
+
 ## [4.0.0] - 2026-10-04
 
 ### Added

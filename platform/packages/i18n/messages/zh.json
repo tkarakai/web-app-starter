@@ -462,6 +462,19 @@
       "loadError": "无法加载会话。",
       "revokeError": "无法终止会话。",
       "revokeAllError": "无法终止所有会话。"
+    },
+    "session": {
+      "title": "验证您的身份",
+      "description": "请完成所需验证以继续。",
+      "expired": "会话已过期，请重新登录。",
+      "failed": "验证失败，请检查信息后重试。",
+      "verifyEmail": "验证电子邮箱",
+      "enrollment": "请在管理站点完成管理员邀请流程。",
+      "recovery": "使用密码设置新的身份验证器，然后保存新的备用码。",
+      "addPasskey": "添加通行密钥",
+      "usePasskey": "使用通行密钥",
+      "verify": "验证",
+      "continue": "继续"
     }
   }
 }

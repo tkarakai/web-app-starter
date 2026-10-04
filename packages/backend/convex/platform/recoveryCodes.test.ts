@@ -38,13 +38,13 @@ async function fixture(encrypted = true) {
     model: "account", data: { userId: user._id, accountId: user._id, providerId: "credential",
       password: passwordHash, createdAt: now, updatedAt: now },
   } });
-  await t.mutation(components.betterAuth.adapter.create, { input: {
+  const factor = await t.mutation(components.betterAuth.adapter.create, { input: {
     model: "twoFactor", data: { userId: user._id, secret: "unused-by-these-tests", verified: true,
       backupCodes: encrypted ? await symmetricEncrypt({ key: process.env.BETTER_AUTH_SECRET!, data: JSON.stringify(codes) }) : JSON.stringify(codes) },
   } });
   async function addSession(token: string) {
     const session = await t.mutation(components.betterAuth.adapter.create, { input: {
-      model: "session", data: { userId: user._id, token, createdAt: now, updatedAt: now, expiresAt: now + 7 * 86400000 },
+      model: "session", data: { strongVerifiedAt: now, strongFactorId: factor._id, strongFactorType: "totp", assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token, createdAt: now, updatedAt: now, expiresAt: now + 7 * 86400000 },
     } });
     return { session, caller: t.withIdentity({ subject: user._id, sessionId: session._id }) };
   }
@@ -59,9 +59,11 @@ async function fixture(encrypted = true) {
 }
 
 describe("recovery-secret reauthentication", () => {
-  test.each([true, false])("current password unlocks codes (encrypted=%s), even after a day", async (encrypted) => {
+  test.each([true, false])("current password also needs recent factor proof (encrypted=%s)", async (encrypted) => {
     const f = await fixture(encrypted);
     vi.setSystemTime(Date.now() + 86400000);
+    await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, { password })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: f.first.session._id }], update: { strongVerifiedAt: Date.now() } } });
     await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, { password })).resolves.toEqual(codes);
     await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, {})).rejects.toThrow("REAUTHENTICATION_REQUIRED");
   });
@@ -90,8 +92,9 @@ describe("recovery-secret reauthentication", () => {
     expect((await f.http("/api/two-factor/backup-codes", { password }, f.second.session.token)).status).toBe(429);
     await expect(f.second.caller.action(api.platform.auth.viewBackupCodes, { password })).rejects.toThrow("RATE_LIMITED");
   });
-  test.each([true, false])("unverified accounts require the same password proof across transports (encrypted=%s)", async (encrypted) => {
+  test.each([true, false])("when email verification is optional, unverified accounts still need password and factor proof (encrypted=%s)", async (encrypted) => {
     const f = await fixture(encrypted);
+    await f.t.mutation(components.platform.appSettings.putRaw, { key: "userEmailVerificationRequired", value: "false" });
     await f.t.mutation(components.betterAuth.adapter.updateOne, {
       input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: { emailVerified: false } },
     });

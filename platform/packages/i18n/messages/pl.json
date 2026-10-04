@@ -462,6 +462,19 @@
       "loadError": "Nie udało się wczytać sesji.",
       "revokeError": "Nie udało się zakończyć sesji.",
       "revokeAllError": "Nie udało się zakończyć wszystkich sesji."
+    },
+    "session": {
+      "title": "Potwierdź swoją tożsamość",
+      "description": "Aby kontynuować, wykonaj wymaganą weryfikację.",
+      "expired": "Sesja wygasła. Zaloguj się ponownie.",
+      "failed": "Weryfikacja nie powiodła się. Sprawdź dane i spróbuj ponownie.",
+      "verifyEmail": "Zweryfikuj adres e-mail",
+      "enrollment": "Dokończ zaproszenie administratora w panelu administracyjnym.",
+      "recovery": "Użyj hasła, aby skonfigurować nowy uwierzytelniacz, a następnie zapisz nowe kody zapasowe.",
+      "addPasskey": "Dodaj klucz dostępu",
+      "usePasskey": "Użyj klucza dostępu",
+      "verify": "Zweryfikuj",
+      "continue": "Kontynuuj"
     }
   }
 }

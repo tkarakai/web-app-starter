@@ -462,6 +462,19 @@
       "loadError": "Impossible de charger les sessions.",
       "revokeError": "Impossible de fermer la session.",
       "revokeAllError": "Impossible de fermer les sessions."
+    },
+    "session": {
+      "title": "Vérifiez votre identité",
+      "description": "Effectuez la vérification requise pour continuer.",
+      "expired": "Votre session a expiré. Reconnectez-vous.",
+      "failed": "La vérification a échoué. Vérifiez vos informations et réessayez.",
+      "verifyEmail": "Vérifier l’adresse e-mail",
+      "enrollment": "Terminez votre invitation administrateur sur le site d’administration.",
+      "recovery": "Utilisez votre mot de passe pour configurer un nouvel authentificateur, puis enregistrez les nouveaux codes de secours.",
+      "addPasskey": "Ajouter une clé d’accès",
+      "usePasskey": "Utiliser une clé d’accès",
+      "verify": "Vérifier",
+      "continue": "Continuer"
     }
   }
 }

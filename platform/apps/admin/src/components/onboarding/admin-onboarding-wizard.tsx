@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AdminSessionAccessGate } from "@web-app-starter/auth-ui";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -478,17 +479,17 @@ export function AdminOnboardingWizard() {
               onBack={() => setShowIntro(true)}
             />
           ) : step === 1 ? (
-            <TotpSetupStep
+            <AdminSessionAccessGate enrollment requireRecent><TotpSetupStep
               password={passwordRef.current}
               onComplete={handleTotpComplete}
-            />
+            /></AdminSessionAccessGate>
           ) : step === 2 ? (
-            <BackupCodesStep
+            <AdminSessionAccessGate enrollment requireRecent><BackupCodesStep
               backupCodes={backupCodes}
               onComplete={handleBackupCodesComplete}
-            />
+            /></AdminSessionAccessGate>
           ) : (
-            <PasskeyStep onComplete={handlePasskeyComplete} />
+            <AdminSessionAccessGate enrollment requireRecent><PasskeyStep onComplete={handlePasskeyComplete} /></AdminSessionAccessGate>
           )}
         </SlideTransition>
       </CardContent>

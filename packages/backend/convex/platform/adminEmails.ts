@@ -1,6 +1,6 @@
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
-import { authComponent } from "./auth";
+import { getAuth } from "./functions";
 
 export const list = internalQuery({
   args: {},
@@ -18,7 +18,7 @@ export const listProtected = query({
   handler: async (ctx) => {
     let user;
     try {
-      user = await authComponent.getAuthUser(ctx);
+      user = (await getAuth(ctx))?.user;
     } catch {
       return [];
     }

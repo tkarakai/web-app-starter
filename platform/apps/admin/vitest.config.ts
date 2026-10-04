@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
@@ -7,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      "next-intl": createRequire(resolve(__dirname, "../../packages/auth-ui/package.json")).resolve("next-intl"),
     },
   },
   cacheDir: resolve(__dirname, "node_modules/.vite"),

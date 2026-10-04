@@ -6,6 +6,12 @@ import platform from "./platform/config/eslint.base.mjs";
 export default [
   ...platform,
   {
+    files: ["**/qa/e2e/**/*.ts"],
+    languageOptions: {
+      globals: { navigator: "readonly" },
+    },
+  },
+  {
     // The demo's consumed starter package and its release fixtures are
     // generated artifacts, not source.
     ignores: ["apps/demo/starter-packages/**", "apps/demo/qa/fixtures/starter-releases/**"],

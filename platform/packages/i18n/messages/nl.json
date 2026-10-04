@@ -462,6 +462,19 @@
       "loadError": "Sessies laden is mislukt.",
       "revokeError": "Sessie beëindigen is mislukt.",
       "revokeAllError": "Sessies beëindigen is mislukt."
+    },
+    "session": {
+      "title": "Bevestig je identiteit",
+      "description": "Voltooi de vereiste verificatie om door te gaan.",
+      "expired": "Je sessie is verlopen. Meld je opnieuw aan.",
+      "failed": "Verificatie mislukt. Controleer je gegevens en probeer het opnieuw.",
+      "verifyEmail": "E-mailadres verifiëren",
+      "enrollment": "Voltooi je beheerdersuitnodiging op de beheersite.",
+      "recovery": "Stel met je wachtwoord een nieuwe authenticator in en sla de nieuwe back-upcodes op.",
+      "addPasskey": "Passkey toevoegen",
+      "usePasskey": "Passkey gebruiken",
+      "verify": "Verifiëren",
+      "continue": "Doorgaan"
     }
   }
 }

@@ -22,6 +22,7 @@ import {
   username,
 } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
+import { sessionFields } from "../sessionFields";
 
 export const auth = betterAuth({
   database: convexAdapter({} as never, {} as never),
@@ -31,6 +32,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  session: { additionalFields: sessionFields },
   plugins: [
     // Plugins from @convex-dev/better-auth built-in config (for schema compat)
     twoFactor(),

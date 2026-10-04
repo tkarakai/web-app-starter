@@ -30,7 +30,7 @@ async function createFixture() {
     const session = await t.mutation(components.betterAuth.adapter.create, {
       input: {
         model: "session",
-        data: {
+        data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now,
           userId: user._id,
           token: `${name}-test-session`,
           expiresAt: now + 60 * 60 * 1000,

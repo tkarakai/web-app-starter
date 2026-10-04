@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
-import { authedMutation, authedQuery } from "./functions";
+import { adminMutation, authedQuery } from "./functions";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE, type EmailTemplate } from "./emailTemplates";
 
 export const getPublic = query({
@@ -27,7 +27,7 @@ export const getInternal = internalQuery({
   },
 });
 
-export const set = authedMutation({
+export const set = adminMutation({
   args: { key: v.string(), value: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
@@ -35,7 +35,7 @@ export const set = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = adminMutation({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");

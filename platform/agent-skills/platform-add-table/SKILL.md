@@ -23,6 +23,11 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
 - **Authenticated by default.** Use `authedQuery` and `authedMutation` from `./platform/functions`:
   handlers get `ctx.ownerId`; `authedQuery` returns `null` when signed out (safe for `useQuery`),
   `authedMutation` throws `NOT_AUTHENTICATED` and applies the global mutation rate limit.
+  Both enforce live session assurance and current verification/MFA/passkey/enrollment policy.
+  Use `adminMutation` for administrative writes: it adds admin-role and recent-authentication
+  checks. Do not substitute `auth.getCurrentUser`, raw Better Auth user lookup or account MFA flags
+  for authorization; those can represent a limited enrollment/recovery session. See
+  [session assurance](../../docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
   Use plain `query`/`mutation` only for data that is deliberately public.
 - **Own your rows.** Store `ownerId: v.string()` and index it (`by_owner`). Every read filters by
   `ctx.ownerId` through the index; every write to an existing row loads it and checks

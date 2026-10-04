@@ -31,7 +31,8 @@ export function parsePasskeyPolicy(value: unknown): PasskeyPolicy {
 }
 
 export function getPolicyScopeFromRole(role: unknown): PolicyScope {
-  return role === "admin" ? "admin" : "user";
+  return typeof role === "string" && role.split(",").some(value => value.trim() === "admin")
+    ? "admin" : "user";
 }
 
 export function getEmailVerificationRequiredKey(scope: PolicyScope): string {

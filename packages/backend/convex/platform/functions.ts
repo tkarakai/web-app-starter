@@ -5,7 +5,7 @@ import {
 } from "convex-helpers/server/customFunctions";
 import type { ObjectType, PropertyValidators } from "convex/values";
 
-import { authComponent } from "./auth";
+import { authorizedSession } from "./sessionPolicy";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -52,27 +52,10 @@ export async function isEmailVerificationRequired(
 
 /**
  * Resolve the authenticated user without throwing.
- * Uses `authComponent.safeGetAuthUser` (returns undefined when
- * unauthenticated) and derives the canonical `ownerId`.
+ * Applies the live session policy and derives the canonical `ownerId`.
  */
 export async function getAuth(ctx: QueryCtx) {
-  const user = await authComponent.safeGetAuthUser(ctx);
-  if (!user) return null;
-
-  // Banned users are treated as unauthenticated (spec §14)
-  if ((user as Record<string, unknown>).banned === true) {
-    return null;
-  }
-
-  const emailVerificationRequired = await isEmailVerificationRequired(
-    ctx,
-    user as Record<string, unknown>,
-  );
-  if (emailVerificationRequired && (user as Record<string, unknown>).emailVerified !== true) {
-    return null;
-  }
-
-  return { user, ownerId: (user.userId ?? user._id).toString() };
+  return await authorizedSession(ctx);
 }
 
 type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
@@ -122,6 +105,19 @@ export const authedMutation = customMutation(
       throws: true,
     });
 
+    return auth;
+  }),
+);
+
+/** Administrative writes additionally require recent authentication under current policy. */
+export const adminMutation = customMutation(
+  mutation,
+  customCtx(async ctx => {
+    const auth = await getAuth(ctx);
+    if (!auth) throw new Error("NOT_AUTHENTICATED");
+    if (getPolicyScopeFromRole(auth.user.role) !== "admin") throw new Error("NOT_ADMIN");
+    if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+    await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth;
   }),
 );

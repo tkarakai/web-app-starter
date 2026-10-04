@@ -29,9 +29,14 @@ export function AdminSecuritySection() {
     normalizeTab(searchParams.get("tab")),
   );
 
+  const urlTab = searchParams.get("tab");
+  const previousUrlTab = React.useRef(urlTab);
   React.useEffect(() => {
-    setTab(normalizeTab(searchParams.get("tab")));
-  }, [searchParams]);
+    // Activity reconnects effects; only navigation should replace local selection.
+    if (previousUrlTab.current === urlTab) return;
+    previousUrlTab.current = urlTab;
+    setTab(normalizeTab(urlTab));
+  }, [urlTab]);
 
   const enforce = searchParams.get("enforce");
 

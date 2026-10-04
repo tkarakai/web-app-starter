@@ -39,8 +39,8 @@ export function PublicAuthLayout({ children }: { children: ReactNode }) {
 /**
  * Layout for signed-in pages. Validates the session server-side, preloads the current
  * user for `useAuthUser()`, and enforces the platform's access rules:
- * no session or a stale one → clear-session (then sign-in); admins and banned users →
- * `/forbidden`; `userMfaRequired` policy without 2FA → security settings.
+ * no session or a stale one → clear-session (then sign-in); admins → `/forbidden`.
+ * The shared guard presents the live backend enrollment and verification decision.
  */
 export async function ProtectedLayout({ children }: { children: ReactNode }) {
   const authed = await isAuthenticated();
@@ -70,22 +70,6 @@ export async function ProtectedLayout({ children }: { children: ReactNode }) {
   // Banned users cannot access the dashboard (spec §14)
   if (userRecord.banned === true) {
     redirect("/forbidden");
-  }
-
-  // Server-side MFA enforcement: if userMfaRequired policy is enabled and
-  // the user hasn't set up 2FA, redirect to settings security tab.
-  if (userRecord.twoFactorEnabled !== true) {
-    try {
-      const mfaRequired = await fetchAuthQuery(api.platform.appSettings.getPublic, {
-        key: "userMfaRequired",
-      });
-      if (mfaRequired === true) {
-        redirect("/dashboard/settings?tab=security&enforce=mfa");
-      }
-    } catch {
-      // If the query fails, fall through — client-side AuthGuard
-      // will enforce MFA as a secondary check.
-    }
   }
 
   return <AuthGuard preloadedUser={preloadedUser}>{children}</AuthGuard>;
