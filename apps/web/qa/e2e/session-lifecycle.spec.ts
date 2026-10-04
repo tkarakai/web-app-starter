@@ -1,6 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/onboarding";
 
 import { appCookieDomain } from "./helpers/auth";
+import { createDisposableUser } from "./helpers/fixtures";
 import { sessionCookieNames } from "@web-app-starter/auth/cookies";
 
 // Session cookie names for the prefix in app.config.ts.
@@ -107,12 +108,13 @@ test.describe("Auth Page Navigation Guards", () => {
 
   test("/sign-up page is accessible without authentication", async ({
     page,
+    onboarding,
   }) => {
+    await onboarding.setMode("inviteOnly");
     const response = await page.goto("/en/sign-up");
     expect(response?.status()).toBe(200);
 
-    // Sign-up is invitation-gated by default (`onboardingType: inviteOnly`), so
-    // the page is reachable but carries no registration form.
+    // Under inviteOnly, the guest route is reachable without registration fields.
     await expect(page.getByText(/invitation only/i).first()).toBeVisible({
       timeout: 15_000,
     });
@@ -156,24 +158,35 @@ test.describe("Multi-Tab Session Detection", () => {
     expect(hasBroadcastChannel).toBe(true);
   });
 
-  test("auth pages include GuestGuard for multi-tab sync", async ({
+  test("auth pages redirect when another tab broadcasts a new session", async ({
     page,
+    context,
+    onboarding,
   }) => {
-    // Navigate to sign-in page
-    await page.goto("/en/sign-in");
-    await page.waitForLoadState("networkidle");
+    await onboarding.setMode("inviteOnly");
+    const user = await createDisposableUser();
+    for (const route of ["sign-in", "sign-up"]) {
+      await context.clearCookies();
+      await page.goto(`/en/${route}`);
+      await page.waitForLoadState("networkidle");
+      if (route === "sign-in") {
+        await expect(page.locator("#email")).toBeVisible();
+      } else {
+        await expect(page.getByText(/invitation only/i).first()).toBeVisible();
+      }
 
-    // The page should be interactive (GuestGuard wraps the form)
-    const form = page.locator("form");
-    await expect(form).toBeVisible();
-
-    // The sign-up page has no form to guard while sign-up is invitation-only;
-    // assert it still renders its gate rather than a blank or errored page.
-    await page.goto("/en/sign-up");
-    await page.waitForLoadState("networkidle");
-
-    await expect(page.getByText(/invitation only/i).first()).toBeVisible({
-      timeout: 15_000,
-    });
+      // Simulate another tab signing in, sharing the browser's session cookies.
+      const response = await context.request.post("/api/auth/sign-in/email", {
+        data: user,
+        headers: { Origin: new URL(page.url()).origin },
+      });
+      expect(response.ok(), `Sign-in returned HTTP ${response.status()}`).toBe(true);
+      await page.evaluate(() => {
+        const channel = new BroadcastChannel("auth");
+        channel.postMessage("authenticated");
+        channel.close();
+      });
+      await expect(page).toHaveURL(/\/en\/dashboard/);
+    }
   });
 });

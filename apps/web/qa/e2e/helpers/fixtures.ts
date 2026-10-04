@@ -50,12 +50,12 @@ function getEnvValue(name: string): string | undefined {
   return undefined;
 }
 
-function convexSiteUrl(): string {
-  const url = getEnvValue("CONVEX_SITE_URL");
+function localBackendUrl(name: "CONVEX_URL" | "CONVEX_SITE_URL"): string {
+  const url = getEnvValue(name);
   if (!url) {
     throw new Error(
-      "CONVEX_SITE_URL is not set. E2E fixtures call the Convex HTTP " +
-        "router directly; run `bun run dev` (or dev-start.sh) so the URL is written " +
+      `${name} is not set. E2E fixtures require a local Convex backend; ` +
+        "run `bun run dev` (or dev-start.sh) so the URL is written " +
         "to .env.local.",
     );
   }
@@ -65,6 +65,11 @@ function convexSiteUrl(): string {
     throw new Error("Fixture helpers only send their capability to a local backend.");
   }
   return parsed.origin;
+}
+
+/** The query/mutation URL, checked before sending a fixture's admin token. */
+export function localConvexUrl(): string {
+  return localBackendUrl("CONVEX_URL");
 }
 
 /**
@@ -101,7 +106,7 @@ export async function createDisposableUser(
   const secret = getEnvValue("DEV_FIXTURE_SECRET");
   if (!secret || !/^[a-f0-9]{64}$/.test(secret)) throw new Error("Local fixture secret is missing. Restart bun run dev, or set DEV_FIXTURE_SECRET_FILE to the local AWS fixture.env file.");
 
-  const response = await fetch(`${convexSiteUrl()}/api/dev/e2e-user`, {
+  const response = await fetch(`${localBackendUrl("CONVEX_SITE_URL")}/api/dev/e2e-user`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Dev-Fixture-Secret": secret },
     redirect: "error",

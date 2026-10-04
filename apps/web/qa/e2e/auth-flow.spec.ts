@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/onboarding";
 
 import { appCookieDomain, submitEmailStep } from "./helpers/auth";
 import { sessionCookieNames } from "@web-app-starter/auth/cookies";
@@ -86,20 +86,15 @@ test.describe("Sign-In Flow", () => {
 });
 
 /**
- * Sign-up is gated. `onboardingType` defaults to `inviteOnly`
- * (`packages/backend/convex/platform/onboardingType.ts`), and the self-service form only
- * renders under `publicSignup`.
- *
- * These previously asserted #name / #password / #confirm-password on
- * /en/sign-up. That form has not existed under the default setting for a long
- * time, and the tests had been failing unnoticed because CI was skipping E2E.
- * They now cover the gate itself, which is the security-relevant behaviour:
- * a stranger must not be able to self-register.
+ * Select inviteOnly explicitly: the backend retains admin settings across runs.
+ * A stranger must not see a self-registration form under this policy.
  */
 test.describe("Sign-Up Flow (invitation-gated)", () => {
-  test("offers no self-registration form under the default onboarding type", async ({
+  test("offers no self-registration form under inviteOnly onboarding", async ({
     page,
+    onboarding,
   }) => {
+    await onboarding.setMode("inviteOnly");
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 
@@ -114,7 +109,8 @@ test.describe("Sign-Up Flow (invitation-gated)", () => {
     await expect(page.locator('input[type="password"]')).toHaveCount(0);
   });
 
-  test("still offers a route forward", async ({ page }) => {
+  test("still offers a route forward", async ({ page, onboarding }) => {
+    await onboarding.setMode("inviteOnly");
     await page.goto("/en/sign-up");
     await page.waitForLoadState("networkidle");
 

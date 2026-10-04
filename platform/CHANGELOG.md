@@ -15,6 +15,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Reference web onboarding E2E tests now set and restore their required policy instead
+  of assuming a retained local backend is invitation-only. Session coverage verifies
+  guest-page navigation after an authentication broadcast.
 - Adoption now offers App, limited built-in token or deferred update delivery. New callers
   pause scheduling until explicit owner setup completes, preserving caller customisations
   and credentials. App-owned intent, human/JSON live readiness, consented fallback API setup
