@@ -865,21 +865,36 @@
           "required": false
         }
       ],
-      "removedFiles": [],
+      "removedFiles": [
+        "platform/docs/ci.md",
+        "platform/docs/private-repo-ci.md",
+        "platform/tooling/ci-runner/Dockerfile",
+        "platform/tooling/ci-runner/compose.yaml"
+      ],
       "renamedExports": [],
       "dependencyFloors": [],
       "changedSeams": [
         "root.github.actions.deploy-convex.action.yml",
-        "root.github.actions.deploy-convex.fixture-target.ts",
+        "root.github.actions.paid-feature.action.yml",
+        "root.github.actions.setup-bun.action.yml",
+        "root.github.actions.setup-playwright.action.yml",
+        "root.github.actions.setup-playwright.install-self-hosted.sh",
+        "root.github.workflows.ci-admin.yml",
+        "root.github.workflows.ci-landing.yml",
+        "root.github.workflows.ci-shared.yml",
+        "root.github.workflows.ci-storybook.yml",
+        "root.github.workflows.ci-verify.yml",
+        "root.github.workflows.ci-web.yml",
         "apps.landing..env.example",
         "apps.landing.next.config.ts",
         "apps.landing.package.json",
         "apps.web.next.config.ts",
         "apps.web.package.json",
-        "packages.backend.convex._generated.api.d.ts",
+        "eslint.config.mjs",
         "package.json",
+        "packages.backend.convex._generated.api.d.ts",
         "turbo.json",
-        "eslint.config.mjs"
+        "root.github.actions.deploy-convex.fixture-target.ts"
       ]
     }
   ]

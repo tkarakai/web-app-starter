@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-04
+
 ### Changed
 
 - CI documentation is organized by task: [GitHub workflows and policy](docs/ci-github.md),
@@ -896,3 +898,4 @@ tag/commit immediately; their own setup and deployment still need validation.
 [3.1.0]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...v3.1.0
 
 [Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...v4.0.0
