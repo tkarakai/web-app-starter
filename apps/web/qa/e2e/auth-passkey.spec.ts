@@ -57,6 +57,11 @@ async function registerPasskey(page: Page, name: string): Promise<void> {
   await fillStable(page, "#new-passkey-name", name);
   await page.getByRole("button", { name: /^add/i }).first().click();
 
+  // Registration adds a factor; sensitive settings now require its current-session proof.
+  const verifyPasskey = page.getByRole("button", { name: "Use a passkey", exact: true });
+  await expect(verifyPasskey).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(name)).not.toBeVisible();
+  await verifyPasskey.click();
   await expect(page.getByText(name)).toBeVisible({ timeout: 20_000 });
 }
 
@@ -145,6 +150,13 @@ test.describe("Passkey registration and sign-in", () => {
     await registerPasskey(page, "Doomed Key");
 
     await deleteAllPasskeys(page);
+
+    // Deleting the credential used by this session invalidates its passkey proof.
+    const password = page.getByLabel("Current password", { exact: true }).filter({ visible: true });
+    await expect(password).toBeVisible({ timeout: 20_000 });
+    await password.fill(user.password);
+    await page.getByRole("button", { name: "Verify", exact: true }).click();
+    await expect(page.getByRole("tablist").nth(1)).toBeVisible({ timeout: 20_000 });
 
     // A reload resets the inner security tabs to Password — the sub-tab is not
     // deep-linkable — so re-open Passkeys before asserting on the list.
