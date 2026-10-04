@@ -27,6 +27,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Recovery completion requires the password-authorized replacement authenticator, and email
   OTP enrollment rotation preserves the original administrator deadline without granting strong proof.
 
+- Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
+- Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
+- Dependency and secret scans fail closed; Security honors the native runner setting and exposes an aggregate completion gate. Compatible transitive security updates replace vulnerable packages; the unused reference web `eslint-config-next` dependency is removed.
+
+### Action required
+
+- Add **Security Complete** to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
+- Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
+
+### Fixed
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
 
 ### Added

@@ -15,7 +15,7 @@ jobs:
   # otherwise skipped with a visible notice, so the workflow works on GitHub Free.
   paid-features:
     name: Paid Features
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       code_security: ${{ steps.gate.outputs.enabled }}
     steps:
@@ -33,9 +33,7 @@ jobs:
     name: CodeQL Analysis
     needs: paid-features
     if: needs.paid-features.outputs.code_security == 'true'
-    runs-on: ubuntu-latest
-    # Don't fail the workflow if Advanced Security is not enabled
-    continue-on-error: true
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,60 +54,41 @@ jobs:
 
   dependency-audit:
     name: Dependency Audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.4.2
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-bun
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run npm audit
-        run: |
-          echo "## Dependency Audit Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          # Run audit and capture output
-          npm audit --audit-level=high 2>&1 | tee audit-output.txt || true
-          # Extract vulnerability counts if available
-          if grep -q "found 0 vulnerabilities" audit-output.txt; then
-            echo "✅ No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ Vulnerabilities detected - review audit output" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
+      - name: Audit committed Bun dependencies
+        run: bun run check:dependencies
 
   secrets-scan:
     name: Secrets Scan
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@288a8a8643a2c5a36b81d231c550dccfa0beeb64 # main
-        continue-on-error: true
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --only-verified
+      - name: TruffleHog native scan
+        env:
+          SCAN_EVENT: ${{ github.event_name }}
+          SCAN_PR_BASE: ${{ github.event.pull_request.base.sha }}
+          SCAN_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          SCAN_BEFORE: ${{ github.event.before }}
+          SCAN_AFTER: ${{ github.event.after }}
+          SCAN_SHA: ${{ github.sha }}
+        run: bash platform/tooling/scan-secrets.sh
 
   dependency-review:
     name: Dependency Review
     needs: paid-features
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
     if: github.event_name == 'pull_request' && needs.paid-features.outputs.code_security == 'true'
-    # Don't fail the workflow if Advanced Security is not enabled
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -121,3 +100,22 @@ jobs:
           # Only deny GPL-3.0 for runtime dependencies
           # AGPL-3.0 removed since our only AGPL dep (TruffleHog) is a CI tool
           deny-licenses: GPL-3.0
+
+  complete:
+    name: Security Complete
+    if: always()
+    needs: [paid-features, codeql, dependency-audit, secrets-scan, dependency-review]
+    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - name: Require successful applicable security checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          echo "$RESULTS" | jq -e --arg event "$EVENT_NAME" '
+            .["paid-features"].result == "success" and
+            (.["paid-features"].outputs.code_security == "true" or .["paid-features"].outputs.code_security == "false") and
+            .["dependency-audit"].result == "success" and
+            .["secrets-scan"].result == "success" and
+            (.["codeql"].result == "success" or (.["codeql"].result == "skipped" and .["paid-features"].outputs.code_security == "false")) and
+            (.["dependency-review"].result == "success" or (.["dependency-review"].result == "skipped" and ($event != "pull_request" or .["paid-features"].outputs.code_security == "false")))'

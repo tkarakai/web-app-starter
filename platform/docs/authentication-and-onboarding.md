@@ -165,11 +165,13 @@ placeholder; backend failures show sign-in plus optional `NEXT_PUBLIC_BOOK_DEMO_
 `NEXT_PUBLIC_CONTACT_URL` links. Requests time out after eight seconds and failed loads retry
 with exponential backoff (5–60 seconds, at most ten retries), paused while hidden. Returning
 to the tab refreshes the mode. Registration and waitlist mutations still enforce the current
-mode at submission time.
+mode at submission time. A missing or blank build-time Convex HTTP URL immediately shows the
+same unavailable-backend links without fetching or retrying; the static page remains usable.
 
 Landing also mounts `AnnouncementBannerHost` when `features.announcements` is enabled.
 It polls `/api/announcements/active` every 15 seconds after each completed request, supports
 CTA and details, remembers dismissal by announcement ID, and offsets the header/content.
+With no build-time Convex HTTP URL, it renders no announcement and does not poll.
 The landing needs no application server in production: both features execute in the browser.
 Set its Convex HTTP URL at build time and allow its origin through Convex `LANDING_URL`.
 `bun run dev:landing` starts the local backend and wires both URLs.

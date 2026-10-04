@@ -18,5 +18,8 @@ fi
 app="$1"
 shift
 
+"$SCRIPT_DIR/ensure-local-deps.sh" --quiet
+"$SCRIPT_DIR/ensure-app-env.sh" --quiet
+
 port=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" port "$app")
 exec next dev --port "$port" "$@"
