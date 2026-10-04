@@ -62,13 +62,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
 
 
-- Before planning v4, follow [Adopting v4](docs/upgrading-v4.md). Run
-  `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-local-fixture-clients.ts`
-  for app-owned local fixture clients and
-  `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-platform-api.ts` for generated
-  platform API bindings (both also run by the updater); `--check` and local auth E2E
-  must pass. Custom auth forms and retained sample file code need the explicit interface
-  and validation steps in that guide. No hosted data or configuration is changed automatically.
+- Before planning v4, read [Adopting v4](docs/upgrading-v4.md) from the published v4.0.0 tag
+  and commit required manual app-owned preparation for custom fixture clients, auth forms
+  and retained sample file code. The installed v3.1.0 checkout does not contain the v4
+  codemods. After applying target source and resolving seam conflicts, the updater automatically
+  runs `v4-local-fixture-clients.ts` and `v4-platform-api.ts`; generated platform bindings need
+  the target platform modules present. Then run the guide's read-only `--check` commands and
+  acceptance tests, including local auth E2E, before deployment or merge. Preserve the immutable
+  plan constraints in [UPGRADING.md](UPGRADING.md). No hosted data or configuration is changed automatically.
 
 - Remove `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from hosted
   Convex environments before deploying. Restart local development to provision fixture access;

@@ -2,29 +2,42 @@
 
 Read the v4 changelog before planning the upgrade. v4 includes the startup/CI fixes and the
 security changes merged since v3.1.0. The updater preserves application-owned reference code;
-review the following interfaces before creating its immutable plan. Keep backend and frontend
-changes in the same deployment. Passing source checks does not migrate hosted configuration or data.
+review the following interfaces and commit required manual app-owned compatibility changes
+before creating its immutable plan. Read this guide and the referenced interfaces from the
+published v4.0.0 tag; the installed v3.1.0 checkout does not contain the v4 codemods.
+The updater applies target source and waits for seam conflicts to be resolved before automatically
+running the release's codemods. Run the acceptance checks below against the target source after that
+step, before deployment or merge. Unrelated app edits after planning require a new plan;
+follow [UPGRADING.md](../UPGRADING.md) for named review files and resume decisions.
+Keep backend and frontend changes in the same deployment. Passing source checks does not
+migrate hosted configuration or data.
 
 ## Local fixture clients
 
-Run `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-local-fixture-clients.ts`
-(the updater also runs it). The reference helper at `apps/web/qa/e2e/helpers/fixtures.ts` must
+After target source application, the updater runs `v4-local-fixture-clients.ts` for the
+reference helper at `apps/web/qa/e2e/helpers/fixtures.ts`. The helper must
 read `.env.e2e.local` before app/root environment files, validate a loopback HTTP backend,
 read `DEV_FIXTURE_SECRET`, and send it as `X-Dev-Fixture-Secret` with `redirect: "error"`.
 `DEV_FIXTURE_SECRET_FILE` selects the local AWS capability file. Never send this capability
-to a hosted URL. Custom helpers need those same checks; the codemod refuses unknown patterns.
-Restart local development to generate the capability. Done when the codemod's `--check` exits
-zero and local auth E2E creates a disposable account. Remove `DEV_SEED_ENABLED`,
+to a hosted URL. Prepare custom helpers with those same checks before planning; the codemod
+refuses unknown patterns. After the updater's codemod step, run
+`./platform/tooling/node-ts.sh platform/tooling/codemods/v4-local-fixture-clients.ts --check`
+from the app root and restart local development to generate the capability. Done when that
+read-only check exits zero and local auth E2E creates a disposable account. Remove `DEV_SEED_ENABLED`,
 `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from every hosted Convex deployment; the hosted
 deploy preflight refuses these variables. This does not disable local fixtures.
 
 ## Generated API bindings
 
-The updater runs `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-platform-api.ts`
-to extend Convex’s generated declaration with the three new internal platform modules. It
+After target source application, the updater runs `v4-platform-api.ts`
+to extend Convex’s generated declaration with the three new internal platform modules. Those
+modules must be present in the app checkout; running the target script against v3.1.0 source
+alone cannot prepare their bindings. It
 preserves app-owned bindings and fails on an unknown declaration format. This makes platform
-source verification possible before deploying a backend. Both codemods support read-only
-`--check`. If you add app-owned backend modules while porting the file feature, run Convex
+source verification possible before deploying a backend. After the updater's codemod step,
+run `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-platform-api.ts --check`
+from the app root. If you add app-owned backend modules while porting the file feature, or
+have a custom generated declaration format, run Convex
 codegen against a disposable local checkout containing the target platform and your app source
 before planning; retain its generated declarations. Never hand-edit generated API types or
 change the installed platform baseline to bypass verification.
