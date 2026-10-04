@@ -10,12 +10,13 @@ import { pathToFileURL } from "node:url";
 
 type Env = Record<string, string | undefined>;
 const FIXTURE_KEYS = ["DEV_SEED_ENABLED", "DEV_FIXTURE_RUNTIME", "DEV_FIXTURE_SECRET"];
-const TARGET_KEYS = ["CONVEX_DEPLOY_KEY", "CONVEX_SELF_HOSTED_URL", "CONVEX_SELF_HOSTED_ADMIN_KEY"];
+const DEPLOY_KEYS = ["CONVEX_DEPLOY_KEY", "CONVEX_DEPLOYMENT_TOKEN"];
+const TARGET_KEYS = [...DEPLOY_KEYS, "CONVEX_SELF_HOSTED_URL", "CONVEX_SELF_HOSTED_ADMIN_KEY"];
 const readEnv = (file: string): Env => fs.existsSync(file) ? parseEnv(fs.readFileSync(file, "utf8")) : {};
 
-export function assertAnonymousLaunch(env: Env, fileEnv: Env): void {
-  if (TARGET_KEYS.some(key => env[key] || fileEnv[key])) throw new Error("Local startup refuses deployment keys or self-hosted overrides. Use a separate terminal and local checkout.");
-  for (const source of [env, fileEnv]) {
+export function assertAnonymousLaunch(...sources: Env[]): void {
+  if (sources.some(source => TARGET_KEYS.some(key => source[key]))) throw new Error("Local startup refuses deployment keys or self-hosted overrides. Use a separate terminal and local checkout.");
+  for (const source of sources) {
     if (source.CONVEX_DEPLOYMENT && !/^anonymous:[a-zA-Z0-9_-]+$/.test(source.CONVEX_DEPLOYMENT)) throw new Error("Local startup requires an anonymous deployment; refusing a cloud or ambiguous target.");
   }
 }
@@ -68,18 +69,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const root = process.cwd();
     const mode = process.argv[2];
     const fileEnv = readEnv(path.join(root, "packages/backend/.env.local"));
+    const sources = [process.env, readEnv(path.join(root, ".env.local")), fileEnv, readEnv(path.join(root, "packages/backend/.env"))];
     if (mode === "check-launch") {
-      assertAnonymousLaunch(process.env, { ...readEnv(path.join(root, ".env.local")), ...fileEnv });
+      assertAnonymousLaunch(...sources);
     } else if (mode === "anonymous") {
-      assertAnonymousLaunch(process.env, fileEnv);
+      assertAnonymousLaunch(...sources);
       const name = fileEnv.CONVEX_DEPLOYMENT?.replace(/^anonymous:/, "");
       if (!name) throw new Error("No anonymous backend is configured.");
-      const config = JSON.parse(fs.readFileSync(path.join(homedir(), ".convex/anonymous-convex-backend-state", name, "config.json"), "utf8"));
+      const projectConfig = path.join(root, "packages/backend/.convex/local/default/config.json");
+      const projectLocal = fs.existsSync(projectConfig);
+      const config = JSON.parse(fs.readFileSync(projectLocal ? projectConfig : path.join(homedir(), ".convex/anonymous-convex-backend-state", name, "config.json"), "utf8"));
+      if (!projectLocal && config.deploymentName === undefined) config.deploymentName = name;
       const target = anonymousTarget(fileEnv, config);
       withTarget(root, target, command => provisionFixtures(command, "anonymous", path.join(root, ".env.e2e.local"), fileEnv.CONVEX_SITE_URL!));
     } else if (mode === "local-aws") {
       // The local compose target publishes precisely these loopback-bound ports.
-      if (process.env.CONVEX_DEPLOY_KEY || process.env.CONVEX_SELF_HOSTED_URL !== "http://convex.localhost.floci.io:3310") throw new Error("Local AWS fixtures require the dedicated local compose backend.");
+      if (sources.some(source => DEPLOY_KEYS.some(key => source[key])) || process.env.CONVEX_SELF_HOSTED_URL !== "http://convex.localhost.floci.io:3310") throw new Error("Local AWS fixtures require the dedicated local compose backend.");
       const state = path.join(root, "infra/aws/local/.state");
       const key = fs.readFileSync(path.join(state, "convex-admin-key"), "utf8").trim();
       if (!key || key !== process.env.CONVEX_SELF_HOSTED_ADMIN_KEY) throw new Error("Local AWS admin key does not match the local target.");

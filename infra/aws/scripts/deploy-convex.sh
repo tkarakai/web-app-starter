@@ -37,7 +37,7 @@ for arg in ${REST[@]+"${REST[@]}"}; do
 done
 SHA="$(resolve_sha "${SHA:-HEAD}")"
 if [[ "$ENV" == "local" ]]; then
-  unset CONVEX_DEPLOY_KEY
+  unset CONVEX_DEPLOY_KEY CONVEX_DEPLOYMENT_TOKEN
   read -r CONVEX_SELF_HOSTED_URL _ <<<"$(convex_urls)"
   [[ -s "${LOCAL_STATE_DIR}/convex-admin-key" ]] || die "No local Convex admin key; run infra/aws/local/local-up.sh"
   CONVEX_SELF_HOSTED_ADMIN_KEY="$(cat "${LOCAL_STATE_DIR}/convex-admin-key")"
