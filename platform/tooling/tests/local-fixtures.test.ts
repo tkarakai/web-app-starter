@@ -213,11 +213,11 @@ test("trusted deploy action checks historical source before deployment using a c
   const directory = fs.mkdtempSync(path.join(process.cwd(), ".fixture-rollback-test-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const selected = path.join(directory, "selected");
-  fs.mkdirSync(selected);
-  const archive = spawnSync("git", ["archive", "64e9af906677a0c4cbe43acf5eed32dba4a31ae8"], { maxBuffer: 64 * 1024 * 1024 });
-  assert.equal(archive.status, 0, archive.stderr.toString());
-  const unpack = spawnSync("tar", ["-x", "-C", selected], { input: archive.stdout });
-  assert.equal(unpack.status, 0, unpack.stderr.toString());
+  // Model selected source predating the helper without requiring starter Git history.
+  fs.mkdirSync(path.join(selected, "packages/backend"), { recursive: true });
+  fs.mkdirSync(path.join(selected, "platform/tooling"), { recursive: true });
+  fs.writeFileSync(path.join(selected, "package.json"), JSON.stringify({ private: true, type: "module" }));
+  fs.writeFileSync(path.join(selected, "packages/backend/package.json"), JSON.stringify({ dependencies: { convex: "1.25.4" } }));
   assert.equal(fs.existsSync(path.join(selected, "platform/tooling/local-fixtures.ts")), false);
   const trusted = path.join(selected, ".ops-workflow/.github/actions/deploy-convex");
   fs.mkdirSync(trusted, { recursive: true });
@@ -249,7 +249,7 @@ if (args[0] === 'convex@1.46.0') {
   fs.appendFileSync(process.env.MOCK_EVENTS, args[1] === 'deploy' ? 'deploy\\n' : 'migrate\\n');
 }
 `, { mode: 0o755 });
-  const bindings: Record<string, string> = { "github.action_path": trusted, "inputs.deploy-key": "exact-target-key", "inputs.environment": "production", "github.sha": "64e9af906677a0c4cbe43acf5eed32dba4a31ae8" };
+  const bindings: Record<string, string> = { "github.action_path": trusted, "inputs.deploy-key": "exact-target-key", "inputs.environment": "production", "github.sha": "selected-source-fixture" };
   const render = (value: string) => value.replace(/\$\{\{\s*([^}]+?)\s*\}\}/g, (_match: string, key: string) => {
     assert.ok(Object.hasOwn(bindings, key), `unsupported action expression: ${key}`);
     return bindings[key];
