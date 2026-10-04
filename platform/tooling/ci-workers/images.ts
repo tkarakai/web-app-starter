@@ -93,6 +93,19 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
   let promoted = false, movedLayout: string | undefined;
   try {
     const { tools, family, layout } = await toolEnvironment(c, input, refresh, state, directory, toolTag);
+    if (c.updateRole === 'deliver') {
+      // Publish only independently built tools: no dependency seed or app execution.
+      const destination = toolLayout(tools.image);
+      if (layout !== destination && !await exists(destination)) {
+        await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
+        await rename(layout, destination); movedLayout = destination;
+      }
+      await docker(c, ['tag', tools.image, c.pool + ':tools-' + tools.image.slice(7)]);
+      state.tools = tools.image; state.toolsCreated = tools.created;
+      state.toolchains = { ...state.toolchains, [family]: tools };
+      await save(path.join(home, 'catalog.json'), state); promoted = true;
+      return { key: tools.image, image: tools.image, tools: tools.image, scope, source: sha, created: tools.created, used: new Date().toISOString(), bytes: 0 };
+    }
     const key = hash(JSON.stringify([c.repo, scope, input.fingerprint, tools.image]));
     const existing = state.environments.find(e => e.key === key);
     let available = false;

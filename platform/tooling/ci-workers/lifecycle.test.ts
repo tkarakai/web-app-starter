@@ -200,6 +200,16 @@ globalThis.fetch = async url => {
 const { prepare } = await import(path.join(base, 'images.ts'));
 await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', true);
 `;
+  // A delivery installation must succeed even when app installation is poisoned.
+  await writeFile(path.join(dir, 'pool/fail-validation'), 'fail');
+  await run(dir, prepare.replace('await prepare(c,', "await prepare({ ...c, updateRole: 'deliver' },"));
+  const writer = JSON.parse(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8'));
+  assert.equal(writer.environments.length, 0);
+  assert(writer.tools);
+  const operations = JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8')).calls as string[][];
+  assert.equal(operations.filter(args => args[0] === 'cp' && args.some(arg => arg.endsWith('/work/source.tar'))).length, 0);
+  assert.equal(operations.filter(args => args.includes('--target') && args[args.indexOf('--target') + 1] === 'worker').length, 0);
+  await rm(path.join(dir, 'pool/fail-validation'));
   await run(dir, prepare);
   await writeFile(path.join(dir, 'app.ts'), 'export const sourceOnly = true;');
   await git('add', 'app.ts'); await git('commit', '-m', 'source-only change');

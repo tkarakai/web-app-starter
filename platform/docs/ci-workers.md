@@ -62,6 +62,17 @@ on other machines. To select another state directory use
 pool. Organization-wide shared registration is not supported. Use dedicated CI hosts when
 running code from people you do not trust; containers still share the Linux kernel.
 
+## Separate starter-update installations
+
+For updater discovery/verification and privileged publication, use the separate role setup in
+[update delivery](update-delivery.md#self-hosted-linux-runners). Each installation requires a
+unique state directory and pool. Updater roles do not admit ordinary CI or PR jobs; only the
+configured caller workflow's check/verify or deliver jobs are allowed. Scheduled work is
+private-repository default-branch only. Public diagnostics remain manual and branch-restricted.
+Delivery preparation uses only the trusted tools image and never executes app installation.
+Routing stays an explicit operator step; ordinary enable and GitHub isolation diagnostics apply
+only to normal CI installations. Clearing each updater selector returns its jobs to hosted runners.
+
 ## Test a branch before enabling normal CI
 
 For local Docker testing without a GitHub credential:

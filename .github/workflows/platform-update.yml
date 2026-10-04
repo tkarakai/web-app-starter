@@ -29,7 +29,7 @@ permissions: {}
 jobs:
   check:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ${{ vars.PLATFORM_UPDATE_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-check"]', vars.PLATFORM_UPDATE_RUNNER, github.sha, github.run_id, github.run_attempt) || '["ubuntu-latest"]') }}
     permissions:
       contents: read
       pull-requests: read
@@ -42,9 +42,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - if: env.STARTER_WORKER != '1'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           package-manager-cache: false
@@ -84,7 +85,7 @@ jobs:
   verify:
     needs: check
     if: needs.check.outputs.target != ''
-    runs-on: ${{ vars.PLATFORM_UPDATE_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-verify"]', vars.PLATFORM_UPDATE_RUNNER, needs.check.outputs.head, github.run_id, github.run_attempt) || '["ubuntu-latest"]') }}
     timeout-minutes: 90
     permissions:
       contents: read
@@ -132,9 +133,16 @@ jobs:
       - name: Install the target's browser builds
         if: steps.upgrade.outputs.e2e == 'true'
         run: |
+          if [ "${STARTER_WORKER:-}" = "1" ]; then
+            echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/platform-browsers" >> "$GITHUB_ENV"
+          fi
           for app in apps/* platform/apps/*; do
             if [ -x "$app/node_modules/.bin/playwright" ]; then
-              (cd "$app" && ./node_modules/.bin/playwright install --with-deps chromium)
+              if [ "${STARTER_WORKER:-}" = "1" ]; then
+                (cd "$app" && PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/platform-browsers" ./node_modules/.bin/playwright install chromium)
+              else
+                (cd "$app" && ./node_modules/.bin/playwright install --with-deps chromium)
+              fi
             fi
           done
       - name: Finish E2E verification and record the baseline
@@ -166,7 +174,7 @@ jobs:
     if: >-
       always() && !cancelled() && needs.check.result != 'skipped' &&
       (needs.check.result == 'failure' || needs.check.outputs.target != '' || needs.check.outputs.major != '')
-    runs-on: ${{ vars.PLATFORM_UPDATE_DELIVERY_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-deliver"]', vars.PLATFORM_UPDATE_DELIVERY_RUNNER, needs.check.outputs.head || github.sha, github.run_id, github.run_attempt) || '["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write

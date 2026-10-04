@@ -88,21 +88,51 @@ CI baseline fetch. Private release sources are not supported by this public-sour
 
 ## Self-hosted Linux runners
 
-GitHub-hosted runners remain the default. To run updates on your own computers without hosted
-Actions minutes, register self-hosted Linux runners and set these repository variables under
-**Settings → Secrets and variables → Actions → Variables**:
+GitHub-hosted runners remain the default. Updates can run on your own computers using the
+[prepared-image worker manager](ci-workers.md). Use separate installations for verification and
+publication, each with its own state directory, pool ID, builder, images and registration.
+Do not reuse an ordinary CI installation or the retired Compose workers.
 
-- `PLATFORM_UPDATE_RUNNER`: the runner label for discovery and verification.
-- `PLATFORM_UPDATE_DELIVERY_RUNNER`: a separate, trusted runner label for PR and issue publication.
+From a reviewed checkout, run setup twice with different `STARTER_WORKERS_HOME` directories:
 
-These selectors are independent of `PLATFORM_CI_RUNNER`: enabling ordinary CI workers
-does not opt them into running jobs with the updater App key. Both pools need the standard
-Actions prerequisites; verification also needs Bun, Chromium dependencies and local Convex
-support as described in [private CI](private-repo-ci.md).
+```sh
+STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-verify" bun run ci:workers:setup --update-role verify --update-workflow .github/workflows/platform-updates.yml
+STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-deliver" bun run ci:workers:setup --update-role deliver --update-workflow .github/workflows/platform-updates.yml
+```
 
-Keep the delivery pool isolated from workers that execute app code or PR CI. Do not share
-its filesystem, tool caches, container volumes, or runner registrations with those workers.
-Use fresh disposable workers for verification. For the credential and artifact safeguards, see
-[verification and delivery boundaries](#verification-and-delivery-boundaries).
-Removing or clearing either variable restores `ubuntu-latest` for its jobs; the other selector
-remains independent.
+Use your actual **caller** workflow filename, not the reusable `platform-update.yml`. Keep the
+manager credential on the host as described in the worker guide. Use each installation's own
+`starter-workers` command inside its state directory; the convenience command in PATH points
+to the most recently installed one. Verification can run `check --install`; delivery accepts
+`check` only and never runs app installation or CI. Do not use ordinary `enable` or
+`check --github` for updater installations. The operator must run acceptance through the
+reviewed updater caller, inspect exact source/run/attempt and image evidence, and only then
+configure the following repository variables in **Settings → Secrets and variables → Actions**:
+
+- `PLATFORM_UPDATE_RUNNER`: the verification installation's **pool ID** (discovery and verification).
+- `PLATFORM_UPDATE_DELIVERY_RUNNER`: the separate delivery installation's **pool ID**.
+
+The workflow adds exact source, run, attempt and job labels. Labels alone do not authorize work:
+the installed manager checks the caller workflow, event, job and source against authenticated
+GitHub metadata; the root-owned start hook checks repository ID/name, source, run, attempt,
+event, ref and job again. Private updater pools accept only default-branch schedules or manual
+runs. Public pools require an explicitly reviewed manual branch and never accept schedules or
+fork jobs. Ordinary CI pools cannot accept updater jobs, and neither ordinary CI setting opts
+workers into updater credentials. Keep reviewed caller and reusable workflows in the trusted
+repository; updating their source requires normal review.
+
+Publication launches only its independently prepared immutable tools image. It never builds an
+app dependency seed, runs app scripts or shares writable caches with verification/ordinary CI.
+The job still uses only pinned actions, inline publisher code and Git with hooks disabled.
+Removing or clearing either selector restores `ubuntu-latest` independently. Cancel and restart
+already queued runs, which retain their old labels; stop/revoke unused installations afterwards.
+
+The initial checkout's frozen offline installation proves only that checkout. Upgrade-target
+codemod dependencies and app dependencies are installed separately in the disposable read-only
+verification worker, with public-network access through its filtered proxy. Target browser builds
+go into private job storage; no sudo or shared writable browser cache is required. The upgrade
+launcher checks the target Node/Bun requirements independently. An incompatible target runtime
+or missing system browser dependency fails verification and retains evidence for operator work;
+it is never counted as a successful offline seed or automatic major upgrade. Review/update the
+prepared tool profile before retrying such a target. Draft gates, manual majors and auto-merge
+false remain the defaults.
