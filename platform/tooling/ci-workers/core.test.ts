@@ -97,3 +97,22 @@ for (const lockfileVersion of [1, 2]) test(`decoded JSONC v${lockfileVersion} lo
   await writeFile(path.join(dir, 'package.json'), JSON.stringify(root).replace('"packageManager":', '"packageManager":"bun@1.0.0","packageManager":'));
   await assert.rejects(check(JSON.stringify(lock)), /Duplicate/);
 });
+
+test('updater pools reject ordinary CI, forks, foreign workflows, stale attempts and wrong role requests', () => {
+  for (const [updateRole, names] of [['verify', ['check', 'verify']], ['deliver', ['deliver']]] as const) {
+    const config = { ...c, updateRole, updateWorkflow: '.github/workflows/update.yml' };
+    for (const name of names) {
+      for (const event of ['schedule', 'workflow_dispatch']) {
+        const updater = { ...run, event, path: config.updateWorkflow };
+        const queued = { ...job, name: 'update / ' + name, labels: [...job.labels, 'starter-attempt-1', 'starter-update-' + name] };
+        assert.deepEqual(sourceRequest(config, updater, queued, 10), { sha, scope: 'update-' + updateRole, job: name });
+        assert.equal(sourceRequest(c, updater, queued, 10), undefined);
+        for (const patch of [{ path: '.github/workflows/ci.yml' }, { run_attempt: 2 }, { event: 'pull_request' }, { event: 'push' }, { head_sha: 'b'.repeat(40) }]) assert.equal(sourceRequest(config, { ...updater, ...patch }, queued, 10), undefined);
+        assert.equal(sourceRequest(config, updater, { ...queued, name: 'ordinary CI' }, 10), undefined);
+        assert.equal(sourceRequest(config, updater, { ...queued, labels: queued.labels.filter(l => l !== 'starter-update-' + name) }, 10), undefined);
+        assert.equal(sourceRequest({ ...config, publicBranch: 'feature' }, { ...updater, event: 'schedule' }, queued, 10), undefined);
+        assert(sourceRequest({ ...config, publicBranch: 'feature' }, { ...updater, event: 'workflow_dispatch' }, queued, 10));
+      }
+    }
+  }
+});

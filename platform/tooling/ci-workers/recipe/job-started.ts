@@ -21,7 +21,12 @@ export function verifyAssignment(expected: Assignment, context: Record<string, s
     assert.equal(expected.event, 'workflow_dispatch');
     assert.equal(expected.ref, `refs/heads/${expected.publicBranch}`);
   }
-  if (expected.event === 'pull_request') {
+  if (expected.job) {
+    assert(['check', 'verify', 'deliver'].includes(expected.job));
+    assert.equal(context.GITHUB_JOB, expected.job);
+    assert(['schedule', 'workflow_dispatch'].includes(expected.event));
+    assert.equal(context.GITHUB_SHA, expected.sha);
+  } else if (expected.event === 'pull_request') {
     const pr = expected.pullRequest;
     assert(pr);
     const actual = payload.pull_request;

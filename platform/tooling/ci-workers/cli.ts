@@ -52,11 +52,15 @@ async function setup(args: string[]): Promise<void> {
     let existing = await config();
     assert(!await exists(path.join(home, 'daemon.lock')), 'Manager is already running; use check or update');
     if (existing.localOnly && !args.includes('--local-only')) existing = await authenticate(existing, option(args, 'token-expires'));
-    await localCheck(existing, ['check', '--install']);
+    await localCheck(existing, existing.updateRole === 'deliver' ? ['check'] : ['check', '--install']);
     print(await install(existing));
     if (!existing.localOnly) await service(existing, true);
     print('Setup resumed successfully; GitHub routing is unchanged.'); return;
   }
+  const updateRole = option(args, 'update-role');
+  assert(updateRole === undefined || ['verify', 'deliver'].includes(updateRole), 'Use --update-role verify|deliver');
+  const updateWorkflow = option(args, 'update-workflow');
+  assert(!updateRole || (updateWorkflow && /^\.github\/workflows\/[A-Za-z0-9_-]+\.ya?ml$/.test(updateWorkflow)), 'Updater setup requires --update-workflow .github/workflows/CALLER.yml');
   const root = await command('git', ['rev-parse', '--show-toplevel']);
   const repo = option(args, 'repo') ? validateRepo(option(args, 'repo')!) : repository(await command('git', ['-C', root, 'remote', 'get-url', 'origin']));
   const dockerPath = await command('which', ['docker']);
@@ -70,7 +74,7 @@ async function setup(args: string[]): Promise<void> {
   assert(fs.bavail * fs.bsize > 12 * 1024 ** 3, 'At least 12 GiB free disk is required for initial preparation');
   let c: Config = { version: 1, repo, pool: installationPool(), docker: dockerPath, context,
     concurrency: 1, cpus: Math.min(4, info.NCPU), memoryGiB: Math.min(8, Math.floor(info.MemTotal / 1024 ** 3) - 2), diskGiB: 40,
-    paused: false, localOnly: true, publicBranch: option(args, 'public-branch'), tokenExpiry: option(args, 'token-expires'), installedAt: new Date().toISOString() };
+    updateRole: updateRole as Config['updateRole'], updateWorkflow, paused: false, localOnly: true, publicBranch: option(args, 'public-branch'), tokenExpiry: option(args, 'token-expires'), installedAt: new Date().toISOString() };
   await lock('configuration', async () => {
     assert(!await exists(path.join(home, 'config.json')), 'Another setup created this installation');
     await save(path.join(home, 'config.json'), c);
@@ -85,6 +89,7 @@ async function setup(args: string[]): Promise<void> {
   print('Ready. Normal GitHub routing is unchanged. Run starter-workers check, then check --github before enable.');
 }
 async function localCheck(c: Config, args: string[]): Promise<void> {
+  assert(c.updateRole !== 'deliver' || !['--install', '--ci', '--quick'].some(flag => args.includes(flag)), 'Delivery installations never execute app source or dependency installation');
   const root = await command('git', ['rev-parse', '--show-toplevel']);
   const sha = await command('git', ['-C', root, 'rev-parse', `${option(args, 'ref') ?? 'HEAD'}^{commit}`]);
   const branch = option(args, 'ref') ?? await command('git', ['-C', root, 'branch', '--show-current']);
@@ -102,6 +107,7 @@ async function localCheck(c: Config, args: string[]): Promise<void> {
   await save(path.join(home, 'local-check.json'), { ...proof, id: proofId(proof) });
 }
 async function githubCheck(c: Config, args: string[]): Promise<void> {
+  assert(!c.updateRole, 'Updater acceptance uses its reviewed caller workflow; ordinary CI diagnostics are not admitted');
   assert(!c.localOnly, 'Run starter-workers auth replace and service start first');
   const proof = await localProof(c);
   const runId = option(args, 'run');
@@ -128,7 +134,7 @@ async function githubCheck(c: Config, args: string[]): Promise<void> {
 export async function main(args: string[]): Promise<void> {
   const verb = args[0] ?? 'help';
   if (verb === 'help' || args.includes('--help')) {
-    print('starter-workers setup [--local-only] [--repo owner/name] [--public-branch branch] [--token-expires YYYY-MM-DD]\ncheck [--ref revision] [--install|--quick|--ci] | check --github [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable | hosted | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nupdate --from CHECKOUT | uninstall\nOne repository per STARTER_WORKERS_HOME. All builds stay in the local Docker engine.'); return;
+    print('starter-workers setup [--update-role verify|deliver --update-workflow .github/workflows/CALLER.yml] [--local-only] [--repo owner/name] [--public-branch branch] [--token-expires YYYY-MM-DD]\ncheck [--ref revision] [--install|--quick|--ci] | check --github [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable | hosted | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nupdate --from CHECKOUT | uninstall\nOne repository per STARTER_WORKERS_HOME. All builds stay in the local Docker engine.'); return;
   }
   if (verb === 'setup') return setup(args);
   let c = await config();
@@ -137,7 +143,7 @@ export async function main(args: string[]): Promise<void> {
     case 'service': assert(['start', 'stop'].includes(args[1]), 'Use service start|stop'); return service(c, args[1] === 'start');
     case 'auth': assert(args[1] === 'replace', 'Use auth replace'); await authenticate(c, option(args, 'token-expires')); return;
     case 'check': return args.includes('--github') ? githubCheck(c, args) : localCheck(c, args);
-    case 'refresh': return localCheck(c, [...args, '--refresh', '--install']);
+    case 'refresh': return localCheck(c, c.updateRole === 'deliver' ? [...args, '--refresh'] : [...args, '--refresh', '--install']);
     case 'status': do { print(await status()); if (!args.includes('--watch')) break; await new Promise(resolve => setTimeout(resolve, 5000)); } while (args.includes('--watch')); return;
     case 'images': print((await catalog()).environments); return;
     case 'logs': if (process.platform === 'linux') { print(await command('journalctl', ['--user', '-u', `${c.pool}.service`, '-n', '100', ...(args.includes('--follow') ? ['-f'] : [])], { stream: args.includes('--follow'), timeout: args.includes('--follow') ? 86400_000 : 10_000 })); return; } print(await command('tail', ['-n', '100', ...(args.includes('--follow') ? ['-f'] : []), path.join(home, 'logs/manager.log')], { stream: args.includes('--follow'), timeout: args.includes('--follow') ? 86400_000 : 10_000 })); return;
@@ -166,6 +172,7 @@ export async function main(args: string[]): Promise<void> {
     }
     case 'enable': {
       await updateConfig(async c => {
+        assert(!c.updateRole, 'Updater routing is configured separately by the operator');
         assert(!c.publicBranch && !c.localOnly, 'Normal routing requires a private repository and active manager');
         const local = await localProof(c);
         const proof = await readJson<Proof & { certified: string }>(path.join(home, 'github-check.json'));

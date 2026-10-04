@@ -26,6 +26,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
   draft/report recovery after a push, and preflight settings without administration grants.
   Token-created PRs may require owner approval of CI runs; a green review-plan job is not upgrade verification.
 
+### Added
+
+- Platform updates can run on your own computers using separate prepared-image installations for verification and tools-only publication, authenticated to the exact repository, source, run, attempt, event and job; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
+
 ## [4.0.0] - 2026-10-04
 
 ### Changed
