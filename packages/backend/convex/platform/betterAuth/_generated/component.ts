@@ -1102,6 +1102,18 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      reuseOtp: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          allowedAttempts: number;
+          expiresAt: number;
+          identifier: string;
+          value: string;
+        },
+        any,
+        Name
+      >;
       updateMany: FunctionReference<
         "mutation",
         "internal",

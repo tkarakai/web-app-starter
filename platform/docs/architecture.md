@@ -97,7 +97,7 @@ The application uses three layers of rate limiting. See [rate-limiting-architect
 
 | Layer | Scope | Storage | Config |
 |-------|-------|---------|--------|
-| **Better Auth** | Auth endpoints (sign-in, sign-up) | Convex DB (betterAuth component `rateLimit` table) | `packages/backend/convex/platform/auth.ts` — env vars via `convex env set` |
+| **Auth requests and delivery** | Auth endpoints and actual auth email attempts | Convex DB (app `rateLimits` table) | `packages/backend/convex/platform/authRateLimits.ts` and `rateLimits.ts` — recipient and deployment budgets; optional verified ingress IP |
 | **Convex Functions** | All `authedMutation` calls | Convex DB (`rateLimits` table) | `packages/backend/convex/platform/rateLimits.ts` — env vars via `convex env set` |
 | **Edge Proxy** | HTTP page requests (web, admin) | In-memory `Map` (per-instance, capped) | `apps/web/src/proxy.ts`, `platform/apps/admin/src/proxy.ts` — use the shared `@web-app-starter/edge-rate-limit` package |
 
@@ -110,7 +110,7 @@ The application uses three layers of rate limiting. See [rate-limiting-architect
 > **Note**: `landing` is a fully static export and does not use edge rate limiting. Rate limiting for static deployments should be handled at the CDN/hosting layer.
 
 **What happens when rate limited:**
-- **Auth endpoints**: HTTP 429, auth form shows "Too many attempts. Please wait a moment before trying again."
+- **Auth endpoints**: see [the exhaustion contract and retry guidance](rate-limiting-architecture.md#exhaustion-failures-and-monitoring).
 - **Convex mutations**: `ConvexError` with `{ kind: "RateLimited" }`, `useQuery` subscriptions unaffected
 - **Edge proxy**: HTTP 429 with `Retry-After` header, plain "Too Many Requests" page
 

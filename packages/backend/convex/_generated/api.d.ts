@@ -22,6 +22,7 @@ import type * as platform_auditTrail from "../platform/auditTrail.js";
 import type * as platform_auditTrailConstants from "../platform/auditTrailConstants.js";
 import type * as platform_auditTrailHelpers from "../platform/auditTrailHelpers.js";
 import type * as platform_auth from "../platform/auth.js";
+import type * as platform_authRateLimits from "../platform/authRateLimits.js";
 import type * as platform_bootstrap from "../platform/bootstrap.js";
 import type * as platform_componentMigration from "../platform/componentMigration.js";
 import type * as platform_componentMigrationLegacy from "../platform/componentMigrationLegacy.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "platform/auditTrailConstants": typeof platform_auditTrailConstants;
   "platform/auditTrailHelpers": typeof platform_auditTrailHelpers;
   "platform/auth": typeof platform_auth;
+  "platform/authRateLimits": typeof platform_authRateLimits;
   "platform/bootstrap": typeof platform_bootstrap;
   "platform/componentMigration": typeof platform_componentMigration;
   "platform/componentMigrationLegacy": typeof platform_componentMigrationLegacy;
