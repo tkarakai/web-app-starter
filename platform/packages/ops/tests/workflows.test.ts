@@ -4,7 +4,7 @@ import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { resolve, matchesGlob } from "node:path";
 import { YAML, spawn } from "bun";
 import { OpsService } from "../src/service";
 import { parseOptions } from "../src/options";
@@ -331,22 +331,38 @@ test("standalone landing CI still skips a removed landing", async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("staging change evaluation schedules landing only for changed inputs or force", async () => {
+test("staging change evaluation selects scoped consumers and all consumers for shared inputs or force", async () => {
   const w = YAML.parse(await readFile(new URL("../../../../.github/workflows/platform-cd-staging.yml", import.meta.url), "utf8")) as { jobs: Record<string, { steps: Step[] }> };
   const step = w.jobs.changes.steps.find(s => s.id === "eval")!;
-  const filters = YAML.parse(String(w.jobs.changes.steps.find(s => s.id === "filter")!.with!.filters)) as { landing: string[] };
-  for (const path of ["apps/landing/**", "platform/packages/i18n/**", "packages/messages/**"]) expect(filters.landing).toContain(path);
+  const policyPath = String(w.jobs.changes.steps.find(s => s.id === "filter")!.with!.filters);
+  const filters = JSON.parse(await readFile(new URL(`../../../../${policyPath}`, import.meta.url), "utf8")) as Record<string, string[]>;
+  const consumers = ["web", "admin", "landing", "backend"];
+  const cases: [string, string[]][] = [
+    ["apps/landing/src/app/page.tsx", ["landing"]],
+    ["apps/web/src/app/page.tsx", ["web"]],
+    ["platform/apps/admin/src/app/page.tsx", ["admin"]],
+    ["packages/backend/convex/tasks.ts", consumers],
+    ["packages/onboarding/styles.css", consumers],
+    ["packages/messages/en.json", consumers],
+    ["packages/future/index.ts", consumers],
+    ["platform/packages/i18n/src/config.ts", consumers],
+    [".github/workflows/platform-ci-web.yml", consumers],
+    ["bun.lock", consumers], ["app.config.ts", consumers],
+    ["docs/example.md", []],
+  ];
   const root = await mkdtemp(resolve(tmpdir(), "landing-changes-"));
   try {
-    for (const force of [false, true]) for (const changed of [false, true]) {
+    for (const force of [false, true]) for (const explicitSha of [false, true]) for (const [path, selected] of cases) {
+      const changed = Object.fromEntries(Object.entries(filters).map(([key, patterns]) => [key, patterns.some(pattern => matchesGlob(path, pattern))]));
       const script = step.run!
-        .replaceAll("${{ inputs.force_deploy || inputs.git_sha != '' }}", String(force))
-        .replaceAll("${{ steps.filter.outputs.landing }}", String(changed))
-        .replace(/\$\{\{ steps\.filter\.outputs\.\w+ \}\}/g, "false");
+        .replaceAll("${{ inputs.force_deploy || inputs.git_sha != '' || steps.filter.outputs.root == 'true' }}", String(force || explicitSha || changed.root))
+        .replace(/\$\{\{ steps\.filter\.outputs\.(\w+) \}\}/g, (_, key: string) => String(changed[key]));
       const output = resolve(root, "output"); await writeFile(output, "");
       const child = spawn(["bash", "-e", "-c", script], { cwd: root, env: { ...process.env, GITHUB_OUTPUT: output }, stdout: "pipe", stderr: "pipe" });
       expect(await child.exited).toBe(0);
-      expect(await readFile(output, "utf8")).toContain(`landing=${force || changed}\n`);
+      const outputs = Object.fromEntries((await readFile(output, "utf8")).trim().split("\n").map(line => line.split("=")));
+      const expected = Object.fromEntries(consumers.map(consumer => [consumer, String(force || explicitSha || selected.includes(consumer))]));
+      expect(outputs).toEqual({ ...expected, any_app: String(Object.values(expected).includes("true")) });
     }
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -413,4 +429,3 @@ function schedules(job: JobCondition, outcomes: Record<string, JobOutcome>, canc
   return Boolean(new Function("needs", "results", "always", "cancelled", "success", "failure", "contains", "return (" + expression + ");")(
     needs, results, () => true, () => cancelled, success, failure, (items: string[], item: string) => items.includes(item)));
 }
-
