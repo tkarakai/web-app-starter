@@ -6,9 +6,9 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from '/opt/playwright/node_modules/playwright/index.mjs';
 assert.equal(process.getuid(), 1001);
 assert(!fs.existsSync('/var/run/docker.sock'));
-assert(!fs.existsSync('/home/worker/.starter-worker-poison'));
 assert(!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN && !process.env.ACCESS_TOKEN);
-fs.writeFileSync('/home/worker/.starter-worker-poison', 'must disappear');
+// Exclusive creation both detects preceding-job state and rejects symlinks atomically.
+fs.writeFileSync('/home/worker/.starter-worker-poison', 'must disappear', { flag: 'wx' });
 const status = fs.readFileSync('/proc/self/status', 'utf8');
 assert.match(status, /CapEff:\s+0000000000000000/);
 assert.match(status, /NoNewPrivs:\s+1/);

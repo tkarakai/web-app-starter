@@ -167,8 +167,8 @@ test('command timeout terminates its descendant before returning', async t => {
   const dir = await fixture(t);
   const pid = path.join(dir, 'child.pid');
   const parent = path.join(dir, 'parent.cjs');
-  await writeFile(parent, `const { spawn } = require('node:child_process'); const fs = require('node:fs'); const child = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }); fs.writeFileSync(${JSON.stringify(pid)}, String(child.pid)); setInterval(() => {}, 1000);`);
-  await assert.rejects(command(process.execPath, [parent], { timeout: 500 }));
+  await writeFile(parent, `const { spawn } = require('node:child_process'); const fs = require('node:fs'); const child = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }); fs.writeFileSync(process.argv[2], String(child.pid)); setInterval(() => {}, 1000);`);
+  await assert.rejects(command(process.execPath, [parent, pid], { timeout: 500 }));
   const child = Number(await readFile(pid, 'utf8'));
   for (let attempt = 0; attempt < 100; attempt++) {
     try { process.kill(child, 0); } catch (error) { assert.equal((error as NodeJS.ErrnoException).code, 'ESRCH'); return; }

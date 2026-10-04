@@ -81,7 +81,7 @@ for (const lockfileVersion of [1, 2]) test(`decoded JSONC v${lockfileVersion} lo
     await writeFile(path.join(dir, 'bun.lock'), text); await git('add', '.'); await git('commit', '--allow-empty', '-m', 'fixture');
     return inputs(dir, await git('rev-parse', 'HEAD'));
   }
-  assert.equal((await check(JSON.stringify(lock).replace('"lockfileVersion"', '/* comment */ "lockfileVersion"').replace('1,', '1,'))).nodeFloor, 21);
+  assert.equal((await check(JSON.stringify(lock).replace('"lockfileVersion"', '/* comment */ "lockfileVersion"'))).nodeFloor, 21);
   for (const source of ['https://127.0.0.1/package.tgz', 'h\\u0074tps://127.0.0.1/package.tgz', 'https://registry.npmjs.org@127.0.0.1/package.tgz']) {
     await assert.rejects(check(JSON.stringify(lock).replace('"",{}', '"' + source + '",{}')));
     await assert.rejects(check(JSON.stringify(lock).replace('"",{}', '"",{"dependencies":{"transitive":"' + source + '"}}')));
