@@ -62,9 +62,10 @@ test("hosted command checks only the explicit deployment key, captures failures 
   const backend = path.join(directory, "packages/backend");
   fs.mkdirSync(path.join(backend, "node_modules/.bin"), { recursive: true });
   fs.writeFileSync(path.join(backend, ".env.local"), "CONVEX_DEPLOY_KEY=wrong-development-key\n");
-  fs.writeFileSync(path.join(backend, "node_modules/.bin/convex"), `#!/usr/bin/env node
+  fs.writeFileSync(path.join(backend, "node_modules/.bin/bunx"), `#!/usr/bin/env node
 const fs = require('node:fs');
-const args = process.argv.slice(2);
+if (process.argv[2] !== "convex@1.46.0") process.exit(74);
+const args = process.argv.slice(3);
 const envFile = args[args.indexOf('--env-file') + 1];
 const target = fs.readFileSync(envFile, 'utf8');
 if (args.slice(0,3).join(' ') !== 'env list --names-only' || !target.includes('explicit-hosted-key') || target.includes('wrong-development-key') || process.env.CONVEX_DEPLOYMENT || process.env.CONVEX_SELF_HOSTED_URL || process.env.CONVEX_DEPLOYMENT_TOKEN) process.exit(73);
@@ -74,7 +75,7 @@ process.stdout.write(process.env.MOCK_NAMES || '');
 `, { mode: 0o755 });
   const entry = fileURLToPath(new URL("../local-fixtures.ts", import.meta.url));
   const capture = path.join(directory, "capture");
-  const environment = { ...process.env, CONVEX_DEPLOY_KEY: "explicit-hosted-key", CONVEX_DEPLOYMENT_TOKEN: "wrong-token", CONVEX_DEPLOYMENT: "prod:unrelated", CONVEX_SELF_HOSTED_URL: "https://unrelated.example.test", MOCK_CAPTURE: capture };
+  const environment = { ...process.env, PATH: path.join(backend, "node_modules/.bin") + path.delimiter + process.env.PATH, TMPDIR: directory, CONVEX_DEPLOY_KEY: "explicit-hosted-key", CONVEX_DEPLOYMENT_TOKEN: "wrong-token", CONVEX_DEPLOYMENT: "prod:unrelated", CONVEX_SELF_HOSTED_URL: "https://unrelated.example.test", MOCK_CAPTURE: capture };
   for (const names of ["SITE_URL\nBETTER_AUTH_SECRET\n", "", "SITE_URL\nDEV_SEED_ENABLED\n", "DEV_FIXTURE_SECRET\n", "error: unauthorized"]) {
     const result = spawnSync(process.execPath, [entry, "check-hosted"], { cwd: directory, env: { ...environment, MOCK_NAMES: names }, encoding: "utf8" });
     assert.equal(result.status, names.includes("DEV_") || names.includes("error:") ? 1 : 0, result.stderr);
@@ -205,5 +206,80 @@ test("local AWS command provisions its dedicated target and refuses deploy keys 
       assert.equal(fs.existsSync(capture), false);
     }
     fs.rmSync(file);
+  }
+});
+
+test("trusted deploy action checks historical source before deployment using a compatible isolated CLI", t => {
+  const directory = fs.mkdtempSync(path.join(process.cwd(), ".fixture-rollback-test-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const selected = path.join(directory, "selected");
+  fs.mkdirSync(selected);
+  const archive = spawnSync("git", ["archive", "64e9af906677a0c4cbe43acf5eed32dba4a31ae8"], { maxBuffer: 64 * 1024 * 1024 });
+  assert.equal(archive.status, 0, archive.stderr.toString());
+  const unpack = spawnSync("tar", ["-x", "-C", selected], { input: archive.stdout });
+  assert.equal(unpack.status, 0, unpack.stderr.toString());
+  assert.equal(fs.existsSync(path.join(selected, "platform/tooling/local-fixtures.ts")), false);
+  const trusted = path.join(selected, ".ops-workflow/.github/actions/deploy-convex");
+  fs.mkdirSync(trusted, { recursive: true });
+  fs.cpSync(path.resolve(".github/actions/deploy-convex"), trusted, { recursive: true });
+  const model = spawnSync("bun", ["--eval", 'import { YAML } from "bun"; import { readFileSync } from "node:fs"; process.stdout.write(JSON.stringify(YAML.parse(readFileSync(process.argv[1], "utf8"))));', path.join(trusted, "action.yml")], { encoding: "utf8" });
+  assert.equal(model.status, 0, model.stderr);
+  const action = JSON.parse(model.stdout) as { runs: { using: string; steps: { run: string; env?: Record<string, string>; shell: string }[] } };
+  assert.equal(action.runs.using, "composite");
+  const bin = path.join(directory, "node_modules/.bin");
+  fs.mkdirSync(bin, { recursive: true });
+  const events = path.join(directory, "events");
+  fs.writeFileSync(path.join(selected, "platform/tooling/node-ts.sh"), '#!/bin/bash\nset -e\nprintf "migration-check\\n" >> "$MOCK_EVENTS"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, "bunx"), `#!/usr/bin/env node
+const fs = require('node:fs');
+const { parseEnv } = require('node:util');
+const args = process.argv.slice(2);
+if (args[0] === 'convex@1.46.0') {
+  const file = args[args.indexOf('--env-file') + 1];
+  const target = parseEnv(fs.readFileSync(file, 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  if (manifest.dependencies.convex !== '1.46.0') process.exit(76);
+  if (args.slice(1,4).join(' ') !== 'env list --names-only' || target.CONVEX_DEPLOY_KEY !== 'exact-target-key' || Object.keys(target).length !== 1 || process.env.CONVEX_DEPLOYMENT_TOKEN || process.env.CONVEX_DEPLOY_KEY || process.env.CONVEX_DEPLOYMENT || process.env.CONVEX_SELF_HOSTED_URL || process.env.CONVEX_SELF_HOSTED_ADMIN_KEY) process.exit(73);
+  fs.appendFileSync(process.env.MOCK_EVENTS, 'fixture-check\\n');
+  if (process.env.MOCK_FAILURE) { console.error('captured-sensitive-failure'); process.exit(71); }
+  process.stdout.write(process.env.MOCK_NAMES || '');
+} else {
+  if (args[0] !== 'convex' || process.env.CONVEX_DEPLOY_KEY !== 'exact-target-key') process.exit(74);
+  if (args[1] === 'env') { console.error('historical CLI does not support --names-only'); process.exit(75); }
+  fs.appendFileSync(process.env.MOCK_EVENTS, args[1] === 'deploy' ? 'deploy\\n' : 'migrate\\n');
+}
+`, { mode: 0o755 });
+  const bindings: Record<string, string> = { "github.action_path": trusted, "inputs.deploy-key": "exact-target-key", "inputs.environment": "production", "github.sha": "64e9af906677a0c4cbe43acf5eed32dba4a31ae8" };
+  const render = (value: string) => value.replace(/\$\{\{\s*([^}]+?)\s*\}\}/g, (_match: string, key: string) => {
+    assert.ok(Object.hasOwn(bindings, key), `unsupported action expression: ${key}`);
+    return bindings[key];
+  });
+  for (const scenario of [
+    { names: "SITE_URL\nBETTER_AUTH_SECRET\n", denied: false },
+    { names: "", denied: false },
+    { names: "DEV_SEED_ENABLED\n", denied: true },
+    { names: "DEV_FIXTURE_RUNTIME\n", denied: true },
+    { names: "DEV_FIXTURE_SECRET\n", denied: true },
+    { names: "captured-sensitive-parse-error!", denied: true },
+    { names: "", failure: "true", denied: true },
+  ]) {
+    fs.writeFileSync(events, "");
+    let status = 0;
+    let output = "";
+    for (const step of action.runs.steps) {
+      assert.equal(step.shell, "bash");
+      const env = Object.fromEntries(Object.entries(step.env ?? {}).map(([key, value]) => [key, render(value)]));
+      const result = spawnSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", render(step.run)], {
+        cwd: selected,
+        env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH, TMPDIR: directory, CONVEX_DEPLOYMENT: "prod:unrelated", CONVEX_DEPLOYMENT_TOKEN: "sensitive-wrong-token", CONVEX_SELF_HOSTED_URL: "https://unrelated.example.test", CONVEX_SELF_HOSTED_ADMIN_KEY: "sensitive-wrong-admin", ...env, MOCK_EVENTS: events, MOCK_NAMES: scenario.names, MOCK_FAILURE: scenario.failure ?? "", GITHUB_STEP_SUMMARY: path.join(directory, "summary") },
+        encoding: "utf8",
+      });
+      status = result.status ?? 1;
+      output += result.stdout + result.stderr;
+      if (status !== 0) break;
+    }
+    assert.equal(status, scenario.denied ? 1 : 0, output);
+    assert.deepEqual(fs.readFileSync(events, "utf8").trim().split("\n"), scenario.denied ? ["fixture-check"] : ["fixture-check", "migration-check", "deploy", "migrate"]);
+    assert.doesNotMatch(output, /exact-target-key|sensitive|parse-error|does not support/);
   }
 });

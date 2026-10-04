@@ -16,7 +16,8 @@ runs:
       shell: bash
       env:
         CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
-      run: ./platform/tooling/node-ts.sh platform/tooling/local-fixtures.ts check-hosted
+        FIXTURE_PREFLIGHT: ${{ github.action_path }}/fixture-target.ts
+      run: node "$FIXTURE_PREFLIGHT"
 
     - name: Check platform data migration before deployment
       shell: bash

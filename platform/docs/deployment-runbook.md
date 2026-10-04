@@ -903,6 +903,9 @@ Never set `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` or `DEV_FIXTURE_SECRET` on s
 or production. The Convex deployment action and AWS deployment script check the target's
 environment variable names before deploying functions or running migrations, and refuse any
 fixture configuration. Connectivity and parsing failures also stop deployment.
+The hosted fixture guard ships with the trusted workflow action, so it also runs when the
+selected rollback source predates the guard. It uses an isolated Convex 1.46.0 CLI for the
+read-only check, with the exact deployment key supplied to deployment and migrations.
 
 For a manual deployment, set the same `CONVEX_DEPLOY_KEY` you will use to deploy, then run
 from the repository root:

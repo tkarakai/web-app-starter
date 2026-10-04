@@ -2,16 +2,15 @@
 /** Provision fixture credentials only for an explicitly owned local backend. */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { randomBytes } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { parseEnv } from "node:util";
 import { pathToFileURL } from "node:url";
 
+import { checkHostedFixtures, DEPLOY_KEYS, TARGET_KEYS, withTarget, type ConvexCommand } from "../../.github/actions/deploy-convex/fixture-target.ts";
+export { assertHostedEnvironment, type ConvexCommand } from "../../.github/actions/deploy-convex/fixture-target.ts";
+
 type Env = Record<string, string | undefined>;
-const FIXTURE_KEYS = ["DEV_SEED_ENABLED", "DEV_FIXTURE_RUNTIME", "DEV_FIXTURE_SECRET"];
-const DEPLOY_KEYS = ["CONVEX_DEPLOY_KEY", "CONVEX_DEPLOYMENT_TOKEN"];
-const TARGET_KEYS = [...DEPLOY_KEYS, "CONVEX_SELF_HOSTED_URL", "CONVEX_SELF_HOSTED_ADMIN_KEY"];
 const readEnv = (file: string): Env => fs.existsSync(file) ? parseEnv(fs.readFileSync(file, "utf8")) : {};
 
 export function assertAnonymousLaunch(...sources: Env[]): void {
@@ -19,12 +18,6 @@ export function assertAnonymousLaunch(...sources: Env[]): void {
   for (const source of sources) {
     if (source.CONVEX_DEPLOYMENT && !/^anonymous:[a-zA-Z0-9_-]+$/.test(source.CONVEX_DEPLOYMENT)) throw new Error("Local startup requires an anonymous deployment; refusing a cloud or ambiguous target.");
   }
-}
-
-export function assertHostedEnvironment(names: string): void {
-  const variables = names.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
-  if (variables.some(name => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))) throw new Error("Could not parse deployment environment names; refusing deployment.");
-  if (variables.some(name => FIXTURE_KEYS.includes(name))) throw new Error("Remove DEV_SEED_ENABLED, DEV_FIXTURE_RUNTIME and DEV_FIXTURE_SECRET from this hosted deployment before deploying. Fixture settings are local-only.");
 }
 
 export function anonymousTarget(fileEnv: Env, config: { ports?: { cloud?: number; site?: number }; adminKey?: string; deploymentName?: string }): Env {
@@ -38,7 +31,6 @@ export function anonymousTarget(fileEnv: Env, config: { ports?: { cloud?: number
   return { CONVEX_SELF_HOSTED_URL: fileEnv.CONVEX_URL, CONVEX_SELF_HOSTED_ADMIN_KEY: config.adminKey };
 }
 
-export type ConvexCommand = (args: string[], input?: string) => string;
 export function provisionFixtures(command: ConvexCommand, runtime: "anonymous" | "local-aws", file: string, siteUrl: string): void {
   const previous = readEnv(file);
   const secret = previous.CONVEX_SITE_URL === siteUrl && /^[a-f0-9]{64}$/.test(previous.DEV_FIXTURE_SECRET ?? "") ? previous.DEV_FIXTURE_SECRET! : randomBytes(32).toString("hex");
@@ -46,22 +38,6 @@ export function provisionFixtures(command: ConvexCommand, runtime: "anonymous" |
   command(["env", "set", "--force"], `DEV_FIXTURE_RUNTIME=${runtime}\nDEV_FIXTURE_SECRET=${secret}\nDEV_SEED_ENABLED=true\n`);
   fs.writeFileSync(file, `CONVEX_SITE_URL=${siteUrl}\nDEV_FIXTURE_SECRET=${secret}\n`, { mode: 0o600 });
   fs.chmodSync(file, 0o600);
-}
-
-function withTarget(root: string, target: Env, operation: (command: ConvexCommand) => void): void {
-  const directory = fs.mkdtempSync(path.join(tmpdir(), "convex-fixtures-"));
-  try {
-    const envFile = path.join(directory, ".env");
-    fs.writeFileSync(envFile, Object.entries(target).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join("\n"), { mode: 0o600 });
-    const environment = { ...process.env };
-    for (const key of [...TARGET_KEYS, "CONVEX_DEPLOYMENT", "CONVEX_AGENT_MODE"]) delete environment[key];
-    const command: ConvexCommand = (args, input) => {
-      const result = spawnSync(path.join(root, "packages/backend/node_modules/.bin/convex"), [...args, "--env-file", envFile], { cwd: path.join(root, "packages/backend"), env: environment, input, timeout: 60_000, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
-      if (result.error || result.status !== 0) throw new Error("Convex fixture configuration check failed; verify target access and connectivity. No deployment changes should proceed.");
-      return result.stdout;
-    };
-    operation(command);
-  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
@@ -91,8 +67,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       // Use the loopback socket, not public DNS, when provisioning credentials.
       withTarget(root, { CONVEX_SELF_HOSTED_URL: "http://127.0.0.1:3310", CONVEX_SELF_HOSTED_ADMIN_KEY: key }, command => provisionFixtures(command, "local-aws", path.join(state, "fixture.env"), "http://convex.localhost.floci.io:3311"));
     } else if (mode === "check-hosted") {
-      if (!process.env.CONVEX_DEPLOY_KEY) throw new Error("Hosted fixture preflight requires the deployment key used for deployment.");
-      withTarget(root, { CONVEX_DEPLOY_KEY: process.env.CONVEX_DEPLOY_KEY }, command => assertHostedEnvironment(command(["env", "list", "--names-only"])));
+      checkHostedFixtures(root);
       console.log("Hosted fixture preflight passed.");
     } else throw new Error("Usage: local-fixtures.ts check-launch|anonymous|local-aws|check-hosted");
   } catch (error) { console.error(error instanceof Error ? error.message : "Local fixture configuration failed."); process.exitCode = 1; }
