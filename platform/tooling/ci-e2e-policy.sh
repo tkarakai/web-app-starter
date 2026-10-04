@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E policy for the platform CI workflows (platform/docs/ci.md#e2e-on-pull-requests).
+# E2E policy for the platform CI workflows (platform/docs/ci-github.md#e2e-on-pull-requests).
 #
 #   ci-e2e-policy.sh resolve   Decide this run's E2E: writes e2e=run|skip|on-demand to $GITHUB_OUTPUT.
 #                              Env: PR_E2E (vars.PLATFORM_CI_PR_E2E), REQUIRE_E2E (inputs.require_e2e),
@@ -26,12 +26,12 @@ resolve() {
 
   local mode="${PR_E2E:-}"
   if [[ -z "$mode" && "${REPO_PRIVATE:-}" == "true" ]]; then
-    echo "::notice title=E2E runs on every push to a ready PR::This private repository pays for Actions minutes, and E2E is most of each run. Set the repository variable PLATFORM_CI_PR_E2E to on-demand or off to spend less, or to always to keep this and hide this notice (platform/docs/private-repo-ci.md)."
+    echo "::notice title=E2E runs on every push to a ready PR::This private repository pays for Actions minutes, and E2E is most of each run. Set the repository variable PLATFORM_CI_PR_E2E to on-demand or off to spend less, or to always to keep this and hide this notice (platform/docs/ci-github.md)."
   fi
   case "${mode:-always}" in
     always | on-demand | off) ;;
     *)
-      echo "::error title=Invalid PLATFORM_CI_PR_E2E::'$mode' is not a mode. Use always, on-demand or off (platform/docs/ci.md#e2e-on-pull-requests)."
+      echo "::error title=Invalid PLATFORM_CI_PR_E2E::'$mode' is not a mode. Use always, on-demand or off (platform/docs/ci-github.md#e2e-on-pull-requests)."
       exit 1
       ;;
   esac

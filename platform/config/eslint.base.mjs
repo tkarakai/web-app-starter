@@ -110,4 +110,18 @@ export default [
       },
     },
   },
+  {
+    files: ["platform/tooling/ci-workers/**/*.ts"],
+    languageOptions: { globals: { NodeJS: "readonly" } },
+  },
+  {
+    files: ["platform/tooling/ci-workers/recipe/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        fetch: "readonly",
+        AbortSignal: "readonly",
+      },
+    },
+  },
 ];

@@ -1,0 +1,40 @@
+import process from 'node:process';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import net from 'node:net';
+import { execFileSync } from 'node:child_process';
+import { chromium } from '/opt/playwright/node_modules/playwright/index.mjs';
+assert.equal(process.getuid(), 1001);
+assert(!fs.existsSync('/var/run/docker.sock'));
+assert(!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN && !process.env.ACCESS_TOKEN);
+// Exclusive creation both detects preceding-job state and rejects symlinks atomically.
+fs.writeFileSync('/home/worker/.starter-worker-poison', 'must disappear', { flag: 'wx' });
+const status = fs.readFileSync('/proc/self/status', 'utf8');
+assert.match(status, /CapEff:\s+0000000000000000/);
+assert.match(status, /NoNewPrivs:\s+1/);
+execFileSync('curl', ['--fail', '--silent', '--head', '--max-time', '20', 'https://github.com'], { stdio: 'ignore' });
+const response = await fetch('https://github.com', { signal: AbortSignal.timeout(20_000) });
+assert(response.ok);
+await response.body?.cancel();
+execFileSync('ps', ['-p', String(process.pid)], { stdio: 'ignore' });
+execFileSync('pgrep', ['-f', 'smoke.mjs'], { stdio: 'ignore' });
+execFileSync('lsof', ['-v'], { stdio: 'ignore' });
+const denied = execFileSync('curl', ['--silent', '--output', '/dev/null', '--write-out', '%{http_code}', '--noproxy', '', '--max-time', '10', 'http://127.0.0.1'], { encoding: 'utf8' });
+assert.equal(denied, '403');
+const browser = await chromium.launch({ chromiumSandbox: true });
+const page = await browser.newPage();
+await page.setContent('<h1>prepared worker</h1>');
+assert.equal(await page.locator('h1').textContent(), 'prepared worker');
+await browser.close();
+execFileSync('/opt/backend/convex-local-backend', ['--help'], { stdio: 'ignore' });
+for (const host of ['169.254.169.254', '1.1.1.1']) {
+  const connected = await new Promise(resolve => {
+    const socket = net.connect({ host, port: 80 });
+    socket.setTimeout(1000);
+    socket.on('connect', () => { socket.destroy(); resolve(true); });
+    socket.on('timeout', () => { socket.destroy(); resolve(false); });
+    socket.on('error', () => resolve(false));
+  });
+  assert.equal(connected, false, `direct network access to ${host}`);
+}
+process.stdout.write(JSON.stringify({ ok: true, tools: JSON.parse(fs.readFileSync('/etc/starter-worker.json', 'utf8')), image: process.env.STARTER_WORKER_IMAGE, runtime: process.env.STARTER_WORKER_RUNTIME }) + '\n');

@@ -160,5 +160,20 @@
         "NEXT_PUBLIC_APP_NAME"
       ]
     }
-  }
+  },
+  "globalPassThroughEnv": [
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "NO_PROXY",
+    "no_proxy",
+    "NODE_USE_ENV_PROXY",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
+    "CONVEX_LOCAL_BACKEND_VERSION",
+    "STARTER_WORKER",
+    "STARTER_WORKER_IMAGE",
+    "STARTER_WORKER_RUNTIME"
+  ]
 }

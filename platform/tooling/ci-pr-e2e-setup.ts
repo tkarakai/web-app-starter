@@ -1,4 +1,4 @@
-// Choosing when E2E runs on pull requests (PLATFORM_CI_PR_E2E, platform/docs/ci.md#e2e-on-pull-requests).
+// Choosing when E2E runs on pull requests (PLATFORM_CI_PR_E2E, platform/docs/ci-github.md#e2e-on-pull-requests).
 // On a private repository GitHub Actions minutes are metered and E2E is most of what a push costs,
 // so `bun run adopt` and `bun run deploy:setup` offer the choice there. Public repositories keep
 // the default: their Actions minutes are free.
@@ -36,7 +36,7 @@ export function describeModes(repo: string): string[] {
     `  on-demand  only once the PR has the ${LABEL} label; until then CI Complete fails, so E2E`,
     "             still blocks the merge (needs branch protection: a paid plan on private repositories).",
     "  off        never on PRs; run CI=true bun run ci locally before merging.",
-    "Deploys run E2E in every mode. Details: platform/docs/private-repo-ci.md.",
+    "Deploys run E2E in every mode. Details: platform/docs/ci-github.md.",
   ];
 }
 

@@ -28,7 +28,7 @@ jobs:
   # ============================================================
   changes:
     name: Detect Changes
-    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
     outputs:
       demo: ${{ steps.present.outputs.demo }}
       backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
@@ -43,9 +43,11 @@ jobs:
         id: act-all
         run: |
           echo "Running in act — skipping change detection, all jobs will run"
-          echo "backend=true" >> "$GITHUB_OUTPUT"
-          echo "root=true" >> "$GITHUB_OUTPUT"
-          echo "platform=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "backend=true"
+            echo "root=true"
+            echo "platform=true"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         if: ${{ !env.ACT }}
@@ -76,7 +78,7 @@ jobs:
   lint:
     name: Lint & Typecheck
     needs: [changes]
-    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -116,7 +118,7 @@ jobs:
   # ============================================================
   test-convex:
     name: Backend Tests (Convex)
-    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
     needs: [changes]
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.root == 'true'
     steps:
@@ -135,7 +137,7 @@ jobs:
   # ============================================================
   contracts:
     name: Contracts
-    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -157,7 +159,7 @@ jobs:
     name: Starter Upgrade Rehearsal
     needs: [changes]
     if: needs.changes.outputs.platform == 'true' && needs.changes.outputs.demo == 'true'
-    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

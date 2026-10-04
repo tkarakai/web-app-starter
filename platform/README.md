@@ -202,7 +202,7 @@ when you take a newer release. Everything else is yours.
 ├── infra/aws/                 # Optional AWS hosting
 └── .github/
     ├── actions/               # Composite actions (build, deploy, setup)
-    └── workflows/             # platform-*.yml (reusable, platform-owned); ci-*, cd-*, security.yml callers (yours; see docs/ci.md)
+    └── workflows/             # platform-*.yml (reusable, platform-owned); ci-*, cd-*, security.yml callers (yours; see docs/ci-github.md)
 ```
 
 ## Shared packages
@@ -334,7 +334,7 @@ For example, clone with
 7. On a private repository, where GitHub Actions minutes are billed, asks when CI should run E2E
    on pull requests (`--pr-e2e`) and sets the repository variable `PLATFORM_CI_PR_E2E`, which
    applies to everyone's CI runs in the repository. Without an answer it prints the command for
-   later. See [E2E on pull requests](docs/ci.md#e2e-on-pull-requests).
+   later. See [E2E on pull requests](docs/ci-github.md#e2e-on-pull-requests).
 
 CI and local CI skip removed apps and the demo rehearsal with a notice. Staging, production
 and rollback inspect the selected commit, so removing landing does not require a landing
@@ -401,12 +401,14 @@ Run the full CI check before pushing:
 
 ```bash
 CI=true bun run ci      # Full CI: lint, types, tests, build, single-worker web E2E
-bun run ci:quick        # Quick local checks; see the CI guide
+bun run ci:quick        # Skip E2E and export browser tests
 bun run ci:act          # Run in Docker via act (mirrors GitHub Actions)
-bun run ci:act:offline  # Offline mode (fast, no network required)
+bun run ci:act:offline  # Reuse cached images, Actions and tools
 ```
 
-See the [CI guide](docs/ci.md#local-ci-pre-push-checks) for the check inventory and skipped browser checks.
+Use [pre-push CI](docs/ci-pre-push.md) for local commands and debugging,
+[CI on GitHub Actions](docs/ci-github.md) for workflows, gates and costs, and
+[local CI workers](docs/ci-workers.md) to operate the machine that executes GitHub jobs.
 
 ## Conventions
 

@@ -10,4 +10,7 @@ fi
 export CONVEX_AGENT_MODE=anonymous
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 convex_bin=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-dev-deps.ts" bin "$PWD" convex)
+if [ -n "${CONVEX_LOCAL_BACKEND_VERSION:-}" ]; then
+    exec node "$convex_bin" dev --local-backend-version "$CONVEX_LOCAL_BACKEND_VERSION"
+fi
 exec node "$convex_bin" dev

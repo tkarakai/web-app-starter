@@ -18,6 +18,7 @@ test("anonymous CI launcher bounds query execution without changing interactive 
   fs.writeFileSync(path.join(directory, "npx"), '#!/bin/bash\necho "Unexpected package download" >&2\nexit 127\n', { mode: 0o755 });
   const clean: Record<string, string | undefined> = { ...process.env, PATH: directory + path.delimiter + process.env.PATH };
   delete clean.CI;
+  delete clean.CONVEX_LOCAL_BACKEND_VERSION;
   delete clean.DATABASE_UDF_USER_TIMEOUT_SECONDS;
   for (const [environment, expected] of [
     [{}, "unset"],
@@ -25,9 +26,10 @@ test("anonymous CI launcher bounds query execution without changing interactive 
     [{ CI: "true" }, "5"],
     [{ CI: "true", DATABASE_UDF_USER_TIMEOUT_SECONDS: "2" }, "2"],
     [{ DATABASE_UDF_USER_TIMEOUT_SECONDS: "3" }, "3"],
+    [{ CONVEX_LOCAL_BACKEND_VERSION: "test-backend" }, "unset"],
   ] as const) {
     const result = spawnSync("bash", [path.join(directory,"platform/tooling/dev-convex.sh")], { cwd: directory, env: { ...clean, ...environment }, encoding: "utf8" });
     assert.equal(result.status, 19, result.stderr);
-    assert.equal(result.stdout, `convex dev\nanonymous\n${expected}\n`);
+    assert.equal(result.stdout, `convex dev${"CONVEX_LOCAL_BACKEND_VERSION" in environment ? " --local-backend-version test-backend" : ""}\nanonymous\n${expected}\n`);
   }
 });

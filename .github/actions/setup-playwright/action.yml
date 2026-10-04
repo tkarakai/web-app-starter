@@ -45,9 +45,8 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: ./node_modules/.bin/playwright install-deps chromium
 
-    # Self-hosted runners keep browsers in ~/.cache/ms-playwright between jobs, and
-    # the starter's runner image (platform/tooling/ci-runner) ships the browser
-    # system libraries: no GitHub cache round trip, no apt on every job.
+    # Managed workers use baked browsers and system libraries; external runners
+    # retain the persistent-cache fallback. See platform/docs/ci-workers.md.
     - name: Install Playwright browsers (self-hosted)
       if: ${{ !env.ACT && runner.environment == 'self-hosted' }}
       shell: bash
