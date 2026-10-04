@@ -203,7 +203,7 @@ test.describe("TOTP enrolment and challenge", () => {
     await expectSignedIn(page);
   });
 
-    test("accepts a backup code at the challenge and burns it", async ({ page }) => {
+  test("accepts a backup code for restricted recovery and burns it", async ({ page }) => {
     const user = await createDisposableUser();
     await signIn(page, user.email, user.password);
     const { backupCodes } = await enableTwoFactor(page, user.password);
@@ -223,9 +223,12 @@ test.describe("TOTP enrolment and challenge", () => {
     await submitBackupCode(page);
 
     await expectSignedIn(page);
+    await expect(page.getByText("Use your password to set up a new authenticator, then save the replacement backup codes.")).toBeVisible();
+    await expect(page.locator('[data-slot="sidebar-footer"]')).not.toBeVisible();
 
     // Single-use: the same code must not work a second time.
-    await signOut(page);
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/sign-in/);
     await throttleSignIn();
     await submitEmailStep(page, user.email);
     await submitPassword(page, user.password);
