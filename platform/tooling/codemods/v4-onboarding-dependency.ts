@@ -14,7 +14,7 @@ import { openMigrationFile } from "./open-migration-file.ts";
 export function migrate(root: string, check = false): string[] {
   // lstat also preserves a customized symlink; never follow it or replace its contents.
   try { fs.lstatSync(path.join(root, "packages/onboarding")); return []; }
-  catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  catch (error) { if ((error as { code?: string }).code !== "ENOENT") throw error; }
   const changes: { relative: string; fd: number; content: string }[] = [];
   const opened: number[] = [];
   try {
