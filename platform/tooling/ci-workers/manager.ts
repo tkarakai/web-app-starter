@@ -6,6 +6,11 @@ import { prepare, rotateLogs } from './images.ts';
 import { launch, reconcile } from './runtime.ts';
 import { assert, catalog, config, docker, exists, expiredEnvironments, hash, home, label, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
 
+export function runnerName(pool: string, jobId: number, now = Date.now()): string {
+  // Keep the cleanup prefix intact; two base-36 safe integers fit the 64-character limit.
+  return `${pool}-${jobId.toString(36)}-${now.toString(36)}`;
+}
+
 export async function lock<T>(name: string, action: () => Promise<T>): Promise<T> {
   const directory = path.join(home, `${name}.lock`);
   const staging = await mkdtemp(path.join(home, `${name}.owner-`));
@@ -157,7 +162,7 @@ export async function serve(): Promise<void> {
               c = await config();
               if (stop || c.paused || current.status !== 'queued') continue;
               const expected = assignment(c, run, request.sha, repo.id, request.job);
-              const name = `${c.pool}-${job.id}-${Date.now()}`;
+              const name = runnerName(c.pool, job.id);
               const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
                 name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`, ...(request.job ? [`starter-update-${request.job}`, `starter-attempt-${run.run_attempt}`] : [])], work_folder: '_work',
               });
