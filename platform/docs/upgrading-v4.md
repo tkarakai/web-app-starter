@@ -79,9 +79,14 @@ no stored attachments needs no data copy. Source upgrades preserve and quarantin
 
 App-owned landing pages and forms are preserved. The updater runs
 `v4-onboarding-dependency.ts`: if `packages/onboarding` is absent, it removes the
-reference app’s newly introduced `@repo/onboarding` dependency and transpilation entry.
+reference app’s newly introduced `@repo/onboarding: "workspace:*"` dependency from
+web and landing manifests and its entry in literal `transpilePackages` arrays.
 It does not create or overwrite an app-owned form. Existing onboarding workspaces are
-left unchanged, including custom CSS exports. To adopt the restored onboarding and announcements,
+left unchanged, including custom CSS exports. Review custom transpilation expressions
+manually; the codemod leaves them unchanged. After the updater's codemod step, run
+`./platform/tooling/node-ts.sh platform/tooling/codemods/v4-onboarding-dependency.ts --check`
+from the app root; it writes nothing and exits non-zero if entries still need removal.
+To adopt the restored onboarding and announcements,
 follow [onboarding ownership and landing handoff](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
 If your app shares onboarding through `packages/onboarding`, move its behavior tests and
