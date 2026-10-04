@@ -46,12 +46,18 @@ before hashing; plus tags and dots are not stripped. Keys contain hashes, not em
 | Auth email reservations | 3/minute | 3 | Normalized recipient across message types |
 | Auth email reservations | 60/minute | 20 | Deployment |
 | Auth email reservations | 1,000/24 hours | 1,000 | Deployment |
+| Password-consuming authenticated routes and two-factor code verification (`authStepUp`) | 5/minute | 5 | Account, shared across sessions |
+| Recovery-code export password verification (`authRecoverySecrets`) | 5/minute | 5 | Account, shared across sessions and HTTP/Convex transports |
 
 These are token buckets with continuous refill, not calendar windows or hard rolling-window
 quotas. A full bucket permits its initial burst plus tokens replenished during a period.
 The 24-hour budget refills about one token every 86.4 seconds. Set provider-side quotas and
 billing alerts as well; invitation and other transactional mail have separate delivery paths.
-Recovery-code password reauthentication has its own shared per-account 5/minute, burst-5 budget.
+The account verification buckets charge attempts before checking proof, including successful
+attempts. `PASSWORD_PROOF` in `packages/backend/convex/platform/authAssurance.ts` owns the
+password-route mapping; TOTP, two-factor email OTP and backup-code checks use the same
+`authStepUp` bucket. OTP sending and passkey assertions do not consume this account bucket.
+Recovery-code export uses its separate `authRecoverySecrets` bucket in `recoveryCodes.ts`.
 Better Auth's own OTP/TOTP challenge-attempt checks remain in place.
 
 Routes mapped to the same request budget share its capacity: password sign-in and email-OTP
@@ -92,9 +98,9 @@ Delivery-budget denials on public conditional-mail routes retain the normal HTTP
 and headers: verification email (including custom templates), password-reset links, and
 email-OTP verification/reset requests, including the deprecated reset alias. This prevents
 exhaustion from revealing whether an account exists or is verified, even when concurrent
-requests consume the last capacity. Email-OTP sign-in also follows this contract when signup
-is disabled. Acknowledgement does not promise delivery; retry later if no email arrives.
-Unconditional sends, including two-factor OTP and signup-enabled email-OTP sign-in, retain
+requests consume the last capacity. Acknowledgement does not promise delivery; retry later if no email arrives.
+For supported sign-in methods, see [session assurance](authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+Unconditional sends, including two-factor OTP, retain
 HTTP 429 and the retry headers on delivery denial. Ineligible requests spend no mail tokens.
 There is no unbounded retry queue. Provider failures still consume reserved capacity, because
 an ambiguous failure may already have delivered a message. There are no automatic refunds or

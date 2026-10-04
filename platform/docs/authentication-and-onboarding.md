@@ -12,8 +12,8 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 | Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` (signup flow *is* onboarding) |
 | How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |
 | Password required | Yes — see §5 | Yes — see §5 |
-| 2FA (TOTP) | Mandatory — cannot access dashboard without it | Admin-configurable: optional or mandatory |
-| Passkey | Required or optional according to `adminPasskeyPolicy` | Optional (if enabled by admin) |
+| 2FA (TOTP) | Required for invitation enrollment; subsequent access follows live MFA policy | Admin-configurable: optional or required |
+| Passkey | According to `adminPasskeyPolicy` | According to `userPasskeyPolicy` |
 | Magic link sign-in | Not available | Admin-configurable: enabled or disabled |
 | Can access the other app | No | No |
 
@@ -36,7 +36,7 @@ Every account — admin or user — is created as an email+password credential a
 
 | Method | TOTP required at login? | Notes |
 |---|---|---|
-| **Password** | **Yes** | Password alone is single-factor; TOTP covers phishing/keylogging |
+| **Password** | **If enrolled or required by policy** | Password alone does not satisfy required strong proof |
 | **Passkey** | **No** | Passkey is inherently two-factor (possession + biometric/PIN) |
 
 No magic link option for admins.
@@ -58,13 +58,13 @@ Admins configure these from the admin app's security settings. All policies are 
 | Setting | Key | Options | Default |
 |---|---|---|---|
 | Magic link sign-in | `userMagicLinkEnabled` | enabled / disabled | disabled |
-| 2FA requirement | `userMfaRequired` | optional / mandatory | optional |
-| Passkey | `userPasskeyPolicy` | disabled / optional | optional |
+| 2FA requirement | `userMfaRequired` | `false` (optional) / `true` (required) | `false` |
+| Passkey | `userPasskeyPolicy` | disabled / optional / required | optional |
 
 **How 2FA interacts with sign-in methods for users:**
 
-- **`userMfaRequired: "optional"`** — Users may enable 2FA from their security settings. If they do, TOTP is required at password and magic link login. Passkey login never requires TOTP.
-- **`userMfaRequired: "mandatory"`** — All users must enable 2FA. Users who haven't are redirected to a 2FA setup flow before accessing the app. TOTP is required at password and magic link login. Passkey login still does not require TOTP.
+- **`userMfaRequired: false`** — Users may enable 2FA from their security settings. Once enabled, password and magic-link sessions need strong factor verification.
+- **`userMfaRequired: true`** — Sessions must verify a policy-eligible factor before accessing the app. Users without one see the shared enrollment gate. A user-verified passkey can satisfy this requirement without TOTP.
 
 When a user enables 2FA (voluntarily or because it's mandatory), the same Better Auth `twoFactor.enable({ password })` flow applies — they enter their password to unlock TOTP setup.
 
@@ -153,7 +153,7 @@ step writes an `admin.onboarding.*` audit event (§12).
 
 ## 7. User Sign-Up Flow (web app)
 
-For users, sign-up *is* onboarding. The flow is simpler than admin onboarding because 2FA and passkey are optional.
+For users, sign-up *is* onboarding. Factor enrollment depends on the current user security policy.
 
 ### Onboarding ownership and landing handoff
 
@@ -212,12 +212,10 @@ If the admin has enabled magic link (`userMagicLinkEnabled: true`), the user can
 
 ### 7.4 Optional: 2FA Setup
 
-Depends on the admin's `userMfaRequired` setting:
-
-- **`optional`** (default): The user can enable 2FA from their security settings at any time. The flow is the same as admin TOTP setup (§6.3, steps 1–2) — enter password to unlock, scan QR, verify code, save backup codes.
-- **`mandatory`**: The user is redirected to 2FA setup after sign-up (or on next login if they haven't set it up yet) and cannot access the app until complete. Same flow as admin TOTP setup.
-
-In both cases, TOTP is required at login only for password and magic link sign-ins. Passkey sign-in never requires TOTP.
+The [user MFA policy](#33-admin-controlled-security-policies-for-users) determines whether
+enrollment is optional or required. TOTP setup uses the same steps as admin enrollment (§6.3):
+enter the current password, scan the QR code, verify a code and save backup codes. See
+[session assurance](#85-session-assurance-and-reauthentication) for fresh verification requirements.
 
 ### 7.5 Optional: Passkey Registration
 
@@ -334,7 +332,7 @@ If "Use a backup code" is clicked, the input switches to a backup code field.
 
 ```
 Email → Passkey → ✓ Dashboard          (no TOTP — passkey is 2FA)
-Email → Password → TOTP → ✓ Dashboard  (TOTP always required)
+Email → Password → TOTP → ✓ Dashboard  (TOTP enrolled or MFA required)
 ```
 
 Admins never see magic link as an option.
@@ -348,6 +346,10 @@ Email → Password → TOTP → ✓ App                 (2FA enabled)
 Email → Magic Link → ✓ App                      (no 2FA enabled, magic link enabled)
 Email → Magic Link → TOTP → ✓ App               (2FA enabled, magic link enabled)
 ```
+
+These paths assume enrollment is complete and passkeys are optional. Required-passkey
+policy adds current-session passkey verification before application access; see
+[session assurance](#85-session-assurance-and-reauthentication).
 
 ### 8.5 Session assurance and reauthentication
 
@@ -382,8 +384,8 @@ Administrative HTTP operations and platform administrative mutations, password/p
 changes and recovery-code export require authentication within **five minutes**. When an enrolled
 or required factor exists, that must be recent strong proof; a password alone cannot substitute.
 Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the
-current password each time. Failed password/factor verification shares a durable per-account
-five-attempt-per-minute budget across sessions.
+current password each time. Password and two-factor code verification consume the durable account budgets
+described in [rate limiting](rate-limiting-architecture.md#default-limits).
 
 The shared `SessionAccessGate` presents the backend decision and blocks ordinary content until
 verification is complete. Security settings and the admin workspace prompt for fresh verification.
@@ -606,11 +608,9 @@ Viewing codes in web/admin settings requires the current password on **every** r
 initial and resumed administrator enrollment prompt for the current password at the backup-code
 step. The wizard does not retain the codes returned when TOTP is enabled, and TOTP verification
 does not return codes, so that step loads them with fresh password proof. Regeneration and TOTP
-enrollment also verify the current password through Better Auth. The view operation shares a five-attempt, five-per-minute token
-bucket per account across sessions and transports. Failed passwords consume attempts.
-Better Auth password reauthentication, password changes, account deletion, TOTP setup and
-replacement, TOTP removal, seed retrieval and backup-code generation share the separate
-five-attempt, five-per-minute account verification budget with factor verification.
+enrollment also verify the current password through Better Auth. The export and account
+verification budgets, including failed-attempt accounting, are defined in
+[rate limiting](rate-limiting-architecture.md#default-limits).
 
 Custom clients call `api.platform.auth.viewBackupCodes({ password })` over authenticated Convex,
 or `POST /api/two-factor/backup-codes` with authenticated headers and JSON `{ "password": "..." }`.
@@ -725,12 +725,6 @@ requirements are defined in §6; the layout uses that saved result.
 
 ### Web App
 
-```
-1. Valid Better Auth session exists      → else redirect to /sign-in
-2. user.role !== "admin"                 → else 403 (admins cannot use the web app)
-3. user.isBanned !== true                → else 403 with explanation
-4. If userMfaRequired === "mandatory":
-   user.twoFactorEnabled === true        → else redirect to /setup-2fa
-5. If userEmailVerificationRequired:
-   user.emailVerified === true           → else redirect to /verify-email
-```
+See [route protection](architecture.md#route-protection-authentication) for the proxy,
+server layout and client guard. Enrollment and email/factor verification are presented by
+the shared gate under the [live session policy](#85-session-assurance-and-reauthentication).

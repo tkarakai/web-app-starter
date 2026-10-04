@@ -153,7 +153,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       const secret = new URL(output.totpURI).searchParams.get("secret");
       if (!factor || !secret) refuse("RECOVERY_REQUIRED");
       const plaintext = await symmetricDecrypt({ key: endpoint.context.secretConfig, data: factor.secret });
-      const bits = Array.from(new TextEncoder().encode(plaintext), byte => byte.toString(2).padStart(8, "0")).join("");
+      const bits = Array.from(new globalThis.TextEncoder().encode(plaintext), byte => byte.toString(2).padStart(8, "0")).join("");
       const encoded = (bits + "0000").match(/.{5}/g)!.map(chunk => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[parseInt(chunk, 2)]).join("");
       if (encoded !== secret) refuse("RECOVERY_REQUIRED");
       await actionCtx().runMutation(internal.platform.sessionAssurance.bindRecoveryReplacement, {
