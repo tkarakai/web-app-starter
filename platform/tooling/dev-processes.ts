@@ -124,9 +124,21 @@ export function track(root: string, name: string, pid: number): void {
   for (let attempt = 0; attempt < 20; attempt++) {
     const started = identity(pid);
     if (started && inside(root, cwd(pid))) {
-      const records = readRecords(root);
-      records[name] = { pid, started };
-      writeRecords(root, records);
+      const record = { pid, started };
+      try {
+        const records = readRecords(root);
+        const previous = records[name];
+        if (previous && previous.pid !== pid && matches(root, previous)) {
+          throw new Error(`Cannot replace live ownership for ${name}; stop the existing service first.`);
+        }
+        records[name] = record;
+        writeRecords(root, records);
+      } catch (error) {
+        // Registration failed: stop the newly launched, identity-checked tree
+        // without relying on a record that could not be saved.
+        terminateRecords(root, tree(root, record, ancestors()).reverse());
+        throw error;
+      }
       return;
     }
     sleep(50);
@@ -169,18 +181,27 @@ export function stop(root: string, name?: string, expectedPid?: number): void {
   // Snapshot descendants before signalling their parents; recheck identity
   // and checkout directory before every signal, including forced termination.
   const ordered = [...targets.values()].reverse();
-  for (const record of ordered) signalVerified(root, record, "SIGTERM");
-  const deadline = Date.now() + 3000;
-  while (Date.now() < deadline && ordered.some((record) => matches(root, record))) sleep(50);
-  for (const record of ordered) signalVerified(root, record, "SIGKILL");
-  for (const [service] of selected) delete records[service];
+  terminateRecords(root, ordered);
+  const stopped = new Set<string>();
+  for (const [service, record] of selected) {
+    if (!matches(root, record)) { delete records[service]; stopped.add(service); }
+  }
   writeRecords(root, records);
 
-  cleanLegacyRecords(root, new Set(selected.map(([service]) => service)), name);
-  console.log(`Stopped ${targets.size} verified process(es) in ${root}.`);
+  cleanLegacyRecords(root, stopped, name, new Set(Object.keys(records)));
+  const surviving = ordered.filter(record => matches(root, record));
+  console.log(`Stopped ${targets.size - surviving.length} verified process(es) in ${root}.`);
+  if (surviving.length) throw new Error("Some development processes survived termination; their ownership records were retained. Retry dev:stop before restarting.");
 }
 
-function cleanLegacyRecords(root: string, stopped: Set<string>, name?: string): void {
+function terminateRecords(root: string, ordered: ProcessRecord[]): void {
+  for (const record of ordered) signalVerified(root, record, "SIGTERM");
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline && ordered.some(record => matches(root, record))) sleep(50);
+  for (const record of ordered) signalVerified(root, record, "SIGKILL");
+}
+
+function cleanLegacyRecords(root: string, stopped: Set<string>, name?: string, retained = new Set<string>()): void {
   let fd: number;
   try {
     // Open once without following symlinks. Nonblocking open also lets us reject
@@ -196,7 +217,7 @@ function cleanLegacyRecords(root: string, stopped: Set<string>, name?: string): 
     const remaining: string[] = [];
     for (const line of fs.readFileSync(fd, "utf8").split(/\r?\n/).filter(Boolean)) {
       const service = line.split(":")[0];
-      if (name !== undefined && service !== name) {
+      if (retained.has(service) || (name !== undefined && service !== name)) {
         remaining.push(line);
       } else if (!stopped.has(service)) {
         console.log(`Ignoring legacy ${service} PID without an identity record. `
@@ -245,13 +266,17 @@ export function main(argv: string[]): number {
     const candidates: Partial<ProcessRecord>[] = name === "*" ? Object.values(records) : [records[name ?? ""] ?? {}];
     return candidates.some((record) => record.pid === pid && matches(root, record)) ? 0 : 1;
   }
+  if (command === "records") {
+    for (const [service, record] of Object.entries(readRecords(root))) console.log(`${service}:${record.pid}`);
+    return 0;
+  }
   if (command === "list") {
     for (const [service, record] of Object.entries(readRecords(root))) {
       if (matches(root, record)) console.log(`${service}: ${record.pid}`);
     }
     return 0;
   }
-  throw new Error("Usage: dev-processes.ts [--root DIR] {track NAME PID|running NAME PID|stop [--name NAME]|list}");
+  throw new Error("Usage: dev-processes.ts [--root DIR] {track NAME PID|running NAME PID|stop [--name NAME] [--pid PID]|list|records}");
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {

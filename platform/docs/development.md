@@ -6,6 +6,17 @@ The default dev launcher, local CI and deployment workflows require `apps/landin
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
+## After pulling dependency or workspace changes
+
+After pulling or merging an upgrade that changes `bun.lock`, dependency manifests or workspace layout,
+run `bun install --frozen-lockfile` in **each local checkout** before development or validation.
+Installation and verification in an upgrade worktree or CI do not refresh another checkout's dependencies.
+
+The developer who pulls the changes must perform this refresh even when CI or the upgrade worker
+already verified them. Run the frozen install before other validation commands too; those commands
+may not invoke development preflight. If installation fails, fix the reported error and retry without
+rewriting the committed lockfile as a workaround.
+
 ## Starting Development
 
 ```bash

@@ -5,8 +5,41 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { spawnSync, execFileSync } from "node:child_process";
+import { checkWorkspace, developmentBinary } from "../local-dev-deps.ts";
+import { realpathSync } from "node:fs";
 
 const helper = new URL("../ensure-local-deps.sh", import.meta.url);
+test("development preflight rejects ancestor binaries and external config plugins", t => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), "local-dev-deps-")));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const root = join(parent, "checkout"), app = join(root, "apps/web");
+  mkdirSync(app, { recursive: true });
+  writeFileSync(join(app, "package.json"), '{"dependencies":{"next":"1","next-intl":"1"}}');
+  const next = join(parent, "node_modules/next");
+  mkdirSync(next, { recursive: true });
+  writeFileSync(join(next, "package.json"), '{"name":"next","bin":"cli.cjs"}');
+  writeFileSync(join(next, "cli.cjs"), "throw new Error('ancestor executable must never run');");
+  assert.throws(() => developmentBinary(root, app, "next"), /outside this checkout/);
+  mkdirSync(join(root, "node_modules"));
+  symlinkSync(next, join(root, "node_modules/next"));
+  assert.throws(() => developmentBinary(root, app, "next"), /outside this checkout/);
+  rmSync(join(root, "node_modules/next"));
+  mkdirSync(join(root, "node_modules/next"));
+  copyFileSync(join(next, "package.json"), join(root, "node_modules/next/package.json"));
+  writeFileSync(join(root, "node_modules/next/cli.cjs"), "console.log('local');");
+  const intl = join(root, "node_modules/next-intl");
+  mkdirSync(intl);
+  writeFileSync(join(parent, "plugin.cjs"), "module.exports={};");
+  writeFileSync(join(intl, "package.json"), '{"name":"next-intl","exports":{"./plugin":"./plugin.cjs"}}');
+  symlinkSync(join(parent, "plugin.cjs"), join(intl, "plugin.cjs"));
+  assert.throws(() => checkWorkspace(root, app), /outside this checkout/);
+  rmSync(join(intl, "plugin.cjs"));
+  writeFileSync(join(intl, "plugin.cjs"), "module.exports={};");
+  // A fresh launcher process discards Node's cached realpath from the rejected plugin.
+  const checked = spawnSync(process.execPath, ["--input-type=module", "-e", `import {checkWorkspace} from ${JSON.stringify(new URL("../local-dev-deps.ts", import.meta.url).href)}; checkWorkspace(${JSON.stringify(root)}, ${JSON.stringify(app)});`], { encoding: "utf8" });
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.equal(developmentBinary(root, app, "next"), join(root, "node_modules/next/cli.cjs"));
+});
 for (const state of ["fresh", "stale", "broken", "symlinked"]) test(`frozen preflight repairs ${state} workspace installation without changing the lock`, t => {
   const root = mkdtempSync(join(tmpdir(), "dependency-preflight-")); t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, "platform/tooling"), { recursive: true }); copyFileSync(helper, join(root, "platform/tooling/ensure-local-deps.sh"));

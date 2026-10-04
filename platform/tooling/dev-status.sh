@@ -49,12 +49,13 @@ get_app_url() {
     fi
 }
 
-# Get PID for a service name from the PID file
+# Read identity-backed records even if a previous failed launcher lost .dev-pids.
+PROCESS_ROWS=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/dev-processes.ts" records) || exit 1
+
+# Get PID for a service name from the authoritative records
 get_pid() {
     local name="$1"
-    if [ -f "$PID_FILE" ]; then
-        grep "^${name}:" "$PID_FILE" 2>/dev/null | cut -d':' -f2
-    fi
+    printf '%s\n' "$PROCESS_ROWS" | grep "^${name}:" | cut -d':' -f2
 }
 
 # Check if a PID is alive
@@ -68,14 +69,14 @@ is_running() {
 # ============================================================
 
 ANY_RUNNING=false
-if [ -f "$PID_FILE" ]; then
+if [ -n "$PROCESS_ROWS" ]; then
     while IFS= read -r line; do
         pid=$(echo "$line" | cut -d':' -f2)
         if is_running "$pid"; then
             ANY_RUNNING=true
             break
         fi
-    done < "$PID_FILE"
+    done < <(printf '%s\n' "$PROCESS_ROWS")
 fi
 
 if [ "$ANY_RUNNING" = false ]; then

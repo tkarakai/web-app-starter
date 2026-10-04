@@ -101,6 +101,15 @@ notes; skipped browser jobs are not passing browser evidence. Merge or deploy on
 authorization. Report the target, preserved app choices, verification results and anything
 still awaiting an operator; do not describe a draft as an installed upgrade.
 
+Include the following in the completion/merge/pull handoff:
+
+After pulling or merging an upgrade that changes `bun.lock`, dependency manifests or workspace layout,
+run `bun install --frozen-lockfile` in **each local checkout** before development or validation.
+Installation and verification in an upgrade worktree or CI do not refresh another checkout's dependencies.
+
+Keep this explicit refresh step even when the launcher can repair stale installs automatically.
+A failed frozen install must be resolved before the recipient starts development or validation.
+
 ## Example task
 
 “Finish the draft platform update PR. Keep our app name, teal branding, ports and cookie prefix;
