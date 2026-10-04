@@ -5,7 +5,7 @@ Docker images, and launches a new container for each job. GitHub schedules the a
 records their results. The manager keeps its administrative credential outside worker containers.
 
 Images are stored only in your Docker engine. There is no prepared-image registry to configure
-or maintain. Initial builds download upstream Node images, GitHub runner/Bun/Convex releases,
+or maintain. Buildx/BuildKit 0.13 or newer is required for multiple local exporters. Initial builds download upstream Node images, GitHub runner/Bun/Convex releases,
 Playwright browsers and npm packages. Warm jobs reuse those bytes locally.
 
 ## Set up before using local CI
@@ -114,6 +114,11 @@ a bare repository, with hooks disabled; builds use the installed fixed recipe.
 The fingerprint covers the complete lockfile, manifests, local package/patch contents and immutable
 tool image. Seed installation disables lifecycle scripts. Actual jobs run the frozen offline
 install and postinstall against their own source. Jobs never export their modified caches as images.
+Tools are exported once to both Docker and a private local OCI layout with matching filesystem layers
+and configuration. Seed builds consume that layout by manifest digest, so cache eviction cannot
+rerun tool installation under a retained image identity. Refresh downloads and dependency inputs
+stay in separate temporary candidate directories. The tool pointer and dependency environment are
+promoted together in the catalog only after disposable exact-source frozen offline validation.
 The selected Convex backend is baked in and passed explicitly to the local backend launcher, so
 normal starts do not discover/download another backend version each time.
 
@@ -167,11 +172,16 @@ workers and expire after seven days. Only this pool's labeled resources are touc
 
 Idle daily cleanup retains active images plus the two newest environments in each branch scope.
 Other unused environments expire after seven days. PR seeds can all expire after seven idle days,
-and become eligible 48 hours after the PR closes. Last use comes from the manager catalog, rather
+and become eligible 48 hours after the PR closes, provided they have not been used within 24 hours.
+Recent catalog use reserves a prepared image while its first container is being registered. Last use comes from the manager catalog, rather
 than Docker's image creation timestamp. A conservative image-size budget can pause admission even
 when layers are shared; adjust it after inspecting `docker system df` and `starter-workers images`.
 
-Old unreferenced tool images are removed after seven days. BuildKit uses a pool-specific builder
+Failed preparations remove their candidate tags and staging directories immediately. Cleanup also
+collects orphan seed tags, abandoned candidate tags/directories and unused OCI layouts after a crash.
+Retained environments and active workers protect their images and tool layouts. Old unreferenced
+tool images and cached tool selections expire after seven days. Layouts occupy host disk in addition
+to Docker storage; allow space for both. Legacy build/download staging is removed during cleanup. BuildKit uses a pool-specific builder
 with a separate cache budget of approximately one third of the configured image budget, and cleanup
 prunes old cache only in that builder. Deleting an image/tag releases layers only when nothing else
 references them. Never use blanket `docker system prune` or `image prune -a` to operate this pool.

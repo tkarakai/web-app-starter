@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { command } from './core.ts';
@@ -16,24 +16,68 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }): Promise
   await writeFile(path.join(directory, 'docker.cjs'), `#!${process.execPath}
 const fs = require('node:fs');
 const cp = require('node:child_process');
+const crypto = require('node:crypto');
 const path = require('node:path');
 const home = process.env.STARTER_WORKERS_HOME;
 const file = path.join(home, 'docker.json');
-const state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : { calls: [], workers: {}, tags: {}, builds: 0 };
+const state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : { calls: [], workers: {}, tags: {}, images: {}, builds: 0, seedBases: [] };
 const args = process.argv.slice(4);
 state.calls.push(args);
 let output = '', failure = false;
 if (args[0] === 'info') output = JSON.stringify({ OSType: 'linux', Architecture: 'arm64' });
 if (args[0] === 'buildx' && args[1] === 'build') {
   state.builds++;
-  state.tags[args[args.indexOf('--tag') + 1]] = 'sha256:' + String(state.builds).padStart(64, '0');
+  const id = 'sha256:' + String(state.builds).padStart(64, '0');
+  const tag = args[args.indexOf('--tag') + 1];
+  const target = args[args.indexOf('--target') + 1];
+  const directory = args.at(-1);
+  const digest = bytes => 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex');
+  let config, marker, base;
+  if (target === 'tools') {
+    marker = fs.readFileSync(path.join(directory, 'downloads/backend.zip'), 'utf8');
+    config = { architecture: 'arm64', os: 'linux', rootfs: { diff_ids: [digest(marker)] }, config: { Env: ['TOOL_BYTES=' + marker], User: '1001:1001' } };
+    const configBytes = JSON.stringify(config), configDigest = digest(configBytes);
+    const manifestBytes = JSON.stringify({ config: { digest: configDigest } }), manifestDigest = digest(manifestBytes);
+    const exporter = args.find(a => a.startsWith('type=oci,'));
+    if (exporter) {
+      const layout = exporter.split(',').find(a => a.startsWith('dest=')).slice(5);
+      fs.mkdirSync(path.join(layout, 'blobs/sha256'), { recursive: true });
+      fs.writeFileSync(path.join(layout, 'index.json'), JSON.stringify({ manifests: [{ digest: manifestDigest }] }));
+      fs.writeFileSync(path.join(layout, 'blobs/sha256', manifestDigest.slice(7)), manifestBytes);
+      fs.writeFileSync(path.join(layout, 'blobs/sha256', configDigest.slice(7)), configBytes);
+    }
+    base = id;
+  } else {
+    const context = args[args.indexOf('--build-context') + 1];
+    if (context && context.startsWith('validated-tools=oci-layout://')) {
+      const [layout, manifest] = context.slice('validated-tools=oci-layout://'.length).split('@');
+      const document = JSON.parse(fs.readFileSync(path.join(layout, 'blobs/sha256', manifest.slice(7))));
+      config = JSON.parse(fs.readFileSync(path.join(layout, 'blobs/sha256', document.config.digest.slice(7))));
+      marker = config.config.Env[0].slice('TOOL_BYTES='.length);
+      base = Object.keys(state.images).find(key => state.images[key].marker === marker && state.images[key].target === 'tools');
+    } else {
+      marker = fs.readFileSync(path.join(directory, 'downloads/backend.zip'), 'utf8');
+      config = { architecture: 'arm64', os: 'linux', rootfs: { diff_ids: [digest(marker + 'rebuilt-apt')] }, config: { Env: ['TOOL_BYTES=' + marker] } };
+    }
+    state.seedBases.push({ image: base, bytes: marker });
+  }
+  state.tags[tag] = id;
+  state.images[id] = { Id: id, Created: new Date().toISOString(), Architecture: config.architecture, Os: config.os, RootFS: { Layers: config.rootfs.diff_ids }, Config: config.config, target, marker };
+  failure = fs.existsSync(path.join(home, 'fail-build-' + target));
 }
+if (args[0] === 'tag') state.tags[args[2]] = args[1];
+if (args[0] === 'image' && args[1] === 'rm') for (const tag of args.slice(2)) delete state.tags[tag];
+if (args[0] === 'image' && args[1] === 'ls') output = Object.keys(state.tags).join('\\n');
 if (args[0] === 'image' && args[1] === 'inspect') {
-  if (args.includes('--format')) output = args.includes('{{.Id}}') ? state.tags[args.at(-1)] : 'node@sha256:' + 'b'.repeat(64);
+  const id = state.tags[args.at(-1)] || args.at(-1);
+  if (args.includes('--format')) output = args.includes('{{.Id}}') ? id : 'node@sha256:' + 'b'.repeat(64);
   else if (args.includes('{{.Size}}')) output = '100';
+  else if (state.images[id]) output = JSON.stringify([state.images[id]]);
+  else failure = true;
 }
+if (args[0] === 'ps') output = Object.keys(state.leased || {}).join('\\n');
 if (args[0] === 'inspect') {
-  if (args.includes('-f')) output = '172.20.0.2';
+  if (args.includes('-f')) output = args.includes('{{.Image}}') ? state.leased[args.at(-1)] : '172.20.0.2';
   else output = JSON.stringify([{ Image: state.workers[args[1]].image, Mounts: [], HostConfig: { Privileged: false, RestartPolicy: { Name: 'no' } } }]);
 }
 if (args[0] === 'create' && args.includes('--cpus')) {
@@ -47,6 +91,7 @@ if (args[0] === 'cp') {
 if (args[0] === 'start' && args[1] === '-ai') {
   const worker = state.workers[args[2]];
   if (worker.mode === 'exec') { state.validations = (state.validations || 0) + 1; failure = fs.existsSync(path.join(home, 'fail-validation')); }
+  if (worker.mode === 'smoke') failure = fs.existsSync(path.join(home, 'fail-smoke-' + state.images[worker.image]?.target));
   output = 'ok';
 }
 fs.writeFileSync(file, JSON.stringify(state));
@@ -138,7 +183,7 @@ test('failed refresh preserves active tools and catalog until exact-source offli
   const sha = await git('rev-parse', 'HEAD');
   await writeFile(path.join(dir, 'source.txt'), 'uncommitted poison');
   const prepare = `
-const bytes = Buffer.from('download fixture');
+const bytes = Buffer.from(await fs.readFile(path.join(core.home, 'release'), 'utf8').catch(() => 'download fixture'));
 globalThis.fetch = async url => {
   url = String(url);
   if (!url.startsWith('https://api.github.com')) return new Response(bytes);
@@ -151,21 +196,38 @@ await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', 
 `;
   await run(dir, prepare);
   const catalog = await readFile(path.join(dir, 'pool/catalog.json'), 'utf8');
-  const builds = path.join(dir, 'pool/builds');
-  const { readdir } = await import('node:fs/promises');
-  const [build] = await readdir(builds);
-  const meta = path.join(builds, build, 'tools.json');
-  const tools = await readFile(meta, 'utf8');
+  const tools = JSON.parse(catalog).tools;
+  await writeFile(path.join(dir, 'pool/release'), 'new tool bytes');
   await writeFile(path.join(dir, 'pool/fail-validation'), 'fail');
   await assert.rejects(run(dir, prepare), /offline install failed/);
-  assert.equal(await readFile(meta, 'utf8'), tools);
+  assert.equal(JSON.parse(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8')).tools, tools);
+  assert.deepEqual(await readdir(path.join(dir, 'pool/candidates')), []);
   assert.equal(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8'), catalog);
   await rm(path.join(dir, 'pool/fail-validation'));
+  const retainedTags = Object.keys(JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8')).tags).sort();
+  for (const failure of ['fail-build-tools', 'fail-smoke-tools', 'fail-build-worker', 'fail-smoke-worker']) {
+    const marker = path.join(dir, 'pool', failure);
+    await writeFile(marker, 'fail');
+    await assert.rejects(run(dir, prepare), /failed/);
+    await rm(marker);
+    assert.equal(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8'), catalog);
+    assert.deepEqual(Object.keys(JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8')).tags).sort(), retainedTags);
+    assert.deepEqual(await readdir(path.join(dir, 'pool/candidates')), []);
+  }
+  await writeFile(path.join(dir, 'bun.lock'), '{"playwright": ["playwright@1.63.0"], "newDependency": "changed"}');
+  await git('add', 'bun.lock'); await git('commit', '-m', 'dependency change');
+  const nextSha = await git('rev-parse', 'HEAD');
+  await run(dir, prepare.replace(JSON.stringify(sha), JSON.stringify(nextSha)).replace("'branch-test', true", "'branch-test', false"));
+  const warm = JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8'));
+  assert.equal(warm.seedBases.at(-1).image, tools);
+  assert.equal(warm.seedBases.at(-1).bytes, 'download fixture');
   await run(dir, prepare);
-  assert.notEqual(await readFile(meta, 'utf8'), tools);
+  assert.notEqual(JSON.parse(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8')).tools, tools);
   const state = JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8'));
   assert.equal(state.source, 'committed source');
-  assert.equal(state.validations, 3);
+  assert.equal(state.validations, 4);
+  assert.equal(Object.keys(state.tags).some(tag => tag.includes('-candidate-')), false);
+  assert.deepEqual(await readdir(path.join(dir, 'pool/candidates')), []);
   assert.equal(state.calls.some((a: string[]) => a[0] === 'commit'), false);
 });
 
@@ -180,5 +242,42 @@ const timeout = globalThis.setTimeout;
 globalThis.setTimeout = (callback, delay, ...args) => timeout(callback, delay === 120_000 ? 50 : delay, ...args);
 const { main } = await import(path.join(base, 'cli.ts'));
 await main(['update', '--from', ${JSON.stringify(dir)}]);
+`);
+});
+
+test('cleanup collects crash orphans and protects retained, leased and recently used closed-PR seeds', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+Object.defineProperty(process, 'platform', { value: 'linux' });
+await fs.writeFile(path.join(core.home, 'credential'), 'test');
+globalThis.fetch = async () => Response.json({ state: 'closed', closed_at: new Date(Date.now() - 10 * 86400_000).toISOString() });
+const now = new Date().toISOString(), old = new Date(Date.now() - 10 * 86400_000).toISOString();
+const id = n => 'sha256:' + String(n).padStart(64, '0');
+const env = (n, used) => ({ key: core.hash(String(n)), image: id(n), tools: id(10), scope: 'pr-7', source: '${'a'.repeat(40)}', used, created: old, bytes: 100 });
+const environments = [env(1, now), env(2, old), env(3, old)];
+const state = { environments, tools: id(10), toolchains: { retained: { image: id(10), manifest: id(99), created: old }, expired: { image: id(11), manifest: id(98), created: old } } };
+await core.save(path.join(core.home, 'catalog.json'), state);
+const tags = Object.fromEntries(environments.map(e => ['pool:seed-' + e.key.slice(0, 24), e.image]));
+Object.assign(tags, { 'pool:seed-orphan': id(4), 'pool:seed-candidate-crash': id(5), 'pool:tools-candidate-crash': id(12), 'pool:tools-retained': id(10), 'pool:tools-candidate-promoted': id(10), 'pool:tools-expired': id(11), 'other:seed-unowned': id(13) });
+const images = Object.fromEntries(Object.values(tags).map(image => [image, { Id: image, Created: old }]));
+await core.save(path.join(core.home, 'docker.json'), { calls: [], workers: {}, tags, images, builds: 0, leased: { running: id(3) } });
+for (const image of [id(10), id(11), id(12)]) await fs.mkdir(path.join(core.home, 'tool-layouts', image.slice(7)), { recursive: true });
+for (const folder of ['candidates/crash', 'builds/legacy', 'downloads']) { await fs.mkdir(path.join(core.home, folder), { recursive: true }); await fs.writeFile(path.join(core.home, folder, 'private-input'), 'staging'); }
+const { cleanup } = await import(path.join(base, 'manager.ts'));
+const before = await fs.readFile(path.join(core.home, 'catalog.json'), 'utf8');
+const expected = [id(2), id(4), id(5), id(10), id(11), id(12)].sort();
+assert.deepEqual((await cleanup(c, true)).sort(), expected);
+assert.equal(await fs.readFile(path.join(core.home, 'catalog.json'), 'utf8'), before);
+assert(await core.exists(path.join(core.home, 'candidates/crash')));
+assert.deepEqual(Object.keys((await core.readJson(path.join(core.home, 'docker.json'))).tags).sort(), Object.keys(tags).sort());
+assert.deepEqual((await cleanup(c, false)).sort(), expected);
+const result = await core.catalog();
+assert.deepEqual(result.environments.map(e => e.image), [id(1), id(3)]);
+assert.equal(result.toolchains.expired, undefined);
+const remaining = (await core.readJson(path.join(core.home, 'docker.json'))).tags;
+assert.deepEqual(Object.keys(remaining).sort(), ['pool:seed-' + environments[0].key.slice(0, 24), 'pool:seed-' + environments[2].key.slice(0, 24), 'pool:tools-retained', 'other:seed-unowned'].sort());
+assert(await core.exists(path.join(core.home, 'tool-layouts', id(10).slice(7))));
+for (const image of [id(11), id(12)]) assert.equal(await core.exists(path.join(core.home, 'tool-layouts', image.slice(7))), false);
+for (const folder of ['candidates', 'builds', 'downloads']) assert.equal(await core.exists(path.join(core.home, folder)), false);
 `);
 });

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { api, remoteSource, token } from './github.ts';
 import { prepare, rotateLogs } from './images.ts';
 import { launch, reconcile } from './runtime.ts';
-import { assert, catalog, config, docker, expiredEnvironments, hash, home, label, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
+import { assert, catalog, config, docker, exists, expiredEnvironments, hash, home, label, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
 
 export async function lock<T>(name: string, action: () => Promise<T>): Promise<T> {
   const directory = path.join(home, `${name}.lock`);
@@ -34,34 +34,44 @@ export async function cleanup(c: Config, dryRun: boolean): Promise<string[]> {
   const containers = (await docker(c, ['ps', '-aq', '--filter', `label=${label}=${c.pool}`])).split(/\s+/).filter(Boolean);
   const leased = new Set<string>();
   for (const id of containers) leased.add(await docker(c, ['inspect', '-f', '{{.Image}}', id]));
-  const deletions = expiredEnvironments(state.environments, leased);
+  const protectedImages = new Set([...leased, ...state.environments.filter(e => Date.now() - Date.parse(e.used) < 86400_000).map(e => e.image)]);
+  const deletions = expiredEnvironments(state.environments, protectedImages);
   if (!c.localOnly) {
     for (const scope of new Set(state.environments.map(e => e.scope).filter(s => /^pr-\d+$/.test(s)))) {
       const pr = await api<{ state: string; closed_at: string | null }>(`/repos/${c.repo}/pulls/${scope.slice(3)}`, await token());
       if (pr.state === 'closed' && pr.closed_at && Date.now() - Date.parse(pr.closed_at) > 48 * 3600_000) {
-        for (const e of state.environments.filter(e => e.scope === scope && !leased.has(e.image))) if (!deletions.includes(e)) deletions.push(e);
+        for (const e of state.environments.filter(e => e.scope === scope && !protectedImages.has(e.image))) if (!deletions.includes(e)) deletions.push(e);
       }
     }
   }
-  for (const env of deletions) {
-    if (!dryRun) {
-      // Delete only our exact tag; other images/layers and containers retain their references.
-      await docker(c, ['image', 'rm', `${c.pool}:seed-${env.key.slice(0, 24)}`]);
-      state.environments = state.environments.filter(e => e.key !== env.key);
-    }
+  const remaining = state.environments.filter(e => !deletions.includes(e));
+  const protectedTools = new Set([state.tools, ...remaining.map(e => e.tools), ...leased]);
+  for (const [family, tools] of Object.entries(state.toolchains ?? {})) {
+    if (!protectedTools.has(tools.image) && Date.now() - Date.parse(tools.created) > 7 * 86400_000) delete state.toolchains![family];
+    else protectedTools.add(tools.image);
+  }
+  const tags = new Set(deletions.map(env => `${c.pool}:seed-${env.key.slice(0, 24)}`));
+  const owned = (await docker(c, ['image', 'ls', '--filter', `label=${label}=${c.pool}`, '--format', '{{.Repository}}:{{.Tag}}'])).split('\n').filter(t => t.startsWith(`${c.pool}:tools-`) || t.startsWith(`${c.pool}:seed-`));
+  const orphaned: string[] = [];
+  for (const tag of owned) {
+    if (tags.has(tag)) continue;
+    const [image] = JSON.parse(await docker(c, ['image', 'inspect', tag])) as { Id: string; Created: string }[];
+    const seed = tag.startsWith(`${c.pool}:seed-`);
+    const protectedImage = seed ? remaining.some(e => e.image === image.Id) || leased.has(image.Id) : protectedTools.has(image.Id);
+    const candidate = tag.startsWith(`${c.pool}:tools-candidate-`) || tag.startsWith(`${c.pool}:seed-candidate-`);
+    if ((candidate && !leased.has(image.Id)) || (!protectedImage && (seed || Date.now() - Date.parse(image.Created) > 7 * 86400_000))) { tags.add(tag); orphaned.push(image.Id); }
   }
   if (!dryRun) {
+    for (const tag of tags) await docker(c, ['image', 'rm', tag]);
+    state.environments = remaining;
     await save(path.join(home, 'catalog.json'), state);
     await docker(c, ['buildx', 'prune', '--builder', `${c.pool}-build`, '--force', '--filter', 'until=168h', '--max-used-space', `${Math.max(2, Math.floor(c.diskGiB / 3))}gb`]);
-    const protectedTools = new Set([state.tools, ...state.environments.map(e => e.tools), ...leased]);
-    const owned = (await docker(c, ['image', 'ls', '--filter', `label=${label}=${c.pool}`, '--format', '{{.Repository}}:{{.Tag}}'])).split('\n').filter(t => t.startsWith(`${c.pool}:tools-`));
-    for (const tag of owned) {
-      const [image] = JSON.parse(await docker(c, ['image', 'inspect', tag])) as { Id: string; Created: string }[];
-      if (!protectedTools.has(image.Id) && Date.now() - Date.parse(image.Created) > 7 * 86400_000) await docker(c, ['image', 'rm', tag]);
-    }
+    const layouts = path.join(home, 'tool-layouts');
+    if (await exists(layouts)) for (const file of await readdir(layouts)) if (/^[a-f0-9]{64}$/.test(file) && !protectedTools.has(`sha256:${file}`)) await rm(path.join(layouts, file), { recursive: true, force: true });
+    for (const folder of ['candidates', 'builds', 'downloads']) await rm(path.join(home, folder), { recursive: true, force: true });
     await rotateLogs();
   }
-  return deletions.map(e => e.image);
+  return [...deletions.map(e => e.image), ...orphaned];
 }
 async function capacity(c: Config): Promise<void> {
   const fs = await statfs(home);
