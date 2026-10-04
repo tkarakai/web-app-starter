@@ -122,12 +122,12 @@ for at least a minute, so a seconds-long check is kept to the one the branch rul
   are uploaded only when E2E fails, and web's sharded reports are merged only then. Coverage
   reports and the upgrade-rehearsal evidence are uploaded on every run. The repository variable
   `PLATFORM_CI_ARTIFACT_RETENTION_DAYS` (default 7) sets how long all of them are kept.
-- **CI can run on your own runner.** The repository variable `PLATFORM_CI_RUNNER` names the
-  runner label every CI job (the platform CI workflows, the `CI <App> Complete` callers and CI
-  Verify Commit) runs on; unset, they use `ubuntu-latest`. The runner must be Ubuntu-like Linux
-  with passwordless `sudo`. Security and deployment workflows stay on GitHub-hosted runners. On a
-  private repository this removes most Actions minutes: see
-  [GitHub Actions on a private repository](private-repo-ci.md), including Mac setup.
+- **CI can run on disposable local workers.** Set up the [local worker manager](local-ci-workers.md)
+  with `bun run ci:workers:setup`. It infers the repository from the current checkout. The manager
+  owns `PLATFORM_CI_WORKER_POOL`; workflows request the pool, exact source SHA and run ID.
+  New containers reuse immutable local images with private writable state. Summary jobs,
+  Security and deployments stay hosted. The legacy `PLATFORM_CI_RUNNER` selector remains
+  compatible with externally operated runners, but the shared-cache Compose setup is retired.
 
 Deployment audit recording uses `.github/scripts/platform-record-ops.cjs`, which also
 ships through platform upgrades. An older app-owned `.github/scripts/record-ops.cjs`
@@ -274,3 +274,14 @@ releasing it.
 ### Pull-request base branches
 
 App-owned `ci-*.yml` and `security.yml` callers run on all pull-request bases, including stacked and migration branches. They are upgrade seams: upstream trigger fixes merge against your baseline; intentional customization stays yours and conflicts require review. For required summary checks, see the [branch-protection checklist](deployment-runbook.md#configure-branch-protection).
+
+### Prepared worker parity
+
+`starter-workers check --install` runs two disposable smoke workers and an offline install.
+`starter-workers check --ci` runs native CI inside the same image and container policy used by
+GitHub-dispatched workers. It tests the committed revision, never a writable bind mount of your
+checkout. `check --github` tests actual GitHub scheduling through two sequential jobs. See
+[branch testing](local-ci-workers.md#test-a-branch-before-enabling-normal-ci).
+
+`ci:act` remains a trusted local workflow simulator with its own mutable caches. Its containers
+are not proof of managed-worker parity and must not be used for untrusted pull requests.

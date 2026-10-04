@@ -5,6 +5,12 @@
 # come from the runner image when it was built for this Playwright version.
 set -euo pipefail
 
+if [ "${STARTER_WORKER:-}" = "1" ]; then
+  expected=$(jq -r .playwright /etc/starter-worker.json)
+  test "$PLAYWRIGHT_VERSION" = "$expected" || { echo "Prepared Playwright mismatch; refresh the worker image" >&2; exit 1; }
+  exit 0
+fi
+
 : "${PLAYWRIGHT_VERSION:?PLAYWRIGHT_VERSION is required}"
 marker=/etc/starter-ci-runner
 

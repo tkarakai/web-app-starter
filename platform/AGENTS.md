@@ -89,6 +89,7 @@ bun run dev:storybook        # storybook               bun run dev:status / dev:
 
 CI=true bun run ci           # Full local CI; one web E2E worker avoids edge-rate-limit failures
 bun run ci:quick             # Same without E2E
+bun run ci:workers:setup     # Optional disposable local GitHub workers; docs/local-ci-workers.md
 bun run lint                 # ESLint, all workspaces
 bun run typecheck            # TypeScript, all workspaces
 bun run test                 # Bun unit tests      (never bare `bun test`)

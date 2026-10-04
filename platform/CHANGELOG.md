@@ -13,6 +13,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- A local GitHub Actions worker manager prepares images without a registry, isolates each job
+  in a new container, keeps registration credentials on the host, and supports branch diagnostics,
+  offline dependency seeds and targeted cleanup. Setup infers the repository from the checkout.
+
+### Action required
+
+- Operators of the old optional Compose workers must stop them and revoke their registration
+  credential before adopting the new manager. Shared writable cache volumes are no longer the
+  supported worker setup. Follow [local workers](docs/local-ci-workers.md) and verify the
+  diagnostic before enabling routing. GitHub-hosted CI needs no action.
+
 ### Fixed
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
 

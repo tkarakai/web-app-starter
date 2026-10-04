@@ -8,4 +8,7 @@ if [ "${CI:-}" = "true" ]; then
     export DATABASE_UDF_USER_TIMEOUT_SECONDS="${DATABASE_UDF_USER_TIMEOUT_SECONDS:-5}"
 fi
 export CONVEX_AGENT_MODE=anonymous
+if [ -n "${CONVEX_LOCAL_BACKEND_VERSION:-}" ]; then
+    exec npx convex dev --local-backend-version "$CONVEX_LOCAL_BACKEND_VERSION"
+fi
 exec npx convex dev

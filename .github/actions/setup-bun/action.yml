@@ -12,6 +12,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Detect managed worker
+      shell: bash
+      run: |
+        if [ "${STARTER_WORKER:-}" = "1" ] && [ -r /etc/starter-worker.json ]; then
+          echo "STARTER_WORKER=1" >> "$GITHUB_ENV"
+        fi
+
     - name: Find cached Node (act)
       id: node-cache
       if: ${{ env.ACT }}
@@ -21,14 +28,14 @@ runs:
       run: bash "${{ github.action_path }}/find-node.sh"
 
     - name: Setup Node
-      if: ${{ steps.node-cache.outputs.found != 'true' }}
+      if: ${{ env.STARTER_WORKER != '1' && steps.node-cache.outputs.found != 'true' }}
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: ${{ inputs.node-version }}
         package-manager-cache: false
 
     - name: Setup Bun
-      if: ${{ !env.ACT }}
+      if: ${{ !env.ACT && env.STARTER_WORKER != '1' }}
       uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       with:
         bun-version: ${{ inputs.bun-version }}
@@ -54,11 +61,25 @@ runs:
         restore-keys: |
           ${{ runner.os }}-bun-
 
+    - name: Verify managed tools
+      if: env.STARTER_WORKER == '1'
+      shell: bash
+      env:
+        EXPECTED_BUN: ${{ inputs.bun-version }}
+        EXPECTED_NODE: ${{ inputs.node-version }}
+      run: |
+        test "$(bun --version)" = "$EXPECTED_BUN"
+        test "$(node -p 'process.versions.node.split(".")[0]')" = "${EXPECTED_NODE%%.*}"
+
     - name: Install dependencies
       shell: bash
       run: |
         # Retry logic: when multiple act containers share the same bun cache
         # volume, concurrent `bun install` can race on symlink creation (EEXIST).
+        if [ "${STARTER_WORKER:-}" = "1" ]; then
+          bun install --offline --frozen-lockfile
+          exit $?
+        fi
         MAX_ATTEMPTS=5
         for attempt in $(seq 1 $MAX_ATTEMPTS); do
           if bun install --frozen-lockfile; then

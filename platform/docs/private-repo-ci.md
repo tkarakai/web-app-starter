@@ -132,240 +132,27 @@ Old artifacts can be deleted under **Actions → (a run) → Artifacts**, or in 
 
 ### 5. Run CI on your own machine (free, the biggest win)
 
-GitHub doesn't count minutes on **self-hosted runners**. Any machine you already own can run the
-starter's CI: a Mac you work on, a spare Linux box, a small cloud server. Set one repository
-variable and all CI jobs (CI Shared, Web, Admin, Landing, Storybook, and CI Verify Commit) run
-there instead of on GitHub's machines:
+Use the [local worker guide](local-ci-workers.md). The manager builds prepared images in your
+local Docker engine and starts a **new container for every GitHub Actions job**. It infers the
+repository from your checkout; no prepared-image registry is required.
 
-```bash
-gh variable set PLATFORM_CI_RUNNER --body starter-ci     # the label your runner registers with
-gh variable delete PLATFORM_CI_RUNNER                    # back to GitHub-hosted runners
+```sh
+bun run ci:workers:setup
+starter-workers check --install
+starter-workers check --github
+# After the diagnostic completes: starter-workers check --github --run RUN_ID
+starter-workers enable
 ```
 
-The Security workflow and deployments stay on GitHub-hosted runners: the secrets scan needs Docker,
-and deployment credentials shouldn't live on a personal machine. Security costs about 3 minutes
-per push. To save those as well, edit the triggers in your app-owned `.github/workflows/security.yml`
-to run on `main` and on the weekly schedule only.
+One operator keeps the worker machine available. Everyone else pushes normally. App CI uses
+local workers; summary jobs, Security and deployment workflows remain hosted. Begin with one
+worker, observe memory consumption, then increase concurrency if the machine has capacity.
 
-> **Security first: only ever attach a self-hosted runner to a private repository.** On a public
-> repository, anyone can open a pull request from a fork and run code on your machine. On a private
-> repository, anyone with write access still can, so treat the runner like a shared machine. Run it
-> in a container (as below) that can't see your home directory, and never mount your Docker socket
-> into it. Read GitHub's [hardening advice for self-hosted runners](https://docs.github.com/en/actions/reference/security/secure-use).
-
-The CI jobs expect an **Ubuntu-like Linux machine with passwordless `sudo`**: Playwright installs
-browser system libraries with `apt`. The easiest way to get exactly that, on any computer, is a
-runner in a container, and the starter ships one ready to build: `platform/tooling/ci-runner/`.
-
-#### Choose repository or organization scope
-
-**For several private repos with the same trusted maintainers, prefer one GitHub Free
-organization and an organization-level pool.** The default runner group can serve selected
-repositories; a paid plan is not needed for this shared pool. Four workers then run at most four
-jobs concurrently across those repos, instead of reserving four workers for each repo.
-
-| Scope | Who can use the runners | Use it when |
-|---|---|---|
-| Repository | One repository, whether personally or organization owned | One project, or separate capacity and trust boundaries |
-| Organization | Allowed repositories in the same organization, including on GitHub Free | Several trusted private projects sharing capacity |
-| Enterprise | Multiple organizations allowed by an enterprise account | Sharing across organizations under Enterprise |
-
-Personal accounts have no account-wide runner pool. Their repos need separate registrations
-and containers, although those containers can use the same Mac and image. Multiple Free
-organizations also need separate pools; moving related repos into **one** organization enables
-sharing. Restrict the default group's repository access to the private repos you intend to serve.
-Repository access policy grants access; a matching runner label alone does not.
-
-See GitHub's [runner scopes](https://docs.github.com/en/actions/concepts/runners/self-hosted-runners)
-and [group access settings](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access).
-This recommendation needs only the default group. Private-repo branch protection and required
-reviewers remain paid features ([plans](https://docs.github.com/en/get-started/learning-about-github/githubs-plans)).
-
-The setup below defaults to repository scope. To share an organization pool, create an
-organization registration credential and adjust the **copied** Compose file as described below.
-Moving a repository does not turn its existing runners into organization runners: re-register
-the pool at organization scope, then enable it for each selected repo. Review GitHub's
-[repository transfer checklist](https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository)
-before moving a repo, including integrations and references to its old owner/name.
-
-#### On a Mac (Apple Silicon or Intel)
-
-You'll run a Linux runner inside a container. On Apple Silicon it runs natively as arm64 Linux,
-with no emulation. Bun, Node, Playwright's Chromium and the Convex local backend all ship arm64
-Linux builds. Don't use GitHub's native macOS runner for this: the workflows assume Linux.
-
-**Step 1: install a container engine.** Any of these works:
-
-- [OrbStack](https://docs.orbstack.dev/) (light and fast, our pick for a Mac): `brew install orbstack`
-- [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/)
-- [Colima](https://github.com/abiosoft/colima) (free, command line): `brew install colima docker docker-compose && colima start --cpu 6 --memory 10`
-
-**Give it enough memory.** An E2E job runs a Convex backend, a Next.js server and Chromium at
-once: plan for about **4 GB per runner**, plus whatever else you run in containers, because they all
-share the engine's memory limit. In Docker Desktop, Settings → Resources → Memory: 12 GB for two
-runners, 16 GB for three. Too little doesn't fail cleanly: E2E jobs fail at random, with Convex
-timing out ("Function execution timed out") or the app server dying mid-test
-(`ERR_CONNECTION_REFUSED`). OrbStack takes memory as needed; check its limit under Settings.
-
-**Step 2: create a token for the runner.** The runner container registers itself with GitHub on
-every start, so it needs a personal access token:
-
-For a **repository runner**:
-
-- **Fine-grained** (recommended): [create one](https://github.com/settings/personal-access-tokens/new)
-  with access to **only this repository** and the permission **Administration: Read and write**.
-  That permission is what lets it create runner registration tokens.
-- **Classic**: the `repo` scope.
-
-For an **organization pool**, an organization owner creates a fine-grained token (recommended) with the
-organization as resource owner and organization **Self-hosted runners: Read and write**
-permission, subject to the organization's token approval policy. A classic token needs
-`admin:org` plus `repo` for private-repository access; a repository-only token is insufficient. See the
-[registration API permissions](https://docs.github.com/en/rest/actions/self-hosted-runners#create-a-registration-token-for-an-organization).
-
-Give it an expiry date and put a reminder in your calendar. Keep the credential outside git
-and restrict the `.env` file to its owner (`chmod 600 .env`).
-
-**Step 3: build the runner image and start the runners.** Copy the starter's runner files into a
-folder outside your repository, for example `~/ci-runner/`:
-
-```bash
-mkdir -p ~/ci-runner
-cp platform/tooling/ci-runner/Dockerfile platform/tooling/ci-runner/compose.yaml ~/ci-runner/
-(cd apps/web && ./node_modules/.bin/playwright --version)    # e.g. "Version 1.63.0"
-```
-
-Next to them, create a `.env` file with the token, your repository and that Playwright version:
-
-```bash
-GITHUB_RUNNER_PAT=github_pat_...
-REPO_URL=https://github.com/<owner>/<repo>
-PLAYWRIGHT_VERSION=1.63.0
-```
-
-For **organization scope**, use an organization-capable token in that file and add
-`ORG_NAME=<your-org>`. In the copied `compose.yaml`, remove the `REPO_URL` environment line,
-change `RUNNER_SCOPE: repo` to `RUNNER_SCOPE: org`, and add:
-
-```yaml
-      ORG_NAME: ${ORG_NAME:?set ORG_NAME in .env}
-```
-
-The remaining environment, volumes and image settings stay the same. Merely adding
-`RUNNER_SCOPE` to `.env` does not override the template's hard-coded value. These are the
-runner image's [organization settings](https://github.com/myoung34/docker-github-actions-runner/wiki/Usage#org-runners).
-Use a separate folder/Compose project for each independent pool so their cache volumes stay
-separate. When changing registration scope, wait for active jobs to finish, stop the old pool,
-update its configuration and credentials, then recreate it.
-
-Then build the image and start two runners:
-
-```bash
-cd ~/ci-runner
-docker compose build                      # a minute or two, once
-docker compose up -d --scale runner=2     # two runners work on two jobs at once
-docker compose logs -f                    # watch them register and pick up jobs
-```
-
-After a minute, the runners appear under the repository's (or organization's)
-**Settings → Actions → Runners** as idle, with the `starter-ci` label. For an organization pool,
-use **Settings → Actions → Runner groups → Default → Repository access** to select its repos.
-
-The image is the community-maintained
-[docker-github-actions-runner](https://github.com/myoung34/docker-github-actions-runner) image,
-which wraps GitHub's official runner, plus the system libraries and fonts Playwright's Chromium
-needs. Everything else stays out of the image and in Docker volumes that every runner on the
-Compose project shares:
-
-| Volume | Holds | Downloaded |
-|---|---|---|
-| `toolcache` | Node | once per Node major version |
-| `bun` | Bun and its package cache | once per Bun version; packages once per lockfile change |
-| `playwright` | Playwright's Chromium | once per Playwright upgrade |
-| `convex` | the Convex local backend | once per Convex backend release |
-
-On GitHub's machines every job downloads all of that again from GitHub's cache, about 9 GB per PR
-push. Your runners download each version once and then reuse it, and they don't use the
-repository's 10 GB cache quota either. The first run after starting fresh volumes still downloads
-everything; if two jobs happen to fetch the same new version at the same moment and one fails,
-re-run it.
-
-**How many runners?** One runner runs one job at a time, and a PR push queues about 15–20 jobs.
-Two runners are a good start on a 16 GB Mac; three or four if you have 32 GB or more. With two
-runners, a PR push that touches everything takes about 10 minutes. More runners
-make CI finish sooner; they don't change what it costs, which is nothing.
-
-**Step 4: switch CI over.** Run this for **each** repository allowed to use the pool
-(from that repository's checkout, or add `--repo <org>/<repo>`):
-
-```bash
-gh variable set PLATFORM_CI_RUNNER --body starter-ci
-```
-
-Push to a PR and watch the jobs show up in `docker compose logs`.
-
-**Step 5: keep the Mac available.** Jobs wait in the queue while your Mac sleeps or is offline,
-and fail after 24 hours. Some habits that help:
-
-- Keep it awake while plugged in: System Settings → Battery → Options → "Prevent automatic
-  sleeping on power adapter when the display is off", or run `caffeinate -s` in a terminal.
-- Start the container engine at login (OrbStack and Docker Desktop both have the setting). With
-  `restart: always` the runners come back by themselves.
-- Leaving for a trip? `gh variable delete PLATFORM_CI_RUNNER` puts CI back on GitHub's machines
-  while you're away.
-
-**After a Playwright upgrade**, E2E jobs show a "Rebuild the CI runner image" notice and install
-the browser system libraries themselves, which costs about 20 seconds per job. Update
-`PLAYWRIGHT_VERSION` in `.env` and rebuild:
-
-```bash
-docker compose build --pull && docker compose up -d --scale runner=2
-```
-
-The same command picks up a new base image now and then. Taking a starter release that changes
-`platform/tooling/ci-runner/` means refreshing the copied Dockerfile and `compose.yaml`. Preserve
-or reapply your local pool settings before rebuilding and recreating the runners: organization
-pools must retain `RUNNER_SCOPE: org`, `ORG_NAME`, and the removal of `REPO_URL` from the Compose
-environment ([organization setup](#on-a-mac-apple-silicon-or-intel)). Keep your `.env`, labels,
-runner name prefix, volume configuration and Compose project identity, and use your existing
-worker count instead of the example `--scale runner=2`.
-
-**Housekeeping.** Each new Node, Playwright or Convex version adds to the volumes, and old ones
-stay. Check with `docker system df -v`. To start a volume over, stop the runners and remove it;
-the next jobs download what they need again:
-
-```bash
-docker compose down
-docker volume ls                          # names start with the folder name, e.g. ci-runner_playwright
-docker volume rm ci-runner_playwright     # or all four
-docker compose up -d --scale runner=2
-```
-
-Prune images and build output now and then with `docker system prune`. To stop:
-`docker compose down`, then delete any leftover offline runners under Settings → Actions → Runners.
-
-**What the shared volumes mean for security.** A job can change what later jobs find in the
-volumes, so a malicious pull request could leave a tampered binary behind for the next run. That
-is acceptable only because a self-hosted runner belongs on a private repository whose writers you
-trust (see the warning above). An organization pool extends that trust to every allowed repo:
-one repo's job can affect another repo's cached tools. Use separate pools and cache volumes for
-different trust boundaries. If you suspect a run, remove the volumes.
-
-#### On a Linux machine or server
-
-Use the same runner files and `compose.yaml` with Docker on any x86-64 or arm64 Linux host. Or
-install GitHub's runner directly on an Ubuntu machine whose user has passwordless `sudo`
-([adding a self-hosted runner](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)),
-and add the label `starter-ci` when you configure it. Its home folder keeps Node, Bun, the
-packages and the browsers between jobs by itself. To skip installing the browser system libraries
-in every E2E job, install them once and record the version, as the runner image does:
-
-```bash
-(cd apps/web && sudo ./node_modules/.bin/playwright install-deps chromium)
-echo "playwright=1.63.0" | sudo tee /etc/starter-ci-runner    # the version installed
-```
-
-A 4-core, 8 GB server comfortably runs two runners. More: [about self-hosted runners](https://docs.github.com/en/actions/concepts/runners/self-hosted-runners).
+The previous Compose runner with shared writable caches is retired. Stop that Compose project,
+remove its registrations, revoke its registration PAT, and delete its dedicated cache volumes
+after identifying them with `docker volume ls`. Remove the old `PLATFORM_CI_RUNNER` variable
+before enabling the new manager. Do not reuse those volumes as image seeds. Follow the guide's
+diagnostic before switching routing. Other tools using Docker on the machine are unaffected.
 
 ### 6. Set a budget, so you're never stuck
 
@@ -387,10 +174,9 @@ pushing (2), retention of 2 days (4), and one or two runners on your Mac (5). Ke
 (6) as a safety net. Your GitHub-hosted usage drops to the Security workflow, a few minutes per
 push.
 
-**Several projects on GitHub Free.** Keep related private repos with the same trusted maintainers
-in one Free organization and share an organization-level pool ([scope choice](#choose-repository-or-organization-scope)).
-Select the allowed repos and set `PLATFORM_CI_RUNNER` in each. Start with two workers and scale
-within the host's resources; four workers means four concurrent jobs across the whole pool.
+**Several projects on GitHub Free.** Use separate worker installations and credentials for each
+repository, preferably on dedicated CI machines. Organization-wide shared pools are not supported
+by this manager.
 
 **Small team on GitHub Team.** A shared Linux runner on a small server (5) handles everyone's
 PRs. Set `PLATFORM_CI_PR_E2E=on-demand` (3) so E2E runs once per PR, when it's ready for
