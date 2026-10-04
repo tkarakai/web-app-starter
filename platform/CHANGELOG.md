@@ -43,10 +43,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
-- Review the default auth email budgets (3/minute per recipient, deployment burst 20 with
-  60/minute and 1,000/24-hour refill) against expected traffic and provider quotas. Custom clients
-  must honor 429/`Retry-After`. Configure an IP bucket only after verifying your ingress overwrites
-  the selected header on every reachable origin. See [rate limiting](docs/rate-limiting-architecture.md).
+- Review auth email budgets against expected traffic and provider quotas, and update custom
+  clients and ingress configuration according to the
+  [rate-limiting configuration and exhaustion guidance](docs/rate-limiting-architecture.md#deployment-configuration-and-ip-trust).
 
 - Custom recovery-code viewers must pass the current password to `viewBackupCodes({ password })`
   or use the authenticated POST helper with a password JSON body. Deploy backend and UI together.

@@ -9,29 +9,15 @@ Rate limiting is implemented at three layers, each targeting a different attack 
 ```
 Client Request
   │
-  ▼
-┌─────────────────────────────────────┐
-│  Layer 3: Edge Proxy                │  ← Per-IP, in-memory, first line of defense
-│  (Next.js proxy.ts)                 │
-│  apps/web/src/proxy.ts              │
-│  platform/apps/admin/src/proxy.ts            │
-└──────────────┬──────────────────────┘
-               │
-  ┌────────────┴────────────┐
-  │                         │
-  ▼                         ▼
-┌──────────────┐    ┌──────────────────┐
-│ Page Routes  │    │ /api/auth/*      │
-│ (React)      │    │ (Better Auth)    │
-└──────┬───────┘    └────────┬─────────┘
-       │                     │
-       ▼                     ▼
-┌──────────────┐    ┌──────────────────┐
-│  Layer 2     │    │  Layer 1         │  ← Recipient/global, database-backed
-│  Convex      │    │  Better Auth     │
-│  Mutations   │    │  Rate Limiting   │
-│  (per-user)  │    │                  │
-└──────────────┘    └──────────────────┘
+  ├─ Page request → Layer 3: Edge Proxy → React page
+  │                 Per-IP, in-memory
+  │
+  ├─ Auth request → Layer 1: Auth request and email budgets → Better Auth
+  │                 Recipient/deployment, database-backed
+  │                 Includes direct Convex HTTP requests; bypasses edge proxy
+  │
+  └─ Authenticated mutation → Layer 2: Convex mutation budget → Mutation
+                               Per-user, database-backed
 ```
 
 ## Layer 1: Authentication requests and email delivery
@@ -39,7 +25,7 @@ Client Request
 Better Auth's built-in limiter is disabled. The platform uses durable Convex token buckets in
 its app-level `rateLimits` table, through `platform/authRateLimits.ts` and
 `platform/rateLimits.ts` in the backend. Separate mutations commit request usage before the
-handler runs and atomically reserve delivery capacity before calling the email provider.
+handler runs and atomically reserve email capacity before calling the email provider.
 Limits apply across instances and survive restarts.
 
 Every auth route, including installed plugin endpoints and unknown routes, consumes the
@@ -57,9 +43,9 @@ before hashing; plus tags and dots are not stripped. Keys contain hashes, not em
 | Password sign-in / email OTP verification | 3/10 seconds | 3 | Normalized recipient |
 | Signup / email OTP password reset | 5/minute | 5 | Normalized recipient and route budget |
 | Magic link, verification, OTP send, password-reset request | 3/minute | 3 | Normalized recipient and route budget |
-| All auth email delivery attempts | 3/minute | 3 | Normalized recipient across message types |
-| All auth email delivery attempts | 60/minute | 20 | Deployment |
-| All auth email delivery attempts | 1,000/24 hours | 1,000 | Deployment |
+| Auth email reservations | 3/minute | 3 | Normalized recipient across message types |
+| Auth email reservations | 60/minute | 20 | Deployment |
+| Auth email reservations | 1,000/24 hours | 1,000 | Deployment |
 
 These are token buckets with continuous refill, not calendar windows or hard rolling-window
 quotas. A full bucket permits its initial burst plus tokens replenished during a period.
@@ -74,9 +60,9 @@ Set these on the Convex deployment, from `packages/backend/`, using `bunx convex
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `AUTH_EMAIL_RATE_PER_MINUTE` | `60` | Deployment email attempts replenished per minute |
+| `AUTH_EMAIL_RATE_PER_MINUTE` | `60` | Deployment email reservation capacity replenished per minute |
 | `AUTH_EMAIL_BURST` | `20` | Deployment short-term email capacity |
-| `AUTH_EMAIL_RATE_PER_DAY` | `1000` | Long-term capacity and attempts replenished per 24 hours |
+| `AUTH_EMAIL_RATE_PER_DAY` | `1000` | Long-term reservation capacity and refill per 24 hours |
 | `AUTH_TRUSTED_IP_HEADER` | Unset | Optional verified ingress-overwritten single-IP header |
 
 Size email budgets for expected enrollment/reset volume and the provider's quota. Defaults
@@ -100,8 +86,9 @@ an ambiguous failure may already have delivered a message. There are no automati
 provider retries. A denied delivery reservation does not consume the other delivery buckets.
 Expired capacity refills normally; repeated denials do not extend the wait.
 
-OTP send routes reserve delivery capacity before changing challenge state. Competing sends
-atomically reuse the unexpired code in the existing verification table, including two-factor
+OTP send routes reserve delivery capacity before endpoint eligibility checks and challenge-state
+changes; a reservation can therefore consume capacity even when no provider call follows.
+Competing sends atomically reuse the unexpired code in the existing verification table, including two-factor
 OTP sends, so a throttled resend cannot replace a previously delivered OTP. The platform
 emits `AUTH_EMAIL_BUDGET_EXHAUSTED` with the budget name at most once per
 five minutes per deployment, with no recipient, code or message contents. Alert on this event
@@ -218,7 +205,7 @@ The in-memory IP tracker has a configurable maximum size (default 10,000 entries
 
 - **Per-instance only**: Each serverless/edge instance has its own counter. The effective limit scales with the number of instances.
 - **Not persistent**: Counters reset on deployment. This is acceptable because the edge layer is a first line of defense, not the primary rate limiting.
-- **Excluded routes**: API routes (`/api/*`), static assets (`/_next/static/*`, `/_next/image/*`), and prefetch requests are not rate limited at the edge. API routes are protected by Layer 1 (Better Auth).
+- **Excluded routes**: API routes (`/api/*`), static assets (`/_next/static/*`, `/_next/image/*`), and prefetch requests are not rate limited at the edge. Auth API routes are protected by Layer 1; other API routes need their own protection.
 
 ### What Happens When Rate Limited
 

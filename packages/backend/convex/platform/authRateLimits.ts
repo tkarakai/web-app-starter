@@ -67,7 +67,9 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
         ? Object.fromEntries(new URLSearchParams(await request.clone().text()))
         : await request.clone().json();
       email = normalizeAuthRecipient(body && typeof body === "object" && "email" in body ? body.email : undefined);
-    } catch {}
+    } catch {
+      // Unreadable bodies still consume deployment and any trusted-IP request budgets.
+    }
     const ip = trustedAuthIp(request);
     const result = await requireActionCtx(convexCtx).runMutation(
       internal.platform.rateLimits.consumeAuthRequestBudget,
