@@ -30,7 +30,8 @@ deploy preflight refuses these variables. This does not disable local fixtures.
 ## Generated API bindings
 
 After target source application, the updater runs `v4-platform-api.ts`
-to extend Convex’s generated declaration with the three new internal platform modules. Those
+to extend Convex’s generated declaration with the seven new platform modules: `authAssurance`, `authRateLimits`, `localFixtures`,
+`recoveryCodes`, `sessionAssurance`, `sessionFields` and `sessionPolicy`. Those
 modules must be present in the app checkout; running the target script against v3.1.0 source
 alone cannot prepare their bindings. It
 preserves app-owned bindings and fails on an unknown declaration format. This makes platform
@@ -58,6 +59,26 @@ Test wrong-password rejection before successful disclosure. Password reset now r
 Review the new optional `AUTH_TRUSTED_IP_HEADER`, `AUTH_EMAIL_RATE_PER_MINUTE`, `AUTH_EMAIL_BURST`
 and `AUTH_EMAIL_RATE_PER_DAY` configuration against the
 [auth rate-limit contract](rate-limiting-architecture.md#deployment-configuration-and-ip-trust).
+
+## Session assurance compatibility
+
+Deploy the authentication backend and UI together. Existing sessions without verified proof
+must reauthenticate or sign in again. Custom auth screens must handle limited enrollment and
+recovery sessions and fresh verification; app-owned administrator mutations must use
+`adminMutation`. Required passkeys need current-session passkey authentication. Email-OTP
+sign-in, social account/token routes and admin impersonation are unavailable; password reset
+and email verification remain supported. Follow
+[session assurance](authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+
+Before planning, port the reference `apps/web/src/components/settings/account-client.tsx`
+compatibility while preserving your app's tabs and unsaved account/setup state through fresh
+verification. Port the session-proof helpers and assertions in app-owned auth E2E and backend
+tests; identity-only test sessions no longer prove assurance. Follow
+`packages/backend/convex/authorization-contract.test.ts`: register the Better Auth component,
+create a session with assurance fields through its adapter, and pass its `sessionId` to
+`withIdentity`. Run local auth E2E and backend
+session-policy tests against the target source, covering reauthentication, limited setup,
+recovery and administrator expiry before deployment or merge.
 
 ## App-owned sample files
 

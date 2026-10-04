@@ -13,7 +13,7 @@ test("generated platform bindings make real Convex API consumers typecheck while
   fs.writeFileSync(path.join(root, "package.json"), '{"type":"module"}');
   const declaration = 'import { internalMutationGeneric } from "convex/server"; export const ping = internalMutationGeneric({args:{},handler:()=>null});';
   fs.writeFileSync(path.join(convex, "business.ts"), declaration);
-  for (const name of ["authRateLimits", "localFixtures", "recoveryCodes"]) fs.writeFileSync(path.join(convex, "platform", name + ".ts"), declaration);
+  for (const name of ["authAssurance", "authRateLimits", "localFixtures", "recoveryCodes", "sessionAssurance", "sessionFields", "sessionPolicy"]) fs.writeFileSync(path.join(convex, "platform", name + ".ts"), declaration);
   const source = `/* THIS CODE IS AUTOMATICALLY GENERATED. */
 import type * as business from "../business.js";
 import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
@@ -26,6 +26,10 @@ export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, 
   const consumer = path.join(convex, "consumer.ts");
   fs.writeFileSync(consumer, `import { internal } from "./_generated/api.js";
 internal.business.ping;
+internal.platform.authAssurance.ping;
+internal.platform.sessionAssurance.ping;
+internal.platform.sessionFields.ping;
+internal.platform.sessionPolicy.ping;
 internal.platform.authRateLimits.ping;
 internal.platform.localFixtures.ping;
 internal.platform.recoveryCodes.ping;

@@ -33,8 +33,12 @@ export function migrate(root: string, check = false): string[] {
           content = JSON.stringify(manifest, null, 2) + "\n";
         } else {
           // Only the standard literal transpilePackages array; custom expressions need review.
-          content = source.replace(/(transpilePackages\s*:\s*\[)([^\]]*)(\])/g, (_match, start: string, entries: string, end: string) =>
-            start + entries.replace(/(["'])@repo\/onboarding\1\s*,?\s*/g, "") + end);
+          content = source.replace(/(transpilePackages\s*:\s*\[)([^\]]*)(\])/g, (match, start: string, entries: string, end: string) => {
+            const values = entries.split(",");
+            // Leave custom expressions and escaped literals for manual review.
+            if (!values.every(value => /^\s*(?:"[^"\\]*"|'[^'\\]*')?\s*$/.test(value))) return match;
+            return start + values.filter(value => !['"@repo/onboarding"', "'@repo/onboarding'"].includes(value.trim())).join(",") + end;
+          });
         }
         if (content !== source) changes.push({ relative, fd, content });
       }

@@ -4,6 +4,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { migrate } from "../codemods/v4-onboarding-dependency.ts";
 
 test("older app upgrades install without adopting reference onboarding; custom packages survive", t => {
@@ -21,7 +22,7 @@ test("older app upgrades install without adopting reference onboarding; custom p
   assert.equal(migrate(root, true).length, 4); assert.equal(fs.readFileSync(manifest, "utf8"), original);
   assert.equal(migrate(root).length, 4);
   const after = install(); assert.equal(after.status, 0, after.stdout + after.stderr);
-  assert.match(fs.readFileSync(path.join(root, "apps/web/next.config.ts"), "utf8"), /\["custom-package"\]/);
+  assert.deepEqual(evaluateConfig(path.join(root, "apps/web/next.config.ts")).transpilePackages, ["custom-package"]);
   assert.deepEqual(migrate(root), []); assert.deepEqual(migrate(root, true), []);
   fs.mkdirSync(path.join(root, "packages/onboarding"), { recursive: true });
   const custom = '{"name":"@repo/onboarding","private":true,"exports":{"./styles.css":"./custom.css"}}';
@@ -42,4 +43,42 @@ test("missing consumers are optional and invalid targets fail before any writes"
   fs.writeFileSync(manifest, original);
   fs.symlinkSync(manifest, path.join(root, "apps/web/next.config.ts"));
   assert.throws(() => migrate(root)); assert.equal(fs.readFileSync(manifest, "utf8"), original);
+});
+
+const evaluateConfig = (file: string) => {
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", `const { default: config } = await import(${JSON.stringify(pathToFileURL(file).href)}); console.log(JSON.stringify(config));`], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  return JSON.parse(result.stdout) as { transpilePackages: string[]; custom: string };
+};
+
+test("literal entry removal preserves executable config, custom expressions and repeat runs", t => {
+  const root = fs.mkdtempSync(path.resolve("platform/tooling/tests/.v4-onboarding-config-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const cases = [
+    { entries: '"@repo/onboarding", "custom"', expected: ["custom"] },
+    { entries: '"first", \'@repo/onboarding\', "last"', expected: ["first", "last"] },
+    { entries: '"custom", "@repo/onboarding"', expected: ["custom"] },
+    { entries: '"@repo/onboarding"', expected: [] },
+    { entries: '\'@repo/onboarding\', "@repo/onboarding",', expected: [] },
+    { entries: '"@repo/onboarding-extra", "@repo/onboarding"', expected: ["@repo/onboarding-extra"] },
+    { entries: '"@repo/onboarding" + "-custom", "other"', expected: ["@repo/onboarding-custom", "other"], unchanged: true },
+    { entries: '"custom,package", "@repo/onboarding"', expected: ["custom,package", "@repo/onboarding"], unchanged: true },
+    { entries: '"custom\\u002dpackage", "@repo/onboarding"', expected: ["custom-package", "@repo/onboarding"], unchanged: true },
+  ];
+  for (const app of ["web", "landing"]) {
+    fs.mkdirSync(path.join(root, "apps", app), { recursive: true });
+    const config = path.join(root, "apps", app, "next.config.ts");
+    for (const row of cases) {
+      const source = `export default { transpilePackages: [${row.entries}], custom: "keep me" };\n`;
+      fs.writeFileSync(config, source);
+      const before = evaluateConfig(config);
+      assert.deepEqual(migrate(root, true), row.unchanged ? [] : [`apps/${app}/next.config.ts`]);
+      assert.equal(fs.readFileSync(config, "utf8"), source);
+      migrate(root);
+      assert.deepEqual(evaluateConfig(config), { ...before, transpilePackages: row.expected });
+      if (row.unchanged) assert.equal(fs.readFileSync(config, "utf8"), source);
+      assert.deepEqual(migrate(root), []);
+      assert.deepEqual(migrate(root, true), []);
+    }
+  }
 });

@@ -878,7 +878,8 @@
         "apps.web.package.json",
         "packages.backend.convex._generated.api.d.ts",
         "package.json",
-        "turbo.json"
+        "turbo.json",
+        "eslint.config.mjs"
       ]
     }
   ]
