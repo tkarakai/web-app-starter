@@ -89,6 +89,7 @@
     "test:landing-artifacts": "./platform/tooling/test-landing-export.sh --variants"
   },
   "overrides": {
+    "@peculiar/asn1-schema": "2.9.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "convex": "1.46.0",
