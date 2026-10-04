@@ -15,8 +15,10 @@ packages. Warm jobs reuse those bytes locally.
 
 ## Set up workers before enabling routing
 
-1. Use a **reviewed checkout** of your application's trusted branch. Installing a manager gives
-   that checkout host-level authority. The supporting workflows must be adopted too.
+1. Use a **reviewed checkout** of your application's default branch for the setup sequence below.
+   Installing a manager gives that checkout host-level authority. The supporting workflows must
+   be adopted too. For another branch, follow [branch testing](#test-a-branch-before-enabling-normal-ci)
+   and pass the same `--ref` to the local check and GitHub dispatch.
 2. Install Node (the project's supported version), Bun, Git, GitHub CLI and Docker Desktop on
    macOS or Docker Engine on Linux. Start Docker with Linux containers. Run `docker info` and
    `gh auth status`. The manager records the Docker executable, context and Node executable;
