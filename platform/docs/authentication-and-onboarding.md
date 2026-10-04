@@ -402,6 +402,9 @@ access through the deployment's support process; the recovery code does not waiv
 Bound administrator candidates use only their invitation enrollment API and self-service factor
 setup until completion. Resumed setup requests fresh verification when needed. The wizard retains
 its progress and backup-code acknowledgement while the recipient verifies their identity.
+Web and admin gates retain previously admitted setup state and unsaved backup codes in memory
+through recent-proof expiry and token rotation, hiding protected content until access is restored.
+Limited sessions do not mount ordinary protected consumers before their first admission.
 
 For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
 `packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
@@ -531,9 +534,10 @@ Shows a table of all admin accounts (where `role === "admin"`). Same table compo
 1. Admin clicks "Use a backup code" on the TOTP prompt (password login only)
 2. Enters one of their backup codes
 3. Better Auth validates and marks the code as used
-4. Full session issued
-5. Dashboard shows immediate prompt: **"You used a backup code. Set up TOTP on a new device now."** Cannot be dismissed without completing new TOTP setup or clicking "Remind me in 1 hour" (max 3 snoozes before it blocks access)
-6. Write audit event: `admin.recovery.backup_code_used`
+4. A recovery-only session is issued; ordinary dashboard data remains inaccessible
+5. The shared gate requires the current password to replace TOTP, followed by verification of
+   the new authenticator and acknowledgement of its backup codes
+6. Normal access resumes after successful replacement and verification, subject to current policy
 
 #### Lost TOTP device, no backup codes, email still accessible
 
@@ -597,6 +601,9 @@ step. The wizard does not retain the codes returned when TOTP is enabled, and TO
 does not return codes, so that step loads them with fresh password proof. Regeneration and TOTP
 enrollment also verify the current password through Better Auth. The view operation shares a five-attempt, five-per-minute token
 bucket per account across sessions and transports. Failed passwords consume attempts.
+Better Auth password reauthentication, password changes, account deletion, TOTP setup and
+replacement, TOTP removal, seed retrieval and backup-code generation share the separate
+five-attempt, five-per-minute account verification budget with factor verification.
 
 Custom clients call `api.platform.auth.viewBackupCodes({ password })` over authenticated Convex,
 or `POST /api/two-factor/backup-codes` with authenticated headers and JSON `{ "password": "..." }`.

@@ -258,6 +258,7 @@ describe("backend session assurance through authentication endpoints", () => {
     const sessions = await f.t.fetch("/api/sessions", { headers: { authorization: `Bearer ${body.token}` } });
     expect(sessions.status).toBe(403);
     expect(await sessions.text()).not.toContain(enrolled.token);
+    vi.setSystemTime(Date.now() + 60_000);
     const replacement = await f.enroll(body.token);
     const recovered = await f.caller(replacement.token);
     expect(await recovered.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "ready", strong: true });
@@ -275,7 +276,12 @@ describe("backend session assurance through authentication endpoints", () => {
     const response = await passkey.authenticate(true);
     const result = await response.json();
     expect(response.status, JSON.stringify(result)).toBe(200);
-    const { client } = await f.caller(result.session.token);
+    const { session, client } = await f.caller(result.session.token);
+    for (const field of ["assuranceVersion", "authMethod", "authenticatedAt", "primaryVerifiedAt", "strongVerifiedAt", "strongFactorId", "strongFactorType", "recoveryOnly"]) expect(result.session).not.toHaveProperty(field);
+    expect(session).toMatchObject({ authMethod: "passkey", strongFactorId: passkey.key._id, strongFactorType: "passkey", recoveryOnly: false });
+    const forged = await f.request("/update-session", { assuranceVersion: 99, authenticatedAt: Date.now() + 86400000, primaryVerifiedAt: 1, strongVerifiedAt: 1, strongFactorId: "forged", strongFactorType: "totp", authMethod: "password", recoveryOnly: true }, result.session.token);
+    expect(forged.status).toBe(400);
+    expect((await f.caller(result.session.token)).session).toEqual(session);
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ allowed: true, strong: true, hasTotp: false });
     await expect(client.mutation(api.projects.create, { name: "Passkey access", description: "" })).resolves.toBeTypeOf("string");
     await f.setting("userPasskeyPolicy", "disabled");
@@ -413,4 +419,45 @@ describe("backend session assurance through authentication endpoints", () => {
     expect((await f.request("/list-sessions", undefined, result.token)).status).toBe(403);
   });
 
+});
+
+const passwordRoutes = [
+  ["/verify-password", { password: "wrong" }],
+  ["/change-password", { currentPassword: "wrong", newPassword: "orchid quartz lantern telescope meadow violin glacier" }],
+  ["/delete-user", { password: "wrong" }],
+  ["/two-factor/enable", { password: "wrong" }],
+  ["/two-factor/disable", { password: "wrong" }],
+  ["/two-factor/get-totp-uri", { password: "wrong" }],
+  ["/two-factor/generate-backup-codes", { password: "wrong" }],
+] as const;
+test.each(passwordRoutes)("%s spends exactly one durable account attempt per request", async (path, body) => {
+  const f = await fixture();
+  const enrolled = await f.enroll((await f.signIn()).body.token);
+  const login = await f.signIn();
+  const challenge = login.response.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+  const verified = await f.request("/two-factor/verify-totp", { code: totp(enrolled.uri) }, undefined, challenge);
+  expect(verified.status).toBe(200);
+  const cookie = verified.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+  vi.setSystemTime(Date.now() + 60_000);
+  for (let i = 0; i < 5; i++) {
+    const response = i % 2 ? await f.request(path, body, undefined, cookie) : await f.request(path, body, enrolled.token);
+    expect(response.status, await response.clone().text()).toBe(path === "/delete-user" ? 404 : 400);
+  }
+  expect((await f.request("/verify-password", { password }, enrolled.token)).status).toBe(429);
+  expect((await f.request(path, body, undefined, cookie)).status).toBe(429);
+  vi.setSystemTime(Date.now() + 60_000);
+  expect((await f.request("/verify-password", { password }, enrolled.token)).status).toBe(200);
+});
+test("recovery TOTP replacement shares the password account budget", async () => {
+  const f = await fixture();
+  const enrolled = await f.enroll((await f.signIn()).body.token);
+  const login = await f.signIn();
+  const cookie = login.response.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+  const response = await f.request("/two-factor/verify-backup-code", { code: enrolled.codes[0] }, undefined, cookie);
+  expect(response.status).toBe(200);
+  const recovery = await response.json();
+  vi.setSystemTime(Date.now() + 60_000);
+  for (let i = 0; i < 5; i++) expect((await f.request("/two-factor/enable", { password: "wrong" }, recovery.token)).status).toBe(400);
+  expect((await f.request("/two-factor/enable", { password }, recovery.token)).status).toBe(429);
+  expect((await f.request("/verify-password", { password }, enrolled.token)).status).toBe(429);
 });

@@ -2,6 +2,7 @@ import type { GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
+import { parseSessionOutput } from "better-auth/db";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
@@ -28,6 +29,7 @@ const SENSITIVE = new Set([
   "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes",
   "/passkey/delete-passkey", "/passkey/update-passkey", "/email-otp/request-email-change", "/email-otp/change-email",
 ]);
+const PASSWORD_PROOF = new Set(["/verify-password", "/change-password", "/delete-user", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes"]);
 // These methods have no supported platform flow. Installing a plugin is not authorization.
 const DISABLED = new Set([
   "/sign-in/email-otp", "/sign-in/social", "/callback/:id", "/link-social", "/unlink-account",
@@ -112,11 +114,13 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     }
     if (!pair) refuse("NOT_AUTHENTICATED");
     const assurance = await evaluateSession(convexCtx, pair);
+    if (PASSWORD_PROOF.has(path)) {
+      const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "authStepUp", key: pair.user._id });
+      if (!limit.ok) throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many verification attempts." });
+    }
     if (path === "/verify-password") {
       const account = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: pair.user._id }, { field: "providerId", value: "credential" }] });
       passwordBefore = account?.password ?? undefined;
-      const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "authStepUp", key: pair.user._id });
-      if (!limit.ok) throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many verification attempts." });
     }
     if (policy === "self" || policy === "factor") return;
     if (policy === "enroll") {
@@ -154,6 +158,10 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       ...(kind === "password" ? { passwordHash: passwordBefore } : {}),
       ...(kind === "totp" || kind === "passkey" ? { factorId: factorBefore!.id } : {}),
     });
+    if (path === "/passkey/verify-authentication") {
+      const output = endpoint.context.returned as { session: typeof pair.session };
+      return endpoint.json({ ...output, session: parseSessionOutput(endpoint.context.options, output.session) });
+    }
   });
 
   type CreateHook = NonNullable<NonNullable<NonNullable<BetterAuthOptions["databaseHooks"]>["session"]>["create"]>["before"];

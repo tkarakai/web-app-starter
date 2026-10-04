@@ -479,17 +479,17 @@ export function AdminOnboardingWizard() {
               onBack={() => setShowIntro(true)}
             />
           ) : step === 1 ? (
-            <AdminSessionAccessGate enrollment requireRecent preserveChildren><TotpSetupStep
+            <AdminSessionAccessGate enrollment requireRecent><TotpSetupStep
               password={passwordRef.current}
               onComplete={handleTotpComplete}
             /></AdminSessionAccessGate>
           ) : step === 2 ? (
-            <AdminSessionAccessGate enrollment requireRecent preserveChildren><BackupCodesStep
+            <AdminSessionAccessGate enrollment requireRecent><BackupCodesStep
               backupCodes={backupCodes}
               onComplete={handleBackupCodesComplete}
             /></AdminSessionAccessGate>
           ) : (
-            <AdminSessionAccessGate enrollment requireRecent preserveChildren><PasskeyStep onComplete={handlePasskeyComplete} /></AdminSessionAccessGate>
+            <AdminSessionAccessGate enrollment requireRecent><PasskeyStep onComplete={handlePasskeyComplete} /></AdminSessionAccessGate>
           )}
         </SlideTransition>
       </CardContent>

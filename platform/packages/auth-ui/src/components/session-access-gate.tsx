@@ -11,18 +11,14 @@ import { PasswordInput, OtpInput } from "./localized-controls";
 import { TwoFactorSection } from "../settings/two-factor-section";
 import { PasskeySection } from "../settings/passkey-section";
 
-type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; preserveChildren?: boolean };
+type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean };
 
 /** Presentation of the server's decision; every API enforces that decision independently. */
-export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, preserveChildren = false }: Props) {
+export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false }: Props) {
   const currentStatus = useQuery(api.platform.sessionAssurance.status, {});
   const [lastStatus, setLastStatus] = React.useState(currentStatus);
   React.useEffect(() => {
-    if (currentStatus) { setLastStatus(currentStatus); return; }
-    // Token rotation can briefly clear the query. Keep only the presentation stable;
-    // all server operations continue checking the current live session.
-    const timer = setTimeout(() => setLastStatus(currentStatus), 3000);
-    return () => clearTimeout(timer);
+    if (currentStatus) setLastStatus(currentStatus);
   }, [currentStatus]);
   const status = currentStatus ?? lastStatus;
   const user = useQuery(api.platform.auth.getCurrentUser, {});
@@ -45,11 +41,15 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const live = status && status.expiresAt > now;
+  const live = currentStatus != null && status && status.expiresAt > now;
+  const hasPasskey = Boolean(status?.hasPasskey && status.passkeyPolicy !== "disabled");
+  const hasFactor = Boolean(status?.hasTotp || hasPasskey);
   const enrolling = enrollment && status?.reason === "enrollment";
-  const recent = status && (enrolling && !status.hasTotp && !status.hasPasskey
+  const recent = status && (enrolling && !hasFactor
     ? status.primaryRecentUntil > now : status.recent && status.recentUntil > now);
   const allowed = live && (status.allowed || enrolling) && (!requireRecent || recent);
+  const [admitted, setAdmitted] = React.useState(false);
+  React.useEffect(() => { if (allowed && !panel) setAdmitted(true); }, [allowed, panel]);
   const sendVerification = async () => {
     if (!user?.email) return;
     setBusy(true); setError(false);
@@ -73,18 +73,25 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
       setPassword(""); setCode(""); setBackup(false);
     } catch { setError(true); } finally { setBusy(false); }
   };
-  const display = (content: React.ReactNode, granted = false) => preserveChildren
-    ? <><div hidden={!granted}>{children}</div>{granted ? null : content}</> : content;
-  if (status === undefined || now === 0) return display(<p role="status">{tc("loading")}</p>);
-  // Keep enrollment mounted through token rotation and until backup codes are saved.
-  if (panel && live) return display(<Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
-    {panel === "passkey" ? <><PasskeySection />{status.hasPasskey && !allowed && <Button disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}<Button disabled={!allowed} onClick={() => setPanel(null)}>{t("continue")}</Button></>
+  const panelAllowed = panel && live && (panel !== "passkey" || status.passkeyPolicy !== "disabled") && (
+    (status.allowed || enrolling || status.reason === "passkey_enrollment") && recent
+    || status.reason === "recovery" && panel === "recovery"
+    || status.reason === "mfa_enrollment" && !hasFactor && status.primaryRecentUntil > now
+  );
+  const panelContent = panel && status && <Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
+    {panel === "passkey" ? <><PasskeySection />{hasPasskey && !allowed && <Button disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}<Button disabled={!allowed} onClick={() => setPanel(null)}>{t("continue")}</Button></>
       : <TwoFactorSection recover={panel === "recovery"} onComplete={() => setPanel(null)} onCancel={() => setPanel(null)} />}
     <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>
-  </CardContent></Card>);
-  if (panel && status === null) return display(<p role="status">{tc("loading")}</p>);
-  if (allowed) return display(children, true);
-  const needsPassword = status?.reason === "reauthenticate" || status?.reason === "method_disabled" || !status?.strongForChanges || ((status?.reason === "mfa_enrollment" || status?.reason === "passkey_enrollment") && status.primaryRecentUntil <= now && !status.hasTotp && !status.hasPasskey) || (enrolling && !status.hasTotp && !status.hasPasskey);
+  </CardContent></Card>;
+  const display = (content: React.ReactNode, granted = false) => <>
+    <div hidden={!granted}>{(admitted || granted) ? children : null}</div>
+    <div hidden={!panelAllowed}>{panelContent}</div>
+    {content}
+  </>;
+  if (status == null || now === 0 || currentStatus == null) return display(<p role="status">{tc("loading")}</p>);
+  if (panelAllowed) return display(null);
+  if (allowed && !panel) return display(null, true);
+  const needsPassword = status.reason === "reauthenticate" || status.reason === "method_disabled" || !status.strongForChanges || ((status.reason === "mfa_enrollment" || status.reason === "passkey_enrollment") && status.primaryRecentUntil <= now && !hasFactor) || (enrolling && !hasFactor);
   return display(<Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
     <p>{t(live ? "description" : "expired")}</p>
     {error && <p role="alert" className="text-destructive">{t("failed")}</p>}
@@ -108,7 +115,7 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
           <Button disabled={busy || !code}>{t("verify")}</Button>
           <Button type="button" variant="ghost" onClick={() => { setBackup(!backup); setCode(""); }}>{backup ? t2("enterCode") : t2("backupCodes")}</Button>
         </form> : null}
-        {status.hasPasskey && status.passkeyPolicy !== "disabled" && <Button variant="outline" disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}
+        {hasPasskey && <Button variant="outline" disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}
       </> : null}
     <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>
   </CardContent></Card>);

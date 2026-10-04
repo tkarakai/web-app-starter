@@ -19,6 +19,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   policy and an absolute four-hour administrator lifetime. TOTP and user-verified passkeys
   provide factor proof; sensitive changes require recent verification. Limited enrollment and
   backup-code recovery sessions have guided setup, and unsupported login methods are disabled.
+  Gates preserve admitted setup and unsaved backup codes in memory through fresh verification;
+  password-consuming routes share an account attempt budget, and passkey responses omit
+  server-only session proof.
 
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
 
