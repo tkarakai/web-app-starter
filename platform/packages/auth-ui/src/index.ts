@@ -23,3 +23,5 @@ export { TwoFactorSection } from "./settings/two-factor-section";
 export { SessionsList } from "./settings/sessions-list";
 export { SecuritySection } from "./settings/security-section";
 export { WaitlistForm, type WaitlistFormProps } from "./components/waitlist-form";
+
+export { SessionAccessGate, AdminSessionAccessGate } from "./components/session-access-gate";

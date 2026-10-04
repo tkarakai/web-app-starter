@@ -10,7 +10,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
-import { authComponent } from "./auth";
+import { getAuth } from "./functions";
 import { rateLimit } from "./rateLimits";
 import { components } from "../_generated/api";
 import { internalMutation, mutation, query } from "../_generated/server";
@@ -61,7 +61,7 @@ export const postEvent = mutation({
     meta: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const user = (await getAuth(ctx))?.user;
     if (!user) return;
 
     const ownerId = (
@@ -109,7 +109,7 @@ export const list = query({
   handler: async (ctx, args) => {
     // Return an empty page while auth resolves or for non-admins; the query
     // re-runs reactively once auth resolves.
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const user = (await getAuth(ctx))?.user;
     if (!user || (user as Record<string, unknown>).role !== "admin") {
       return { page: [], isDone: true, continueCursor: "" };
     }

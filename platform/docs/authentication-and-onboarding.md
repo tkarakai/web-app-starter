@@ -349,21 +349,75 @@ Email → Magic Link → ✓ App                      (no 2FA enabled, magic lin
 Email → Magic Link → TOTP → ✓ App               (2FA enabled, magic link enabled)
 ```
 
-### 8.5 Session Properties
+### 8.5 Session assurance and reauthentication
 
-```typescript
-adminSession: {
-  expiresIn: 60 * 60 * 4,        // 4 hours
-  updateAge: 60 * 30,             // Refresh if active within last 30 min
-}
+Convex operations and Better Auth HTTP routes use the same live policy. A session must belong
+to the exact authenticated user, be unexpired and unbanned, satisfy the current email-verification
+and login-method settings, and complete any required enrollment. Enabling MFA on an account
+is a requirement; it is not evidence that a particular session passed MFA.
 
-userSession: {
-  expiresIn: 60 * 60 * 24 * 7,   // 7 days
-  updateAge: 60 * 60,             // Refresh if active within last 1 hour
-}
-```
+Successful password or enabled user magic-link sign-in records primary authentication. Successful
+TOTP verification or a cryptographically verified passkey assertion with **user verification**
+(PIN/biometric) records strong authentication, bound to the current factor record. Removing or
+replacing that factor invalidates its proof. A verified passkey satisfies MFA without requiring a
+second TOTP entry. A `required` passkey policy additionally requires passkey authentication in the
+current session; simply registering one is insufficient for ordinary application access.
 
-`trustDevice` (Better Auth's 2FA skip for 30 days) should be **disabled for admin accounts**. It may be enabled for user accounts at the admin's discretion (future setting).
+Magic links honor `userMagicLinkEnabled` on both sending and redemption, and are unavailable for
+administrators or bound administrator candidates. Email-OTP sign-in, social/account-token routes
+and administrator impersonation are disabled because the platform has no supported flow for them.
+Email verification and password-reset OTPs remain available. Email OTP and trusted-device cookies
+do not supply strong session proof. An email-only session for an MFA account can verify its factor
+but cannot read application data, administer users, or replace the factor.
+
+Administrator sessions have a **four-hour absolute lifetime**, measured from authentication.
+Routine refresh, password verification, password changes and factor-related session rotation do
+not restart that clock. A new full sign-in starts a new session. User sessions retain the normal
+seven-day lifetime. Expired, revoked or banned sessions fail live backend checks, including calls
+using an earlier Convex JWT. An already delivered response cannot be withdrawn from a client;
+subsequent requests and reactive queries that rerun check the live policy again.
+
+Administrative HTTP operations and platform administrative mutations, password/profile/factor
+changes and recovery-code export require authentication within **five minutes**. When an enrolled
+or required factor exists, that must be recent strong proof; a password alone cannot substitute.
+Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the
+current password each time. Failed password/factor verification shares a durable per-account
+five-attempt-per-minute budget across sessions.
+
+The shared `SessionAccessGate` presents the backend decision and blocks ordinary content until
+verification is complete. Security settings and the admin workspace prompt for fresh verification.
+The timer also handles expiry without waiting for a database update. Session rotation briefly
+preserves presentation state so successful setup does not discard unsaved backup codes; backend
+checks still apply to every operation throughout that transition.
+
+### 8.6 Enrollment, recovery and custom endpoints
+
+A backup-code sign-in creates a **recovery-only session**. Use the current password to replace the
+lost TOTP authenticator, verify a code from the replacement, and save the new backup codes.
+Password verification by itself does not clear recovery status. Recovery does not authorize adding
+passkeys, changing policy, exporting old recovery codes or accessing ordinary application data.
+If a required passkey is also lost, an authorized administrator must adjust that policy or restore
+access through the deployment's support process; the recovery code does not waive it.
+
+Bound administrator candidates use only their invitation enrollment API and self-service factor
+setup until completion. Resumed setup requests fresh verification when needed. The wizard retains
+its progress and backup-code acknowledgement while the recipient verifies their identity.
+
+For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
+`packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
+administrative writes, use `adminMutation`, which adds the admin-role and recent-proof checks.
+Actions should authorize through an internal query using the same helper and recheck before
+committing sensitive side effects. `auth.getCurrentUser` and `sessionAssurance.status` intentionally
+return limited self-service identity/status and are **not authorization helpers**. Never authorize
+application data by calling Better Auth's raw `getAuthUser`/`safeGetAuthUser` or by inspecting
+account-level MFA flags. Browser-submitted assurance fields are ignored; only successful server
+verification hooks write session proof. New Better Auth routes are denied until classified in the
+central route policy and covered by behavioral tests.
+
+Existing sessions without server-owned proof require password reauthentication (and any required
+factor) or a new sign-in. Deploy the backend and matching auth UI together. Custom auth/enrollment
+screens should use the status query and shared gate; they must keep recovery/enrollment state
+separate from ordinary application access.
 
 ## 9. Admin Invitation Flow
 

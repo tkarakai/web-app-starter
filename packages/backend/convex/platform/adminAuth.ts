@@ -2,7 +2,7 @@ import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { authedMutation, authedQuery } from "./functions";
+import { adminMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ export const getMfaPolicy = authedQuery({
 // Admin mutation: toggle MFA policy
 // ---------------------------------------------------------------------------
 
-export const setMfaPolicy = authedMutation({
+export const setMfaPolicy = adminMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
     requireAdmin(ctx.user as Record<string, unknown>);
@@ -84,7 +84,7 @@ export const getEmailVerificationPolicy = authedQuery({
 // Admin mutation: toggle email verification policy
 // ---------------------------------------------------------------------------
 
-export const setEmailVerificationPolicy = authedMutation({
+export const setEmailVerificationPolicy = adminMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
     requireAdmin(ctx.user as Record<string, unknown>);

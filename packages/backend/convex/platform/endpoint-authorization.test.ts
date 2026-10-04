@@ -55,6 +55,7 @@ const ACCESS: Record<string, Access> = {
   "platform/auditTrail:postEvent": "user",
   "platform/auth:getCurrentUser": "public", // the caller's own user, or null
   "platform/auth:viewBackupCodes": "user",
+  "platform/sessionAssurance:status": "user",
   "platform/integrations:getStatus": "admin",
   "platform/meta:health": "public",
   "platform/passwordStrength:evaluate": "public",
@@ -194,7 +195,7 @@ async function signIn(t: Caller, name: string, role?: string): Promise<Caller> {
   const session = await t.mutation(components.betterAuth.adapter.create, {
     input: {
       model: "session",
-      data: { userId: user._id, token: `${name}-contract-session`, expiresAt: now + 3_600_000, createdAt: now, updatedAt: now },
+      data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token: `${name}-contract-session`, expiresAt: now + 3_600_000, createdAt: now, updatedAt: now },
     },
   });
   return t.withIdentity({ subject: user._id, sessionId: session._id }) as unknown as Caller;

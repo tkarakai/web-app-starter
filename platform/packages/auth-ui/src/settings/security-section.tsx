@@ -17,6 +17,7 @@ import {
 import { ChangePasswordForm } from "./change-password-form";
 import { PasskeySection } from "./passkey-section";
 import { TwoFactorSection } from "./two-factor-section";
+import { SessionAccessGate } from "../components/session-access-gate";
 import { SessionsList } from "./sessions-list";
 
 function normalizeTab(value: string | null): "password" | "2fa" | "passkeys" | "sessions" {
@@ -38,7 +39,7 @@ export function SecuritySection() {
   const enforce = searchParams.get("enforce");
 
   return (
-    <Card>
+    <SessionAccessGate requireRecent><Card>
       <CardHeader>
         <CardTitle>{td("security")}</CardTitle>
       </CardHeader>
@@ -71,6 +72,6 @@ export function SecuritySection() {
           </TabsContent>
         </Tabs>
       </CardContent>
-    </Card>
+    </Card></SessionAccessGate>
   );
 }

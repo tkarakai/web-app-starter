@@ -462,6 +462,19 @@
       "loadError": "Nem sikerült betölteni a munkameneteket.",
       "revokeError": "Nem sikerült megszüntetni a munkamenetet.",
       "revokeAllError": "Nem sikerült megszüntetni a munkameneteket."
+    },
+    "session": {
+      "title": "Személyazonosság megerősítése",
+      "description": "A folytatáshoz végezd el a szükséges ellenőrzést.",
+      "expired": "A munkamenet lejárt. Jelentkezz be újra.",
+      "failed": "Az ellenőrzés sikertelen. Ellenőrizd az adatokat, és próbáld újra.",
+      "verifyEmail": "E-mail-cím megerősítése",
+      "enrollment": "Fejezd be az adminisztrátori meghívás elfogadását az adminisztrációs oldalon.",
+      "recovery": "A jelszavaddal állíts be új hitelesítő alkalmazást, majd mentsd el az új helyreállítási kódokat.",
+      "addPasskey": "Hozzáférési kulcs hozzáadása",
+      "usePasskey": "Hozzáférési kulcs használata",
+      "verify": "Megerősítés",
+      "continue": "Folytatás"
     }
   }
 }

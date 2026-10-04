@@ -50,6 +50,15 @@ export const tables = {
     userAgent: v.optional(v.union(v.null(), v.string())),
     userId: v.string(),
     impersonatedBy: v.optional(v.union(v.null(), v.string())),
+    // Server-owned session assurance. Optional so existing sessions can be reauthenticated.
+    assuranceVersion: v.optional(v.union(v.null(), v.number())),
+    authMethod: v.optional(v.union(v.null(), v.string())),
+    authenticatedAt: v.optional(v.union(v.null(), v.number())),
+    primaryVerifiedAt: v.optional(v.union(v.null(), v.number())),
+    strongVerifiedAt: v.optional(v.union(v.null(), v.number())),
+    strongFactorId: v.optional(v.union(v.null(), v.string())),
+    strongFactorType: v.optional(v.union(v.null(), v.string())),
+    recoveryOnly: v.optional(v.union(v.null(), v.boolean())),
   })
     .index("expiresAt", ["expiresAt"])
     .index("expiresAt_userId", ["expiresAt","userId"])

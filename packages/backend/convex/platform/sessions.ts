@@ -1,5 +1,6 @@
 import { AUTH_COOKIE_PREFIX, sessionTokenFromCookieHeader } from "@web-app-starter/auth/cookies";
 
+import { APIError } from "better-auth/api";
 import { httpAction } from "../_generated/server";
 import { createAuth } from "./auth";
 import { readBackupCodes } from "./recoveryCodes";
@@ -44,6 +45,19 @@ function corsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Credentials": "true",
     Vary: "Origin",
   };
+}
+
+/** Preserve controlled authentication failures for these thin HTTP adapters. */
+function sessionHttpAction(handler: Parameters<typeof httpAction>[0]) {
+  return httpAction(async (ctx, request) => {
+    try { return await handler(ctx, request); }
+    catch (error) {
+      if (!(error instanceof APIError)) throw error;
+      return new Response(JSON.stringify({ error: error.body?.code ?? "NOT_AUTHENTICATED" }), {
+        status: error.statusCode, headers: { ...corsHeaders(request), "Cache-Control": "no-store" },
+      });
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +108,7 @@ export function getSessionToken(
 // HTTP action: GET /api/sessions — list current user's sessions with device info
 // ---------------------------------------------------------------------------
 
-export const listSessionsHandler = httpAction(async (_ctx, request) => {
+export const listSessionsHandler = sessionHttpAction(async (_ctx, request) => {
   const cors = corsHeaders(request);
   const sessionToken = getSessionToken(request);
   if (!sessionToken) {
@@ -148,7 +162,7 @@ export const listSessionsHandler = httpAction(async (_ctx, request) => {
 // HTTP action: POST /api/sessions/revoke — revoke a specific session
 // ---------------------------------------------------------------------------
 
-export const revokeSessionHandler = httpAction(async (_ctx, request) => {
+export const revokeSessionHandler = sessionHttpAction(async (_ctx, request) => {
   const cors = corsHeaders(request);
   const sessionToken = getSessionToken(request);
   if (!sessionToken) {
@@ -212,7 +226,7 @@ export const revokeSessionHandler = httpAction(async (_ctx, request) => {
 // HTTP action: POST /api/sessions/revoke-others — revoke all other sessions
 // ---------------------------------------------------------------------------
 
-export const revokeOtherSessionsHandler = httpAction(async (_ctx, request) => {
+export const revokeOtherSessionsHandler = sessionHttpAction(async (_ctx, request) => {
   const cors = corsHeaders(request);
   const sessionToken = getSessionToken(request);
   if (!sessionToken) {
@@ -249,7 +263,7 @@ export const revokeOtherSessionsHandler = httpAction(async (_ctx, request) => {
 // ---------------------------------------------------------------------------
 // The old GET route is retained only to reject callers that omit fresh proof.
 
-export const viewBackupCodesHandler = httpAction(async (_ctx, request) => {
+export const viewBackupCodesHandler = sessionHttpAction(async (_ctx, request) => {
   const cors = { ...corsHeaders(request), "Cache-Control": "no-store" };
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ error: "REAUTHENTICATION_REQUIRED" }), {

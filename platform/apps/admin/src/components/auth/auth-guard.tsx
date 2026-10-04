@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AdminSessionAccessGate } from "@web-app-starter/auth-ui";
 import { useRouter } from "next/navigation";
 import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
 import type { Preloaded } from "convex/react";
@@ -68,7 +69,7 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
 
   return (
     <AuthUserContext.Provider value={authUser}>
-      {children}
+      <AdminSessionAccessGate requireRecent>{children}</AdminSessionAccessGate>
     </AuthUserContext.Provider>
   );
 }

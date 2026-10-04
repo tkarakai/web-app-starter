@@ -8,15 +8,15 @@ import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
-import { authComponent } from "./auth";
+import { identitySession, evaluateSession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { authedMutation } from "./functions";
+import { adminMutation, getAuth } from "./functions";
 
 export const list = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
 
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const user = (await getAuth(ctx))?.user;
     const role = user ? (user as Record<string, unknown>).role : undefined;
     if (role !== "admin") {
       return {
@@ -30,7 +30,7 @@ export const list = query({
   },
 });
 
-export const invite = authedMutation({
+export const invite = adminMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -43,7 +43,7 @@ export const invite = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -96,13 +96,17 @@ export const advanceOnboardingStep = mutation({
   args: { step: v.number() },
   handler: async (ctx, args) => {
 
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const pair = await identitySession(ctx);
+    const user = pair?.user;
     if (!user) throw new ConvexError("NOT_AUTHENTICATED");
 
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (!bound && user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
     if (!Number.isInteger(args.step) || args.step < 1 || args.step > 3) throw new Error("INVALID_STEP");
-    if (args.step >= 2 && user.twoFactorEnabled !== true) throw new Error("MFA_REQUIRED");
+    if (args.step >= 2) {
+      const assurance = await evaluateSession(ctx, pair!);
+      if (assurance.reason === "email_verification" || assurance.reason === "recovery" || !assurance.strong || !assurance.recent || !assurance.hasTotp) throw new Error("MFA_REQUIRED");
+    }
     await ctx.runMutation(components.platform.adminInvitations.advanceOnboardingStep, { ...args, email: user.email });
     const saved = bound
       ? await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id })
@@ -115,10 +119,12 @@ export const completeOnboarding = mutation({
   args: {},
   handler: async (ctx, args) => {
 
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const pair = await identitySession(ctx);
+    const user = pair?.user;
     if (!user) throw new Error("NOT_AUTHENTICATED");
 
-    if (user.banned || !user.emailVerified || user.twoFactorEnabled !== true) throw new Error("MFA_REQUIRED");
+    const assurance = await evaluateSession(ctx, pair!);
+    if (!assurance.strong || !assurance.recent || !assurance.hasTotp || user.banned || !user.emailVerified || user.twoFactorEnabled !== true) throw new Error("MFA_REQUIRED");
     const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: user._id }] });
     if (!factor?.verified) throw new Error("MFA_REQUIRED");
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
@@ -144,7 +150,8 @@ export const getMyOnboardingStatus = query({
   args: {},
   handler: async (ctx, args) => {
 
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const pair = await identitySession(ctx);
+    const user = pair?.user;
     if (!user) return null;
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (bound) return bound;

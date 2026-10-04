@@ -14,6 +14,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ## [Unreleased]
 
 ### Fixed
+
+- Convex and authentication HTTP routes now enforce live session assurance, current security
+  policy and an absolute four-hour administrator lifetime. TOTP and user-verified passkeys
+  provide factor proof; sensitive changes require recent verification. Limited enrollment and
+  backup-code recovery sessions have guided setup, and unsupported login methods are disabled.
+
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
 
 ### Added
@@ -51,6 +57,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Deploy the updated authentication backend and UI together. Existing sessions without verified
+  session proof must reauthenticate or sign in again. App-owned administrative mutations must use
+  `adminMutation`; custom auth screens must support limited sessions and fresh verification as
+  described in [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+  Required passkeys now require current-session passkey authentication. Email-OTP sign-in, social
+  account/token routes and admin impersonation are unavailable; password reset and email
+  verification remain supported.
 
 - Remove `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from hosted
   Convex environments before deploying. Restart local development to provision fixture access;
