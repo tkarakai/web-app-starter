@@ -22,7 +22,7 @@ async function fixture() {
 import { sha256Hex } from "./platform/tokenHash";
 describe("invitation app boundaries", () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
   test("admin token exchange never promotes or allowlists an address", async () => {
     const { t, admin, member } = await fixture();
@@ -77,6 +77,7 @@ describe("invitation app boundaries", () => {
   });
 
   test("development and E2E preparation are idempotent and visible to the signup gates", async () => {
+    for (const [key, value] of Object.entries({ DEV_SEED_ENABLED: "true", DEV_FIXTURE_RUNTIME: "anonymous", DEV_FIXTURE_SECRET: "a1".repeat(32), SITE_URL: "http://localhost:3000", CONVEX_CLOUD_URL: "http://127.0.0.1:3210", CONVEX_SITE_URL: "http://127.0.0.1:3211" })) vi.stubEnv(key, value);
     const { t } = await fixture();
     for (let i = 0; i < 2; i++) await t.mutation(internal.platform.devSeed.setupDevUser, { email: "dev@example.test", isAdmin: false });
     expect(await t.query(internal.platform.waitlistTokens.hasValidInvitation, { email: "dev@example.test" })).toBe(true);

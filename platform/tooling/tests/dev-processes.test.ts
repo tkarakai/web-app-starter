@@ -19,9 +19,9 @@ import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
-const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts"];
+const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
@@ -470,9 +470,19 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
       fs.writeFileSync(path.join(bindir, "npx"), `#!/usr/bin/env node
 if (process.argv[2] === '--version') { console.log('fixture'); process.exit(0); }
 if (process.argv.slice(2).join(' ') !== 'convex dev') process.exit(127);
-(await import('node:fs')).writeFileSync('.env.local', 'CONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
+const fs = await import('node:fs');
+fs.writeFileSync('.env.local', 'CONVEX_DEPLOYMENT=anonymous:process-fixture\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
+fs.mkdirSync('.convex/local/default', { recursive: true });
+fs.writeFileSync('.convex/local/default/config.json', JSON.stringify({ deploymentName: 'process-fixture', adminKey: 'synthetic-local-key', ports: { cloud: 43210, site: 43211 } }));
 console.log('Convex functions ready');
 setTimeout(() => {}, 300000);
+`, { mode: 0o755 });
+      fs.mkdirSync(path.join(root, "packages/backend/node_modules/.bin"), { recursive: true });
+      fs.writeFileSync(path.join(root, "packages/backend/node_modules/.bin/convex"), `#!/usr/bin/env node
+const fs = require('node:fs');
+if (process.argv.slice(2, 5).join(' ') !== 'env set --force') process.exit(127);
+const input = fs.readFileSync(0, 'utf8');
+if (!/^DEV_FIXTURE_SECRET=[a-f0-9]{64}$/m.test(input) || !input.includes('DEV_FIXTURE_RUNTIME=anonymous')) process.exit(1);
 `, { mode: 0o755 });
       fs.writeFileSync(path.join(bindir, "bunx"), `#!/usr/bin/env node
 if (process.argv[2] === 'convex') { console.log('fixture'); process.exit(0); }
@@ -502,7 +512,12 @@ setTimeout(() => {}, 300000);
         assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);
       }
       assert.deepEqual(Object.keys(manager.readRecords(root)).sort(), (app === "landing" ? ["convex", "next-landing"] : ["next-storybook"]));
-      if (app === "landing") assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /NEXT_PUBLIC_CONVEX_SITE_URL=http:\/\/127\.0\.0\.1:43211/);
+      if (app === "landing") {
+        assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /NEXT_PUBLIC_CONVEX_SITE_URL=http:\/\/127\.0\.0\.1:43211/);
+        const capabilityFile = path.join(root, ".env.e2e.local");
+        assert.match(fs.readFileSync(capabilityFile, "utf8"), /^DEV_FIXTURE_SECRET=[a-f0-9]{64}$/m);
+        assert.equal(fs.statSync(capabilityFile).mode & 0o777, 0o600);
+      }
       const status = await runScript("dev-status.sh");
       assert.match(status.stdout, new RegExp(app));
     } finally {

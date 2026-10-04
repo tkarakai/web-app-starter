@@ -77,7 +77,10 @@ unrelated app failures. See [edge rate limiting](rate-limiting-architecture.md#l
 Do not disable rate limiting or raise deployment limits to make tests pass. Stop this
 checkout's dev servers before switching to CI mode (`bun run dev:stop`); the test harness
 starts its own managed local services. An explicitly supplied `E2E_BASE_URL` still targets
-that deployment, so use only a disposable test environment, never production. A focused
+that deployment. Suites that create fixture accounts require a disposable local backend;
+use the [development launcher's fixture authorization](development.md#dev-seed-accounts) or
+the [local AWS target settings](aws/deployment-architecture-aws.md#running-the-e2e-suites-against-a-target).
+Never target production. A focused
 interactive run may use `bun run --cwd apps/web test:e2e --workers=1`, but it still reuses an
 existing local server and does not enable CI retries. After a 429, wait for `Retry-After`
 or restart only the managed server for this checkout before retrying.

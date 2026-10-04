@@ -3,8 +3,8 @@
 //
 // Some conveniences must never run on a hosted deployment: logging auth and
 // invitation emails to the console instead of sending them (the log would hold
-// live sign-in links and tokens), and seeding accounts with hard-coded
-// passwords. They are gated here, and the gate fails closed.
+// live sign-in links and tokens). The email fallback is gated here and fails
+// closed; localFixtures.ts owns the stronger guard for fixture accounts.
 //
 // "Local development" is decided from SITE_URL, the comma-separated list of app
 // origins the backend trusts. It is local only when every origin is plain HTTP
@@ -13,10 +13,8 @@
 // [::1]. This covers every place the starter runs Convex locally:
 //   - `bun run dev` and CI E2E (`dev-start.sh`): http://localhost:<port>
 //   - the local AWS target (infra/aws/local): http://web.app.localhost:8080
-// A staging or production deployment serves its apps over HTTPS on a real
-// domain, so it can never qualify, and a missing or unparsable SITE_URL is
-// treated as not local. DEV_SEED_ENABLED alone is not trusted: it is a single
-// env var that is easy to set by mistake on the wrong deployment.
+// These origins only govern the console email fallback. Fixture authorization
+// additionally checks the backend runtime and a capability; see localFixtures.ts.
 // ---------------------------------------------------------------------------
 
 const LOOPBACK_HOSTS: ReadonlySet<string> = new Set([
@@ -32,7 +30,7 @@ function isLoopbackHttpOrigin(origin: string): boolean {
   } catch {
     return false;
   }
-  if (url.protocol !== "http:") return false;
+  if (url.protocol !== "http:" || url.username || url.password || url.search || url.hash || url.pathname !== "/") return false;
   const host = url.hostname.toLowerCase();
   return LOOPBACK_HOSTS.has(host) || host.endsWith(".localhost");
 }

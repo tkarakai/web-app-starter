@@ -128,7 +128,7 @@ Each of these keeps Vercel's behavior unchanged:
 | `getClientIp` honours `TRUSTED_PROXY_COUNT` | An ALB appends to `X-Forwarded-For`; the first entry is client-controlled (see above) |
 | CSP `connect-src` always includes the runtime `CONVEX_URL` / `CONVEX_SITE_URL` origins, next to `*.convex.cloud` | So a Convex custom domain or the local target's Convex backend is reachable from a production build |
 | `/api/auth/clear-session` redirects with a relative `Location` | In a standalone server a route handler's `request.url` carries the bind address (`0.0.0.0:3000`), not the public host |
-| Playwright `E2E_BASE_URL`, `E2E_CONVEX_LOG`, cookie domain from `baseURL` | Run the E2E suites against any deployed target, not only `bun run dev` |
+| Playwright `E2E_BASE_URL`, `E2E_CONVEX_LOG`, cookie domain from `baseURL` | Target selection follows the [disposable-target guidance](../testing.md#running-playwright-e2e-reliably) |
 
 ## Deployment targets
 
@@ -188,7 +188,7 @@ rejects `localhost` itself as an RP ID for a subdomain, which is why the hosts s
 The local target runs a Convex backend container (`infra/aws/local/compose.yaml`) and treats it
 the way staging treats its Convex Cloud deployment. `deploy-convex.sh --env local` deploys the
 functions, runs migrations, sets the origins to the local hosts and applies
-`infra/aws/local/convex.env` (`PASSKEY_RP_ID`, `DEV_SEED_ENABLED`), generates a
+`infra/aws/local/convex.env` (`PASSKEY_RP_ID`), generates a
 `BETTER_AUTH_SECRET` and applies the dev seed. Sharing the `bun run dev` deployment doesn't work:
 the passkey RP ID derives from its first `SITE_URL` (`localhost`), and changing that breaks dev.
 
@@ -197,6 +197,13 @@ the auth JWKS from `CONVEX_SITE_URL`). Function logs are streamed to
 `infra/aws/local/.state/convex.log`, like `.convex-dev.log` in dev, which is where the E2E suite
 reads auth emails from.
 
+The local deployer also verifies its dedicated local admin key and provisions fixture
+authorization through the backend's loopback socket. Its random capability is stored in
+`infra/aws/local/.state/fixture.env` (owner-readable, gitignored). The runtime permits the exact
+`convex.localhost.floci.io` backend hostname only for this local AWS mode; it is a split DNS
+convention, not proof of locality by itself. Hosted AWS deployments reject fixture settings
+before deployment. Delete the local fixture file and rerun the local deployer to rotate it.
+
 ### Running the E2E suites against a target
 
 `E2E_BASE_URL` points Playwright at a deployed app instead of starting a dev server:
@@ -204,6 +211,7 @@ reads auth emails from.
 ```bash
 CI=true E2E_BASE_URL=http://web.app.localhost:8080 \
 CONVEX_SITE_URL=http://convex.localhost.floci.io:3311 \
+DEV_FIXTURE_SECRET_FILE=$PWD/infra/aws/local/.state/fixture.env \
 E2E_CONVEX_LOG=$PWD/infra/aws/local/.state/convex.log \
   bun run --cwd apps/web test:e2e
 ```

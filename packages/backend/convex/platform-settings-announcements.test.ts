@@ -22,7 +22,7 @@ async function fixture() {
 
 describe("settings and announcements wrappers", () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
   test("admin settings persist in the component and reach public and auth-policy consumers", async () => {
     const { t, admin, member } = await fixture();
@@ -70,6 +70,7 @@ describe("settings and announcements wrappers", () => {
   });
 
   test("seed sentinel is idempotent in component settings", async () => {
+    for (const [key, value] of Object.entries({ DEV_SEED_ENABLED: "true", DEV_FIXTURE_RUNTIME: "anonymous", DEV_FIXTURE_SECRET: "a1".repeat(32), SITE_URL: "http://localhost:3000", CONVEX_CLOUD_URL: "http://127.0.0.1:3210", CONVEX_SITE_URL: "http://127.0.0.1:3211" })) vi.stubEnv(key, value);
     const t = createTestEnv();
     expect(await t.query(internal.platform.devSeed.isSeeded, {})).toBe(false);
     await t.mutation(internal.platform.devSeed.markSeeded, {});

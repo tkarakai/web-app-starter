@@ -24,6 +24,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Development fixture HTTP routes now require a local runtime and a generated harness capability.
+  Seed helpers share the runtime guard, existing fixture accounts cannot be reassigned, and
+  hosted deployments reject local fixture settings before deploying. Local launchers provision
+  authorization automatically; restart development after upgrading.
+
 - Authentication routes use durable request budgets, and all auth email callbacks share recipient
   and deployment delivery budgets. Magic-link requests use the installed route, provider failures
   consume attempts, and OTP resend preserves usable unexpired codes and renews exhausted ones.
@@ -46,6 +51,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Remove `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from hosted
+  Convex environments before deploying. Restart local development to provision fixture access;
+  custom local E2E clients must send the generated capability header described in
+  [development](docs/development.md).
 
 - Review auth email budgets against expected traffic and provider quotas, and update custom
   clients and ingress configuration according to the

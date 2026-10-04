@@ -7,7 +7,7 @@
  * helpers hand each test its own throwaway account instead.
  *
  * Backed by `POST /api/dev/e2e-user` on the Convex HTTP router, which is gated
- * on `DEV_SEED_ENABLED` and refuses any address outside `e2e-<token>@e2e.local`.
+ * on the local runtime and a generated harness secret, with reserved fixture addresses.
  * See `packages/backend/convex/platform/e2eFixtures.ts` for the safety rationale.
  *
  * @module qa/e2e/helpers/fixtures
@@ -24,14 +24,14 @@ export interface DisposableUser {
 }
 
 /**
- * Read a value from .env.local the way playwright.config.ts does — dev-start.sh
- * rewrites these with the ports Convex actually claimed, so they cannot be
- * hardcoded.
+ * Prefer the process environment, then the launcher-owned capability file,
+ * then app/root .env.local. Keep the capability paired with its backend URL.
  */
 function getEnvValue(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
 
   for (const envPath of [
+    process.env.DEV_FIXTURE_SECRET_FILE ?? path.join(__dirname, "../../../../../.env.e2e.local"),
     path.join(__dirname, "../../../.env.local"),
     path.join(__dirname, "../../../../../.env.local"),
   ]) {
@@ -59,7 +59,12 @@ function convexSiteUrl(): string {
         "to .env.local.",
     );
   }
-  return url.replace(/\/$/, "");
+  const parsed = new URL(url);
+  if (parsed.protocol !== "http:" || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/" ||
+      !(["localhost", "127.0.0.1", "[::1]", "convex.localhost.floci.io"].includes(parsed.hostname) || parsed.hostname.endsWith(".localhost"))) {
+    throw new Error("Fixture helpers only send their capability to a local backend.");
+  }
+  return parsed.origin;
 }
 
 /**
@@ -93,9 +98,13 @@ export async function createDisposableUser(
     name: "E2E User",
   };
 
+  const secret = getEnvValue("DEV_FIXTURE_SECRET");
+  if (!secret || !/^[a-f0-9]{64}$/.test(secret)) throw new Error("Local fixture secret is missing. Restart bun run dev, or set DEV_FIXTURE_SECRET_FILE to the local AWS fixture.env file.");
+
   const response = await fetch(`${convexSiteUrl()}/api/dev/e2e-user`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Dev-Fixture-Secret": secret },
+    redirect: "error",
     body: JSON.stringify({ ...user, isAdmin: options.isAdmin === true }),
   });
 
@@ -103,8 +112,8 @@ export async function createDisposableUser(
     const detail = await response.text().catch(() => "");
     if (response.status === 404) {
       throw new Error(
-        "E2E fixture endpoint is disabled (404). It requires DEV_SEED_ENABLED=true " +
-          "on the Convex deployment, which dev-start.sh sets for local backends. " +
+        "E2E fixture endpoint is disabled (404). Restart the local dev launcher " +
+          "to provision its runtime authorization and harness secret. " +
           `Response: ${detail}`,
       );
     }
