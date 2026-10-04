@@ -52,6 +52,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- Before planning v4, follow [Adopting v4](docs/upgrading-v4.md). Run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-local-fixture-clients.ts`
+  for app-owned local fixture clients (also run by the updater); `--check` and local auth E2E
+  must pass. Custom auth forms and retained sample file code need the explicit interface
+  and validation steps in that guide. No hosted data or configuration is changed automatically.
+
 - Remove `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from hosted
   Convex environments before deploying. Restart local development to provision fixture access;
   custom local E2E clients must send the generated capability header described in
