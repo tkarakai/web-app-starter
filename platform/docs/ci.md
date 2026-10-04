@@ -1,8 +1,8 @@
 # CI Guide
 
 This guide owns **what CI checks, workflow behavior and local pre-push testing**. For
-**private-repository costs, runner installation and sharing runners across repositories**, use
-[the private CI and runner guide](private-repo-ci.md). Keep runner setup instructions there.
+**private-repository costs**, use [the private CI guide](private-repo-ci.md). Worker installation,
+operation and isolation are owned by [the local worker guide](local-ci-workers.md).
 
 ## Choose how to run checks
 
@@ -10,10 +10,9 @@ This guide owns **what CI checks, workflow behavior and local pre-push testing**
 |---|---|---|---|
 | `CI=true bun run ci` / `bun run ci:quick` | Native tools in your checkout | Local feedback before pushing | [Pre-push checks](#local-ci-pre-push-checks) |
 | `bun run ci:act` | Local workflow simulation in Docker | Local debugging; does not publish GitHub PR checks | [act](#running-github-actions-locally-with-act) |
-| GitHub Actions on self-hosted runners | GitHub schedules jobs on your registered machine or containers | Real PR checks and Actions logs, like hosted runners | [Runner setup](private-repo-ci.md#5-run-ci-on-your-own-machine-free-the-biggest-win) |
+| GitHub Actions on local workers | GitHub schedules jobs in disposable containers | Real PR checks and Actions logs, like hosted runners | [Worker setup](local-ci-workers.md) |
 
-For several trusted private repos, consider one **GitHub Free organization** and a shared runner
-pool; see [choosing runner scope](private-repo-ci.md#choose-repository-or-organization-scope).
+For multiple repositories, see the [worker installation scope](local-ci-workers.md#set-up-before-using-local-ci).
 Local test commands and `act` do not register a runner or satisfy GitHub required checks.
 
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
@@ -95,7 +94,7 @@ bun run ci:act:offline        # Offline mode (after caches are populated)
 5. `ci-storybook.yml` — Storybook app: build, E2E
 
 Each workflow uses **composite actions** (`.github/actions/setup-bun`, `.github/actions/setup-playwright`)
-for shared setup. They handle GitHub-hosted runners, [self-hosted runners](private-repo-ci.md#5-run-ci-on-your-own-machine-free-the-biggest-win)
+for shared setup. They handle GitHub-hosted runners, [local workers](local-ci-workers.md)
 and act-specific cache setup. `.actrc` uses native ARM64 containers on Apple Silicon (no emulation)
 and bind-mount mode (`-b`) to make composite actions visible to act.
 

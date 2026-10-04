@@ -1,6 +1,7 @@
 # GitHub Actions on a private repository: minutes, storage and your own runner
 
-This guide owns **private-repository costs, runner installation, sharing and upkeep**.
+This guide owns **private-repository costs**. [The local worker guide](local-ci-workers.md)
+owns worker installation, scope and upkeep.
 [The CI guide](ci.md) owns **what runs, E2E policy, local pre-push commands and act simulation**.
 Self-hosted runners execute real jobs scheduled by GitHub and publish PR checks; running
 `bun run ci` or `act` locally does not.
@@ -136,23 +137,13 @@ Use the [local worker guide](local-ci-workers.md). The manager builds prepared i
 local Docker engine and starts a **new container for every GitHub Actions job**. It infers the
 repository from your checkout; no prepared-image registry is required.
 
-```sh
-bun run ci:workers:setup
-starter-workers check --install
-starter-workers check --github
-# After the diagnostic completes: starter-workers check --github --run RUN_ID
-starter-workers enable
-```
+Follow [setup and certification](local-ci-workers.md#set-up-before-using-local-ci) before enabling routing.
 
 One operator keeps the worker machine available. Everyone else pushes normally. App CI uses
 local workers; summary jobs, Security and deployment workflows remain hosted. Begin with one
 worker, observe memory consumption, then increase concurrency if the machine has capacity.
 
-The previous Compose runner with shared writable caches is retired. Stop that Compose project,
-remove its registrations, revoke its registration PAT, and delete its dedicated cache volumes
-after identifying them with `docker volume ls`. Remove the old `PLATFORM_CI_RUNNER` variable
-before enabling the new manager. Do not reuse those volumes as image seeds. Follow the guide's
-diagnostic before switching routing. Other tools using Docker on the machine are unaffected.
+For the retired shared-cache Compose runner, follow the [migration instructions](local-ci-workers.md#migrate-from-the-retired-compose-runner).
 
 ### 6. Set a budget, so you're never stuck
 

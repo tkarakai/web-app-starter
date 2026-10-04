@@ -36,8 +36,10 @@ jobs:
         id: act-all
         run: |
           echo "Running in act — skipping change detection"
-          echo "should_run=true" >> $GITHUB_OUTPUT
-          echo "e2e=run" >> $GITHUB_OUTPUT
+          {
+            echo "should_run=true"
+            echo "e2e=run"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         if: ${{ !env.ACT }}
@@ -90,9 +92,9 @@ jobs:
              [[ "${{ steps.filter.outputs.design-system }}" == "true" ]] || \
              [[ "${{ steps.filter.outputs.auth }}" == "true" ]] || \
              [[ "${{ steps.filter.outputs.root }}" == "true" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
-            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
             echo "Skipping web — no relevant changes"
           fi
 
@@ -128,14 +130,16 @@ jobs:
           fi
           COVERAGE_FILE="apps/web/qa/coverage/coverage-summary.json"
           if [ -f "$COVERAGE_FILE" ]; then
-            echo "## Coverage Summary (web)" >> "$SUMMARY_FILE"
-            echo "" >> "$SUMMARY_FILE"
-            echo "| Metric | Coverage |" >> "$SUMMARY_FILE"
-            echo "|--------|----------|" >> "$SUMMARY_FILE"
-            echo "| Lines | $(jq -r '.total.lines.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-            echo "| Branches | $(jq -r '.total.branches.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-            echo "| Functions | $(jq -r '.total.functions.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
-            echo "| Statements | $(jq -r '.total.statements.pct' "$COVERAGE_FILE")% |" >> "$SUMMARY_FILE"
+            {
+              echo "## Coverage Summary (web)"
+              echo ""
+              echo "| Metric | Coverage |"
+              echo "|--------|----------|"
+              echo "| Lines | $(jq -r '.total.lines.pct' "$COVERAGE_FILE")% |"
+              echo "| Branches | $(jq -r '.total.branches.pct' "$COVERAGE_FILE")% |"
+              echo "| Functions | $(jq -r '.total.functions.pct' "$COVERAGE_FILE")% |"
+              echo "| Statements | $(jq -r '.total.statements.pct' "$COVERAGE_FILE")% |"
+            } >> "$SUMMARY_FILE"
           fi
 
       - name: Upload coverage report

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Playwright on a self-hosted runner. Browsers persist in ~/.cache/ms-playwright,
-# so installing is a no-op once a version is there (Playwright locks the folder,
-# so runners sharing it can install at the same time). Browser system libraries
-# come from the runner image when it was built for this Playwright version.
+# Managed workers must match their baked Playwright version. The fallback below
+# supports externally operated runners with persistent browser caches and an
+# optional system-library marker; see platform/docs/local-ci-workers.md.
 set -euo pipefail
 
 if [ "${STARTER_WORKER:-}" = "1" ]; then

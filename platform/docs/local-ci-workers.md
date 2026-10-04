@@ -37,8 +37,9 @@ Playwright browsers and npm packages. Warm jobs reuse those bytes locally.
    Keychain; Linux uses a mode-0600 file in the mode-0700 installation directory.
 6. Add `~/.local/bin` to PATH if needed. Setup installs a copy outside the checkout under
    `~/.local/share/starter-workers`, prepares tools and dependencies, validates the runtime,
-   and installs/starts a launch agent (macOS) or user systemd service (Linux). Preparation errors
-   leave normal CI routing unchanged; rerun setup to resume. On Linux, inspect
+   and installs a launch agent (macOS) or user systemd service (Linux), starting it when a manager
+   credential is configured. Preparation errors leave normal CI routing unchanged; rerun setup
+   to resume. On Linux, inspect
    `loginctl show-user "$USER" -p Linger`; arrange user-service lingering if it must run logged out.
    On a Mac, start Docker at login and keep the machine awake while accepting jobs.
 7. Run `starter-workers check --install`, then `starter-workers check --github`. Find the
@@ -90,7 +91,7 @@ For developing the public starter itself, setup accepts `--public-branch your-br
 branch matches the explicit branch; `enable` refuses public diagnostic pools. Fork PRs and automatic
 public workloads are never admitted. Do not change that branch without reviewing its code.
 
-Local checks and GitHub workers use the **same image preparation function and container launcher**. A local proof binds the committed source SHA, immutable image ID and canonical runtime-policy hash for 24 hours. Dispatch the same branch you locally checked; both diagnostic workers assert those expected identities. Recording the run requires its unique local proof ID. Configuration changes, refreshed environments and a new local check invalidate earlier certification.
+Local checks and GitHub workers use the **same image preparation function and container launcher**. A local proof binds the committed source SHA, immutable image ID and canonical runtime-policy hash for 24 hours. Dispatch the same branch you locally checked; both diagnostic workers assert those expected identities. Recording the run requires its unique local proof ID. Runtime-policy changes, replacement images and a new local check invalidate earlier certification.
 With the same branch, dependency inputs, architecture and tool revision they reuse the same local
 immutable image ID. Every launch records image ID and a hash of its runtime policy in the private
 `evidence/` directory; workflow steps also expose `STARTER_WORKER_IMAGE` and `STARTER_WORKER_RUNTIME`.
@@ -154,8 +155,8 @@ lockfile. `starter-workers refresh` prepares/validates a refreshed environment f
 checkout immediately. If a refresh fails, inspect the error and fix it; an incompatible image is
 never silently substituted. Runner security updates may require prompt operator action.
 
-`starter-workers auth replace` prompts for and validates a new dedicated token before storing it.
-Record a new expiry in the private configuration when rotating it. Status warns within 14 days of
+`starter-workers auth replace --token-expires YYYY-MM-DD` prompts for and validates a new dedicated
+token before storing it and recording its expiry. Status warns within 14 days of
 known expiry. Tokens do not renew automatically. Revoke the superseded token after checking access.
 Keep Docker and the host OS patched too.
 
@@ -229,3 +230,11 @@ downloads. This system is intended for reviewed private-repository workflows and
 an explicit reviewed public diagnostic branch; it offers no hostile public
 multitenancy guarantee. See [GitHub's hook documentation](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/run-scripts)
 and [the runner's ordering](https://github.com/actions/runner/blob/v2.337.0/src/Runner.Worker/JobExtension.cs).
+
+## Migrate from the retired Compose runner
+
+Stop the old Compose project, remove its GitHub runner registrations, revoke its registration
+PAT, and delete its dedicated cache volumes after identifying them with `docker volume ls`.
+Remove the old `PLATFORM_CI_RUNNER` variable before enabling the manager. Do not reuse those
+writable volumes as image seeds. Complete setup and certification above before switching routing;
+other tools using Docker on the machine are unaffected.
