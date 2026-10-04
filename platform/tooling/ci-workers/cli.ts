@@ -1,13 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { chmod, mkdir, rm, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { assert, catalog, command, config, docker, exists, hash, home, readJson, repository, save, validateRepo, type Config } from './core.ts';
+import { assert, catalog, command, config, docker, exists, hash, home, installationPool, readJson, repository, save, validateRepo, type Config } from './core.ts';
 import { api, storeToken, token } from './github.ts';
 import { prepare } from './images.ts';
 import { cleanup, lock, serve, status } from './manager.ts';
-import { launch } from './runtime.ts';
+import { launch, runtimePolicy } from './runtime.ts';
+import { localProof, proofId, certify, type Proof } from './proof.ts';
 import { install, removeConvenienceCommand, service } from './service.ts';
 
 const print = (v: unknown): void => { process.stdout.write(typeof v === 'string' ? v + '\n' : JSON.stringify(v, null, 2) + '\n'); };
@@ -64,7 +66,7 @@ async function setup(args: string[]): Promise<void> {
   await mkdir(home, { recursive: true, mode: 0o700 }); await chmod(home, 0o700);
   const fs = await statfs(home);
   assert(fs.bavail * fs.bsize > 12 * 1024 ** 3, 'At least 12 GiB free disk is required for initial preparation');
-  const c: Config = { version: 1, repo, pool: `starter-${hash(repo + home).slice(0, 12)}`, docker: dockerPath, context,
+  const c: Config = { version: 1, repo, pool: installationPool(), docker: dockerPath, context,
     concurrency: 1, cpus: Math.min(4, info.NCPU), memoryGiB: Math.min(8, Math.floor(info.MemTotal / 1024 ** 3) - 2), diskGiB: 40,
     paused: false, localOnly: true, publicBranch: option(args, 'public-branch'), tokenExpiry: option(args, 'token-expires'), installedAt: new Date().toISOString() };
   await save(path.join(home, 'config.json'), c);
@@ -91,26 +93,31 @@ async function localCheck(c: Config, args: string[]): Promise<void> {
       print(await launch(c, env.image, ['exec', '/bin/bash', '-c', script], undefined, async name => { await docker(c, ['cp', archive, `${name}:/work/source.tar`]); }));
     } finally { await rm(archive, { force: true }); }
   }
-  await save(path.join(home, 'local-check.json'), { sha, image: env.image, checked: new Date().toISOString() });
+  const proof = { sha, image: env.image, runtime: hash(JSON.stringify(runtimePolicy(c))), key: env.key, scope: env.scope, pool: c.pool, checked: new Date().toISOString() };
+  await save(path.join(home, 'local-check.json'), { ...proof, id: proofId(proof) });
 }
 async function githubCheck(c: Config, args: string[]): Promise<void> {
   assert(!c.localOnly, 'Run starter-workers auth replace and service start first');
+  const proof = await localProof(c);
   const runId = option(args, 'run');
   if (runId) {
     assert(/^\d+$/.test(runId), 'Invalid run ID');
     const credential = await token();
-    const run = await api<{ event: string; path: string; status: string; conclusion: string; head_sha: string; html_url: string }>(`/repos/${c.repo}/actions/runs/${runId}`, credential);
+    const run = await api<{ display_title: string; event: string; path: string; status: string; conclusion: string; head_sha: string; html_url: string }>(`/repos/${c.repo}/actions/runs/${runId}`, credential);
     assert(run.event === 'workflow_dispatch' && run.path === '.github/workflows/ci-verify.yml' && run.status === 'completed' && run.conclusion === 'success', 'Diagnostic must be a successful completed CI Verify Commit dispatch');
+    certify(proof, run);
     const jobs = await api<{ jobs: { name: string; conclusion: string; labels: string[] }[] }>(`/repos/${c.repo}/actions/runs/${runId}/jobs?per_page=100`, credential);
     for (const name of ['Worker isolation 1', 'Worker isolation 2']) {
       assert(jobs.jobs.some(j => j.name === name && j.conclusion === 'success' && j.labels.includes(c.pool) && j.labels.includes(`starter-source-${run.head_sha}`) && j.labels.includes(`starter-run-${runId}`)), 'Both disposable worker jobs must pass in this pool');
     }
-    await save(path.join(home, 'github-check.json'), { checked: new Date().toISOString(), sha: run.head_sha, url: run.html_url, pool: c.pool });
+    await save(path.join(home, 'github-check.json'), { ...proof, certified: new Date().toISOString(), url: run.html_url, runId });
     print(`GitHub worker isolation check passed: ${run.html_url}`); return;
   }
   const ref = option(args, 'ref') ?? c.publicBranch ?? (await api<{ default_branch: string }>(`/repos/${c.repo}`, await token())).default_branch;
+  const commit = await api<{ sha: string }>(`/repos/${c.repo}/commits/${encodeURIComponent(ref)}`, await token());
+  assert(commit.sha === proof.sha && `branch-${hash(ref).slice(0, 16)}` === proof.scope, 'Dispatch branch must match the local proof');
   // ci-verify.yml already exists on the default branch, so dispatching its branch version works before merge.
-  await command('gh', ['workflow', 'run', 'ci-verify.yml', '--repo', c.repo, '--ref', ref, '-f', 'worker_check=true', '-f', `worker_pool=${c.pool}`]);
+  await command('gh', ['workflow', 'run', 'ci-verify.yml', '--repo', c.repo, '--ref', ref, '-f', 'worker_check=true', '-f', `worker_pool=${c.pool}`, ...Object.entries({ worker_sha: proof.sha, worker_image: proof.image, worker_runtime: proof.runtime, worker_proof: proof.id, worker_checked: proof.checked }).flatMap(([key, value]) => ['-f', `${key}=${value}`])]);
   print(`Dispatched CI Verify Commit worker check on ${ref}. Use gh run list --repo ${c.repo} --workflow ci-verify.yml, then gh run watch RUN_ID --repo ${c.repo} --exit-status. Routing is unchanged.`);
 }
 export async function main(args: string[]): Promise<void> {
@@ -131,8 +138,16 @@ export async function main(args: string[]): Promise<void> {
     case 'logs': if (process.platform === 'linux') { print(await command('journalctl', ['--user', '-u', `${c.pool}.service`, '-n', '100', ...(args.includes('--follow') ? ['-f'] : [])], { stream: args.includes('--follow'), timeout: args.includes('--follow') ? 86400_000 : 10_000 })); return; } print(await command('tail', ['-n', '100', ...(args.includes('--follow') ? ['-f'] : []), path.join(home, 'logs/manager.log')], { stream: args.includes('--follow'), timeout: args.includes('--follow') ? 86400_000 : 10_000 })); return;
     case 'cleanup': print(await lock('mutation', () => cleanup(c, args.includes('--dry-run')))); return;
     case 'pause': case 'resume':
-      c.paused = verb === 'pause'; await save(path.join(home, 'config.json'), c);
-      if (args.includes('--drain')) while ((await readJson<{ active: number[] }>(path.join(home, 'status.json'), { active: [] })).active.length) await new Promise(resolve => setTimeout(resolve, 1000));
+      assert(!args.includes('--drain') || verb === 'pause', '--drain requires pause');
+      c.paused = verb === 'pause'; c.pauseRequest = randomUUID(); await save(path.join(home, 'config.json'), c);
+      if (args.includes('--drain')) {
+        for (;;) {
+          const heartbeat = await readJson<{ pauseRequest?: string; paused?: boolean; active?: number[]; error?: string }>(path.join(home, 'status.json'), {});
+          if (heartbeat.pauseRequest === c.pauseRequest && heartbeat.paused && !heartbeat.error && heartbeat.active?.length === 0) break;
+          assert(await exists(path.join(home, 'daemon.lock')), 'Start the manager to acknowledge and drain the pause');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
       print(c.paused ? 'Paused. Queued jobs wait until resume or hosted routing.' : 'Resumed.'); return;
     case 'config': {
       const key = args[2]; const value = Number(args[3]);
@@ -144,8 +159,9 @@ export async function main(args: string[]): Promise<void> {
     }
     case 'enable': {
       assert(!c.publicBranch && !c.localOnly, 'Normal routing requires a private repository and active manager');
-      const proof = await readJson<{ checked: string }>(path.join(home, 'github-check.json'), { checked: '' });
-      assert(Date.now() - Date.parse(proof.checked) < 86400_000, 'A successful GitHub diagnostic within 24h is required. Run check --github and check --github --run RUN_ID.');
+      const local = await localProof(c);
+      const proof = await readJson<Proof & { certified: string }>(path.join(home, 'github-check.json'));
+      assert(proof.id === local.id && proof.sha === local.sha && proof.image === local.image && proof.runtime === local.runtime && Date.now() - Date.parse(proof.certified) >= 0 && Date.now() - Date.parse(proof.certified) < 86400_000, 'A current matching GitHub certification is required');
       const state = await readJson<{ polled: string; error?: string; paused?: boolean }>(path.join(home, 'status.json'), { polled: '' });
       assert(Date.now() - Date.parse(state.polled) < 60_000 && !state.error && !state.paused, 'Manager must be healthy and accepting work before enabling');
       const legacy = await command('gh', ['variable', 'get', 'PLATFORM_CI_RUNNER', '--repo', c.repo]).catch(() => '');

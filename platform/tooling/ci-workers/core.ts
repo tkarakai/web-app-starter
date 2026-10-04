@@ -10,7 +10,7 @@ export const home = process.env.STARTER_WORKERS_HOME || path.join(os.homedir(), 
 export interface Config {
   version: number; repo: string; pool: string; docker: string; context: string;
   concurrency: number; memoryGiB: number; diskGiB: number; cpus: number;
-  paused: boolean; localOnly: boolean; publicBranch?: string; tokenExpiry?: string;
+  paused: boolean; pauseRequest?: string; localOnly: boolean; publicBranch?: string; tokenExpiry?: string;
   previousRouting?: string; enabled?: boolean; installedAt: string;
 }
 export interface Environment {
@@ -23,6 +23,7 @@ export interface Run { id: number; head_sha: string; head_branch: string; event:
   pull_requests: { number: number; head: { sha: string; repo: { id: number } }; base: { sha: string; repo: { id: number } } }[];
 }
 export interface Job { id: number; status: string; labels: string[]; }
+export function installationPool(): string { return `starter-${randomUUID().replaceAll('-', '')}`; }
 export function hash(value: string | Buffer): string { return createHash('sha256').update(value).digest('hex'); }
 export function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
 export function repository(remote: string): string {

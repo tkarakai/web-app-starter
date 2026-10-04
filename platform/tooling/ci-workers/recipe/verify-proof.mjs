@@ -1,0 +1,10 @@
+import { createHash } from 'node:crypto';
+import assert from 'node:assert/strict';
+const env = process.env;
+assert.match(env.EXPECTED_SHA ?? '', /^[a-f0-9]{40}$/);
+assert.match(env.EXPECTED_IMAGE ?? '', /^sha256:[a-f0-9]{64}$/);
+assert.match(env.EXPECTED_RUNTIME ?? '', /^[a-f0-9]{64}$/);
+assert.equal(env.GITHUB_SHA, env.EXPECTED_SHA);
+assert.equal(env.STARTER_WORKER_IMAGE, env.EXPECTED_IMAGE);
+assert.equal(env.STARTER_WORKER_RUNTIME, env.EXPECTED_RUNTIME);
+assert.equal(env.EXPECTED_PROOF, createHash('sha256').update(JSON.stringify([env.EXPECTED_SHA, env.EXPECTED_IMAGE, env.EXPECTED_RUNTIME, env.EXPECTED_POOL, env.EXPECTED_CHECKED])).digest('hex'));

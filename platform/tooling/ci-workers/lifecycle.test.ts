@@ -66,8 +66,8 @@ if (args[0] === 'buildx' && args[1] === 'build') {
   failure = fs.existsSync(path.join(home, 'fail-build-' + target));
 }
 if (args[0] === 'tag') state.tags[args[2]] = args[1];
-if (args[0] === 'image' && args[1] === 'rm') for (const tag of args.slice(2)) delete state.tags[tag];
-if (args[0] === 'image' && args[1] === 'ls') output = Object.keys(state.tags).join('\\n');
+if (args[0] === 'image' && args[1] === 'rm') for (const tag of args.slice(2)) { if (!state.tags[tag] || fs.existsSync(path.join(home, 'fail-rm-' + tag.split(':')[1]))) failure = true; else delete state.tags[tag]; }
+if (args[0] === 'image' && args[1] === 'ls') output = Object.keys(state.tags).filter(tag => !args.some(a => a.startsWith('reference=')) || args.includes('reference=' + tag)).join('\\n');
 if (args[0] === 'image' && args[1] === 'inspect') {
   const id = state.tags[args.at(-1)] || args.at(-1);
   if (args.includes('--format')) output = args.includes('{{.Id}}') ? id : 'node@sha256:' + 'b'.repeat(64);
@@ -90,9 +90,10 @@ if (args[0] === 'cp') {
 }
 if (args[0] === 'start' && args[1] === '-ai') {
   const worker = state.workers[args[2]];
-  if (worker.mode === 'exec') { state.validations = (state.validations || 0) + 1; failure = fs.existsSync(path.join(home, 'fail-validation')); }
+  if (worker.mode === 'exec' && state.calls.findLast(a => a[0] === 'create' && a.includes(args[2])).includes('--version')) output = 'v24.21.0';
+  else if (worker.mode === 'exec') { state.validations = (state.validations || 0) + 1; failure = fs.existsSync(path.join(home, 'fail-validation')); }
   if (worker.mode === 'smoke') failure = fs.existsSync(path.join(home, 'fail-smoke-' + state.images[worker.image]?.target));
-  output = 'ok';
+  output ||= 'ok';
 }
 fs.writeFileSync(file, JSON.stringify(state));
 if (failure) { console.error('offline install failed'); process.exit(1); }
@@ -175,9 +176,9 @@ test('failed refresh preserves active tools and catalog until exact-source offli
   const dir = await fixture(t);
   const git = (...args: string[]): Promise<string> => command('git', ['-C', dir, ...args]);
   await git('init'); await git('config', 'user.name', 'test'); await git('config', 'user.email', 'test@example.invalid');
-  await writeFile(path.join(dir, 'package.json'), '{"packageManager":"bun@1.4.2","devDependencies":{"@playwright/test":"1.63.0"}}');
+  await writeFile(path.join(dir, 'package.json'), '{"packageManager":"bun@1.4.2","engines":{"node":"24.x"},"devDependencies":{"@playwright/test":"1.63.0"}}');
   await writeFile(path.join(dir, '.node-version'), '24');
-  await writeFile(path.join(dir, 'bun.lock'), '{"playwright": ["playwright@1.63.0"]}');
+  await writeFile(path.join(dir, 'bun.lock'), '{"lockfileVersion":1,"workspaces":{},"packages":{"playwright":["playwright@1.63.0","",{},"sha512-YQ=="]}}');
   await writeFile(path.join(dir, 'source.txt'), 'committed source');
   await git('add', 'package.json', '.node-version', 'bun.lock', 'source.txt'); await git('commit', '-m', 'fixture');
   const sha = await git('rev-parse', 'HEAD');
@@ -195,6 +196,11 @@ const { prepare } = await import(path.join(base, 'images.ts'));
 await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', true);
 `;
   await run(dir, prepare);
+  await writeFile(path.join(dir, 'app.ts'), 'export const sourceOnly = true;');
+  await git('add', 'app.ts'); await git('commit', '-m', 'source-only change');
+  const warmSha = await git('rev-parse', 'HEAD');
+  await run(dir, prepare.replace(JSON.stringify(sha), JSON.stringify(warmSha)).replace("'branch-test', true", "'branch-test', false"));
+  assert.equal(JSON.parse(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8')).environments[0].source, warmSha);
   const catalog = await readFile(path.join(dir, 'pool/catalog.json'), 'utf8');
   const tools = JSON.parse(catalog).tools;
   await writeFile(path.join(dir, 'pool/release'), 'new tool bytes');
@@ -214,13 +220,20 @@ await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', 
     assert.deepEqual(Object.keys(JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8')).tags).sort(), retainedTags);
     assert.deepEqual(await readdir(path.join(dir, 'pool/candidates')), []);
   }
-  await writeFile(path.join(dir, 'bun.lock'), '{"playwright": ["playwright@1.63.0"], "newDependency": "changed"}');
+  await writeFile(path.join(dir, 'bun.lock'), '{"lockfileVersion":1,"workspaces":{},"packages":{"playwright":["playwright@1.63.0","",{},"sha512-Yg=="]}}');
   await git('add', 'bun.lock'); await git('commit', '-m', 'dependency change');
   const nextSha = await git('rev-parse', 'HEAD');
   await run(dir, prepare.replace(JSON.stringify(sha), JSON.stringify(nextSha)).replace("'branch-test', true", "'branch-test', false"));
   const warm = JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8'));
   assert.equal(warm.seedBases.at(-1).image, tools);
   assert.equal(warm.seedBases.at(-1).bytes, 'download fixture');
+  const beforeFloor = await readFile(path.join(dir, 'pool/catalog.json'), 'utf8');
+  const manifestText = await readFile(path.join(dir, 'package.json'), 'utf8');
+  await writeFile(path.join(dir, 'package.json'), manifestText.replace('24.x', '>=24.22 <25'));
+  await git('add', 'package.json'); await git('commit', '-m', 'new Node floor');
+  const floorSha = await git('rev-parse', 'HEAD');
+  await assert.rejects(run(dir, prepare.replace(JSON.stringify(sha), JSON.stringify(floorSha)).replace("'branch-test', true", "'branch-test', false")), /below engines.node floor/);
+  assert.equal(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8'), beforeFloor);
   await run(dir, prepare);
   assert.notEqual(JSON.parse(await readFile(path.join(dir, 'pool/catalog.json'), 'utf8')).tools, tools);
   const state = JSON.parse(await readFile(path.join(dir, 'pool/docker.json'), 'utf8'));
@@ -279,5 +292,109 @@ assert.deepEqual(Object.keys(remaining).sort(), ['pool:seed-' + environments[0].
 assert(await core.exists(path.join(core.home, 'tool-layouts', id(10).slice(7))));
 for (const image of [id(11), id(12)]) assert.equal(await core.exists(path.join(core.home, 'tool-layouts', image.slice(7))), false);
 for (const folder of ['candidates', 'builds', 'downloads']) assert.equal(await core.exists(path.join(core.home, folder)), false);
+`);
+});
+
+test('cleanup retries absent tags but retains catalog on real deletion failure; live log survives', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const old = new Date(Date.now() - 10 * 86400_000).toISOString();
+const env = n => ({ key: core.hash(String(n)), image: 'sha256:' + String(n).padStart(64, '0'), tools: '${image}', scope: 'pr-8', source: '${'a'.repeat(40)}', used: old, created: old, bytes: 1 });
+const environments = [env(1), env(2)];
+const tags = Object.fromEntries(environments.map(e => ['pool:seed-' + e.key.slice(0, 24), e.image]));
+await core.save(path.join(core.home, 'catalog.json'), { environments });
+await core.save(path.join(core.home, 'docker.json'), { calls: [], workers: {}, tags, images: {}, builds: 0 });
+const marker = path.join(core.home, 'fail-rm-' + Object.keys(tags)[1].split(':')[1]);
+await fs.writeFile(marker, 'failure');
+const { cleanup } = await import(path.join(base, 'manager.ts'));
+await assert.rejects(cleanup({ ...c, localOnly: true }, false));
+assert.equal((await core.catalog()).environments.length, 2);
+await fs.rm(marker);
+await fs.mkdir(path.join(core.home, 'logs'));
+for (const file of ['manager.log', 'disposable.log']) { const target = path.join(core.home, 'logs', file); await fs.writeFile(target, 'log'); await fs.utimes(target, new Date(old), new Date(old)); }
+await cleanup({ ...c, localOnly: true }, false);
+assert.equal((await core.catalog()).environments.length, 0);
+assert.equal(await fs.readFile(path.join(core.home, 'logs/manager.log'), 'utf8'), 'log');
+assert.equal(await core.exists(path.join(core.home, 'logs/disposable.log')), false);
+`);
+});
+
+test('drain requires current pause acknowledgement and all admitted work to finish', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+await core.save(path.join(core.home, 'config.json'), c);
+await fs.mkdir(path.join(core.home, 'daemon.lock'));
+await core.save(path.join(core.home, 'status.json'), { pauseRequest: 'old', paused: true, active: [] });
+const { main } = await import(path.join(base, 'cli.ts'));
+let finished = false;
+const draining = main(['pause', '--drain']).then(() => { finished = true; });
+await new Promise(resolve => setTimeout(resolve, 100));
+assert.equal(finished, false);
+const paused = await core.config();
+await core.save(path.join(core.home, 'status.json'), { pauseRequest: paused.pauseRequest, paused: true, active: [123] });
+await new Promise(resolve => setTimeout(resolve, 1100));
+assert.equal(finished, false);
+await core.save(path.join(core.home, 'status.json'), { pauseRequest: paused.pauseRequest, paused: true, active: [] });
+await draining;
+`);
+});
+
+test('local proof rejects changed policies, refreshed images, stale time and unrelated runs', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const { localProof, proofId, certify } = await import(path.join(base, 'proof.ts'));
+const { runtimePolicy } = await import(path.join(base, 'runtime.ts'));
+const proof = { id: '12345678-1234-1234-1234-123456789abc', sha: '${'a'.repeat(40)}', image: '${image}', runtime: core.hash(JSON.stringify(runtimePolicy(c))), pool: c.pool, key: 'key', scope: 'branch-test', checked: new Date().toISOString() };
+proof.id = proofId(proof);
+await core.save(path.join(core.home, 'local-check.json'), proof);
+await core.save(path.join(core.home, 'catalog.json'), { environments: [{ key: proof.key, source: proof.sha, image: proof.image, scope: proof.scope, used: proof.checked }] });
+assert.deepEqual(await localProof(c), proof);
+certify(proof, { head_sha: proof.sha, display_title: 'Worker check ' + proof.id });
+for (const run of [{ head_sha: '${'b'.repeat(40)}', display_title: 'Worker check ' + proof.id }, { head_sha: proof.sha, display_title: 'old check' }]) assert.throws(() => certify(proof, run));
+await assert.rejects(localProof({ ...c, cpus: 3 }));
+await core.save(path.join(core.home, 'catalog.json'), { environments: [] });
+await assert.rejects(localProof(c));
+await core.save(path.join(core.home, 'local-check.json'), { ...proof, checked: new Date(Date.now() - 86400_001).toISOString() });
+await assert.rejects(localProof(c));
+assert.notEqual(core.installationPool(), core.installationPool());
+`);
+  const verifier = path.join(modules, 'recipe/verify-proof.mjs');
+  const env = { ...process.env, EXPECTED_SHA: 'a'.repeat(40), GITHUB_SHA: 'a'.repeat(40), EXPECTED_IMAGE: image, STARTER_WORKER_IMAGE: image, EXPECTED_RUNTIME: 'b'.repeat(64), STARTER_WORKER_RUNTIME: 'b'.repeat(64) };
+  const { hash } = await import('./core.ts');
+  Object.assign(env, { EXPECTED_POOL: 'pool', EXPECTED_CHECKED: new Date().toISOString() });
+  const expected = env as typeof env & { EXPECTED_POOL: string; EXPECTED_CHECKED: string; EXPECTED_PROOF: string };
+  expected.EXPECTED_PROOF = hash(JSON.stringify([env.EXPECTED_SHA, env.EXPECTED_IMAGE, env.EXPECTED_RUNTIME, expected.EXPECTED_POOL, expected.EXPECTED_CHECKED]));
+  await command(process.execPath, [verifier], { env });
+  for (const key of ['GITHUB_SHA', 'STARTER_WORKER_IMAGE', 'STARTER_WORKER_RUNTIME', 'EXPECTED_PROOF']) await assert.rejects(command(process.execPath, [verifier], { env: { ...env, [key]: 'wrong' } }));
+});
+
+test('manager rereads pause before admitting queued jobs and acknowledges it at the scheduling boundary', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+Object.defineProperty(process, 'platform', { value: 'linux' });
+await fs.writeFile(path.join(core.home, 'credential'), 'fixture');
+await core.save(path.join(core.home, 'config.json'), { ...c, concurrency: 1, paused: false, localOnly: false });
+const request = 'paused-during-job-list';
+globalThis.fetch = async url => {
+  const endpoint = String(url).split('https://api.github.com')[1];
+  if (endpoint === '/repos/owner/repo') return Response.json({ id: 1, private: true });
+  if (endpoint.startsWith('/repos/owner/repo/actions/runners?')) return Response.json({ runners: [] });
+  if (endpoint.includes('status=queued')) return Response.json({ workflow_runs: [{ id: 1, head_sha: '${'a'.repeat(40)}', head_branch: 'main', event: 'workflow_dispatch', pull_requests: [] }] });
+  if (endpoint.includes('status=in_progress')) return Response.json({ workflow_runs: [] });
+  if (endpoint.includes('/runs/1/jobs')) {
+    await core.save(path.join(core.home, 'config.json'), { ...c, concurrency: 1, paused: true, pauseRequest: request, localOnly: false });
+    process.emit('SIGTERM');
+    return Response.json({ jobs: [{ id: 10, status: 'queued', labels: ['pool', 'starter-run-1', 'starter-source-${'a'.repeat(40)}'] }] });
+  }
+  assert.fail('Unexpected admission/network request: ' + endpoint);
+};
+const { serve } = await import(path.join(base, 'manager.ts'));
+await serve();
+const state = await core.readJson(path.join(core.home, 'status.json'));
+assert.equal(state.error, undefined);
+assert.equal(state.pauseRequest, request);
+assert.equal(state.paused, true);
+assert.deepEqual(state.active, []);
+assert.equal(await core.exists(path.join(core.home, 'source.git')), false);
 `);
 });

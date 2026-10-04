@@ -72,6 +72,7 @@ On a private repository, import the dedicated token with `starter-workers auth r
 `starter-workers service start`. Push the reviewed branch and run:
 
 ```sh
+starter-workers check --ref your-branch --install
 starter-workers check --github --ref your-branch
 # Find RUN_ID in GitHub Actions, or: gh run list --workflow ci-verify.yml
 # Wait: gh run watch RUN_ID --exit-status
@@ -89,7 +90,7 @@ For developing the public starter itself, setup accepts `--public-branch your-br
 branch matches the explicit branch; `enable` refuses public diagnostic pools. Fork PRs and automatic
 public workloads are never admitted. Do not change that branch without reviewing its code.
 
-Local checks and GitHub workers use the **same image preparation function and container launcher**.
+Local checks and GitHub workers use the **same image preparation function and container launcher**. A local proof binds the committed source SHA, immutable image ID and canonical runtime-policy hash for 24 hours. Dispatch the same branch you locally checked; both diagnostic workers assert those expected identities. Recording the run requires its unique local proof ID. Configuration changes, refreshed environments and a new local check invalidate earlier certification.
 With the same branch, dependency inputs, architecture and tool revision they reuse the same local
 immutable image ID. Every launch records image ID and a hash of its runtime policy in the private
 `evidence/` directory; workflow steps also expose `STARTER_WORKER_IMAGE` and `STARTER_WORKER_RUNTIME`.
@@ -188,7 +189,7 @@ references them. Never use blanket `docker system prune` or `image prune -a` to 
 
 ## Pause, return to hosted CI, or remove
 
-`starter-workers pause --drain` stops admission and waits for running work. Routing stays local;
+`starter-workers pause --drain` waits for a fresh manager acknowledgement after pending admission completes and all running work finishes. The manager must be running to acknowledge the pause. Routing stays local;
 new jobs wait. `starter-workers resume` reopens admission.
 
 Before taking the machine offline, run `starter-workers hosted`. It restores the previous routing
@@ -208,3 +209,5 @@ Vendor contracts: [GitHub JIT runners](https://docs.github.com/en/rest/actions/s
 [Playwright sandbox profile](https://github.com/microsoft/playwright/blob/v1.63.0/utils/docker/seccomp_profile.json).
 The shipped seccomp profile adds `chroot` for Chromium's unprivileged user-namespace sandbox;
 it does not grant the worker a host capability.
+
+Each new installation persists a unique pool ID, independent of the repository or home path on other machines. The declared `engines.node` minimum minor participates in the tool profile; preparation validates the actual Node runtime before promotion. Supported engine ranges are a whole major (`24.x`) or a minimum minor within it (`>=24.21 <25`). Disposable log retention preserves the live service `manager.log`.

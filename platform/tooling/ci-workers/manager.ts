@@ -62,7 +62,10 @@ export async function cleanup(c: Config, dryRun: boolean): Promise<string[]> {
     if ((candidate && !leased.has(image.Id)) || (!protectedImage && (seed || Date.now() - Date.parse(image.Created) > 7 * 86400_000))) { tags.add(tag); orphaned.push(image.Id); }
   }
   if (!dryRun) {
-    for (const tag of tags) await docker(c, ['image', 'rm', tag]);
+    for (const tag of tags) {
+      const present = (await docker(c, ['image', 'ls', '--filter', `reference=${tag}`, '--format', '{{.Repository}}:{{.Tag}}'])).split('\n').includes(tag);
+      if (present) await docker(c, ['image', 'rm', tag]);
+    }
     state.environments = remaining;
     await save(path.join(home, 'catalog.json'), state);
     await docker(c, ['buildx', 'prune', '--builder', `${c.pool}-build`, '--force', '--filter', 'until=168h', '--max-used-space', `${Math.max(2, Math.floor(c.diskGiB / 3))}gb`]);
@@ -117,7 +120,8 @@ export async function serve(): Promise<void> {
             }
           }
           for (const run of runs) {
-            if (active.size >= c.concurrency) break;
+            c = await config();
+            if (stop || c.paused || active.size >= c.concurrency) break;
             const jobs: Job[] = [];
             for (let page = 1; page <= 5; page++) {
               const response = await api<{ jobs: Job[] }>(`/repos/${c.repo}/actions/runs/${run.id}/jobs?per_page=100&page=${page}`, credential);
@@ -125,7 +129,8 @@ export async function serve(): Promise<void> {
               if (response.jobs.length < 100) break;
             }
             for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id))) {
-              if (active.size >= c.concurrency) break;
+              c = await config();
+              if (stop || c.paused || active.size >= c.concurrency) break;
               const request = sourceRequest(c, run, job, repo.id);
               if (!request) continue;
               if (run.event === 'pull_request' && request.sha !== run.head_sha) {
@@ -138,7 +143,8 @@ export async function serve(): Promise<void> {
                 return prepare(c, git, request.sha, request.scope);
               });
               const current = await api<Job>(`/repos/${c.repo}/actions/jobs/${job.id}`, credential);
-              if (current.status !== 'queued') continue;
+              c = await config();
+              if (stop || c.paused || current.status !== 'queued') continue;
               const name = `${c.pool}-${job.id}-${Date.now()}`;
               const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
                 name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`], work_folder: '_work',
@@ -164,7 +170,8 @@ export async function serve(): Promise<void> {
           });
           maintenance = Date.now();
         }
-        await save(path.join(home, 'status.json'), { pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused });
+        c = await config();
+        await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused });
       } catch (error) {
         process.stderr.write(`${new Date().toISOString()} ${String(error)}\n`);
         await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), active: [...active.keys()], polled: new Date().toISOString() });

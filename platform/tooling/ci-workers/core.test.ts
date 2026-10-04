@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { command, expiredEnvironments, repository, sourceRequest, type Config, type Environment, type Run } from './core.ts';
 import { inputs } from './source.ts';
@@ -41,15 +40,16 @@ test('one canonical runtime specifies no job mounts, capabilities or host networ
   assert.equal(policy.network, 'filtered-proxy-v1');
 });
 test('source-only commits reuse fingerprint; lockfile and local package bytes invalidate it', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'worker-inputs-'));
+  await mkdir('.ci-local-artifacts', { recursive: true });
+  const dir = await mkdtemp(path.join(process.cwd(), '.ci-local-artifacts/worker-inputs-'));
   try {
     const git = (...args: string[]): Promise<string> => command('git', ['-C', dir, ...args]);
     await git('init'); await git('config', 'user.name', 'test'); await git('config', 'user.email', 'test@example.invalid');
     await mkdir(path.join(dir, 'packages/local'), { recursive: true });
-    const manifest = { packageManager: 'bun@1.4.2', devDependencies: { '@playwright/test': '1.63.0', local: 'file:packages/local' } };
+    const manifest = { packageManager: 'bun@1.4.2', engines: { node: '24.x' }, devDependencies: { '@playwright/test': '1.63.0', local: 'file:packages/local' } };
     await writeFile(path.join(dir, 'package.json'), JSON.stringify(manifest));
     await writeFile(path.join(dir, '.node-version'), '24\n');
-    await writeFile(path.join(dir, 'bun.lock'), '{"playwright": ["playwright@1.63.0"]}\n');
+    await writeFile(path.join(dir, 'bun.lock'), '{"lockfileVersion":1,"workspaces":{},"packages":{"playwright":["playwright@1.63.0","",{},"sha512-YQ=="]}}\n');
     await writeFile(path.join(dir, 'packages/local/package.json'), '{"name":"local"}\n');
     await writeFile(path.join(dir, 'packages/local/index.js'), ' export default 1;\n');
     async function snapshot(): Promise<Awaited<ReturnType<typeof inputs>>> { await git('add', '.'); await git('commit', '-m', 'test'); return inputs(dir, await git('rev-parse', 'HEAD')); }
@@ -59,10 +59,41 @@ test('source-only commits reuse fingerprint; lockfile and local package bytes in
     assert.equal((await snapshot()).fingerprint, first.fingerprint);
     await writeFile(path.join(dir, 'packages/local/index.js'), 'export default 2;\n');
     const localChanged = await snapshot(); assert.notEqual(localChanged.fingerprint, first.fingerprint);
-    await writeFile(path.join(dir, 'bun.lock'), '{"playwright": ["playwright@1.64.0"]}\n');
+    await writeFile(path.join(dir, 'bun.lock'), '{"lockfileVersion":1,"workspaces":{},"packages":{"playwright":["playwright@1.64.0","",{},"sha512-YQ=="]}}\n');
     const lockChanged = await snapshot(); assert.notEqual(lockChanged.fingerprint, localChanged.fingerprint); assert.equal(lockChanged.playwright, '1.64.0');
     await writeFile(path.join(dir, '.npmrc'), '//npm.example/:_authToken=secret');
     await git('add', '.'); await git('commit', '-m', 'unsafe');
     await assert.rejects(inputs(dir, await git('rev-parse', 'HEAD')), /Custom registry/);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('decoded JSONC lock and manifest sources reject private URLs and unsupported schema', async t => {
+  await mkdir('.ci-local-artifacts', { recursive: true });
+  const dir = await mkdtemp(path.join(process.cwd(), '.ci-local-artifacts/worker-sources-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const git = (...args: string[]) => command('git', ['-C', dir, ...args]);
+  await git('init'); await git('config', 'user.name', 'test'); await git('config', 'user.email', 'test@example.invalid');
+  const root = { packageManager: 'bun@1.4.2', engines: { node: '>=24.21 <25' }, devDependencies: { '@playwright/test': '1.63.0' } };
+  await writeFile(path.join(dir, 'package.json'), JSON.stringify(root));
+  await writeFile(path.join(dir, '.node-version'), '24');
+  const lock = { lockfileVersion: 1, workspaces: { web: { name: 'web', bin: { cli: 'index.js' } } }, packages: { playwright: ['playwright@1.63.0', '', {}, 'sha512-YQ=='], other: ['other@1.0.0', '', { bundled: true }, 'sha512-YQ=='] } };
+  async function check(text: string) {
+    await writeFile(path.join(dir, 'bun.lock'), text); await git('add', '.'); await git('commit', '--allow-empty', '-m', 'fixture');
+    return inputs(dir, await git('rev-parse', 'HEAD'));
+  }
+  assert.equal((await check(JSON.stringify(lock).replace('"lockfileVersion"', '/* comment */ "lockfileVersion"').replace('1,', '1,'))).nodeFloor, 21);
+  for (const source of ['https://127.0.0.1/package.tgz', 'h\\u0074tps://127.0.0.1/package.tgz', 'https://registry.npmjs.org@127.0.0.1/package.tgz']) {
+    await assert.rejects(check(JSON.stringify(lock).replace('"",{}', '"' + source + '",{}')));
+    await assert.rejects(check(JSON.stringify(lock).replace('"",{}', '"",{"dependencies":{"transitive":"' + source + '"}}')));
+  }
+  for (const version of ['owner/repo', 'github:owner/repo', 'git+https://github.com/owner/repo', 'ssh://localhost/repo']) {
+    await writeFile(path.join(dir, 'package.json'), JSON.stringify({ ...root, dependencies: { bad: version } }));
+    await assert.rejects(check(JSON.stringify(lock)));
+  }
+  await writeFile(path.join(dir, 'package.json'), JSON.stringify({ ...root, engines: { node: '>=24.22 <25' } }));
+  assert.equal((await check(JSON.stringify(lock))).nodeFloor, 22);
+  await assert.rejects(check(JSON.stringify({ ...lock, lockfileVersion: 99 })));
+  await assert.rejects(check(JSON.stringify(lock).replace('\"lockfileVersion\":1', '\"lockfileVersion\":1,\"lockfileVersion\":1')), /Duplicate/);
+  await writeFile(path.join(dir, 'package.json'), JSON.stringify(root).replace('\"packageManager\":', '\"packageManager\":\"bun@1.0.0\",\"packageManager\":'));
+  await assert.rejects(check(JSON.stringify(lock)), /Duplicate/);
 });

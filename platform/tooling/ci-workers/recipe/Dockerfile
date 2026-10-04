@@ -26,7 +26,7 @@ RUN useradd -m -u 1001 -s /bin/bash worker \
  && cp /opt/backend/convex-local-backend /home/worker/.cache/convex/binaries/${BACKEND_VERSION}/ \
  && chown -R 1001:1001 /home/worker /opt/runner /work \
  && printf '{"bun":"%s","playwright":"%s","backend":"%s","tools":"%s"}\n' "$BUN_VERSION" "$PLAYWRIGHT_VERSION" "$BACKEND_VERSION" "$TOOL_KEY" > /etc/starter-worker.json
-COPY entrypoint.sh smoke.mjs firewall.sh squid.conf /opt/starter/
+COPY entrypoint.sh smoke.mjs verify-proof.mjs firewall.sh squid.conf /opt/starter/
 RUN chmod 755 /opt/starter/*.sh && chown proxy:proxy /var/log/squid /var/spool/squid
 ENV HOME=/home/worker CI=true STARTER_WORKER=1 CONVEX_LOCAL_BACKEND_VERSION=${BACKEND_VERSION} PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV PATH=/usr/local/bin:/usr/bin:/bin

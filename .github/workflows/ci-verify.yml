@@ -1,4 +1,5 @@
 name: CI Verify Commit
+run-name: ${{ inputs.worker_check && format('Worker check {0}', inputs.worker_proof) || 'CI Verify Commit' }}
 
 # Runs every CI workflow, with E2E required, against the exact tip of main.
 # Pull-request CI tests the PR head; a squash merge creates a new commit that
@@ -14,6 +15,26 @@ on:
         default: false
       worker_pool:
         description: Explicit local diagnostic pool; leave empty for release verification
+        type: string
+        default: ""
+      worker_sha:
+        description: Local proof sha
+        type: string
+        default: ""
+      worker_image:
+        description: Local proof image
+        type: string
+        default: ""
+      worker_runtime:
+        description: Local proof runtime
+        type: string
+        default: ""
+      worker_proof:
+        description: Local proof identity
+        type: string
+        default: ""
+      worker_checked:
+        description: Local proof timestamp
         type: string
         default: ""
 
@@ -87,16 +108,18 @@ jobs:
     if: inputs.worker_check && inputs.worker_pool != ''
     runs-on: ${{ fromJSON(format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', inputs.worker_pool, github.sha, github.run_id)) }}
     timeout-minutes: 15
-    outputs:
-      image: ${{ steps.identity.outputs.image }}
-      runtime: ${{ steps.identity.outputs.runtime }}
     steps:
       - name: Verify prepared environment and poison private state
-        id: identity
+        env:
+          EXPECTED_PROOF: ${{ inputs.worker_proof }}
+          EXPECTED_POOL: ${{ inputs.worker_pool }}
+          EXPECTED_CHECKED: ${{ inputs.worker_checked }}
+          EXPECTED_SHA: ${{ inputs.worker_sha }}
+          EXPECTED_IMAGE: ${{ inputs.worker_image }}
+          EXPECTED_RUNTIME: ${{ inputs.worker_runtime }}
         run: |
+          node /opt/starter/verify-proof.mjs
           node /opt/starter/smoke.mjs
-          echo "image=$STARTER_WORKER_IMAGE" >> "$GITHUB_OUTPUT"
-          echo "runtime=$STARTER_WORKER_RUNTIME" >> "$GITHUB_OUTPUT"
           touch /home/worker/.first-github-job
 
   worker-second:
@@ -107,12 +130,15 @@ jobs:
     steps:
       - name: Check image and runtime identity; first job data must be gone
         env:
-          EXPECTED_IMAGE: ${{ needs.worker-first.outputs.image }}
-          EXPECTED_RUNTIME: ${{ needs.worker-first.outputs.runtime }}
+          EXPECTED_PROOF: ${{ inputs.worker_proof }}
+          EXPECTED_POOL: ${{ inputs.worker_pool }}
+          EXPECTED_CHECKED: ${{ inputs.worker_checked }}
+          EXPECTED_SHA: ${{ inputs.worker_sha }}
+          EXPECTED_IMAGE: ${{ inputs.worker_image }}
+          EXPECTED_RUNTIME: ${{ inputs.worker_runtime }}
         run: |
-          test "$STARTER_WORKER_IMAGE" = "$EXPECTED_IMAGE"
-          test "$STARTER_WORKER_RUNTIME" = "$EXPECTED_RUNTIME"
           test ! -e /home/worker/.first-github-job
+          node /opt/starter/verify-proof.mjs
           node /opt/starter/smoke.mjs
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-bun

@@ -48,7 +48,7 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   const arm = ['aarch64', 'arm64'].includes(engine.Architecture);
   assert(arm || ['x86_64', 'amd64'].includes(engine.Architecture), 'Unsupported Docker architecture');
   const recipeHash = hash((await Promise.all((await readdir(recipe)).filter(f => f !== 'seccomp.json').sort().map(async f => await readFile(path.join(recipe, f), 'utf8')))).join('\0'));
-  const family = hash(JSON.stringify([input.node, input.bun, input.playwright, arm, recipeHash]));
+  const family = hash(JSON.stringify([input.node, input.nodeFloor, input.bun, input.playwright, arm, recipeHash]));
   const cached = state.toolchains?.[family];
   if (!refresh && cached && await exists(toolLayout(cached.image))) {
     try { await docker(c, ['image', 'inspect', cached.image]); return { tools: cached, family, layout: toolLayout(cached.image) }; }
@@ -75,6 +75,9 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   const exported = await readJson<{ architecture: string; os: string; rootfs: { diff_ids: string[] }; config: Record<string, unknown> }>(path.join(layout, 'blobs/sha256', document.config.digest.slice(7)));
   const [loaded] = JSON.parse(await docker(c, ['image', 'inspect', image])) as { Architecture: string; Os: string; RootFS: { Layers: string[] }; Config: Record<string, unknown> }[];
   assert(exported.architecture === loaded.Architecture && exported.os === loaded.Os && isDeepStrictEqual(exported.rootfs.diff_ids, loaded.RootFS.Layers) && Object.entries(exported.config).every(([key, value]) => isDeepStrictEqual(value, loaded.Config[key])), 'OCI layout does not match the loaded tool image');
+  const version = await launch(c, image, ['exec', 'node', '--version']);
+  const runtime = version.trim().match(/^v(\d+)\.(\d+)\.(\d+)$/);
+  assert(runtime && runtime[1] === input.node && Number(runtime[2]) >= input.nodeFloor, 'Prepared Node runtime is below engines.node floor');
   await launch(c, image, ['smoke']);
   return { tools: { image, manifest, created: new Date().toISOString() }, family, layout };
 }
@@ -95,7 +98,7 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
     let available = false;
     if (existing) {
       try { await docker(c, ['image', 'inspect', existing.image]); available = true; } catch { available = false; }
-      if (available && layout === toolLayout(tools.image)) { existing.used = new Date().toISOString(); await save(path.join(home, 'catalog.json'), state); return existing; }
+      if (available && layout === toolLayout(tools.image)) { existing.source = sha; existing.used = new Date().toISOString(); await save(path.join(home, 'catalog.json'), state); return existing; }
     }
     const context = path.join(directory, 'seed');
     await mkdir(context);
@@ -133,6 +136,6 @@ export async function rotateLogs(): Promise<void> {
   for (const folder of ['logs', 'evidence']) {
     const dir = path.join(home, folder);
     if (!await exists(dir)) continue;
-    for (const file of await readdir(dir)) if (Date.now() - (await stat(path.join(dir, file))).mtimeMs > 7 * 86400_000) await rm(path.join(dir, file));
+    for (const file of await readdir(dir)) if (!(folder === 'logs' && file === 'manager.log') && Date.now() - (await stat(path.join(dir, file))).mtimeMs > 7 * 86400_000) await rm(path.join(dir, file));
   }
 }
