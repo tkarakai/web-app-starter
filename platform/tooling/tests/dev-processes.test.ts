@@ -140,7 +140,7 @@ test("surviving descendants remain discoverable after their launcher exits", asy
   const children = JSON.parse(fs.readFileSync(path.join(root, "children.json"), "utf8")) as number[];
   track("convex", parent);
   const originalKill = process.kill.bind(process);
-  const kill = mock.method(process, "kill", (pid: number, signal?: NodeJS.Signals | number) => {
+  const kill = mock.method(process, "kill", (pid: number, signal?: Parameters<typeof process.kill>[1]) => {
     if (children.includes(pid)) return true;
     return originalKill(pid, signal);
   });
@@ -177,7 +177,7 @@ for (const descendant of [false, true]) test(`registration failure persists surv
     return originalRename(...args);
   });
   const originalKill = process.kill.bind(process);
-  const kill = mock.method(process, "kill", (pid: number, signal?: NodeJS.Signals | number) => pid === survivor ? true : originalKill(pid, signal));
+  const kill = mock.method(process, "kill", (pid: number, signal?: Parameters<typeof process.kill>[1]) => pid === survivor ? true : originalKill(pid, signal));
   syncBuiltinESMExports();
   try {
     assert.throws(() => manager.track(root, "fresh", fresh.pid!), /fixture registration failure/);
