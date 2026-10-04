@@ -8,8 +8,9 @@
  *
  * Usage: platform/tooling/node-ts.sh platform/tooling/dev-processes.ts [--root DIR] track NAME PID
  *                                                      [--root DIR] running NAME|* PID
- *                                                      [--root DIR] stop [--name NAME]
+ *                                                      [--root DIR] stop [--name NAME [--pid PID]]
  *                                                      [--root DIR] list
+ *                                                      [--root DIR] records
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

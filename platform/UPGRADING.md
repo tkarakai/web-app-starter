@@ -234,19 +234,9 @@ migration. No upgrade command publishes a release or deploys your app.
 
 ## After merging or pulling an upgrade
 
-After pulling or merging an upgrade that changes `bun.lock`, dependency manifests or workspace layout,
-run `bun install --frozen-lockfile` in **each local checkout** before development or validation.
-Installation and verification in an upgrade worktree or CI do not refresh another checkout's dependencies.
-
-```sh
-# In every existing developer checkout, after pulling the merged upgrade:
-bun install --frozen-lockfile
-bun run dev
-```
-
-A frozen install must leave the committed lockfile unchanged. If it fails, resolve the installation
-or manifest/lockfile error before running development or validation. The launcher's frozen preflight
-is a safeguard for a missed refresh; keep the explicit install in the normal upgrade/pull handoff.
+Follow the [per-checkout dependency refresh](docs/development.md#after-pulling-dependency-or-workspace-changes)
+before development or validation. Include that step and link in the completion, merge and pull handoff,
+even when the launcher can repair stale installs automatically.
 
 ## Reference-app fixes
 

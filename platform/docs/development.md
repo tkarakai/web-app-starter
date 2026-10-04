@@ -17,6 +17,12 @@ already verified them. Run the frozen install before other validation commands t
 may not invoke development preflight. If installation fails, fix the reported error and retry without
 rewriting the committed lockfile as a workaround.
 
+Before starting any service, the managed launcher checks the selected app and backend dependencies
+and resolves Next.js and Convex executables inside this checkout. Missing dependencies or links that
+resolve outside it stop startup; the launcher does not use ancestor packages, PATH executable
+fallbacks or implicit package downloads. `dev:status` also requires the checkout-local Convex CLI
+when looking up a running backend's dashboard; refresh dependencies if that lookup reports an error.
+
 ## Starting Development
 
 ```bash
