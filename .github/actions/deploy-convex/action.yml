@@ -12,6 +12,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Reject local fixture settings on hosted deployments
+      shell: bash
+      env:
+        CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
+      run: ./platform/tooling/node-ts.sh platform/tooling/local-fixtures.ts check-hosted
+
     - name: Check platform data migration before deployment
       shell: bash
       env:

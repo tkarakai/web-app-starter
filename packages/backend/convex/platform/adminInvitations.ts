@@ -1,3 +1,4 @@
+import { assertLocalFixtures } from "./localFixtures";
 /* global TextEncoder */
 /** App boundary: authorize here; storage lives in the platform component. */
 import { hashPassword } from "better-auth/crypto";
@@ -56,6 +57,7 @@ export const createForSeed = internalMutation({
     email: v.string(),
   },
   handler: async (ctx, args) => {
+    assertLocalFixtures();
     return await ctx.runMutation(components.platform.adminInvitations.createForSeed, args);
   },
 });

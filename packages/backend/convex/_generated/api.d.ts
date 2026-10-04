@@ -34,6 +34,7 @@ import type * as platform_emailTemplates from "../platform/emailTemplates.js";
 import type * as platform_functions from "../platform/functions.js";
 import type * as platform_httpRoutes from "../platform/httpRoutes.js";
 import type * as platform_integrations from "../platform/integrations.js";
+import type * as platform_localFixtures from "../platform/localFixtures.js";
 import type * as platform_meta from "../platform/meta.js";
 import type * as platform_onboardingType from "../platform/onboardingType.js";
 import type * as platform_parseUserAgent from "../platform/parseUserAgent.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "platform/functions": typeof platform_functions;
   "platform/httpRoutes": typeof platform_httpRoutes;
   "platform/integrations": typeof platform_integrations;
+  "platform/localFixtures": typeof platform_localFixtures;
   "platform/meta": typeof platform_meta;
   "platform/onboardingType": typeof platform_onboardingType;
   "platform/parseUserAgent": typeof platform_parseUserAgent;

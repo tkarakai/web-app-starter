@@ -480,6 +480,8 @@ CLOUD_PORT=""
 SITE_PORT=""
 
 if [ "$NEED_CONVEX" = true ]; then
+    "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" check-launch
+
     # Pre-flight: verify esbuild works (Convex hangs if it's corrupted)
     ESBUILD_STATUS=$(check_esbuild)
     if [ "$ESBUILD_STATUS" = "missing" ] || [ "$ESBUILD_STATUS" = "broken" ]; then
@@ -729,9 +731,7 @@ if [ "$NEED_CONVEX" = true ]; then
     # ============================================================
     echo ""
     echo -e "${GREEN}▶ Seeding dev users...${NC}"
-    if ! (cd "$CONVEX_DIR" && bunx convex env set DEV_SEED_ENABLED true 2>&1); then
-        echo -e "  ${YELLOW}⚠${NC} Could not set DEV_SEED_ENABLED (non-fatal)"
-    fi
+    "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" anonymous
     # Sync current git branch so TOTP issuer includes it in dev
     CURRENT_GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
     if [ -n "$CURRENT_GIT_BRANCH" ]; then

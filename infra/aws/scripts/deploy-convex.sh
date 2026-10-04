@@ -45,6 +45,7 @@ if [[ "$ENV" == "local" ]]; then
   REPLACE=true
 else
   [[ -n "${CONVEX_DEPLOY_KEY:-}" ]] || die "Set CONVEX_DEPLOY_KEY to the ${ENV} Convex deploy key"
+  (cd "$REPO_ROOT" && ./platform/tooling/node-ts.sh platform/tooling/local-fixtures.ts check-hosted)
 fi
 
 WEB_URL="$(require_output "$(stack_name network)" WebUrl)"
@@ -129,8 +130,9 @@ if [[ "$ENV" == "local" ]]; then
     convex_env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)" >/dev/null
     log "BETTER_AUTH_SECRET generated"
   fi
+  (cd "$REPO_ROOT" && ./platform/tooling/node-ts.sh platform/tooling/local-fixtures.ts local-aws)
   # The dev seed accounts, as `bun run dev` creates them (idempotent).
-  (cd "$ENV_DIR" && "$CONVEX_BIN" run devSeed:seed >/dev/null) && log "Dev seed applied"
+  (cd "$ENV_DIR" && "$CONVEX_BIN" run platform/devSeed:seed >/dev/null) && log "Dev seed applied"
 fi
 
 # BETTER_AUTH_SECRET, RESEND_API_KEY, EMAIL_FROM and PASSKEY_RP_ID are managed

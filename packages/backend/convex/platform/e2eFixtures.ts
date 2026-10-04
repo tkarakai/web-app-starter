@@ -11,16 +11,10 @@
  * invitation rows first, exactly as `devSeed` does, then creates the user
  * through Better Auth and marks the address verified.
  *
- * SAFETY — three independent guards, all required:
- *
- *   1. `DEV_SEED_ENABLED` must be exactly "true". `dev-start.sh` sets it on the
- *      local anonymous backend; it is never set on staging or production, so
- *      these routes 404 there.
- *   2. The email must match `E2E_EMAIL_PATTERN` — `e2e-<token>@e2e.local`.
- *      `.local` is reserved (RFC 6762) and cannot receive mail, so a fixture can
- *      never collide with, or take over, a real address.
- *   3. Passwords must clear the app's own minimum length, so fixtures cannot be
- *      used to plant weak-credential accounts.
+ * Requests require the local runtime, loopback app/backend origins and a random
+ * harness capability provisioned by the local launcher. The reserved address
+ * and password checks constrain fixture contents; they are not authorization.
+ * Hosted deployment preflight rejects fixture configuration.
  *
  * Accounts are create-only and never reused. CI gets a fresh backend per run;
  * locally they accumulate harmlessly in a disposable database.
@@ -31,6 +25,7 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { httpAction, internalMutation } from "../_generated/server";
 import { createAuth } from "./auth";
+import { assertLocalFixtures, authorizeFixtureRequest } from "./localFixtures";
 
 /**
  * Fixture addresses are confined to a reserved TLD that cannot receive mail.
@@ -40,10 +35,6 @@ const E2E_EMAIL_PATTERN = /^e2e-[a-z0-9-]{1,60}@e2e\.local$/;
 
 /** Mirrors the app's own credential minimum. */
 const MIN_PASSWORD_LENGTH = 12;
-
-function devFixturesEnabled(): boolean {
-  return process.env.DEV_SEED_ENABLED === "true";
-}
 
 function notFound(): Response {
   return new Response(JSON.stringify({ error: "Not available" }), {
@@ -76,6 +67,7 @@ export const prepareE2eInvitation = internalMutation({
     isAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
+    assertLocalFixtures();
     if (!E2E_EMAIL_PATTERN.test(args.email)) {
       throw new Error("E2E_EMAIL_REJECTED");
     }
@@ -89,6 +81,7 @@ export const prepareE2eInvitation = internalMutation({
 export const finalizeE2eInvitation = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
+    assertLocalFixtures();
     if (!E2E_EMAIL_PATTERN.test(args.email)) {
       throw new Error("E2E_EMAIL_REJECTED");
     }
@@ -110,7 +103,7 @@ export const finalizeE2eInvitation = internalMutation({
  * fails validation.
  */
 export const createE2eUser = httpAction(async (ctx, request) => {
-  if (!devFixturesEnabled()) return notFound();
+  if (!authorizeFixtureRequest(request)) return notFound();
 
   let body: Record<string, unknown>;
   try {
@@ -118,6 +111,8 @@ export const createE2eUser = httpAction(async (ctx, request) => {
   } catch {
     return badRequest("INVALID_JSON");
   }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) return badRequest("INVALID_JSON");
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
@@ -131,32 +126,30 @@ export const createE2eUser = httpAction(async (ctx, request) => {
     return badRequest("PASSWORD_TOO_SHORT");
   }
 
+  const auth = createAuth(ctx);
+  const authContext = await auth.$context;
+  if (await authContext.internalAdapter.findUserByEmail(email)) return badRequest("FIXTURE_ALREADY_EXISTS");
+
   // 1. Admit the address past inviteOnly gating.
   await ctx.runMutation(internal.platform.e2eFixtures.prepareE2eInvitation, { email, isAdmin });
 
   // 2. Create the account through Better Auth so the password is hashed and
   //    every database hook runs exactly as it would for a real signup.
-  const auth = createAuth(ctx);
+  let createdUserId: string;
   try {
     const result = await auth.api.signUpEmail({ body: { email, password, name } });
     if (!result?.user) {
       return badRequest("SIGNUP_FAILED");
     }
+    createdUserId = result.user.id;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes("already exists")) {
-      return badRequest(`SIGNUP_FAILED: ${message}`);
-    }
+    return badRequest(`SIGNUP_FAILED: ${message}`);
   }
 
   // 3. Mark the address verified — fixtures have no inbox to click through.
-  const authForVerify = createAuth(ctx);
-  const authContext = await authForVerify.$context;
-  const existing = await authContext.internalAdapter.findUserByEmail(email);
-  if (existing) {
-    await authContext.internalAdapter.updateUser(existing.user.id, { emailVerified: true, role: isAdmin ? "admin" : "user" });
-    if (isAdmin) await ctx.runMutation(components.platform.adminEmails.ensure, { email });
-  }
+  await authContext.internalAdapter.updateUser(createdUserId, { emailVerified: true, role: isAdmin ? "admin" : "user" });
+  if (isAdmin) await ctx.runMutation(components.platform.adminEmails.ensure, { email });
 
   await ctx.runMutation(internal.platform.e2eFixtures.finalizeE2eInvitation, { email });
 

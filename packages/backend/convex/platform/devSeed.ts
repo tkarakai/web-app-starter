@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { createAuth } from "./auth";
-import { isLocalDevelopment } from "./developmentOnly";
+import { assertLocalFixtures } from "./localFixtures";
 
 // ---------------------------------------------------------------------------
 // Dev-only seed data — hardcoded credentials for local development.
@@ -42,6 +42,7 @@ export const isSeeded = internalQuery({
 export const markSeeded = internalMutation({
   args: {},
   handler: async (ctx) => {
+    assertLocalFixtures();
     await ctx.runMutation(components.platform.appSettings.putRaw, {
       key: SEED_SENTINEL_KEY,
       value: "true",
@@ -59,6 +60,7 @@ export const setupDevUser = internalMutation({
     isAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
+    assertLocalFixtures();
     await ctx.runMutation(components.platform.invitationFixtures.prepare, { email: args.email, meta: JSON.stringify({ superpowers: ["dev-seed"], excitement: ["dev-seed"] }), token: `dev-seed-${args.email}`, ttlMs: 365 * 24 * 60 * 60_000 });
   },
 });
@@ -70,6 +72,7 @@ export const setupDevUser = internalMutation({
 export const finalizeDevToken = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
+    assertLocalFixtures();
     await ctx.runMutation(components.platform.invitationFixtures.finalize, args);
   },
 });
@@ -88,13 +91,7 @@ export const seed = internalAction({
       console.log("[devSeed] DEV_SEED_ENABLED is not 'true', skipping");
       return;
     }
-    if (!isLocalDevelopment()) {
-      throw new Error(
-        "DEV_SEED_NOT_LOCAL: the dev seed runs only in local development " +
-          "(every SITE_URL origin on http://localhost). Refusing to create " +
-          "accounts with hard-coded passwords on this deployment.",
-      );
-    }
+    assertLocalFixtures();
 
     // Idempotent: skip if already seeded
     const alreadySeeded = await ctx.runQuery(internal.platform.devSeed.isSeeded);

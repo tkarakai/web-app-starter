@@ -896,3 +896,24 @@ No automated alerting is configured by default. Options by team size:
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```
+
+### Local fixtures and hosted deployments
+
+Never set `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` or `DEV_FIXTURE_SECRET` on staging
+or production. The Convex deployment action and AWS deployment script check the target's
+environment variable names before deploying functions or running migrations, and refuse any
+fixture configuration. Connectivity and parsing failures also stop deployment.
+
+For a manual deployment, set the same `CONVEX_DEPLOY_KEY` you will use to deploy, then run
+from the repository root:
+
+```bash
+./platform/tooling/node-ts.sh platform/tooling/local-fixtures.ts check-hosted
+```
+
+If the check fails because fixture settings exist, remove all three from the selected hosted
+deployment in the Convex dashboard, then rerun the check. Do not copy a local environment file
+to a hosted deployment. The runtime independently requires local app/backend origins and a
+capability, so a stray seed flag does not enable an anonymous administrator fixture route.
+Canonical backend URLs can be overridden by deployment administrators; the URL check is
+defense in depth alongside capability authorization and provisioning/deployment checks.

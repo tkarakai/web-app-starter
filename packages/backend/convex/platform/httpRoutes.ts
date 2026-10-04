@@ -314,7 +314,7 @@ export function registerPlatformRoutes(http: HttpRouter): void {
   });
 
   // ---------------------------------------------------------------------------
-  // Dev TOTP helper (only active when DEV_SEED_ENABLED is set)
+  // Dev TOTP helper (local runtime and harness capability required)
   // ---------------------------------------------------------------------------
 
   http.route({
@@ -323,8 +323,8 @@ export function registerPlatformRoutes(http: HttpRouter): void {
     handler: getDevTotpCode,
   });
 
-  // Disposable E2E user fixtures. Gated on DEV_SEED_ENABLED and a reserved
-  // e2e.local address — see e2eFixtures.ts for the full safety rationale.
+  // Disposable E2E user fixtures. Local runtime and harness capability required;
+  // see localFixtures.ts and e2eFixtures.ts.
   http.route({
     path: "/api/dev/e2e-user",
     method: "POST",

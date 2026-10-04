@@ -1,9 +1,8 @@
+import { authorizeFixtureRequest } from "./localFixtures";
 import { httpAction } from "../_generated/server";
 
-export const getDevTotpCode = httpAction(async () => {
-  const devEnabled = process.env.DEV_SEED_ENABLED;
-
-  if (!devEnabled) {
+export const getDevTotpCode = httpAction(async (_ctx, request) => {
+  if (!authorizeFixtureRequest(request)) {
     return new Response(JSON.stringify({ error: "Not available" }), {
       status: 404,
       headers: { "Content-Type": "application/json" },
