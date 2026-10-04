@@ -15,7 +15,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
-- Platform update discovery/verification and PR delivery can use independently configured trusted Linux runners. GitHub-hosted runners remain the default; see [update delivery](docs/update-delivery.md#trusted-linux-workers).
+- Platform update discovery/verification and PR delivery can run on your own computers using independently configured self-hosted Linux runners; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
 
 ### Fixed
 
