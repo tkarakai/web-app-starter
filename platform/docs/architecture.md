@@ -110,7 +110,7 @@ The application uses three layers of rate limiting. See [rate-limiting-architect
 > **Note**: `landing` is a fully static export and does not use edge rate limiting. Rate limiting for static deployments should be handled at the CDN/hosting layer.
 
 **What happens when rate limited:**
-- **Auth endpoints**: HTTP 429, auth form shows "Too many attempts. Please wait a moment before trying again."
+- **Auth endpoints**: request-budget and unconditional delivery denial return HTTP 429; the auth form shows "Too many attempts. Please wait a moment before trying again." Public conditional mail retains its normal acknowledgement on delivery denial; see [the exhaustion contract](rate-limiting-architecture.md#exhaustion-failures-and-monitoring).
 - **Convex mutations**: `ConvexError` with `{ kind: "RateLimited" }`, `useQuery` subscriptions unaffected
 - **Edge proxy**: HTTP 429 with `Retry-After` header, plain "Too Many Requests" page
 

@@ -79,8 +79,16 @@ Better Auth's session IP metadata is separate and is not used to choose these bu
 
 ### Exhaustion, failures and monitoring
 
-A denied request returns HTTP 429 with `Retry-After` in seconds and `Cache-Control: no-store`.
+A denied request budget returns HTTP 429 with `Retry-After` in seconds and `Cache-Control: no-store`.
 Honor that delay, surface the error in custom clients and require an explicit later retry.
+Delivery-budget denials on public conditional-mail routes retain the normal HTTP 200 body
+and headers: verification email (including custom templates), password-reset links, and
+email-OTP verification/reset requests, including the deprecated reset alias. This prevents
+exhaustion from revealing whether an account exists or is verified, even when concurrent
+requests consume the last capacity. Email-OTP sign-in also follows this contract when signup
+is disabled. Acknowledgement does not promise delivery; retry later if no email arrives.
+Unconditional sends, including two-factor OTP and signup-enabled email-OTP sign-in, retain
+HTTP 429 and the retry headers on delivery denial. Ineligible requests spend no mail tokens.
 There is no unbounded retry queue. Provider failures still consume reserved capacity, because
 an ambiguous failure may already have delivered a message. There are no automatic refunds or
 provider retries. A denied delivery reservation does not consume the other delivery buckets.

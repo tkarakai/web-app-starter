@@ -47,6 +47,7 @@ const OTP_SEND_PATHS = new Set([
 ]);
 
 type OtpDelivery = { recipient: string; code: () => string | undefined };
+class AuthEmailBudgetError extends APIError {}
 const bearerSessionHook = bearer().hooks.before[0];
 
 export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterAuthPlugin => ({
@@ -151,6 +152,28 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
         },
       } } };
     }),
+  }], after: [{
+    matcher: context => context.context.returned instanceof AuthEmailBudgetError,
+    handler: createAuthMiddleware(async context => {
+      const path = context.path;
+      let acknowledgement: Record<string, unknown>;
+      if (path === "/send-verification-email") acknowledgement = { status: true };
+      else if (path === "/request-password-reset") acknowledgement = {
+        status: true, message: "If this email exists in our system, check your email for the reset link",
+      };
+      else if (path === "/email-otp/request-password-reset" || path === "/forget-password/email-otp") {
+        acknowledgement = { success: true };
+      } else if (path === "/email-otp/send-verification-otp") {
+        const options = context.context.getPlugin("email-otp")?.options as { disableSignUp?: boolean } | undefined;
+        if (context.body?.type === "sign-in" && !options?.disableSignUp) return;
+        acknowledgement = { success: true };
+      } else return;
+      context.context.responseHeaders?.delete("retry-after");
+      context.context.responseHeaders?.delete("cache-control");
+      return new Response(JSON.stringify(acknowledgement), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }),
   }] },
 });
 
@@ -169,7 +192,7 @@ async function reserveAuthEmail(ctx: GenericCtx<DataModel>, recipient: string): 
   if (!reservation.ok) {
     // Bounded deployment-wide signal; never include addresses, tokens or message content.
     if (reservation.alert) console.warn("AUTH_EMAIL_BUDGET_EXHAUSTED", { budget: reservation.budget });
-    throw new APIError("TOO_MANY_REQUESTS", { message: "Too many requests. Please try again later." }, {
+    throw new AuthEmailBudgetError("TOO_MANY_REQUESTS", { message: "Too many requests. Please try again later." }, {
       "Retry-After": retrySeconds(reservation.retryAt), "Cache-Control": "no-store",
     });
   }

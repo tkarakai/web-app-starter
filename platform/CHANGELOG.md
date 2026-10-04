@@ -23,8 +23,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Authentication routes use durable request budgets, and all auth email callbacks share recipient
   and deployment delivery budgets. Magic-link requests use the installed route, provider failures
-  consume attempts, and OTP resend preserves the unexpired code. Exhaustion returns 429 with
-  `Retry-After`; bounded logs support operator alerts.
+  consume attempts, and OTP resend preserves usable unexpired codes and renews exhausted ones.
+  Request and unconditional delivery exhaustion return 429 with `Retry-After`; public conditional
+  mail retains its normal acknowledgement to protect account privacy. Bounded logs support alerts.
 
 - Password reset revokes existing sessions. Viewing MFA recovery codes now requires the current
   password on every request, with a shared per-account attempt limit; settings and resumed admin

@@ -74,6 +74,64 @@ async function twoFactorFixture(pending: boolean) {
 }
 
 describe("auth email delivery budgets", () => {
+  test.each([
+    ["/send-verification-email", undefined, false],
+    ["/send-verification-email", undefined, true],
+    ["/request-password-reset", undefined, false],
+    ["/email-otp/request-password-reset", undefined, false],
+    ["/forget-password/email-otp", undefined, false],
+    ["/email-otp/send-verification-otp", "email-verification", false],
+    ["/email-otp/send-verification-otp", "forget-password", false],
+  ] as const)("conditional %s (%s, custom=%s) hides exhausted and competing delivery reservations", async (path, type, custom) => {
+    for (const budget of ["authEmailGlobal", "authEmailDaily"] as const) {
+      for (const capacity of [0, 1]) {
+        const f = await fixture();
+        await f.t.mutation(components.platform.appSettings.putRaw, { key: "userEmailVerificationRequired", value: "true" });
+        if (custom) await f.t.mutation(components.platform.appSettings.putRaw, {
+          key: "emailVerificationTemplate", value: JSON.stringify({
+            subject: "Verify", html: "<a href='{{verification_link}}'>Verify</a>", text: "{{verification_link}}",
+          }),
+        });
+        const emails = ["unverified-a@example.test", "verified@example.test", "missing@example.test", "unverified-b@example.test"];
+        for (const email of emails.filter(email => !email.startsWith("missing"))) {
+          const now = Date.now();
+          await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
+            name: "Privacy", email, emailVerified: email.startsWith("verified"), createdAt: now, updatedAt: now,
+          } } });
+        }
+        const observable = async (response: Response) => ({
+          status: response.status, body: await response.json(), headers: Object.fromEntries(response.headers),
+        });
+        const acknowledgement = await observable(await f.post(`/api/auth${path}`, { email: emails[2], type }));
+        expect(sendAuthEmail).not.toHaveBeenCalled();
+        expect((await f.t.run(ctx => ctx.db.query("rateLimits").collect()))
+          .filter(row => ["authEmailRecipient", "authEmailGlobal", "authEmailDaily", "authEmailAlert"].includes(row.name))).toEqual([]);
+        await f.t.run(ctx => ctx.db.insert("rateLimits", { name: budget, value: capacity, ts: Date.now() }));
+        const replies = await Promise.all(emails.map(email => f.post(`/api/auth${path}`, { email, type })));
+        for (const reply of replies) expect(await observable(reply)).toEqual(acknowledgement);
+        expect(sendAuthEmail).toHaveBeenCalledTimes(capacity);
+        if (custom && capacity) expect(vi.mocked(sendAuthEmail).mock.calls[0][0].type).toBe("custom");
+        const rows = await f.t.run(ctx => ctx.db.query("rateLimits").collect());
+        expect(rows.find(row => row.name === budget)?.value).toBe(0);
+        expect(rows.filter(row => row.name === "authEmailRecipient")).toHaveLength(capacity);
+        vi.mocked(sendAuthEmail).mockClear();
+      }
+    }
+  });
+
+  test("conditional delivery acknowledgement does not hide account-independent request exhaustion", async () => {
+    const f = await fixture();
+    await otpUser(f, "existing@example.test");
+    await f.t.run(ctx => ctx.db.insert("rateLimits", { name: "authRequestGlobal", value: 0, ts: Date.now() }));
+    const replies = await Promise.all(["existing@example.test", "missing@example.test"].map(email =>
+      f.post("/api/auth/request-password-reset", { email })));
+    expect(replies.map(reply => reply.status)).toEqual([429, 429]);
+    expect(Object.fromEntries(replies[0].headers)).toEqual(Object.fromEntries(replies[1].headers));
+    expect(await replies[0].json()).toEqual(await replies[1].json());
+    expect(Number(replies[0].headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(sendAuthEmail).not.toHaveBeenCalled();
+  });
+
   test("email OTP resend replaces an exhausted three-attempt challenge with a usable code", async () => {
     const f = await fixture();
     const email = "exhausted-email@example.test";
@@ -201,7 +259,7 @@ describe("auth email delivery budgets", () => {
     const codes = vi.mocked(sendAuthEmail).mock.calls.map(([message]) => message.urlOrCode);
     expect(codes).toHaveLength(budget === "recipient" ? 3 : 2);
     expect(new Set(codes).size).toBe(1);
-    expect(replies.filter(r => r.status === 429)).toHaveLength(budget === "recipient" ? 3 : 4);
+    expect(replies.every(r => r.status === 200)).toBe(true);
     expect((await f.post("/api/auth/email-otp/check-verification-otp", {
       email: "race@example.test", type: "forget-password", otp: codes[0],
     })).status).toBe(200);
@@ -229,7 +287,7 @@ describe("auth email delivery budgets", () => {
     expect((await f.post(magicPath, { email: "recipient@example.test" })).status).toBe(200);
     expect((await f.post("/api/auth/request-password-reset", { email: "recipient@example.test" })).status).toBe(200);
     expect((await f.post("/api/auth/email-otp/request-password-reset", { email: "recipient@example.test" })).status).toBe(200);
-    expect((await f.post("/api/auth/send-verification-email", { email: "recipient@example.test" })).status).toBe(429);
+    expect((await f.post("/api/auth/send-verification-email", { email: "recipient@example.test" })).status).toBe(200);
     expect(vi.mocked(sendAuthEmail).mock.calls).toHaveLength(3);
   });
   test("concurrent recipient requests cannot overbook the three-message budget", async () => {
