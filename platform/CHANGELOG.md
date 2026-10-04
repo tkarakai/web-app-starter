@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-04
+
 ### Added
 
 - Development and staging banners show the installed starter platform version in the
@@ -846,5 +848,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [3.0.0]: https://github.com/tkarakai/web-app-starter/compare/v2.1.2...v3.0.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...HEAD
 [3.1.0]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...v3.1.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...v4.0.0
