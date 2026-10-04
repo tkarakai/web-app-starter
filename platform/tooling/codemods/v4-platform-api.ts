@@ -9,7 +9,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { openMigrationFile } from "./open-migration-file.ts";
-const modules = ["authRateLimits", "localFixtures", "recoveryCodes"] as const;
+const modules = ["authAssurance", "authRateLimits", "localFixtures", "recoveryCodes", "sessionAssurance", "sessionFields", "sessionPolicy"] as const;
 export function migrate(root: string, check = false): string[] {
   const relative = "packages/backend/convex/_generated/api.d.ts";
   const fd = openMigrationFile(root, relative, check);

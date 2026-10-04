@@ -772,6 +772,16 @@
           "touches": [
             "packages/backend/convex/_generated/api.d.ts"
           ]
+        },
+        {
+          "id": "v4-onboarding-dependency",
+          "path": "platform/tooling/codemods/v4-onboarding-dependency.ts",
+          "touches": [
+            "apps/web/package.json",
+            "apps/landing/package.json",
+            "apps/web/next.config.ts",
+            "apps/landing/next.config.ts"
+          ]
         }
       ],
       "migrations": [],
@@ -868,7 +878,8 @@
         "apps.web.package.json",
         "packages.backend.convex._generated.api.d.ts",
         "package.json",
-        "turbo.json"
+        "turbo.json",
+        "eslint.config.mjs"
       ]
     }
   ]

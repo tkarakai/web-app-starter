@@ -13,6 +13,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-04
+
+### Added
+
+- Development and staging banners show the installed starter platform version in the
+  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
+  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
+
 ### Fixed
 
 - Convex and authentication HTTP routes now enforce live session assurance, current security
@@ -28,26 +36,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
   OTP enrollment rotation preserves the original administrator deadline without granting strong proof.
 
 - ES256 passkey authentication uses one ASN.1 schema registry, avoiding mismatched parser state.
-
-### Action required
-
-- Deploy the updated authentication backend and UI together. Existing sessions without verified
-  session proof must reauthenticate or sign in again. App-owned administrative mutations must use
-  `adminMutation`; custom auth screens must support limited sessions and fresh verification as
-  described in [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
-  Required passkeys now require current-session passkey authentication. Email-OTP sign-in, social
-  account/token routes and admin impersonation are unavailable; password reset and email
-  verification remain supported.
-
-## [4.0.0] - 2026-10-04
-
-### Added
-
-- Development and staging banners show the installed starter platform version in the
-  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
-  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
-
-### Fixed
 
 - Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
 - Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
@@ -84,6 +72,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- Deploy the updated authentication backend and UI together. Existing sessions without verified
+  session proof must reauthenticate or sign in again. App-owned administrative mutations must use
+  `adminMutation`; custom auth screens must support limited sessions and fresh verification as
+  described in [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+  Required passkeys now require current-session passkey authentication. Email-OTP sign-in, social
+  account/token routes and admin impersonation are unavailable; password reset and email
+  verification remain supported.
+
 - Add **Security Complete** and the standalone **CodeQL** context to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
 - Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
 
@@ -92,7 +88,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   and commit required manual app-owned preparation for custom fixture clients, auth forms
   and retained sample file code. The installed v3.1.0 checkout does not contain the v4
   codemods. After applying target source and resolving seam conflicts, the updater automatically
-  runs `v4-local-fixture-clients.ts` and `v4-platform-api.ts`; generated platform bindings need
+  runs the release's codemods; see the guide for onboarding dependency cleanup and preservation.
+  Generated platform bindings need
   the target platform modules present. Then run the guide's read-only `--check` commands and
   acceptance tests, including local auth E2E, before deployment or merge. Preserve the immutable
   plan constraints in [UPGRADING.md](UPGRADING.md). No hosted data or configuration is changed automatically.
