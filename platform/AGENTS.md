@@ -88,7 +88,7 @@ bun run dev:landing          # See development commands below
 bun run dev:storybook        # storybook               bun run dev:status / dev:stop / dev:nuke-all
 
 CI=true bun run ci           # Full local CI; one web E2E worker avoids edge-rate-limit failures
-bun run ci:quick             # Same without E2E
+bun run ci:quick             # Same without browser tests
 bun run lint                 # ESLint, all workspaces
 bun run typecheck            # TypeScript, all workspaces
 bun run test                 # Bun unit tests      (never bare `bun test`)
@@ -97,6 +97,11 @@ bun run test:convex          # Convex backend tests
 CI=true bun run test:e2e     # Playwright E2E; one web worker (docs/testing.md; setup:e2e first)
 bun run build                # Production build via Turborepo
 bun run check:zone           # Platform edits are recorded patches; seams keep their hooks
+bun run test:startup         # Stale workspace repair and real Next compilation
+bun run test:shared-packages # Shared UI package coverage
+bun run test:landing-export  # Browser smoke of existing landing production export
+bun run test:landing-artifacts # Build and smoke both configuration variants
+bun run check:dependencies   # Fail-closed Bun registry audit (high/critical)
 bun run test:contracts       # Session isolation, endpoint authorization, headers, env
 bun run platform:upgrade --help # Plan/apply/resume a published platform release
 bun run platform:check-updates # Discover allowed updates and major releases for review

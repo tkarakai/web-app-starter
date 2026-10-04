@@ -13,10 +13,7 @@ const ANNOUNCEMENT_REQUEST_TIMEOUT_MS = 8_000;
 
 function getConvexSiteUrlCandidates(): string[] {
   const fromEnv = process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
-  if (!fromEnv) {
-    throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
-  }
-  return [fromEnv];
+  return fromEnv ? [fromEnv] : [];
 }
 
 type ActiveAnnouncement = {
@@ -47,6 +44,7 @@ function ActiveAnnouncementBannerHost() {
   const isVisible = Boolean(announcement && dismissedId !== announcement._id);
 
   React.useEffect(() => {
+    if (getConvexSiteUrlCandidates().length === 0) return;
     let cancelled = false;
     let pollTimeoutId: number | null = null;
     let activeController: { abort: () => void } | null = null;

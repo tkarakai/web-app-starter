@@ -14,6 +14,17 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ## [Unreleased]
 
 ### Fixed
+
+- Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
+- Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
+- Dependency and secret scans fail closed; Security honors the native runner setting and exposes an aggregate completion gate. Compatible transitive security updates replace vulnerable packages; the unused reference web `eslint-config-next` dependency is removed.
+
+### Action required
+
+- Add **Security Complete** to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
+- App-owned shared UI must carry its behavior tests and a package-local `test:coverage` command (see [testing](docs/testing.md#shared-ui-and-production-artifacts)). Port the reference onboarding coverage and landing fallback as appropriate to your app. Build the landing with Convex configuration before `test:landing-export`; also test an empty-configuration build with `EXPORT_EXPECT_CONFIGURED=false`.
+
+### Fixed
 - Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
 
 ### Added

@@ -294,3 +294,11 @@ bun run test:watch
   packages, and `@/` for app-internal imports
 - Document public APIs with JSDoc comments
 - Keep component files under 200 lines
+
+## Shared UI and production artifacts
+
+App-owned shared UI needs a package-local component suite and `test:coverage` command. `bun run test:shared-packages` runs those commands in both native and GitHub CI. The onboarding form owns its behavior tests in `packages/onboarding/qa/tests` and enforces V8 coverage thresholds in its Vitest configuration; consuming apps retain wiring tests. When extracting UI, move its behavior tests and coverage with the code.
+
+`bun run test:landing-export` serves the existing production export and runs Chromium against it. Build first with `NEXT_PUBLIC_CONVEX_SITE_URL` configured; set `EXPORT_EXPECT_CONFIGURED=false` only for an export built with that variable empty. The test uses controlled HTTP responses while exercising real built HTML, JS and CSS. Dev-server E2E remains a separate check.
+
+`bun run test:landing-artifacts` builds and tests both missing and configured variants, leaving the configured output last. Native CI, GitHub CI and upgrade verification use this command.

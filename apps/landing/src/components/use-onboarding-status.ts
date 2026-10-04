@@ -19,11 +19,11 @@ function parseStatus(value: unknown): Status {
 
 /** Read public mode in the browser; retry outages and refresh when returning to the tab. */
 export function useOnboardingStatus(): Status {
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<Status>(() => process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim() ? "loading" : "unreachable");
 
   useEffect(() => {
-    const siteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
-    if (!siteUrl) throw new Error("Missing required environment variable: NEXT_PUBLIC_CONVEX_SITE_URL");
+    const siteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL?.trim();
+    if (!siteUrl) return;
     let generation = 0;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;

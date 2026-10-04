@@ -20,7 +20,7 @@ Local test commands and `act` do not register a runner or satisfy GitHub require
 
 ## Local CI (Pre-Push Checks)
 
-Run the same checks that GitHub Actions CI runs before pushing:
+Run the local checks before pushing; GitHub adds the online provider checks described below:
 
 ```bash
 CI=true bun run ci           # Full CI check; supported single-worker web E2E
@@ -29,16 +29,20 @@ bun run ci:quick             # Skip E2E tests for faster feedback
 
 The `bun run ci` command runs these checks in order (workspace checks use `turbo`;
 starter upgrade checks use the root scripts):
-1. **TypeScript check** (`bun run typecheck:dev-scripts`, `turbo typecheck`)
-2. **ESLint** (`bun run lint:dev-scripts`, `turbo lint`)
-3. **Development-script behavior and Bun unit tests** (`bun run test:dev-scripts`, `turbo test`)
-4. **Vitest component tests with coverage** (`turbo test:coverage`)
-5. **Coverage summary display** + artifact saving
-6. **Convex backend tests** (`turbo test:convex`)
-7. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
-8. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
-9. **Bundle size check** (all apps with `.size-limit.json`)
-10. **Playwright E2E tests** (CI mode starts managed local services through each app's Playwright configuration and refuses to reuse an occupied local server; an explicit `E2E_BASE_URL` instead targets that disposable deployment)
+1. **Shared checkout and platform inventory** (`platform/tooling/ci-checks.ts`): runtime, skills, pinned Actions, i18n, zone, dependency floors in the product, tooling typecheck/lint/tests, ops, auth UI and shared-package coverage. Native CI and GitHub execute the same inventory.
+2. **Public startup smoke** (`bun run test:startup`): a stale Bun workspace installation, real Next/Tailwind pages and CSS, and a compile-failure cleanup check.
+3. **Authorization contracts** (`bun run test:contracts`).
+4. **TypeScript check** (`bun run typecheck:dev-scripts`, `turbo typecheck`)
+5. **ESLint** (`bun run lint:dev-scripts`, `turbo lint`)
+6. **Development-script behavior and Bun unit tests** (`bun run test:dev-scripts`, `turbo test`)
+7. **Vitest component tests with coverage** (`turbo test:coverage`)
+8. **Coverage summary display** + artifact saving
+9. **Convex backend tests** (`turbo test:convex`)
+10. **Starter ownership and upgrade rehearsal** (`bun run check:starter-ownership`, `bun run test:starter-upgrade`, `bun run test:starter-rehearsal`; scripts also get typechecked/linted)
+11. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
+12. **Built landing browser smoke** (`bun run test:landing-artifacts`): builds configured and missing-configuration variants, serves `apps/landing/out`, loads real assets, checks hydration and submits the waitlist through a controlled HTTP response fixture. Native and GitHub CI execute both variants through the same command.
+13. **Bundle size check** (all apps with `.size-limit.json`)
+14. **Playwright E2E tests** (CI mode starts managed local services through each app's Playwright configuration and refuses to reuse an occupied local server; an explicit `E2E_BASE_URL` instead targets that disposable deployment)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots, dev logs) are saved to `.ci-local-artifacts/` for local inspection.
 
@@ -55,11 +59,15 @@ Next.js. Set `DATABASE_UDF_USER_TIMEOUT_SECONDS` explicitly to use a different l
 Interactive development keeps Convex's default; hosted deployments and browser assertions are
 unchanged.
 
-Use `bun run ci:quick` to skip E2E tests when you need faster feedback. The script will exit on the first failure with a clear error message.
+Use `bun run ci:quick` to skip browser tests (E2E and the export smoke) when you need faster feedback. The script will exit on the first failure with a clear error message.
 
 > **Note**: The native local CI script does not run Security checks (CodeQL, dependency audit,
 > secrets scan), Lighthouse audits or the GitHub CI gate. Runner location is a separate choice;
-> the platform keeps Security and deployment jobs GitHub-hosted by default.
+> Security honors `PLATFORM_CI_RUNNER`, with native Linux amd64/arm64 secret scanning.
+
+Run `./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts online` for the published advisory and Bun registry audit checks. Registry errors, missing tools/lockfiles and malformed audit output fail; high/critical findings fail, while lower severities warn. There is no audit fallback that reports success after an error. The **Security Complete** job requires every applicable scan to succeed; require this context in branch protection alongside the app/shared CI gates. Paid CodeQL/dependency review may skip only when unavailable (dependency review also skips outside PRs).
+
+All app CI and staging deployment selectors consume `.github/platform-impact.json`. Shared packages, including new `packages/*`, platform packages and CI/tooling changes select all app consumers and backend tests/deployment. App-only changes remain scoped; documentation-only changes do not select app work.
 
 ## Running GitHub Actions Locally with `act`
 

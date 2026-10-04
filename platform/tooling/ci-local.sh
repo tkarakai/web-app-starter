@@ -319,7 +319,7 @@ save_e2e_artifacts() {
 # ============================================================
 print_step "Step 1/9: TypeScript Check"
 step_start
-if bun run typecheck:dev-scripts && turbo typecheck; then
+if turbo typecheck; then
   print_success "TypeScript check passed"
   step_end "all: TypeScript" "pass"
 else
@@ -333,7 +333,7 @@ fi
 # ============================================================
 print_step "Step 2/9: ESLint"
 step_start
-if bun run lint:dev-scripts && turbo lint; then
+if turbo lint; then
   print_success "ESLint passed"
   step_end "all: ESLint" "pass"
 else
@@ -342,32 +342,18 @@ else
   exit 1
 fi
 
-# Product only: direct dependency floors equal the versions bun.lock resolves
-# (mirrors platform-ci-shared.yml → "Check dependency floors"; adopted apps skip it).
-if [ ! -f .platform-base.json ]; then
-  step_start
-  if ./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts; then
-    print_success "Dependency floors in sync"
-    step_end "all: Dependency floors" "pass"
-  else
-    print_error "Dependency floors are stale (run: bun run sync:dependency-floors)"
-    step_end "all: Dependency floors" "fail"
-    exit 1
-  fi
-fi
+# The same platform and checkout checks run in Shared CI.
+./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts checkout
+./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts platform
+./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts contracts
+bun run test:startup
+echo "Online security/advisory checks are separate: ci-checks.ts online; GitHub also runs provider security checks."
 
 # ============================================================
 # Phase 3: Bun Unit Tests (mirrors ci-{web,admin,landing}.yml → test job)
 # Per-app so failures show which app broke.
 # ============================================================
 print_step "Step 3/9: Unit Tests (Bun)"
-step_start
-if bun run test:dev-scripts; then
-  step_end "scripts: Process isolation and locale merge" "pass"
-else
-  step_end "scripts: Process isolation and locale merge" "fail"
-  exit 1
-fi
 PHASE_FAILED=false
 for APP in web admin landing; do
   app_present "$APP" || continue
@@ -489,6 +475,7 @@ for APP in web admin landing storybook; do
   fi
 done
 if [ "$BUILD_FAILED" = true ]; then exit 1; fi
+if [ "$SKIP_E2E" = false ]; then bun run test:landing-artifacts; else echo "Skipped production-export browser smoke (--skip-e2e)."; fi
 
 # ============================================================
 # Phase 8: Bundle Size Check (per app)
@@ -578,7 +565,7 @@ DURATION_CS=$((END_TIME - START_TIME))
 
 echo -e "\n${GREEN}"
 echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│                  All CI Checks Passed!                       │"
+echo "│                  All Selected Local Checks Passed!                       │"
 echo "└──────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 echo -e "Total time: $(format_duration $DURATION_CS)"

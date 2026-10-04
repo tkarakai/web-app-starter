@@ -46,7 +46,7 @@ cd "$PROJECT_DIR"
 # ============================================================
 # CHECK BUN VERSION MATCHES packageManager FIELD
 # ============================================================
-EXPECTED_BUN_VERSION=$(grep -o '"packageManager": "bun@[^"]*"' package.json 2>/dev/null | grep -o '[0-9][0-9.]*')
+EXPECTED_BUN_VERSION=$(node -e 'const p=require("./package.json"); process.stdout.write((p.packageManager || "").replace(/^bun@/, ""))')
 ACTUAL_BUN_VERSION=$(bun --version 2>/dev/null)
 
 if [ -n "$EXPECTED_BUN_VERSION" ] && [ -n "$ACTUAL_BUN_VERSION" ] && [ "$CI_BUN_VERSION_CHECKED" != "1" ]; then
@@ -105,8 +105,8 @@ for dir in "${MUST_BE_LOCAL[@]}"; do
         case "$dir" in
             "node_modules")
                 log_always "${GREEN}▶ Running bun install to create local node_modules...${NC}"
-                bun install
-                log_always "${GREEN}✔ Local node_modules installed${NC}"
+                : # Installation follows all isolation checks
+
                 ;;
             *)
                 log "  ${BLUE}ℹ $dir will be recreated as needed${NC}"
@@ -118,6 +118,15 @@ for dir in "${MUST_BE_LOCAL[@]}"; do
         log "  ${GREEN}✔${NC} $dir is a real directory"
     fi
 done
+
+# Reconcile workspace links even when node_modules already exists. Frozen mode
+# rejects a stale lockfile instead of silently modifying dependency declarations.
+log "${BLUE}Synchronizing dependencies from bun.lock...${NC}"
+if ! bun install --frozen-lockfile; then
+    log_always "${RED}Dependency installation failed; no development services were started.${NC}"
+    log_always "Resolve the install error, then retry. Keep package.json and bun.lock in sync."
+    exit 1
+fi
 
 # Also check for symlinks in node_modules that point outside the project
 if [ -d "node_modules" ]; then
