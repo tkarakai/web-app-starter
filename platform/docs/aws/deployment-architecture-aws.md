@@ -128,7 +128,7 @@ Each of these keeps Vercel's behavior unchanged:
 | `getClientIp` honours `TRUSTED_PROXY_COUNT` | An ALB appends to `X-Forwarded-For`; the first entry is client-controlled (see above) |
 | CSP `connect-src` always includes the runtime `CONVEX_URL` / `CONVEX_SITE_URL` origins, next to `*.convex.cloud` | So a Convex custom domain or the local target's Convex backend is reachable from a production build |
 | `/api/auth/clear-session` redirects with a relative `Location` | In a standalone server a route handler's `request.url` carries the bind address (`0.0.0.0:3000`), not the public host |
-| Playwright `E2E_BASE_URL`, `E2E_CONVEX_LOG`, cookie domain from `baseURL` | Run the E2E suites against any deployed target, not only `bun run dev` |
+| Playwright `E2E_BASE_URL`, `E2E_CONVEX_LOG`, cookie domain from `baseURL` | Target selection follows the [disposable-target guidance](../testing.md#running-playwright-e2e-reliably) |
 
 ## Deployment targets
 
