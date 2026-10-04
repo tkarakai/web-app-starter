@@ -21,5 +21,8 @@ shift
 "$SCRIPT_DIR/ensure-local-deps.sh" --quiet
 "$SCRIPT_DIR/ensure-app-env.sh" --quiet
 
+workspace="$PWD"
+"$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-dev-deps.ts" check "$workspace"
+next_bin=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-dev-deps.ts" bin "$workspace" next)
 port=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/app-config.ts" port "$app")
-exec next dev --port "$port" "$@"
+exec node "$next_bin" dev --port "$port" "$@"

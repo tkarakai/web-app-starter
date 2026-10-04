@@ -232,6 +232,12 @@ The optional demo's sidebar-package rehearsal is a separate example:
 `bun run test:starter-rehearsal`. It does not replace platform verification or prove a backend
 migration. No upgrade command publishes a release or deploys your app.
 
+## After merging or pulling an upgrade
+
+Follow the [per-checkout dependency refresh](docs/development.md#after-pulling-dependency-or-workspace-changes)
+before development or validation. Include that step and link in the completion, merge and pull handoff,
+even when the launcher can repair stale installs automatically.
+
 ## Reference-app fixes
 
 App-owned pages are preserved by the updater. When taking the landing/locale fixes listed in the changelog:

@@ -5,7 +5,7 @@ import { argumentsFor, HELP, reportLocation } from "./cli.ts";
 import { canonical, demand } from "./metadata.ts";
 import { createCache, loadRelease, resolveSource } from "./git.ts";
 import { createPlan, workingFiles } from "./plan.ts";
-import { createReport, exclusions, reportAppRoot, readReport, recordDecision, unresolved, writeReport } from "./report.ts";
+import { CHECKOUT_REFRESH, createReport, exclusions, reportAppRoot, readReport, recordDecision, unresolved, writeReport } from "./report.ts";
 import { applyUpgrade, reconstruct } from "./engine.ts";
 import { relocateReport } from "./relocate.ts";
 import { redact } from "./commands.ts";
@@ -43,6 +43,7 @@ export async function main(argv: string[]): Promise<number> {
     }
     if (!args.dryRun && report.outcome !== "unchanged") await applyUpgrade(report, planned, { reportFile: file, deferE2e: args.deferE2e });
     process.stdout.write("platform-upgrade: " + report.outcome + "; " + file + "\n");
+    if (report.outcome === "verified" || report.outcome === "unchanged") process.stdout.write(CHECKOUT_REFRESH + "\n");
     if (report.outcome === "failed" && report.state.error) process.stderr.write(redact(report.state.error) + "\n");
     return report.outcome === "failed" ? 1 : report.outcome === "needs-review" ? 2 : 0;
   } finally { fs.rmSync(cache.directory, { recursive: true, force: true }); }

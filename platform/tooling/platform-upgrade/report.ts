@@ -5,6 +5,8 @@ import { readRegular } from "./io.ts";
 import { secretValueFile } from "./ownership.ts";
 import type { Gate, Plan } from "./plan.ts";
 
+export const CHECKOUT_REFRESH = "In each local checkout, after pulling/merging changes to bun.lock, dependency manifests or workspace layout, run `bun install --frozen-lockfile` before development or validation. Installation and verification in the upgrade worktree or CI do not refresh another checkout's dependencies.";
+
 export type Outcome = "planned" | "unchanged" | "verified" | "needs-review" | "failed";
 export type Decision = { gateId: string; planDigest: string; action: "reviewed" | "accept-release" | "reapply-patch" | "secret-configured" | "migration-complete"; evidence: string; at: string; migration?: { deployment: string; evidenceDigest: string } };
 export type Step = { id: string; status: "passed" | "failed" | "pending"; command: string[]; exitCode: number | null; log: string; changedFiles: string[] };
@@ -118,6 +120,9 @@ export function renderReport(report: Report): string {
     "## Verification", "",
     ...report.state.steps.map(row => `- ${row.status}: ${escape(row.id)} (exit ${row.exitCode ?? "pending"})${row.log ? "; " + escape(row.log) : ""}`),
     ...(report.state.error ? ["", "Error: " + escape(report.state.error)] : []), "",
+    "## After merging or pulling this upgrade", "",
+    CHECKOUT_REFRESH, "",
+    "Resolve any frozen-install failure before continuing; the committed lockfile must remain unchanged.", "",
     "## Recovery", "", p.rollback, "",
     "The installed baseline advances only after all required checks and review/migration gates pass.", "",
   ];
