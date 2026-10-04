@@ -125,3 +125,16 @@ Security workflow patches. After a successful PR run, require its **Security Com
 and the standalone **CodeQL** context alongside the existing app/shared gates (or enforce the
 same merge rule where the hosting plan has no branch protection). Security Complete verifies
 that applicable scans executed successfully; CodeQL separately enforces the alert policy. Finish with full local CI and the PR checks before merging.
+
+## Local workers and checkout dependencies
+
+Operators using the retired optional Compose workers must stop that Compose project, remove its
+GitHub runner registrations and revoke its registration PAT before switching routing. Remove the
+old `PLATFORM_CI_RUNNER` variable. Follow [local workers](ci-workers.md#migrate-from-the-retired-compose-runner)
+for setup, `starter-workers check --install`, the successful GitHub diagnostic and certification,
+then `starter-workers enable`. Done when the diagnostic passes and normal jobs use fresh managed
+containers; GitHub-hosted users need no worker migration.
+
+After pulling the upgraded app into each checkout or worktree, run `bun install --frozen-lockfile`
+there before starting services. Verification in another checkout does not install local dependencies.
+Done when startup accepts the checkout-local Next.js and Convex binaries and reports HTTP readiness.
