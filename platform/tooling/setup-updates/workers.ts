@@ -66,7 +66,7 @@ export type WorkerHost = {
   proof(role: 'verify' | 'deliver', home: string): WorkerProof;
 };
 export function workerHost(options: WorkerOptions, command?: (home: string, args: string[]) => Promise<void>): WorkerHost {
-  const git = (...args: string[]) => execFileSync('git', ['-C', options.root, ...args], { encoding: 'utf8' }).trim();
+  const git = (...args: string[]) => execFileSync('git', ['-C', options.root, ...args], { encoding: 'utf8' }).trimEnd();
   const invoke = command ?? ((home: string, args: string[]) => new Promise<void>((resolve, reject) => {
     const child = spawn(path.join(options.root, 'platform/tooling/node-ts.sh'), [path.join(options.root, 'platform/tooling/ci-workers/cli.ts'), ...args], { cwd: options.root, env: { ...process.env, STARTER_WORKERS_HOME: home }, stdio: 'inherit' });
     child.on('error', reject); child.on('exit', code => code === 0 ? resolve() : reject(Error('Worker command did not finish. Inspect the output above; routing is unchanged.')));

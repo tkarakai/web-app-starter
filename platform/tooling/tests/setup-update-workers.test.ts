@@ -18,6 +18,30 @@ function temporaryRoot(t: test.TestContext): string {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   return root;
 }
+test('worker source allows only tracked unstaged, staged or untracked setup record changes', async t => {
+  for (const state of ['unstaged', 'staged', 'untracked'] as const) await t.test(state, t => {
+    const root = temporaryRoot(t);
+    const git = (...args: string[]) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' }).trimEnd();
+    git('init');
+    fs.writeFileSync(path.join(root, 'app.txt'), 'committed app');
+    if (state !== 'untracked') saveRecord(root, 'deferred', repo, 'deferred', []);
+    git('add', '.');
+    git('-c', 'user.name=Worker test', '-c', 'user.email=worker@example.test', '-c', 'commit.gpgsign=false', 'commit', '-m', 'Committed source');
+    const committed = git('rev-parse', 'HEAD');
+    saveRecord(root, 'deferred', repo, 'pending', ['Resume setup']);
+    if (state === 'staged') git('add', '.github/update-delivery.json');
+    const host = workerHost({ root, repo, choice: 'local' });
+    assert.equal(host.sha(), committed);
+    fs.writeFileSync(path.join(root, 'app.txt'), 'dirty app');
+    assert.throws(() => host.sha(), /Only the setup record may be uncommitted/);
+    git('add', 'app.txt');
+    assert.throws(() => host.sha(), /Only the setup record may be uncommitted/);
+    git('restore', '--staged', 'app.txt');
+    git('restore', 'app.txt');
+    fs.writeFileSync(path.join(root, 'untracked.txt'), 'new app file');
+    assert.throws(() => host.sha(), /Only the setup record may be uncommitted/);
+  });
+});
 function recoveryArguments(action: string): string[] {
   const command = action.slice(action.indexOf('bun run platform:setup-updates ') + 'bun run platform:setup-updates '.length).split('. Routing')[0].replace(/\.$/, '');
   return JSON.parse(execFileSync('/bin/sh', ['-c', 'set -- ' + command + '; exec node -e \'console.log(JSON.stringify(process.argv.slice(1)))\' -- "$@"'], { encoding: 'utf8' }));
