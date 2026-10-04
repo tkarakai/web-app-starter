@@ -33,6 +33,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Development launcher exit traps finish ownership cleanup when Bun forwards repeated
+  termination signals, preserving unrelated processes and checkout state.
+
 - Development launchers validate selected workspaces and execute checkout-local Next.js and Convex
   binaries before services start, rejecting missing or ancestor dependencies with a frozen-install
   instruction. Status and retry use identity-backed process records even when the legacy PID file

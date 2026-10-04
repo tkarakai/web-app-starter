@@ -146,7 +146,10 @@ STARTED_SERVICES=()
 TSCONFIG_WATCHER_PID=""
 cleanup_on_exit() {
     local status=$? entry name pid
-    trap - EXIT INT TERM
+    trap - EXIT
+    # Bun can forward a termination signal after the foreground process group
+    # has already received it. Finish ownership cleanup despite that repeat.
+    trap '' INT TERM
     if [ "$NON_INTERACTIVE" = true ] || [ "$status" -ne 0 ]; then
         for entry in "${STARTED_SERVICES[@]}"; do
             name=${entry%:*}; pid=${entry##*:}
