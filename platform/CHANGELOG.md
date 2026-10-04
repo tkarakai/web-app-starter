@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- Guided hosted/local worker choice in platform update setup, with two prepared Docker installations, real GitHub worker tests before routing changes, resumable setup and read-only worker readiness. Existing routing and credentials are preserved unless explicitly changed.
+
 ### Fixed
 
 - Reference web onboarding E2E tests now set and restore their required policy instead

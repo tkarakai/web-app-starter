@@ -41,6 +41,9 @@ auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
 Before diagnosing or changing update delivery, inspect the app-owned `.github/update-delivery.json`
 and run `bun run platform:setup-updates --check --json`. Intent and live readiness are separate;
+For updater job machines, preserve existing routing or explicitly choose `--workers hosted|local`;
+local setup tests both Docker installations before enabling them. Read the worker section in
+`platform/docs/setup-updates.md`. Never substitute ordinary CI routing or infer live readiness from a saved choice.
 missing credentials do not select fallback. See `platform/docs/setup-updates.md`. Preserve
 credentials, caller customisations and auto-merge intent. Obtain explicit owner consent before
 switching identities or enabling repository-wide permissions. An existing update branch must

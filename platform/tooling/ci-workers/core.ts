@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 export const protocol = 1;
+export const updaterCheckWorkflow = '.github/workflows/platform-update-workers-check.yml';
 export const label = 'dev.starter.workers';
 export const home = process.env.STARTER_WORKERS_HOME || path.join(os.homedir(), '.local/share/starter-workers');
 export interface Config {
@@ -45,7 +46,7 @@ export function sourceRequest(config: Config, run: Run, job: Job, repoId: number
   if (config.updateRole) {
     const jobs = config.updateRole === 'verify' ? ['check', 'verify'] : ['deliver'];
     const jobId = jobs.find(id => job.name === id || job.name?.endsWith(' / ' + id));
-    if (!jobId || !config.updateWorkflow || run.path !== config.updateWorkflow ||
+    if (!jobId || !updaterWorkflow(config, run) ||
         !['schedule', 'workflow_dispatch'].includes(run.event) || sha !== run.head_sha ||
         !job.labels.includes('starter-update-' + jobId) ||
         !job.labels.includes('starter-attempt-' + run.run_attempt)) return;
@@ -60,6 +61,10 @@ export function sourceRequest(config: Config, run: Run, job: Job, repoId: number
   }
   if (!['push', 'workflow_dispatch'].includes(run.event) || sha !== run.head_sha) return;
   return { sha, scope: `branch-${hash(run.head_branch).slice(0, 16)}` };
+}
+export function updaterWorkflow(c: Config, run: Run): boolean {
+  return Boolean(c.updateWorkflow && (run.path === c.updateWorkflow ||
+    (run.path === updaterCheckWorkflow && run.event === 'workflow_dispatch')));
 }
 export async function command(executable: string, args: string[], options: {
   cwd?: string; input?: string | Buffer; env?: Record<string, string | undefined>; timeout?: number; stream?: boolean; raw?: boolean;

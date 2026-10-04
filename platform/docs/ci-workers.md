@@ -1,5 +1,9 @@
 # Local CI workers for GitHub Actions
 
+For **scheduled platform updates**, use the [update setup guide](setup-updates.md#choose-where-update-jobs-run):
+`bun run platform:setup-updates --workers local --yes` manages two separate updater installations.
+The ordinary CI setup below is a different routing choice.
+
 Use this guide when you operate the machine that executes GitHub CI jobs. Developers who only
 push code need the [pre-push guide](ci-pre-push.md); repository workflow policy and costs are in
 [CI on GitHub Actions](ci-github.md).

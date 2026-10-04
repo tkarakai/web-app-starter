@@ -63,6 +63,7 @@ export type AdoptOptions = {
   build?: boolean;
   fromRelease?: string;
   updates?: DeliveryMode;
+  updateWorkers?: "hosted" | "local";
 };
 
 /** "Acme Tasks!" → "acme-tasks": a cookie-safe default prefix. */
@@ -404,6 +405,11 @@ export function parseArgs(argv: readonly string[]): Parsed {
       case "--skip-install": parsed.install = false; break;
       case "--skip-build": parsed.build = false; break;
       case "--yes": parsed.yes = true; break;
+      case "--update-workers": {
+        const choice = value();
+        if (choice !== "hosted" && choice !== "local") throw new Error("--update-workers takes hosted or local");
+        parsed.updateWorkers = choice; break;
+      }
       case "--updates": {
         const mode = value();
         if (!isDeliveryMode(mode)) throw new Error("--updates takes app, fallback or deferred");
@@ -483,8 +489,14 @@ async function main(argv: readonly string[]): Promise<number> {
       const mode = await ask("Update delivery (app/fallback/deferred)", "deferred");
       if (!isDeliveryMode(mode)) throw new Error("Choose app, fallback or deferred");
       parsed.updates = mode;
-      if (mode !== "deferred") parsed.yes = (await ask("Authorise the remote setup just described? (yes/no)", "no")) === "yes";
     }
+    if (!parsed.updateWorkers) {
+      const choice = await ask("Update workers: hosted (GitHub computers), local (your Docker host), preserve existing", "preserve");
+      if (choice !== "preserve" && choice !== "hosted" && choice !== "local") throw new Error("Choose hosted, local or preserve");
+      if (choice !== "preserve") parsed.updateWorkers = choice;
+    }
+    process.stdout.write("Local worker setup installs two services, asks for separate manager tokens and tests GitHub before changing routing. Hosted clears only updater worker routing.\n");
+    if (parsed.updates !== "deferred" || parsed.updateWorkers) parsed.yes = (await ask("Authorise the selected update and worker setup? (yes/no)", "no")) === "yes";
     rl.close();
   }
   parsed.repo ??= defaultRepo;
@@ -493,7 +505,7 @@ async function main(argv: readonly string[]): Promise<number> {
   const code = adopt(root, { ...parsed, name: parsed.name, repo: parsed.repo });
   try {
     const setupMode = parsed.updates ?? readRecord(root)?.mode ?? "deferred";
-    await setupUpdates(["--repo", parsed.repo, setupMode === "deferred" ? "--defer" : "--" + setupMode, ...(parsed.yes && parsed.updates ? ["--yes"] : [])]);
+    await setupUpdates(["--repo", parsed.repo, setupMode === "deferred" ? "--defer" : "--" + setupMode, ...(parsed.updateWorkers ? ["--workers", parsed.updateWorkers] : []), ...(parsed.yes && parsed.updates ? ["--yes"] : [])]);
   } catch { process.stdout.write("Update setup is pending; local adoption completed. Resume bun run platform:setup-updates --check.\n"); }
   await settlePrE2e(parsed.repo, parsed.prE2e, gh, (line) => process.stdout.write(`${line}\n`));
   return code === 0 ? 0 : 1;

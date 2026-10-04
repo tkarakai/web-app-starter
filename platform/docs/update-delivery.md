@@ -96,6 +96,11 @@ CI baseline fetch. Private release sources are not supported by this public-sour
 
 ## Self-hosted Linux runners
 
+Start with [Choose where update jobs run](setup-updates.md#choose-where-update-jobs-run).
+`bun run platform:setup-updates --workers local --yes` prepares and tests both installations
+before enabling them; `--workers hosted --yes` returns to GitHub-hosted jobs. The details below
+explain the underlying routing for operators with custom installations.
+
 GitHub-hosted runners remain the default. Updates can run on your own computers using the
 [prepared-image worker manager](ci-workers.md). Use separate installations for verification and
 publication, each with its own state directory, pool ID, builder, images and registration.
