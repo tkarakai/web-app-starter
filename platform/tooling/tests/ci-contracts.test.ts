@@ -9,16 +9,16 @@ import { auditResult } from "../dependency-audit.ts";
 import { CHECKOUT_CHECKS, PLATFORM_CHECKS, UPGRADE_CHECKS, checksFor, runChecks } from "../ci-checks.ts";
 
 test("HTTP readiness retries compilation failures, follows redirects and rejects permanent failure", async t => {
-  let status = 500, calls = 0;
-  const server = createServer((req, res) => { calls++; if (req.url === "/redirect") { res.writeHead(307, { location: "/page" }); } else res.writeHead(status); res.end("page"); });
+  let status = 500, calls = 0, recoveryCalls = 0, recover = false;
+  const server = createServer((req, res) => { calls++; if (recover && req.url === "/page" && ++recoveryCalls === 3) status = 200; if (req.url === "/redirect") { res.writeHead(307, { location: "/page" }); } else res.writeHead(status); res.end("page"); });
   server.listen(0, "127.0.0.1"); await once(server, "listening");
   t.after(() => server.close());
   const address = server.address(); assert.ok(address && typeof address === "object");
   const url = `http://127.0.0.1:${address.port}`;
-  await assert.rejects(waitForPage(url, 100), /HTTP 500/);
-  setTimeout(() => { status = 200; }, 50);
-  await waitForPage(url + "/redirect", 1500); assert.ok(calls >= 3);
-  status = 404; await assert.rejects(waitForPage(url, 100), /HTTP 404/);
+  await assert.rejects(waitForPage(url, 2000), /HTTP 500/);
+  recover = true;
+  await waitForPage(url + "/redirect", 5000); assert.ok(calls >= 3); assert.equal(recoveryCalls, 3);
+  recover = false; status = 404; await assert.rejects(waitForPage(url, 2000), /HTTP 404/);
 });
 
 test("shared impact policy selects consumers/backend, new packages and CI changes; docs remain unaffected", () => {

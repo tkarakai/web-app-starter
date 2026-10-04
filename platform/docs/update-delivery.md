@@ -93,11 +93,12 @@ GitHub-hosted runners remain the default. Updates can run on your own computers 
 publication, each with its own state directory, pool ID, builder, images and registration.
 Do not reuse an ordinary CI installation or the retired Compose workers.
 
-From a reviewed checkout, run setup twice with different `STARTER_WORKERS_HOME` directories:
+Remain in the reviewed application checkout for setup and all commands below. Run setup twice
+with different `STARTER_WORKERS_HOME` directories:
 
 ```sh
-STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-verify" bun run ci:workers:setup --update-role verify --update-workflow .github/workflows/platform-updates.yml
-STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-deliver" bun run ci:workers:setup --update-role deliver --update-workflow .github/workflows/platform-updates.yml
+STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-verify" bun run ci:workers:setup --update-role verify --update-workflow .github/workflows/update-platform.yml
+STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-deliver" bun run ci:workers:setup --update-role deliver --update-workflow .github/workflows/update-platform.yml
 ```
 
 Use your actual **caller** workflow filename, not the reusable `platform-update.yml`. Keep the
@@ -106,8 +107,19 @@ manager credential on the host as described in the worker guide. Use each instal
 to the most recently installed one. Verification can run `check --install`; delivery accepts
 `check` only and never runs app installation or CI. Do not use ordinary `enable` or
 `check --github` for updater installations. The operator must run acceptance through the
-reviewed updater caller, inspect exact source/run/attempt and image evidence, and only then
-configure the following repository variables in **Settings → Secrets and variables → Actions**:
+reviewed updater caller and inspect exact source/run/attempt and image evidence.
+
+Use the absolute wrapper for each installation; these commands retain the app checkout as cwd:
+
+```sh
+"$HOME/.local/share/starter-update-verify/starter-workers" check --install
+"$HOME/.local/share/starter-update-deliver/starter-workers" check
+"$HOME/.local/share/starter-update-verify/starter-workers" status
+"$HOME/.local/share/starter-update-deliver/starter-workers" status
+```
+
+Only after acceptance, configure these repository variables in
+**Settings → Secrets and variables → Actions**:
 
 - `PLATFORM_UPDATE_RUNNER`: the verification installation's **pool ID** (discovery and verification).
 - `PLATFORM_UPDATE_DELIVERY_RUNNER`: the separate delivery installation's **pool ID**.
@@ -125,7 +137,21 @@ Publication launches only its independently prepared immutable tools image. It n
 app dependency seed, runs app scripts or shares writable caches with verification/ordinary CI.
 The job still uses only pinned actions, inline publisher code and Git with hooks disabled.
 Removing or clearing either selector restores `ubuntu-latest` independently. Cancel and restart
-already queued runs, which retain their old labels; stop/revoke unused installations afterwards.
+already queued runs, which retain their old labels. Then stop each unused installation explicitly:
+
+```sh
+"$HOME/.local/share/starter-update-verify/starter-workers" service stop
+"$HOME/.local/share/starter-update-deliver/starter-workers" service stop
+```
+
+Revoke each installation's dedicated manager credential when retiring it.
+
+Preparation requires an exact Bun package-manager version and consistent Playwright declarations
+across all app manifests, including delivery's tool-profile preparation. The official v2.0.0
+reference fixture declares Playwright ^1.58.0 in four apps and ^1.58.2 in Storybook, so it fails
+this preflight before Docker builds. That failed preparation is not acceptance evidence. Use a
+genuine published baseline meeting these constraints; do not change release identities or relax
+the consistency check to prepare an incompatible fixture.
 
 The initial checkout's frozen offline installation proves only that checkout. Upgrade-target
 codemod dependencies and app dependencies are installed separately in the disposable read-only

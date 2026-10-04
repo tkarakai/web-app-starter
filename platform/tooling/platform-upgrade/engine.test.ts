@@ -227,6 +227,8 @@ test("relocation refuses changed files, index-only edits and unrelated history; 
 
 test('managed upgrade installs changed target dependencies independently of the checkout seed', async () => {
   const f = runnable();
+  write(f.app, '.gitignore', '.env.local\nnode_modules/\n');
+  git(f.app, 'add', '.gitignore'); git(f.app, 'commit', '-qm', 'ignore generated dependencies');
   write(f.source, 'platform/new-dependency/package.json', JSON.stringify({ name: 'target-only', version: '1.0.0', main: 'index.js' }));
   write(f.source, 'platform/new-dependency/index.js', 'module.exports = 42;\n');
   const pkg = JSON.parse(fs.readFileSync(path.join(f.source, 'package.json'), 'utf8'));
@@ -235,7 +237,14 @@ test('managed upgrade installs changed target dependencies independently of the 
   const planned = await f.plan('2.0.1'), { report, reportFile } = reportFor(planned);
   const original = process.env.STARTER_WORKER; process.env.STARTER_WORKER = '1';
   try {
-    const result = await applyUpgrade(report, planned, { reportFile, execute });
+    const pending = await applyUpgrade(report, planned, { reportFile, execute });
+    assert.equal(pending.outcome, 'needs-review');
+    assert.deepEqual(pending.plan.gates.map(gate => gate.id), ['seam:package.json']);
+    assert.equal(fs.existsSync(path.join(f.app, 'node_modules/target-only/index.js')), false);
+    recordDecision(pending, { id: 'seam:package.json', action: 'reviewed', evidence: 'Accept the target-only local dependency while retaining app check commands' });
+    write(f.app, 'package.json', JSON.stringify(pkg));
+    writeReport(reportFile, pending);
+    const result = await applyUpgrade(readReport(reportFile), planned, { reportFile, execute });
     assert.equal(result.outcome, 'verified', result.state.error);
     assert.equal(fs.existsSync(path.join(f.app, 'node_modules/target-only/index.js')), true);
     const loaded = await execute([process.execPath, '-e', "if(require('target-only')!==42)process.exit(1)"], f.app);
