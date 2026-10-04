@@ -147,11 +147,10 @@ already queued runs, which retain their old labels. Then stop each unused instal
 Revoke each installation's dedicated manager credential when retiring it.
 
 Preparation requires an exact Bun package-manager version and consistent Playwright declarations
-across all app manifests, including delivery's tool-profile preparation. The official v2.0.0
-reference fixture declares Playwright ^1.58.0 in four apps and ^1.58.2 in Storybook, so it fails
-this preflight before Docker builds. That failed preparation is not acceptance evidence. Use a
-genuine published baseline meeting these constraints; do not change release identities or relax
-the consistency check to prepare an incompatible fixture.
+across all app manifests, including delivery's tool-profile preparation. If your workspaces
+declare different Playwright versions, reconcile them through your normal dependency-update
+process before preparing these workers. Preparation stops before Docker builds when these
+requirements are not met.
 
 The initial checkout's frozen offline installation proves only that checkout. Upgrade-target
 codemod dependencies and app dependencies are installed separately in the disposable read-only
