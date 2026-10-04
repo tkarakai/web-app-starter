@@ -69,6 +69,8 @@ test("rewriteRenovate points the preset at the app's repo and drops product-only
 });
 
 test("helpers: slug, repoFromUrl, parseArgs", () => {
+  assert.equal(parseArgs(["--updates", "app", "--yes"]).updates, "app");
+  assert.throws(() => parseArgs(["--updates", "unattended"]), /app, fallback or deferred/);
   assert.equal(slug("Acme Tasks!"), "acme-tasks");
   assert.equal(slug("!!!"), "app");
   assert.equal(repoFromUrl("git@github.com:acme/app.git"), "acme/app");
@@ -126,6 +128,8 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.equal(at("README.md").split("\n")[0], "# Acme $& Co");
   assert.equal(at("CLAUDE.md"), read("platform/templates/CLAUDE.md"));
   assert.equal(at(".github/workflows/update-platform.yml"), read("platform/templates/update-platform.yml"));
+  assert.equal(JSON.parse(at(".github/update-delivery.json")).mode, "deferred");
+  assert.match(at("AGENTS.md"), /update-delivery.json/);
   assert.match(at("renovate.json"), /local>acme\/acme-app\/\/platform\/config\/renovate-preset/);
   assert.equal(existsSync(path.join(root, "apps/demo")), false);
   assert.equal(existsSync(path.join(root, "apps/landing/package.json")), true);

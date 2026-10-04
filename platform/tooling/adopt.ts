@@ -17,7 +17,8 @@
 //   --skip-build              Don't run the build at the end
 //   --pr-e2e <mode>           When CI runs E2E on pull requests: always, on-demand or off. Asked on a
 //                             private repository (Actions minutes are metered); sets PLATFORM_CI_PR_E2E
-//   --yes                     Don't ask; use the options and defaults
+//   --updates <mode>          app, fallback or deferred (non-interactive default: deferred)
+//   --yes                     Don't ask; authorise explicitly selected remote setup
 //
 // Steps (repo-separation §9): set values in app.config.ts; replace the root README, LICENSE,
 // AGENTS.md and CLAUDE.md with platform/templates; point renovate.json at your repository and
@@ -37,6 +38,9 @@ import { pathToFileURL } from "node:url";
 import { BASE_FILE, SEAM_HOOKS, checkZone, type PlatformBase } from "./check-zone.ts";
 import { adoptionRelease, commandAt, type Command } from "./adopt-release.ts";
 import { applyPrE2e, describeModes, isMode, manualCommand, needsChoice, prE2eStatus, type Exec, type Mode } from "./ci-pr-e2e-setup.ts";
+
+import { installCaller, main as setupUpdates } from "./setup-updates.ts";
+import { isDeliveryMode, saveRecord, type DeliveryMode } from "./setup-updates/state.ts";
 
 export const STARTER_REPO = "tkarakai/web-app-starter";
 export const STARTER_URL = `https://github.com/${STARTER_REPO}.git`;
@@ -58,6 +62,7 @@ export type AdoptOptions = {
   install?: boolean;
   build?: boolean;
   fromRelease?: string;
+  updates?: DeliveryMode;
 };
 
 /** "Acme Tasks!" → "acme-tasks": a cookie-safe default prefix. */
@@ -308,9 +313,9 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   writeFileSync(at("renovate.json"), rewriteRenovate(readFileSync(at("renovate.json"), "utf8"), options.repo));
   log(`  - renovate.json extends local>${options.repo}//platform/config/renovate-preset`);
 
-  mkdirSync(at(".github/workflows"), { recursive: true });
-  writeFileSync(at(".github/workflows/update-platform.yml"), readFileSync(at("platform/templates/update-platform.yml"), "utf8"));
-  log("  - update-platform.yml: weekday release checks (configure the updater App for automatic CI)");
+  const callerAdded = installCaller(root);
+  saveRecord(root, options.updates ?? "deferred", options.repo, options.updates && options.updates !== "deferred" ? "pending" : "deferred", ["Complete owner setup: bun run platform:setup-updates --repo " + options.repo + " --" + (options.updates === "fallback" ? "fallback" : "app") + " --yes"]);
+  log(callerAdded ? "  - update-platform.yml: scheduled delivery paused until owner setup" : "  - existing update caller preserved; inspect its live readiness before enabling delivery");
 
   log("3. Reference apps");
   const remove = options.remove ?? [];
@@ -347,7 +352,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   }
 
   log("6. Platform updates");
-  log("  - Weekday release checks are installed. Configure the updater GitHub App for automatic PR CI; see platform/docs/update-delivery.md.");
+  log("  - Update intent is in .github/update-delivery.json. Finish or defer setup explicitly; see platform/docs/setup-updates.md.");
 
   log("7. Checks");
   const zone = checkZone(root);
@@ -394,6 +399,11 @@ export function parseArgs(argv: readonly string[]): Parsed {
       case "--skip-install": parsed.install = false; break;
       case "--skip-build": parsed.build = false; break;
       case "--yes": parsed.yes = true; break;
+      case "--updates": {
+        const mode = value();
+        if (!isDeliveryMode(mode)) throw new Error("--updates takes app, fallback or deferred");
+        parsed.updates = mode; break;
+      }
       case "--pr-e2e": {
         const mode = value();
         if (!isMode(mode)) throw new Error(`--pr-e2e takes always, on-demand or off (got "${mode}")`);
@@ -463,12 +473,23 @@ async function main(argv: readonly string[]): Promise<number> {
       if (!isMode(mode)) throw new Error(`"${mode}" is not one of always, on-demand, off`);
       parsed.prE2e = mode;
     }
+    if (!parsed.updates) {
+      process.stdout.write("Update delivery choices:\n  app (recommended): repository-only GitHub App opens PRs and triggers CI, including workflow changes. GitHub asks you to approve installation; you review and merge.\n  fallback: enable repository-wide Actions PR creation/approval capability. The updater submits no approvals; workflow changes and PR CI require manual work. Token defaults stay unchanged.\n  deferred: no scheduled update PRs until owner setup; local development and manual upgrades work.\n");
+      const mode = await ask("Update delivery (app/fallback/deferred)", "deferred");
+      if (!isDeliveryMode(mode)) throw new Error("Choose app, fallback or deferred");
+      parsed.updates = mode;
+      if (mode !== "deferred") parsed.yes = (await ask("Authorise the remote setup just described? (yes/no)", "no")) === "yes";
+    }
     rl.close();
   }
   parsed.repo ??= defaultRepo;
   if (!parsed.name) throw new Error("--name is required");
   if (!parsed.repo) throw new Error(`--repo is required (origin is ${origin ?? "not set"}; name your own repository)`);
   const code = adopt(root, { ...parsed, name: parsed.name, repo: parsed.repo });
+  try {
+    const setupMode = parsed.updates ?? "deferred";
+    await setupUpdates(["--repo", parsed.repo, setupMode === "deferred" ? "--defer" : "--" + setupMode, ...(parsed.yes && parsed.updates ? ["--yes"] : [])]);
+  } catch { process.stdout.write("Update setup is pending; local adoption completed. Resume bun run platform:setup-updates --check.\n"); }
   await settlePrE2e(parsed.repo, parsed.prE2e, gh, (line) => process.stdout.write(`${line}\n`));
   return code === 0 ? 0 : 1;
 }

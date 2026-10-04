@@ -16,13 +16,14 @@ Reference: `platform/docs/development.md`, "App configuration".
 
 ## Set up automatic updates
 
-For update delivery, run `bun run platform:setup-updates` from the adopted app. Read
-`platform/docs/setup-updates.md`; the helper creates the GitHub App through its browser manifest
-flow, verifies installation on this repository only, and stores the ID and key with `gh`.
-The app-owned update caller holds schedule and policy. These credentials and workflow settings
-are separate from `app.config.ts`. Never place a private key in the app config, git or chat.
-Preserve existing settings; use `--check` to inspect status, and `--replace` only when the user
-asks to replace the App. `--fallback` documents the manual-CI/workflow-file limitations.
+For update delivery, read `.github/update-delivery.json` and run
+`bun run platform:setup-updates --check --json` first. Read `platform/docs/setup-updates.md`.
+Offer App (recommended), fallback (limited manual CI/workflow delivery), or deferred.
+Only explicit owner consent permits `--yes` remote setup, permission changes or identity switches.
+A non-interactive agent without that consent records pending intent and hands off the exact owner
+command. Preserve custom callers and complete credentials; `--replace` needs explicit intent.
+Secret presence does not certify App-key validity. Do not expose keys in git, logs or chat.
+Inspect pending reports before a new upgrade; recover an existing branch with `--relocate`.
 
 ## What goes where
 

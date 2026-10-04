@@ -308,9 +308,15 @@ Notes:
 
 ## Adopting the starter
 
+Adoption offers App/fallback/deferred update delivery; non-interactive adoption defaults to
+deferred unless `--updates app|fallback` is explicitly selected. `--yes` authorises the selected
+remote setup. Read [owner setup](docs/setup-updates.md), inspect `.github/update-delivery.json`,
+and use `bun run platform:setup-updates --check --json` for live readiness. Commit the caller
+and intent record; installing a schedule alone does not configure working update PRs.
+
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
-`--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--yes`).
+`--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--updates app|fallback|deferred`, `--yes`).
 Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
@@ -324,7 +330,7 @@ For example, clone with
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
 2. Replaces the root `README.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md` with `templates/`, and
    points `renovate.json` at your repository (`local>owner/name//platform/config/renovate-preset`),
-   and installs the app-owned `update-platform.yml` weekday caller.
+   and installs a paused app-owned `update-platform.yml` caller.
 3. Optionally removes the `demo` reference app and its wiring. `landing` is required: the dev launcher, CI and deployments use it.
    `--remove-sample` removes project, task and upload tables, functions, screens and strings,
    leaving a dashboard shell with account settings, announcements and sign-out.

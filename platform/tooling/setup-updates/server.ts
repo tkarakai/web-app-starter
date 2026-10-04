@@ -11,7 +11,7 @@ export function appManifest(repo: Repository, origin: string, state: string): Re
 function page(title: string, content: string): string {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:16px/1.55 system-ui,sans-serif;background:#fafaf9;color:#292524;margin:0;padding:32px}main{max-width:640px;margin:8vh auto;background:white;border:1px solid #e7e5e4;border-radius:16px;padding:32px;overflow-wrap:anywhere}h1{line-height:1.15;font-size:30px}button,a.button{display:inline-block;background:#0f766e;color:white;border:0;border-radius:8px;padding:12px 18px;font:inherit;text-decoration:none;cursor:pointer}a{color:#0f766e}small{color:#57534e}form{margin-top:24px}</style><main><h1>${escape(title)}</h1>${content}</main></html>`;
 }
-export async function startSetup(options: { repo: Repository; request?: Api; run?: Gh; timeoutMs?: number }): Promise<{ url: string; done: Promise<{ id: number; slug: string }>; close: () => void }> {
+export async function startSetup(options: { repo: Repository; request?: Api; run?: Gh; timeoutMs?: number; onRegistered?: (app: { id: number; slug: string }) => void }): Promise<{ url: string; done: Promise<{ id: number; slug: string }>; close: () => void }> {
   const state = randomBytes(32).toString("hex"), request = options.request ?? api, run = options.run ?? gh;
   let app: App | undefined, origin = "", consumed = false, busy = false, settled = false;
   let resolve!: (result: { id: number; slug: string }) => void, reject!: (error: Error) => void;
@@ -41,7 +41,7 @@ export async function startSetup(options: { repo: Repository; request?: Api; run
         try {
           const registered = parseApp(await request("POST", "/app-manifests/" + codes[0] + "/conversions"));
           if (settled) { registered.pem = ""; return send(410, "Setup closed", "<p>Return to your terminal.</p>"); }
-          app = registered;
+          app = registered; options.onRegistered?.({ id: app.id, slug: app.slug });
         }
         catch { send(502, "Registration exchange failed", "<p>No credentials were logged. Restart setup; check your GitHub App settings for an unused registration.</p>"); finish(Error("GitHub App registration exchange failed. Check your App settings before restarting.")); return; }
         finally { busy = false; }

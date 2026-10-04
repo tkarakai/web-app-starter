@@ -1,8 +1,8 @@
 # Receive platform update PRs
 
-Adoption installs the app-owned `.github/workflows/update-platform.yml` caller from
+Adoption records App, fallback or deferred intent in `.github/update-delivery.json` and installs the app-owned `.github/workflows/update-platform.yml` caller from
 `platform/templates/update-platform.yml`. Existing adopted apps can copy that template once.
-It checks releases on weekdays at 05:23 UTC and supports **Actions → Update platform → Run
+After explicit owner setup enables delivery, it checks releases on weekdays at 05:23 UTC and supports **Actions → Update platform → Run
 workflow**, with an optional version. Edit the caller's schedule and policy to fit your app.
 
 The reusable `.github/workflows/platform-update.yml` belongs to the platform. Keep it unchanged.
@@ -17,8 +17,11 @@ Pull requests, Workflows and Issues **write** permissions. Store its ID in repos
 `PLATFORM_UPDATER_APP_ID` and its PEM private key in Actions secret
 `PLATFORM_UPDATER_PRIVATE_KEY`. Keep the key out of your checkout, logs and reports.
 
-Without the App, the workflow uses `GITHUB_TOKEN`. Allow GitHub Actions to create pull requests
-in repository Actions settings. Its PRs may require **Approve and run** before CI starts.
+Choose the limited `GITHUB_TOKEN` fallback explicitly through [owner setup](setup-updates.md).
+Allow GitHub Actions to create PRs; this repository-wide switch also permits approval capability,
+but the updater submits no approvals. Token-created PRs may require **Approve workflows to run** in the PR banner before CI starts.
+Workflow-run approval, review approval and the PR-creation setting are separate operations;
+other token-triggered events (such as labels) do not start CI.
 App-owned CI callers need `contents: read` and `pull-requests: read` for change detection,
 and the `ready_for_review` pull-request event to run browser checks after finishing a draft.
 The v2 `v2-ci-callers.ts` codemod updates the standard callers while preserving custom grants.
@@ -32,7 +35,7 @@ it does not silently fall back to a different identity.
 | --- | --- |
 | All upgrade checks, including E2E, pass | Ready PR with the exact verified tree and new baseline |
 | Seam conflict, patch, advisory, new secret or migration needs review | Draft PR with JSON/Markdown report and a checklist; installed baseline stays unchanged |
-| A check or delivery step fails | Issue linking the run and retained diagnostics, with a manual command |
+| A check or delivery step fails | Issue linking the failed operation, credential mode, run and reports; an already-pushed branch has draft-PR and saved-plan recovery links |
 | New major | Issue linking release notes and breaking changes; no automatic major-upgrade PR |
 
 Labels include `platform-update`, advisory `severity:*`, `migration`, `new-env`, and `breaking`
@@ -43,7 +46,12 @@ specific review; the target must be outside the affected range and pass contract
 An existing PR for `platform-update/vX.Y.Z` is left for its reviewer. The workflow never
 force-pushes or resets an existing branch. If the app base advances during verification, rerun
 from the new base. If a prior push succeeded but creating its PR failed, inspect that branch and
-open its PR manually; delivery reports the problem rather than replacing the branch.
+open its PR as a draft using the diagnostic compare link, inspect `upgrade-report.md` and
+`upgrade-report.json`, then resume with `--relocate` before review edits. Do not blindly rerun
+into an existing branch. A green preparation job can mean only “review plan produced”; E2E
+and upgrade verification may not have run. Keep permission/setup failures separate from normal
+review requests. Delivery preflights the PR switch when its existing token can read it; lack of
+Administration access is reported unknown and never broadened.
 
 With `auto-merge: true`, only verified patches without migrations, environment changes,
 unresolved patches or an advisory approval gate qualify. The App must be configured, and the
