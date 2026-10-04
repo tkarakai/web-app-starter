@@ -18,11 +18,14 @@ const write = (file: string, content: string) => { const path = join(fixture, fi
 const json = (file: string, value: unknown) => write(file, JSON.stringify(value, null, 2));
 const command = (args: string[]) => execFileSync("bun", args, { cwd: fixture, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
 let child: ChildProcess | undefined, logs = "";
+let childClosed = false;
 let unrelated: ChildProcess | undefined;
 const unrelatedRoot = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "starter-unrelated-backend-")));
 async function shutdown() {
   if (child && child.exitCode === null && child.signalCode === null) {
-    const done = once(child, "exit");
+    // Bun can exit before its shell finishes the EXIT trap. Wait for inherited
+    // output pipes to close before running a second ownership cleanup.
+    const done = once(child, "close");
     try { process.kill(-child.pid!, "SIGTERM"); } catch { /* Already exited. */ }
     await Promise.race([done, new Promise(resolve => setTimeout(resolve, 10_000))]);
   }
@@ -31,7 +34,9 @@ async function shutdown() {
 }
 function launch(args: string[], timeout = "30000") {
   logs = "";
+  childClosed = false;
   child = spawn("bun", args, { cwd: fixture, detached: true, env: { ...process.env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
+  child.once("close", () => { childClosed = true; });
   child.stdout!.on("data", data => { logs += String(data); }); child.stderr!.on("data", data => { logs += String(data); });
 }
 async function until(check: () => boolean, ms = 90_000) {
@@ -103,7 +108,7 @@ console.log('Convex functions ready');setInterval(()=>{},1000);
   await shutdown();
   write("packages/onboarding/styles.css", '@import "missing-startup-fixture-package";');
   launch(["run", "dev:landing"], "2500");
-  await until(() => child!.exitCode !== null, 60_000);
+  await until(() => childClosed, 60_000);
   assert.notEqual(child!.exitCode, 0, logs);
   assert.match(logs, /NOT ready/);
   assert.deepEqual(readRecords(fixture), {});
@@ -113,7 +118,7 @@ console.log('Convex functions ready');setInterval(()=>{},1000);
   fs.writeFileSync(database, "preserve local database");
   unrelated = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd: unrelatedRoot, stdio: "ignore" });
   launch(["dev", "--app=web,landing"], "2500");
-  await until(() => child!.exitCode !== null, 60_000);
+  await until(() => childClosed, 60_000);
   assert.notEqual(child!.exitCode, 0, logs);
   assert.match(fs.readFileSync(join(fixture, ".next-web.log"), "utf8"), /Ready/);
   assert.match(fs.readFileSync(join(fixture, ".next-landing.log"), "utf8"), /FORCED_LATER_CONFIG_FAILURE/);

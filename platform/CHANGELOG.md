@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-04
+
 ### Changed
 
 - CI documentation is organized by task: [GitHub workflows and policy](docs/ci-github.md),
@@ -25,14 +27,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
   in a new container, keeps registration credentials on the host, and supports branch diagnostics,
   offline dependency seeds and targeted cleanup. Setup infers the repository from the checkout.
 
-### Action required
-
-- Operators of the old optional Compose workers must stop them and revoke their registration
-  credential before adopting the new manager. Shared writable cache volumes are no longer the
-  supported worker setup. Follow [local workers](docs/ci-workers.md) and verify the
-  diagnostic before enabling routing. GitHub-hosted CI needs no action.
+- Development and staging banners show the installed starter platform version in the
+  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
+  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
 
 ### Fixed
+
+- Development launcher exit traps finish ownership cleanup when Bun forwards repeated
+  termination signals, preserving unrelated processes and checkout state.
 
 - Development launchers validate selected workspaces and execute checkout-local Next.js and Convex
   binaries before services start, rejecting missing or ancestor dependencies with a frozen-install
@@ -41,16 +43,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Upgrade reports, developer guidance and agent handoffs explicitly require a per-checkout
   `bun install --frozen-lockfile` after pulling dependency or workspace changes, including when
   another worktree or CI already verified the upgrade.
-
-## [4.0.0] - 2026-10-04
-
-### Added
-
-- Development and staging banners show the installed starter platform version in the
-  collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
-  time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
-
-### Fixed
 
 - Convex and authentication HTTP routes now enforce live session assurance, current security
   policy and an absolute four-hour administrator lifetime. TOTP and user-verified passkeys
@@ -100,6 +92,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Operators of the old optional Compose workers must stop them and revoke their registration
+  credential before adopting the new manager. Shared writable cache volumes are no longer the
+  supported worker setup. Follow [local workers](docs/ci-workers.md) and verify the
+  diagnostic before enabling routing. GitHub-hosted CI needs no action.
 
 - Deploy the updated authentication backend and UI together. Existing sessions without verified
   session proof must reauthenticate or sign in again. App-owned administrative mutations must use

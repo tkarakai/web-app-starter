@@ -685,6 +685,12 @@ const {createServer} = await import('node:http'); const server = createServer((r
       // The process group belongs exclusively to this fixture. Stop the Bun
       // wrapper, launcher, and log tail even when a startup assertion fails.
       try { process.kill(-(launcher.pid as number), "SIGTERM"); } catch { /* Already exited. */ }
+      // A shell exit trap can still be clearing ownership when Bun forwards
+      // the same signal. Repeated group termination must not abort cleanup.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+        try { process.kill(-(launcher.pid as number), "SIGTERM"); } catch { /* Already exited. */ }
+      }
       await waitFor(() => exited(launcher));
     }
     await waitFor(() => Object.keys(manager.readRecords(root)).length === 0);

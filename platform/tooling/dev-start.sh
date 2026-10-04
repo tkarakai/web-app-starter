@@ -145,13 +145,22 @@ fi
 STARTED_SERVICES=()
 TSCONFIG_WATCHER_PID=""
 cleanup_on_exit() {
-    local status=$? entry name pid
-    trap - EXIT INT TERM
+    local status=$? entry name pid cleanup_pid
+    trap - EXIT
+    # Bun can forward a termination signal after the foreground process group
+    # has already received it. Finish ownership cleanup despite that repeat.
+    trap '' INT TERM
     if [ "$NON_INTERACTIVE" = true ] || [ "$status" -ne 0 ]; then
+        # Cleanup interpreters must also leave the foreground group: Node
+        # restores signal dispositions inherited from the shell at startup.
+        set -m
         for entry in "${STARTED_SERVICES[@]}"; do
             name=${entry%:*}; pid=${entry##*:}
-            "$NODE_TS" "$PROCESS_HELPER" stop --name "$name" --pid "$pid" || true
+            "$NODE_TS" "$PROCESS_HELPER" stop --name "$name" --pid "$pid" &
+            cleanup_pid=$!
+            wait "$cleanup_pid" || true
         done
+        set +m
         [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
     fi
     if [ -n "${TSCONFIG_WATCHER_PID:-}" ]; then
