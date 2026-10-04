@@ -1,0 +1,23 @@
+{
+  "name": "@repo/onboarding",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./waitlist-form.tsx"
+  },
+  "dependencies": {
+    "@web-app-starter/auth-ui": "workspace:*",
+    "@web-app-starter/design-system": "workspace:*",
+    "lucide-react": "^1.47.0",
+    "next-intl": "^4.14.8",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0"
+  }
+}

@@ -1,6 +1,9 @@
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
-import { type ReactElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
+import { PublicConfigProvider } from "@web-app-starter/design-system";
+import messages from "@web-app-starter/i18n/messages/en.json";
 import { WaitlistForm } from "../../src/components/waitlist-form";
 import { AuthForm } from "../../src/components/auth-form";
 
@@ -11,7 +14,6 @@ const originalUrl = process.env.CONVEX_SITE_URL;
 const originalCloudUrl = process.env.CONVEX_URL;
 process.env.CONVEX_SITE_URL = "https://runtime.example.test";
 process.env.CONVEX_URL = "https://cloud.example.test";
-process.env.LANDING_URL = "https://landing.example.test/";
 const { LandingSignUpView: SignUpView, SignUpView: WebSignUpView, createSignUpView } = await import("@web-app-starter/auth-ui/views");
 if (originalCloudUrl === undefined) delete process.env.CONVEX_URL;
 else process.env.CONVEX_URL = originalCloudUrl;
@@ -22,7 +24,7 @@ afterEach(() => {
 
 function AppQuestions() { return null; }
 
-test("web selects signup, a localized landing waitlist link and invite-only on consecutive requests", async () => {
+test("web selects signup, an inline waitlist and invite-only on consecutive requests", async () => {
   process.env.CONVEX_SITE_URL = "https://runtime.example.test";
   const fetchSpy = spyOn(globalThis, "fetch");
   try {
@@ -33,18 +35,31 @@ test("web selects signup, a localized landing waitlist link and invite-only on c
 
     fetchSpy.mockResolvedValueOnce(Response.json({ onboardingType: "publicWaitlist" }));
     const waitlist = (await SignUpView()).props.children;
-    const waitlistHtml = renderToStaticMarkup(waitlist);
-    expect(waitlistHtml).toContain('href="https://landing.example.test/en/"');
-    expect(waitlistHtml).toContain("goToWaitlist");
-    expect(waitlistHtml).not.toContain("<form");
+    expect(waitlist.type).toBe(WaitlistForm);
+    expect(waitlist.props.convexSiteUrl).toBe("https://runtime.example.test");
+    const waitlistHtml = renderToStaticMarkup(createElement(PublicConfigProvider, {
+      value: {
+        convexUrl: "https://cloud.example.test",
+        convexSiteUrl: "https://runtime.example.test",
+        landingUrl: "https://landing.example.test",
+      },
+    }, createElement(NextIntlClientProvider, { locale: "en", messages }, waitlist)));
+    expect(waitlistHtml).toContain("<form");
+    expect(waitlistHtml).toContain('type="email"');
+    expect(waitlistHtml).toContain(messages.auth.waitlist.submit);
+    expect(waitlistHtml).toContain('href="https://landing.example.test/en/terms"');
+    expect(waitlistHtml).toContain('href="https://landing.example.test/en/privacy"');
 
+    process.env.CONVEX_SITE_URL = "https://next-runtime.example.test";
     fetchSpy.mockResolvedValueOnce(Response.json({ onboardingType: "publicWaitlist" }));
     const custom = (await createSignUpView({ waitlistForm: AppQuestions })()).props.children;
     expect(custom.type).toBe(AppQuestions);
-    expect(custom.props.convexSiteUrl).toBe("https://runtime.example.test");
+    expect(custom.props.convexSiteUrl).toBe("https://next-runtime.example.test");
 
     fetchSpy.mockResolvedValueOnce(Response.json({ onboardingType: "publicWaitlist" }));
-    expect((await WebSignUpView()).props.children.type).toBe(WaitlistForm);
+    const webWaitlist = (await WebSignUpView()).props.children;
+    expect(webWaitlist.type).toBe(WaitlistForm);
+    expect(webWaitlist.props.convexSiteUrl).toBe("https://next-runtime.example.test");
 
     fetchSpy.mockResolvedValueOnce(Response.json({ onboardingType: "inviteOnly" }));
     const closed = (await SignUpView()).props.children as ReactElement;

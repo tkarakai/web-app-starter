@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_PLATFORM_VERSION: getPlatformVersion(monorepoRoot),
     ...(gitBranch ? { NEXT_PUBLIC_GIT_BRANCH: gitBranch } : {}),
   },
-  transpilePackages: ["@web-app-starter/app-config", "@web-app-starter/design-system", "@web-app-starter/auth", "@web-app-starter/auth-ui", "@repo/backend", "@web-app-starter/edge-rate-limit", "@web-app-starter/i18n", "@repo/messages"],
+  transpilePackages: ["@repo/onboarding", "@web-app-starter/app-config", "@web-app-starter/design-system", "@web-app-starter/auth", "@web-app-starter/auth-ui", "@repo/backend", "@web-app-starter/edge-rate-limit", "@web-app-starter/i18n", "@repo/messages"],
   headers: async () => [{ source: "/(.*)", headers: securityHeaders }],
   outputFileTracingRoot: monorepoRoot,
   turbopack: {

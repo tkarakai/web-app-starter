@@ -27,7 +27,7 @@ test("inline waitlist submits sample answers directly from the browser", async (
   });
   await page.goto("/en/");
   await page.getByLabel(text.waitlist.emailLabel).fill("Visitor@Example.com");
-  await expect(page.getByRole("button", { name: text.waitlist.submit, exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: text.waitlist.submit, exact: true })).toBeEnabled();
   await page.locator("#waitlist-superpowers").click();
   await page.getByRole("menuitemcheckbox", { name: text.waitlist.superpowers["coffee-to-code"], exact: true }).click();
   await page.keyboard.press("Escape");
