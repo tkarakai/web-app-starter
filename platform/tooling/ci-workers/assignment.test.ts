@@ -58,3 +58,24 @@ test('repository casing is independent in configuration, runner context and payl
     }
   }
 });
+
+test('updater roles bind scheduled/manual jobs to repository, run, attempt, source and job', () => {
+  for (const event of ['schedule', 'workflow_dispatch']) {
+    for (const [role, jobs] of [['verify', ['check', 'verify']], ['deliver', ['deliver']]] as const) {
+      const config = { ...c, updateRole: role, updateWorkflow: '.github/workflows/update.yml' };
+      const updater = { ...run, event, path: config.updateWorkflow };
+      for (const job of jobs) {
+        const expected = assignment(config, updater, head, 7, job);
+        const actual = { ...context, GITHUB_EVENT_NAME: event, GITHUB_JOB: job };
+        verifyAssignment(expected, actual, { repository: payload.repository });
+        for (const key of Object.keys(actual)) assert.throws(() => verifyAssignment(expected, { ...actual, [key]: 'wrong' }, { repository: payload.repository }), key);
+      }
+      assert.throws(() => assignment(config, updater, merge, 7, jobs[0]));
+      assert.throws(() => assignment(config, { ...updater, path: '.github/workflows/ci.yml' }, head, 7, jobs[0]));
+      assert.throws(() => assignment(config, { ...updater, event: 'pull_request' }, head, 7, jobs[0]));
+      assert.throws(() => assignment(config, updater, head, 7, role === 'verify' ? 'deliver' : 'verify'));
+      assert.throws(() => assignment({ ...config, publicBranch: 'main' }, { ...updater, event: 'schedule' }, head, 7, jobs[0]));
+    }
+  }
+  assert.throws(() => assignment(c, run, head, 7, 'deliver'));
+});

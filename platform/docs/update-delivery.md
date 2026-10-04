@@ -72,7 +72,8 @@ executes trusted platform and app code on an isolated GitHub runner; it receives
 write token or deployment secrets. It uses an anonymous local Convex backend for E2E and never
 deploys or changes a hosted database. A migration or new secret always requires operator work.
 
-A separate job mints the repository-scoped App token after verification finishes. It validates
+A separate job mints the repository-scoped App token after verification finishes or is skipped.
+It can publish an issue when discovery or verification fails, or when a major needs review. It validates
 the source/target identities, report and patch digests, and exact Git tree. Only inline workflow
 code, pinned actions and Git run with that token. It applies the patch, commits with hooks
 disabled, and pushes normally; it runs no app or downloaded scripts. Artifacts are retained for
@@ -84,3 +85,79 @@ The source defaults to public `tkarakai/web-app-starter`. Forks or rehearsal app
 set `PLATFORM_SOURCE_REPOSITORY` to another trusted **public** release repository; this selects
 code the upgrade executes. Use the same source for release discovery, advisory checks and the
 CI baseline fetch. Private release sources are not supported by this public-source protocol.
+
+## Self-hosted Linux runners
+
+GitHub-hosted runners remain the default. Updates can run on your own computers using the
+[prepared-image worker manager](ci-workers.md). Use separate installations for verification and
+publication, each with its own state directory, pool ID, builder, images and registration.
+Do not reuse an ordinary CI installation or the retired Compose workers.
+
+Remain in the reviewed application checkout for setup and all commands below. Run setup twice
+with different `STARTER_WORKERS_HOME` directories:
+
+```sh
+STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-verify" bun run ci:workers:setup --update-role verify --update-workflow .github/workflows/update-platform.yml
+STARTER_WORKERS_HOME="$HOME/.local/share/starter-update-deliver" bun run ci:workers:setup --update-role deliver --update-workflow .github/workflows/update-platform.yml
+```
+
+Use your actual **caller** workflow filename, not the reusable `platform-update.yml`. Keep the
+manager credential on the host as described in the worker guide. Use each installation's own
+`starter-workers` command inside its state directory; the convenience command in PATH points
+to the most recently installed one. Verification can run `check --install`; delivery accepts
+`check` only and never runs app installation or CI. Do not use ordinary `enable` or
+`check --github` for updater installations. The operator must run acceptance through the
+reviewed updater caller and inspect exact source/run/attempt and image evidence.
+
+Use the absolute wrapper for each installation; these commands retain the app checkout as cwd:
+
+```sh
+"$HOME/.local/share/starter-update-verify/starter-workers" check --install
+"$HOME/.local/share/starter-update-deliver/starter-workers" check
+"$HOME/.local/share/starter-update-verify/starter-workers" status
+"$HOME/.local/share/starter-update-deliver/starter-workers" status
+```
+
+Only after acceptance, configure these repository variables in
+**Settings → Secrets and variables → Actions**:
+
+- `PLATFORM_UPDATE_RUNNER`: the verification installation's **pool ID** (discovery and verification).
+- `PLATFORM_UPDATE_DELIVERY_RUNNER`: the separate delivery installation's **pool ID**.
+
+The workflow adds exact source, run, attempt and job labels. Labels alone do not authorize work:
+the installed manager checks the caller workflow, event, job and source against authenticated
+GitHub metadata; the root-owned start hook checks repository ID/name, source, run, attempt,
+event, ref and job again. Private updater pools accept only default-branch schedules or manual
+runs. Public pools require an explicitly reviewed manual branch and never accept schedules or
+fork jobs. Ordinary CI pools cannot accept updater jobs, and neither ordinary CI setting opts
+workers into updater credentials. Keep reviewed caller and reusable workflows in the trusted
+repository; updating their source requires normal review.
+
+Publication launches only its independently prepared immutable tools image. It never builds an
+app dependency seed, runs app scripts or shares writable caches with verification/ordinary CI.
+The job still uses only pinned actions, inline publisher code and Git with hooks disabled.
+Removing or clearing either selector restores `ubuntu-latest` independently. Cancel and restart
+already queued runs, which retain their old labels. Then stop each unused installation explicitly:
+
+```sh
+"$HOME/.local/share/starter-update-verify/starter-workers" service stop
+"$HOME/.local/share/starter-update-deliver/starter-workers" service stop
+```
+
+Revoke each installation's dedicated manager credential when retiring it.
+
+Preparation requires an exact Bun package-manager version and consistent Playwright declarations
+across all app manifests, including delivery's tool-profile preparation. If your workspaces
+declare different Playwright versions, reconcile them through your normal dependency-update
+process before preparing these workers. Preparation stops before Docker builds when these
+requirements are not met.
+
+The initial checkout's frozen offline installation proves only that checkout. Upgrade-target
+codemod dependencies and app dependencies are installed separately in the disposable read-only
+verification worker, with public-network access through its filtered proxy. Target browser builds
+go into private job storage; no sudo or shared writable browser cache is required. The upgrade
+launcher checks the target Node/Bun requirements independently. An incompatible target runtime
+or missing system browser dependency fails verification and retains evidence for operator work;
+it is never counted as a successful offline seed or automatic major upgrade. Review/update the
+prepared tool profile before retrying such a target. Draft gates, manual majors and auto-merge
+false remain the defaults.
