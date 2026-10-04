@@ -13,19 +13,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
-### Fixed
-
-- Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
-- Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
-- Dependency and secret scans fail closed; Security honors the native runner setting and exposes an aggregate completion gate. Compatible transitive security updates replace vulnerable packages; the unused reference web `eslint-config-next` dependency is removed.
-
-### Action required
-
-- Add **Security Complete** to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
-- Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
-
-### Fixed
-- Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
+## [4.0.0] - 2026-10-04
 
 ### Added
 
@@ -34,6 +22,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
   time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
 
 ### Fixed
+
+- Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
+- Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
+- Dependency and secret scans fail closed; Security honors the native runner setting and exposes an aggregate completion gate. Compatible transitive security updates replace vulnerable packages; the unused reference web `eslint-config-next` dependency is removed.
+
+- Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
+
 
 - Development fixture HTTP routes now require a local runtime and a generated harness capability.
   Seed helpers share the runtime guard, existing fixture accounts cannot be reassigned, and
@@ -58,10 +53,23 @@ version. Release-specific compatibility and deployment steps are listed explicit
   New administrators receive privileges only after verified TOTP enrollment and completion of
   setup (and a passkey when policy requires it). Protected email addresses alone never grant
   roles or email verification. Bootstrap rescue invalidates old capabilities and queued deliveries.
-- The reference landing again provides browser-side announcements and onboarding while remaining a static export: inline waitlist, signup/sign-in or sign-in-only controls, and backend-outage fallback with retry. The reference web sign-up view links waitlist visitors back to the localized landing. The existing `SignUpView` and explicit `createSignUpView` APIs remain available for apps that choose to keep forms in web. Existing email/metadata validation and rate limits remain.
+- The reference landing again provides browser-side announcements and onboarding while remaining a static export: inline waitlist, signup/sign-in or sign-in-only controls, and backend-outage fallback with retry. The reference web sign-up view renders the shared app-owned waitlist form inline. The existing `SignUpView` and explicit `createSignUpView` APIs remain available for apps that choose to keep forms in web. Existing email/metadata validation and rate limits remain.
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Add **Security Complete** and the standalone **CodeQL** context to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
+- Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
+
+
+- Before planning v4, read [Adopting v4](docs/upgrading-v4.md) from the published v4.0.0 tag
+  and commit required manual app-owned preparation for custom fixture clients, auth forms
+  and retained sample file code. The installed v3.1.0 checkout does not contain the v4
+  codemods. After applying target source and resolving seam conflicts, the updater automatically
+  runs `v4-local-fixture-clients.ts` and `v4-platform-api.ts`; generated platform bindings need
+  the target platform modules present. Then run the guide's read-only `--check` commands and
+  acceptance tests, including local auth E2E, before deployment or merge. Preserve the immutable
+  plan constraints in [UPGRADING.md](UPGRADING.md). No hosted data or configuration is changed automatically.
 
 - Remove `DEV_SEED_ENABLED`, `DEV_FIXTURE_RUNTIME` and `DEV_FIXTURE_SECRET` from hosted
   Convex environments before deploying. Restart local development to provision fixture access;
@@ -94,10 +102,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
   or automatically promoted. **Done when:** the invited recipient completes enrollment and can
   sign in as administrator; an unauthenticated signup cannot claim that address. See
   [administrator onboarding](docs/authentication-and-onboarding.md#6-admin-onboarding-flow).
-
-### Adoption
-
-- App-owned landing pages are preserved on upgrade. To adopt the restored flow, follow [onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff): mount the announcement and waitlist UI, use web’s `LandingSignUpView`, and add the matching Convex HTTP URL to landing’s env template, Turbo build env and hosting configuration before rebuilding. Set Convex `LANDING_URL` to the landing origin. No data migration is required.
 
 ## [3.1.0] - 2026-10-03
 
@@ -845,5 +849,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [3.0.0]: https://github.com/tkarakai/web-app-starter/compare/v2.1.2...v3.0.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...HEAD
 [3.1.0]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...v3.1.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...v4.0.0
