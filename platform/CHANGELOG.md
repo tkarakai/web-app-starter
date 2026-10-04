@@ -13,20 +13,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
-### Fixed
-
-- Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
-- Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
-- Dependency and secret scans fail closed; Security honors the native runner setting and exposes an aggregate completion gate. Compatible transitive security updates replace vulnerable packages; the unused reference web `eslint-config-next` dependency is removed.
-
-### Action required
-
-- Add **Security Complete** to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
-- Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
-
-### Fixed
-- Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
-
 ### Added
 
 - Development and staging banners show the installed starter platform version in the
@@ -34,6 +20,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
   time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
 
 ### Fixed
+
+- Public development commands repair stale workspace links with one frozen install before startup, require successful page compilation for readiness, and clean up their own failed CI processes.
+- Shared dependency and workflow changes select all affected CI/deployment consumers. Native CI now includes auth UI, ops, contracts, configuration checks and shared-package coverage. Production landing exports receive browser smoke checks, including missing-configuration fallback.
+- Dependency and secret scans fail closed; Security honors the native runner setting and exposes an aggregate completion gate. Compatible transitive security updates replace vulnerable packages; the unused reference web `eslint-config-next` dependency is removed.
+
+- Web waitlist signup accepts email inline; the reference landing and web reuse one app-owned form, with optional sample questions. Existing `LandingSignUpView` consumers also accept email directly.
+
 
 - Development fixture HTTP routes now require a local runtime and a generated harness capability.
   Seed helpers share the runtime guard, existing fixture accounts cannot be reassigned, and
@@ -62,6 +55,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Development, build, CI and deployment setup again provide landing’s `NEXT_PUBLIC_CONVEX_SITE_URL`; `dev:landing` starts Convex.
 
 ### Action required
+
+- Add **Security Complete** and the standalone **CodeQL** context to required branch checks after observing its successful PR context. Resolve installed high/critical dependency advisories before merging; scanner errors now fail the gate. Review any custom Security runner patch against the native Linux scanner before retiring it.
+- Port the reference onboarding coverage and landing fallback as appropriate to your app; follow the [shared UI coverage and production artifact requirements](docs/testing.md#shared-ui-and-production-artifacts).
+
 
 - Before planning v4, follow [Adopting v4](docs/upgrading-v4.md). Run
   `./platform/tooling/node-ts.sh platform/tooling/codemods/v4-local-fixture-clients.ts`
@@ -102,10 +99,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
   or automatically promoted. **Done when:** the invited recipient completes enrollment and can
   sign in as administrator; an unauthenticated signup cannot claim that address. See
   [administrator onboarding](docs/authentication-and-onboarding.md#6-admin-onboarding-flow).
-
-### Adoption
-
-- App-owned landing pages are preserved on upgrade. To adopt the restored flow, follow [onboarding ownership](docs/authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff): mount the announcement and waitlist UI, use web’s `LandingSignUpView`, and add the matching Convex HTTP URL to landing’s env template, Turbo build env and hosting configuration before rebuilding. Set Convex `LANDING_URL` to the landing origin. No data migration is required.
 
 ## [3.1.0] - 2026-10-03
 
