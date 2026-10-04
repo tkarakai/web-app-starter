@@ -319,6 +319,11 @@
       "id": "turbo.json",
       "path": "turbo.json",
       "hooks": []
+    },
+    {
+      "id": "root.github.actions.deploy-convex.fixture-target.ts",
+      "path": ".github/actions/deploy-convex/fixture-target.ts",
+      "hooks": []
     }
   ],
   "releases": [
@@ -747,6 +752,123 @@
         "root.github.workflows.ci-verify.yml",
         "root.github.workflows.ci-web.yml",
         "package.json"
+      ]
+    },
+    {
+      "version": "4.0.0",
+      "previous": "3.1.0",
+      "supportedBaseline": ">=2.0.0 <4.0.0",
+      "codemods": [
+        {
+          "id": "v4-local-fixture-clients",
+          "path": "platform/tooling/codemods/v4-local-fixture-clients.ts",
+          "touches": [
+            "apps/web/qa/e2e/helpers/fixtures.ts"
+          ]
+        },
+        {
+          "id": "v4-platform-api",
+          "path": "platform/tooling/codemods/v4-platform-api.ts",
+          "touches": [
+            "packages/backend/convex/_generated/api.d.ts"
+          ]
+        }
+      ],
+      "migrations": [],
+      "env": [
+        {
+          "name": "NEXT_PUBLIC_CONVEX_SITE_URL",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "NEXT_PUBLIC_BOOK_DEMO_URL",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "NEXT_PUBLIC_CONTACT_URL",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "NEXT_PUBLIC_PLATFORM_VERSION",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AUTH_TRUSTED_IP_HEADER",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AUTH_EMAIL_RATE_PER_MINUTE",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AUTH_EMAIL_BURST",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AUTH_EMAIL_RATE_PER_DAY",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "DEV_FIXTURE_RUNTIME",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "DEV_FIXTURE_SECRET",
+          "kind": "new",
+          "secret": true,
+          "required": false
+        },
+        {
+          "name": "DEV_FIXTURE_SECRET_FILE",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "DEV_READY_TIMEOUT_MS",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "EXPORT_EXPECT_CONFIGURED",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        }
+      ],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": [
+        "root.github.actions.deploy-convex.action.yml",
+        "root.github.actions.deploy-convex.fixture-target.ts",
+        "apps.landing..env.example",
+        "apps.landing.next.config.ts",
+        "apps.landing.package.json",
+        "apps.web.next.config.ts",
+        "apps.web.package.json",
+        "packages.backend.convex._generated.api.d.ts",
+        "package.json",
+        "turbo.json"
       ]
     }
   ]
