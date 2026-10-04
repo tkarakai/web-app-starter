@@ -92,7 +92,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   and commit required manual app-owned preparation for custom fixture clients, auth forms
   and retained sample file code. The installed v3.1.0 checkout does not contain the v4
   codemods. After applying target source and resolving seam conflicts, the updater automatically
-  runs `v4-local-fixture-clients.ts` and `v4-platform-api.ts`; generated platform bindings need
+  runs `v4-local-fixture-clients.ts`, `v4-platform-api.ts` and `v4-onboarding-dependency.ts`.
+  The onboarding migration removes reference workspace entries only when your app has no
+  `packages/onboarding`; existing custom packages and forms are preserved. Generated platform bindings need
   the target platform modules present. Then run the guide's read-only `--check` commands and
   acceptance tests, including local auth E2E, before deployment or merge. Preserve the immutable
   plan constraints in [UPGRADING.md](UPGRADING.md). No hosted data or configuration is changed automatically.

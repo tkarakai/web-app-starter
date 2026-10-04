@@ -77,11 +77,16 @@ no stored attachments needs no data copy. Source upgrades preserve and quarantin
 
 ## Shared UI, landing artifacts and Security
 
-App-owned landing pages are preserved. To adopt the restored onboarding and announcements,
+App-owned landing pages and forms are preserved. The updater runs
+`v4-onboarding-dependency.ts`: if `packages/onboarding` is absent, it removes the
+reference app’s newly introduced `@repo/onboarding` dependency and transpilation entry.
+It does not create or overwrite an app-owned form. Existing onboarding workspaces are
+left unchanged, including custom CSS exports. To adopt the restored onboarding and announcements,
 follow [onboarding ownership and landing handoff](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff).
 
-Move shared onboarding behavior tests and coverage into `packages/onboarding`, retaining
-consumer wiring tests. Run `bun run test:shared-packages` and ensure the package is listed with
+If your app shares onboarding through `packages/onboarding`, move its behavior tests and
+coverage into that package, retaining consumer wiring tests. Apps that retain separate
+forms should keep their existing behavior coverage. Run `bun run test:shared-packages` and ensure the package is listed with
 real source coverage. Preserve the app's form fields, translations and branding.
 Run `bun run test:landing-artifacts` to build and exercise both configuration variants; custom
 landings must handle missing Convex configuration without throwing in the browser.
