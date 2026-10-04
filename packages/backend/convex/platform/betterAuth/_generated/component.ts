@@ -53,10 +53,19 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               }
             | {
                 data: {
+                  assuranceVersion?: null | number;
+                  authMethod?: null | string;
+                  authenticatedAt?: null | number;
                   createdAt: number;
                   expiresAt: number;
                   impersonatedBy?: null | string;
                   ipAddress?: null | string;
+                  primaryVerifiedAt?: null | number;
+                  recoveryFactorId?: null | string;
+                  recoveryOnly?: null | boolean;
+                  strongFactorId?: null | string;
+                  strongFactorType?: null | string;
+                  strongVerifiedAt?: null | number;
                   token: string;
                   updatedAt: number;
                   userAgent?: null | string;
@@ -244,6 +253,15 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "assuranceVersion"
+                    | "authMethod"
+                    | "authenticatedAt"
+                    | "primaryVerifiedAt"
+                    | "strongVerifiedAt"
+                    | "strongFactorId"
+                    | "strongFactorType"
+                    | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -657,6 +675,15 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "assuranceVersion"
+                    | "authMethod"
+                    | "authenticatedAt"
+                    | "primaryVerifiedAt"
+                    | "strongVerifiedAt"
+                    | "strongFactorId"
+                    | "strongFactorType"
+                    | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1186,10 +1213,19 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "session";
                 update: {
+                  assuranceVersion?: null | number;
+                  authMethod?: null | string;
+                  authenticatedAt?: null | number;
                   createdAt?: number;
                   expiresAt?: number;
                   impersonatedBy?: null | string;
                   ipAddress?: null | string;
+                  primaryVerifiedAt?: null | number;
+                  recoveryFactorId?: null | string;
+                  recoveryOnly?: null | boolean;
+                  strongFactorId?: null | string;
+                  strongFactorType?: null | string;
+                  strongVerifiedAt?: null | number;
                   token?: string;
                   updatedAt?: number;
                   userAgent?: null | string;
@@ -1206,6 +1242,15 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "assuranceVersion"
+                    | "authMethod"
+                    | "authenticatedAt"
+                    | "primaryVerifiedAt"
+                    | "strongVerifiedAt"
+                    | "strongFactorId"
+                    | "strongFactorType"
+                    | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1712,10 +1757,19 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "session";
                 update: {
+                  assuranceVersion?: null | number;
+                  authMethod?: null | string;
+                  authenticatedAt?: null | number;
                   createdAt?: number;
                   expiresAt?: number;
                   impersonatedBy?: null | string;
                   ipAddress?: null | string;
+                  primaryVerifiedAt?: null | number;
+                  recoveryFactorId?: null | string;
+                  recoveryOnly?: null | boolean;
+                  strongFactorId?: null | string;
+                  strongFactorType?: null | string;
+                  strongVerifiedAt?: null | number;
                   token?: string;
                   updatedAt?: number;
                   userAgent?: null | string;
@@ -1732,6 +1786,15 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "assuranceVersion"
+                    | "authMethod"
+                    | "authenticatedAt"
+                    | "primaryVerifiedAt"
+                    | "strongVerifiedAt"
+                    | "strongFactorId"
+                    | "strongFactorType"
+                    | "recoveryOnly"
+                    | "recoveryFactorId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalMutation, internalQuery, query } from "../_generated/server";
-import { authedMutation, authedQuery } from "./functions";
+import { adminMutation, authedQuery } from "./functions";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -97,7 +97,7 @@ export const getAdminListInternal = internalQuery({
   },
 });
 
-export const create = authedMutation({
+export const create = adminMutation({
   args: {
     name: v.string(),
     bannerText: v.string(),
@@ -114,7 +114,7 @@ export const create = authedMutation({
   },
 });
 
-export const update = authedMutation({
+export const update = adminMutation({
   args: {
     announcementId: v.string(),
     patch: v.object({
@@ -134,7 +134,7 @@ export const update = authedMutation({
   },
 });
 
-export const publishNow = authedMutation({
+export const publishNow = adminMutation({
   args: {
     announcementId: v.string(),
   },
@@ -153,7 +153,7 @@ export const publishNowInternal = internalMutation({
   },
 });
 
-export const unpublishNow = authedMutation({
+export const unpublishNow = adminMutation({
   args: {
     announcementId: v.string(),
   },
@@ -172,7 +172,7 @@ export const unpublishNowInternal = internalMutation({
   },
 });
 
-export const setLive = authedMutation({
+export const setLive = adminMutation({
   args: {
     announcementId: v.string(),
     isLive: v.boolean(),
@@ -184,7 +184,7 @@ export const setLive = authedMutation({
   },
 });
 
-export const archive = authedMutation({
+export const archive = adminMutation({
   args: {
     announcementId: v.string(),
   },
@@ -194,7 +194,7 @@ export const archive = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = adminMutation({
   args: { announcementId: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");

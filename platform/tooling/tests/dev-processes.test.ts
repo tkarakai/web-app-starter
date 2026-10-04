@@ -19,7 +19,7 @@ import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
 const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"];
 
@@ -36,7 +36,11 @@ function install(checkout: string): void {
 }
 
 function installPredev(checkout: string, source = ROOT): void {
-  fs.copyFileSync(path.join(ROOT, "package.json"), path.join(checkout, "package.json"));
+  const original = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify({ private: true, type: "module", scripts: original.scripts, packageManager: original.packageManager, workspaces: ["apps/*", "platform/apps/*"] }));
+  const manifest = JSON.parse(fs.readFileSync(path.join(checkout, "package.json"), "utf8"));
+  delete manifest.scripts.postinstall;
+  fs.writeFileSync(path.join(checkout, "package.json"), JSON.stringify(manifest));
   for (const name of ["ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh"]) {
     fs.copyFileSync(path.join(SCRIPTS, name), path.join(checkout, "platform/tooling", name));
   }
@@ -373,7 +377,7 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   fs.mkdirSync(bindir);
   const fakes: Record<string, string> = {
     bun: "#!/bin/sh\necho 1.3.9\n",
-    bunx: "#!/usr/bin/env node\nconsole.log('Local: http://localhost:3999');\nconsole.log('Ready in 1ms');\nsetTimeout(() => {}, 300000);\n",
+    bunx: "#!/usr/bin/env node\nconst {createServer} = await import('node:http'); const server = createServer((req,res)=>res.end('fixture')); server.listen(0,()=>{console.log('Local: http://localhost:'+server.address().port);console.log('Ready in 1ms');});\n",
   };
   for (const [name, content] of Object.entries(fakes)) fs.writeFileSync(path.join(bindir, name), content, { mode: 0o755 });
   const log = path.join(root, "start.log");
@@ -459,7 +463,7 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
     fs.mkdirSync(path.join(root, "apps/web/node_modules/@playwright/test"), { recursive: true });
     const bindir = path.join(root, "fake-bin");
     fs.mkdirSync(bindir);
-    fs.writeFileSync(path.join(bindir, "bunx"), "#!/usr/bin/env node\nconsole.log('Local: http://localhost:3999');\nconsole.log('Ready in 1ms');\nsetTimeout(() => {}, 300000);\n", { mode: 0o755 });
+    fs.writeFileSync(path.join(bindir, "bunx"), "#!/usr/bin/env node\nconst {createServer} = await import('node:http'); const server = createServer((req,res)=>res.end('fixture')); server.listen(0,()=>{console.log('Local: http://localhost:'+server.address().port);console.log('Ready in 1ms');});\n", { mode: 0o755 });
     fs.writeFileSync(path.join(bindir, "npx"), '#!/bin/bash\nif [ "$1" = "--version" ]; then echo fixture; exit 0; fi\necho "Unexpected package download during dev startup" >&2\nexit 127\n', { mode: 0o755 });
 
     if (app === "landing") {
@@ -486,12 +490,21 @@ if (!/^DEV_FIXTURE_SECRET=[a-f0-9]{64}$/m.test(input) || !input.includes('DEV_FI
 `, { mode: 0o755 });
       fs.writeFileSync(path.join(bindir, "bunx"), `#!/usr/bin/env node
 if (process.argv[2] === 'convex') { console.log('fixture'); process.exit(0); }
-console.log('Local: http://localhost:3999');
-console.log('Ready in 1ms');
-setTimeout(() => {}, 300000);
+const {createServer} = await import('node:http'); const server = createServer((req,res)=>res.end('fixture')); server.listen(0,()=>{console.log('Local: http://localhost:'+server.address().port);console.log('Ready in 1ms');});
 `, { mode: 0o755 });
     }
 
+    if (app === "landing") {
+      // Model installed tool bins through postinstall; a real frozen install may
+      // prune hand-written node_modules/.bin entries.
+      const bins = ["node_modules/.bin/esbuild", "packages/backend/node_modules/.bin/convex"];
+      const content = Object.fromEntries(bins.map(file => [file, fs.readFileSync(path.join(root, file), "utf8")]));
+      fs.writeFileSync(path.join(root, "fixture-install.cjs"), `const fs=require('node:fs'),path=require('node:path');for(const [file,source] of Object.entries(${JSON.stringify(content)})){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,source,{mode:0o755});}`);
+      const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+      manifest.scripts.postinstall = "node fixture-install.cjs";
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
+    }
+    execFileSync("bun", ["install"], { cwd: root, stdio: "pipe" });
     const log = path.join(root, "bun-start.log");
     const output = fs.openSync(log, "w");
     const launcher = spawn("bun", args, {
@@ -571,4 +584,12 @@ test("explicit landing startup starts its browser backend", async () => {
   assert.equal(result.status, 17, result.stderr);
   assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=true"));
   assert.equal(fs.existsSync(path.join(root, "apps/landing/.env.local")), false);
+});
+
+test("a prior launch cannot stop a replacement record with the same service name", async () => {
+  const original = spawnIn(root), replacement = spawnIn(root);
+  track("next-storybook", original); track("next-storybook", replacement);
+  manager.stop(root, "next-storybook", original.pid);
+  assert.ok(await alive(replacement));
+  assert.equal(manager.readRecords(root)["next-storybook"].pid, replacement.pid);
 });

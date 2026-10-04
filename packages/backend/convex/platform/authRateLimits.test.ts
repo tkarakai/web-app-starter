@@ -62,7 +62,7 @@ async function twoFactorFixture(pending: boolean) {
     } } });
     cookie = signedCookie("two_factor", "pending-two-factor");
   } else {
-    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now,
       token: "otp-session", userId: user._id, expiresAt: now + 300000, createdAt: now, updatedAt: now,
     } } });
     cookie = signedCookie("session_token", "otp-session");
@@ -152,6 +152,7 @@ describe("auth email delivery budgets", () => {
     const f = await twoFactorFixture(false);
     expect((await f.post("send-otp", {})).status).toBe(200);
     for (let i = 0; i < 5; i++) expect((await f.post("verify-otp", { code: "wrong" })).status).toBe(401);
+    vi.setSystemTime(Date.now() + 60001);
     expect((await f.post("send-otp", {})).status).toBe(200);
     const code = vi.mocked(sendAuthEmail).mock.calls.at(-1)![0].urlOrCode;
     expect((await f.post("verify-otp", { code })).status).toBe(200);
@@ -163,7 +164,7 @@ describe("auth email delivery budgets", () => {
     ["/email-otp/send-verification-otp", "email-verification", 200],
     ["/email-otp/send-verification-otp", "forget-password", 200],
     ["/email-otp/send-verification-otp", "change-email", 400],
-    ["/email-otp/send-verification-otp", "sign-in", 400],
+    ["/email-otp/send-verification-otp", "sign-in", 403],
   ] as const)("ineligible %s (%s) requests do not spend delivery capacity", async (path, type, status) => {
     const f = await fixture();
     for (let i = 0; i < 24; i++) {
@@ -184,7 +185,7 @@ describe("auth email delivery budgets", () => {
         method: "POST", headers: { "content-type": "application/json", cookie: signedCookie("session_token", "otp-session") },
         body: JSON.stringify({ newEmail: `new-${i}@example.test` }),
       });
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(403);
     }
     expect(sendAuthEmail).not.toHaveBeenCalled();
     const limits = await f.t.run(ctx => ctx.db.query("rateLimits").collect());
@@ -193,12 +194,12 @@ describe("auth email delivery budgets", () => {
     expect(sendAuthEmail).toHaveBeenCalledTimes(1);
   });
 
-  test("OTP sign-in for a new address still reserves capacity and sends the challenge", async () => {
+  test("disabled OTP sign-in cannot send a new-address challenge", async () => {
     const f = await fixture();
     expect((await f.post("/api/auth/email-otp/send-verification-otp", {
       email: "new-otp@example.test", type: "sign-in",
-    })).status).toBe(200);
-    expect(sendAuthEmail).toHaveBeenCalledTimes(1);
+    })).status).toBe(403);
+    expect(sendAuthEmail).not.toHaveBeenCalled();
   });
 
   test("bearer password sign-in and two-factor enrollment deliver bounded usable OTPs", async () => {

@@ -12,7 +12,7 @@ async function fixture() {
       input: { model: "user", data: { name, email: `${name}@example.test`, emailVerified: true, role, createdAt: now, updatedAt: now } },
     });
     const session = await t.mutation(components.betterAuth.adapter.create, {
-      input: { model: "session", data: { userId: user._id, token: name, expiresAt: now + 3600_000, createdAt: now, updatedAt: now } },
+      input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token: name, expiresAt: now + 3600_000, createdAt: now, updatedAt: now } },
     });
     return t.withIdentity({ subject: user._id, sessionId: session._id });
   }

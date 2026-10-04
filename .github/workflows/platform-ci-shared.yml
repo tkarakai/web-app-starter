@@ -70,26 +70,7 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
-          filters: |
-            backend:
-              - 'packages/backend/**'
-            root:
-              - 'package.json'
-              - 'bun.lock'
-              - 'turbo.json'
-              - 'app.config.ts'
-              - 'platform/packages/app-config/**'
-              - 'platform/config/**'
-              - 'eslint.config.mjs'
-              - 'platform/tooling/**'
-            # The platform unit suite and upgrade rehearsal: platform code, its
-            # workflows, the demo app it rehearses on, and the dependency set.
-            platform:
-              - 'platform/**'
-              - '.github/**'
-              - 'apps/demo/**'
-              - 'package.json'
-              - 'bun.lock'
+          filters: .github/platform-impact.json
 
   # ============================================================
   # LINT & TYPECHECK (always runs)
@@ -104,15 +85,6 @@ jobs:
           ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
-      - name: Check runtime baseline (Node/Bun versions agree)
-        run: bun run check:runtime-baseline
-
-      - name: Check agent skills and their links
-        run: bun run check:agent-skills
-
-      - name: Check actions are pinned to commit SHAs
-        run: bun run check:actions-pinned
-
       # Platform-zone edits must be recorded patches; seams keep the platform hooks.
       # An adopted app compares against the release commit in .platform-base.json.
       - name: Zone check
@@ -125,29 +97,15 @@ jobs:
             [[ "$PLATFORM_SOURCE_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "Invalid platform source" >&2; exit 1; }
             git cat-file -e "${base}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 "https://github.com/$PLATFORM_SOURCE_REPOSITORY.git" "$base"
           fi
-          bun run check:zone
+          ./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts checkout
 
-      - name: Check message files (platform and app, overrides)
-        run: bun run check:i18n
+      - name: Shared platform checks
+        if: needs.changes.outputs.platform == 'true' || needs.changes.outputs.root == 'true'
+        run: ./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts platform
 
-      # Product only: direct dependency floors equal the versions bun.lock resolves.
-      # Adopted apps may run the same script by hand (platform-deps skill).
-      - name: Check dependency floors
-        if: hashFiles('.platform-base.json') == ''
-        run: ./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts
-
-      # Platform unit suite: only when the platform (or what it depends on) changed.
-      - name: Check development scripts and process isolation
-        if: needs.changes.outputs.platform == 'true'
-        run: bun run typecheck:dev-scripts && bun run lint:dev-scripts && bun run test:dev-scripts
-
-      - name: Test ops CLI
-        if: needs.changes.outputs.platform == 'true' && hashFiles('platform/packages/ops/package.json') != ''
-        run: bun run test:ops
-
-      - name: Test platform auth UI
-        if: needs.changes.outputs.platform == 'true'
-        run: bun run --cwd platform/packages/auth-ui test && bun run --cwd platform/packages/auth-ui test:unit
+      - name: Real startup after a workspace change
+        if: needs.changes.outputs.platform == 'true' || needs.changes.outputs.root == 'true'
+        run: bun run test:startup
 
       - name: Run TypeScript check
         run: bunx turbo typecheck

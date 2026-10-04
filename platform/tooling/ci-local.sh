@@ -17,16 +17,8 @@
 # Uses Turborepo to orchestrate across all workspace packages.
 # Runs per-app when possible so failures show exactly which app broke.
 #
-# Phases (per-app when possible for granular pass/fail):
-#   1. TypeScript check (all packages)
-#   2. ESLint (all packages)
-#   3. Bun unit tests (per app: web, admin, landing)
-#   4. Component tests + coverage (per app: web, admin, landing)
-#   5. Convex backend tests (backend)
-#   6. Starter package ownership and upgrade tests + real demo rehearsal
-#   7. Production build (per app: web, admin, landing, storybook)
-#   8. Bundle size check (per app: apps with .size-limit.json)
-#   9. E2E tests (per app: web, admin, landing, storybook) — skip with --skip-e2e
+# Check inventory and browser-skip behavior: platform/docs/ci.md.
+# Shared check profiles: platform/tooling/ci-checks.ts.
 #
 # NOT included (CI-only):
 #   - Security checks (CodeQL, dependency audit, secrets scan)
@@ -38,7 +30,7 @@
 # Artifacts are saved to .ci-local-artifacts/ for local inspection.
 #
 # Usage: bun run ci
-#        bun run ci:quick             # Skip E2E tests
+#        bun run ci:quick             # Skip E2E and export browser tests
 #        bun run ci:reset-coverage    # Reset coverage thresholds to 0, then run
 #
 # Flags can be combined: ./platform/tooling/ci-local.sh --skip-e2e --reset-coverage
@@ -319,7 +311,7 @@ save_e2e_artifacts() {
 # ============================================================
 print_step "Step 1/9: TypeScript Check"
 step_start
-if bun run typecheck:dev-scripts && turbo typecheck; then
+if turbo typecheck; then
   print_success "TypeScript check passed"
   step_end "all: TypeScript" "pass"
 else
@@ -333,7 +325,7 @@ fi
 # ============================================================
 print_step "Step 2/9: ESLint"
 step_start
-if bun run lint:dev-scripts && turbo lint; then
+if turbo lint; then
   print_success "ESLint passed"
   step_end "all: ESLint" "pass"
 else
@@ -342,32 +334,18 @@ else
   exit 1
 fi
 
-# Product only: direct dependency floors equal the versions bun.lock resolves
-# (mirrors platform-ci-shared.yml → "Check dependency floors"; adopted apps skip it).
-if [ ! -f .platform-base.json ]; then
-  step_start
-  if ./platform/tooling/node-ts.sh platform/tooling/dependency-floors.ts; then
-    print_success "Dependency floors in sync"
-    step_end "all: Dependency floors" "pass"
-  else
-    print_error "Dependency floors are stale (run: bun run sync:dependency-floors)"
-    step_end "all: Dependency floors" "fail"
-    exit 1
-  fi
-fi
+# The same platform and checkout checks run in Shared CI.
+./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts checkout
+./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts platform
+./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts contracts
+bun run test:startup
+echo "Online security/advisory checks are separate: ci-checks.ts online; GitHub also runs provider security checks."
 
 # ============================================================
 # Phase 3: Bun Unit Tests (mirrors ci-{web,admin,landing}.yml → test job)
 # Per-app so failures show which app broke.
 # ============================================================
 print_step "Step 3/9: Unit Tests (Bun)"
-step_start
-if bun run test:dev-scripts; then
-  step_end "scripts: Process isolation and locale merge" "pass"
-else
-  step_end "scripts: Process isolation and locale merge" "fail"
-  exit 1
-fi
 PHASE_FAILED=false
 for APP in web admin landing; do
   app_present "$APP" || continue
@@ -489,6 +467,7 @@ for APP in web admin landing storybook; do
   fi
 done
 if [ "$BUILD_FAILED" = true ]; then exit 1; fi
+if [ "$SKIP_E2E" = false ]; then bun run test:landing-artifacts; else echo "Skipped production-export browser smoke (--skip-e2e)."; fi
 
 # ============================================================
 # Phase 8: Bundle Size Check (per app)
@@ -578,7 +557,7 @@ DURATION_CS=$((END_TIME - START_TIME))
 
 echo -e "\n${GREEN}"
 echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│                  All CI Checks Passed!                       │"
+echo "│                  All Selected Local Checks Passed!                       │"
 echo "└──────────────────────────────────────────────────────────────┘"
 echo -e "${NC}"
 echo -e "Total time: $(format_duration $DURATION_CS)"

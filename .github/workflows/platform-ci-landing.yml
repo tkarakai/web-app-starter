@@ -72,28 +72,13 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
-          filters: |
-            landing:
-              - 'apps/landing/**'
-            design-system:
-              - 'platform/packages/design-system/**'
-            root:
-              - 'package.json'
-              - 'bun.lock'
-              - 'turbo.json'
-              - 'app.config.ts'
-              - 'platform/packages/app-config/**'
-              - 'platform/config/**'
-              - 'eslint.config.mjs'
-              - 'platform/tooling/**'
+          filters: .github/platform-impact.json
 
       - name: Evaluate changes
         if: ${{ !env.ACT }}
         id: evaluate
         run: |
-          if [[ "${{ steps.filter.outputs.landing }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.design-system }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.root }}" == "true" ]]; then
+          if [[ "${{ steps.filter.outputs.landing }}" == "true" || "${{ steps.filter.outputs.root }}" == "true" ]]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
@@ -174,12 +159,12 @@ jobs:
           ref: ${{ inputs.git_sha || github.sha }}
       - uses: ./.github/actions/setup-bun
 
-      - name: Build
-        run: bunx turbo build --filter=@repo/landing...
-        env:
-          NEXT_PUBLIC_SITE_URL: ${{ env.APP_CONFIG_ORIGIN_LANDING }}
-          NEXT_PUBLIC_WEB_APP_URL: ${{ env.APP_CONFIG_ORIGIN_WEB }}
-          NEXT_PUBLIC_CONVEX_SITE_URL: "https://placeholder.convex.site"
+      - uses: ./.github/actions/setup-playwright
+        with:
+          working-directory: apps/landing
+
+      - name: Build and smoke both production configuration variants
+        run: bun run test:landing-artifacts
 
       - name: Check bundle size
         run: cd apps/landing && bun run size

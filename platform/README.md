@@ -395,10 +395,12 @@ Run the full CI check before pushing:
 
 ```bash
 CI=true bun run ci      # Full CI: lint, types, tests, build, single-worker web E2E
-bun run ci:quick        # Skip E2E for faster feedback
+bun run ci:quick        # Quick local checks; see the CI guide
 bun run ci:act          # Run in Docker via act (mirrors GitHub Actions)
 bun run ci:act:offline  # Offline mode (fast, no network required)
 ```
+
+See the [CI guide](docs/ci.md#local-ci-pre-push-checks) for the check inventory and skipped browser checks.
 
 ## Conventions
 
@@ -444,7 +446,7 @@ bun run ci:act:offline  # Offline mode (fast, no network required)
 
 - Better Auth user data is stored inside the Better Auth Convex component, not in your app tables.
 - In the Convex dashboard, switch to the component data view for `betterAuth` to inspect users, sessions, and accounts.
-- For management, build admin-only Convex functions that call `authComponent` APIs or Better Auth server APIs.
+- For management, use the authorized endpoint builders in [custom endpoints](docs/authentication-and-onboarding.md#86-enrollment-recovery-and-custom-endpoints) before calling component APIs.
 
 ### Environment differences
 

@@ -462,6 +462,19 @@
       "loadError": "Nepodařilo se načíst relace.",
       "revokeError": "Nepodařilo se ukončit relaci.",
       "revokeAllError": "Nepodařilo se ukončit relace."
+    },
+    "session": {
+      "title": "Ověřte svou totožnost",
+      "description": "Pokračujte dokončením požadovaného ověření.",
+      "expired": "Platnost relace vypršela. Přihlaste se znovu.",
+      "failed": "Ověření selhalo. Zkontrolujte údaje a zkuste to znovu.",
+      "verifyEmail": "Ověřit e-mail",
+      "enrollment": "Dokončete pozvánku správce na stránce správy.",
+      "recovery": "Pomocí hesla nastavte nový autentizátor a poté uložte nové záložní kódy.",
+      "addPasskey": "Přidat přístupový klíč",
+      "usePasskey": "Použít přístupový klíč",
+      "verify": "Ověřit",
+      "continue": "Pokračovat"
     }
   }
 }

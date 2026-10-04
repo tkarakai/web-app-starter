@@ -17,8 +17,9 @@ and `platform/docs/i18n-architecture.md` (routing, translations).
 | Public | `src/app/[locale]/<name>/` | None |
 
 Every page lives under `[locale]`, so its URL is `/<locale>/...`. The `(dashboard)` layout
-already rejects unauthenticated, banned and admin users and enforces the MFA policy; don't
-repeat those checks in the page. A protected page outside `/dashboard` would also need its
+and shared guard handle route access; don't repeat those checks in the page. Backend data
+authorization remains mandatory; see [session assurance](../../docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+A protected page outside `/dashboard` would also need its
 prefix in `PROTECTED_PREFIXES` in `src/proxy.ts`; prefer staying under `/dashboard`.
 
 ## Steps

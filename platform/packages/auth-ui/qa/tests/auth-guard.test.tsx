@@ -28,6 +28,7 @@ vi.mock("@convex-dev/better-auth/nextjs/client", () => ({
 }));
 
 let mockPublicSettings: Record<string, unknown> = {};
+vi.mock("../../src/components/session-access-gate", () => ({ SessionAccessGate: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("convex/react", () => ({
   useQuery: (_query: unknown, args: { key: string }) => mockPublicSettings[args.key],
 }));
@@ -197,46 +198,4 @@ describe("AuthGuard", () => {
     expect(screen.getByTestId("email")).toHaveTextContent("session@example.com");
   });
 
-  it("redirects to security settings when MFA is required but not enabled", async () => {
-    mockPublicSettings.userMfaRequired = true;
-    mockPublicSettings.userPasskeyPolicy = "optional";
-    mockUser = {
-      name: "Test User",
-      email: "test@example.com",
-      role: "user",
-      emailVerified: true,
-      twoFactorEnabled: false,
-    };
-
-    render(
-      <AuthGuard preloadedUser={{} as never}>
-        <div>Content</div>
-      </AuthGuard>
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(mockReplace).toHaveBeenCalledWith("/dashboard/settings?tab=security&enforce=mfa");
-  });
-
-  it("redirects to security settings when passkey is required but none exist", async () => {
-    mockPublicSettings.userMfaRequired = false;
-    mockPublicSettings.userPasskeyPolicy = "required";
-    mockListUserPasskeys.mockResolvedValue({ data: [] });
-
-    render(
-      <AuthGuard preloadedUser={{} as never}>
-        <div>Content</div>
-      </AuthGuard>
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(mockReplace).toHaveBeenCalledWith("/dashboard/settings?tab=security&enforce=passkey");
-  });
 });

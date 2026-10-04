@@ -462,6 +462,19 @@
       "loadError": "Impossibile caricare le sessioni.",
       "revokeError": "Impossibile terminare la sessione.",
       "revokeAllError": "Impossibile terminare le sessioni."
+    },
+    "session": {
+      "title": "Verifica la tua identità",
+      "description": "Completa la verifica richiesta per continuare.",
+      "expired": "La sessione è scaduta. Accedi di nuovo.",
+      "failed": "Verifica non riuscita. Controlla i dati e riprova.",
+      "verifyEmail": "Verifica email",
+      "enrollment": "Completa il tuo invito come amministratore sul sito di amministrazione.",
+      "recovery": "Usa la password per configurare un nuovo autenticatore, quindi salva i nuovi codici di backup.",
+      "addPasskey": "Aggiungi una passkey",
+      "usePasskey": "Usa una passkey",
+      "verify": "Verifica",
+      "continue": "Continua"
     }
   }
 }

@@ -31,10 +31,15 @@ async function user(t: Env) {
 }
 async function session(t: Env, id: string) {
   const now = Date.now();
-  const row = await t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
+  const row = await t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now,
     userId: id, token: `session-${id}`, expiresAt: now + 86400000, createdAt: now, updatedAt: now,
   } } });
   return t.withIdentity({ subject: id, sessionId: row._id });
+}
+
+async function verifiedFactor(t: Env, userId: string) {
+  const factor = await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId, secret: "fixture", backupCodes: "fixture", verified: true } } });
+  await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "token", value: `session-${userId}` }], update: { strongVerifiedAt: Date.now(), strongFactorId: factor._id, strongFactorType: "totp" } } });
 }
 beforeEach(() => {
   vi.useFakeTimers();
@@ -59,6 +64,7 @@ describe("administrator enrollment", () => {
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "userId", value: account._id }], update: { expiresAt: Date.now() - 1, token: "expired-session" } } });
     await expect(owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 2 })).rejects.toThrow("NOT_AUTHENTICATED");
     const refreshed = await session(t, account._id);
+    await verifiedFactor(t, account._id);
     await refreshed.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 2 });
     expect(await refreshed.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toEqual({ completed: false, step: 2 });
   });
@@ -70,7 +76,7 @@ describe("administrator enrollment", () => {
     const account = (await user(t))!;
     const owner = await session(t, account._id);
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: account._id }], update: { twoFactorEnabled: true } } });
-    await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: account._id, secret: "fixture", backupCodes: "fixture", verified: true } } });
+    await verifiedFactor(t, account._id);
     await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
     for (const value of ["required", JSON.stringify("required")]) {
       if (value === "required") {
@@ -149,7 +155,9 @@ describe("administrator enrollment", () => {
     expect(verified.status).toBe(200);
     const account = (await user(t))!;
     expect(account).toMatchObject({ role: "user", twoFactorEnabled: true });
-    const owner = await session(t, account._id);
+    const live = await t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "userId", value: account._id }] });
+    expect(live).toMatchObject({ strongFactorType: "totp" });
+    const owner = t.withIdentity({ subject: account._id, sessionId: live!._id });
     await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
     await owner.mutation(api.platform.adminInvitations.completeOnboarding, {});
     expect(await user(t)).toMatchObject({ role: "admin" });
@@ -202,11 +210,11 @@ describe("administrator enrollment", () => {
     const owner = await session(t, account._id);
     await expect(t.mutation(internal.platform.bootstrap.rescue, { currentEmail: email, newEmail: email })).rejects.toThrow("BOOTSTRAP_ACCOUNT_EXISTS");
     expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toEqual({ completed: false, step: 1 });
-    await expect(owner.mutation(api.platform.adminAuth.setMfaPolicy, { required: false })).rejects.toThrow("NOT_ADMIN");
+    await expect(owner.mutation(api.platform.adminAuth.setMfaPolicy, { required: false })).rejects.toThrow("NOT_AUTHENTICATED");
     await expect(owner.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("MFA_REQUIRED");
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: account._id }], update: { twoFactorEnabled: true } } });
     await expect(owner.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("MFA_REQUIRED");
-    await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: account._id, secret: "fixture", backupCodes: "fixture", verified: true } } });
+    await verifiedFactor(t, account._id);
     await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
     await owner.mutation(api.platform.adminInvitations.completeOnboarding, {});
     expect(await user(t)).toMatchObject({ role: "admin" });

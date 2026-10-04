@@ -462,6 +462,19 @@
       "loadError": "Failed to load sessions.",
       "revokeError": "Failed to revoke session.",
       "revokeAllError": "Failed to revoke sessions."
+    },
+    "session": {
+      "title": "Verify your identity",
+      "description": "Complete the required verification to continue.",
+      "expired": "Your session has expired. Sign in again.",
+      "failed": "Verification failed. Check your details and try again.",
+      "verifyEmail": "Verify email",
+      "enrollment": "Complete your administrator invitation at the admin site.",
+      "recovery": "Use your password to set up a new authenticator, then save the replacement backup codes.",
+      "addPasskey": "Add a passkey",
+      "usePasskey": "Use a passkey",
+      "verify": "Verify",
+      "continue": "Continue"
     }
   }
 }

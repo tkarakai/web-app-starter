@@ -31,7 +31,22 @@ test.describe.configure({ mode: "serial", timeout: 120_000 });
  * Attach a virtual platform authenticator with user verification already
  * satisfied, so registration and assertion complete without a UI prompt.
  */
-async function addVirtualAuthenticator(page: Page): Promise<{ client: CDPSession; id: string }> {
+async function addVirtualAuthenticator(page: Page, es256Only = false): Promise<{ client: CDPSession; id: string }> {
+  if (es256Only) {
+    // Chromium can prefer Ed25519. Select the server-advertised ES256 option
+    // while delegating creation and signing to the real browser authenticator.
+    await page.addInitScript(() => {
+      const create = navigator.credentials.create.bind(navigator.credentials);
+      navigator.credentials.create = (options) => {
+        if (options?.publicKey) {
+          options.publicKey.pubKeyCredParams = options.publicKey.pubKeyCredParams.filter(
+            parameter => parameter.alg === -7,
+          );
+        }
+        return create(options);
+      };
+    });
+  }
   const client = await page.context().newCDPSession(page);
   await client.send("WebAuthn.enable");
 
@@ -57,23 +72,22 @@ async function registerPasskey(page: Page, name: string): Promise<void> {
   await fillStable(page, "#new-passkey-name", name);
   await page.getByRole("button", { name: /^add/i }).first().click();
 
+  // Registration adds a factor; sensitive settings now require its current-session proof.
+  const verifyPasskey = page.getByRole("button", { name: "Use a passkey", exact: true });
+  await expect(verifyPasskey).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(name)).not.toBeVisible();
+  await verifyPasskey.click();
   await expect(page.getByText(name)).toBeVisible({ timeout: 20_000 });
 }
 
-/** Remove every passkey on the account so later tests start clean. */
-async function deleteAllPasskeys(page: Page): Promise<void> {
+/** Delete the fixture credential after the remounted list finishes loading. */
+async function deletePasskey(page: Page, name: string): Promise<void> {
   await openSecurityTab(page, "passkeys");
-
-  for (let i = 0; i < 5; i += 1) {
-    const deleteButton = page.getByRole("button", { name: /delete|remove/i }).first();
-    if (!(await deleteButton.isVisible().catch(() => false))) return;
-
-    await deleteButton.click();
-    const confirm = page.getByRole("button", { name: /^(delete|remove|confirm)/i }).last();
-    if (await confirm.isVisible().catch(() => false)) await confirm.click();
-
-    await page.waitForTimeout(500);
-  }
+  const deleteButton = page.getByRole("button", { name: `Delete passkey ${name}`, exact: true });
+  await expect(deleteButton).toBeVisible({ timeout: 20_000 });
+  const deleted = page.waitForResponse(response => response.url().endsWith("/passkey/delete-passkey"));
+  await deleteButton.click();
+  expect((await deleted).status()).toBe(200);
 }
 
 test.describe("Passkey registration and sign-in", () => {
@@ -144,7 +158,14 @@ test.describe("Passkey registration and sign-in", () => {
     await signIn(page, user.email, user.password);
     await registerPasskey(page, "Doomed Key");
 
-    await deleteAllPasskeys(page);
+    await deletePasskey(page, "Doomed Key");
+
+    // Deleting the credential used by this session invalidates its passkey proof.
+    const password = page.getByLabel("Current password", { exact: true }).filter({ visible: true });
+    await expect(password).toBeVisible({ timeout: 20_000 });
+    await password.fill(user.password);
+    await page.getByRole("button", { name: "Verify", exact: true }).click();
+    await expect(page.getByRole("tablist").nth(1)).toBeVisible({ timeout: 20_000 });
 
     // A reload resets the inner security tabs to Password — the sub-tab is not
     // deep-linkable — so re-open Passkeys before asserting on the list.
@@ -157,5 +178,12 @@ test.describe("Passkey registration and sign-in", () => {
     await throttleSignIn();
     await submitEmailStep(page, user.email);
     await expect(page.locator("#password")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("authenticates a browser ES256 passkey through the settings gate", async ({ page }) => {
+    await addVirtualAuthenticator(page, true);
+    const user = await createDisposableUser();
+    await signIn(page, user.email, user.password);
+    await registerPasskey(page, "E2E ES256 Key");
   });
 });

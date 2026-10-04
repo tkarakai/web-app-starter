@@ -190,7 +190,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return true;
     }
 
-    if (policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
+    if (!usedPasskey && policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
       router.push("/dashboard/settings?tab=security&enforce=mfa");
       return true;
     }
@@ -209,12 +209,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
 
       const passkeys = passkeyResult.data ?? [];
-      if (passkeys.length > 0 && !usedPasskey) {
-        await authClient.signOut();
-        setError(tpk("signInRequired"));
-        return true;
-      }
-
       if (passkeys.length === 0) {
         router.push("/dashboard/settings?tab=security&enforce=passkey");
         return true;

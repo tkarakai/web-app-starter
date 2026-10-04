@@ -133,8 +133,8 @@ export function AdminSignInForm() {
       return true;
     }
 
-    if (policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
-      router.push("/settings?tab=security&enforce=mfa");
+    if (!usedPasskey && policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
+      router.push("/dashboard/security?tab=2fa");
       return true;
     }
 
@@ -152,14 +152,8 @@ export function AdminSignInForm() {
       }
 
       const passkeys = passkeyResult.data ?? [];
-      if (passkeys.length > 0 && !usedPasskey) {
-        await authClient.signOut();
-        setError("Passkey sign-in is required for your account.");
-        return true;
-      }
-
       if (passkeys.length === 0) {
-        router.push("/settings?tab=security&enforce=passkey");
+        router.push("/dashboard/security?tab=passkeys");
         return true;
       }
     }

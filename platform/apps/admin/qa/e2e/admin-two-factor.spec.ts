@@ -42,9 +42,12 @@ test.describe("Admin TOTP enrolment", () => {
     await expect(page.locator("#admin-2fa-enable-password")).toBeVisible({ timeout: 15_000 });
 
     await fillStable(page, "#admin-2fa-enable-password", user.password);
+    const enabledResponse = page.waitForResponse(response => response.url().endsWith("/two-factor/enable"));
     await page
       .locator('form:has(#admin-2fa-enable-password) button[type="submit"]')
       .click();
+
+    const issued = await (await enabledResponse).json() as { backupCodes: string[] };
 
     // password-enable -> totp-uri. The base32 secret sits behind a "Manual setup
     // key" collapsible and is not in the DOM until it is expanded.
@@ -83,6 +86,12 @@ test.describe("Admin TOTP enrolment", () => {
       backupCodes.length,
       "enrolment must issue backup codes — without them 2FA is enforced with no recovery path",
     ).toBeGreaterThan(0);
+
+    expect(backupCodes).toEqual(issued.backupCodes);
+    // Wait for rotated-session subscriptions and Activity effects to reconnect.
+    await page.waitForTimeout(4_000);
+    await expect(page.getByRole("tab", { name: "Two-factor", exact: true })).toHaveAttribute("data-state", "active");
+    await expect(codesPanel.locator("code")).toHaveText(issued.backupCodes);
 
     // A duplicate would silently halve the recovery set.
     expect(new Set(backupCodes).size).toBe(backupCodes.length);

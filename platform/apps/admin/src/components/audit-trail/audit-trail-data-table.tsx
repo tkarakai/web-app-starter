@@ -45,9 +45,18 @@ export function AuditTrailDataTable() {
   const isLoadingMore = status === "LoadingMore";
   const canLoadMore = status === "CanLoadMore";
 
+  // Reconnecting a subscription temporarily returns no rows. Retain their state
+  // for the same filters, but suspend their portals while the query loads.
+  const [lastPage, setLastPage] = React.useState({ queryArgs, results });
+  if (!isLoadingFirst && (lastPage.results !== results || lastPage.queryArgs !== queryArgs)) {
+    setLastPage({ queryArgs, results });
+  }
+  const rows = isLoadingFirst && lastPage.queryArgs === queryArgs ? lastPage.results : results;
+
   const table = useTable({
     features: auditTableFeatures,
-    data: results,
+    data: rows,
+    getRowId: (row) => row._id,
     columns,
   });
 
@@ -84,7 +93,7 @@ export function AuditTrailDataTable() {
               ))}
             </TableHeader>
             <TableBody>
-              {isLoadingFirst ? (
+              {isLoadingFirst && (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
                     {table.getVisibleFlatColumns().map((col) => (
@@ -94,29 +103,32 @@ export function AuditTrailDataTable() {
                     ))}
                   </TableRow>
                 ))
-              ) : table.getRowModel().rows.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={table.getVisibleFlatColumns().length}
-                    className="h-24 text-center"
-                  >
-                    No audit events found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
               )}
+              <React.Activity mode={isLoadingFirst ? "hidden" : "visible"}>
+                {table.getRowModel().rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={table.getVisibleFlatColumns().length}
+                      className="h-24 text-center"
+                    >
+                      No audit events found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </React.Activity>
             </TableBody>
           </Table>
         </div>

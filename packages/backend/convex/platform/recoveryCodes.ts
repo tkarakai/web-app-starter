@@ -1,6 +1,8 @@
 import { symmetricDecrypt, verifyPassword } from "better-auth/crypto";
 import { v } from "convex/values";
 
+import { evaluateSession, readSession } from "./sessionPolicy";
+
 import { components, internal } from "../_generated/api";
 import { internalQuery, type ActionCtx } from "../_generated/server";
 
@@ -19,6 +21,13 @@ export const snapshot = internalQuery({
       model: "user", where: [{ field: "_id", value: userId }],
     });
     if (!user || user.banned) throw new Error("NOT_AUTHENTICATED");
+    const pair = await readSession(ctx, userId, sessionId);
+    if (!pair) throw new Error("NOT_AUTHENTICATED");
+    const assurance = await evaluateSession(ctx, pair);
+    // Bound enrollment may acknowledge its recovery set after fresh TOTP verification.
+    if ((!assurance.allowed && assurance.reason !== "enrollment") || !assurance.strong || !assurance.recent) {
+      throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+    }
     const credential = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "account", where: [
         { field: "userId", value: userId }, { field: "providerId", value: "credential" },

@@ -64,34 +64,13 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
-          filters: |
-            web:
-              - 'apps/web/**'
-            backend:
-              - 'packages/backend/**'
-            design-system:
-              - 'platform/packages/design-system/**'
-            auth:
-              - 'platform/packages/auth*/**'
-            root:
-              - 'package.json'
-              - 'bun.lock'
-              - 'turbo.json'
-              - 'app.config.ts'
-              - 'platform/packages/app-config/**'
-              - 'platform/config/**'
-              - 'eslint.config.mjs'
-              - 'platform/tooling/**'
+          filters: .github/platform-impact.json
 
       - name: Evaluate changes
         if: ${{ !env.ACT }}
         id: evaluate
         run: |
-          if [[ "${{ steps.filter.outputs.web }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.backend }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.design-system }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.auth }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.root }}" == "true" ]]; then
+          if [[ "${{ steps.filter.outputs.web }}" == "true" || "${{ steps.filter.outputs.root }}" == "true" ]]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"

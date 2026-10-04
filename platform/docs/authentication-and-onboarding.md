@@ -12,8 +12,8 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 | Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` (signup flow *is* onboarding) |
 | How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |
 | Password required | Yes — see §5 | Yes — see §5 |
-| 2FA (TOTP) | Mandatory — cannot access dashboard without it | Admin-configurable: optional or mandatory |
-| Passkey | Required or optional according to `adminPasskeyPolicy` | Optional (if enabled by admin) |
+| 2FA (TOTP) | Required for invitation enrollment; subsequent access follows live MFA policy | Admin-configurable: optional or required |
+| Passkey | According to `adminPasskeyPolicy` | According to `userPasskeyPolicy` |
 | Magic link sign-in | Not available | Admin-configurable: enabled or disabled |
 | Can access the other app | No | No |
 
@@ -36,7 +36,7 @@ Every account — admin or user — is created as an email+password credential a
 
 | Method | TOTP required at login? | Notes |
 |---|---|---|
-| **Password** | **Yes** | Password alone is single-factor; TOTP covers phishing/keylogging |
+| **Password** | **If enrolled or required by policy** | Password alone does not satisfy required strong proof |
 | **Passkey** | **No** | Passkey is inherently two-factor (possession + biometric/PIN) |
 
 No magic link option for admins.
@@ -45,8 +45,8 @@ No magic link option for admins.
 
 | Method | TOTP required at login? | Notes |
 |---|---|---|
-| **Password** | **If 2FA is enabled for the user** | Depends on admin policy + user choice |
-| **Magic link** | **If 2FA is enabled for the user** | Only available if admin has enabled magic link |
+| **Password** | **According to live factor policy (§8.5)** | Depends on admin policy + user choice |
+| **Magic link** | **According to live factor policy (§8.5)** | Only available if admin has enabled magic link |
 | **Passkey** | **No** | Passkey is inherently two-factor; TOTP is never required on top |
 
 **Why no TOTP with passkey login (for either account type):** A passkey inherently provides two authentication factors — possession of the device/key and biometric verification or device PIN. Requiring TOTP on top of a passkey adds friction without meaningful security benefit. TOTP remains relevant for password and magic link logins, where the sign-in method is single-factor.
@@ -58,13 +58,13 @@ Admins configure these from the admin app's security settings. All policies are 
 | Setting | Key | Options | Default |
 |---|---|---|---|
 | Magic link sign-in | `userMagicLinkEnabled` | enabled / disabled | disabled |
-| 2FA requirement | `userMfaRequired` | optional / mandatory | optional |
-| Passkey | `userPasskeyPolicy` | disabled / optional | optional |
+| 2FA requirement | `userMfaRequired` | `false` (optional) / `true` (required) | `false` |
+| Passkey | `userPasskeyPolicy` | disabled / optional / required | optional |
 
 **How 2FA interacts with sign-in methods for users:**
 
-- **`userMfaRequired: "optional"`** — Users may enable 2FA from their security settings. If they do, TOTP is required at password and magic link login. Passkey login never requires TOTP.
-- **`userMfaRequired: "mandatory"`** — All users must enable 2FA. Users who haven't are redirected to a 2FA setup flow before accessing the app. TOTP is required at password and magic link login. Passkey login still does not require TOTP.
+- **`userMfaRequired: false`** — Users may enable 2FA from their security settings. Once enabled, password and magic-link sessions need strong factor verification.
+- **`userMfaRequired: true`** — Sessions must verify a policy-eligible factor before accessing the app. Users without one see the shared enrollment gate. A user-verified passkey can satisfy this requirement without TOTP.
 
 When a user enables 2FA (voluntarily or because it's mandatory), the same Better Auth `twoFactor.enable({ password })` flow applies — they enter their password to unlock TOTP setup.
 
@@ -153,7 +153,7 @@ step writes an `admin.onboarding.*` audit event (§12).
 
 ## 7. User Sign-Up Flow (web app)
 
-For users, sign-up *is* onboarding. The flow is simpler than admin onboarding because 2FA and passkey are optional.
+For users, sign-up *is* onboarding. Factor enrollment depends on the current user security policy.
 
 ### Onboarding ownership and landing handoff
 
@@ -165,11 +165,13 @@ placeholder; backend failures show sign-in plus optional `NEXT_PUBLIC_BOOK_DEMO_
 `NEXT_PUBLIC_CONTACT_URL` links. Requests time out after eight seconds and failed loads retry
 with exponential backoff (5–60 seconds, at most ten retries), paused while hidden. Returning
 to the tab refreshes the mode. Registration and waitlist mutations still enforce the current
-mode at submission time.
+mode at submission time. A missing or blank build-time Convex HTTP URL immediately shows the
+same unavailable-backend links without fetching or retrying; the static page remains usable.
 
 Landing also mounts `AnnouncementBannerHost` when `features.announcements` is enabled.
 It polls `/api/announcements/active` every 15 seconds after each completed request, supports
 CTA and details, remembers dismissal by announcement ID, and offsets the header/content.
+With no build-time Convex HTTP URL, it renders no announcement and does not poll.
 The landing needs no application server in production: both features execute in the browser.
 Set its Convex HTTP URL at build time and allow its origin through Convex `LANDING_URL`.
 `bun run dev:landing` starts the local backend and wires both URLs.
@@ -212,16 +214,17 @@ If the admin has enabled magic link (`userMagicLinkEnabled: true`), the user can
 
 ### 7.4 Optional: 2FA Setup
 
-Depends on the admin's `userMfaRequired` setting:
-
-- **`optional`** (default): The user can enable 2FA from their security settings at any time. The flow is the same as admin TOTP setup (§6.3, steps 1–2) — enter password to unlock, scan QR, verify code, save backup codes.
-- **`mandatory`**: The user is redirected to 2FA setup after sign-up (or on next login if they haven't set it up yet) and cannot access the app until complete. Same flow as admin TOTP setup.
-
-In both cases, TOTP is required at login only for password and magic link sign-ins. Passkey sign-in never requires TOTP.
+The [user MFA policy](#33-admin-controlled-security-policies-for-users) determines whether
+enrollment is optional or required. TOTP setup uses the same steps as admin enrollment (§6.3):
+enter the current password, scan the QR code, verify a code and save backup codes. See
+[session assurance](#85-session-assurance-and-reauthentication) for fresh verification requirements.
 
 ### 7.5 Optional: Passkey Registration
 
-If the admin has passkeys enabled (`userPasskeyPolicy: "optional"`), the user can add a passkey from their security settings at any time. Same WebAuthn flow as admin passkey registration.
+Passkey registration uses the same WebAuthn flow as admin enrollment. Its availability,
+required enrollment and fresh-verification rules follow
+[session assurance](#85-session-assurance-and-reauthentication); required enrollment is
+presented by the [shared gate](#86-enrollment-recovery-and-custom-endpoints).
 
 ## 8. Login Flow (Multi-Step, Both Apps)
 
@@ -334,7 +337,7 @@ If "Use a backup code" is clicked, the input switches to a backup code field.
 
 ```
 Email → Passkey → ✓ Dashboard          (no TOTP — passkey is 2FA)
-Email → Password → TOTP → ✓ Dashboard  (TOTP always required)
+Email → Password → TOTP → ✓ Dashboard  (TOTP enrolled or MFA required)
 ```
 
 Admins never see magic link as an option.
@@ -349,21 +352,89 @@ Email → Magic Link → ✓ App                      (no 2FA enabled, magic lin
 Email → Magic Link → TOTP → ✓ App               (2FA enabled, magic link enabled)
 ```
 
-### 8.5 Session Properties
+These paths assume enrollment is complete and passkeys are optional. Required-passkey
+policy adds current-session passkey verification before application access; see
+[session assurance](#85-session-assurance-and-reauthentication).
 
-```typescript
-adminSession: {
-  expiresIn: 60 * 60 * 4,        // 4 hours
-  updateAge: 60 * 30,             // Refresh if active within last 30 min
-}
+### 8.5 Session assurance and reauthentication
 
-userSession: {
-  expiresIn: 60 * 60 * 24 * 7,   // 7 days
-  updateAge: 60 * 60,             // Refresh if active within last 1 hour
-}
-```
+Convex operations and Better Auth HTTP routes use the same live policy. A session must belong
+to the exact authenticated user, be unexpired and unbanned, satisfy the current email-verification
+and login-method settings, and complete any required enrollment. Enabling MFA on an account
+is a requirement; it is not evidence that a particular session passed MFA.
 
-`trustDevice` (Better Auth's 2FA skip for 30 days) should be **disabled for admin accounts**. It may be enabled for user accounts at the admin's discretion (future setting).
+Successful password or enabled user magic-link sign-in records primary authentication. Successful
+TOTP verification or a cryptographically verified passkey assertion with **user verification**
+(PIN/biometric) records strong authentication, bound to the current factor record. Removing or
+replacing that factor invalidates its proof. A verified passkey satisfies MFA without requiring a
+second TOTP entry. A `required` passkey policy additionally requires passkey authentication in the
+current session; simply registering one is insufficient for ordinary application access.
+
+Magic links honor `userMagicLinkEnabled` on both sending and redemption, and are unavailable for
+administrators or bound administrator candidates. Email-OTP sign-in, social/account-token routes
+and administrator impersonation are disabled because the platform has no supported flow for them.
+Email verification and password-reset OTPs remain available. Email OTP and trusted-device cookies
+do not supply strong session proof. An email-only session for an MFA account can verify its factor
+but cannot read application data, administer users, or replace the factor.
+
+Administrator sessions have a **four-hour absolute lifetime**, measured from authentication.
+Routine refresh, password verification, password changes and factor-related session rotation,
+including active-session email OTP enrollment, do
+not restart that clock. A new full sign-in starts a new session. User sessions retain the normal
+seven-day lifetime. Expired, revoked or banned sessions fail live backend checks, including calls
+using an earlier Convex JWT. An already delivered response cannot be withdrawn from a client;
+subsequent requests and reactive queries that rerun check the live policy again.
+
+Administrative HTTP operations and platform administrative mutations, password/profile/factor
+changes and recovery-code export require authentication within **five minutes**. When an enrolled
+or required factor exists, that must be recent strong proof; a password alone cannot substitute.
+Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the
+current password each time. Password and two-factor code verification consume the durable account budgets
+described in [rate limiting](rate-limiting-architecture.md#default-limits).
+
+The shared `SessionAccessGate` presents the backend decision and blocks ordinary content until
+verification is complete. Security settings and the admin workspace prompt for fresh verification.
+The timer also handles expiry without waiting for a database update. Session rotation briefly
+preserves presentation state so successful setup does not discard unsaved backup codes; backend
+checks still apply to every operation throughout that transition.
+
+### 8.6 Enrollment, recovery and custom endpoints
+
+A backup-code sign-in creates a **recovery-only session**. Use the current password to replace the
+lost TOTP authenticator, verify a code from the replacement, and save the new backup codes.
+Password verification by itself does not clear recovery status. Recovery does not authorize adding
+passkeys, changing policy, exporting old recovery codes or accessing ordinary application data.
+The session is bound to the replacement created by its successful current-password setup request;
+verification of the original authenticator or a replacement created in another session does not
+complete recovery. Setup can resume on that session while the bound factor remains current.
+If a required passkey is also lost, an authorized administrator must adjust that policy or restore
+access through the deployment's support process; the recovery code does not waive it.
+
+Bound administrator candidates use only their invitation enrollment API and self-service factor
+setup until completion. Resumed setup requests fresh verification when needed. The wizard retains
+its progress and backup-code acknowledgement while the recipient verifies their identity.
+Web and admin gates retain previously admitted setup state and unsaved backup codes in memory
+through recent-proof expiry and token rotation, hiding protected content until access is restored.
+Limited sessions do not mount ordinary protected consumers before their first admission.
+Denied retained content is suspended with React Activity, including its portals and active
+effects, so modal focus, pointer and scroll locks do not obstruct fresh verification. Authorized
+content resumes with its in-memory state; no setup secrets are persisted in browser storage.
+
+For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
+`packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
+administrative writes, use `adminMutation`, which adds the admin-role and recent-proof checks.
+Actions should authorize through an internal query using the same helper and recheck before
+committing sensitive side effects. `auth.getCurrentUser` and `sessionAssurance.status` intentionally
+return limited self-service identity/status and are **not authorization helpers**. Never authorize
+application data by calling Better Auth's raw `getAuthUser`/`safeGetAuthUser` or by inspecting
+account-level MFA flags. Browser-submitted assurance fields are ignored; only successful server
+verification hooks write session proof. New Better Auth routes are denied until classified in the
+central route policy and covered by behavioral tests.
+
+Existing sessions without server-owned proof require password reauthentication (and any required
+factor) or a new sign-in. Deploy the backend and matching auth UI together. Custom auth/enrollment
+screens should use the status query and shared gate; they must keep recovery/enrollment state
+separate from ordinary application access.
 
 ## 9. Admin Invitation Flow
 
@@ -477,9 +548,10 @@ Shows a table of all admin accounts (where `role === "admin"`). Same table compo
 1. Admin clicks "Use a backup code" on the TOTP prompt (password login only)
 2. Enters one of their backup codes
 3. Better Auth validates and marks the code as used
-4. Full session issued
-5. Dashboard shows immediate prompt: **"You used a backup code. Set up TOTP on a new device now."** Cannot be dismissed without completing new TOTP setup or clicking "Remind me in 1 hour" (max 3 snoozes before it blocks access)
-6. Write audit event: `admin.recovery.backup_code_used`
+4. A recovery-only session is issued; ordinary dashboard data remains inaccessible
+5. The shared gate requires the current password to replace TOTP, followed by verification of
+   the new authenticator and acknowledgement of its backup codes
+6. Normal access resumes after successful replacement and verification, subject to current policy
 
 #### Lost TOTP device, no backup codes, email still accessible
 
@@ -541,8 +613,9 @@ Viewing codes in web/admin settings requires the current password on **every** r
 initial and resumed administrator enrollment prompt for the current password at the backup-code
 step. The wizard does not retain the codes returned when TOTP is enabled, and TOTP verification
 does not return codes, so that step loads them with fresh password proof. Regeneration and TOTP
-enrollment also verify the current password through Better Auth. The view operation shares a five-attempt, five-per-minute token
-bucket per account across sessions and transports. Failed passwords consume attempts.
+enrollment also verify the current password through Better Auth. The export and account
+verification budgets, including failed-attempt accounting, are defined in
+[rate limiting](rate-limiting-architecture.md#default-limits).
 
 Custom clients call `api.platform.auth.viewBackupCodes({ password })` over authenticated Convex,
 or `POST /api/two-factor/backup-codes` with authenticated headers and JSON `{ "password": "..." }`.
@@ -628,7 +701,9 @@ All onboarding, login, and recovery events are recorded in the `auditTrail` tabl
 
 ### User Sign-Up
 
-No special intro needed. The sign-up form is standard: email, password (with strength meter), submit. Additional security options (2FA, passkey) are available from account settings after sign-up.
+The sign-up form asks for email and password (with strength meter). Subsequent factor setup
+follows the [user security policy](#33-admin-controlled-security-policies-for-users) and
+[shared enrollment gate](#86-enrollment-recovery-and-custom-endpoints).
 
 ## 14. Route Middleware
 
@@ -657,12 +732,6 @@ requirements are defined in §6; the layout uses that saved result.
 
 ### Web App
 
-```
-1. Valid Better Auth session exists      → else redirect to /sign-in
-2. user.role !== "admin"                 → else 403 (admins cannot use the web app)
-3. user.isBanned !== true                → else 403 with explanation
-4. If userMfaRequired === "mandatory":
-   user.twoFactorEnabled === true        → else redirect to /setup-2fa
-5. If userEmailVerificationRequired:
-   user.emailVerified === true           → else redirect to /verify-email
-```
+See [route protection](architecture.md#route-protection-authentication) for the proxy,
+server layout and client guard. Enrollment and email/factor verification are presented by
+the shared gate under the [live session policy](#85-session-assurance-and-reauthentication).

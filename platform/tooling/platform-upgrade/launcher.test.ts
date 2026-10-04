@@ -16,6 +16,7 @@ test("stable launcher runs the pinned target tool; real dry-run, apply and resum
     if ((!file.endsWith(".ts") && file !== "protocol.json") || file.endsWith(".test.ts") || file === "fixtures.ts") continue;
     write(f.source, "platform/tooling/platform-upgrade/" + file, fs.readFileSync(path.join(tooling, "platform-upgrade", file), "utf8"));
   }
+  write(f.source, "platform/tooling/ci-checks.ts", fs.readFileSync(path.join(tooling, "ci-checks.ts"), "utf8"));
   write(f.source, "platform/tooling/check-zone.ts", fs.readFileSync(path.join(tooling, "check-zone.ts"), "utf8"));
   write(f.source, "platform/tooling/platform-upgrade.ts", fs.readFileSync(path.join(tooling, "platform-upgrade.ts"), "utf8"));
   const pkg = { name: "launcher-fixture", private: true, type: "module", scripts: Object.fromEntries(REQUIRED_CHECKS.map(script => [script, "node -e 'process.exit(0)' "])) };

@@ -3,8 +3,8 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { internalMutation, query } from "../_generated/server";
-import { authComponent } from "./auth";
-import { authedMutation } from "./functions";
+import { getAuth } from "./functions";
+import { adminMutation } from "./functions";
 import { rateLimit } from "./rateLimits";
 
 import { parseOnboardingType, isWaitlistOnboarding } from "./onboardingType";
@@ -42,7 +42,7 @@ export const list = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
 
-    const user = await authComponent.safeGetAuthUser(ctx);
+    const user = (await getAuth(ctx))?.user;
     const role = user ? (user as Record<string, unknown>).role : undefined;
     if (role !== "admin") {
       return {
@@ -56,7 +56,7 @@ export const list = query({
   },
 });
 
-export const invite = authedMutation({
+export const invite = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -66,7 +66,7 @@ export const invite = authedMutation({
   },
 });
 
-export const inviteMany = authedMutation({
+export const inviteMany = adminMutation({
   args: { emails: v.array(v.string()) },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -79,7 +79,7 @@ export const inviteMany = authedMutation({
   },
 });
 
-export const uninvite = authedMutation({
+export const uninvite = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -88,7 +88,7 @@ export const uninvite = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;

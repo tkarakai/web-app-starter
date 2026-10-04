@@ -31,12 +31,12 @@ import {
 
 type Step = "idle" | "password-enable" | "totp-uri" | "verify-code" | "backup-codes" | "password-disable" | "password-regenerate" | "password-view";
 
-export function TwoFactorSection() {
+export function TwoFactorSection({ recover = false, onComplete, onCancel }: { recover?: boolean; onComplete?: () => void; onCancel?: () => void } = {}) {
   const t2 = useTranslations("accountSecurity.twoFactor");
   const tcp = useTranslations("accountSecurity.changePassword");
   const tc = useTranslations("common");
 
-  const [step, setStep] = React.useState<Step>("idle");
+  const [step, setStep] = React.useState<Step>(recover ? "password-enable" : "idle");
   const [enabled, setEnabled] = React.useState(false);
   const [password, setPassword] = React.useState("");
   const [totpUri, setTotpUri] = React.useState("");
@@ -304,7 +304,7 @@ export function TwoFactorSection() {
           <Button type="submit" disabled={loading || !password}>
             {loading ? tc("loading") : t2("enable")}
           </Button>
-          <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); }}>
+          <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); onCancel?.(); }}>
             {tc("cancel")}
           </Button>
         </div>
@@ -372,7 +372,7 @@ export function TwoFactorSection() {
             <Button type="button" onClick={() => handleVerify()} disabled={loading || code.length !== 6}>
               {loading ? tc("loading") : t2("verify")}
             </Button>
-            <Button type="button" variant="outline" onClick={() => { setStep("idle"); setCode(""); setTotpUri(""); setBackupCodes([]); }}>
+            <Button type="button" variant="outline" onClick={() => { setStep("idle"); setCode(""); setTotpUri(""); setBackupCodes([]); onCancel?.(); }}>
               {tc("cancel")}
             </Button>
           </div>
@@ -396,7 +396,7 @@ export function TwoFactorSection() {
           <p className="text-xs text-muted-foreground">{t2("backupCodesDescription")}</p>
           <CopyableField value={backupCodes.join("\n")} rows={10} />
         </div>
-        <Button variant="outline" onClick={() => { setStep("idle"); setBackupCodes([]); }}>
+        <Button variant="outline" onClick={() => { setStep("idle"); setBackupCodes([]); onComplete?.(); }}>
           {tc("save")}
         </Button>
       </div>
@@ -421,7 +421,7 @@ export function TwoFactorSection() {
           <Button type="submit" disabled={loading || !password}>
             {loading ? tc("loading") : t2(step === "password-view" ? "viewBackupCodes" : "regenerateBackupCodes")}
           </Button>
-          <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); }}>
+          <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); onCancel?.(); }}>
             {tc("cancel")}
           </Button>
         </div>
@@ -447,7 +447,7 @@ export function TwoFactorSection() {
           <Button type="submit" variant="destructive" disabled={loading || !password}>
             {loading ? tc("loading") : t2("disable")}
           </Button>
-          <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); }}>
+          <Button type="button" variant="outline" onClick={() => { setStep("idle"); setPassword(""); onCancel?.(); }}>
             {tc("cancel")}
           </Button>
         </div>

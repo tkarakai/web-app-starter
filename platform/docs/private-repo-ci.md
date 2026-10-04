@@ -162,8 +162,8 @@ For most commercial apps that isn't an option, and that's fine. Use the options 
 
 **Solo developer on GitHub Free.** Draft PRs while you work (1), `bun run ci:quick` before
 pushing (2), retention of 2 days (4), and one or two runners on your Mac (5). Keep a small budget
-(6) as a safety net. Your GitHub-hosted usage drops to the Security workflow, a few minutes per
-push.
+(6) as a safety net. App CI uses local workers; summary jobs, Security and deployments still consume
+GitHub-hosted minutes.
 
 **Several projects on GitHub Free.** Use separate worker installations and credentials for each
 repository, preferably on dedicated CI machines. Organization-wide shared pools are not supported

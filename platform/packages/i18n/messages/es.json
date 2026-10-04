@@ -462,6 +462,19 @@
       "loadError": "No se pudieron cargar las sesiones.",
       "revokeError": "No se pudo cerrar la sesión.",
       "revokeAllError": "No se pudieron cerrar las sesiones."
+    },
+    "session": {
+      "title": "Verifica tu identidad",
+      "description": "Completa la verificación requerida para continuar.",
+      "expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+      "failed": "La verificación falló. Revisa tus datos e inténtalo de nuevo.",
+      "verifyEmail": "Verificar correo",
+      "enrollment": "Completa tu invitación de administrador en el sitio de administración.",
+      "recovery": "Usa tu contraseña para configurar un nuevo autenticador y guarda los nuevos códigos de respaldo.",
+      "addPasskey": "Añadir una clave de acceso",
+      "usePasskey": "Usar una clave de acceso",
+      "verify": "Verificar",
+      "continue": "Continuar"
     }
   }
 }
