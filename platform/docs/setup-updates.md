@@ -29,7 +29,8 @@ result. Git author `platform-updater[bot]` is metadata, not the API identity.
 
 `.github/update-delivery.json` is an **app-owned, non-secret** record preserved on platform
 replacement. It holds mode, repository/source, caller/settings pointers, setup status, last check,
-public App identity when known, and pending owner actions. Schedule, policy and auto-merge remain
+public App identity when known, and pending owner actions. Worker intent and evidence are described
+[below](#check-readiness-or-return-to-github-hosted-workers). Schedule, policy and auto-merge remain
 in the caller rather than being duplicated in the record. `vars.PLATFORM_SOURCE_REPOSITORY` in
 that caller is the live source override; the record's source is the default source. Commit the
 record and caller, and keep the app's `AGENTS.md` pointing to them. A check never rewrites intent.
@@ -160,7 +161,7 @@ administration access. See [local worker prerequisites](ci-workers.md) for Docke
 supported host configuration and ongoing operation.
 
 `--workers local --yes` prepares two separate installations under
-`~/.local/share/starter-updates/<repository-id>/verify` and `deliver` and prints their absolute paths.
+`~/.local/share/starter-updates/<repository-name-hash>/verify` and `deliver` and prints their absolute paths.
 For each new installation, it asks at a **hidden terminal prompt** for a dedicated fine-grained
 manager token selecting only this repository: **Administration: write** and **Actions, Contents,
 Pull requests: read**. These manager credentials stay on the host, separate from the updater App
@@ -180,7 +181,10 @@ update PR, merge or deploy. Finish credential setup separately if pending, then 
 **Update platform** to validate delivery.
 
 If the test fails, is cancelled, remains queued, or setup is interrupted, previous routing stays
-in place. Fix the host/service issue and repeat setup. If the same local proofs are still current,
+in place. Fix the host/service issue and repeat setup. For a stopped, incomplete installation,
+setup validates the completion receipt against the installed command and service files, then
+resumes installation when validation fails, preserving its credential and pool. It does not
+replace an installation while its manager is running. If the same local proofs are still current,
 resume the printed `--workers local --worker-run RUN_ID --yes` command after the test passes.
 Proofs expire after 24 hours; source, image or runtime changes require a new test. A partial GitHub
 settings failure attempts to restore both previous values; if restoration cannot be confirmed,
@@ -194,7 +198,8 @@ bun run platform:setup-updates --workers local --yes \
   --deliver-home /absolute/path/to/delivery-installation
 ```
 
-Keep these flags when resuming. The helper refuses a wrong repository, wrong role, shared pool,
+Printed recovery commands retain the supplied absolute home flags and diagnostic run ID when
+known; use that command when resuming. The helper refuses a wrong repository, wrong role, shared pool,
 paused service or public diagnostic installation. An older installed manager needs the normal
 [pause, drain and update procedure](ci-workers.md); setup explains this without replacing an
 installation behind a running service. Always use each installation's **absolute** `starter-workers`
@@ -202,8 +207,10 @@ command: the convenience command in `~/.local/bin` points to only the most recen
 
 ### Check readiness or return to GitHub-hosted workers
 
-`--check` and `--check --json` show the recorded choice, observed pools, last successful GitHub
-worker test and remaining actions, separately from credentials. A previous successful test is
+`--check` and `--check --json` show the recorded choice, observed routing/pools, worker readiness,
+unknown host availability, last successful GitHub worker test (run, source, proof and check time)
+and remaining actions, separately from credentials. The record retains the last successful test
+through pending setup, offline retries, reconfiguration and a return to hosted routing. This is
 historical evidence; it does not prove that your host is awake now. Inspect both service statuses.
 Existing manually configured routing is preserved and reported unvalidated until tested.
 

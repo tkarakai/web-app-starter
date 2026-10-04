@@ -31,7 +31,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
   draft/report recovery after a push, and preflight settings without administration grants.
   Token-created PRs may require owner approval of CI runs; a green review-plan job is not upgrade verification.
 
-
 ## [4.0.0] - 2026-10-04
 
 ### Changed

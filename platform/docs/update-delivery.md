@@ -140,7 +140,8 @@ installations, configure them only after operator acceptance in
 - `PLATFORM_UPDATE_DELIVERY_RUNNER`: the separate delivery installation's **pool ID**.
 
 The workflow adds exact source, run, attempt and job labels. Labels alone do not authorize work:
-the installed manager checks the caller workflow, event, job and source against authenticated
+the installed manager checks the configured caller or the manual
+`platform-update-workers-check.yml` diagnostic, event, job and source against authenticated
 GitHub metadata; the root-owned start hook checks repository ID/name, source, run, attempt,
 event, ref and job again. Private updater pools accept only default-branch schedules or manual
 runs. Public pools require an explicitly reviewed manual branch and never accept schedules or
