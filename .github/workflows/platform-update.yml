@@ -29,7 +29,7 @@ permissions: {}
 jobs:
   check:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_UPDATE_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
       pull-requests: read
@@ -84,7 +84,7 @@ jobs:
   verify:
     needs: check
     if: needs.check.outputs.target != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_UPDATE_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 90
     permissions:
       contents: read
@@ -166,7 +166,7 @@ jobs:
     if: >-
       always() && !cancelled() && needs.check.result != 'skipped' &&
       (needs.check.result == 'failure' || needs.check.outputs.target != '' || needs.check.outputs.major != '')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_UPDATE_DELIVERY_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: write
       pull-requests: write

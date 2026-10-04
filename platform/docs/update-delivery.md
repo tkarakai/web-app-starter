@@ -84,3 +84,19 @@ The source defaults to public `tkarakai/web-app-starter`. Forks or rehearsal app
 set `PLATFORM_SOURCE_REPOSITORY` to another trusted **public** release repository; this selects
 code the upgrade executes. Use the same source for release discovery, advisory checks and the
 CI baseline fetch. Private release sources are not supported by this public-source protocol.
+
+## Trusted Linux workers
+
+GitHub-hosted runners remain the default. To run updates without hosted Actions minutes,
+set `PLATFORM_UPDATE_RUNNER` to the Linux label for discovery and verification, and
+`PLATFORM_UPDATE_DELIVERY_RUNNER` to a separate, trusted Linux label for PR publication.
+These selectors are independent of `PLATFORM_CI_RUNNER`: enabling ordinary CI workers
+does not opt them into running jobs with the updater App key. Both pools need the standard
+Actions prerequisites; verification also needs Bun, Chromium dependencies and local Convex
+support as described in [private CI](private-repo-ci.md).
+
+Keep the delivery pool isolated from workers that execute app code or PR CI. Do not share
+its filesystem, tool caches, container volumes, or runner registrations with those workers.
+Use fresh disposable workers for verification. The delivery job receives write credentials
+only after verification; it still executes only the pinned actions, inline validator and Git.
+Removing either variable restores GitHub-hosted execution for those jobs.

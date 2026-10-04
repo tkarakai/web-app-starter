@@ -43,6 +43,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Platform update discovery/verification and PR delivery can use independently configured trusted Linux runners. GitHub-hosted runners remain the default; see [update delivery](docs/update-delivery.md#trusted-linux-workers).
+
 - Development and staging banners show the installed starter platform version in the
   collapsed bar and expanded metadata. The version comes from `platform/VERSION` at build
   time. Custom app configurations can enable it using the [banner setup](docs/development.md#environment-banner).
