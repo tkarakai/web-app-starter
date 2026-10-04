@@ -81,13 +81,18 @@ On first startup, `dev-start.sh` automatically creates two test accounts via `pa
 
 The seed and disposable E2E fixtures require local app and backend origins, an explicit local
 runtime marker and a random 256-bit harness secret. `bun run dev` verifies the anonymous
-backend against its local state and provisions these settings automatically. It refuses inherited
-cloud deployment keys, self-hosted overrides or a non-anonymous deployment selection. Use a
-separate terminal and checkout for hosted administration.
+backend against its project-local state in `packages/backend/.convex/local/default/config.json`,
+falling back to the CLI's legacy anonymous state only when that file is absent. The deployment
+identity and loopback ports must match. It provisions these settings automatically and refuses
+cloud deployment keys (`CONVEX_DEPLOY_KEY` or `CONVEX_DEPLOYMENT_TOKEN`), self-hosted overrides
+or a non-anonymous deployment selection in the process environment, root `.env.local`,
+`packages/backend/.env.local` or `packages/backend/.env`. Use a separate terminal and checkout
+for hosted administration.
 
 The launcher writes the capability to the gitignored, owner-readable `.env.e2e.local` at the
 repository root. Playwright's Node helpers read it and send `X-Dev-Fixture-Secret` directly to
-the local Convex HTTP router; browsers do not receive it. Do not copy it into `NEXT_PUBLIC_*`,
+the local Convex HTTP router for `POST /api/dev/e2e-user` and `GET /api/dev/totp-code`;
+browsers do not receive it. Do not copy it into `NEXT_PUBLIC_*`,
 CI artifacts or hosted configuration. Missing or incorrect authorization returns 404 before
 creating an invitation or account. Addresses remain restricted to `e2e-<token>@e2e.local`;
 existing fixture addresses are rejected rather than reused or assigned a different role.

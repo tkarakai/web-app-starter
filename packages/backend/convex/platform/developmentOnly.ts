@@ -3,8 +3,8 @@
 //
 // Some conveniences must never run on a hosted deployment: logging auth and
 // invitation emails to the console instead of sending them (the log would hold
-// live sign-in links and tokens), and seeding accounts with hard-coded
-// passwords. They are gated here, and the gate fails closed.
+// live sign-in links and tokens). The email fallback is gated here and fails
+// closed; localFixtures.ts owns the stronger guard for fixture accounts.
 //
 // "Local development" is decided from SITE_URL, the comma-separated list of app
 // origins the backend trusts. It is local only when every origin is plain HTTP

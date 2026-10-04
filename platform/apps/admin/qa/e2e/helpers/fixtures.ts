@@ -24,9 +24,8 @@ export interface DisposableUser {
 }
 
 /**
- * Read a value from .env.local the way playwright.config.ts does — dev-start.sh
- * rewrites these with the ports Convex actually claimed, so they cannot be
- * hardcoded.
+ * Prefer the process environment, then the launcher-owned capability file,
+ * then app/root .env.local. Keep the capability paired with its backend URL.
  */
 function getEnvValue(name: string): string | undefined {
   if (process.env[name]) return process.env[name];

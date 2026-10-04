@@ -7,8 +7,7 @@ import { assertLocalFixtures } from "./localFixtures";
 
 // ---------------------------------------------------------------------------
 // Dev-only seed data — hardcoded credentials for local development.
-// Gated behind DEV_SEED_ENABLED env var (set by dev-start.sh) and refused
-// outside local development (see developmentOnly.ts).
+// Authorization is owned by localFixtures.ts and provisioned by the local launcher.
 // ---------------------------------------------------------------------------
 
 // Exported so a test can hold every seed password to the active password policy.

@@ -62,13 +62,10 @@ The dev seed accounts exist, as in `bun run dev` (`admin@admin.com`, `user@user.
 secure context without HTTPS.
 
 Deploy another commit with `infra/aws/scripts/deploy-manual.sh --env local --sha <commit>`; the
-scripts build from commits, never from uncommitted changes. Run the E2E suites against it:
-
-```bash
-export E2E_CONVEX_LOG=$PWD/infra/aws/local/.state/convex.log CONVEX_SITE_URL=http://convex.localhost.floci.io:3311
-CI=true E2E_BASE_URL=http://web.app.localhost:8080 bun run --cwd apps/web test:e2e
-E2E_BASE_URL=http://admin.app.localhost:8080 bun run --cwd platform/apps/admin test:e2e
-```
+scripts build from commits, never from uncommitted changes. Run the E2E suites with the
+[local target's fixture capability and environment settings](./deployment-architecture-aws.md#running-the-e2e-suites-against-a-target).
+For admin, keep those settings, change `E2E_BASE_URL` to `http://admin.app.localhost:8080`
+and run `bun run --cwd platform/apps/admin test:e2e`.
 
 Follow the [E2E execution and disposable-target guidance](../testing.md#running-playwright-e2e-reliably).
 
