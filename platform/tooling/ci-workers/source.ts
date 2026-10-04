@@ -48,7 +48,7 @@ function decoded(text: string, jsonc = false): unknown {
 export function lockData(text: string): { packages: Record<string, string[]> } {
   assert(text.length <= 4 * 1024 * 1024, 'Lockfile exceeds size limit');
   const lock = record(decoded(text, true));
-  assert(lock.lockfileVersion === 1 && Object.keys(lock).every(k => ['lockfileVersion', 'configVersion', 'workspaces', 'packages', 'overrides', 'patchedDependencies'].includes(k)), 'Unsupported Bun lockfile schema');
+  assert((lock.lockfileVersion === 1 || lock.lockfileVersion === 2) && Object.keys(lock).every(k => ['lockfileVersion', 'configVersion', 'workspaces', 'packages', 'overrides', 'patchedDependencies'].includes(k)), 'Unsupported Bun lockfile schema');
   if (lock.configVersion !== undefined) assert(lock.configVersion === 1, 'Unsupported Bun lockfile config');
   for (const workspace of Object.values(record(lock.workspaces))) {
     const data = record(workspace);

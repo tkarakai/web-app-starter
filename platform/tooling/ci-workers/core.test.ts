@@ -67,7 +67,7 @@ test('source-only commits reuse fingerprint; lockfile and local package bytes in
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test('decoded JSONC lock and manifest sources reject private URLs and unsupported schema', async t => {
+for (const lockfileVersion of [1, 2]) test(`decoded JSONC v${lockfileVersion} lock and manifest sources reject private URLs and unsupported schema`, async t => {
   await mkdir('.ci-local-artifacts', { recursive: true });
   const dir = await mkdtemp(path.join(process.cwd(), '.ci-local-artifacts/worker-sources-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -76,7 +76,7 @@ test('decoded JSONC lock and manifest sources reject private URLs and unsupporte
   const root = { packageManager: 'bun@1.4.2', engines: { node: '>=24.21 <25' }, devDependencies: { '@playwright/test': '1.63.0' } };
   await writeFile(path.join(dir, 'package.json'), JSON.stringify(root));
   await writeFile(path.join(dir, '.node-version'), '24');
-  const lock = { lockfileVersion: 1, workspaces: { web: { name: 'web', bin: { cli: 'index.js' } } }, packages: { playwright: ['playwright@1.63.0', '', {}, 'sha512-YQ=='], other: ['other@1.0.0', '', { bundled: true }, 'sha512-YQ=='] } };
+  const lock = { lockfileVersion, workspaces: { web: { name: 'web', bin: { cli: 'index.js' } } }, packages: { playwright: ['playwright@1.63.0', '', {}, 'sha512-YQ=='], other: ['other@1.0.0', '', { bundled: true }, 'sha512-YQ=='] } };
   async function check(text: string) {
     await writeFile(path.join(dir, 'bun.lock'), text); await git('add', '.'); await git('commit', '--allow-empty', '-m', 'fixture');
     return inputs(dir, await git('rev-parse', 'HEAD'));
@@ -93,7 +93,7 @@ test('decoded JSONC lock and manifest sources reject private URLs and unsupporte
   await writeFile(path.join(dir, 'package.json'), JSON.stringify({ ...root, engines: { node: '>=24.22 <25' } }));
   assert.equal((await check(JSON.stringify(lock))).nodeFloor, 22);
   await assert.rejects(check(JSON.stringify({ ...lock, lockfileVersion: 99 })));
-  await assert.rejects(check(JSON.stringify(lock).replace('"lockfileVersion":1', '"lockfileVersion":1,"lockfileVersion":1')), /Duplicate/);
+  await assert.rejects(check(JSON.stringify(lock).replace(`"lockfileVersion":${lockfileVersion}`, `"lockfileVersion":${lockfileVersion},"lockfileVersion":${lockfileVersion}`)), /Duplicate/);
   await writeFile(path.join(dir, 'package.json'), JSON.stringify(root).replace('"packageManager":', '"packageManager":"bun@1.0.0","packageManager":'));
   await assert.rejects(check(JSON.stringify(lock)), /Duplicate/);
 });
