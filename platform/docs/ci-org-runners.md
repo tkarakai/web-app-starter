@@ -73,6 +73,25 @@ dependency seeds and branch/PR scopes remain repository-specific; compatible too
 be reused in this pool. Do not repeat `ci:workers:setup` from another app in the same state
 directory.
 
+## Provide the auxiliary route
+
+The prepared manager admits source-bound CI and PR/push Security jobs. Scheduled Security,
+deployment, Renovate and updater coordination need a separate trusted Linux runner. You can
+register one organization runner with a distinct custom label for all selected apps, subject to
+the same organization access restrictions and the host's total capacity. It is a persistent
+runner and does not receive the manager's prepared images or fresh-container isolation. See
+[all-local routing](ci-workers.md#keep-every-actions-job-local) before enabling any app.
+
+Set the same auxiliary label in each app repository. Setting any local runner variable makes
+**all** of that repository's workflows local; an uncovered job waits for an unmatched local
+label instead of moving to GitHub-hosted compute. The explicit guard makes that policy active
+before the manager pool is enabled:
+
+```sh
+gh variable set PLATFORM_CI_LOCAL_ONLY --body true --repo ORG/APP
+gh variable set PLATFORM_CI_AUX_RUNNER --body YOUR_AUX_RUNNER_LABEL --repo ORG/APP
+```
+
 ## Certify and enable each app
 
 From **each** app's reviewed checkout, replace `ORG/APP` below:
@@ -88,9 +107,10 @@ gh run watch RUN_ID --repo ORG/APP --exit-status
 
 The diagnostic must pass both fresh workers before `enable` sets that app's
 `PLATFORM_CI_WORKER_POOL` variable. Repeat for every app and confirm a normal CI run passes.
-Remove the old `PLATFORM_CI_RUNNER` variable before enabling this prepared pool. Summary,
-Security and deployment jobs retain their existing routing. Platform-update verification and
-publication have separate role-specific worker setup; adding an app here does not move them.
+Remove the old `PLATFORM_CI_RUNNER` variable before enabling this prepared pool. PR/push CI
+summaries and Security use the prepared pool; scheduled Security and deployment jobs use the
+auxiliary route. Platform-update verification and publication have separate role-specific
+worker setup; adding an app here does not move them automatically.
 
 ## Operate and return to hosted CI
 
@@ -98,15 +118,13 @@ publication have separate role-specific worker setup; adding an app here does no
   affect the **whole** pool. Raise concurrency only after observing Docker's global budget.
   Run `refresh --repo ORG/APP` from that app's checkout.
 - Before taking the Mac offline, run `hosted --repo ORG/APP` for **every enabled app**, then
-  `pause --drain` and `service stop`. Already queued jobs keep their old labels; cancel and
-  re-run them in Actions to move them to hosted execution. There is no automatic fallback.
+  `pause --drain` and `service stop`. Keep the auxiliary runner online if any local route remains.
+  To move an app fully to hosted CI, remove its `PLATFORM_CI_AUX_RUNNER`,
+  `PLATFORM_CI_LOCAL_ONLY` and any other local runner variables as well. Already queued jobs
+  keep their old labels; cancel and re-run them in Actions after changing routes.
 - For a manager update, drain and stop the service, use `update --from .` from a reviewed
   checkout containing the new manager, then check and certify apps before returning routing.
 - To remove one app, return it to hosted routing, drain and stop the service, run
   `org remove --repo ORG/APP`, then remove it from the runner group's selected repositories.
   Start the service for remaining apps. To uninstall the whole pool, return every app to
   hosted routing, drain, stop, `uninstall`, and revoke the organization token.
-
-The private starter maintainer repository's Lab and Release workflows use
-`STARTER_MAINTAINER_RUNNER`, not this app CI pool. Moving that repository into the organization
-does not automatically make its jobs eligible for the prepared manager.
