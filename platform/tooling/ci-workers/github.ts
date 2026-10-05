@@ -53,3 +53,17 @@ export async function routingVariables(c: Pick<Config, 'repo'>): Promise<Map<str
   assert(Array.isArray(data) && data.every(v => v && typeof v.name === 'string' && typeof v.value === 'string'), 'Invalid repository variable response');
   return new Map(data.map(v => [v.name as string, v.value as string]));
 }
+
+export async function assertOrgAccess(c: Config, credential: string, repository = c.repo): Promise<number> {
+  assert(c.org && c.runnerGroupId && repository.toLowerCase().startsWith(c.org.toLowerCase() + '/'), 'Repository must belong to the configured organization');
+  const info = await api<{ id: number; private: boolean }>(`/repos/${repository}`, credential);
+  assert(info.private, 'Organization workers require private repositories');
+  const group = await api<{ id: number; visibility: string; allows_public_repositories: boolean }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}`, credential);
+  assert(group.id === c.runnerGroupId && group.visibility === 'selected' && !group.allows_public_repositories, 'Use a private, selected-repository runner group');
+  for (let page = 1; page <= 10; page++) {
+    const members = await api<{ repositories: { id: number }[] }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}/repositories?per_page=100&page=${page}`, credential);
+    if (members.repositories.some(member => member.id === info.id)) return info.id;
+    if (members.repositories.length < 100) break;
+  }
+  throw new Error(`Runner group does not grant access to ${repository}`);
+}
