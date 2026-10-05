@@ -3,7 +3,7 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { v } from "convex/values";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
@@ -539,6 +539,18 @@ export const createAuthOptions = (
       },
     },
     hooks: {
+      before: createAuthMiddleware(async endpoint => {
+        if (endpoint.path !== "/revoke-other-sessions") return;
+        // Better Auth deletes these in parallel and silently skips a deletion
+        // when its lookup hits Convex's query concurrency limit. Keep the full
+        // deletion lifecycle (including audit hooks) sequential for this request.
+        const deleteSession = endpoint.context.internalAdapter.deleteSession;
+        let pending = Promise.resolve();
+        endpoint.context.internalAdapter.deleteSession = token => {
+          pending = pending.then(() => deleteSession(token));
+          return pending;
+        };
+      }),
       after: async (endpointCtx) => {
         const middlewareCtx = endpointCtx as unknown as {
           path?: string;

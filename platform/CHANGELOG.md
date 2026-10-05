@@ -29,6 +29,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   session list, preventing duplicate cards and React key warnings.
 - Session listing and "sign out all others" now traverse every session instead of stopping
   at Better Auth's default 100-row limit, preserving the current device during revocation.
+  Bulk revocation serializes deletions to avoid Convex query concurrency limits silently
+  leaving other devices signed in.
 - Platform upgrades now audit the adopted app's final lockfile after install and check published
   platform advisories before recording a verified baseline. Retained vulnerable transitive
   resolutions, registry errors and malformed audit results keep the old baseline; lower-severity

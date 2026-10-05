@@ -5,7 +5,7 @@ import { getEndpoints } from "better-auth/api";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { getFunctionName } from "convex/server";
 import * as assuranceHooks from "./authAssurance";
-import { createAuthOptions } from "./auth";
+import { authComponent, createAuthOptions } from "./auth";
 import { authRoutePolicy } from "./authAssurance";
 import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
@@ -30,7 +30,7 @@ beforeEach(() => {
     throw new Error(`Unexpected outbound request: ${url}`);
   }));
 });
-afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 function totp(uri: string): string {
   const secret = new URL(uri).searchParams.get("secret")!;
@@ -120,6 +120,26 @@ async function passkeyFixture(f: Awaited<ReturnType<typeof fixture>>) {
 
 describe("backend session assurance through authentication endpoints", () => {
   test("bulk revocation removes all 240 other sessions and preserves the current device", async () => {
+    // convex-test does not enforce the live backend's 16-query concurrency cap.
+    // Better Auth swallows failed deletion lookups, so enforce that cap here
+    // while retaining real adapter reads, writes, hooks and HTTP endpoints.
+    const adapterFactory = authComponent.adapter.bind(authComponent);
+    let activeLookups = 0;
+    vi.spyOn(authComponent, "adapter").mockImplementation(ctx => {
+      const factory = adapterFactory(ctx);
+      return options => {
+        const adapter = factory(options);
+        const findMany = adapter.findMany;
+        adapter.findMany = async <T>(args: Parameters<typeof findMany>[0]) => {
+          if (args.model !== "session" || args.limit !== 1) return findMany<T>(args);
+          if (activeLookups >= 16) throw new Error("Too many concurrent queries");
+          activeLookups++;
+          try { return await findMany<T>(args); }
+          finally { activeLookups--; }
+        };
+        return adapter;
+      };
+    });
     const f = await fixture();
     const { body } = await f.signIn();
     const now = Date.now();
