@@ -27,6 +27,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   manager verifies the requested merge commit's parents. See [local workers](docs/ci-workers.md#keep-every-actions-job-local).
 - Account security now collapses duplicate Better Auth session records before rendering the
   session list, preventing duplicate cards and React key warnings.
+- Session listing and "sign out all others" now traverse every session instead of stopping
+  at Better Auth's default 100-row limit, preserving the current device during revocation.
 - Platform upgrades now audit the adopted app's final lockfile after install and check published
   platform advisories before recording a verified baseline. Retained vulnerable transitive
   resolutions, registry errors and malformed audit results keep the old baseline; lower-severity

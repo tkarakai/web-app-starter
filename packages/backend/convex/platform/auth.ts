@@ -450,7 +450,17 @@ export const createAuthOptions = (
 
   return {
     baseURL: siteUrl,
-    database: authComponent.adapter(ctx),
+    database: (options: BetterAuthOptions) => {
+      const adapter = authComponent.adapter(ctx)(options);
+      const findMany = adapter.findMany;
+      // Better Auth defaults findMany to 100 rows, but its session listing and
+      // bulk revocation need every session. Convex already paginates the reads.
+      adapter.findMany = <T>(args: Parameters<typeof findMany>[0]) => findMany<T>({
+        ...args,
+        limit: args.model === "session" ? args.limit ?? Infinity : args.limit,
+      });
+      return adapter;
+    },
     session: {
       // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
       // The backend policy also enforces an absolute four-hour administrator lifetime.

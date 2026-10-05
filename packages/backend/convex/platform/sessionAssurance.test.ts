@@ -119,6 +119,41 @@ async function passkeyFixture(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe("backend session assurance through authentication endpoints", () => {
+  test("bulk revocation removes all 240 other sessions and preserves the current device", async () => {
+    const f = await fixture();
+    const { body } = await f.signIn();
+    const now = Date.now();
+    const otherUser = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
+      name: "Other user", email: `${randomUUID()}@example.test`, emailVerified: true, createdAt: now, updatedAt: now,
+    } } });
+    const otherToken = randomUUID();
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
+      userId: otherUser._id, token: otherToken, createdAt: now, updatedAt: now, expiresAt: now + 86_400_000,
+    } } });
+    for (let index = 0; index < 240; index++) {
+      await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
+        userId: f.user._id, token: randomUUID(), createdAt: now, updatedAt: now, expiresAt: now + 86_400_000,
+      } } });
+    }
+
+    const listed = await f.request("/list-sessions", undefined, body.token);
+    expect(listed.status).toBe(200);
+    const sessions: { token: string }[] = await listed.json();
+    expect(new Set(sessions.map(session => session.token)).size).toBe(241);
+    const response = await f.request("/revoke-other-sessions", {}, body.token);
+    expect(response.status, await response.clone().text()).toBe(200);
+    const remaining = await f.t.query(components.betterAuth.adapter.findMany, {
+      model: "session", where: [{ field: "userId", value: f.user._id }],
+      paginationOpts: { cursor: null, numItems: 300 },
+    });
+    expect(remaining.isDone).toBe(true);
+    expect(remaining.page.map(session => session.token)).toEqual([body.token]);
+    const current = await f.request("/get-session", undefined, body.token);
+    expect((await current.json()).session.token).toBe(body.token);
+    const other = await f.request("/get-session", undefined, otherToken);
+    expect((await other.json()).session.token).toBe(otherToken);
+  });
+
   test("password sign-in stamps server-owned proof and rejects forged client assurance fields", async () => {
     const f = await fixture();
     const { body } = await f.signIn({ assuranceVersion: 1, strongVerifiedAt: Date.now(), strongFactorId: "forged", strongFactorType: "totp" });
