@@ -49,9 +49,12 @@ own rules.
 - **Platform manifests declare ranges (floors), not pins**, so an app can raise a shared
   dependency such as React without editing `platform/`.
 - **The product repo is the exception.** The platform is developed there, so its root
-  `renovate.json` overrides `ignorePaths` back to the defaults and Renovate updates platform
-  manifests too (the preset's `bump` rule, below, raises their floors). An adopted app drops the
-  override.
+  `renovate.json` overrides `ignorePaths` with the defaults plus
+  `platform/tooling/platform-upgrade/fixtures/retained-transitive/**`. Renovate updates platform
+  manifests too (the preset's `bump` rule, below, raises their floors), except for that intentionally
+  vulnerable fixture: the executable [upgrade-engine test](../tooling/platform-upgrade/engine.test.ts)
+  uses its retained transitive resolution to prove age-gated vulnerability repair. An adopted app
+  drops the override.
 
 Check that an app configuration leaves the zone alone with a local lookup-only dry run of the
 preset (copy it over `renovate.json` first, then restore): no `packageFile` under `platform/` may
