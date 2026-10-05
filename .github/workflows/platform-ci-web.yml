@@ -26,7 +26,7 @@ jobs:
   # ============================================================
   changes:
     name: Detect Changes
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     outputs:
       should_run: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.should_run || steps.evaluate.outputs.should_run }}
       e2e: ${{ steps.act-all.outputs.e2e || steps.e2e.outputs.e2e }}
@@ -82,7 +82,7 @@ jobs:
   # ============================================================
   test:
     name: Test
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
@@ -142,7 +142,7 @@ jobs:
   # ============================================================
   build:
     name: Build & Bundle Size
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true'
     steps:
@@ -170,7 +170,7 @@ jobs:
   # (platform-ci-e2e-request.yml).
   e2e-required:
     name: E2E Required
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     needs: [changes]
     if: needs.changes.outputs.should_run == 'true' && needs.changes.outputs.e2e == 'on-demand'
     timeout-minutes: 5
@@ -192,7 +192,7 @@ jobs:
   # ============================================================
   e2e:
     name: E2E Tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     needs: [changes, build, e2e-required]
     # `!cancelled()` lets E2E run when e2e-required was skipped (mode always or a forced run).
     if: ${{ !cancelled() && needs.build.result == 'success' && (needs.changes.outputs.e2e == 'run' || needs.e2e-required.result == 'success') }}
@@ -291,7 +291,7 @@ jobs:
   # ============================================================
   e2e-report:
     name: Merge E2E Reports
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_RUNNER || 'ubuntu-latest')) }}
+    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     needs: [changes, e2e]
     # Only a failed run needs the report: shards upload their blob reports on
     # failure, and a green run would merge nothing (and spend a billed job).

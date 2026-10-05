@@ -49,7 +49,7 @@ jobs:
   resolve:
     name: Resolve commit
     if: ${{ !inputs.worker_check }}
-    runs-on: ${{ vars.PLATFORM_CI_WORKER_POOL != '' && 'ubuntu-latest' || vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
@@ -96,7 +96,7 @@ jobs:
   verified:
     name: Verified
     needs: [resolve, shared, web, admin, landing, storybook]
-    runs-on: ${{ vars.PLATFORM_CI_WORKER_POOL != '' && 'ubuntu-latest' || vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     steps:
       - name: Report the verified commit
         env:
