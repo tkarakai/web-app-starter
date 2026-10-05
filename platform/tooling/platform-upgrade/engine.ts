@@ -118,7 +118,13 @@ export async function applyUpgrade(report: Report, planned: Planned, options: { 
         if (!report.state.steps.some(row => row.id === id && row.status === "passed")) report.state.steps = report.state.steps.filter(row => row.id !== id).concat({ id, command: ["bun", "run", script], status: "pending", exitCode: null, log: "Run --resume without --defer-e2e to verify and finalize.", changedFiles: [] });
         continue;
       }
-      if (!report.state.steps.some(row => row.id === id && row.status === "passed")) await command(id, ["bun", "run", script], root, () => false);
+      if (!report.state.steps.some(row => row.id === id && row.status === "passed")) {
+        try { await command(id, ["bun", "run", script], root, () => false); }
+        catch (error) {
+          if (script === "check:dependencies") throw new Error(String(error) + "\nRefresh only affected transitive resolutions in bun.lock under the dependency release-age policy, then --resume. Registry access is required to verify this app lockfile.", { cause: error });
+          throw error;
+        }
+      }
     }
     if (report.state.steps.some(row => row.status === "pending")) return pending("Required E2E verification is pending; the installed baseline is unchanged.");
     verifySource(report, planned.cache.directory, excluded); verifyDependencies(report);
