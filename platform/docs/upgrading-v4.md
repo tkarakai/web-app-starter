@@ -141,6 +141,13 @@ adopting a later platform release that includes [organization workers](ci-org-ru
 you can move the apps into one GitHub organization and certify them for one prepared pool.
 Running the v4.0.0 setup command separately from each app does not create that shared pool.
 
+The published v4.0.0 workflows still place CI summaries, Security and deployment jobs on
+hosted runners. If hosted Actions jobs are unavailable, keep a local runner route until a
+later platform release containing [all-local routing](ci-workers.md#keep-every-actions-job-local)
+is adopted. In that case, defer the stop/revocation above and keep the old runner as an
+explicit temporary auxiliary route. Do not remove your last local route based only on a
+passing worker diagnostic.
+
 After pulling the upgraded app into each checkout or worktree, run `bun install --frozen-lockfile`
 there before starting services. Verification in another checkout does not install local dependencies.
 Done when startup accepts the checkout-local Next.js and Convex binaries and reports HTTP readiness.

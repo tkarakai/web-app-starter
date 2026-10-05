@@ -25,6 +25,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ### Fixed
 
 - HTTP readiness reports the last observed HTTP failure when the final retry expires.
+- Prepared workers now handle source-bound PR/push CI summaries and Security jobs. An auxiliary
+  runner covers scheduled and orchestration jobs; configuring any local runner automatically
+  prevents implicit hosted routing. `PLATFORM_CI_LOCAL_ONLY=true` can enforce the same policy
+  before cutover. PR merge workers accept absent or stale event merge SHAs after the
+  manager verifies the requested merge commit's parents. See [local workers](docs/ci-workers.md#keep-every-actions-job-local).
+- Platform upgrades now audit the adopted app's final lockfile after install and check published
+  platform advisories before recording a verified baseline. Retained vulnerable transitive
+  resolutions, registry errors and malformed audit results keep the old baseline; lower-severity
+  findings remain visible. A scoped lockfile repair can resume the saved report. See
+  [UPGRADING.md](UPGRADING.md) for the age-gated repair sequence.
 - Reference web onboarding E2E tests now set and restore their required policy instead
   of assuming a retained local backend is invitation-only. Session coverage verifies
   guest-page navigation after an authentication broadcast.

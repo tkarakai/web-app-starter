@@ -32,6 +32,9 @@ test('PR assignment validates merge context separately from the authenticated ru
   const prPayload: EventPayload = { repository: payload.repository, number: 42, pull_request: { number: 42, head: { sha: head, repo: { id: 7 } }, base: { sha: base, repo: { id: 7 } }, merge_commit_sha: merge } };
   for (const source of [head, merge]) verifyAssignment(assignment(c, prRun, source, 7), prContext, prPayload);
   const expected = assignment(c, prRun, merge, 7);
+  verifyAssignment(expected, prContext, { ...prPayload, pull_request: { ...prPayload.pull_request!, merge_commit_sha: undefined } });
+  verifyAssignment(expected, prContext, { ...prPayload, pull_request: { ...prPayload.pull_request!, merge_commit_sha: head } });
+  assert.throws(() => verifyAssignment(assignment(c, prRun, head, 7), prContext, { ...prPayload, pull_request: { ...prPayload.pull_request!, merge_commit_sha: undefined } }));
   assert.throws(() => verifyAssignment(expected, { ...prContext, GITHUB_SHA: head }, prPayload));
   assert.throws(() => verifyAssignment(expected, prContext, { ...prPayload, number: 43 }));
   for (const key of ['head', 'base'] as const) {

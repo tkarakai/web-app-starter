@@ -98,7 +98,7 @@ CI baseline fetch. Private release sources are not supported by this public-sour
 
 Start with [Choose where update jobs run](setup-updates.md#choose-where-update-jobs-run).
 `bun run platform:setup-updates --workers local --yes` prepares and tests both installations
-before enabling them; `--workers hosted --yes` returns to GitHub-hosted jobs. The details below
+before enabling them; `--workers hosted --yes` clears their prepared-pool routing. The details below
 explain the underlying routing for operators with custom installations.
 
 GitHub-hosted runners remain the default. Updates can run on your own computers using the
@@ -152,7 +152,10 @@ repository; updating their source requires normal review.
 Publication launches only its independently prepared immutable tools image. It never builds an
 app dependency seed, runs app scripts or shares writable caches with verification/ordinary CI.
 The job still uses only pinned actions, inline publisher code and Git with hooks disabled.
-Removing or clearing either selector restores `ubuntu-latest` independently. Cancel and restart
+Removing or clearing either selector uses `PLATFORM_CI_AUX_RUNNER` or legacy
+`PLATFORM_CI_RUNNER` when set. With neither, it uses `ubuntu-latest` only when no other local
+runner variable or explicit `PLATFORM_CI_LOCAL_ONLY=true` guard remains. Otherwise it requests
+an unmatched local label. Cancel and restart
 already queued runs, which retain their old labels. Then stop each unused installation explicitly:
 
 ```sh

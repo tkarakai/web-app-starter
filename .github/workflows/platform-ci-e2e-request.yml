@@ -17,7 +17,7 @@ jobs:
   rerun:
     name: Re-run E2E Required
     if: github.event.label.name == 'run-e2e' && vars.PLATFORM_CI_PR_E2E == 'on-demand'
-    runs-on: ${{ vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     timeout-minutes: 5
     steps:
       - name: Re-run the waiting checks

@@ -57,6 +57,10 @@ For a published platform update, follow [UPGRADING.md](UPGRADING.md):
 advances only after all required checks pass. Keep pending updates as drafts. For a cloned
 workflow draft, use `--resume upgrade-report.json --relocate` before making review edits; see
 [update delivery](docs/update-delivery.md) for schedule, credentials and outcomes.
+Verification includes an online audit of the adopted app's final `bun.lock` and the published
+platform advisory check. Retained transitive versions can differ from the starter release; an
+audit or registry failure leaves the old baseline in place. Follow [UPGRADING.md](UPGRADING.md)
+for scoped, age-eligible lockfile repair and resume.
 
 Before diagnosing or changing update delivery, inspect the app-owned `.github/update-delivery.json`
 and run `bun run platform:setup-updates --check --json`. Intent and live readiness are separate;

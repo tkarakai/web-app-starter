@@ -133,9 +133,10 @@ export function acceptReviewedEdits(report: Report, excluded: string[]): string[
     return gate.files;
   }));
   const current = workingFiles(root, excluded), changed = changedFiles(report.state.expectedFiles, current);
-  for (const file of changed) demand(allowed.has(file), "Unexpected edit during upgrade: " + file + ". Preserve your work and create a new plan if its scope changed.");
+  const auditFailed = report.state.steps.some(step => step.id === "verify:check:dependencies" && step.status === "failed");
+  for (const file of changed) demand(allowed.has(file) || (file === "bun.lock" && auditFailed), "Unexpected edit during upgrade: " + file + ". Preserve your work and create a new plan if its scope changed.");
   const unstaged = git(root, ["diff", "--name-only", "-z"]).toString("utf8").split("\0").filter(file => file && !excluded.includes(file));
-  const audited = new Set([...report.plan.changes.map(row => row.path), ...report.state.steps.flatMap(row => row.changedFiles), ...allowed]);
+  const audited = new Set([...report.plan.changes.map(row => row.path), ...report.state.steps.flatMap(row => row.changedFiles), ...allowed, ...(auditFailed ? ["bun.lock"] : [])]);
   for (const file of unstaged) demand(audited.has(file), "Unexpected index/worktree difference: " + file);
   report.state.expectedFiles = current; return [...new Set([...changed, ...unstaged])];
 }

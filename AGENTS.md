@@ -51,3 +51,6 @@ be resumed from its saved report with `--relocate`; do not merge report-only dra
 
 An app built from this repository takes newer platform releases with `platform/UPGRADING.md`;
 read `platform/CHANGELOG.md` for the release you are taking.
+The upgrade verifies the app's final `bun.lock` online before recording its new baseline.
+If retained transitive versions fail that audit, follow the scoped repair and resume steps in
+`platform/UPGRADING.md`.

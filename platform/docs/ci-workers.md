@@ -61,8 +61,9 @@ packages. Warm jobs reuse those bytes locally.
    diagnostic run with `gh run list --workflow ci-verify.yml`, watch it with
    `gh run watch RUN_ID --exit-status`, and record its success with
    `starter-workers check --github --run RUN_ID`.
-8. Run `starter-workers enable`. Only now does normal app CI request your pool. Summary jobs,
-   Security and deployment workflows remain hosted. Other developers just push code normally.
+8. Run `starter-workers enable`. Only now do normal PR and push CI jobs, including summaries
+   and Security, request your pool. Scheduled Security and jobs outside the manager's admitted
+   events use the auxiliary route described below. Other developers just push code normally.
 
 The setup above gives one installation one repository and a unique pool ID. The
 [organization option](ci-org-runners.md) allows several selected private repositories in one
@@ -76,6 +77,48 @@ Use [guided updater setup](setup-updates.md#choose-where-update-jobs-run) for in
 certification and routing changes. For custom callers and assignment/isolation constraints,
 see [update delivery](update-delivery.md#self-hosted-linux-runners). The ordinary CI diagnostic,
 `enable` and `hosted` commands in this guide do not configure updater routing.
+
+## Keep every Actions job local
+
+Runner routing is an owner choice for public and private repositories. The prepared manager's
+normal admission is limited to reviewed private-repository workloads; a public repository can
+use a separately operated local runner through `PLATFORM_CI_AUX_RUNNER` or the legacy
+`PLATFORM_CI_RUNNER` selector. Public fork PRs need a separate trust decision before any local
+runner executes their code.
+
+The prepared manager admits source-bound PR, push and manual CI jobs. It does not admit scheduled
+Security, deployment orchestration, Renovate or updater coordination as ordinary CI. To run
+those jobs locally, maintain a separate trusted Linux runner and set its **custom label** as
+`PLATFORM_CI_AUX_RUNNER`. It must have the tools and network access required by those workflows;
+it does not receive the manager's fresh-container or prepared-image isolation. Do not use the
+manager's pool ID as the auxiliary label. The separate [update worker setup](setup-updates.md)
+can route eligible updater jobs to its own prepared pools.
+
+After adopting workflows with all-local routing on the default branch, set the explicit guard,
+configure the auxiliary runner and then enable the prepared pool:
+
+```sh
+gh variable set PLATFORM_CI_LOCAL_ONLY --body true
+gh variable set PLATFORM_CI_AUX_RUNNER --body YOUR_AUX_RUNNER_LABEL
+starter-workers enable
+```
+
+Setting **any** local runner variable (`PLATFORM_CI_WORKER_POOL`, `PLATFORM_CI_AUX_RUNNER`,
+`PLATFORM_CI_RUNNER`, `PLATFORM_UPDATE_RUNNER` or `PLATFORM_UPDATE_DELIVERY_RUNNER`) automatically
+disables hosted fallback for **every** workflow. `PLATFORM_CI_LOCAL_ONLY=true` also does so
+before the first runner is configured. It is separate from the manager's `setup --local-only`
+option, which prepares images without a GitHub credential.
+The manager's diagnostic must already have passed. `enable` still requires removing the old
+`PLATFORM_CI_RUNNER` variable. With any local runner configured, a missing auxiliary label
+requests the deliberately unmatched `starter-local-only-unconfigured` label; an offline local
+runner leaves jobs queued. Neither condition selects a hosted runner. Check all workflow
+selectors and any app-owned jobs when adopting this policy. A runner label is not a resource
+limit: allocate enough host capacity for the auxiliary runner and prepared manager together.
+
+`starter-workers hosted` restores the previous **prepared-pool** route; it deliberately leaves
+the auxiliary and local-only variables intact. To return a repository fully to hosted execution,
+remove **all** local runner variables after draining their services. Cancel and rerun already
+queued jobs after any routing change.
 
 ## Test a branch before enabling normal CI
 
@@ -258,11 +301,14 @@ and [the runner's ordering](https://github.com/actions/runner/blob/v2.337.0/src/
 
 ## Migrate from the retired Compose runner
 
-Stop the old Compose project, remove its GitHub runner registrations, revoke its registration
-PAT, and delete its dedicated cache volumes after identifying them with `docker volume ls`.
-Remove `PLATFORM_CI_RUNNER` before enabling the manager. Do not reuse those
-writable volumes as image seeds. Complete setup and certification above before switching routing;
-other tools using Docker on the machine are unaffected.
+Complete setup and certification before switching routing. If hosted jobs are available, stop the
+old Compose project, remove its runner registrations, revoke its registration PAT, and delete
+its dedicated cache volumes after identifying them with `docker volume ls`. If you require
+[all-local routing](#keep-every-actions-job-local), first provide a reviewed auxiliary runner;
+the old Compose runner can serve that role temporarily through `PLATFORM_CI_AUX_RUNNER` while
+you replace it. Remove `PLATFORM_CI_RUNNER` before enabling the manager. Retire the old Compose
+runner only after scheduled, deployment and updater paths have a working auxiliary route. Do
+not reuse its writable volumes as image seeds. Other Docker resources are unaffected.
 
 ## References
 

@@ -20,6 +20,19 @@ function runnable() {
   return f;
 }
 const pass: Execute = async () => ({ exitCode: 0, log: "passed" });
+test("Bun retains an old vulnerable transitive resolution until an age-gated refresh", async () => {
+  const root = temp(), fixtureRoot = path.join(import.meta.dirname, "fixtures/retained-transitive");
+  fs.copyFileSync(path.join(fixtureRoot, "package.json"), path.join(root, "package.json"));
+  fs.copyFileSync(path.join(fixtureRoot, "bun.lock"), path.join(root, "bun.lock"));
+  const installed = await execute(["bun", "install", "--lockfile-only", "--ignore-scripts"], root);
+  assert.equal(installed.exitCode, 0, installed.log);
+  const retained = fs.readFileSync(path.join(root, "bun.lock"), "utf8");
+  assert.match(retained, /brace-expansion@1\.1\.12/);
+  assert.match(retained, /minimatch@3\.1\.2/);
+  const repaired = fs.readFileSync(path.join(fixtureRoot, "repaired.bun.lock"), "utf8");
+  assert.match(repaired, /brace-expansion@1\.1\.21/);
+  assert.doesNotMatch(repaired, /brace-expansion@1\.1\.12|minimatch@3\.1\.2/);
+});
 function reportFor(planned: Awaited<ReturnType<ReturnType<typeof fixture>["plan"]>>) {
   const report = createReport(planned.plan, workingFiles(planned.plan.app.root)); const reportFile = path.join(temp(), "report.json"); writeReport(reportFile, report); return { report, reportFile };
 }
@@ -56,6 +69,42 @@ test("failed contracts and deferred E2E keep the old baseline; resume pins the s
     assert.equal(pending.outcome, "needs-review", pending.state.error); assert.equal(fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8"), before);
     const verified = await applyUpgrade(readReport(reportFile), rebuilt, { reportFile, execute: pass }); assert.equal(verified.outcome, "verified", verified.state.error);
   } finally { fs.rmSync(cache.directory, { recursive: true, force: true }); }
+});
+test("retained vulnerable lockfile blocks recording, scoped repair reruns install and online audit", async () => {
+  const f = runnable(); f.publish("2.0.1");
+  const planned = await f.plan("2.0.1"), { report, reportFile } = reportFor(planned);
+  const originalBase = fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8");
+  let auditCalls = 0;
+  const run: Execute = async args => {
+    if (args[2] === "check:dependencies") {
+      auditCalls++;
+      return { exitCode: auditCalls === 1 ? 1 : 0, log: auditCalls === 1 ? "14 high/critical dependency advisories: brace-expansion 1.1.12" : "Dependency audit passed: no high/critical advisories; 2 lower-severity advisories." };
+    }
+    return { exitCode: 0, log: "passed" };
+  };
+  const failed = await applyUpgrade(report, planned, { reportFile, execute: run });
+  assert.equal(failed.outcome, "failed"); assert.match(failed.state.error!, /brace-expansion 1\.1\.12/);
+  assert.equal(fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8"), originalBase);
+  assert(!failed.state.steps.some(step => step.id === "verify:check:advisories"));
+  write(f.app, "bun.lock", "scoped, age-eligible transitive refresh\n");
+  const done = await applyUpgrade(readReport(reportFile), planned, { reportFile, execute: run });
+  assert.equal(done.outcome, "verified", done.state.error);
+  assert.equal(auditCalls, 2);
+  assert.equal(done.state.steps.find(step => step.id === "verify:check:dependencies")?.status, "passed");
+  assert.equal(done.state.steps.find(step => step.id === "verify:check:advisories")?.status, "passed");
+  assert.equal(done.state.steps.filter(step => step.id === "install").length, 1);
+});
+test("registry failure cannot produce a verified baseline and resumes without repeating passed checks", async () => {
+  const f = runnable(); f.publish("2.0.1");
+  const planned = await f.plan("2.0.1"), { report, reportFile } = reportFor(planned);
+  let attempts = 0;
+  const run: Execute = async args => ({ exitCode: args[2] === "check:dependencies" && ++attempts === 1 ? 1 : 0, log: args[2] === "check:dependencies" && attempts === 1 ? "registry unavailable" : "passed" });
+  const failed = await applyUpgrade(report, planned, { reportFile, execute: run });
+  assert.equal(failed.outcome, "failed"); assert.match(failed.state.error!, /registry unavailable/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(f.app, ".platform-base.json"), "utf8")).version, "2.0.0");
+  const resumed = await applyUpgrade(readReport(reportFile), planned, { reportFile, execute: run });
+  assert.equal(resumed.outcome, "verified", resumed.state.error); assert.equal(attempts, 2);
+  assert.equal(resumed.state.steps.filter(step => step.id === "install").length, 1);
 });
 test("ordered codemods use historical implementations once and survive failed checks", async () => {
   const f = runnable(), mod = "platform/tooling/codemods/first.ts";
