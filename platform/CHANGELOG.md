@@ -25,6 +25,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   prevents implicit hosted routing. `PLATFORM_CI_LOCAL_ONLY=true` can enforce the same policy
   before cutover. PR merge workers accept absent or stale event merge SHAs after the
   manager verifies the requested merge commit's parents. See [local workers](docs/ci-workers.md#keep-every-actions-job-local).
+- Account security now collapses duplicate Better Auth session records before rendering the
+  session list, preventing duplicate cards and React key warnings.
 - Platform upgrades now audit the adopted app's final lockfile after install and check published
   platform advisories before recording a verified baseline. Retained vulnerable transitive
   resolutions, registry errors and malformed audit results keep the old baseline; lower-severity

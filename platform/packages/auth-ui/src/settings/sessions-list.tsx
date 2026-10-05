@@ -43,6 +43,15 @@ type Session = {
   expiresAt: Date;
 };
 
+function uniqueSessionsById(sessions: Session[]): Session[] {
+  const seen = new Set<string>();
+  return sessions.filter((session) => {
+    if (seen.has(session.id)) return false;
+    seen.add(session.id);
+    return true;
+  });
+}
+
 function DeviceIcon({ device }: { device: string }) {
   switch (device) {
     case "mobile":
@@ -94,7 +103,7 @@ export function SessionsList() {
         return;
       }
       if (result.data) {
-        setSessions(result.data as Session[]);
+        setSessions(uniqueSessionsById(result.data as Session[]));
       }
       const sessionResult = await authClient.getSession();
       if (sessionResult.data?.session) {
