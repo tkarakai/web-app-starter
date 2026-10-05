@@ -51,6 +51,27 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Delivery permission failures distinguish PR creation from approval, expose existing-branch
   draft/report recovery after a push, and preflight settings without administration grants.
   Token-created PRs may require owner approval of CI runs; a green review-plan job is not upgrade verification.
+- Turbo is updated to 2.11.7, fixing
+  [GHSA-3qcw-2rhx-2726](https://github.com/advisories/GHSA-3qcw-2rhx-2726) in the build tool.
+  The upgrade enforces the patched root dependency floor; no app code or configuration changes.
+- Eligible non-major dependencies and workflow actions are updated, including Lucide, Resend,
+  Vitest, Vite, Size Limit, CodeQL and Renovate. The retained vulnerable-lockfile regression
+  fixture is excluded from Renovate so it continues to test upgrade audit and repair behavior.
+
+### Action required
+
+- **Who is affected:** apps that want scheduled platform updates. **What to do:** run
+  `bun run platform:setup-updates` and explicitly choose the recommended repository-only App,
+  limited built-in token, or deferred delivery; fresh adoptions keep scheduling paused until this
+  is complete. **Done when:** `bun run platform:setup-updates --check --json` reports the selected
+  mode and no outstanding owner action (or deliberately reports deferred).
+- **Who is affected:** apps routing any CI or updater work to local runners and requiring every
+  Actions job to stay local. **What to do:** configure `PLATFORM_CI_AUX_RUNNER` for scheduled and
+  orchestration jobs, or keep the legacy `PLATFORM_CI_RUNNER` temporarily, then set
+  `PLATFORM_CI_LOCAL_ONLY=true`; use `PLATFORM_CI_WORKER_POOL` for prepared PR/push CI and the two
+  updater selectors only for updater jobs. **Done when:** a normal PR, Security, full
+  `CI Verify Commit` and the app's scheduled/auxiliary paths pass without any job requesting a
+  GitHub-hosted runner; see [local workers](docs/ci-workers.md#keep-every-actions-job-local).
 
 ## [4.0.0] - 2026-10-04
 
