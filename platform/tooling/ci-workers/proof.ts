@@ -8,6 +8,10 @@ export async function localProof(c: Config): Promise<Proof> {
   const age = Date.now() - Date.parse(proof.checked);
   assert(age >= 0 && age < 86400_000 && proof.id === proofId(proof) && /^[a-f0-9]{40}$/.test(proof.sha) && /^sha256:[a-f0-9]{64}$/.test(proof.image) && proof.pool === c.pool && proof.runtime === hash(JSON.stringify(runtimePolicy(c))), 'A fresh local check with the current runtime policy is required');
   const state = await catalog();
+  if (c.updateRole === 'deliver') {
+    assert(proof.image === state.tools && Object.values(state.toolchains ?? {}).some(t => t.image === proof.image), 'Delivery tools changed; repeat the local check');
+    return proof;
+  }
   const environment = state.environments.find(e => e.key === proof.key && e.scope === proof.scope && e.source === proof.sha);
   assert(environment?.image === proof.image && state.environments.filter(e => e.scope === proof.scope && e.source === proof.sha).sort((a, b) => b.used.localeCompare(a.used))[0]?.image === proof.image, 'Prepared environment changed; repeat the local check');
   return proof;

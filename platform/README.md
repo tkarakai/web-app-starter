@@ -316,7 +316,7 @@ and intent record; installing a schedule alone does not configure working update
 
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
-`--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--updates app|fallback|deferred`, `--yes`).
+`--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--updates app|fallback|deferred`, `--update-workers hosted|local`, `--yes`).
 Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.

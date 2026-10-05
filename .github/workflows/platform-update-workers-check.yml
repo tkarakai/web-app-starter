@@ -1,0 +1,108 @@
+name: Test platform update workers
+run-name: Updater worker check ${{ inputs.proof }}
+
+# Runs only by owner request. Explicit pools let setup test before changing routing.
+on:
+  workflow_dispatch:
+    inputs:
+      proof:
+        description: Combined local proof identity
+        type: string
+        required: true
+      verify:
+        description: Verification installation proof (JSON)
+        type: string
+        required: true
+      deliver:
+        description: Delivery installation proof (JSON)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on:
+      - self-hosted
+      - ${{ fromJSON(inputs.verify).pool }}
+      - starter-source-${{ github.sha }}
+      - starter-run-${{ github.run_id }}
+      - starter-attempt-${{ github.run_attempt }}
+      - starter-update-check
+    timeout-minutes: 10
+    env:
+      PAIR_PROOF: ${{ inputs.proof }}
+      VERIFY_PROOF: ${{ fromJSON(inputs.verify).id }}
+      DELIVERY_PROOF: ${{ fromJSON(inputs.deliver).id }}
+      EXPECTED_SHA: ${{ fromJSON(inputs.verify).sha }}
+      EXPECTED_IMAGE: ${{ fromJSON(inputs.verify).image }}
+      EXPECTED_RUNTIME: ${{ fromJSON(inputs.verify).runtime }}
+      EXPECTED_POOL: ${{ fromJSON(inputs.verify).pool }}
+      EXPECTED_PROOF: ${{ fromJSON(inputs.verify).id }}
+      EXPECTED_CHECKED: ${{ fromJSON(inputs.verify).checked }}
+    steps:
+      - name: Check prepared image and isolation
+        run: |
+          node --input-type=module -e 'import {createHash} from "node:crypto"; import assert from "node:assert/strict"; assert.equal(process.env.PAIR_PROOF, createHash("sha256").update(JSON.stringify([process.env.VERIFY_PROOF, process.env.DELIVERY_PROOF])).digest("hex"));'
+          node /opt/starter/verify-proof.mjs
+          node /opt/starter/smoke.mjs
+          touch /home/worker/.first-updater-job
+
+  verify:
+    name: verify
+    needs: check
+    runs-on:
+      - self-hosted
+      - ${{ fromJSON(inputs.verify).pool }}
+      - starter-source-${{ github.sha }}
+      - starter-run-${{ github.run_id }}
+      - starter-attempt-${{ github.run_attempt }}
+      - starter-update-verify
+    timeout-minutes: 10
+    env:
+      EXPECTED_SHA: ${{ fromJSON(inputs.verify).sha }}
+      EXPECTED_IMAGE: ${{ fromJSON(inputs.verify).image }}
+      EXPECTED_RUNTIME: ${{ fromJSON(inputs.verify).runtime }}
+      EXPECTED_POOL: ${{ fromJSON(inputs.verify).pool }}
+      EXPECTED_PROOF: ${{ fromJSON(inputs.verify).id }}
+      EXPECTED_CHECKED: ${{ fromJSON(inputs.verify).checked }}
+    steps:
+      - name: Check a fresh container
+        run: |
+          test ! -e /home/worker/.first-updater-job
+          node /opt/starter/verify-proof.mjs
+          node /opt/starter/smoke.mjs
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-bun
+      - name: Check prepared dependencies
+        run: bun install --offline --frozen-lockfile
+
+  deliver:
+    name: deliver
+    needs: verify
+    permissions: {}
+    runs-on:
+      - self-hosted
+      - ${{ fromJSON(inputs.deliver).pool }}
+      - starter-source-${{ github.sha }}
+      - starter-run-${{ github.run_id }}
+      - starter-attempt-${{ github.run_attempt }}
+      - starter-update-deliver
+    timeout-minutes: 10
+    env:
+      EXPECTED_SHA: ${{ fromJSON(inputs.deliver).sha }}
+      EXPECTED_IMAGE: ${{ fromJSON(inputs.deliver).image }}
+      EXPECTED_RUNTIME: ${{ fromJSON(inputs.deliver).runtime }}
+      EXPECTED_POOL: ${{ fromJSON(inputs.deliver).pool }}
+      EXPECTED_PROOF: ${{ fromJSON(inputs.deliver).id }}
+      EXPECTED_CHECKED: ${{ fromJSON(inputs.deliver).checked }}
+    steps:
+      # Delivery gets no app checkout, dependency installation or updater write token.
+      - name: Check delivery tools and isolation
+        run: |
+          node /opt/starter/verify-proof.mjs
+          node /opt/starter/smoke.mjs

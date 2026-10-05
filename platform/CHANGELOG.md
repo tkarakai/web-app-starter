@@ -15,6 +15,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Guided hosted/local worker choice in platform update setup, with two prepared Docker installations, real GitHub worker tests before routing changes, resumable setup and read-only worker readiness. Existing routing and credentials are preserved unless explicitly changed.
 - Platform updates can run on your own computers using separate prepared-image installations for verification and tools-only publication, authenticated to the exact repository, source, run, attempt, event and job; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
 
 ### Fixed

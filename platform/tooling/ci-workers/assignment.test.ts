@@ -79,3 +79,14 @@ test('updater roles bind scheduled/manual jobs to repository, run, attempt, sour
   }
   assert.throws(() => assignment(c, run, head, 7, 'deliver'));
 });
+
+test('manual updater diagnostics use the same assignment checks without admitting other workflows or schedules', () => {
+  for (const [role, job] of [['verify', 'check'], ['verify', 'verify'], ['deliver', 'deliver']] as const) {
+    const config = { ...c, updateRole: role, updateWorkflow: '.github/workflows/update-platform.yml' };
+    const diagnostic = { ...run, path: '.github/workflows/platform-update-workers-check.yml', event: 'workflow_dispatch' };
+    const expected = assignment(config, diagnostic, head, 7, job);
+    verifyAssignment(expected, { ...context, GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_JOB: job }, { repository: payload.repository });
+    assert.throws(() => assignment(config, { ...diagnostic, event: 'schedule' }, head, 7, job));
+    assert.throws(() => assignment(config, { ...diagnostic, path: '.github/workflows/other.yml' }, head, 7, job));
+  }
+});

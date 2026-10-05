@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { demand } from "../platform-upgrade/metadata.ts";
 import { configured, type Gh } from "./github.ts";
+import { workerStatus, type WorkerRecord, type WorkerStatus } from "./worker-state.ts";
 
 export const RECORD = ".github/update-delivery.json";
 export const CALLER = ".github/workflows/update-platform.yml";
@@ -12,7 +13,7 @@ export function isDeliveryMode(value: unknown): value is DeliveryMode { return v
 export type RecordState = {
   schemaVersion: 1; mode: DeliveryMode; repository: string; source: string; caller: string;
   settings: string; status: "pending" | "configured" | "deferred"; lastCheck: string;
-  ownerActions: string[]; app?: { id: string; url?: string }; validation?: "authenticated-installation";
+  workers?: WorkerRecord; ownerActions: string[]; app?: { id: string; url?: string }; validation?: "authenticated-installation";
 };
 export function safePath(root: string, relative: string): string {
   const parts = relative.split("/");
@@ -29,10 +30,11 @@ export function readRecord(root: string): RecordState | undefined {
   demand(state.schemaVersion === 1 && isDeliveryMode(state.mode) && /^[\w.-]+\/[\w.-]+$/.test(state.repository), "Invalid update-delivery record; inspect it before setup");
   return state;
 }
-export function saveRecord(root: string, mode: DeliveryMode, repo: string, status: RecordState["status"], ownerActions: string[], extra: Partial<Pick<RecordState, "app" | "validation">> = {}): RecordState {
+export function saveRecord(root: string, mode: DeliveryMode, repo: string, status: RecordState["status"], ownerActions: string[], extra: Partial<Pick<RecordState, "app" | "validation" | "workers">> = {}): RecordState {
   const previous = readRecord(root);
   demand(!previous || previous.repository.toLowerCase() === repo.toLowerCase(), "Saved update repository differs; inspect the record before changing identity");
-  const state: RecordState = { schemaVersion: 1, mode, repository: repo, source: previous?.source ?? "tkarakai/web-app-starter", caller: CALLER, settings: "https://github.com/" + repo + "/settings/actions", status, lastCheck: new Date().toISOString(), ownerActions, ...(previous?.mode === mode ? { app: previous.app, validation: previous.validation } : {}), ...extra };
+  const state: RecordState = { schemaVersion: 1, mode, repository: repo, source: previous?.source ?? "tkarakai/web-app-starter", caller: CALLER, settings: "https://github.com/" + repo + "/settings/actions", status, lastCheck: new Date().toISOString(), ownerActions, workers: previous?.workers, ...(previous?.mode === mode ? { app: previous.app, validation: previous.validation } : {}), ...extra };
+  if (state.workers && !state.workers.test && previous?.workers?.test) state.workers = { ...state.workers, test: previous.workers.test };
   const file = safePath(root, RECORD); fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(state, null, 2) + "\n"); return state;
 }
@@ -64,7 +66,7 @@ export function guardCaller(root: string): boolean {
   fs.writeFileSync(file, text.slice(0, offset) + "    if: " + GUARD + "\n" + text.slice(offset)); return true;
 }
 export type Status = {
-  repository: string | null; intent: RecordState | null; observed: {
+  repository: string | null; intent: RecordState | null; workers: WorkerStatus; observed: {
     mode: DeliveryMode | "unset" | "unknown"; appId: string | null; privateKeyPresent: boolean | null;
     appAuthentication: "unknown"; pullRequestCreation: boolean | null; defaultWorkflowPermissions: string | null;
     callerPresent: boolean; callerGuarded: boolean; scheduleUTC: string[]; policy: string | null; autoMerge: boolean | null;
@@ -73,7 +75,7 @@ export type Status = {
 export function updateStatus(root: string, repo: string | undefined, run: Gh): Status {
   const intent = readRecord(root), selected = repo ?? intent?.repository;
   const file = safePath(root, CALLER), callerPresent = fs.existsSync(file), callerConfiguration = callerPresent ? fs.readFileSync(file, "utf8") : null;
-  const result: Status = { repository: selected ?? null, intent: intent ?? null, observed: { mode: "unknown", appId: null, privateKeyPresent: null, appAuthentication: "unknown", pullRequestCreation: null, defaultWorkflowPermissions: null, callerPresent, callerGuarded: callerIsGuarded(callerConfiguration ?? ""), scheduleUTC: [...(callerConfiguration ?? "").matchAll(/cron:\s*["']([\d*/?, -]+)["']/g)].map(row => row[1]), policy: /policy:\s*(patch|minor|major)\s*$/m.exec(callerConfiguration ?? "")?.[1] ?? null, autoMerge: /auto-merge:\s*(true|false)\s*$/m.test(callerConfiguration ?? "") ? /auto-merge:\s*true\s*$/m.test(callerConfiguration ?? "") : null }, readiness: "unknown", ownerActions: [...(intent?.ownerActions ?? [])], checkedAt: new Date().toISOString() };
+  const result: Status = { repository: selected ?? null, intent: intent ?? null, workers: workerStatus(selected, intent?.workers, run), observed: { mode: "unknown", appId: null, privateKeyPresent: null, appAuthentication: "unknown", pullRequestCreation: null, defaultWorkflowPermissions: null, callerPresent, callerGuarded: callerIsGuarded(callerConfiguration ?? ""), scheduleUTC: [...(callerConfiguration ?? "").matchAll(/cron:\s*["']([\d*/?, -]+)["']/g)].map(row => row[1]), policy: /policy:\s*(patch|minor|major)\s*$/m.exec(callerConfiguration ?? "")?.[1] ?? null, autoMerge: /auto-merge:\s*(true|false)\s*$/m.test(callerConfiguration ?? "") ? /auto-merge:\s*true\s*$/m.test(callerConfiguration ?? "") : null }, readiness: "unknown", ownerActions: [...(intent?.ownerActions ?? [])], checkedAt: new Date().toISOString() };
   if (!selected) { result.ownerActions.push("Select the app repository with --repo owner/repo."); return result; }
   demand(!intent || intent.repository.toLowerCase() === selected.toLowerCase(), "Saved update repository differs; inspect the record before changing identity");
   try {
@@ -109,6 +111,7 @@ export function updateStatus(root: string, repo: string | undefined, run: Gh): S
     if (!callerPresent) { result.readiness = "blocked"; result.ownerActions.push("Install the caller with platform:setup-updates and commit it."); }
     if (result.observed.callerGuarded && result.observed.mode !== mode) { if (result.readiness !== "blocked") result.readiness = result.observed.mode === "unknown" ? "unknown" : "blocked"; result.ownerActions.push("Caller is paused, unknown, or live mode differs from intent. Complete owner setup with --yes and commit the caller."); }
   }
+  if (result.readiness === "ready" && result.workers.readiness !== "ready") result.readiness = result.workers.readiness;
   return result;
 }
 export function summary(status: Status): string {
@@ -117,6 +120,11 @@ export function summary(status: Status): string {
     "Recorded setup: " + (status.intent?.status ?? "none") + "; last setup attempt: " + (status.intent?.lastCheck ?? "none") + "; recorded validation: " + (status.intent?.validation ?? "none") + "; live mode: " + status.observed.mode,
     "Repository scope: " + (status.repository ?? "unknown") + "; API identity: " + (status.observed.appId ? "App ID " + status.observed.appId : status.observed.mode === "fallback" ? "github-actions[bot]" : "unknown / inactive"),
     "Schedule (UTC): " + schedule + "; policy: " + (status.observed.policy ?? "inspect caller") + "; auto-merge: " + (status.observed.autoMerge ?? "inspect caller"),
+    "Update workers: " + status.workers.choice + "; readiness: " + status.workers.readiness + "; recorded choice: " + (status.intent?.workers?.choice ?? "none"),
+    "Worker pools: verify=" + (status.workers.pools?.verify || "GitHub-hosted / unknown") + "; deliver=" + (status.workers.pools?.deliver || "GitHub-hosted / unknown"),
+    "Worker host availability: " + status.workers.availability,
+    "Last worker test: " + (status.workers.lastTest ? "run=" + status.workers.lastTest.runId + "; source=" + status.workers.lastTest.sha + "; proof=" + status.workers.lastTest.proof + "; checked=" + status.workers.lastTest.checkedAt : "none"),
+    ...status.workers.ownerActions.map(action => "Worker action: " + action),
     ...status.ownerActions.map(action => "Owner action: " + action),
     "Intent: " + RECORD + "; schedule/policy/auto-merge authority: " + CALLER,
     "Re-check: bun run platform:setup-updates --check --json; change: --app / --fallback / --defer (remote changes require --yes). Review and commit local setup files."].join("\n") + "\n";

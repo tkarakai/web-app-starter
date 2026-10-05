@@ -116,3 +116,16 @@ test('updater pools reject ordinary CI, forks, foreign workflows, stale attempts
     }
   }
 });
+
+test('only manual dedicated worker diagnostics are admitted to updater pools', () => {
+  const diagnostic = { ...run, path: '.github/workflows/platform-update-workers-check.yml' };
+  for (const [updateRole, names] of [['verify', ['check', 'verify']], ['deliver', ['deliver']]] as const) {
+    const config = { ...c, updateRole, updateWorkflow: '.github/workflows/update-platform.yml' };
+    for (const name of names) {
+      const queued = { ...job, name, labels: [...job.labels, 'starter-attempt-1', 'starter-update-' + name] };
+      assert.deepEqual(sourceRequest(config, diagnostic, queued, 10), { sha, scope: 'update-' + updateRole, job: name });
+      assert.equal(sourceRequest(config, { ...diagnostic, event: 'schedule' }, queued, 10), undefined);
+      assert.equal(sourceRequest(c, diagnostic, queued, 10), undefined);
+    }
+  }
+});

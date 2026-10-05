@@ -29,7 +29,8 @@ result. Git author `platform-updater[bot]` is metadata, not the API identity.
 
 `.github/update-delivery.json` is an **app-owned, non-secret** record preserved on platform
 replacement. It holds mode, repository/source, caller/settings pointers, setup status, last check,
-public App identity when known, and pending owner actions. Schedule, policy and auto-merge remain
+public App identity when known, and pending owner actions. Worker intent and evidence are described
+[below](#check-readiness-or-return-to-github-hosted-workers). Schedule, policy and auto-merge remain
 in the caller rather than being duplicated in the record. `vars.PLATFORM_SOURCE_REPOSITORY` in
 that caller is the live source override; the record's source is the default source. Commit the
 record and caller, and keep the app's `AGENTS.md` pointing to them. A check never rewrites intent.
@@ -122,3 +123,100 @@ permission for Actions to create PRs are separate things. Enabling the PR switch
 CI approval requirements or grant workflow-file delivery. See [GitHub workflow triggers](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
 See [update delivery](update-delivery.md) for truthful verification and existing-branch recovery.
+
+## Choose where update jobs run
+
+Use `bun run platform:setup-updates` for the guided choices, during adoption or later.
+First choose whether to configure scheduled update PRs or defer them. Then choose where the
+jobs run. Existing credentials, schedule, policy, auto-merge and worker routing are shown or
+preserved unless you explicitly select a change. A fresh app uses **GitHub-hosted workers**.
+“Automatic” means GitHub starts the configured weekday checks and may open an update PR;
+it does not mean a local service upgrades your default branch or deploys your app.
+
+| Worker choice | What you operate | What setup changes |
+| --- | --- | --- |
+| GitHub-hosted (default) | Nothing on your computer | Clears the two updater routing variables if you explicitly switch to hosted. GitHub provides the job machines. |
+| Local Docker | A macOS or Linux host with Docker and two running worker services | Prepares images, tests both installations through GitHub, then sets both updater pool variables. |
+| Preserve | Keep the existing arrangement | Leaves routing untouched, including custom or partly local setups. Unreadable settings remain unknown. |
+
+```sh
+bun run platform:setup-updates --check
+bun run platform:setup-updates --workers local --yes
+bun run platform:setup-updates --workers hosted --yes
+```
+
+`--workers` on its own changes only the worker choice, preserving delivery credentials and the
+delivery-mode gate. Combine it with `--app`, `--fallback` or `--defer` to configure both choices.
+Without `--yes`, it records pending intent only. Deferred delivery records a requested worker
+choice for later; it does not install services. Adoption accepts `--update-workers hosted|local`;
+omitting it preserves existing routing (GitHub-hosted in a new app).
+
+### Set up local workers
+
+Use a **private** app repository. Commit and push adoption/setup files first, including the
+platform-owned `.github/workflows/platform-update-workers-check.yml`, and check out the app's
+default-branch tip. Setup tests committed source; only `.github/update-delivery.json` may be dirty.
+On your Docker host, use the project's Node/Bun versions and authenticated `gh` with repository
+administration access. See [local worker prerequisites](ci-workers.md) for Docker resources,
+supported host configuration and ongoing operation.
+
+`--workers local --yes` prepares two separate installations under
+`~/.local/share/starter-updates/<repository-name-hash>/verify` and `deliver` and prints their absolute paths.
+For each new installation, it asks at a **hidden terminal prompt** for a dedicated fine-grained
+manager token selecting only this repository: **Administration: write** and **Actions, Contents,
+Pull requests: read**. These manager credentials stay on the host, separate from the updater App
+key stored in GitHub. Do not paste them in chat or command arguments. Keep both services and Docker
+available whenever scheduled updates should run.
+
+The verification installation runs release discovery and dependency/app checks. The delivery
+installation uses a separate tools-only image to publish the prepared result. Each job runs in
+a fresh disposable container. Setup reuses the existing worker manager and prepared-image system.
+It does not reuse an ordinary CI installation for privileged update delivery.
+
+Setup runs local checks, dispatches **Test platform update workers**, watches its three jobs, and
+confirms the exact source, images, runtime settings, pools and run attempt. Only then does it set
+`PLATFORM_UPDATE_RUNNER` and `PLATFORM_UPDATE_DELIVERY_RUNNER`. This diagnostic checks worker
+routing, isolation and prepared dependencies; it does not test App authentication, create an
+update PR, merge or deploy. Finish credential setup separately if pending, then manually run
+**Update platform** to validate delivery.
+
+If the test fails, is cancelled, remains queued, or setup is interrupted, previous routing stays
+in place. Fix the host/service issue and repeat setup. For a stopped, incomplete installation,
+setup validates the completion receipt against the installed command and service files, then
+resumes installation when validation fails, preserving its credential and pool. It does not
+replace an installation while its manager is running. If the same local proofs are still current,
+resume the printed `--workers local --worker-run RUN_ID --yes` command after the test passes.
+Proofs expire after 24 hours; source, image or runtime changes require a new test. A partial GitHub
+settings failure attempts to restore both previous values; if restoration cannot be confirmed,
+setup explicitly asks you to inspect both repository variables.
+
+Already have the two updater installations? Select both explicitly:
+
+```sh
+bun run platform:setup-updates --workers local --yes \
+  --verify-home /absolute/path/to/verification-installation \
+  --deliver-home /absolute/path/to/delivery-installation
+```
+
+Printed recovery commands retain the supplied absolute home flags and diagnostic run ID when
+known; use that command when resuming. The helper refuses a wrong repository, wrong role, shared pool,
+paused service or public diagnostic installation. An older installed manager needs the normal
+[pause, drain and update procedure](ci-workers.md); setup explains this without replacing an
+installation behind a running service. Always use each installation's **absolute** `starter-workers`
+command: the convenience command in `~/.local/bin` points to only the most recently installed one.
+
+### Check readiness or return to GitHub-hosted workers
+
+`--check` and `--check --json` show the recorded choice, observed routing/pools, worker readiness,
+unknown host availability, last successful GitHub worker test (run, source, proof and check time)
+and remaining actions, separately from credentials. The record retains the last successful test
+through pending setup, offline retries, reconfiguration and a return to hosted routing. This is
+historical evidence; it does not prove that your host is awake now. Inspect both service statuses.
+Existing manually configured routing is preserved and reported unvalidated until tested.
+
+`--workers hosted --yes` clears only the two updater routing variables. It preserves ordinary CI
+worker routing, credentials, schedule and auto-merge. Existing queued jobs retain their old labels:
+finish or cancel them before stopping unused services. For each updater installation, run its
+absolute `starter-workers pause --drain`, then `starter-workers service stop`. Setup does not stop
+or uninstall services on your behalf. The update record contains non-secret worker intent and
+test evidence; commit it with the other app setup files.

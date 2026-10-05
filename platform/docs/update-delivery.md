@@ -96,6 +96,11 @@ CI baseline fetch. Private release sources are not supported by this public-sour
 
 ## Self-hosted Linux runners
 
+Start with [Choose where update jobs run](setup-updates.md#choose-where-update-jobs-run).
+`bun run platform:setup-updates --workers local --yes` prepares and tests both installations
+before enabling them; `--workers hosted --yes` returns to GitHub-hosted jobs. The details below
+explain the underlying routing for operators with custom installations.
+
 GitHub-hosted runners remain the default. Updates can run on your own computers using the
 [prepared-image worker manager](ci-workers.md). Use separate installations for verification and
 publication, each with its own state directory, pool ID, builder, images and registration.
@@ -114,8 +119,9 @@ manager credential on the host as described in the worker guide. Use each instal
 `starter-workers` command inside its state directory; the convenience command in PATH points
 to the most recently installed one. Verification can run `check --install`; delivery accepts
 `check` only and never runs app installation or CI. Do not use ordinary `enable` or
-`check --github` for updater installations. The operator must run acceptance through the
-reviewed updater caller and inspect exact source/run/attempt and image evidence.
+`check --github` for updater installations. The guided setup runs the dedicated worker diagnostic and inspects exact
+source/run/attempt and image evidence. Then run the reviewed updater caller to check actual
+delivery credentials and PR creation. Custom caller filenames require manual operator acceptance.
 
 Use the absolute wrapper for each installation; these commands retain the app checkout as cwd:
 
@@ -126,14 +132,16 @@ Use the absolute wrapper for each installation; these commands retain the app ch
 "$HOME/.local/share/starter-update-deliver/starter-workers" status
 ```
 
-Only after acceptance, configure these repository variables in
+Guided setup configures these automatically after its successful diagnostic. For custom
+installations, configure them only after operator acceptance in
 **Settings → Secrets and variables → Actions**:
 
 - `PLATFORM_UPDATE_RUNNER`: the verification installation's **pool ID** (discovery and verification).
 - `PLATFORM_UPDATE_DELIVERY_RUNNER`: the separate delivery installation's **pool ID**.
 
 The workflow adds exact source, run, attempt and job labels. Labels alone do not authorize work:
-the installed manager checks the caller workflow, event, job and source against authenticated
+the installed manager checks the configured caller or the manual
+`platform-update-workers-check.yml` diagnostic, event, job and source against authenticated
 GitHub metadata; the root-owned start hook checks repository ID/name, source, run, attempt,
 event, ref and job again. Private updater pools accept only default-branch schedules or manual
 runs. Public pools require an explicitly reviewed manual branch and never accept schedules or

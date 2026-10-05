@@ -84,16 +84,16 @@ async function setup(args: string[]): Promise<void> {
   print(`Repository: ${repo}\nInstalled: ${wrapper}\nAdd ${path.dirname(wrapper)} to PATH. Docker context: ${context}.\nPreparing the committed revision; uncommitted files are not included.`);
   const sha = await command('git', ['-C', root, 'rev-parse', 'HEAD']);
   const branch = await command('git', ['-C', root, 'branch', '--show-current']);
-  await lock('mutation', () => prepare(c, root, sha, `branch-${hash(branch).slice(0, 16)}`));
+  await lock('mutation', () => prepare(c, root, sha, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`));
   if (!c.localOnly) await service(c, true);
-  print('Ready. Normal GitHub routing is unchanged. Run starter-workers check, then check --github before enable.');
+  print(c.updateRole ? 'Prepared updater workers. Continue bun run platform:setup-updates --workers local --yes to test and enable routing.' : 'Ready. Normal GitHub routing is unchanged. Run starter-workers check, then check --github before enable.');
 }
 async function localCheck(c: Config, args: string[]): Promise<void> {
   assert(c.updateRole !== 'deliver' || !['--install', '--ci', '--quick'].some(flag => args.includes(flag)), 'Delivery installations never execute app source or dependency installation');
   const root = await command('git', ['rev-parse', '--show-toplevel']);
   const sha = await command('git', ['-C', root, 'rev-parse', `${option(args, 'ref') ?? 'HEAD'}^{commit}`]);
   const branch = option(args, 'ref') ?? await command('git', ['-C', root, 'branch', '--show-current']);
-  const env = await lock('mutation', () => prepare(c, root, sha, `branch-${hash(branch).slice(0, 16)}`, args.includes('--refresh')));
+  const env = await lock('mutation', () => prepare(c, root, sha, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`, args.includes('--refresh')));
   for (let n = 0; n < 2; n++) print(await launch(c, env.image, ['smoke']));
   if (args.includes('--ci') || args.includes('--quick') || args.includes('--install')) {
     const archive = path.join(home, `source-${sha}.tar`);
@@ -143,6 +143,16 @@ export async function main(args: string[]): Promise<void> {
     case 'service': assert(['start', 'stop'].includes(args[1]), 'Use service start|stop'); return service(c, args[1] === 'start');
     case 'auth': assert(args[1] === 'replace', 'Use auth replace'); await authenticate(c, option(args, 'token-expires')); return;
     case 'check': return args.includes('--github') ? githubCheck(c, args) : localCheck(c, args);
+    case 'proof': {
+      const proof = await localProof(c);
+      const heartbeat = await readJson<{ pid?: number; polled?: string; paused?: boolean; error?: string }>(path.join(home, 'status.json'), {});
+      const age = Date.now() - Date.parse(heartbeat.polled ?? '');
+      let alive = false;
+      if (heartbeat.pid && heartbeat.pid > 0) { try { process.kill(heartbeat.pid, 0); alive = true; } catch { /* A stopped service is not ready. */ } }
+      print({ ...proof, repository: c.repo, role: c.updateRole, workflow: c.updateWorkflow,
+        localOnly: c.localOnly, publicBranch: c.publicBranch,
+        managerHealthy: alive && await exists(path.join(home, 'daemon.lock')) && !c.paused && !heartbeat.paused && !heartbeat.error && age >= 0 && age < 60_000 }); return;
+    }
     case 'refresh': return localCheck(c, c.updateRole === 'deliver' ? [...args, '--refresh'] : [...args, '--refresh', '--install']);
     case 'status': do { print(await status()); if (!args.includes('--watch')) break; await new Promise(resolve => setTimeout(resolve, 5000)); } while (args.includes('--watch')); return;
     case 'images': print((await catalog()).environments); return;
@@ -209,7 +219,7 @@ export async function main(args: string[]): Promise<void> {
       const root = path.resolve(option(args, 'from') ?? '.');
       const sha = await command('git', ['-C', root, 'rev-parse', 'HEAD']);
       const branch = await command('git', ['-C', root, 'branch', '--show-current']);
-      await lock('mutation', () => prepare(c, root, sha, `branch-${hash(branch).slice(0, 16)}`));
+      await lock('mutation', () => prepare(c, root, sha, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`));
       await install(c); return;
     }
     case 'uninstall':

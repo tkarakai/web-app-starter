@@ -1,4 +1,4 @@
-import { assert, type Config, type Run } from './core.ts';
+import { assert, updaterWorkflow, type Config, type Run } from './core.ts';
 export interface Assignment {
   repository: string; repositoryId: number; runId: number; runAttempt: number;
   sha: string; job?: string; event: string; ref: string; publicBranch?: string;
@@ -11,7 +11,7 @@ export function assignment(c: Config, run: Run, sha: string, repositoryId: numbe
   const expected: Assignment = { repository: c.repo, repositoryId, runId: run.id, runAttempt: run.run_attempt, sha, job, event: run.event, ref: `refs/heads/${run.head_branch}`, publicBranch: c.publicBranch };
   if (c.updateRole) {
     assert(job && (c.updateRole === 'verify' ? ['check', 'verify'] : ['deliver']).includes(job), 'Updater job is outside installation role');
-    assert(c.updateWorkflow && run.path === c.updateWorkflow && ['schedule', 'workflow_dispatch'].includes(run.event) && sha === run.head_sha, 'Unsupported updater workflow, event or source');
+    assert(updaterWorkflow(c, run) && ['schedule', 'workflow_dispatch'].includes(run.event) && sha === run.head_sha, 'Unsupported updater workflow, event or source');
   } else if (run.event === 'pull_request') {
     const pr = run.pull_requests[0];
     assert(pr && pr.head.repo.id === repositoryId && pr.base.repo.id === repositoryId && pr.head.sha === run.head_sha, 'PR assignment must belong to this repository and authenticated head');

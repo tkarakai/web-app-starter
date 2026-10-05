@@ -18,6 +18,9 @@ Reference: `platform/docs/development.md`, "App configuration".
 
 For update delivery, read `.github/update-delivery.json` and run
 `bun run platform:setup-updates --check --json` first. Read `platform/docs/setup-updates.md`.
+For updater job machines, preserve existing routing or explicitly choose `--workers hosted|local`;
+local setup tests both Docker installations before enabling them. Read the worker section in
+`platform/docs/setup-updates.md`. Never substitute ordinary CI routing or infer live readiness from a saved choice.
 Offer App (recommended), fallback (limited manual CI/workflow delivery), or deferred.
 Only explicit owner consent permits `--yes` remote setup, permission changes or identity switches.
 A non-interactive agent without that consent records pending intent and hands off the exact owner
