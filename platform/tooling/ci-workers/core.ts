@@ -10,6 +10,8 @@ export const label = 'dev.starter.workers';
 export const home = process.env.STARTER_WORKERS_HOME || path.join(os.homedir(), '.local/share/starter-workers');
 export interface Config {
   version: number; repo: string; pool: string; docker: string; context: string;
+  org?: string; repos?: string[]; runnerGroupId?: number;
+  routing?: Record<string, { enabled: boolean; previous: string }>;
   concurrency: number; memoryGiB: number; diskGiB: number; cpus: number;
   paused: boolean; pauseRequest?: string; localOnly: boolean; publicBranch?: string; tokenExpiry?: string;
   updateRole?: 'verify' | 'deliver'; updateWorkflow?: string;
@@ -36,6 +38,14 @@ export function repository(remote: string): string {
 export function validateRepo(repo: string): string {
   assert(/^[A-Za-z0-9_-][A-Za-z0-9_.-]*\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(repo), 'Invalid GitHub owner/repository');
   return repo;
+}
+export function configuredRepos(c: Config): string[] { return c.org ? (c.repos ?? []) : [c.repo]; }
+export function selectedRepo(c: Config, repo: string): Config {
+  assert(configuredRepos(c).some(name => name.toLowerCase() === repo.toLowerCase()), `Repository ${repo} is not configured in this pool`);
+  return { ...c, repo: configuredRepos(c).find(name => name.toLowerCase() === repo.toLowerCase())! };
+}
+export function preparedScope(c: Config, scope: string): string {
+  return c.org ? `${hash(c.repo.toLowerCase()).slice(0, 12)}-${scope}` : scope;
 }
 export function sourceRequest(config: Config, run: Run, job: Job, repoId: number): { sha: string; scope: string; job?: string } | undefined {
   if (!job.labels.includes(config.pool) || !job.labels.includes(`starter-run-${run.id}`)) return;

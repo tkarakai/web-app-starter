@@ -243,6 +243,7 @@ environment-specific and silently breaks artifact reuse
 | GitHub workflow behavior, required checks, E2E policy or private CI costs | [docs/ci-github.md](docs/ci-github.md) |
 | Native pre-push checks, act debugging or cached local execution | [docs/ci-pre-push.md](docs/ci-pre-push.md) |
 | Installing, certifying or operating disposable local GitHub workers | [docs/ci-workers.md](docs/ci-workers.md) |
+| Sharing one prepared local CI pool across private apps in a GitHub organization | [docs/ci-org-runners.md](docs/ci-org-runners.md) |
 | Writing components, Convex functions or styles | [docs/code-style.md](docs/code-style.md) |
 | Working on auth, route protection, rate limiting or React patterns | [docs/architecture.md](docs/architecture.md), [docs/authentication-and-onboarding.md](docs/authentication-and-onboarding.md), [docs/rate-limiting-architecture.md](docs/rate-limiting-architecture.md) |
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |

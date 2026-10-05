@@ -1,5 +1,9 @@
 # Local CI workers for GitHub Actions
 
+For several private apps in one GitHub organization, use [one organization-wide prepared worker
+pool](ci-org-runners.md). It keeps the fresh-container and image-preparation behavior described
+here while applying one capacity budget across the apps.
+
 For **scheduled platform updates**, use the [update setup guide](setup-updates.md#choose-where-update-jobs-run):
 `bun run platform:setup-updates --workers local --yes` manages two separate updater installations.
 The ordinary CI setup below is a different routing choice.
@@ -60,10 +64,10 @@ packages. Warm jobs reuse those bytes locally.
 8. Run `starter-workers enable`. Only now does normal app CI request your pool. Summary jobs,
    Security and deployment workflows remain hosted. Other developers just push code normally.
 
-One installation owns one repository and persists a unique pool ID, independent of installations
-on other machines. To select another state directory use
-`STARTER_WORKERS_HOME` consistently; the installed command points to the most recently installed
-pool. Organization-wide shared registration is not supported. Use dedicated CI hosts when
+The setup above gives one installation one repository and a unique pool ID. The
+[organization option](ci-org-runners.md) allows several selected private repositories in one
+installation. To select another state directory use `STARTER_WORKERS_HOME` consistently; the
+installed command points to the most recently installed pool. Use dedicated CI hosts when
 running code from people you do not trust; containers still share the Linux kernel.
 
 ## Separate starter-update installations
@@ -256,7 +260,7 @@ and [the runner's ordering](https://github.com/actions/runner/blob/v2.337.0/src/
 
 Stop the old Compose project, remove its GitHub runner registrations, revoke its registration
 PAT, and delete its dedicated cache volumes after identifying them with `docker volume ls`.
-Remove the old `PLATFORM_CI_RUNNER` variable before enabling the manager. Do not reuse those
+Remove `PLATFORM_CI_RUNNER` before enabling the manager. Do not reuse those
 writable volumes as image seeds. Complete setup and certification above before switching routing;
 other tools using Docker on the machine are unaffected.
 

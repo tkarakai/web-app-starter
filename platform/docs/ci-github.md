@@ -143,8 +143,10 @@ sets `PLATFORM_CI_WORKER_POOL`; CI workloads then request that pool, exact sourc
 Each job receives a fresh container while reusing immutable prepared images. Summary jobs,
 Security and deployments remain outside that managed pool.
 
-The legacy `PLATFORM_CI_RUNNER` setting supports externally operated Linux runners, including
-native Security scans on amd64/arm64. With no legacy setting, jobs outside the managed pool stay
+For several private apps, an [organization-wide prepared pool](ci-org-runners.md) shares one
+manager and Docker budget while keeping fresh job containers. `PLATFORM_CI_RUNNER` supports
+externally operated Linux runners, including native Security scans on amd64/arm64; it does not
+provide the manager's prepared images. With no external-runner setting, jobs outside the managed pool stay
 hosted. Deployment jobs always stay hosted. The retired shared-cache Compose runner is replaced
 by the manager; follow the [migration guide](ci-workers.md#migrate-from-the-retired-compose-runner).
 

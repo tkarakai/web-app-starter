@@ -11,7 +11,10 @@ export async function waitForPage(url: string, timeoutMs = 60_000): Promise<void
       await response.body?.cancel();
       if (response.ok) return;
       failure = `HTTP ${response.status}`;
-    } catch (error) { failure = String(error); }
+    } catch (error) {
+      // A request aborted at the deadline should not hide an HTTP error already observed.
+      if (!failure.startsWith("HTTP ") || Date.now() < deadline) failure = String(error);
+    }
     await new Promise(resolve => setTimeout(resolve, Math.min(250, Math.max(0, deadline - Date.now()))));
   }
   throw new Error(`${url}: page readiness failed (${failure})`);

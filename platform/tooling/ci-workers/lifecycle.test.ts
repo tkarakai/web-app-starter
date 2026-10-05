@@ -520,6 +520,71 @@ assert((await core.readJson(path.join(core.home, 'gh.json'))).calls.some(a => a[
 `);
 });
 
+test('organization routing certifies members separately and hosted changes only the selected app', async t => {
+  const dir = await fixture(t);
+  await writeFile(path.join(dir, 'gh'), `#!${process.execPath}
+import fs from 'node:fs';
+import path from 'node:path';
+const file = path.join(process.env.STARTER_WORKERS_HOME, 'gh.json');
+const state = JSON.parse(fs.readFileSync(file));
+const args = process.argv.slice(2); state.calls.push(args);
+fs.writeFileSync(file, JSON.stringify(state));
+if (args[1] === 'list') process.stdout.write(JSON.stringify(state.variables));
+`, { mode: 0o755 });
+  await run(dir, `
+process.env.PATH = ${JSON.stringify(dir)} + ':' + process.env.PATH;
+Object.defineProperty(process, 'platform', { value: 'linux' });
+const org = { ...c, org: 'team', repo: 'team/alpha', repos: ['team/alpha', 'team/beta'], runnerGroupId: 7, routing: {}, paused: false, localOnly: false };
+await core.save(path.join(core.home, 'config.json'), org);
+await fs.writeFile(path.join(core.home, 'credential'), 'dummy');
+const { main } = await import(path.join(base, 'cli.ts'));
+const { proofId, proofPath } = await import(path.join(base, 'proof.ts'));
+const { runtimePolicy } = await import(path.join(base, 'runtime.ts'));
+const environments = [];
+for (const name of org.repos) {
+  const selected = { ...org, repo: name };
+  const checked = new Date().toISOString();
+  const proof = { sha: '${'a'.repeat(40)}', image: '${image}', runtime: core.hash(JSON.stringify(runtimePolicy(selected))),
+    pool: org.pool, key: name, scope: core.preparedScope(selected, 'branch-main'), checked };
+  const complete = { ...proof, id: proofId(proof) };
+  await core.save(proofPath(selected, 'local-check'), complete);
+  await core.save(proofPath(selected, 'github-check'), { ...complete, certified: checked });
+  environments.push({ key: proof.key, source: proof.sha, image: proof.image, scope: proof.scope, used: checked });
+}
+await core.save(path.join(core.home, 'catalog.json'), { environments });
+await core.save(path.join(core.home, 'status.json'), { polled: new Date().toISOString(), paused: false });
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [] });
+globalThis.fetch = async (input) => {
+  const url = String(input);
+  if (url.endsWith('/repos/team/alpha')) return Response.json({ id: 11, private: true });
+  if (url.endsWith('/repos/team/beta')) return Response.json({ id: 22, private: true });
+  if (url.endsWith('/orgs/team/actions/runner-groups/7')) return Response.json({ id: 7, visibility: 'selected', allows_public_repositories: false });
+  if (url.includes('/orgs/team/actions/runner-groups/7/repositories?')) return Response.json({ repositories: [{ id: 11 }, { id: 22 }] });
+  if (url.endsWith('/contents/.github/workflows/platform-ci-web.yml')) return Response.json({ content: Buffer.from('starter-source-').toString('base64') });
+  throw Error('Unexpected API ' + url);
+};
+await assert.rejects(main(['enable']), /Use --repo/);
+await main(['enable', '--repo', 'team/alpha']);
+await main(['enable', '--repo', 'team/beta']);
+let updated = await core.config();
+assert.equal(updated.routing['team/alpha'].enabled, true);
+assert.equal(updated.routing['team/beta'].enabled, true);
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_WORKER_POOL', value: org.pool }] });
+await main(['hosted', '--repo', 'team/alpha']);
+updated = await core.config();
+assert.equal(updated.routing['team/alpha'].enabled, false);
+assert.equal(updated.routing['team/beta'].enabled, true);
+const calls = (await core.readJson(path.join(core.home, 'gh.json'))).calls;
+assert(calls.some(args => args[1] === 'delete' && args.includes('team/alpha')));
+assert(!calls.some(args => args[1] === 'delete' && args.includes('team/beta')));
+await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [] });
+await main(['org', 'remove', '--repo', 'team/alpha']);
+updated = await core.config();
+assert.deepEqual(updated.repos, ['team/beta']);
+assert.equal(updated.repo, 'team/beta');
+`);
+});
+
 test('GitHub launch requires immutable expected assignment before creating resources', async t => {
   const dir = await fixture(t);
   await run(dir, `
