@@ -23,7 +23,7 @@
     "@web-app-starter/design-patterns": "workspace:*",
     "@web-app-starter/design-system": "workspace:*",
     "@web-app-starter/i18n": "workspace:*",
-    "lucide-react": "^1.47.0",
+    "lucide-react": "^1.48.0",
     "next": "^16.3.6",
     "next-intl": "^4.14.8",
     "next-themes": "^0.4.6",
@@ -36,7 +36,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
-    "@size-limit/file": "^14.0.0",
+    "@size-limit/file": "^14.0.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -44,11 +44,11 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "6.1.1",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@vitest/coverage-v8": "^5.0.2",
     "happy-dom": "^20.14.5",
-    "size-limit": "^14.0.0",
+    "size-limit": "^14.0.1",
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   }
 }

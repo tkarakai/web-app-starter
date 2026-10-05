@@ -24,14 +24,14 @@
     "better-auth": "1.6.33",
     "convex": "1.46.0",
     "convex-helpers": "^0.1.124",
-    "resend": "^6.28.0",
+    "resend": "^6.30.0",
     "@web-app-starter/convex-platform": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",
     "@types/react": "19.3.0",
-    "convex-test": "^0.0.59",
+    "convex-test": "^0.0.60",
     "typescript": "6.0.3",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   }
 }
