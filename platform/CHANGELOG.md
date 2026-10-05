@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-10-05
+
 ### Added
 
 - One prepared-image manager can register single-job organization runners for selected private
@@ -960,5 +962,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [3.1.0]: https://github.com/tkarakai/web-app-starter/compare/v3.0.0...v3.1.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...HEAD
 [4.0.0]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...v4.0.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...v4.1.0

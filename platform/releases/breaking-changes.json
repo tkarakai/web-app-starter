@@ -896,6 +896,74 @@
         "turbo.json",
         "root.github.actions.deploy-convex.fixture-target.ts"
       ]
+    },
+    {
+      "version": "4.1.0",
+      "previous": "4.0.0",
+      "supportedBaseline": ">=2.0.0 <4.1.0",
+      "codemods": [],
+      "migrations": [],
+      "env": [
+        {
+          "name": "PLATFORM_UPDATE_DELIVERY",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_UPDATE_RUNNER",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_UPDATE_DELIVERY_RUNNER",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_CI_WORKER_POOL",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_CI_AUX_RUNNER",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_CI_LOCAL_ONLY",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        }
+      ],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [
+        {
+          "path": "package.json",
+          "name": "turbo",
+          "minimum": "2.11.7"
+        }
+      ],
+      "changedSeams": [
+        "root.github.workflows.ci-admin.yml",
+        "root.github.workflows.ci-landing.yml",
+        "root.github.workflows.ci-shared.yml",
+        "root.github.workflows.ci-storybook.yml",
+        "root.github.workflows.ci-verify.yml",
+        "root.github.workflows.ci-web.yml",
+        "apps.demo.package.json",
+        "apps.landing.package.json",
+        "apps.web.package.json",
+        "package.json",
+        "packages.backend.package.json",
+        "renovate.json"
+      ]
     }
   ]
 }
