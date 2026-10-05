@@ -140,13 +140,17 @@ that can run from a reviewed branch. That mode checks worker parity and isolatio
 
 Hosted `ubuntu-latest` runners are the default. The optional [worker manager](ci-workers.md)
 sets `PLATFORM_CI_WORKER_POOL`; CI workloads then request that pool, exact source SHA and run ID.
-Each job receives a fresh container while reusing immutable prepared images. Summary jobs,
-Security and deployments remain outside that managed pool.
+Each job receives a fresh container while reusing immutable prepared images. PR and push CI
+summaries and Security jobs use the same source-bound route. Scheduled Security, deployment,
+Renovate and updater coordination use `PLATFORM_CI_AUX_RUNNER` when configured; updater jobs can
+also use their separate prepared pools.
 
 The legacy `PLATFORM_CI_RUNNER` setting supports externally operated Linux runners, including
-native Security scans on amd64/arm64. With no legacy setting, jobs outside the managed pool stay
-hosted. Deployment jobs always stay hosted. The retired shared-cache Compose runner is replaced
-by the manager; follow the [migration guide](ci-workers.md#migrate-from-the-retired-compose-runner).
+native Security scans on amd64/arm64. With no local selector, jobs use hosted runners unless
+`PLATFORM_CI_LOCAL_ONLY=true`, which instead requests an unmatched local label and leaves those
+jobs queued. See [all-local routing](ci-workers.md#keep-every-actions-job-local) for the auxiliary
+runner and cutover sequence. The retired shared-cache Compose runner is replaced for prepared CI
+jobs by the manager; follow the [migration guide](ci-workers.md#migrate-from-the-retired-compose-runner).
 
 ## Artifacts and private repository costs
 

@@ -34,7 +34,7 @@ concurrency:
 jobs:
   preflight:
     name: Deployment Setup
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     environment: staging
     outputs:
       ready: ${{ steps.check.outputs.ready }}
@@ -62,7 +62,7 @@ jobs:
     needs: preflight
     if: needs.preflight.outputs.ready == 'true'
     name: Paid Features
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       attestations: ${{ steps.attest.outputs.enabled }}
     steps:
@@ -80,7 +80,7 @@ jobs:
     needs: preflight
     if: needs.preflight.outputs.ready == 'true'
     name: Validate Source SHA
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - name: Require an immutable full commit SHA
         shell: bash
@@ -135,7 +135,7 @@ jobs:
     name: CI Gate
     needs: [preflight, validate-source, ci-shared, ci-web, ci-admin, ci-landing]
     if: always() && needs.preflight.outputs.ready == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - name: Evaluate CI and set commit status
         env:
@@ -175,7 +175,7 @@ jobs:
   changes:
     name: Detect Changes
     needs: [ci-gate, validate-source]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       web: ${{ steps.eval.outputs.web }}
       admin: ${{ steps.eval.outputs.admin }}
@@ -231,7 +231,7 @@ jobs:
     name: Build Web (Staging)
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -267,7 +267,7 @@ jobs:
     name: Build Admin (Staging)
     needs: changes
     if: needs.changes.outputs.admin == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -303,7 +303,7 @@ jobs:
     name: Build Landing (Staging)
     needs: changes
     if: needs.changes.outputs.landing == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -351,7 +351,7 @@ jobs:
        needs.build-landing.outputs.reused == 'false')
     # A failed attestation never fails a deploy.
     continue-on-error: true
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - name: Download web artifact
         if: needs.build-web.outputs.reused == 'false'
@@ -400,7 +400,7 @@ jobs:
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     environment: staging
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -427,7 +427,7 @@ jobs:
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -472,7 +472,7 @@ jobs:
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       needs.changes.outputs.admin == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -517,7 +517,7 @@ jobs:
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       needs.changes.outputs.landing == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -565,7 +565,7 @@ jobs:
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       (needs.changes.outputs.web == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.landing == 'true')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - name: Health check deployed apps
         id: health
@@ -631,7 +631,7 @@ jobs:
       !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       needs.changes.outputs.any_app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -654,7 +654,7 @@ jobs:
     name: Record Ops Outcomes
     if: always() && needs.preflight.outputs.ready == 'true'
     needs: [preflight, validate-source, build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, changes, smoke-test, record]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

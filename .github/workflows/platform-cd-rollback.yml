@@ -38,7 +38,7 @@ jobs:
   # ─── Validate inputs ─────────────────────────────────────────────
   validate:
     name: Validate Rollback
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       landing: ${{ steps.present.outputs.landing }}
       vercel-env: ${{ steps.env.outputs.vercel-env }}
@@ -143,7 +143,7 @@ jobs:
   build-web:
     name: Resolve Web Artifact (Rollback)
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -178,7 +178,7 @@ jobs:
   build-admin:
     name: Resolve Admin Artifact (Rollback)
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -214,7 +214,7 @@ jobs:
     name: Resolve Landing Artifact (Rollback)
     needs: validate
     if: needs.validate.outputs.landing == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -257,7 +257,7 @@ jobs:
       needs.build-admin.result == 'success' &&
       (needs.build-landing.result == 'success' ||
        (needs.validate.outputs.landing == 'false' && needs.build-landing.result == 'skipped'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -285,7 +285,7 @@ jobs:
       needs.validate.result == 'success' &&
       needs.build-web.result == 'success' &&
       needs.deploy-convex.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -331,7 +331,7 @@ jobs:
       needs.validate.result == 'success' &&
       needs.build-admin.result == 'success' &&
       needs.deploy-convex.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -377,7 +377,7 @@ jobs:
       needs.validate.result == 'success' &&
       needs.build-landing.result == 'success' &&
       needs.deploy-convex.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -428,7 +428,7 @@ jobs:
       needs.deploy-admin.result == 'success' &&
       (needs.deploy-landing.result == 'success' ||
        (needs.validate.outputs.landing == 'false' && needs.deploy-landing.result == 'skipped'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -497,7 +497,7 @@ jobs:
     name: Record Ops Outcomes
     if: always()
     needs: [build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, validate, post-rollback]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

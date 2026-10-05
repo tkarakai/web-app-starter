@@ -38,9 +38,14 @@ export function verifyAssignment(expected: Assignment, context: Record<string, s
     assert.equal(actual.base?.repo?.id, expected.repositoryId);
     assert.equal(actual.head?.sha, pr.head);
     assert.equal(actual.base?.sha, pr.base);
-    assert.match(actual.merge_commit_sha ?? '', /^[a-f0-9]{40}$/);
-    assert.equal(context.GITHUB_SHA, actual.merge_commit_sha);
-    if (expected.sha !== pr.head) assert.equal(context.GITHUB_SHA, expected.sha);
+    if (expected.sha === pr.head) {
+      assert.match(actual.merge_commit_sha ?? '', /^[a-f0-9]{40}$/);
+      assert.equal(context.GITHUB_SHA, actual.merge_commit_sha);
+    } else {
+      // The manager authenticated this merge commit's parents before registration.
+      // GitHub can omit or stale the payload's merge_commit_sha on reruns.
+      assert.equal(context.GITHUB_SHA, expected.sha);
+    }
   } else {
     assert(['push', 'workflow_dispatch'].includes(expected.event));
     assert.equal(context.GITHUB_SHA, expected.sha);

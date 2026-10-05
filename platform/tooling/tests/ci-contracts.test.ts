@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import { waitForPage } from "../http-ready.ts";
 import { auditResult } from "../dependency-audit.ts";
@@ -30,6 +30,28 @@ test("shared impact policy selects consumers/backend, new packages and CI change
   assert.equal(matches("web", "apps/web/src/app/page.tsx"), true);
   assert.equal(matches("landing", "apps/web/src/app/page.tsx"), false);
   assert.equal(matches("web", "docs/example.md"), false);
+});
+
+test("every ordinary workflow runner has an explicit local-only route", () => {
+  const directory = new URL("../../../.github/workflows/", import.meta.url);
+  for (const file of readdirSync(directory).filter(name => name.endsWith(".yml"))) {
+    const lines = readFileSync(new URL(file, directory), "utf8").split("\n");
+    for (const [index, line] of lines.entries()) {
+      if (!/^\s+runs-on:/.test(line)) continue;
+      if (file === "platform-update-workers-check.yml") continue;
+      if (file === "ci-verify.yml" && line.includes("inputs.worker_pool")) {
+        assert.match(line, /starter-source-\{1\}/);
+        assert.match(line, /starter-run-\{2\}/);
+        continue;
+      }
+      assert.match(line, /PLATFORM_CI_LOCAL_ONLY/, `${file}:${index + 1} has no fail-closed selector`);
+      if (line.includes("PLATFORM_CI_WORKER_POOL")) {
+        assert.match(line, /starter-source-\{1\}/, `${file}:${index + 1} lacks source binding`);
+        assert.match(line, /starter-run-\{2\}/, `${file}:${index + 1} lacks run binding`);
+      }
+      if (file === "platform-security.yml") assert.match(line, /github\.event_name != 'schedule'/);
+    }
+  }
 });
 
 test("audit enforces severity independently of Bun's any-finding exit and rejects errors", () => {

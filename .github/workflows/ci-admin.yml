@@ -21,7 +21,7 @@ jobs:
     name: CI Admin Complete
     needs: [platform]
     if: always()
-    runs-on: ${{ vars.PLATFORM_CI_WORKER_POOL != '' && 'ubuntu-latest' || vars.PLATFORM_CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     steps:
       - name: Require the platform workflow to pass
         run: |
