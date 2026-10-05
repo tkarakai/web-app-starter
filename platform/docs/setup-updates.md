@@ -135,7 +135,7 @@ it does not mean a local service upgrades your default branch or deploys your ap
 
 | Worker choice | What you operate | What setup changes |
 | --- | --- | --- |
-| GitHub-hosted (default) | Nothing on your computer | Clears the two updater pool variables. Jobs then use the repository's auxiliary/legacy runner if set; otherwise they use hosted runners unless local-only policy is active. |
+| GitHub-hosted (default) | Nothing on your computer | Clears the two updater pool variables. Jobs then use the repository's auxiliary/legacy runner if set; otherwise they use hosted runners only when no other local route or explicit local-only guard remains. |
 | Local Docker | A macOS or Linux host with Docker and two running worker services | Prepares images, tests both installations through GitHub, then sets both updater pool variables. |
 | Preserve | Keep the existing arrangement | Leaves routing untouched, including custom or partly local setups. Unreadable settings remain unknown. |
 
@@ -149,7 +149,7 @@ bun run platform:setup-updates --workers hosted --yes
 delivery-mode gate. Combine it with `--app`, `--fallback` or `--defer` to configure both choices.
 Without `--yes`, it records pending intent only. Deferred delivery records a requested worker
 choice for later; it does not install services. Adoption accepts `--update-workers hosted|local`;
-omitting it preserves existing routing (GitHub-hosted in a new app).
+omitting it preserves existing routing (GitHub-hosted in a new app with no local runner variables).
 
 ### Set up local workers
 
@@ -217,8 +217,8 @@ Existing manually configured routing is preserved and reported unvalidated until
 `--workers hosted --yes` clears only the two updater routing variables. It preserves ordinary CI
 worker routing, `PLATFORM_CI_AUX_RUNNER`, `PLATFORM_CI_LOCAL_ONLY`, credentials, schedule and
 auto-merge. With [all-local routing](ci-workers.md#keep-every-actions-job-local), this choice
-returns updater jobs to the auxiliary runner, or to the unmatched local-only label if no
-auxiliary runner exists. Existing queued jobs retain their old labels:
+returns updater jobs to the auxiliary runner. If another local selector remains without an
+auxiliary runner, jobs request the unmatched local-only label. Existing queued jobs retain their old labels:
 finish or cancel them before stopping unused services. For each updater installation, run its
 absolute `starter-workers pause --drain`, then `starter-workers service stop`. Setup does not stop
 or uninstall services on your behalf. The update record contains non-secret worker intent and

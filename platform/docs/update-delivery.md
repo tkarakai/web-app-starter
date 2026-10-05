@@ -153,8 +153,9 @@ Publication launches only its independently prepared immutable tools image. It n
 app dependency seed, runs app scripts or shares writable caches with verification/ordinary CI.
 The job still uses only pinned actions, inline publisher code and Git with hooks disabled.
 Removing or clearing either selector uses `PLATFORM_CI_AUX_RUNNER` or legacy
-`PLATFORM_CI_RUNNER` when set. With neither, it uses `ubuntu-latest` unless
-`PLATFORM_CI_LOCAL_ONLY=true`, which requests an unmatched local label instead. Cancel and restart
+`PLATFORM_CI_RUNNER` when set. With neither, it uses `ubuntu-latest` only when no other local
+runner variable or explicit `PLATFORM_CI_LOCAL_ONLY=true` guard remains. Otherwise it requests
+an unmatched local label. Cancel and restart
 already queued runs, which retain their old labels. Then stop each unused installation explicitly:
 
 ```sh

@@ -146,10 +146,13 @@ Renovate and updater coordination use `PLATFORM_CI_AUX_RUNNER` when configured; 
 also use their separate prepared pools.
 
 The legacy `PLATFORM_CI_RUNNER` setting supports externally operated Linux runners, including
-native Security scans on amd64/arm64. With no local selector, jobs use hosted runners unless
-`PLATFORM_CI_LOCAL_ONLY=true`, which instead requests an unmatched local label and leaves those
-jobs queued. See [all-local routing](ci-workers.md#keep-every-actions-job-local) for the auxiliary
-runner and cutover sequence. The retired shared-cache Compose runner is replaced for prepared CI
+native Security scans on amd64/arm64. A repository uses hosted runners only when **none** of its
+local runner variables are set. Any local route removes hosted fallback for all workflows;
+uncovered jobs request an unmatched local label and remain queued. The optional
+`PLATFORM_CI_LOCAL_ONLY=true` guard enforces the same policy before a local runner is set. See
+[all-local routing](ci-workers.md#keep-every-actions-job-local) for the auxiliary
+runner and cutover sequence. Repository owners choose this routing for public or private repos;
+visibility does not select a runner. The retired shared-cache Compose runner is replaced for prepared CI
 jobs by the manager; follow the [migration guide](ci-workers.md#migrate-from-the-retired-compose-runner).
 
 ## Artifacts and private repository costs

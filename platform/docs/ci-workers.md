@@ -76,6 +76,12 @@ see [update delivery](update-delivery.md#self-hosted-linux-runners). The ordinar
 
 ## Keep every Actions job local
 
+Runner routing is an owner choice for public and private repositories. The prepared manager's
+normal admission is limited to reviewed private-repository workloads; a public repository can
+use a separately operated local runner through `PLATFORM_CI_AUX_RUNNER` or the legacy
+`PLATFORM_CI_RUNNER` selector. Public fork PRs need a separate trust decision before any local
+runner executes their code.
+
 The prepared manager admits source-bound PR, push and manual CI jobs. It does not admit scheduled
 Security, deployment orchestration, Renovate or updater coordination as ordinary CI. To run
 those jobs locally, maintain a separate trusted Linux runner and set its **custom label** as
@@ -84,28 +90,31 @@ it does not receive the manager's fresh-container or prepared-image isolation. D
 manager's pool ID as the auxiliary label. The separate [update worker setup](setup-updates.md)
 can route eligible updater jobs to its own prepared pools.
 
-After adopting workflows with `PLATFORM_CI_LOCAL_ONLY` support on the default branch, configure
-the auxiliary runner and opt into fail-closed routing **before** enabling the prepared pool:
+After adopting workflows with all-local routing on the default branch, set the explicit guard,
+configure the auxiliary runner and then enable the prepared pool:
 
 ```sh
-gh variable set PLATFORM_CI_AUX_RUNNER --body YOUR_AUX_RUNNER_LABEL
 gh variable set PLATFORM_CI_LOCAL_ONLY --body true
+gh variable set PLATFORM_CI_AUX_RUNNER --body YOUR_AUX_RUNNER_LABEL
 starter-workers enable
 ```
 
-The repository variable `PLATFORM_CI_LOCAL_ONLY` controls workflow routing; it is separate from
-the manager's `setup --local-only` option, which prepares images without a GitHub credential.
+Setting **any** local runner variable (`PLATFORM_CI_WORKER_POOL`, `PLATFORM_CI_AUX_RUNNER`,
+`PLATFORM_CI_RUNNER`, `PLATFORM_UPDATE_RUNNER` or `PLATFORM_UPDATE_DELIVERY_RUNNER`) automatically
+disables hosted fallback for **every** workflow. `PLATFORM_CI_LOCAL_ONLY=true` also does so
+before the first runner is configured. It is separate from the manager's `setup --local-only`
+option, which prepares images without a GitHub credential.
 The manager's diagnostic must already have passed. `enable` still requires removing the old
-`PLATFORM_CI_RUNNER` variable. With `PLATFORM_CI_LOCAL_ONLY=true`, a missing auxiliary label
+`PLATFORM_CI_RUNNER` variable. With any local runner configured, a missing auxiliary label
 requests the deliberately unmatched `starter-local-only-unconfigured` label; an offline local
 runner leaves jobs queued. Neither condition selects a hosted runner. Check all workflow
 selectors and any app-owned jobs when adopting this policy. A runner label is not a resource
 limit: allocate enough host capacity for the auxiliary runner and prepared manager together.
 
 `starter-workers hosted` restores the previous **prepared-pool** route; it deliberately leaves
-the auxiliary and local-only variables intact. To intentionally allow hosted execution again,
-delete `PLATFORM_CI_LOCAL_ONLY` and, if no longer needed, `PLATFORM_CI_AUX_RUNNER` with
-`gh variable delete NAME`. Cancel and rerun already queued jobs after any routing change.
+the auxiliary and local-only variables intact. To return a repository fully to hosted execution,
+remove **all** local runner variables after draining their services. Cancel and rerun already
+queued jobs after any routing change.
 
 ## Test a branch before enabling normal CI
 

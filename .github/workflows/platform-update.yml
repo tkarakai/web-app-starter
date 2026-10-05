@@ -29,7 +29,7 @@ permissions: {}
 jobs:
   check:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-check"]', vars.PLATFORM_UPDATE_RUNNER, github.sha, github.run_id, github.run_attempt) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-check"]', vars.PLATFORM_UPDATE_RUNNER, github.sha, github.run_id, github.run_attempt) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     permissions:
       contents: read
       pull-requests: read
@@ -85,7 +85,7 @@ jobs:
   verify:
     needs: check
     if: needs.check.outputs.target != ''
-    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-verify"]', vars.PLATFORM_UPDATE_RUNNER, needs.check.outputs.head, github.run_id, github.run_attempt) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-verify"]', vars.PLATFORM_UPDATE_RUNNER, needs.check.outputs.head, github.run_id, github.run_attempt) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     timeout-minutes: 90
     permissions:
       contents: read
@@ -174,7 +174,7 @@ jobs:
     if: >-
       always() && !cancelled() && needs.check.result != 'skipped' &&
       (needs.check.result == 'failure' || needs.check.outputs.target != '' || needs.check.outputs.major != '')
-    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-deliver"]', vars.PLATFORM_UPDATE_DELIVERY_RUNNER, needs.check.outputs.head || github.sha, github.run_id, github.run_attempt) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || (vars.PLATFORM_CI_LOCAL_ONLY == 'true' && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-deliver"]', vars.PLATFORM_UPDATE_DELIVERY_RUNNER, needs.check.outputs.head || github.sha, github.run_id, github.run_attempt) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
     permissions:
       contents: write
       pull-requests: write
