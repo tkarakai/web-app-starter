@@ -92,7 +92,7 @@
     "test:landing-artifacts": "./platform/tooling/test-landing-export.sh --variants"
   },
   "overrides": {
-    "@peculiar/asn1-schema": "2.9.4",
+    "@peculiar/asn1-schema": "2.9.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "convex": "1.46.0",
@@ -106,7 +106,7 @@
     "@typescript-eslint/parser": "8.70.1",
     "eslint": "9.39.5",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "turbo": "^2.11.7",
     "typescript": "6.0.3"
   }
