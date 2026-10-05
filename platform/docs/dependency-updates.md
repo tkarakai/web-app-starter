@@ -14,11 +14,11 @@ ecosystem has already vetted (not yanked, not a fresh supply-chain surprise).
 ## "Self-hosted" — what that means (and doesn't)
 
 Renovate can run two ways: via Mend's cloud-hosted GitHub App, or **"self-hosted"**, which in
-Renovate jargon just means *we run the bot ourselves*. Here, "ourselves" is a plain GitHub Actions
-workflow on **GitHub-hosted runners**. **Nothing runs outside GitHub**, and this has nothing to do
-with "self-hosted runners." We chose this over the Mend app so no third party gets write access to
-the repo and we control exactly when it runs; the price is owning the `RENOVATE_TOKEN` secret
-(below).
+Renovate jargon just means *we run the bot ourselves*. Here, "ourselves" is a GitHub Actions
+workflow; its runner follows the [all-local routing policy](ci-workers.md#keep-every-actions-job-local).
+Self-hosting the bot and choosing a self-hosted Actions runner are separate decisions. We chose
+this over the Mend app so no third party gets write access to the repo and we control exactly
+when it runs; the price is owning the `RENOVATE_TOKEN` secret (below).
 
 ## How it runs
 
