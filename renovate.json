@@ -12,6 +12,7 @@
     "**/__tests__/**",
     "**/test/**",
     "**/tests/**",
-    "**/__fixtures__/**"
+    "**/__fixtures__/**",
+    "platform/tooling/platform-upgrade/fixtures/retained-transitive/**"
   ]
 }
