@@ -15,11 +15,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- One prepared-image manager can register single-job organization runners for selected private
+  apps, with one global Docker capacity budget, repository-bound admission and per-app
+  certification/routing. See [organization workers](docs/ci-org-runners.md).
+
 - Guided hosted/local worker choice in platform update setup, with two prepared Docker installations, real GitHub worker tests before routing changes, resumable setup and read-only worker readiness. Existing routing and credentials are preserved unless explicitly changed.
 - Platform updates can run on your own computers using separate prepared-image installations for verification and tools-only publication, authenticated to the exact repository, source, run, attempt, event and job; see [update delivery](docs/update-delivery.md#self-hosted-linux-runners).
 
 ### Fixed
 
+- HTTP readiness reports the last observed HTTP failure when the final retry expires.
 - Prepared workers now handle source-bound PR/push CI summaries and Security jobs. An auxiliary
   runner covers scheduled and orchestration jobs; configuring any local runner automatically
   prevents implicit hosted routing. `PLATFORM_CI_LOCAL_ONLY=true` can enforce the same policy

@@ -135,6 +135,12 @@ for setup, `starter-workers check --install`, the successful GitHub diagnostic a
 then `starter-workers enable`. Done when the diagnostic passes and normal jobs use fresh managed
 containers; GitHub-hosted users need no worker migration.
 
+The published v4.0.0 manager is scoped to one repository per installation. If you maintain
+several private apps on one machine, complete this migration using hosted CI first. After
+adopting a later platform release that includes [organization workers](ci-org-runners.md),
+you can move the apps into one GitHub organization and certify them for one prepared pool.
+Running the v4.0.0 setup command separately from each app does not create that shared pool.
+
 The published v4.0.0 workflows still place CI summaries, Security and deployment jobs on
 hosted runners. If hosted Actions jobs are unavailable, keep a local runner route until a
 later platform release containing [all-local routing](ci-workers.md#keep-every-actions-job-local)

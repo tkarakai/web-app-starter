@@ -1,5 +1,9 @@
 # Local CI workers for GitHub Actions
 
+For several private apps in one GitHub organization, use [one organization-wide prepared worker
+pool](ci-org-runners.md). It keeps the fresh-container and image-preparation behavior described
+here while applying one capacity budget across the apps.
+
 For **scheduled platform updates**, use the [update setup guide](setup-updates.md#choose-where-update-jobs-run):
 `bun run platform:setup-updates --workers local --yes` manages two separate updater installations.
 The ordinary CI setup below is a different routing choice.
@@ -61,10 +65,10 @@ packages. Warm jobs reuse those bytes locally.
    and Security, request your pool. Scheduled Security and jobs outside the manager's admitted
    events use the auxiliary route described below. Other developers just push code normally.
 
-One installation owns one repository and persists a unique pool ID, independent of installations
-on other machines. To select another state directory use
-`STARTER_WORKERS_HOME` consistently; the installed command points to the most recently installed
-pool. Organization-wide shared registration is not supported. Use dedicated CI hosts when
+The setup above gives one installation one repository and a unique pool ID. The
+[organization option](ci-org-runners.md) allows several selected private repositories in one
+installation. To select another state directory use `STARTER_WORKERS_HOME` consistently; the
+installed command points to the most recently installed pool. Use dedicated CI hosts when
 running code from people you do not trust; containers still share the Linux kernel.
 
 ## Separate starter-update installations

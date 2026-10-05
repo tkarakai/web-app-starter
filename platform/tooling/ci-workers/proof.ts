@@ -2,9 +2,12 @@ import path from 'node:path';
 import { assert, catalog, hash, home, readJson, type Config } from './core.ts';
 import { runtimePolicy } from './runtime.ts';
 export interface Proof { id: string; sha: string; image: string; runtime: string; key: string; scope: string; pool: string; checked: string; }
+export function proofPath(c: Config, kind: 'local-check' | 'github-check'): string {
+  return path.join(home, c.org ? `${kind}-${hash(c.repo.toLowerCase()).slice(0, 16)}.json` : `${kind}.json`);
+}
 export function proofId(proof: Pick<Proof, 'sha' | 'image' | 'runtime' | 'pool' | 'checked'>): string { return hash(JSON.stringify([proof.sha, proof.image, proof.runtime, proof.pool, proof.checked])); }
 export async function localProof(c: Config): Promise<Proof> {
-  const proof = await readJson<Proof>(path.join(home, 'local-check.json'));
+  const proof = await readJson<Proof>(proofPath(c, 'local-check'));
   const age = Date.now() - Date.parse(proof.checked);
   assert(age >= 0 && age < 86400_000 && proof.id === proofId(proof) && /^[a-f0-9]{40}$/.test(proof.sha) && /^sha256:[a-f0-9]{64}$/.test(proof.image) && proof.pool === c.pool && proof.runtime === hash(JSON.stringify(runtimePolicy(c))), 'A fresh local check with the current runtime policy is required');
   const state = await catalog();
