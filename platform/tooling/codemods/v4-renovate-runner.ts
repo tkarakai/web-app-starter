@@ -26,12 +26,27 @@ export function migrateContent(content: string): string {
 
 export function migrate(root: string, check = false): string[] {
   const target = path.join(root, WORKFLOW);
-  if (!fs.existsSync(target)) return [];
-  const before = fs.readFileSync(target, "utf8");
-  const after = migrateContent(before);
-  if (after === before) return [];
-  if (!check) fs.writeFileSync(target, after);
-  return [WORKFLOW];
+  let fd: number;
+  try {
+    fd = fs.openSync(target, check ? "r" : "r+");
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") return [];
+    throw error;
+  }
+  try {
+    const before = fs.readFileSync(fd, "utf8");
+    const after = migrateContent(before);
+    if (after === before) return [];
+    if (!check) {
+      const bytes = Buffer.from(after, "utf8");
+      let offset = 0;
+      while (offset < bytes.length) offset += fs.writeSync(fd, bytes, offset, bytes.length - offset, offset);
+      fs.ftruncateSync(fd, bytes.length);
+    }
+    return [WORKFLOW];
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
