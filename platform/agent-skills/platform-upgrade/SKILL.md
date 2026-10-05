@@ -74,6 +74,12 @@ The resolution command only records that item; run `--resume` again to continue.
   itself never performs data migration or deploys the app.
 - **Advisories:** review the actual affected range and fixed version. A recorded decision cannot
   bypass contracts; a target still affected by a high/critical advisory cannot be certified.
+- **Lockfile audit:** the final adopted-app `bun.lock` is audited online after install. If high or
+  critical findings remain, inspect parent chains and patched releases, then make a scoped
+  age-eligible transitive refresh under `platform-deps`. Preserve app dependency declarations.
+  Run a frozen install and `bun run check:dependencies`, then resume the same report. A registry
+  failure or offline run cannot record a verified baseline; retry when online. Lower-severity
+  findings remain visible but do not block.
 
 For an unknown gate or stale-plan error, preserve the branch and read the diagnostic. Do not
 force the report through. An unrelated fix, changed source or unexpected generated file may
