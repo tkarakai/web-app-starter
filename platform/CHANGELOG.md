@@ -59,6 +59,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Eligible non-major dependencies and workflow actions are updated, including Lucide, Resend,
   Vitest, Vite, Size Limit, CodeQL and Renovate. The retained vulnerable-lockfile regression
   fixture is excluded from Renovate so it continues to test upgrade audit and repair behavior.
+- Upgrades migrate the stock app-owned Renovate workflow to the fail-closed auxiliary runner
+  route, so enabling local-only execution does not leave scheduled dependency updates hosted.
 
 ### Action required
 
