@@ -901,7 +901,15 @@
       "version": "4.1.0",
       "previous": "4.0.0",
       "supportedBaseline": ">=2.0.0 <4.1.0",
-      "codemods": [],
+      "codemods": [
+        {
+          "id": "v4-renovate-runner",
+          "path": "platform/tooling/codemods/v4-renovate-runner.ts",
+          "touches": [
+            ".github/workflows/renovate.yml"
+          ]
+        }
+      ],
       "migrations": [],
       "env": [
         {
