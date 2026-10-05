@@ -1,8 +1,8 @@
 name: Renovate
 
 # Automated dependency updates with a 10-day stability cooldown.
-# "Self-hosted" Renovate in the Renovate sense only: we run the bot ourselves in
-# this workflow, on GitHub-hosted runners. Nothing runs outside GitHub.
+# "Self-hosted" Renovate means we run the bot ourselves in this workflow.
+# Runner policy: platform/docs/ci-workers.md#keep-every-actions-job-local.
 # See platform/docs/dependency-updates.md for setup, the RENOVATE_TOKEN secret, and policy.
 on:
   schedule:
