@@ -64,6 +64,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   The `v4-renovate-runner` codemod runs automatically during upgrade and rewrites only a single
   exact stock `runs-on: ubuntu-latest` line. Custom routes remain app-owned; review them against
   the [all-local routing policy](docs/ci-workers.md#keep-every-actions-job-local).
+- Upgrades install Turbo's version-matched managed agent guidance before verification, preventing
+  Turbo 2.11 from creating an unexpected `AGENTS.md` edit during an agent-driven upgrade.
+  App instructions outside the managed block are preserved; stale blocks are refreshed.
 
 ### Action required
 

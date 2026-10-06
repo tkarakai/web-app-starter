@@ -908,6 +908,13 @@
           "touches": [
             ".github/workflows/renovate.yml"
           ]
+        },
+        {
+          "id": "v4-turbo-agent-guidance",
+          "path": "platform/tooling/codemods/v4-turbo-agent-guidance.ts",
+          "touches": [
+            "AGENTS.md"
+          ]
         }
       ],
       "migrations": [],
