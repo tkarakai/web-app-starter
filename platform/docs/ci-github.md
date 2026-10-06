@@ -114,7 +114,10 @@ checks required in branch protection.
 The **Security Complete** job requires every applicable scan to succeed. Paid CodeQL/dependency
 review can skip when unavailable; dependency review also skips outside PRs. Registry failures,
 missing tools/lockfiles and malformed audit output fail the scan. High/critical dependency findings
-fail; lower severities warn.
+fail; lower severities warn. After the Bun audit, the dependency job runs
+`bun run check:advisory-race` for supplemental GitHub Dependabot evidence. Its blocking rules,
+evidence limitations and merge/release response are owned by the
+[near-gate advisory procedure](dependency-updates.md#advisory-recognition-near-a-merge-or-release-gate).
 
 On public repositories, require both **Security Complete** and the standalone **CodeQL** check.
 Security Complete verifies scan execution; CodeQL separately enforces the repository's alert

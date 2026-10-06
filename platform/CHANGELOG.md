@@ -13,6 +13,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.
+  See the [near-gate advisory procedure](docs/dependency-updates.md#advisory-recognition-near-a-merge-or-release-gate)
+  for blocking rules, evidence limitations and the merge/release response.
+
 ## [4.1.0] - 2026-10-05
 
 ### Added

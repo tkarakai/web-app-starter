@@ -7,6 +7,7 @@ permissions:
   actions: read
   contents: read
   security-events: write
+  vulnerability-alerts: read
 
 jobs:
   # Paid features: CodeQL and dependency review are free on public repositories and need
@@ -64,6 +65,11 @@ jobs:
 
       - name: Audit committed Bun dependencies
         run: bun run check:dependencies
+
+      - name: Detect advisories recognized after Renovate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun run check:advisory-race
 
   secrets-scan:
     name: Secrets Scan
