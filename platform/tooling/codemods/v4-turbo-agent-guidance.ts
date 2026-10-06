@@ -10,9 +10,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
+import { openMigrationFile } from "./open-migration-file.ts";
 
 const FILE = "AGENTS.md";
 const BEGIN = "<!-- BEGIN:turborepo-agent-rules -->";
+const END = "<!-- END:turborepo-agent-rules -->";
 const BLOCK = `${BEGIN}
 
 # This is NOT the Turborepo you know
@@ -22,23 +24,27 @@ Turborepo configuration, task behavior, and CLI commands can vary between instal
 Read \`docs/README.md\` inside that installed package first, then read the relevant pages from its \`docs/\` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
 
 This block is written and re-added by \`turbo\` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in \`crates/turborepo-cli/src/cli/agent_guidance.rs\`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set \`"agentGuidance": false\` in the root \`turbo.json\` or \`turbo.jsonc\` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
-<!-- END:turborepo-agent-rules -->
-`;
+${END}`;
 
 export function migrateContent(content: string): string {
-  if (content.includes(BEGIN)) return content;
-  return content.length === 0 ? BLOCK : `${content.trimEnd()}\n\n${BLOCK}`;
+  const starts = [...content.matchAll(new RegExp(BEGIN, "g"))];
+  const ends = [...content.matchAll(new RegExp(END, "g"))];
+  if (starts.length || ends.length) {
+    if (starts.length !== 1 || ends.length !== 1 || starts[0].index >= ends[0].index) {
+      throw Error("Malformed Turbo agent guidance markers in AGENTS.md");
+    }
+    return content.slice(0, starts[0].index) + BLOCK + content.slice(ends[0].index + END.length);
+  }
+  const separator = content.length === 0 || content.endsWith("\n\n") ? "" : content.endsWith("\n") ? "\n" : "\n\n";
+  return `${content}${separator}${BLOCK}\n`;
 }
 
 export function migrate(root: string, check = false): string[] {
   const target = path.join(root, FILE);
-  let fd: number;
-  try {
-    fd = fs.openSync(target, check ? "r" : "r+");
-  } catch (error) {
-    if ((error as { code?: string }).code !== "ENOENT") throw error;
+  let fd = openMigrationFile(root, FILE, check);
+  if (fd === undefined) {
     if (check) return [FILE];
-    fd = fs.openSync(target, "wx+");
+    fd = fs.openSync(target, fs.constants.O_RDWR | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o666);
   }
   try {
     const before = fs.readFileSync(fd, "utf8");
