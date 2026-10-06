@@ -138,12 +138,12 @@ test("advisory gate retains alerts without Renovate metadata and permits repaire
   candidate("1.2.1");
   await assert.rejects(runRaceCheck(env), /Actionable high\/critical/);
   assert(warnings.some(message => message.includes("Renovate completion evidence unavailable")));
-  assert.equal(requests.filter(url => url.includes("registry.npmjs.org")).length, 1);
+  assert.equal(requests.filter(url => new URL(url).hostname === "registry.npmjs.org").length, 1);
   runStatus = 200;
   await assert.rejects(runRaceCheck(env), /Actionable high\/critical/);
   candidate("1.2.2"); requests.length = 0;
   await runRaceCheck(env);
-  assert(!requests.some(url => url.includes("registry.npmjs.org")));
+  assert(!requests.some(url => new URL(url).hostname === "registry.npmjs.org"));
   alertsStatus = 403; requests.length = 0;
   await runRaceCheck(env);
   assert.equal(requests.length, 1);
