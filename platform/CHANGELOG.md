@@ -61,6 +61,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   fixture is excluded from Renovate so it continues to test upgrade audit and repair behavior.
 - Upgrades migrate the stock app-owned Renovate workflow to the fail-closed auxiliary runner
   route, so enabling local-only execution does not leave scheduled dependency updates hosted.
+- Upgrades install Turbo's version-matched managed agent guidance before verification, preventing
+  Turbo 2.11 from creating an unexpected `AGENTS.md` edit during an agent-driven upgrade.
   The `v4-renovate-runner` codemod runs automatically during upgrade and rewrites only a single
   exact stock `runs-on: ubuntu-latest` line. Custom routes remain app-owned; review them against
   the [all-local routing policy](docs/ci-workers.md#keep-every-actions-job-local).
