@@ -187,8 +187,9 @@ separate services. A green audit can therefore briefly precede an alert that Git
 reviewed, especially when the alert appears after the latest Renovate run. Security CI closes
 that race from a second source: after the Bun audit it reads the repository's open Dependabot
 alerts, the latest completed Renovate run and npm publication times. An open high/critical npm
-alert affecting a version in the candidate's committed `bun.lock` fails once its fixed release is at least 12 hours old, even if Bun's feed has not propagated
-it yet. The log records both observation time and Renovate completion time; GitHub does not expose
+alert affecting a version in the candidate's committed `bun.lock` fails once its fixed release is
+at least 12 hours old, even if Bun's feed has not propagated it yet. The log records both
+observation time and Renovate completion time; GitHub does not expose
 a promise that either advisory feed is globally complete at that instant.
 Alerts for default-branch versions already repaired or removed in the candidate do not block it.
 If Renovate completion metadata is unavailable, fetched alerts are still assessed; only the
@@ -202,9 +203,13 @@ when an earlier Security run is green: do not reuse evidence from before the rev
 rule permits the fixed release after 12 hours.
 
 This is bounded rather than absolute protection. GitHub can recognize an advisory immediately
-after the final check, and repositories that do not expose Dependabot alerts to Actions show that
-the supplemental evidence is unavailable and retain only the Bun audit. Release operators must
-apply the fresh-Renovate procedure above whenever they know recognition occurred near the gate.
+after the final check. Any failure to fetch Dependabot alerts, including denied access or a
+service outage, warns that supplemental evidence is unavailable and leaves only the Bun audit
+for that run. Missing GitHub repository/token context skips the supplemental check. A fetched
+response with more than 100 open alerts fails rather than assessing an incomplete page; missing
+or malformed npm publication evidence also fails. An affected alert with no fixed release warns
+instead of blocking this supplemental gate. Release operators must apply the fresh-Renovate
+procedure above whenever they know recognition occurred near the gate.
 
 ### Handling each PR state
 
