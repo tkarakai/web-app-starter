@@ -13,7 +13,6 @@ type Alert = {
   created_at: string;
   dependency: { package: { ecosystem: string; name: string }; manifest_path: string };
   security_advisory: { ghsa_id: string; severity: string; summary: string; vulnerabilities: Vulnerability[] };
-  security_vulnerability: Vulnerability;
 };
 type Match = { alert: Alert; vulnerability: Vulnerability };
 type RegistryTimes = Record<string, Record<string, string>>;
@@ -49,20 +48,15 @@ function compare(a: string, b: string): number {
 function githubRangeIncludes(value: string, range: string): boolean {
   version(value);
   if (!range.trim()) throw new Error("Empty GitHub advisory range");
-  return range.split("||").some(rawArm => {
-    const arm = rawArm.trim();
-    if (!arm) throw new Error(`Empty alternative in GitHub advisory range: ${range}`);
-    const terms = arm.split(/\s*,\s*|\s+(?=[<>=])/).filter(Boolean);
-    return terms.every(term => {
-      const match = /^(>=|<=|>|<|=)?\s*(\S+)$/.exec(term);
-      if (!match) throw new Error(`Unsupported GitHub advisory range: ${range}`);
-      const comparison = compare(value, match[2]);
-      if (match[1] === ">=") return comparison >= 0;
-      if (match[1] === "<=") return comparison <= 0;
-      if (match[1] === ">") return comparison > 0;
-      if (match[1] === "<") return comparison < 0;
-      return comparison === 0;
-    });
+  return range.trim().split(/\s*,\s*/).every(term => {
+    const match = /^(>=|<=|>|<|=)?\s*(\S+)$/.exec(term);
+    if (!match) throw new Error(`Unsupported GitHub advisory range: ${range}`);
+    const comparison = compare(value, match[2]);
+    if (match[1] === ">=") return comparison >= 0;
+    if (match[1] === "<=") return comparison <= 0;
+    if (match[1] === ">") return comparison > 0;
+    if (match[1] === "<") return comparison < 0;
+    return comparison === 0;
   });
 }
 
@@ -85,8 +79,7 @@ function affectedVulnerabilities(alerts: Alert[], packages: Record<string, strin
   const installed = installedVersions(packages), matches: Match[] = [];
   for (const alert of alerts) {
     if (!["high", "critical"].includes(alert.security_advisory.severity.toLowerCase())) continue;
-    const vulnerabilities = alert.security_advisory.vulnerabilities?.length ? alert.security_advisory.vulnerabilities : [alert.security_vulnerability];
-    for (const vulnerability of vulnerabilities) {
+    for (const vulnerability of alert.security_advisory.vulnerabilities) {
       if (vulnerability.package.ecosystem !== "npm") continue;
       if ((installed.get(vulnerability.package.name) ?? []).some(candidate => githubRangeIncludes(candidate, vulnerability.vulnerable_version_range))) matches.push({ alert, vulnerability });
     }
