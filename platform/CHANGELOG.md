@@ -13,6 +13,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.
+  A high/critical npm alert whose fix has passed the 12-hour security cooldown blocks the gate
+  even when it was recognized after the latest Renovate run and has not propagated to Bun yet.
+  Logs record source observation and Renovate timestamps; the documented near-gate procedure
+  dispatches Renovate and reruns Security without bypassing the normal 10-day cooldown.
+
 ## [4.1.0] - 2026-10-05
 
 ### Added

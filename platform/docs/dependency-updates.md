@@ -180,6 +180,29 @@ its major-ticket procedure, refreshes the lockfile, and stops for a human only w
 The Monday/Thursday cron stays as a safety net that keeps the dashboard current. `bun run renovate:status` prints the whole queue state (last run result, open
 Renovate PRs, dashboard sections, hold facts) as JSON. Security PRs (`security` label) are not deferred to a `platform-deps` run.
 
+### Advisory recognition near a merge or release gate
+
+The registry feed read by `bun audit`, GitHub's reviewed Dependabot alerts and Renovate are
+separate services. A green audit can therefore briefly precede an alert that GitHub has already
+reviewed, especially when the alert appears after the latest Renovate run. Security CI closes
+that race from a second source: after the Bun audit it reads the repository's open Dependabot
+alerts, the latest completed Renovate run and npm publication times. An open high/critical npm
+alert fails once its fixed release is at least 12 hours old, even if Bun's feed has not propagated
+it yet. The log records both observation time and Renovate completion time; GitHub does not expose
+a promise that either advisory feed is globally complete at that instant.
+
+When this gate fails, dispatch **Renovate**, wait for its repository run to complete, and use the
+resulting security PR or repaired lockfile. Then rerun Security on that commit. If an owner learns
+that an advisory was reviewed while a merge or release candidate is at the gate, do the same even
+when an earlier Security run is green: do not reuse evidence from before the review. The normal
+10-day cooldown remains in force for unrelated updates; only the existing known-vulnerability
+rule permits the fixed release after 12 hours.
+
+This is bounded rather than absolute protection. GitHub can recognize an advisory immediately
+after the final check, and repositories that do not expose Dependabot alerts to Actions show that
+the supplemental evidence is unavailable and retain only the Bun audit. Release operators must
+apply the fresh-Renovate procedure above whenever they know recognition occurred near the gate.
+
 ### Handling each PR state
 
 | State | Action |

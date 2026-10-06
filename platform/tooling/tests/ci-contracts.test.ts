@@ -6,6 +6,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import { runInNewContext } from "node:vm";
 import { waitForPage } from "../http-ready.ts";
+import { assessAdvisoryRace } from "../advisory-race.ts";
 import { auditResult } from "../dependency-audit.ts";
 import { CHECKOUT_CHECKS, PLATFORM_CHECKS, UPGRADE_CHECKS, checksFor, runChecks } from "../ci-checks.ts";
 
@@ -81,6 +82,21 @@ test("every ordinary workflow runner has an explicit local-only route", () => {
   }
 });
 
+test("newly recognized alerts block once their fix is older than the security cooldown", () => {
+  const alert = (created_at: string, fixed = "1.2.2") => ({
+    number: 315, created_at, dependency: { package: { ecosystem: "npm", name: "source-map-js" }, manifest_path: "bun.lock" },
+    security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture" },
+    security_vulnerability: { first_patched_version: { identifier: fixed } },
+  });
+  const times = { "source-map-js": { "1.2.2": "2026-09-30T14:08:00Z", "1.2.3": "2026-10-06T00:00:00Z" } };
+  const race = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z");
+  assert.equal(race.actionable.length, 1);
+  assert.equal(race.actionable[0].recognizedAfterRenovate, true);
+  assert.equal(race.actionable[0].fixedPublishedAt, "2026-09-30T14:08:00Z");
+  const cooling = assessAdvisoryRace([alert("2026-10-06T00:10:00Z", "1.2.3")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z");
+  assert.equal(cooling.actionable.length, 0); assert.equal(cooling.coolingDown.length, 1);
+});
+
 test("audit enforces severity independently of Bun's any-finding exit and rejects errors", () => {
   const report = (severity: string) => JSON.stringify({ pkg: [{ title: "fixture advisory", severity, url: "https://example.test/advisory" }] });
   assert.deepEqual(auditResult("{}", 0), { high: 0, lower: 0 });
@@ -137,6 +153,8 @@ test("Security Complete rejects failed, cancelled and unexpected skipped scans",
   const { execFileSync, spawnSync } = await import("node:child_process");
   const file = new URL("../../../.github/workflows/platform-security.yml", import.meta.url).pathname;
   const workflow = JSON.parse(execFileSync("bun", ["-e", "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))", file], { encoding: "utf8" })) as { jobs: Record<string, { needs?: string[]; if?: string; steps: { run?: string }[] }> };
+  const audit = workflow.jobs["dependency-audit"];
+  assert(audit.steps.some(step => step.run === "bun run check:advisory-race"), "dependency audit must execute the independent GitHub alert gate");
   const gate = workflow.jobs.complete;
   assert.equal(gate.if, "always()");
   assert.deepEqual(new Set(gate.needs), new Set(["paid-features", "codeql", "dependency-audit", "secrets-scan", "dependency-review"]));
