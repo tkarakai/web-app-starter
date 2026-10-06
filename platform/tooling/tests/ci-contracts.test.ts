@@ -83,11 +83,14 @@ test("every ordinary workflow runner has an explicit local-only route", () => {
 });
 
 test("newly recognized alerts block once their fix is older than the security cooldown", () => {
-  const alert = (created_at: string, fixed = "1.2.2") => ({
-    number: 315, created_at, dependency: { package: { ecosystem: "npm", name: "source-map-js" }, manifest_path: "bun.lock" },
-    security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture" },
-    security_vulnerability: { first_patched_version: { identifier: fixed }, vulnerable_version_range: ">= 1.0.0, < 1.2.2" },
-  });
+  const alert = (created_at: string, fixed = "1.2.2") => {
+    const vulnerability = { package: { ecosystem: "npm", name: "source-map-js" }, first_patched_version: { identifier: fixed }, vulnerable_version_range: ">= 1.0.0, < 1.2.2" };
+    return {
+      number: 315, created_at, dependency: { package: vulnerability.package, manifest_path: "bun.lock" },
+      security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture", vulnerabilities: [vulnerability] },
+      security_vulnerability: vulnerability,
+    };
+  };
   const times = { "source-map-js": { "1.2.2": "2026-09-30T14:08:00Z", "1.2.3": "2026-10-06T00:00:00Z" } };
   const packages = { "source-map-js": ["source-map-js@1.2.1"] };
   const race = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z", packages);
@@ -106,9 +109,17 @@ test("newly recognized alerts block once their fix is older than the security co
   assert.equal(mixed.actionable[0].recognizedAfterRenovate, false);
   const boundary = assessAdvisoryRace([alert("2026-10-06T00:10:00Z", "1.2.3")], times, undefined, "2026-10-06T12:00:00Z", packages);
   assert.equal(boundary.actionable.length, 1);
-  const unpatched = { ...alert("2026-10-05T23:31:00Z"), security_vulnerability: { first_patched_version: null, vulnerable_version_range: "< 1.2.2" } };
+  const base = alert("2026-10-05T23:31:00Z");
+  const unpatchedVulnerability = { ...base.security_vulnerability, first_patched_version: null };
+  const unpatched = { ...base, security_advisory: { ...base.security_advisory, vulnerabilities: [unpatchedVulnerability] }, security_vulnerability: unpatchedVulnerability };
   assert.equal(assessAdvisoryRace([unpatched], {}, undefined, "2026-10-06T01:24:00Z", packages).noFixedRelease.length, 1);
   assert.equal(assessAdvisoryRace([unpatched], {}, undefined, "2026-10-06T01:24:00Z", candidates[1]).noFixedRelease.length, 0);
+  const currentLine = { package: base.dependency.package, vulnerable_version_range: ">= 1.0.0-canary.0, < 1.0.6", first_patched_version: { identifier: "1.0.6" } };
+  const nextLine = { package: base.dependency.package, vulnerable_version_range: ">= 2.0.0-canary.0, < 2.0.2", first_patched_version: { identifier: "2.0.2" } };
+  const multiLine = { ...base, security_advisory: { ...base.security_advisory, vulnerabilities: [currentLine, nextLine] }, security_vulnerability: currentLine };
+  const multiTimes = { "source-map-js": { "2.0.2": "2026-09-30T14:08:00Z" } };
+  assert.equal(assessAdvisoryRace([multiLine], multiTimes, undefined, "2026-10-06T01:24:00Z", { next: ["source-map-js@2.0.1-canary.1"] }).actionable[0].fixed, "2.0.2");
+  assert.equal(assessAdvisoryRace([multiLine], {}, undefined, "2026-10-06T01:24:00Z", { repaired: ["source-map-js@2.0.2"] }).actionable.length, 0);
 });
 
 test("advisory gate retains alerts without Renovate metadata and permits repaired candidates", async t => {
@@ -116,10 +127,11 @@ test("advisory gate retains alerts without Renovate metadata and permits repaire
   const root = mkdtempSync(`${previous}/.advisory-race-test-`);
   process.chdir(root);
   t.after(() => { process.chdir(previous); rmSync(root, { recursive: true, force: true }); });
+  const vulnerability = { package: { ecosystem: "npm", name: "source-map-js" }, first_patched_version: { identifier: "1.2.2" }, vulnerable_version_range: ">= 1.0.0, < 1.2.2" };
   const alert = {
-    number: 315, created_at: "2026-10-05T23:31:00Z", dependency: { package: { ecosystem: "npm", name: "source-map-js" }, manifest_path: "bun.lock" },
-    security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture" },
-    security_vulnerability: { first_patched_version: { identifier: "1.2.2" }, vulnerable_version_range: ">= 1.0.0, < 1.2.2" },
+    number: 315, created_at: "2026-10-05T23:31:00Z", dependency: { package: vulnerability.package, manifest_path: "bun.lock" },
+    security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture", vulnerabilities: [vulnerability] },
+    security_vulnerability: vulnerability,
   };
   const requests: string[] = [];
   let runStatus = 502;
