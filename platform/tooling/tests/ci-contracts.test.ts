@@ -2,11 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import { runInNewContext } from "node:vm";
 import { waitForPage } from "../http-ready.ts";
-import { assessAdvisoryRace } from "../advisory-race.ts";
+import { assessAdvisoryRace, runRaceCheck } from "../advisory-race.ts";
 import { auditResult } from "../dependency-audit.ts";
 import { CHECKOUT_CHECKS, PLATFORM_CHECKS, UPGRADE_CHECKS, checksFor, runChecks } from "../ci-checks.ts";
 
@@ -86,15 +86,68 @@ test("newly recognized alerts block once their fix is older than the security co
   const alert = (created_at: string, fixed = "1.2.2") => ({
     number: 315, created_at, dependency: { package: { ecosystem: "npm", name: "source-map-js" }, manifest_path: "bun.lock" },
     security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture" },
-    security_vulnerability: { first_patched_version: { identifier: fixed } },
+    security_vulnerability: { first_patched_version: { identifier: fixed }, vulnerable_version_range: ">= 1.0.0, < 1.2.2" },
   });
   const times = { "source-map-js": { "1.2.2": "2026-09-30T14:08:00Z", "1.2.3": "2026-10-06T00:00:00Z" } };
-  const race = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z");
+  const packages = { "source-map-js": ["source-map-js@1.2.1"] };
+  const race = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z", packages);
   assert.equal(race.actionable.length, 1);
   assert.equal(race.actionable[0].recognizedAfterRenovate, true);
   assert.equal(race.actionable[0].fixedPublishedAt, "2026-09-30T14:08:00Z");
-  const cooling = assessAdvisoryRace([alert("2026-10-06T00:10:00Z", "1.2.3")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z");
+  const cooling = assessAdvisoryRace([alert("2026-10-06T00:10:00Z", "1.2.3")], times, "2026-10-05T22:13:53Z", "2026-10-06T01:24:00Z", packages);
   assert.equal(cooling.actionable.length, 0); assert.equal(cooling.coolingDown.length, 1);
+  const candidates: Record<string, string[]>[] = [{}, { alias: ["source-map-js@1.2.2"] }, { nested: ["source-map-js@1.2.3"] }];
+  for (const candidate of candidates) {
+    const repaired = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], {}, undefined, "2026-10-06T01:24:00Z", candidate);
+    assert.deepEqual(repaired, { actionable: [], coolingDown: [], noFixedRelease: [] });
+  }
+  const mixed = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, undefined, "2026-10-06T01:24:00Z", { alias: ["source-map-js@1.2.2"], "parent/source-map-js": ["source-map-js@1.2.1"] });
+  assert.equal(mixed.actionable.length, 1);
+  assert.equal(mixed.actionable[0].recognizedAfterRenovate, false);
+  const boundary = assessAdvisoryRace([alert("2026-10-06T00:10:00Z", "1.2.3")], times, undefined, "2026-10-06T12:00:00Z", packages);
+  assert.equal(boundary.actionable.length, 1);
+  const unpatched = { ...alert("2026-10-05T23:31:00Z"), security_vulnerability: { first_patched_version: null, vulnerable_version_range: "< 1.2.2" } };
+  assert.equal(assessAdvisoryRace([unpatched], {}, undefined, "2026-10-06T01:24:00Z", packages).noFixedRelease.length, 1);
+  assert.equal(assessAdvisoryRace([unpatched], {}, undefined, "2026-10-06T01:24:00Z", candidates[1]).noFixedRelease.length, 0);
+});
+
+test("advisory gate retains alerts without Renovate metadata and permits repaired candidates", async t => {
+  const previous = process.cwd();
+  const root = mkdtempSync(`${previous}/.advisory-race-test-`);
+  process.chdir(root);
+  t.after(() => { process.chdir(previous); rmSync(root, { recursive: true, force: true }); });
+  const alert = {
+    number: 315, created_at: "2026-10-05T23:31:00Z", dependency: { package: { ecosystem: "npm", name: "source-map-js" }, manifest_path: "bun.lock" },
+    security_advisory: { ghsa_id: "GHSA-fixture", severity: "high", summary: "fixture" },
+    security_vulnerability: { first_patched_version: { identifier: "1.2.2" }, vulnerable_version_range: ">= 1.0.0, < 1.2.2" },
+  };
+  const requests: string[] = [];
+  let runStatus = 502;
+  let alertsStatus = 200;
+  const warnings: string[] = [];
+  t.mock.method(console, "warn", (message: string) => warnings.push(message));
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    requests.push(url);
+    if (url.includes("dependabot/alerts")) return new Response(JSON.stringify([alert, { ...alert, dependency: { ...alert.dependency, package: { ecosystem: "pip", name: "irrelevant" } } }, { ...alert, dependency: { ...alert.dependency, package: { ecosystem: "npm", name: "low-severity" } }, security_advisory: { ...alert.security_advisory, severity: "low" } }]), { status: alertsStatus, headers: { date: "2026-10-06T01:24:00Z" } });
+    if (url.includes("actions/workflows")) return new Response(JSON.stringify({ workflow_runs: [{ updated_at: "2026-10-05T22:13:53Z", conclusion: "success" }] }), { status: runStatus });
+    assert.equal(url, "https://registry.npmjs.org/source-map-js");
+    return new Response(JSON.stringify({ time: { "1.2.2": "2026-09-30T14:08:00Z" } }));
+  });
+  const candidate = (version: string) => writeFileSync("bun.lock", JSON.stringify({ lockfileVersion: 1, workspaces: {}, packages: { alias: [`source-map-js@${version}`, "", {}, "sha512-YQ=="], irrelevant: ["irrelevant@1.0.0", "", {}, "sha512-YQ=="], low: ["low-severity@1.0.0", "", {}, "sha512-YQ=="] } }));
+  const env = { GITHUB_REPOSITORY: "owner/repository", GITHUB_TOKEN: "fixture" };
+  candidate("1.2.1");
+  await assert.rejects(runRaceCheck(env), /Actionable high\/critical/);
+  assert(warnings.some(message => message.includes("Renovate completion evidence unavailable")));
+  assert.equal(requests.filter(url => url.includes("registry.npmjs.org")).length, 1);
+  runStatus = 200;
+  await assert.rejects(runRaceCheck(env), /Actionable high\/critical/);
+  candidate("1.2.2"); requests.length = 0;
+  await runRaceCheck(env);
+  assert(!requests.some(url => url.includes("registry.npmjs.org")));
+  alertsStatus = 403; requests.length = 0;
+  await runRaceCheck(env);
+  assert.equal(requests.length, 1);
+  assert(warnings.some(message => message.includes("Supplemental GitHub advisory evidence unavailable")));
 });
 
 test("audit enforces severity independently of Bun's any-finding exit and rejects errors", () => {
@@ -152,7 +205,14 @@ test("all affected workflow consumers use the shared impact policy", async () =>
 test("Security Complete rejects failed, cancelled and unexpected skipped scans", async () => {
   const { execFileSync, spawnSync } = await import("node:child_process");
   const file = new URL("../../../.github/workflows/platform-security.yml", import.meta.url).pathname;
-  const workflow = JSON.parse(execFileSync("bun", ["-e", "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))", file], { encoding: "utf8" })) as { jobs: Record<string, { needs?: string[]; if?: string; steps: { run?: string }[] }> };
+  const workflow = JSON.parse(execFileSync("bun", ["-e", "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))", file], { encoding: "utf8" })) as { permissions: Record<string, string>; jobs: Record<string, { needs?: string[]; if?: string; steps: { run?: string }[] }> };
+  const callerFile = new URL("../../../.github/workflows/security.yml", import.meta.url).pathname;
+  const caller = JSON.parse(execFileSync("bun", ["-e", "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))", callerFile], { encoding: "utf8" })) as { permissions: Record<string, string>; jobs: { platform: { uses: string } } };
+  assert.equal(caller.jobs.platform.uses, "./.github/workflows/platform-security.yml");
+  for (const permissions of [caller.permissions, workflow.permissions]) {
+    assert.equal(permissions["vulnerability-alerts"], "read");
+    assert.equal(permissions.actions, "read");
+  }
   const audit = workflow.jobs["dependency-audit"];
   assert(audit.steps.some(step => step.run === "bun run check:advisory-race"), "dependency audit must execute the independent GitHub alert gate");
   const gate = workflow.jobs.complete;

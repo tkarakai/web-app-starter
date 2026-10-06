@@ -187,9 +187,12 @@ separate services. A green audit can therefore briefly precede an alert that Git
 reviewed, especially when the alert appears after the latest Renovate run. Security CI closes
 that race from a second source: after the Bun audit it reads the repository's open Dependabot
 alerts, the latest completed Renovate run and npm publication times. An open high/critical npm
-alert fails once its fixed release is at least 12 hours old, even if Bun's feed has not propagated
+alert affecting a version in the candidate's committed `bun.lock` fails once its fixed release is at least 12 hours old, even if Bun's feed has not propagated
 it yet. The log records both observation time and Renovate completion time; GitHub does not expose
 a promise that either advisory feed is globally complete at that instant.
+Alerts for default-branch versions already repaired or removed in the candidate do not block it.
+If Renovate completion metadata is unavailable, fetched alerts are still assessed; only the
+recognition-after-Renovate comparison is unknown.
 
 When this gate fails, dispatch **Renovate**, wait for its repository run to complete, and use the
 resulting security PR or repaired lockfile. Then rerun Security on that commit. If an owner learns
