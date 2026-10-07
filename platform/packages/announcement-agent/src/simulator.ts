@@ -1,5 +1,6 @@
 /** Reusable independent remote-surface acceptance and discovery/performance measurement. */
 import { writeFile } from "node:fs/promises";
+import { performance } from "node:perf_hooks";
 import { authenticate } from "./auth";
 import { connectMcp, type AdminToolConnection } from "./client";
 import { connectCli } from "./cli-client";

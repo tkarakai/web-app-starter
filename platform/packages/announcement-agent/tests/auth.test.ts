@@ -29,6 +29,6 @@ test("explicit browser denial verifies state and closes the loopback authorizati
     const response = await fetch(callback);
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("No authorization was granted");
-    expect(await outcome).toContain("Announcement access was denied");
+    expect(await outcome).toContain("Admin access was denied");
   } finally { output.mockRestore(); http.mockRestore(); }
 });
