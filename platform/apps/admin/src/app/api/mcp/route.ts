@@ -1,3 +1,4 @@
+import { agentRateLimit } from "@/lib/agentic/rate-limit";
 import { handleMcp } from "@web-app-starter/agentic/mcp";
 import { bearer } from "@web-app-starter/agentic/oauth";
 import { api } from "@repo/backend";
@@ -7,6 +8,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const config = agentConfig();
   if (!config) return new Response(null, { status: 404 });
+  const limited = agentRateLimit(); if (limited) return limited;
   if (!allowedRequest(request, config.origin)) return privateJson({ error: "invalid_origin" }, 403);
   if (Number(request.headers.get("content-length") ?? 0) > 100_000) return privateJson({ error: "request_too_large" }, 413);
   const token = bearer(request.headers);

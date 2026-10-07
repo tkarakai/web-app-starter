@@ -13,6 +13,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in authenticated announcement MCP POC with a lightweight capability catalogue,
+  session-bound browser consent and an earendil pi test conversation. See
+  [announcement MCP](docs/agentic-announcements.md) for local setup and scope.
+
 ### Fixed
 
 - Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.

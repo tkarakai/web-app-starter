@@ -1,9 +1,11 @@
+import { agentRateLimit } from "@/lib/agentic/rate-limit";
 import { api } from "@repo/backend";
 import { backendClient } from "@/lib/agentic/convex-adapter";
 import { agentConfig, allowedRequest, privateJson } from "@/lib/agentic/config";
 export async function POST(request: Request) {
   const config = agentConfig();
   if (!config) return new Response(null, { status: 404 });
+  const limited = agentRateLimit(); if (limited) return limited;
   if (!allowedRequest(request, config.origin)) return privateJson({ error: "invalid_origin" }, 403);
   const raw = await request.text();
   if (raw.length > 4096) return privateJson({ error: "invalid_request" }, 400);

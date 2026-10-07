@@ -8,6 +8,7 @@ import { createTestEnv as createPlatformTest, modules } from "../test.modules";
 // validator:
 //   - "user" and "admin" functions must refuse an anonymous caller (return null or throw);
 //   - "admin" functions must also refuse a signed-in, verified, non-admin user;
+//   - "agent" functions require a separate session-bound grant or PKCE code (tested in agentAccess.test.ts);
 //   - "public" functions are callable by anyone and are only checked for being classified.
 // Refusal errors must name the reason (REFUSAL), so a function that merely fails on the
 // generated arguments is not mistaken for one that checks its caller.
@@ -17,10 +18,20 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { components } from "../_generated/api";
 import authSchema from "./betterAuth/schema";
 
-type Access = "public" | "user" | "admin";
+type Access = "public" | "user" | "admin" | "agent";
 type Kind = "query" | "mutation" | "action";
 
 const ACCESS: Record<string, Access> = {
+  "platform/agentAccess:authorize": "admin",
+  "platform/agentAccess:exchange": "agent", // single-use, PKCE-bound authorization code
+  "platform/agentAccess:inspect": "agent",
+  "platform/agentAccess:listMine": "admin",
+  "platform/agentAccess:revoke": "admin",
+  "platform/agentAnnouncements:create": "agent",
+  "platform/agentAnnouncements:get": "agent",
+  "platform/agentAnnouncements:list": "agent",
+  "platform/agentAnnouncements:remove": "agent",
+  "platform/agentAnnouncements:update": "agent",
   "platform/adminAuth:getEmailVerificationPolicy": "admin",
   "platform/adminAuth:getMfaPolicy": "admin",
   "platform/adminAuth:listAdminPasskeyUserIds": "admin",
@@ -75,7 +86,7 @@ const ACCESS: Record<string, Access> = {
   "platform/waitlistTokens:validate": "public",
 };
 
-const REFUSAL = /NOT_AUTHENTICATED|NOT_ADMIN|UNAUTHENTICATED|Unauthenticated|UNAUTHORIZED|FORBIDDEN|Not authenticated|Unauthorized|Forbidden/;
+const REFUSAL = /INVALID_AGENT_TOKEN|INVALID_GRANT|NOT_AUTHENTICATED|NOT_ADMIN|UNAUTHENTICATED|Unauthenticated|UNAUTHORIZED|FORBIDDEN|Not authenticated|Unauthorized|Forbidden/;
 
 const SAMPLE_STRING = "contract@example.test";
 
@@ -236,11 +247,11 @@ describe("platform endpoint authorization contract", async () => {
     expect(Object.keys(ACCESS).filter((path) => !paths.includes(path)), "remove these from ACCESS").toEqual([]);
   });
 
-  test.each([...withAccess("user"), ...withAccess("admin")])("%s refuses an anonymous caller", async (_path, fn) => {
+  test.each([...withAccess("user"), ...withAccess("admin"), ...withAccess("agent")])("%s refuses an anonymous caller", async (_path, fn) => {
     expect(await call(await fixture(), fn)).toMatchObject({ refused: true });
   });
 
-  test.each(withAccess("admin"))("%s refuses a signed-in non-admin", async (_path, fn) => {
+  test.each([...withAccess("admin"), ...withAccess("agent")])("%s refuses a signed-in non-admin", async (_path, fn) => {
     expect(await call(await signIn(await fixture(), "member"), fn)).toMatchObject({ refused: true });
   });
 
@@ -248,7 +259,7 @@ describe("platform endpoint authorization contract", async () => {
   // the functions' own checks, not empty tables or unusable arguments.
   // Excluded: they answer [] without data the seed can't make (passkeys in the auth component,
   // tokens of a real waitlist entry). Their non-admin refusals are errors or null, not [].
-  const noControl = ["platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
+  const noControl = ["platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
   test.each(withAccess("admin").filter(([path, fn]) => fn.kind === "query" && !noControl.includes(path)))("%s answers an admin", async (_path, fn) => {
     expect(await call(await signIn(await fixture(), "boss", "admin"), fn)).toMatchObject({ refused: false });
   });

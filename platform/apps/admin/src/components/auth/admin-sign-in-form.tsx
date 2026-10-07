@@ -9,19 +9,7 @@ import { api } from "@repo/backend";
 import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@web-app-starter/auth/client";
 import { broadcastAuth } from "@web-app-starter/auth-ui";
 
-import { validateAuthorization } from "@web-app-starter/agentic/oauth";
-
-function postSignInPath(): string {
-  try {
-    const path = new URLSearchParams(window.location.search).get("agent_return");
-    if (!path) return "/dashboard";
-    const url = new URL(path, window.location.origin);
-    if (url.origin !== window.location.origin || url.pathname !== "/settings/agent-access"
-      || url.searchParams.get("resource") !== window.location.origin + "/api/mcp") return "/dashboard";
-    validateAuthorization(url.searchParams);
-    return url.pathname + url.search;
-  } catch { return "/dashboard"; }
-}
+import { postSignInPath } from "@/lib/agentic/return-path";
 
 const PREFERRED_METHOD_KEY = "adminSignInPreferredMethod";
 

@@ -89,6 +89,10 @@ Guest-only auth pages are wrapped by `GuestGuard` via `AuthLayout`. When a user 
 1. **BroadcastChannel** (instant): The auth form calls `broadcastAuth()` on success. Other tabs' `GuestGuard` receives the message and redirects to `/dashboard`.
 2. **Visibility fallback**: When the tab becomes visible, `GuestGuard` calls `authClient.getSession()` to check for an active session and redirects if found.
 
+`GuestGuard` accepts an optional `getRedirectPath` callback for a host-validated sign-in continuation.
+The default remains `/dashboard`. Admin uses it to preserve the announcement agent consent
+URL on both auth broadcasts and visibility checks; external return URLs are rejected.
+
 **To broadcast auth from a new login flow:** call `broadcastAuth()` from `@web-app-starter/auth-ui` after successful authentication.
 
 ## Rate Limiting

@@ -13,11 +13,11 @@ import { onAuthBroadcast } from "../lib/auth-broadcast";
  * Uses a full page navigation (not Next.js router) so the Convex auth
  * provider remounts with a fresh server-issued token.
  */
-export function GuestGuard({ children }: { children: React.ReactNode }) {
+export function GuestGuard({ children, getRedirectPath }: { children: React.ReactNode; getRedirectPath?: () => string }) {
   React.useEffect(() => {
     // Listen for auth events from other tabs (instant, no network call).
     const cleanupBroadcast = onAuthBroadcast(() => {
-      window.location.replace("/dashboard");
+      window.location.replace(getRedirectPath?.() ?? "/dashboard");
     });
 
     // When the tab becomes visible, check if a session now exists (fallback).
@@ -25,7 +25,7 @@ export function GuestGuard({ children }: { children: React.ReactNode }) {
       if (document.visibilityState !== "visible") return;
       const { data } = await authClient.getSession();
       if (data?.session) {
-        window.location.replace("/dashboard");
+        window.location.replace(getRedirectPath?.() ?? "/dashboard");
       }
     };
 
@@ -35,7 +35,7 @@ export function GuestGuard({ children }: { children: React.ReactNode }) {
       cleanupBroadcast();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [getRedirectPath]);
 
   return <>{children}</>;
 }

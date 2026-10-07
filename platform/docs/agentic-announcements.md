@@ -36,3 +36,56 @@ native entry points. These entry points resolve grants and current policy inside
 backend transaction as each write. Future surfaces can use the adapter without introducing a
 new action engine or flattening Convex queries and mutations. Authentication credentials are
 host context and are absent from tool input schemas and model context.
+
+## Run the pi test conversation
+
+From the repository root:
+
+```sh
+AGENT_MCP_ENABLED=true AGENT_MCP_ORIGIN=http://localhost:3002 bun run dev:admin
+# In a second terminal, from packages/backend, targeting the same anonymous local deployment:
+bunx convex env set AGENT_MCP_RESOURCE http://localhost:3002/api/mcp
+# Back at the repository root:
+bun run agent:announcements -- --origin http://localhost:3002
+```
+
+The agent opens a browser. Sign in with your normal admin account, complete its security gate,
+and select **Authorize pi announcement agent**. Return to the terminal and ask it to manage a
+draft. For example: “Create a draft named October release with banner text Welcome to October.”
+Then ask it to read, edit and delete that exact draft. `/auth` renews access without discarding the
+conversation; `/quit` exits. Revoke grants at `/settings/agent-access`.
+
+Inference credentials are separate from app authorization. The conversation uses the
+`@earendil-works/pi-coding-agent` SDK, pi's provider credentials and configured default model.
+Override with `--provider <provider> --model <model>`. For provider login, use the installed pi
+CLI's `/login` command (`bun platform/packages/announcement-agent/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js`).
+An API-key provider can use its normal environment variable. Passwords, OTPs, app cookies and
+grants are never tool parameters. Conversation history and app grants stay in process memory;
+pi's existing inference credentials continue to use its normal credential store.
+
+`--prompt "<request>"` runs one real pi conversation turn. `--smoke` instead runs deterministic
+CRUD through an independent MCP SDK client after the same browser authentication; it needs no
+model credentials. Set `AGENT_NO_OPEN=true` to use the printed browser link manually.
+
+## Acceptance and limits
+
+```sh
+# Against the already running opt-in local deployment:
+CI=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
+  bun run --cwd platform/apps/admin test:e2e agentic-mcp.spec.ts
+bun run --cwd packages/backend test:convex agentAccess endpoint-authorization
+bun run --cwd platform/packages/agentic test
+```
+
+The browser test covers logged-out sign-in continuation, consent, PKCE denial/replay, discovery,
+CRUD, cleanup and grant revocation. Backend tests cover live session/role/ban/policy changes,
+expiry and recent-write checks. The MCP transport tests use an independent SDK client.
+
+This is a local POC with one registered client and one management scope. Its ingress limiter is
+process-local and applies a shared request budget; production needs a shared limiter and a
+review of consent, client onboarding and lifecycle. Expired codes/grants are removed by scheduled
+cleanup; expiry enforcement does not depend on cleanup running. There is no durable agent job
+or transcript store. `get` currently selects from the native full admin list, which is sufficient
+for this bounded catalogue but should become an indexed read if announcement volume grows.
+The schemas describe inputs; business rules remain in native functions. Do not automatically
+retry a write after an uncertain transport failure.
