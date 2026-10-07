@@ -1,11 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { CapabilityAdapter } from "./adapter";
-import { defaultCatalogue, gatewaySchemas, gatewayDescriptions, searchCapabilities, describeCapabilities, executeCapability, type CapabilityCatalogue } from "./discovery";
+import { gatewaySchemas, gatewayDescriptions, searchCapabilities, describeCapabilities, executeCapability, type CapabilityCatalogue } from "./discovery";
 
 import { safeCapabilityError } from "./errors";
 export { safeCapabilityError } from "./errors";
-export async function handleMcp(request: Request, adapter: CapabilityAdapter, catalogue: CapabilityCatalogue = defaultCatalogue): Promise<Response> {
+export async function handleMcp(request: Request, adapter: CapabilityAdapter, catalogue: CapabilityCatalogue): Promise<Response> {
   const server = new McpServer({ name: "admin-capabilities", version: "0.2.0" }, { capabilities: { tools: {} } });
   for (const name of Object.keys(gatewaySchemas) as (keyof typeof gatewaySchemas)[]) {
     server.registerTool(name, {

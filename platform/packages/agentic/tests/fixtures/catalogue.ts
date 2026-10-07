@@ -1,4 +1,3 @@
-/** Small transport-neutral catalogue; native Convex validators remain authoritative. */
 import { z } from "zod";
 const text = z.string();
 const optionalFields = {
@@ -12,5 +11,3 @@ export const announcementCatalogue = {
   announcements_update: { title: "Update announcement", description: "Patch an existing announcement. Omitted fields stay unchanged; null clears a schedule. Changes to live announcements affect public content.", effect: "write", schema: z.object({ announcementId: text, patch: z.object({ name: text.optional(), bannerText: text.optional(), ...optionalFields, scheduleStart: z.number().finite().nullable().optional(), scheduleEnd: z.number().finite().nullable().optional() }).strict() }).strict() },
   announcements_delete: { title: "Delete announcement", description: "Permanently delete an announcement and cancel its scheduled jobs. Confirm the target and user intent before deletion.", effect: "write", schema: z.object({ announcementId: text }).strict() },
 } as const;
-export type CapabilityName = keyof typeof announcementCatalogue;
-export type CapabilityInput<K extends CapabilityName> = z.infer<(typeof announcementCatalogue)[K]["schema"]>;

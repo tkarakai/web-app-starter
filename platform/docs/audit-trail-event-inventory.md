@@ -371,8 +371,8 @@ changing them leaves no trace:
 
 ### MCP service availability
 
-`platform/agentMcp:setEnabled` requires a normal admin session and recent authentication.
-It records `admin.mcp_enabled` or `admin.mcp_disabled`, source `server:agent-mcp`, resource
+`platform/agentSurfaces:setEnabled` for the MCP surface requires a normal admin session and recent authentication.
+It records `admin.mcp_enabled` or `admin.mcp_disabled`, source `server:agent-surface`, resource
 `agent-mcp`, with the authenticated operator. State and audit are written transactionally.
 Every availability transition creates a new grant generation; disabled/re-enabled services do
 not revive old codes or tokens.

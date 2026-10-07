@@ -28,11 +28,9 @@ const ACCESS: Record<string, Access> = {
   "platform/agentCapabilities:catalogue": "agent",
   "platform/agentCapabilities:read": "agent",
   "platform/agentCapabilities:write": "agent",
-  "platform/agentCapabilities:browserCatalogue": "admin",
   "platform/agentCapabilities:browserGateway": "admin",
   "platform/agentCapabilities:browserRead": "admin",
   "platform/agentCapabilities:browserWrite": "admin",
-  "platform/agentCapabilities:browserPermit": "admin",
   "platform/agentUsers:list": "admin",
   "platform/agentUsers:get": "admin",
   "platform/agentUsers:ban": "admin",
@@ -60,20 +58,12 @@ const ACCESS: Record<string, Access> = {
   "platform/agentRegistry:renamePasskey": "admin",
   "platform/agentRegistry:removePasskey": "admin",
   "platform/agentRegistry:revokeOtherSessions": "admin",
-  "platform/agentMcp:availability": "public",
-  "platform/agentMcp:configuration": "admin",
-  "platform/agentMcp:setEnabled": "admin",
   "platform/agentAccess:authorize": "admin",
   "platform/agentAccess:deny": "user", // only the caller's one-use MCP login
   "platform/agentAccess:exchange": "agent", // single-use, PKCE-bound authorization code
   "platform/agentAccess:inspect": "agent",
   "platform/agentAccess:listMine": "admin",
   "platform/agentAccess:revoke": "admin",
-  "platform/agentAnnouncements:create": "agent",
-  "platform/agentAnnouncements:get": "agent",
-  "platform/agentAnnouncements:list": "agent",
-  "platform/agentAnnouncements:remove": "agent",
-  "platform/agentAnnouncements:update": "agent",
   "platform/adminAuth:getEmailVerificationPolicy": "admin",
   "platform/adminAuth:getMfaPolicy": "admin",
   "platform/adminAuth:listAdminPasskeyUserIds": "admin",
@@ -218,7 +208,7 @@ async function platformFunctions(): Promise<PlatformFunction[]> {
       if (!kind) continue;
       const args = fn.exportArgs ? sample(JSON.parse(fn.exportArgs()) as ValidatorJson) : {};
       const path = `${name}:${exportName}`;
-      const behaviorArgs = path === "platform/agentCapabilities:browserGateway" ? { operation: "search", input: {}, requestId: crypto.randomUUID() } : path === "platform/agentCapabilities:browserRead" ? { name: "account_currentUser", input: {} } : path === "platform/agentCapabilities:browserPermit" ? { requestId: crypto.randomUUID() } : args;
+      const behaviorArgs = path === "platform/agentCapabilities:browserGateway" ? { operation: "search", input: {}, requestId: crypto.randomUUID() } : path === "platform/agentCapabilities:browserRead" ? { name: "account_currentUser", input: {} } : args;
       found.push({ path, kind, args: behaviorArgs });
     }
   }

@@ -24,7 +24,7 @@ async function fixture(role = "admin") {
     input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token: "application", expiresAt: now + 3600_000, createdAt: now, updatedAt: now } },
   });
   const application = t.withIdentity({ subject: user._id, sessionId: applicationSession._id });
-  if (role === "admin") await application.mutation(api.platform.agentMcp.setEnabled, { enabled: true });
+  if (role === "admin") await application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "mcp", enabled: true });
   const request = { clientId: "pi-announcements", redirectUri: "http://127.0.0.1:45991/callback", resource, challenge: await challenge(verifier), scope: "admin:manage" };
   let loginSequence = 0;
   const login = async () => {
@@ -47,12 +47,12 @@ describe("one-use browser authorization and delegated access", () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
   test("CRUD uses native storage, validation and audit attribution; credentials stay hashed", async () => {
     const { t, mint, user } = await fixture(); const { token } = await mint(); const auth = { token, resource };
-    const { id } = await t.mutation(api.platform.agentAnnouncements.create, { ...auth, name: "Agent draft", bannerText: "First" });
-    expect(await t.query(api.platform.agentAnnouncements.get, { ...auth, announcementId: id })).toMatchObject({ name: "Agent draft", bannerText: "First", isLive: false });
-    await t.mutation(api.platform.agentAnnouncements.update, { ...auth, announcementId: id, patch: { bannerText: "Second" } });
-    expect(await t.query(api.platform.agentAnnouncements.list, auth)).toEqual([expect.objectContaining({ _id: id, bannerText: "Second" })]);
-    await t.mutation(api.platform.agentAnnouncements.remove, { ...auth, announcementId: id });
-    expect(await t.query(api.platform.agentAnnouncements.get, { ...auth, announcementId: id })).toBeNull();
+    const { id } = await t.mutation(api.platform.agentCapabilities.write, { ...auth, name: "announcements_create", input: { name: "Agent draft", bannerText: "First" } });
+    expect(await t.query(api.platform.agentCapabilities.read, { ...auth, name: "announcements_get", input: { announcementId: id } })).toMatchObject({ name: "Agent draft", bannerText: "First", isLive: false });
+    await t.mutation(api.platform.agentCapabilities.write, { ...auth, name: "announcements_update", input: { announcementId: id, patch: { bannerText: "Second" } } });
+    expect(await t.query(api.platform.agentCapabilities.read, { ...auth, name: "announcements_list", input: {} })).toEqual([expect.objectContaining({ _id: id, bannerText: "Second" })]);
+    await t.mutation(api.platform.agentCapabilities.write, { ...auth, name: "announcements_delete", input: { announcementId: id } });
+    expect(await t.query(api.platform.agentCapabilities.read, { ...auth, name: "announcements_get", input: { announcementId: id } })).toBeNull();
     const stored = await t.run(ctx => ctx.db.query("agentGrants").collect());
     expect(JSON.stringify(stored)).not.toContain(token);
     await t.finishAllScheduledFunctions(vi.runAllTimers);
@@ -66,7 +66,7 @@ describe("one-use browser authorization and delegated access", () => {
     expect(await f.admin.query(api.platform.auth.getCurrentUser, {})).toBeNull();
     await expect(f.admin.mutation(api.platform.agentAccess.authorize, f.request)).rejects.toThrow("NOT_AUTHENTICATED");
     const grant = await f.t.mutation(api.platform.agentAccess.exchange, { code, verifier, clientId: f.request.clientId, redirectUri: f.request.redirectUri, resource });
-    expect(await f.t.query(api.platform.agentAnnouncements.list, { token: grant.access_token, resource })).toEqual([]);
+    expect(await f.t.query(api.platform.agentCapabilities.read, { token: grant.access_token, resource, name: "announcements_list", input: {} })).toEqual([]);
     expect(await f.application.query(api.platform.auth.getCurrentUser, {})).not.toBeNull();
   });
   test("denial deletes even a stale browser login and creates no delegation, code or grant", async () => {
@@ -100,15 +100,15 @@ describe("one-use browser authorization and delegated access", () => {
     const f = await fixture(); const { token } = await f.mint();
     const pending = await f.login();
     const code = await pending.client.mutation(api.platform.agentAccess.authorize, f.request);
-    await f.application.mutation(api.platform.agentMcp.setEnabled, { enabled: false });
-    await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "mcp", enabled: false });
+    await expect(f.t.query(api.platform.agentCapabilities.read, { token, resource, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
     const blocked = await f.login();
     await expect(blocked.client.mutation(api.platform.agentAccess.authorize, f.request)).rejects.toThrow("MCP_DISABLED");
-    await f.application.mutation(api.platform.agentMcp.setEnabled, { enabled: true });
-    await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "mcp", enabled: true });
+    await expect(f.t.query(api.platform.agentCapabilities.read, { token, resource, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
     await expect(f.t.mutation(api.platform.agentAccess.exchange, { code: code.code, verifier, clientId: f.request.clientId, redirectUri: f.request.redirectUri, resource })).rejects.toThrow("INVALID_GRANT");
     const fresh = await f.mint();
-    expect(await f.t.query(api.platform.agentAnnouncements.list, { token: fresh.token, resource })).toEqual([]);
+    expect(await f.t.query(api.platform.agentCapabilities.read, { token: fresh.token, resource, name: "announcements_list", input: {} })).toEqual([]);
   });
   test("PKCE, redirect and audience binding; codes expire and cannot be replayed", async () => {
     const f = await fixture(); const { code } = await f.admin.mutation(api.platform.agentAccess.authorize, f.request);
@@ -125,31 +125,31 @@ describe("one-use browser authorization and delegated access", () => {
   test("anonymous, forged, wrong-audience and expired tokens fail; stale writes fail while reads remain valid", async () => {
     const f = await fixture(); const { token } = await f.mint();
     for (const auth of [{ token: "forged", resource }, { token, resource: "wrong" }])
-      await expect(f.t.query(api.platform.agentAnnouncements.list, auth)).rejects.toThrow("INVALID_AGENT_TOKEN");
+      await expect(f.t.query(api.platform.agentCapabilities.read, { ...auth, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
     vi.advanceTimersByTime(5 * 60_000 + 1);
-    expect(await f.t.query(api.platform.agentAnnouncements.list, { token, resource })).toEqual([]);
-    await expect(f.t.mutation(api.platform.agentAnnouncements.create, { token, resource, name: "No", bannerText: "No" })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
+    expect(await f.t.query(api.platform.agentCapabilities.read, { token, resource, name: "announcements_list", input: {} })).toEqual([]);
+    await expect(f.t.mutation(api.platform.agentCapabilities.write, { token, resource, name: "announcements_create", input: { name: "No", bannerText: "No" } })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
     vi.advanceTimersByTime(10 * 60_000);
-    await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await expect(f.t.query(api.platform.agentCapabilities.read, { token, resource, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
   });
   test("grant revocation and credential changes disable access", async () => {
     const f = await fixture(); const first = await f.mint();
     const grants = await f.application.query(api.platform.agentAccess.listMine, {});
     await f.application.mutation(api.platform.agentAccess.revoke, { grantId: grants[0]._id });
-    await expect(f.t.query(api.platform.agentAnnouncements.list, { token: first.token, resource })).rejects.toThrow();
+    await expect(f.t.query(api.platform.agentCapabilities.read, { token: first.token, resource, name: "announcements_list", input: {} })).rejects.toThrow();
     const second = await f.mint();
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "account", where: [{ field: "userId", value: f.user._id }, { field: "providerId", value: "credential" }], update: { password: "changed-password-hash" } } });
-    await expect(f.t.query(api.platform.agentAnnouncements.list, { token: second.token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await expect(f.t.query(api.platform.agentCapabilities.read, { token: second.token, resource, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
   });
   test("live role, ban and security policy changes disable existing grants", async () => {
     for (const data of [{ role: "user" }, { banned: true }]) {
       const f = await fixture(); const { token } = await f.mint();
       await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: data } });
-      await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+      await expect(f.t.query(api.platform.agentCapabilities.read, { token, resource, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
     }
     const f = await fixture(); const { token } = await f.mint();
     await f.t.mutation(components.platform.appSettings.set, { key: "adminMfaRequired", value: "true", userId: f.user._id });
-    await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await expect(f.t.query(api.platform.agentCapabilities.read, { token, resource, name: "announcements_list", input: {} })).rejects.toThrow("INVALID_AGENT_TOKEN");
   });
 });
 
@@ -223,12 +223,36 @@ describe("full native capability adapter and independent surfaces", () => {
     await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "cli", enabled: false });
     await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "cli", enabled: true });
     await expect(f.t.query(api.platform.agentCapabilities.catalogue, { token: cli.access_token, resource: cliResource })).rejects.toThrow("INVALID_AGENT_TOKEN");
-    await expect(f.application.query(api.platform.agentCapabilities.browserCatalogue, {})).rejects.toThrow("SURFACE_DISABLED");
+    await expect(f.application.query(api.platform.agentCapabilities.browserGateway, { operation: "search", input: {}, requestId: crypto.randomUUID() })).rejects.toThrow("SURFACE_DISABLED");
     await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "webmcp", enabled: true });
     expect(await f.application.query(api.platform.agentCapabilities.browserRead, { name: "account_currentUser", input: {} })).toMatchObject({ id: f.user._id });
-    await expect(f.admin.query(api.platform.agentCapabilities.browserCatalogue, {})).rejects.toThrow("NOT_ADMIN");
+    await expect(f.admin.query(api.platform.agentCapabilities.browserGateway, { operation: "search", input: {}, requestId: crypto.randomUUID() })).rejects.toThrow("NOT_ADMIN");
     await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "webmcp", enabled: false });
     await expect(f.application.query(api.platform.agentCapabilities.browserRead, { name: "account_currentUser", input: {} })).rejects.toThrow("SURFACE_DISABLED");
+  });
+  test("browser gateway discovers every capability and requires fresh authorization for discovery and preparation", async () => {
+    const f = await fixture();
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "webmcp", enabled: true });
+    const gateway = (operation: "search" | "describe" | "prepare", input: unknown) => f.application.query(api.platform.agentCapabilities.browserGateway, { operation, input, requestId: crypto.randomUUID() });
+    const names: string[] = [];
+    let offset: number | null = 0;
+    while (offset !== null) {
+      const page = JSON.parse(await gateway("search", { offset })) as { matches: { name: string }[]; nextOffset: number | null };
+      expect(page.matches.length).toBeLessThanOrEqual(8);
+      names.push(...page.matches.map(row => row.name));
+      offset = page.nextOffset;
+    }
+    expect(new Set(names).size).toBe(80);
+    expect(names).toEqual(expect.arrayContaining(["announcements_create", "browser_readPage", "surfaces_setEnabled"]));
+    const descriptions = JSON.parse(await gateway("describe", { names: ["announcements_create"] }));
+    expect(descriptions).toMatchObject([{ inputSchema: { required: expect.arrayContaining(["name", "bannerText"]) } }]);
+    const input = { name: "announcements_create", input: { name: "Draft", bannerText: "Hello" } };
+    expect(JSON.parse(await gateway("prepare", input))).toMatchObject({ ...input, effect: "write" });
+    await expect(gateway("prepare", { ...input, input: { ...input.input, token: "injected" } })).rejects.toThrow();
+    vi.advanceTimersByTime(5 * 60_000 + 1);
+    for (const [operation, args] of [["search", {}], ["describe", { names: ["announcements_create"] }], ["prepare", input]] as const) {
+      await expect(gateway(operation, args)).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
+    }
   });
 });
 

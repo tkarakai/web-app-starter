@@ -1,6 +1,5 @@
 /** Bounded discovery is a server contract, independent of a client's prompt strategy. */
 import { z } from "zod";
-import { announcementCatalogue } from "./catalogue";
 import type { CapabilityAdapter } from "./adapter";
 
 export interface CapabilityDefinition {
@@ -50,7 +49,6 @@ export async function executeCapability(adapter: CapabilityAdapter, catalogue: C
   if (c.effect !== "read" && result.nextOffset !== undefined && result.nextOffset !== null) return { ...result, nextOffset: null, resultTruncated: true, warning: "This operation returned a large result. Inspect state with a read capability or the browser capability's own page offsets; do not replay a write to continue its output." };
   return result;
 }
-export const defaultCatalogue: CapabilityCatalogue = announcementCatalogue;
 
 export interface CapabilityDescriptor { name: string; title: string; description: string; effect: CapabilityDefinition["effect"]; inputSchema: Record<string, unknown>; }
 export function catalogueFromRows(rows: CapabilityDescriptor[]): CapabilityCatalogue {

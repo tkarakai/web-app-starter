@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./catalogue": "./src/catalogue.ts",
     "./adapter": "./src/adapter.ts",
     "./mcp": "./src/mcp.ts",
     "./oauth": "./src/oauth.ts",

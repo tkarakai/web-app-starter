@@ -4,9 +4,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { handleMcp } from "../src/mcp";
 import { validateAuthorization } from "../src/oauth";
-import { searchCapabilities, describeCapabilities, executeCapability, boundedResult, defaultCatalogue } from "../src/discovery";
+import { searchCapabilities, describeCapabilities, executeCapability, boundedResult, type CapabilityCatalogue } from "../src/discovery";
+import { announcementCatalogue } from "./fixtures/catalogue";
 
-async function connection(catalogue = defaultCatalogue, execute = async (_name: string, _input: Record<string, unknown>): Promise<unknown> => ({ id: "native-id" })) {
+async function connection(catalogue: CapabilityCatalogue = announcementCatalogue, execute = async (_name: string, _input: Record<string, unknown>): Promise<unknown> => ({ id: "native-id" })) {
   const client = new Client({ name: "independent-test", version: "1" });
   await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost/api/mcp"), {
     fetch: async (url, init) => handleMcp(new Request(url, init), { execute }, catalogue),
@@ -16,7 +17,7 @@ async function connection(catalogue = defaultCatalogue, execute = async (_name: 
 describe("bounded MCP discovery", () => {
   test("independent SDK client discovers schemas on demand and validates execution", async () => {
     const calls: unknown[] = [];
-    const client = await connection(defaultCatalogue, async (name, input) => { calls.push({ name, input }); return { id: "native-id" }; });
+    const client = await connection(announcementCatalogue, async (name, input) => { calls.push({ name, input }); return { id: "native-id" }; });
     try {
       expect((await client.listTools()).tools.map(t => t.name)).toEqual(["capabilities_search", "capabilities_describe", "capabilities_execute"]);
       const described = await client.callTool({ name: "capabilities_describe", arguments: { names: ["announcements_create"] } });
@@ -40,12 +41,12 @@ describe("bounded MCP discovery", () => {
       const value = "x".repeat(25_000); const first = boundedResult(value); const second = boundedResult(value, first.nextOffset ?? 0);
       expect(first.chunk?.length).toBe(12_000); expect(second.nextOffset).toBe(24_000);
       let calls = 0;
-      await expect(executeCapability({ async execute() { calls++; } }, defaultCatalogue, { name: "announcements_create", input: { name: "x", bannerText: "x" }, resultOffset: 1 })).rejects.toThrow("WRITE_OUTPUT");
+      await expect(executeCapability({ async execute() { calls++; } }, announcementCatalogue, { name: "announcements_create", input: { name: "x", bannerText: "x" }, resultOffset: 1 })).rejects.toThrow("WRITE_OUTPUT");
       expect(calls).toBe(0);
     } finally { await smallClient.close(); await bigClient.close(); }
   });
   test("backend exceptions cannot leak credentials into tool responses", async () => {
-    const client = await connection(defaultCatalogue, async () => { throw new Error("sensitive credential trace"); });
+    const client = await connection(announcementCatalogue, async () => { throw new Error("sensitive credential trace"); });
     try {
       const result = await client.callTool({ name: "capabilities_execute", arguments: { name: "announcements_list" } });
       expect(result.isError).toBe(true); expect(JSON.stringify(result)).not.toContain("sensitive");
@@ -62,13 +63,13 @@ describe("bounded MCP discovery", () => {
 
 test("large write outputs never invite replay through a continuation offset", async () => {
   let executions = 0;
-  const result = await executeCapability({ async execute() { executions++; return { value: "x".repeat(20_000) }; } }, defaultCatalogue, { name: "announcements_create", input: { name: "X", bannerText: "Y" } });
+  const result = await executeCapability({ async execute() { executions++; return { value: "x".repeat(20_000) }; } }, announcementCatalogue, { name: "announcements_create", input: { name: "X", bannerText: "Y" } });
   expect(executions).toBe(1); expect(result).toMatchObject({ nextOffset: null, resultTruncated: true });
 });
 
 test("prototype properties are not capabilities", async () => {
   for (const name of ["constructor", "toString", "__proto__"]) {
-    expect(() => describeCapabilities(defaultCatalogue, { names: [name] })).toThrow("UNKNOWN_CAPABILITY");
-    await expect(executeCapability({ async execute() { throw new Error("Must not execute"); } }, defaultCatalogue, { name, input: {} })).rejects.toThrow("UNKNOWN_CAPABILITY");
+    expect(() => describeCapabilities(announcementCatalogue, { names: [name] })).toThrow("UNKNOWN_CAPABILITY");
+    await expect(executeCapability({ async execute() { throw new Error("Must not execute"); } }, announcementCatalogue, { name, input: {} })).rejects.toThrow("UNKNOWN_CAPABILITY");
   }
 });

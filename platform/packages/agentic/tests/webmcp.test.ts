@@ -1,12 +1,13 @@
 import { expect, test } from "bun:test";
 import { registerWebMcp, WebMcpSimulator } from "../src/webmcp";
-import { defaultCatalogue, searchCapabilities, describeCapabilities, executeCapability } from "../src/discovery";
+import { searchCapabilities, describeCapabilities, executeCapability } from "../src/discovery";
+import { announcementCatalogue } from "./fixtures/catalogue";
 import { withBrowserCapabilities } from "../src/browser-catalogue";
 
 test("WebMCP simulator enforces authentication, schemas, cancellation and unregister", async () => {
   const provider = new WebMcpSimulator(); const controller = new globalThis.AbortController();
   let authenticated = false; let executions = 0;
-  const catalogue = withBrowserCapabilities(defaultCatalogue);
+  const catalogue = withBrowserCapabilities(announcementCatalogue);
   await registerWebMcp(provider, async (name, input, signal) => {
     if (!authenticated) throw new Error("NOT_ADMIN");
     return name === "capabilities_search" ? searchCapabilities(catalogue, input) : name === "capabilities_describe" ? describeCapabilities(catalogue, input) : executeCapability({ async execute() { executions++; return { id: "native-id" }; } }, catalogue, input, signal);

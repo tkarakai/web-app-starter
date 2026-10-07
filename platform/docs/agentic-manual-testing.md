@@ -10,7 +10,7 @@ Use the existing local dev deployment. **There is no separate authorization serv
 Run from the product directory:
 
 ```sh
-cd /Users/tamas/orca/workspaces/web-app-starter-maintainer/agent-native/product
+cd <product-checkout>
 nvm use 24.21.0
 bun install --frozen-lockfile
 bun run setup:e2e

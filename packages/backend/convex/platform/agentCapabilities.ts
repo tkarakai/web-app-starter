@@ -45,18 +45,11 @@ async function browserAuth(ctx: QueryCtx, recent = false) {
   if (recent && !auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
   return auth;
 }
-export const browserCatalogue = query({ args: {}, returns: rowsValidator, handler: async ctx => { await browserAuth(ctx); return catalogueRows(); } });
 export const browserRead = query({ args, returns: v.any(), handler: async (ctx, { name, input }) => runCapability(ctx, await browserAuth(ctx), name, input, false) });
 export const browserWrite = mutation({ args, returns: v.any(), handler: async (ctx, { name, input }) => {
   const auth = await browserAuth(ctx, true);
   await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
   return (await runCapability(ctx, auth, name, input, true)) ?? null;
-} });
-/** Random request IDs avoid replaying a reactive query's time-dependent authorization result. */
-export const browserPermit = query({ args: { requestId: v.string() }, returns: v.boolean(), handler: async (ctx, { requestId }) => {
-  await browserAuth(ctx, true);
-  if (!/^[a-f0-9-]{36}$/.test(requestId)) throw new Error("INVALID_REQUEST");
-  return true;
 } });
 
 /** Browser-safe gateway: return JSON text so standard JSON Schema dollar keys remain legal. */
