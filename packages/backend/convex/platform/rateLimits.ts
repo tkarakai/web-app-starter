@@ -39,7 +39,7 @@ const rateLimitDefs = {
   /** All non-polling auth routes, including newly installed plugin endpoints. */
   authRequestGlobal: { kind: "token bucket", rate: 1000, period: MINUTE, capacity: 250 },
   /** Additional protection when an operator has verified an ingress-overwritten IP header. */
-  authRequestIp: { kind: "token bucket", rate: 100, period: MINUTE, capacity: 100 },
+  authRequestIp: { kind: "token bucket", rate: 100, period: MINUTE, capacity: 50 },
   authEmailRecipient: { kind: "token bucket", rate: 3, period: MINUTE, capacity: 3 },
   authEmailGlobal: {
     kind: "token bucket",
@@ -54,7 +54,7 @@ const rateLimitDefs = {
   /** Log at most one exhaustion signal per five minutes, regardless of attacker retries. */
   authEmailAlert: { kind: "token bucket", rate: 1, period: 5 * MINUTE, capacity: 1 },
   /** Global per-user mutation rate limit applied to all authedMutation calls. */
-  agentRequest: { kind: "token bucket", rate: 100, period: MINUTE, capacity: 50 },
+  agentRequest: { kind: "token bucket", rate: 100, period: MINUTE, capacity: 100 },
   mutationGlobal: {
     kind: "token bucket",
     rate: positiveInt(process.env.MUTATION_RATE_LIMIT_RATE, 30),

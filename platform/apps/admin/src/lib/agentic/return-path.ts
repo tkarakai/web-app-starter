@@ -10,4 +10,3 @@ export function postSignInPath(): string {
     return url.pathname + url.search;
   } catch { return "/dashboard"; }
 }
-
