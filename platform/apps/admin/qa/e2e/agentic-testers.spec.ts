@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 /** Opt-in real clients and inference. These tests never require a provider in ordinary CI. */
 import { spawn } from "node:child_process";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -47,10 +48,12 @@ for (const surface of ["mcp", "cli", "a2a"] as const) test(`pi conversation disc
   const reportPath = testInfo.outputPath(`${surface}-pi-evidence.json`);
   const output = await runTester(page, origin, user, "platform/packages/announcement-agent/src/cli.ts", ["--report", reportPath, "--surface", surface, "--provider", process.env.AGENT_TEST_PROVIDER ?? "openai-codex", "--model", process.env.AGENT_TEST_MODEL ?? "gpt-6.1-sol", "--prompt", `Discover the administration capabilities and inspect their schemas. Create an unscheduled announcement draft named ${name} with banner text Pi acceptance. Read it, update the banner to Pi verified, read it to verify, then permanently delete only that draft and verify it is gone. I explicitly authorize this disposable draft CRUD. Also read current MFA policy and list the first five users without changing users or policy. Report all tool errors.`]);
   expect(output).toContain("[capabilities_search]"); expect(output).toContain("[capabilities_describe]"); expect(output).toContain("[capabilities_execute]");
-  const report = JSON.parse(await readFile(reportPath, "utf8")) as { tools: { capability?: string; success: boolean; createdAnnouncementId?: string; announcementId?: string; absent?: boolean; bannerHash?: string }[] };
+  const report = JSON.parse(await readFile(reportPath, "utf8")) as { tools: { capability?: string; success: boolean; createdAnnouncementId?: string; nameHash?: string; announcementId?: string; absent?: boolean; bannerHash?: string }[] };
   expect(report.tools.filter(tool => !tool.success)).toHaveLength(0);
   const created = report.tools.find(tool => tool.capability === "announcements_create"); expect(created?.createdAnnouncementId).toBeTruthy();
+  expect(created?.nameHash).toBe(createHash("sha256").update(name).digest("hex"));
   const id = created!.createdAnnouncementId!;
+  expect(report.tools).toEqual(expect.arrayContaining([expect.objectContaining({ capability: "announcements_get", announcementId: id, bannerHash: createHash("sha256").update("Pi verified").digest("hex") })]));
   expect(report.tools).toEqual(expect.arrayContaining([expect.objectContaining({ capability: "announcements_update", announcementId: id, success: true }), expect.objectContaining({ capability: "announcements_delete", announcementId: id, success: true }), expect.objectContaining({ capability: "announcements_get", announcementId: id, absent: true })]));
   await testInfo.attach(`${surface}-pi-evidence`, { body: JSON.stringify(report, null, 2), contentType: "application/json" });
   if (process.env.AGENT_EVIDENCE_DIR) { await mkdir(process.env.AGENT_EVIDENCE_DIR, { recursive: true }); await writeFile(resolve(process.env.AGENT_EVIDENCE_DIR, `${surface}-pi.json`), JSON.stringify(report, null, 2) + "\n"); }

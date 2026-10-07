@@ -15,12 +15,16 @@
     "./browser-catalogue": "./src/browser-catalogue.ts",
     "./browser-actions": "./src/browser-actions.ts",
     "./a2a": "./src/a2a.ts",
-    "./catalogue-cache": "./src/catalogue-cache.ts"
+    "./catalogue-cache": "./src/catalogue-cache.ts",
+    "./gateway-contract": "./src/gateway-contract.ts",
+    "./browser-contract": "./src/browser-contract.ts",
+    "./results": "./src/results.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --max-warnings 0",
-    "test": "bun test tests"
+    "test": "bun test tests",
+    "generate:contracts": "bun src/generate-contracts.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.31.0",

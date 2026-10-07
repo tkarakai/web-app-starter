@@ -1,6 +1,7 @@
 /* global Document, Element, NodeFilter, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLAnchorElement, Event */
 /** Operate only visible controls already rendered by the application; never evaluate agent code. */
-import { browserCatalogue } from "./browser-catalogue";
+import { browserContracts } from "./browser-contract";
+const browserNames = new Set<string>(browserContracts.map(contract => contract.name));
 export function browserActions(document: Document, navigate: (path: string) => void) {
   let sequence = 0;
   const controls = new Map<string, HTMLElement>(); const ids = new WeakMap<HTMLElement, string>();
@@ -18,8 +19,9 @@ export function browserActions(document: Document, navigate: (path: string) => v
     return element;
   }
   return async function execute(name: string, input: Record<string, unknown>) {
-    const definition = browserCatalogue[name]; if (!definition) throw new Error("UNKNOWN_CAPABILITY");
-    const args = definition.schema.parse(input) as Record<string, unknown>;
+    // The authenticated backend prepared/validated these arguments against the shared schema.
+    if (!browserNames.has(name)) throw new Error("UNKNOWN_CAPABILITY");
+    const args = input;
     if (name === "browser_readPage") {
       for (const [id, element] of controls) if (!element.isConnected) controls.delete(id);
       const modal = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')).reverse().find(element => element.getClientRects().length > 0 && (!element.checkVisibility || element.checkVisibility()));

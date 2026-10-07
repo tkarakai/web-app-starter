@@ -1,12 +1,16 @@
 import { expect, test } from "bun:test";
 import { registerWebMcp, WebMcpSimulator } from "../src/webmcp";
-import { defaultCatalogue } from "../src/discovery";
+import { defaultCatalogue, searchCapabilities, describeCapabilities, executeCapability } from "../src/discovery";
 import { withBrowserCapabilities } from "../src/browser-catalogue";
 
 test("WebMCP simulator enforces authentication, schemas, cancellation and unregister", async () => {
   const provider = new WebMcpSimulator(); const controller = new globalThis.AbortController();
   let authenticated = false; let executions = 0;
-  await registerWebMcp(provider, withBrowserCapabilities(defaultCatalogue), { async execute() { executions++; return { id: "native-id" }; } }, async () => { if (!authenticated) throw new Error("NOT_ADMIN"); }, controller.signal);
+  const catalogue = withBrowserCapabilities(defaultCatalogue);
+  await registerWebMcp(provider, async (name, input, signal) => {
+    if (!authenticated) throw new Error("NOT_ADMIN");
+    return name === "capabilities_search" ? searchCapabilities(catalogue, input) : name === "capabilities_describe" ? describeCapabilities(catalogue, input) : executeCapability({ async execute() { executions++; return { id: "native-id" }; } }, catalogue, input, signal);
+  }, controller.signal);
   expect(provider.tools.size).toBe(3);
   expect(await provider.execute("capabilities_search", { query: "announcements" })).toMatchObject({ isError: true });
   expect(executions).toBe(0); authenticated = true;

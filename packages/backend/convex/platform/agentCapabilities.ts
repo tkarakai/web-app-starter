@@ -1,3 +1,5 @@
+import { catalogueFromRows, searchCapabilities, describeCapabilities, gatewaySchemas } from "@web-app-starter/agentic/discovery";
+import { withBrowserCapabilities } from "@web-app-starter/agentic/browser-catalogue";
 /** Surface-neutral execution. Only the explicit registry is callable, never arbitrary Convex exports. */
 import { v } from "convex/values";
 import { query, mutation, type QueryCtx, type MutationCtx } from "../_generated/server";
@@ -55,4 +57,18 @@ export const browserPermit = query({ args: { requestId: v.string() }, returns: v
   await browserAuth(ctx, true);
   if (!/^[a-f0-9-]{36}$/.test(requestId)) throw new Error("INVALID_REQUEST");
   return true;
+} });
+
+/** Browser-safe gateway: return JSON text so standard JSON Schema dollar keys remain legal. */
+export const browserGateway = query({ args: { operation: v.union(v.literal("search"), v.literal("describe"), v.literal("prepare")), input: v.any(), requestId: v.string() }, returns: v.string(), handler: async (ctx, { operation, input, requestId }) => {
+  await browserAuth(ctx, true);
+  if (!/^[a-f0-9-]{36}$/.test(requestId)) throw new Error("INVALID_REQUEST");
+  const catalogue = withBrowserCapabilities(catalogueFromRows(catalogueRows()));
+  if (operation === "search") return JSON.stringify(searchCapabilities(catalogue, input));
+  if (operation === "describe") return JSON.stringify(describeCapabilities(catalogue, input));
+  const request = gatewaySchemas.capabilities_execute.parse(input);
+  const definition = Object.prototype.hasOwnProperty.call(catalogue, request.name) ? catalogue[request.name] : undefined;
+  if (!definition) throw new Error("UNKNOWN_CAPABILITY");
+  if (request.resultOffset && definition.effect !== "read") throw new Error("WRITE_OUTPUT_CANNOT_BE_REPLAYED");
+  return JSON.stringify({ name: request.name, input: definition.schema.parse(request.input), effect: definition.effect, resultOffset: request.resultOffset });
 } });

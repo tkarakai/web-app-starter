@@ -29,6 +29,7 @@ const ACCESS: Record<string, Access> = {
   "platform/agentCapabilities:read": "agent",
   "platform/agentCapabilities:write": "agent",
   "platform/agentCapabilities:browserCatalogue": "admin",
+  "platform/agentCapabilities:browserGateway": "admin",
   "platform/agentCapabilities:browserRead": "admin",
   "platform/agentCapabilities:browserWrite": "admin",
   "platform/agentCapabilities:browserPermit": "admin",
@@ -217,7 +218,7 @@ async function platformFunctions(): Promise<PlatformFunction[]> {
       if (!kind) continue;
       const args = fn.exportArgs ? sample(JSON.parse(fn.exportArgs()) as ValidatorJson) : {};
       const path = `${name}:${exportName}`;
-      const behaviorArgs = path === "platform/agentCapabilities:browserRead" ? { name: "account_currentUser", input: {} } : path === "platform/agentCapabilities:browserPermit" ? { requestId: crypto.randomUUID() } : args;
+      const behaviorArgs = path === "platform/agentCapabilities:browserGateway" ? { operation: "search", input: {}, requestId: crypto.randomUUID() } : path === "platform/agentCapabilities:browserRead" ? { name: "account_currentUser", input: {} } : path === "platform/agentCapabilities:browserPermit" ? { requestId: crypto.randomUUID() } : args;
       found.push({ path, kind, args: behaviorArgs });
     }
   }

@@ -94,7 +94,8 @@
     "agent:announcements": "bun run --cwd platform/packages/announcement-agent start",
     "agent:admin": "bun run --cwd platform/packages/announcement-agent start",
     "admin:cli": "bun run --cwd platform/packages/announcement-agent cli",
-    "agent:simulator": "bun run --cwd platform/packages/announcement-agent simulate"
+    "agent:simulator": "bun run --cwd platform/packages/announcement-agent simulate",
+    "test:agentic": "bun run --cwd platform/packages/agentic test && bun run --cwd platform/packages/announcement-agent test"
   },
   "overrides": {
     "@peculiar/asn1-schema": "2.9.5",

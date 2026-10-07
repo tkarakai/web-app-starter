@@ -38,13 +38,8 @@ export function describeCapabilities(catalogue: CapabilityCatalogue, input: unkn
     return { name, title: c.title, description: c.description, effect: c.effect, inputSchema: z.toJSONSchema(c.schema) };
   });
 }
-export function boundedResult(value: unknown, offset = 0) {
-  const json = JSON.stringify(value ?? null);
-  if (offset > json.length) throw new Error("INVALID_RESULT_OFFSET");
-  if (json.length <= 12_000 && offset === 0) return { result: value ?? null };
-  return { format: "json-chunk", chunk: json.slice(offset, offset + 12_000), totalCharacters: json.length, nextOffset: offset + 12_000 < json.length ? offset + 12_000 : null,
-    warning: "Read pagination re-executes the query; data may change between requests." };
-}
+export { boundedResult } from "./results";
+import { boundedResult } from "./results";
 export async function executeCapability(adapter: CapabilityAdapter, catalogue: CapabilityCatalogue, input: unknown, signal?: AbortSignal) {
   const { name, input: args, resultOffset } = gatewaySchemas.capabilities_execute.parse(input);
   const c = Object.prototype.hasOwnProperty.call(catalogue, name) ? catalogue[name] : undefined;

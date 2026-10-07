@@ -127,7 +127,10 @@ through the chosen independent transport. `AGENT_NO_OPEN=true` prints the browse
 
 WebMCP is `document.modelContext`, not an HTTP MCP server. A compatible browser registers the
 three gateway tools only within the protected normal admin layout. Each call checks current
-session/policy/recent proof with a fresh backend request. Disablement, sign-out or leaving the
+session/policy/recent proof with a fresh backend request. Discovery and schema validation run
+in Convex; the browser loads generated JSON contracts and page bindings, without the schema
+parser. `bun run --cwd platform/packages/agentic generate:contracts` refreshes those contracts
+after changing the server gateway/browser schemas. CI checks their semantic equivalence. Disablement, sign-out or leaving the
 protected layout removes tools; backend entry points independently reject disabled access.
 Unsupported browsers simply register no tools.
 
