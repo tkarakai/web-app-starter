@@ -25,28 +25,42 @@ export async function authenticate(origin: string, surface: "mcp" | "cli" | "a2a
   const state = randomBytes(32).toString("base64url");
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  let accept!: (code: string) => void;
+  let accept!: (token: string) => void;
   let reject!: (error: Error) => void;
-  const codePromise = new Promise<string>((resolve, fail) => { accept = resolve; reject = fail; });
-  const server = createServer((request, response) => {
-    const showResult = (result: "approved" | "denied" | "invalid") => {
+  const tokenPromise = new Promise<string>((resolve, fail) => { accept = resolve; reject = fail; });
+  let callbackReceived = false;
+  const server = createServer(async (request, response) => {
+    const showResult = (result: "approved" | "denied" | "invalid" | "failed") => {
       const page = authResultPage(result, origin);
-      response.writeHead(result === "invalid" ? 400 : 200, page.headers);
+      response.writeHead(result === "invalid" ? 400 : result === "failed" ? 502 : 200, page.headers);
       response.end(page.body);
     };
     const callback = new URL(request.url ?? "/", "http://127.0.0.1");
-    if (request.method !== "GET" || callback.pathname !== "/callback" || callback.searchParams.get("state") !== state) {
+    if (callbackReceived || request.method !== "GET" || callback.pathname !== "/callback" || callback.searchParams.get("state") !== state) {
       showResult("invalid"); return;
     }
     if (callback.searchParams.get("error") === "access_denied") {
+      callbackReceived = true;
       showResult("denied");
       reject(new Error("Admin access was denied. Use /auth to try again."));
       return;
     }
     const code = callback.searchParams.get("code");
     if (!code || !/^[a-f0-9]{64}$/.test(code)) { showResult("invalid"); return; }
-    showResult("approved");
-    accept(code);
+    callbackReceived = true;
+    clearTimeout(timeout);
+    try {
+      const tokenResponse = await fetch(issuerMetadata.token_endpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: CLIENT_ID, redirect_uri: redirectUri, resource }), signal: AbortSignal.timeout(15_000) });
+      if (!tokenResponse.ok) throw new Error("Authorization exchange failed. Sign in again and retry.");
+      const result: unknown = await tokenResponse.json();
+      if (typeof result !== "object" || result === null || !("access_token" in result) || typeof result.access_token !== "string") throw new Error("Invalid token response");
+      showResult("approved");
+      accept(result.access_token);
+    } catch (error) {
+      showResult("failed");
+      reject(error instanceof Error ? error : new Error("Authorization exchange failed. Sign in again and retry."));
+    }
   });
   await new Promise<void>((resolve, fail) => { server.once("error", fail); server.listen(0, "127.0.0.1", resolve); });
   const address = server.address();
@@ -63,12 +77,6 @@ export async function authenticate(origin: string, surface: "mcp" | "cli" | "a2a
   }
   const timeout = setTimeout(() => reject(new Error("Authentication timed out. Restart or use /auth to try again.")), 5 * 60_000);
   try {
-    const code = await codePromise;
-    const response = await fetch(issuerMetadata.token_endpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: CLIENT_ID, redirect_uri: redirectUri, resource }), signal: AbortSignal.timeout(15_000) });
-    if (!response.ok) throw new Error("Authorization exchange failed. Sign in again and retry.");
-    const result: unknown = await response.json();
-    if (typeof result !== "object" || result === null || !("access_token" in result) || typeof result.access_token !== "string") throw new Error("Invalid token response");
-    return result.access_token;
+    return await tokenPromise;
   } finally { clearTimeout(timeout); server.close(); }
 }
