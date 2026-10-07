@@ -670,4 +670,8 @@ test("auth-only-origin login creates a restricted session and cannot access gene
   const verify = await f.request("/verify-password", { password }, token);
   expect(verify.status).toBe(200);
   expect((await f.caller(token)).session.authPurpose).toBe("mcp-authorization");
+  const again = await f.request("/sign-in/email", { email: f.email, password }, token);
+  expect(again.status).toBe(200);
+  const replacement = (await again.json()).token;
+  expect((await f.caller(replacement)).session.authPurpose).toBe("mcp-authorization");
 });

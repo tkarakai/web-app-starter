@@ -6,7 +6,7 @@ export function localAgentOrigins(adminUrl: string, resourceOrigin?: string, aut
   if (admin.protocol !== "http:" || admin.hostname !== "localhost" || admin.origin !== adminUrl) throw new Error("MCP dev origins require the managed local admin URL");
   if (resourceOrigin && resourceOrigin !== adminUrl) throw new Error("AGENT_MCP_ORIGIN must match the actual local admin URL");
   const issuer = new URL(authOrigin ?? `http://mcp-auth.localhost:${admin.port}`);
-  if (issuer.origin !== (authOrigin ?? issuer.origin) || issuer.protocol !== "http:" || !issuer.hostname.endsWith(".localhost")
+  if (issuer.origin !== (authOrigin ?? issuer.origin) || issuer.protocol !== "http:" || !/^[a-z0-9.-]+\.localhost$/.test(issuer.hostname)
     || issuer.port !== admin.port || issuer.hostname === admin.hostname) throw new Error("Local MCP auth must use a distinct .localhost hostname on the admin port");
   return { origin: admin.origin, authorizationOrigin: issuer.origin, resource: admin.origin + "/api/mcp" };
 }

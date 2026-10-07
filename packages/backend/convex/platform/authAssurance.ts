@@ -62,6 +62,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
   let passwordBefore: string | undefined;
   let passkeyVerified = false;
   let rotationSource: AuthSession | null = null;
+  let authorizationSource: AuthSession | null = null;
   const actionCtx = () => requireActionCtx(convexCtx);
 
   async function endpointSession(endpoint: Endpoint): Promise<AuthSession | null> {
@@ -84,6 +85,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       if (user && (await readPolicies(convexCtx, user)).scope === "admin") return endpoint.json({ status: true });
     }
     const pair = await endpointSession(endpoint);
+    if (pair?.session.authPurpose === "mcp-authorization") authorizationSource = pair;
     const fromAuthOrigin = Boolean(process.env.AGENT_MCP_AUTH_ORIGIN && endpoint.headers?.get("origin") === process.env.AGENT_MCP_AUTH_ORIGIN);
     if ((pair?.session.authPurpose === "mcp-authorization" || fromAuthOrigin) && !MCP_AUTH.has(path)) refuse("MCP_AUTHORIZATION_ONLY");
     if (ACTIVE_SESSION_ROTATION.has(path)) rotationSource = pair;
@@ -210,7 +212,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     const user = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: session.userId }] }) as Doc<"user"> | null;
     if (!user || user.banned) refuse("NOT_AUTHENTICATED");
     const authOnly = Boolean(process.env.AGENT_MCP_AUTH_ORIGIN && endpoint?.headers?.get("origin") === process.env.AGENT_MCP_AUTH_ORIGIN)
-      || data.authPurpose === "mcp-authorization";
+      || data.authPurpose === "mcp-authorization" || authorizationSource?.user._id === session.userId;
     data.authPurpose = authOnly ? "mcp-authorization" : "application";
     if (authOnly && user.role !== "admin") refuse("NOT_ADMIN");
     const policy = await readPolicies(convexCtx, user);

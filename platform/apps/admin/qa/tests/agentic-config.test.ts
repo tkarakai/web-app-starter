@@ -27,3 +27,9 @@ test("canonical host and same-origin browser requests are enforced", () => {
   expect(allowedRequest(new Request(origin + "/api/mcp", { headers: { Origin: "https://attacker.test" } }), origin)).toBe(false);
   expect(allowedRequest(new Request("http://attacker.test/api/mcp"), origin)).toBe(false);
 });
+
+test("a normalized localhost URL still validates the original auth Host header", () => {
+  const request = new Request("http://localhost:3002/api/agent/authorize", { headers: { host: "mcp-auth.localhost:3002" } });
+  expect(allowedRequest(request, "http://mcp-auth.localhost:3002")).toBe(true);
+  expect(allowedRequest(request, "http://localhost:3002")).toBe(false);
+});

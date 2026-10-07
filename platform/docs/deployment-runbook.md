@@ -957,5 +957,5 @@ set a shared cookie Domain. No refresh/offline access or dynamic client registra
 To stop access, use the admin switch: new requests are blocked and the grant generation changes,
 so re-enabling does not revive old codes/tokens. The deployment flag is an additional transport
 switch; leave canonical host settings in place while the auth DNS name still points to this
-artifact so host isolation continues even when transport is disabled. Update both app/backend
-origins together when changing domains and require new consent.
+artifact so host isolation continues even when transport is disabled. Disable MCP before changing domains, update both app/backend origins together, deploy, then
+re-enable and require new consent.

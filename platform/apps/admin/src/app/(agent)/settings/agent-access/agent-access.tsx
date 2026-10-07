@@ -43,7 +43,7 @@ export function AgentAccess({ request }: { request: AuthorizationRequest }) {
       </AlertDialogHeader>
       <div className="space-y-4 text-sm">
         <p>It can list, read, create, update and permanently delete announcements. Updates to live announcements affect public content.</p>
-        <p>Access lasts up to 15 minutes and stays linked to this admin session. Writes require authentication within the last five minutes.</p>
+        <p>Access lasts up to 15 minutes and stays linked to this authorization session. Writes require authentication within the last five minutes.</p>
         <p className="text-muted-foreground">Only approve if you started this pi agent yourself. Your decision returns to the agent on this computer.</p>
         {availability && !availability.enabled && <p role="alert">The MCP server is disabled. You can deny this request.</p>}
         {error && <p role="alert" className="text-destructive">{error}</p>}

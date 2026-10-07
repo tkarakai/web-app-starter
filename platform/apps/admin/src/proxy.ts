@@ -1,4 +1,4 @@
-import { agentConfig, authorizationOrigin, requestOrigin } from "@/lib/agentic/config";
+import { agentConfig, authorizationOrigin, requestOrigin } from "./lib/agentic/config.ts";
 import { authOnlyPath } from "@web-app-starter/agentic/auth-boundary";
 import { type NextRequest, NextResponse } from "next/server";
 import { authRedirect } from "@web-app-starter/auth-ui/proxy";

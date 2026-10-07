@@ -7,3 +7,7 @@ test("MCP dev uses a distinct cookie host on the existing admin listener", () =>
   assert.throws(() => localAgentOrigins("http://localhost:43202", undefined, "https://auth.example.test"));
   assert.throws(() => localAgentOrigins("http://localhost:43202", "http://localhost:43201"));
 });
+
+test("local issuer hostnames cannot inject shell syntax into launcher assignments", () => {
+  assert.throws(() => localAgentOrigins("http://localhost:43202", undefined, "http://a'$(command).localhost:43202"));
+});

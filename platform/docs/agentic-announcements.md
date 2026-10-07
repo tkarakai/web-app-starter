@@ -17,7 +17,9 @@ separate dashboard page at `/settings/agent-grants` on the admin origin.
 The redirect must use `http://127.0.0.1:<port>/callback`. Authorization-code exchange
 requires S256 PKCE and the exact client, redirect and MCP resource. Codes expire after one
 minute and are single-use. Grants expire after at most fifteen minutes and bind to the original
-live session. Sign-out, revocation, expiry, ban, demotion or a newly unmet policy disables them.
+live authorization session. Signing out of that session, revocation, expiry, ban, demotion or a
+newly unmet policy disables them. The separate normal admin session does not refresh or revoke
+this session just by signing in/out.
 Administrative writes require recent authentication on every call. Reauthenticate in the browser
 and renew the grant when needed. Raw codes/tokens are stored only as hashes in Convex.
 
