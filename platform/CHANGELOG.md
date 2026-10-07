@@ -21,6 +21,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Local dev port selection checks TCP listeners, so closed or outgoing browser connections
+  do not move the app to a different port after restart.
+
 - Agent authorization uses an isolated modal with trapped focus and no admin navigation;
   explicit denial returns to pi without issuing access. Grant management has its own page.
 

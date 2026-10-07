@@ -823,7 +823,7 @@ find_available_port() {
     local max_port=$((preferred + 10))
 
     while [ "$port" -le "$max_port" ]; do
-        if ! lsof -i :"$port" > /dev/null 2>&1; then
+        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
             echo "$port"
             return
         fi
