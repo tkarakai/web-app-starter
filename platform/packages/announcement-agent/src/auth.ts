@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { randomBytes, createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { CLIENT_ID, SCOPE } from "@web-app-starter/agentic/oauth";
+import { authResultPage } from "./auth-result-page";
 
 /** Browser credentials never enter the harness. The returned grant stays in process memory. */
 export async function authenticate(origin: string, surface: "mcp" | "cli" | "a2a" = "mcp"): Promise<string> {
@@ -28,20 +29,23 @@ export async function authenticate(origin: string, surface: "mcp" | "cli" | "a2a
   let reject!: (error: Error) => void;
   const codePromise = new Promise<string>((resolve, fail) => { accept = resolve; reject = fail; });
   const server = createServer((request, response) => {
+    const showResult = (result: "approved" | "denied" | "invalid") => {
+      const page = authResultPage(result, origin);
+      response.writeHead(result === "invalid" ? 400 : 200, page.headers);
+      response.end(page.body);
+    };
     const callback = new URL(request.url ?? "/", "http://127.0.0.1");
     if (request.method !== "GET" || callback.pathname !== "/callback" || callback.searchParams.get("state") !== state) {
-      response.writeHead(400); response.end("Invalid callback"); return;
+      showResult("invalid"); return;
     }
     if (callback.searchParams.get("error") === "access_denied") {
-      response.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
-      response.end("Access denied. No authorization was granted. You can close this tab.");
+      showResult("denied");
       reject(new Error("Admin access was denied. Use /auth to try again."));
       return;
     }
     const code = callback.searchParams.get("code");
-    if (!code || !/^[a-f0-9]{64}$/.test(code)) { response.writeHead(400); response.end("No authorization code"); return; }
-    response.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
-    response.end("Authenticated. Return to the admin agent terminal. You can close this tab.");
+    if (!code || !/^[a-f0-9]{64}$/.test(code)) { showResult("invalid"); return; }
+    showResult("approved");
     accept(code);
   });
   await new Promise<void>((resolve, fail) => { server.once("error", fail); server.listen(0, "127.0.0.1", resolve); });

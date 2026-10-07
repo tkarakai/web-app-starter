@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SESSION_COOKIE_NAME, isSessionCookie } from "@web-app-starter/auth/cookies";
 import { fillStable, signInAsAdmin } from "./helpers/auth";
+import { appConfig } from "@web-app-starter/app-config";
 
 test("browser login, consent and PKCE grant support announcement CRUD and revocation", async ({ page, baseURL, request }) => {
   test.skip(process.env.AGENT_MCP_ENABLED !== "true", "Announcement MCP is opt-in; enable it on the test deployment.");
@@ -38,6 +39,8 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await expect(page).toHaveURL(/\/settings\/agent-access\?/, { timeout: 20_000 });
   const dialog = page.getByRole("alertdialog", { name: "Authorize admin agent" });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(appConfig.identity.productName, { exact: true })).toBeVisible();
+  await expect(dialog.locator('img[src="/icon.svg"]')).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-modal", "true");
   expect(new URL(page.url()).origin).toBe(issuer);
   const cookies = await page.context().cookies();

@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
+import { appConfig } from "@web-app-starter/app-config";
 import { Button, AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter } from "@web-app-starter/design-system";
 import type { validateAuthorization } from "@web-app-starter/agentic/oauth";
@@ -32,6 +33,15 @@ export function AgentAccess({ request }: { request: AuthorizationRequest }) {
       onEscapeKeyDown={event => event.preventDefault()}
       onOpenAutoFocus={event => { event.preventDefault(); denyButton.current?.focus(); }}>
       <AlertDialogHeader>
+        <div className="mb-2 flex items-center gap-3 border-b pb-5 text-left">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted/50">
+            <img src="/icon.svg" alt="" width={28} height={28} />
+          </div>
+          <div className="min-w-0">
+            <p className="break-words text-base font-semibold leading-snug">{appConfig.identity.productName}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Administration · Agent authorization</p>
+          </div>
+        </div>
         <AlertDialogTitle>Authorize admin agent</AlertDialogTitle>
         <AlertDialogDescription>Allow this agent to administer the application as you?</AlertDialogDescription>
       </AlertDialogHeader>

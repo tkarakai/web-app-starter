@@ -47,6 +47,12 @@ the normal admin hostname's session remains independent. Server-captured delegat
 current account/policy/factor checks, expiry, revocation and surface generation protect each call.
 No refresh token, dynamic client registration or service identity is provided.
 
+The consent dialog identifies the app using its configured product name and `/icon.svg`.
+The first-party terminal testers serve styled approval, denial and invalid-callback pages from
+their temporary loopback listener. These pages support light/dark mode, contain no scripts or
+remote assets, and never render authorization codes or tokens. No additional deployment
+process or protocol change is needed.
+
 Resources and metadata:
 
 | Interface | Resource | Metadata |

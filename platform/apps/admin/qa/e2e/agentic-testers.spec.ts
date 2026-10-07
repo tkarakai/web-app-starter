@@ -19,6 +19,8 @@ async function runTester(page: Page, origin: string, user: { email: string; pass
     await fillStable(page, "#email", user.email); await page.locator('form:has(#email) button[type="submit"]').click();
     await fillStable(page, "#password", user.password); await page.locator('form:has(#password) button[type="submit"]').click();
     await page.getByRole("button", { name: "Authorize admin agent" }).click();
+    await expect(page.getByRole("heading", { name: "Authenticated", exact: true })).toBeVisible();
+    await expect(page.getByText("Return to the admin agent terminal. You can close this tab.", { exact: true })).toBeVisible();
     const exit = await Promise.race([completion, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Tester completion timeout")), 120_000))]);
     // Remove the initial OAuth URL before attaching/logging a report.
     const safe = output.replace(/https?:\/\/[^\s]+\/api\/agent\/authorize\?[^\s]+/g, "[authorization URL omitted]");
