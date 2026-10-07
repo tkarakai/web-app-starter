@@ -13,7 +13,7 @@ export function validateCommand(value: unknown, catalogue: CapabilityCatalogue) 
   const input = schema.parse(command.input);
   if (command.operation === "execute") {
     const execution = gatewaySchemas.capabilities_execute.parse(input);
-    const definition = catalogue[execution.name]; if (!definition) throw new Error("UNKNOWN_CAPABILITY");
+    const definition = Object.prototype.hasOwnProperty.call(catalogue, execution.name) ? catalogue[execution.name] : undefined; if (!definition) throw new Error("UNKNOWN_CAPABILITY");
     definition.schema.parse(execution.input);
     if (execution.resultOffset && definition.effect !== "read") throw new Error("WRITE_OUTPUT_CANNOT_BE_REPLAYED");
   }

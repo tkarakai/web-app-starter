@@ -36,6 +36,7 @@ export function AgentAccess({ request }: { request: AuthorizationRequest }) {
         <AlertDialogDescription>Allow this agent to administer the application as you?</AlertDialogDescription>
       </AlertDialogHeader>
       <div className="space-y-4 text-sm">
+        <p className="font-medium">Interface: {request.resource.endsWith("/api/a2a") ? "Agent2Agent (A2A)" : request.resource.endsWith("/api/agent/cli") ? "Admin CLI" : "MCP"}</p>
         <p>It can use all available administration capabilities as you, including reading private admin data, managing users and invitations, changing settings and security policy, and publishing or permanently deleting content. Native permissions and security requirements still apply.</p>
         <p>Access lasts up to 15 minutes and uses the verification completed for this request. Writes require authentication within the last five minutes.</p>
         <p className="text-muted-foreground">Only approve if you started and trust this agent yourself. Your decision returns to the agent on this computer.</p>

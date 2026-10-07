@@ -966,3 +966,12 @@ The existing guided deployment setup manages the normal web/admin/landing origin
 provision the optional MCP alias. Complete the extra steps above after guided setup, and review
 `SITE_URL` after any later environment reconciliation so the auth-origin entry is retained.
 The normal promotion/build workflows continue to use the same admin artifact.
+
+The same remote infrastructure also serves the optional CLI (`/api/agent/cli`) and A2A
+(`/api/a2a`, `/.well-known/agent-card.json`) interfaces and their protected-resource metadata.
+Forward these paths on the canonical admin hostname when using a custom path allowlist.
+Configure → Features controls each interface independently; the `AGENT_MCP_*` variables remain
+the common deployment prerequisites. Convex runs durable A2A jobs through its existing scheduler;
+no additional worker process is required. WebMCP uses the normal browser session and needs a
+compatible experimental browser API, not another server or DNS entry. Details and test commands:
+[admin agentic surfaces](agentic-announcements.md).

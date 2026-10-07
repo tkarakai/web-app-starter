@@ -31,11 +31,16 @@ async function deleteSessions(ctx: MutationCtx, userId: string) {
   throw new Error("TOO_MANY_SESSIONS");
 }
 export const list = authedQuery({
-  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), searchField: v.optional(v.union(v.literal("email"), v.literal("name"))), sortBy: v.optional(v.union(v.literal("email"), v.literal("name"), v.literal("createdAt"))), sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))) },
+  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), searchField: v.optional(v.union(v.literal("email"), v.literal("name"))), sortBy: v.optional(v.union(v.literal("email"), v.literal("name"), v.literal("createdAt"))), sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))), role: v.optional(v.union(v.literal("user"), v.literal("admin"))), status: v.optional(v.union(v.literal("active"), v.literal("banned"))), emailVerified: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
     if (args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
-    const result = await ctx.runQuery(components.betterAuth.adapter.findMany, { model: "user", paginationOpts: args.paginationOpts, where: args.search ? [{ field: args.searchField ?? "email", operator: "contains", value: args.search }] : undefined, sortBy: { field: args.sortBy ?? "createdAt", direction: args.sortDirection ?? "desc" } });
+    const where: { field: "email" | "name" | "role" | "banned" | "emailVerified"; operator: "contains" | "eq" | "ne"; value: string | boolean }[] = [];
+    if (args.search) where.push({ field: args.searchField ?? "email", operator: "contains", value: args.searchField === "name" ? args.search : args.search.toLowerCase() });
+    if (args.role) where.push({ field: "role", operator: "eq", value: args.role });
+    if (args.status) where.push({ field: "banned", operator: args.status === "banned" ? "eq" : "ne", value: true });
+    if (args.emailVerified !== undefined) where.push({ field: "emailVerified", operator: "eq", value: args.emailVerified });
+    const result = await ctx.runQuery(components.betterAuth.adapter.findMany, { model: "user", paginationOpts: args.paginationOpts, where, sortBy: { field: args.sortBy ?? "createdAt", direction: args.sortDirection ?? "desc" } });
     return { ...result, page: result.page.map((user: Doc<"user">) => userResult(user as Doc<"user">)) };
   },
 });

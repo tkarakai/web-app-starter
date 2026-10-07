@@ -29,12 +29,18 @@ export function browserActions(document: Document, navigate: (path: string) => v
       while (nodes.nextNode()) { const parent = nodes.currentNode.parentElement; if (parent && visible(parent) && nodes.currentNode.textContent?.trim()) texts.push(nodes.currentNode.textContent.trim()); }
       const text = texts.join("\n"); const offset = args.offset as number; const controlsOffset = args.controlsOffset as number;
       const elements = Array.from(scope.querySelectorAll<HTMLElement>('button, a[href], input:not([type="hidden"]), textarea, select, [contenteditable="true"], [role="button"], [role="tab"], [role="option"], [role="menuitem"], [role="checkbox"], [role="switch"], [role="combobox"]')).filter(visible);
-      const rows = elements.slice(controlsOffset, controlsOffset + 40).map(element => {
+      const candidates = elements.slice(controlsOffset, controlsOffset + 40).map(element => {
         let id = ids.get(element); if (!id) { id = `control-${++sequence}`; ids.set(element, id); } controls.set(id, element);
         const row = element.closest('tr, [role="row"], [data-agent-record]');
         return { controlId: id, row: row?.textContent?.trim().slice(0, 240), expanded: element.getAttribute("aria-expanded") ?? undefined, selected: element.getAttribute("aria-selected") ?? undefined, role: element.getAttribute("role") || element.tagName.toLowerCase(), name: nameOf(element), disabled: element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true", checked: element.getAttribute("aria-checked") ?? (element instanceof HTMLInputElement && element.type === "checkbox" ? String(element.checked) : undefined), value: element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement ? element.value.slice(0, 500) : undefined };
       });
-      return { path: document.location.pathname, title: document.title, text: text.slice(offset, offset + 8000), controls: rows, nextOffset: offset + 8000 < text.length ? offset + 8000 : null, nextControlsOffset: controlsOffset + 40 < elements.length ? controlsOffset + 40 : null };
+      const page = { path: document.location.pathname, title: document.title.slice(0, 160), text: text.slice(offset, offset + 5000) };
+      const rows: typeof candidates = [];
+      for (const candidate of candidates) {
+        if (JSON.stringify({ ...page, controls: [...rows, candidate] }).length > 10_000) break;
+        rows.push(candidate);
+      }
+      return { ...page, controls: rows, nextOffset: offset + 5000 < text.length ? offset + 5000 : null, nextControlsOffset: controlsOffset + rows.length < elements.length ? controlsOffset + rows.length : null };
     }
     if (name === "browser_navigate") {
       const requested = args.path as string;

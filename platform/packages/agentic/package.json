@@ -14,7 +14,8 @@
     "./webmcp": "./src/webmcp.ts",
     "./browser-catalogue": "./src/browser-catalogue.ts",
     "./browser-actions": "./src/browser-actions.ts",
-    "./a2a": "./src/a2a.ts"
+    "./a2a": "./src/a2a.ts",
+    "./catalogue-cache": "./src/catalogue-cache.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

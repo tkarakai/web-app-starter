@@ -1,3 +1,4 @@
+import { CatalogueCache } from "@web-app-starter/agentic/catalogue-cache";
 import { withBrowserCapabilities } from "@web-app-starter/agentic/browser-catalogue";
 import { ConvexHttpClient } from "convex/browser";
 import { catalogueFromRows } from "@web-app-starter/agentic/discovery";
@@ -9,14 +10,17 @@ export function backendClient() {
   if (!url) throw new Error("CONVEX_URL is required");
   return new ConvexHttpClient(url);
 }
+const metadataCache = new CatalogueCache();
 export async function convexCatalogue(client: ConvexHttpClient, token: string, resource: string): Promise<CapabilityCatalogue> {
-  const rows = await client.query(api.platform.agentCapabilities.catalogue, { token, resource });
-  return withBrowserCapabilities(catalogueFromRows(rows));
+  return metadataCache.get(client.url, async () => { await client.query(api.platform.agentAccess.inspect, { token, resource }); }, async () => {
+    const rows = await client.query(api.platform.agentCapabilities.catalogue, { token, resource });
+    return withBrowserCapabilities(catalogueFromRows(rows));
+  });
 }
 export function convexAdapter(client: ConvexHttpClient, token: string, resource: string, catalogue: CapabilityCatalogue): CapabilityAdapter {
   return { async execute(name, input, signal) {
     if (signal?.aborted) throw new Error("ABORTED");
-    const definition = catalogue[name];
+    const definition = Object.prototype.hasOwnProperty.call(catalogue, name) ? catalogue[name] : undefined;
     if (!definition) throw new Error("UNKNOWN_CAPABILITY");
     const args = { token, resource, name, input: definition.schema.parse(input) };
     if (definition.effect === "browser") {

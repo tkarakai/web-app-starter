@@ -59,3 +59,16 @@ describe("bounded MCP discovery", () => {
     }
   });
 });
+
+test("large write outputs never invite replay through a continuation offset", async () => {
+  let executions = 0;
+  const result = await executeCapability({ async execute() { executions++; return { value: "x".repeat(20_000) }; } }, defaultCatalogue, { name: "announcements_create", input: { name: "X", bannerText: "Y" } });
+  expect(executions).toBe(1); expect(result).toMatchObject({ nextOffset: null, resultTruncated: true });
+});
+
+test("prototype properties are not capabilities", async () => {
+  for (const name of ["constructor", "toString", "__proto__"]) {
+    expect(() => describeCapabilities(defaultCatalogue, { names: [name] })).toThrow("UNKNOWN_CAPABILITY");
+    await expect(executeCapability({ async execute() { throw new Error("Must not execute"); } }, defaultCatalogue, { name, input: {} })).rejects.toThrow("UNKNOWN_CAPABILITY");
+  }
+});

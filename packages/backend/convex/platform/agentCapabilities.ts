@@ -10,7 +10,7 @@ import { invokeNative, nativeDefinition } from "./nativeCapabilities";
 const args = { name: v.string(), input: v.any() };
 const credentialArgs = { token: v.string(), resource: v.string() };
 const rowsValidator = v.array(v.object({ name: v.string(), title: v.string(), description: v.string(), effect: v.union(v.literal("read"), v.literal("write"), v.literal("browser"), v.literal("human")), inputSchema: v.any() }));
-function entry(name: string) { const value = capabilityRegistry()[name]; if (!value) throw new Error("UNKNOWN_CAPABILITY"); return value; }
+function entry(name: string) { const registry = capabilityRegistry(); const value = Object.prototype.hasOwnProperty.call(registry, name) ? registry[name] : undefined; if (!value) throw new Error("UNKNOWN_CAPABILITY"); return value; }
 function boundInputs(input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("INVALID_INPUT");
   const value = input as Record<string, unknown>;
@@ -52,6 +52,7 @@ export const browserWrite = mutation({ args, returns: v.any(), handler: async (c
 } });
 /** Random request IDs avoid replaying a reactive query's time-dependent authorization result. */
 export const browserPermit = query({ args: { requestId: v.string() }, returns: v.boolean(), handler: async (ctx, { requestId }) => {
+  await browserAuth(ctx, true);
   if (!/^[a-f0-9-]{36}$/.test(requestId)) throw new Error("INVALID_REQUEST");
-  await browserAuth(ctx, true); return true;
+  return true;
 } });

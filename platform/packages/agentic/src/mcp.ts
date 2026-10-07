@@ -10,7 +10,7 @@ export async function handleMcp(request: Request, adapter: CapabilityAdapter, ca
   for (const name of Object.keys(gatewaySchemas) as (keyof typeof gatewaySchemas)[]) {
     server.registerTool(name, {
       description: gatewayDescriptions[name], inputSchema: gatewaySchemas[name],
-      annotations: { readOnlyHint: name !== "capabilities_execute", destructiveHint: name === "capabilities_execute", openWorldHint: false },
+      annotations: { readOnlyHint: name !== "capabilities_execute", destructiveHint: name === "capabilities_execute", openWorldHint: name === "capabilities_execute" },
     }, async (input: unknown, extra: { signal: AbortSignal }) => {
       try {
         const value = name === "capabilities_search" ? searchCapabilities(catalogue, input)

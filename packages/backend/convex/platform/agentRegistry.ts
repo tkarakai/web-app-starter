@@ -41,7 +41,7 @@ add("audit", audit, ["list"], "Read immutable audit events with filters and nati
 add("profile", profiles, ["get", "getLocale", "upsert", "setLocale"], "Read/change your own profile preferences, locale, theme, timezone and avatar colour.");
 add("integrations", integrations, ["getStatus"], "Read configured integration readiness and setup requirements, never environment secret values.");
 add("admins", protectedAdmins, ["listProtected"], "List protected administrator email identities; these accounts cannot be banned, deleted or demoted.");
-add("users", users, ["list", "get", "ban", "unban", "setRole", "update", "remove", "sessions", "revokeSession", "revokeSessions"], "Manage users and sessions through the native authentication store. Session results contain opaque IDs, never login tokens. Pagination uses numItems 1–100 and cursor null initially. Never disclose or collect passwords.");
+add("users", users, ["list", "get", "ban", "unban", "setRole", "update", "remove", "sessions", "revokeSession", "revokeSessions"], "Manage users and sessions through the native authentication store. Session results contain opaque IDs, never login tokens. Pagination uses numItems 1–100 and cursor null initially. Filter by role/status/emailVerified; email search normalizes to lowercase, name search is case-sensitive (native adapter semantics). Never disclose or collect passwords.");
 add("tasks", tasks, ["get", "list", "cancel"], "Inspect/cancel your own durable A2A tasks from any enabled interface. list uses native pagination (up to 50) without artifacts. Completed business operations cannot be canceled. Use get after renewing authorization when a credentials-changing task may have completed.");
 add("grants", grants, ["listMine", "revoke"], "List/revoke your own grants by opaque ID, never access tokens. Revoking the current grant ends further requests; authenticate again to inspect the outcome.");
 add("surfaces", surfaces, ["configuration", "setEnabled"], "Read/change independent MCP, CLI, WebMCP and A2A feature controls. Disabling invalidates that surface's existing agent grants.");
@@ -50,6 +50,7 @@ add("surfaces", surfaces, ["configuration", "setEnabled"], "Read/change independ
 export const currentUser = authedQuery({ args: {}, handler: async ctx => ({ id: ctx.user._id, name: ctx.user.name, email: ctx.user.email, role: ctx.user.role }) });
 export const assurance = authedQuery({ args: {}, handler: async ctx => ctx.assurance });
 export const announcement = authedQuery({ args: { announcementId: v.string() }, handler: async (ctx, { announcementId }) => {
+  if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
   const rows = await ctx.runQuery(components.platform.announcements.list, { includeArchived: true });
   return rows.find(row => row._id === announcementId) ?? null;
 } });

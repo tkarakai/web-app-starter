@@ -20,9 +20,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   invalidates existing grants, and re-enabling requires new consent. DNS/TLS and origin configuration
   steps are in the [deployment runbook](docs/deployment-runbook.md#optional-mcp-authorization-origin).
 
-- Opt-in authenticated announcement MCP POC with a lightweight capability catalogue,
-  session-bound browser consent and an earendil pi test conversation. See
-  [announcement MCP](docs/agentic-announcements.md) for local setup and scope.
+- Bounded MCP search/schema lookup/execution over the admin capability catalogue, plus
+  independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. Blanket `admin:manage`
+  consent preserves native policy and validation. Existing announcement-only test grants
+  require new authorization and clients use the gateway tools. Reusable independent and pi
+  testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
 
 ### Fixed
 
@@ -1000,12 +1002,3 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...HEAD
 [4.1.0]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...v4.1.0
-
-### Admin capability expansion (unreleased feature branch)
-
-- MCP now offers bounded search, schema lookup and execution across the admin registry, with
-  blanket `admin:manage` consent. Existing announcement-only grants require new authorization.
-- Native Convex handlers and validators remain authoritative. User/session adapters use the
-  existing Better Auth component with protected-admin guards and credential-free result DTOs.
-- Independent surface generations prevent disabling/re-enabling one interface from reviving
-  old access or revoking another interface's grants.

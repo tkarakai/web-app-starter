@@ -32,7 +32,8 @@ Remote clients discover protected-resource metadata, open the auth-only origin, 
 blanket **`admin:manage`** permission. Consent describes broad administration: private data,
 users/sessions, invitations, policy/settings, publishing and deletion. It does not list every
 operation. Native role checks, validation, current security policy and recent verification still
-apply. Earlier `announcements:manage` grants are rejected; authorize again.
+apply. Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
+contract, then authorize again.
 
 The registered public test client remains `pi-announcements` for compatibility. Redirects must
 be `http://127.0.0.1:<port>/callback`. Authorization uses S256 PKCE and state; one-minute codes
@@ -72,7 +73,9 @@ MCP and WebMCP advertise three stable tools, also used by the CLI/pi adapters:
 - `capabilities_describe`: exact schemas/effects for up to three selected names.
 - `capabilities_execute`: validate and execute one capability using `{name, input}`.
 
-The bootstrap schemas stay constant as the catalogue grows. This does not rely on the host
+The bootstrap schemas stay constant as the catalogue grows. The server caches structural metadata for 30 seconds per backend URL,
+while revalidating authorization on every access; native execution checks remain authoritative.
+This does not rely on the host
 implementing deferred tool exposure. The installed MCP SDK negotiates versions through
 2025-11-25; newer protocol discovery features are not assumed. Treat application content as
 untrusted data. Destructive operations require the user's explicit intent.
@@ -80,7 +83,8 @@ untrusted data. Destructive operations require the user's explicit intent.
 Reads over 12,000 characters return JSON chunks and `nextOffset`. Pass that value as
 `resultOffset` to continue. This repeats a read and is not a snapshot; native paginated operations
 should use their own cursor. Paging a write is rejected before execution. Native pages and bulk
-inputs are capped at 100; inspect descriptions for value conventions. Existing direct
+inputs are capped at 100; user listings support role, status and email-verification filters
+(email search normalizes to lowercase; name search uses native case-sensitive semantics). inspect descriptions for value conventions. Existing direct
 `announcements_*` MCP tool calls now use `capabilities_execute`; their capability names remain.
 
 Credential, biometric, backup-code and invitation-bound enrollment operations are explicit
@@ -105,6 +109,9 @@ bun run admin:cli -- --origin http://localhost:3002
 # {"operation":"describe","input":{"names":["announcements_create"]}}
 # {"operation":"execute","input":{"name":"announcements_create","input":{"name":"Draft","bannerText":"Hello"}}}
 ```
+
+`--report <path>` records sanitized pi acceptance receipts and provider token/context counts,
+without credentials or application text.
 
 The CLI accepts `--script <JSON file>` containing up to 100 commands. Credentials are neither
 script arguments nor saved to disk. Remote write retries must first check application state.
@@ -133,6 +140,10 @@ renders passwords, factor secrets or recovery codes requires `data-agent-sensiti
 container **and portal/dialog content**. Application security UI is marked accordingly.
 
 `@web-app-starter/agentic/webmcp` exports a provider interface and reusable `WebMcpSimulator`.
+The installed Chromium 153 engine is tested with `--enable-blink-features=WebMCP`; browser
+support remains experimental. Chrome 153/154 execution arguments use JSON text; the test
+client supports that older API and the newer object form. Native results are JSON text.
+
 The Playwright provider simulator runs the actual page bindings, session checks, CRUD and
 controls without granting authentication or pretending the browser supports the experimental API.
 
@@ -161,7 +172,7 @@ It does not run a server-side LLM.
 }
 ```
 
-Text-only messages return `TASK_STATE_INPUT_REQUIRED` with structured-command guidance.
+Text-only messages and browser/human dependencies return `TASK_STATE_INPUT_REQUIRED` with structured-command guidance.
 Continuation must reference an owned nonterminal input-required task with matching context.
 Message IDs deduplicate retries; changing a reused message's command is rejected. Jobs persist
 in Convex and store grant IDs, never raw credentials. Every execution rechecks the live grant,
@@ -176,6 +187,18 @@ artifacts; artifact-inclusive pages are capped at three. Polling/continuation re
 A2A grant. `SendMessage` waits for a terminal/interrupted state unless `returnImmediately` is
 true; a server timeout reports the task ID so clients can inspect it before retrying.
 
+## Extending the catalogue
+
+Select an existing native definition in `agentRegistry.ts` and add a description/effect. Its
+input schema comes from the same validators used by the native UI endpoint; the transport
+adapters need no per-operation changes. The shared builders capture the handler body, but
+only the explicit registry can execute it. Keep session/delegation resolution outside that
+body; never fabricate `ctx.auth`. Update the endpoint authorization classification and
+exercise meaningful granted/denied behavior. Authentication-store operations require explicit
+safe DTOs, native policy/protected-identity checks and audit events; credential ceremonies
+remain secure workflows. Browser primitives operate the existing page rather than duplicate
+its draft/selection state.
+
 ## Reusable acceptance
 
 ```sh
@@ -183,8 +206,13 @@ bun run agent:simulator -- --surface mcp --origin http://localhost:3002
 bun run agent:simulator -- --surface cli --origin http://localhost:3002
 bun run agent:simulator -- --surface a2a --origin http://localhost:3002
 # --read-only skips disposable draft CRUD; --output summary.json writes sanitized measurements.
+# Opt-in executable-client and real-model browser acceptance:
+AGENT_SIMULATORS=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
+  bun run --cwd platform/apps/admin test:e2e agentic-testers.spec.ts
+AGENT_LLM_SMOKE=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
+  bun run --cwd platform/apps/admin test:e2e agentic-testers.spec.ts
 CI=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
-  bun run --cwd platform/apps/admin test:e2e agentic-mcp.spec.ts agentic-surfaces.spec.ts
+  bun run --cwd platform/apps/admin test:e2e agentic-mcp.spec.ts agentic-surfaces.spec.ts agentic-webmcp-native.spec.ts
 bun run --cwd packages/backend test:convex agentAccess endpoint-authorization
 bun run --cwd platform/packages/agentic test
 ```

@@ -328,3 +328,79 @@ describe("capability maintenance edge cases", () => {
     await expect(query("account_ownPasskeys")).rejects.toThrow("INVALID_AGENT_TOKEN");
   });
 });
+
+describe("A2A ownership, rollback and interruption guarantees", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
+  async function setup() {
+    const f = await fixture(); const target = resource.replace("/api/mcp", "/api/a2a");
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "a2a", enabled: true });
+    async function mint(client: typeof f.admin) {
+      const request = { ...f.request, resource: target };
+      const { code } = await client.mutation(api.platform.agentAccess.authorize, request);
+      const grant = await f.t.mutation(api.platform.agentAccess.exchange, { code, verifier, clientId: request.clientId, redirectUri: request.redirectUri, resource: target });
+      return { token: grant.access_token, resource: target };
+    }
+    const auth = await mint((await f.login()).client);
+    const send = (name: string, input = {}) => f.t.mutation(api.platform.agentTasks.send, { ...auth, params: { message: { messageId: crypto.randomUUID(), role: "ROLE_USER", parts: [{ data: { operation: "execute", input: { name, input } } }] } } });
+    return { ...f, auth, send, mint };
+  }
+  test("another authenticated admin cannot inspect/cancel an owned task; disabled queued work has no effects", async () => {
+    const f = await setup(); const pending = await f.send("announcements_create", { name: "Disable safety", bannerText: "Never committed" });
+    const now = Date.now();
+    const other = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Other admin", email: "second@example.test", emailVerified: true, role: "admin", createdAt: now, updatedAt: now } } });
+    const session = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: { authPurpose: "mcp-authorization", assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: other._id, token: "other-session", createdAt: now, updatedAt: now, expiresAt: now + 3600_000 } } });
+    const otherAuth = await f.mint(f.t.withIdentity({ subject: other._id, sessionId: session._id }));
+    await expect(f.t.query(api.platform.agentTasks.get, { ...otherAuth, id: pending.id })).rejects.toThrow("TASK_NOT_FOUND");
+    await expect(f.t.mutation(api.platform.agentTasks.cancel, { ...otherAuth, id: pending.id })).rejects.toThrow("TASK_NOT_FOUND");
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "a2a", enabled: false });
+    const { internal } = await import("../_generated/api");
+    await f.t.action(internal.platform.agentTasks.work, { taskId: pending.id as import("../_generated/dataModel").Id<"agentTasks"> });
+    const row = await f.t.run(ctx => ctx.db.get(pending.id as import("../_generated/dataModel").Id<"agentTasks">)); expect(row?.state).toBe("TASK_STATE_FAILED");
+    expect(await f.t.query(components.platform.announcements.list, {})).toHaveLength(0);
+  });
+  test("a failed worker rolls back native writes; a restarted working task commits only once", async () => {
+    const f = await setup();
+    const { mutation } = await import("../_generated/server");
+    const { rememberNative } = await import("./nativeCapabilities");
+    const { capabilityRegistry } = await import("./agentRegistry");
+    const definition = { args: {}, handler: async (ctx: import("../_generated/server").MutationCtx) => { await ctx.db.insert("userProfiles", { ownerId: "must-roll-back", createdAt: Date.now(), updatedAt: Date.now() }); throw new Error("NATIVE_OPERATION_FAILED"); } };
+    const registry = capabilityRegistry(); registry.test_rollback = { title: "Rollback test", description: "Trusted test-only native operation", effect: "write", registered: rememberNative(mutation(definition), definition, "mutation") };
+    try {
+      const task = await f.send("test_rollback"); const { internal } = await import("../_generated/api");
+      const taskId = task.id as import("../_generated/dataModel").Id<"agentTasks">;
+      await f.t.action(internal.platform.agentTasks.work, { taskId });
+      expect((await f.t.query(api.platform.agentTasks.get, { ...f.auth, id: task.id })).status.state).toBe("TASK_STATE_FAILED");
+      expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toHaveLength(0);
+      const restart = await f.send("announcements_create", { name: "Restart once", bannerText: "Once" }); const restartId = restart.id as typeof taskId;
+      await f.t.mutation(internal.platform.agentTasks.begin, { taskId: restartId });
+      await f.t.action(internal.platform.agentTasks.work, { taskId: restartId });
+      await f.t.action(internal.platform.agentTasks.work, { taskId: restartId });
+      expect(await f.t.query(components.platform.announcements.list, {})).toHaveLength(1);
+      const workflow = await f.send("account_changePassword");
+      await f.t.action(internal.platform.agentTasks.work, { taskId: workflow.id as typeof taskId });
+      expect((await f.t.query(api.platform.agentTasks.get, { ...f.auth, id: workflow.id })).status.state).toBe("TASK_STATE_INPUT_REQUIRED");
+    } finally { delete registry.test_rollback; }
+  });
+});
+
+describe("semantic user filtering and private helper policy", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
+  test("server-side user filters include active legacy rows and combine verified/role/search predicates", async () => {
+    const f = await fixture(); const auth = await f.mint(); const now = Date.now();
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Filter Target", email: "target@example.test", emailVerified: true, role: "user", createdAt: now, updatedAt: now } } });
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Banned", email: "banned@example.test", emailVerified: false, role: "user", banned: true, createdAt: now, updatedAt: now } } });
+    const list = (input = {}) => f.t.query(api.platform.agentCapabilities.read, { token: auth.token, resource, name: "users_list", input: { paginationOpts: { numItems: 10, cursor: null }, ...input } });
+    expect(await list({ status: "active" })).toMatchObject({ page: expect.arrayContaining([expect.objectContaining({ email: "target@example.test" })]) });
+    const filtered = await list({ role: "user", emailVerified: true, status: "active", search: "Target", searchField: "name" });
+    expect(filtered).toMatchObject({ page: [expect.objectContaining({ name: "Filter Target" })] });
+    expect(await list({ search: "TARGET", searchField: "email" })).toMatchObject({ page: [expect.objectContaining({ email: "target@example.test" })] });
+    expect(await list({ status: "banned" })).toMatchObject({ page: [expect.objectContaining({ email: "banned@example.test" })] });
+  });
+  test("ordinary users cannot read private announcement helpers even with an existing opaque ID", async () => {
+    const f = await fixture("user");
+    const { id } = await f.t.mutation(components.platform.announcements.create, { name: "Private draft", bannerText: "Admin only", identity: { userId: "seed", actor: "seed" } });
+    await expect(f.application.query(api.platform.agentRegistry.announcement, { announcementId: id })).rejects.toThrow("NOT_ADMIN");
+  });
+});

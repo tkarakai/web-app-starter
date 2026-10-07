@@ -22,6 +22,43 @@ type Access = "public" | "user" | "admin" | "agent";
 type Kind = "query" | "mutation" | "action";
 
 const ACCESS: Record<string, Access> = {
+  "platform/agentSurfaces:availability": "public",
+  "platform/agentSurfaces:configuration": "admin",
+  "platform/agentSurfaces:setEnabled": "admin",
+  "platform/agentCapabilities:catalogue": "agent",
+  "platform/agentCapabilities:read": "agent",
+  "platform/agentCapabilities:write": "agent",
+  "platform/agentCapabilities:browserCatalogue": "admin",
+  "platform/agentCapabilities:browserRead": "admin",
+  "platform/agentCapabilities:browserWrite": "admin",
+  "platform/agentCapabilities:browserPermit": "admin",
+  "platform/agentUsers:list": "admin",
+  "platform/agentUsers:get": "admin",
+  "platform/agentUsers:ban": "admin",
+  "platform/agentUsers:unban": "admin",
+  "platform/agentUsers:setRole": "admin",
+  "platform/agentUsers:update": "admin",
+  "platform/agentUsers:remove": "admin",
+  "platform/agentUsers:sessions": "admin",
+  "platform/agentUsers:revokeSession": "admin",
+  "platform/agentUsers:revokeSessions": "admin",
+  "platform/agentTaskAdmin:get": "admin",
+  "platform/agentTaskAdmin:list": "admin",
+  "platform/agentTaskAdmin:cancel": "admin",
+  "platform/agentTasks:send": "agent",
+  "platform/agentTasks:get": "agent",
+  "platform/agentTasks:list": "agent",
+  "platform/agentTasks:cancel": "agent",
+  "platform/agentRegistry:currentUser": "user",
+  "platform/agentRegistry:assurance": "user",
+  "platform/agentRegistry:announcement": "admin",
+  "platform/agentRegistry:activeAnnouncement": "user",
+  "platform/agentRegistry:settingKeys": "user",
+  "platform/agentRegistry:onboardingStatus": "user",
+  "platform/agentRegistry:ownPasskeys": "user",
+  "platform/agentRegistry:renamePasskey": "admin",
+  "platform/agentRegistry:removePasskey": "admin",
+  "platform/agentRegistry:revokeOtherSessions": "admin",
   "platform/agentMcp:availability": "public",
   "platform/agentMcp:configuration": "admin",
   "platform/agentMcp:setEnabled": "admin",
@@ -179,7 +216,9 @@ async function platformFunctions(): Promise<PlatformFunction[]> {
       const kind: Kind | undefined = fn.isQuery ? "query" : fn.isMutation ? "mutation" : fn.isAction ? "action" : undefined;
       if (!kind) continue;
       const args = fn.exportArgs ? sample(JSON.parse(fn.exportArgs()) as ValidatorJson) : {};
-      found.push({ path: `${name}:${exportName}`, kind, args });
+      const path = `${name}:${exportName}`;
+      const behaviorArgs = path === "platform/agentCapabilities:browserRead" ? { name: "account_currentUser", input: {} } : path === "platform/agentCapabilities:browserPermit" ? { requestId: crypto.randomUUID() } : args;
+      found.push({ path, kind, args: behaviorArgs });
     }
   }
   return found.sort((a, b) => a.path.localeCompare(b.path));
@@ -194,6 +233,7 @@ function emulator() {
 async function fixture() {
   const t = emulator();
   await seed(t);
+  await t.mutation(components.platform.appSettings.putRaw, { key: "agentWebMcpConfiguration", value: JSON.stringify({ enabled: true, generation: "contract" }) });
   return t;
 }
 
@@ -263,7 +303,7 @@ describe("platform endpoint authorization contract", async () => {
   // the functions' own checks, not empty tables or unusable arguments.
   // Excluded: they answer [] without data the seed can't make (passkeys in the auth component,
   // tokens of a real waitlist entry). Their non-admin refusals are errors or null, not [].
-  const noControl = ["platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
+  const noControl = ["platform/agentUsers:get", "platform/agentUsers:sessions", "platform/agentTaskAdmin:get", "platform/agentTaskAdmin:list", "platform/agentRegistry:announcement", "platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
   test.each(withAccess("admin").filter(([path, fn]) => fn.kind === "query" && !noControl.includes(path)))("%s answers an admin", async (_path, fn) => {
     expect(await call(await signIn(await fixture(), "boss", "admin"), fn)).toMatchObject({ refused: false });
   });

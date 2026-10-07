@@ -14,9 +14,9 @@ export async function remoteRequest(request: Request, surface: RemoteSurface) {
   const challenge = { "WWW-Authenticate": `Bearer resource_metadata="${config.origin}/.well-known/oauth-protected-resource${new URL(resource).pathname}"` };
   const token = bearer(request.headers);
   if (!token) return { response: privateJson({ error: "unauthorized" }, 401, challenge) };
-  try { await client.query(api.platform.agentAccess.inspect, { token, resource }); }
+  let catalogue;
+  try { catalogue = await convexCatalogue(client, token, resource); }
   catch { return { response: privateJson({ error: "unauthorized" }, 401, challenge) }; }
-  const catalogue = await convexCatalogue(client, token, resource);
   return { client, token, resource, catalogue, adapter: convexAdapter(client, token, resource, catalogue) };
 }
 export async function limitedBody(request: Request, limit = 100_000) {

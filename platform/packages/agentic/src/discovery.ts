@@ -33,7 +33,7 @@ export function searchCapabilities(catalogue: CapabilityCatalogue, input: unknow
 export function describeCapabilities(catalogue: CapabilityCatalogue, input: unknown) {
   const { names } = gatewaySchemas.capabilities_describe.parse(input);
   return names.map(name => {
-    const c = catalogue[name];
+    const c = Object.prototype.hasOwnProperty.call(catalogue, name) ? catalogue[name] : undefined;
     if (!c) throw new Error("UNKNOWN_CAPABILITY");
     return { name, title: c.title, description: c.description, effect: c.effect, inputSchema: z.toJSONSchema(c.schema) };
   });
@@ -47,11 +47,13 @@ export function boundedResult(value: unknown, offset = 0) {
 }
 export async function executeCapability(adapter: CapabilityAdapter, catalogue: CapabilityCatalogue, input: unknown, signal?: AbortSignal) {
   const { name, input: args, resultOffset } = gatewaySchemas.capabilities_execute.parse(input);
-  const c = catalogue[name];
+  const c = Object.prototype.hasOwnProperty.call(catalogue, name) ? catalogue[name] : undefined;
   if (!c) throw new Error("UNKNOWN_CAPABILITY");
   if (resultOffset && c.effect !== "read") throw new Error("WRITE_OUTPUT_CANNOT_BE_REPLAYED");
   const value = await adapter.execute(name, c.schema.parse(args) as Record<string, unknown>, signal);
-  return boundedResult(value, resultOffset);
+  const result = boundedResult(value, resultOffset);
+  if (c.effect !== "read" && result.nextOffset !== undefined && result.nextOffset !== null) return { ...result, nextOffset: null, resultTruncated: true, warning: "This operation returned a large result. Inspect state with a read capability or the browser capability's own page offsets; do not replay a write to continue its output." };
+  return result;
 }
 export const defaultCatalogue: CapabilityCatalogue = announcementCatalogue;
 

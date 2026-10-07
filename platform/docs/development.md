@@ -222,4 +222,4 @@ Open the regular admin app and enable **Configure → Features → MCP server** 
 The database switch defaults off. Start pi with `bun run agent:announcements -- --origin <admin-origin>`;
 it discovers the authorization hostname from MCP metadata. Ordinary admin routes and APIs return
 404 on the auth hostname. Browser cookies are host-only: a different port on `localhost` would
-not isolate sessions. See [announcement MCP](agentic-announcements.md) for setup and limits.
+not isolate sessions. See [admin agentic surfaces](agentic-announcements.md) for setup and limits.
