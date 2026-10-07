@@ -5,6 +5,9 @@ catalogue: remote MCP, an authenticated CLI transport, live-page WebMCP and A2A 
 and Better Auth remain the database and authentication authority. No extra application server,
 agent-native Core runtime, foreign database or inference service is required.
 
+For a step-by-step walkthrough of every interface, see
+[manual end-to-end testing](agentic-manual-testing.md).
+
 ## Enable and authenticate
 
 **Configure → Features** contains **MCP server**, **Admin CLI**, **WebMCP** and **A2A** switches.
