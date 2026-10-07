@@ -69,9 +69,13 @@ async function main() {
         const text = await terminal.question("\nYou: ");
         if (["/quit", "/exit"].includes(text.trim())) break;
         if (text.trim() === "/auth") {
-          const renewed = await connectMcp(origin, await authenticate(origin));
-          await client.close(); client = renewed;
-          process.stdout.write("Access renewed.\n");
+          try {
+            const renewed = await connectMcp(origin, await authenticate(origin));
+            await client.close(); client = renewed;
+            process.stdout.write("Access renewed.\n");
+          } catch (error) {
+            process.stdout.write(`${error instanceof Error ? error.message : "Authorization failed"}\n`);
+          }
           continue;
         }
         if (!text.trim()) continue;

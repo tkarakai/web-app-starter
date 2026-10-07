@@ -7,13 +7,12 @@ import "./globals.css";
 import { ConvexClientProvider } from "@web-app-starter/auth/provider";
 import {
   BrandTokenStyle,
-  EnvironmentBannerWrapper,
-  OfflineBanner,
   PublicConfigProvider,
 } from "@web-app-starter/design-system";
 import { readPublicConfigFromEnv } from "@web-app-starter/design-system/server";
 import { getToken } from "@web-app-starter/auth/server";
 import { ConvexErrorToast } from "@/components/convex-error-toast";
+import { AdminStatusBanners } from "@/components/admin-status-banners";
 import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
 const raleway = Raleway({
@@ -52,9 +51,8 @@ export default async function RootLayout({
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
-          {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="admin" />}
+          <AdminStatusBanners />
           <BrandTokenStyle css={tokenOverrideCss(appConfig, "admin")} />
-          <OfflineBanner />
           <PublicConfigProvider value={publicConfig}>
             <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
               <ConvexErrorToast />

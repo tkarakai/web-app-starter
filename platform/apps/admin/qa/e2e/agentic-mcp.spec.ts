@@ -5,7 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
 import { createDisposableUser } from "./helpers/fixtures";
-import { fillStable } from "./helpers/auth";
+import { fillStable, signInAsAdmin } from "./helpers/auth";
 
 test("browser login, consent and PKCE grant support announcement CRUD and revocation", async ({ page, baseURL, request }) => {
   test.skip(process.env.AGENT_MCP_ENABLED !== "true", "Announcement MCP is opt-in; enable it on the test deployment.");
@@ -30,7 +30,22 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await fillStable(page, "#password", user.password);
   await page.locator('form:has(#password) button[type="submit"]').click();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/, { timeout: 20_000 });
-  await page.getByRole("button", { name: "Authorize pi announcement agent" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Authorize announcement agent" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  await expect(page.getByRole("link")).toHaveCount(0);
+  await expect(page.locator('[data-sidebar="sidebar"]')).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Revoke", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Deny access", exact: true })).toBeFocused();
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press("Tab");
+    await expect.poll(() => dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await page.mouse.click(4, 4);
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(/\/settings\/agent-access\?/);
+  await dialog.getByRole("button", { name: "Authorize pi announcement agent" }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:45999\/callback\?code=/);
   const callback = new URL(page.url());
   expect(callback.searchParams.get("state")).toBe(state);
@@ -58,10 +73,33 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
       expect(await call("announcements_list", {})).toEqual(expect.arrayContaining([expect.objectContaining({ _id: id })]));
     } finally { await call("announcements_delete", { announcementId: id }); }
     expect(await call("announcements_get", { announcementId: id })).toBeNull();
-    await page.goto("/settings/agent-access");
+    await page.goto("/settings/agent-grants");
     await page.getByRole("button", { name: "Revoke", exact: true }).click();
     await expect(page.getByText("pi-announcements · revoked", { exact: true })).toBeVisible();
     const denied = await request.post("/api/mcp", { headers: { Authorization: `Bearer ${token}` }, data: {} });
     expect(denied.status()).toBe(401);
   } finally { await client.close(); }
+});
+
+
+test("denying modal consent returns to pi without granting access", async ({ page, baseURL }) => {
+  test.skip(process.env.AGENT_MCP_ENABLED !== "true", "Announcement MCP is opt-in.");
+  test.setTimeout(60_000);
+  if (!baseURL) throw new Error("baseURL is required");
+  const origin = new URL(baseURL).origin;
+  await signInAsAdmin(page);
+  const state = randomBytes(32).toString("base64url");
+  const params = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: "http://127.0.0.1:45999/callback",
+    code_challenge_method: "S256", code_challenge: randomBytes(32).toString("base64url"), scope: "announcements:manage", state, resource: origin + "/api/mcp" });
+  await page.route("http://127.0.0.1:45999/callback**", route => route.fulfill({ status: 200, body: "Access denied" }));
+  await page.goto(`/api/agent/authorize?${params}`);
+  const dialog = page.getByRole("alertdialog", { name: "Authorize announcement agent" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Deny access", exact: true }).click();
+  await expect(page).toHaveURL(/callback\?error=access_denied/);
+  const callback = new URL(page.url());
+  expect(callback.searchParams.get("state")).toBe(state);
+  expect(callback.searchParams.has("code")).toBe(false);
+  await page.goto("/settings/agent-grants");
+  await expect(page.getByText("No agent grants.", { exact: true })).toBeVisible();
 });

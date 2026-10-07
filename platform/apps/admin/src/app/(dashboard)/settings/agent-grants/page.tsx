@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { agentConfig } from "@/lib/agentic/config";
-import { AgentAccess } from "./agent-access";
-export default function AgentAccessPage() {
+import { AgentGrants } from "./agent-grants";
+export default function AgentGrantsPage() {
   if (!agentConfig()) notFound();
-  return <AgentAccess />;
+  return <AgentGrants />;
 }

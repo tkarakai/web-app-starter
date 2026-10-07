@@ -9,7 +9,12 @@ validation, scheduling, audit identity and storage; MCP adds no separate busines
 
 The only registered client is `pi-announcements`, a public local test client. It opens the
 admin browser's `/settings/agent-access` page for sign-in, current security checks and explicit
-consent. The redirect must use `http://127.0.0.1:<port>/callback`. Authorization-code exchange
+consent. Consent uses an isolated, protected modal screen: it has no dashboard navigation,
+status-banner controls or grant management. Focus stays inside the dialog, and Escape/outside
+clicks cannot dismiss it. Approve access or explicitly deny it; denial returns an OAuth
+`access_denied` response to pi without issuing a code or grant. Grant management remains a
+separate dashboard page at `/settings/agent-grants` (old queryless access bookmarks redirect there).
+The redirect must use `http://127.0.0.1:<port>/callback`. Authorization-code exchange
 requires S256 PKCE and the exact client, redirect and MCP resource. Codes expire after one
 minute and are single-use. Grants expire after at most fifteen minutes and bind to the original
 live session. Sign-out, revocation, expiry, ban, demotion or a newly unmet policy disables them.
@@ -53,7 +58,7 @@ The agent opens a browser. Sign in with your normal admin account, complete its 
 and select **Authorize pi announcement agent**. Return to the terminal and ask it to manage a
 draft. For example: “Create a draft named October release with banner text Welcome to October.”
 Then ask it to read, edit and delete that exact draft. `/auth` renews access without discarding the
-conversation; `/quit` exits. Revoke grants at `/settings/agent-access`.
+conversation; `/quit` exits. Revoke grants at `/settings/agent-grants`.
 
 Inference credentials are separate from app authorization. The conversation uses the
 `@earendil-works/pi-coding-agent` SDK, pi's provider credentials and configured default model.

@@ -19,6 +19,12 @@ export async function authenticate(origin: string): Promise<string> {
     if (request.method !== "GET" || callback.pathname !== "/callback" || callback.searchParams.get("state") !== state) {
       response.writeHead(400); response.end("Invalid callback"); return;
     }
+    if (callback.searchParams.get("error") === "access_denied") {
+      response.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
+      response.end("Access denied. No authorization was granted. You can close this tab.");
+      reject(new Error("Announcement access was denied. Use /auth to try again."));
+      return;
+    }
     const code = callback.searchParams.get("code");
     if (!code || !/^[a-f0-9]{64}$/.test(code)) { response.writeHead(400); response.end("No authorization code"); return; }
     response.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });

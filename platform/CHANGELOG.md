@@ -21,6 +21,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Agent authorization uses an isolated modal with trapped focus and no admin navigation;
+  explicit denial returns to pi without issuing access. Grant management has its own page.
+
 - Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.
   See the [near-gate advisory procedure](docs/dependency-updates.md#advisory-recognition-near-a-merge-or-release-gate)
   for blocking rules, evidence limitations and the merge/release response.

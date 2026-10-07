@@ -6,7 +6,8 @@
   "scripts": {
     "start": "bun src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --max-warnings 0"
+    "lint": "eslint src tests --max-warnings 0",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "0.87.1",
