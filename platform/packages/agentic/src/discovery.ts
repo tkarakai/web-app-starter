@@ -59,3 +59,6 @@ export interface CapabilityDescriptor { name: string; title: string; description
 export function catalogueFromRows(rows: CapabilityDescriptor[]): CapabilityCatalogue {
   return Object.fromEntries(rows.map(row => [row.name, { title: row.title, description: row.description, effect: row.effect, schema: z.fromJSONSchema(row.inputSchema) }]));
 }
+export function gatewayToolDefinitions() {
+  return Object.entries(gatewaySchemas).map(([name, schema]) => ({ name, description: gatewayDescriptions[name as keyof typeof gatewayDescriptions], inputSchema: { ...z.toJSONSchema(schema), type: "object" as const } }));
+}

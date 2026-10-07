@@ -9,7 +9,12 @@
     "./mcp": "./src/mcp.ts",
     "./oauth": "./src/oauth.ts",
     "./auth-boundary": "./src/auth-boundary.ts",
-    "./discovery": "./src/discovery.ts"
+    "./discovery": "./src/discovery.ts",
+    "./errors": "./src/errors.ts",
+    "./webmcp": "./src/webmcp.ts",
+    "./browser-catalogue": "./src/browser-catalogue.ts",
+    "./browser-actions": "./src/browser-actions.ts",
+    "./a2a": "./src/a2a.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

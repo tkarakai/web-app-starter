@@ -79,12 +79,25 @@ export async function requireGrant(ctx: QueryCtx, token: string, resource: strin
   const grant = await ctx.db.query("agentGrants").withIndex("by_token_hash", q => q.eq("tokenHash", tokenHash)).unique();
   if (!grant || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE)
     throw new Error("INVALID_AGENT_TOKEN");
+  return validateGrant(ctx, grant, recent);
+}
+
+async function validateGrant(ctx: QueryCtx, grant: import("../_generated/dataModel").Doc<"agentGrants">, recent: boolean) {
   const pair = await readDelegation(ctx, grant.delegationId, grant.userId);
   if (!pair || pair.user.role !== "admin") throw new Error("INVALID_AGENT_TOKEN");
   const assurance = await evaluateSession(ctx, pair);
   if (!assurance.allowed) throw new Error("INVALID_AGENT_TOKEN");
   if (recent && !assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  return { ...pair, assurance, ownerId: (pair.user.userId ?? pair.user._id).toString() };
+  return { ...pair, assurance, grantId: grant._id, generation: grant.generation, ownerId: (pair.user.userId ?? pair.user._id).toString() };
+}
+
+/** Only server-owned durable tasks use a stored grant ID; it is never a public credential. */
+export async function requireGrantById(ctx: QueryCtx, grantId: import("../_generated/dataModel").Id<"agentGrants">, resource: string, recent = false) {
+  const grant = await ctx.db.get(grantId);
+  const surface = surfaceForResource(resource);
+  const config = surface ? await surfaceConfiguration(ctx, surface) : null;
+  if (!grant || !config?.enabled || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE) throw new Error("INVALID_AGENT_TOKEN");
+  return validateGrant(ctx, grant, recent);
 }
 
 export const exchange = mutation({

@@ -25,7 +25,8 @@
     "convex": "1.46.0",
     "convex-helpers": "^0.1.124",
     "resend": "^6.30.0",
-    "@web-app-starter/convex-platform": "workspace:*"
+    "@web-app-starter/convex-platform": "workspace:*",
+    "@web-app-starter/agentic": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",

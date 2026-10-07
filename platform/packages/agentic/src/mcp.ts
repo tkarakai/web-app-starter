@@ -3,10 +3,8 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import type { CapabilityAdapter } from "./adapter";
 import { defaultCatalogue, gatewaySchemas, gatewayDescriptions, searchCapabilities, describeCapabilities, executeCapability, type CapabilityCatalogue } from "./discovery";
 
-export function safeCapabilityError(error: unknown) {
-  const message = error instanceof Error ? error.message : "CAPABILITY_FAILED";
-  return ["RECENT_AUTHENTICATION_REQUIRED", "INVALID_AGENT_TOKEN", "UNKNOWN_CAPABILITY", "WRITE_OUTPUT_CANNOT_BE_REPLAYED", "INVALID_RESULT_OFFSET", "ANNOUNCEMENT_NOT_FOUND", "NAME_REQUIRED", "BANNER_TEXT_REQUIRED", "INVALID_SCHEDULE", "NOT_ADMIN", "RATE_LIMITED", "SURFACE_DISABLED", "PROTECTED_ADMIN"].find(code => message.includes(code)) ?? "CAPABILITY_FAILED: check the described input schema and current access";
-}
+import { safeCapabilityError } from "./errors";
+export { safeCapabilityError } from "./errors";
 export async function handleMcp(request: Request, adapter: CapabilityAdapter, catalogue: CapabilityCatalogue = defaultCatalogue): Promise<Response> {
   const server = new McpServer({ name: "admin-capabilities", version: "0.2.0" }, { capabilities: { tools: {} } });
   for (const name of Object.keys(gatewaySchemas) as (keyof typeof gatewaySchemas)[]) {

@@ -203,7 +203,7 @@ export function AdminSessionsList() {
                   {revokingAll ? "Loading..." : "Sign out all others"}
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent data-agent-sensitive>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Sign out all other devices?</AlertDialogTitle>
                   <AlertDialogDescription>
@@ -307,7 +307,7 @@ function SessionCard({
                   <LogOut className="h-3.5 w-3.5" />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent data-agent-sensitive>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Sign out this device?</AlertDialogTitle>
                   <AlertDialogDescription>

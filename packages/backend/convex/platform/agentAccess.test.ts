@@ -231,3 +231,64 @@ describe("full native capability adapter and independent surfaces", () => {
     await expect(f.application.query(api.platform.agentCapabilities.browserRead, { name: "account_currentUser", input: {} })).rejects.toThrow("SURFACE_DISABLED");
   });
 });
+
+describe("durable A2A task lifecycle", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
+  async function setup() {
+    const f = await fixture(); const a2aResource = resource.replace("/api/mcp", "/api/a2a");
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "a2a", enabled: true });
+    const fresh = await f.login(); const request = { ...f.request, resource: a2aResource };
+    const { code } = await fresh.client.mutation(api.platform.agentAccess.authorize, request);
+    const grant = await f.t.mutation(api.platform.agentAccess.exchange, { code, verifier, clientId: request.clientId, redirectUri: request.redirectUri, resource: a2aResource });
+    const auth = { token: grant.access_token, resource: a2aResource };
+    const send = (command: unknown, messageId = crypto.randomUUID(), extra = {}) => f.t.mutation(api.platform.agentTasks.send, { ...auth, params: { message: { messageId, role: "ROLE_USER", parts: [{ data: command }], ...extra }, configuration: { returnImmediately: true } } });
+    const work = async (id: string) => { const { internal } = await import("../_generated/api"); await f.t.action(internal.platform.agentTasks.work, { taskId: id as import("../_generated/dataModel").Id<"agentTasks"> }); return f.t.query(api.platform.agentTasks.get, { ...auth, id }); };
+    return { ...f, auth, send, work };
+  }
+  test("durable task creation is replay-safe; writes and result commit once and task data excludes tokens", async () => {
+    const f = await setup(); const messageId = crypto.randomUUID();
+    const command = { operation: "execute", input: { name: "announcements_create", input: { name: "A2A draft", bannerText: "Durable" } } };
+    const first = await f.send(command, messageId); expect(first.status.state).toBe("TASK_STATE_SUBMITTED");
+    const duplicate = await f.send(command, messageId); expect(duplicate.id).toBe(first.id);
+    await expect(f.send({ ...command, input: { ...command.input, input: { name: "Different", bannerText: "X" } } }, messageId)).rejects.toThrow("MESSAGE_ID_REUSED");
+    const completed = await f.work(first.id); expect(completed.status.state).toBe("TASK_STATE_COMPLETED");
+    await f.work(first.id);
+    const rows = await f.t.query(api.platform.agentCapabilities.read, { ...f.auth, name: "announcements_list", input: {} });
+    expect(rows).toHaveLength(1);
+    const tasks = await f.t.run(ctx => ctx.db.query("agentTasks").collect());
+    expect(JSON.stringify(tasks)).not.toContain(f.auth.token);
+    const messages = await f.t.run(ctx => ctx.db.query("agentTaskMessages").collect()); expect(messages).toHaveLength(1);
+    await expect(f.t.mutation(api.platform.agentTasks.cancel, { ...f.auth, id: first.id })).rejects.toThrow("TASK_NOT_CANCELABLE");
+    const list = await f.t.query(api.platform.agentTasks.list, { ...f.auth, pageSize: 10 }); expect(list).toMatchObject({ totalSize: 1, tasks: [expect.not.objectContaining({ artifacts: expect.anything() })] });
+  });
+  test("cancellation and disable/expiry stop queued writes; invalid input never enters durable storage", async () => {
+    const f = await setup();
+    const command = { operation: "execute", input: { name: "announcements_create", input: { name: "Canceled", bannerText: "No" } } };
+    const task = await f.send(command);
+    await f.t.mutation(api.platform.agentTasks.cancel, { ...f.auth, id: task.id });
+    expect((await f.work(task.id)).status.state).toBe("TASK_STATE_CANCELED");
+    expect(await f.t.query(api.platform.agentCapabilities.read, { ...f.auth, name: "announcements_list", input: {} })).toHaveLength(0);
+    await expect(f.send({ operation: "execute", input: { name: "account_changePassword", input: { password: "NEVER_STORE_SECRET" } } })).rejects.toThrow();
+    expect(JSON.stringify(await f.t.run(ctx => ctx.db.query("agentTasks").collect()))).not.toContain("NEVER_STORE");
+    const pending = await f.send(command); vi.advanceTimersByTime(5 * 60_000 + 1);
+    const failed = await f.work(pending.id); expect(failed.status.state).toBe("TASK_STATE_FAILED");
+    expect(JSON.stringify(failed)).toContain("RECENT_AUTHENTICATION_REQUIRED");
+    expect(await f.t.query(api.platform.agentCapabilities.read, { ...f.auth, name: "announcements_list", input: {} })).toHaveLength(0);
+  });
+  test("text-only input asks for structured data; continuation preserves context; task ownership cannot be bypassed", async () => {
+    const f = await setup();
+    const pending = await f.t.mutation(api.platform.agentTasks.send, { ...f.auth, params: { message: { messageId: crypto.randomUUID(), role: "ROLE_USER", parts: [{ text: "Please do something" }] } } });
+    expect(pending.status.state).toBe("TASK_STATE_INPUT_REQUIRED");
+    await expect(f.send({ operation: "search", input: {} }, crypto.randomUUID(), { taskId: pending.id, contextId: "wrong-context" })).rejects.toThrow("CONTEXT_MISMATCH");
+    const continued = await f.send({ operation: "search", input: { query: "users" } }, crypto.randomUUID(), { taskId: pending.id });
+    expect(continued.contextId).toBe(pending.contextId); expect(continued.id).toBe(pending.id);
+    expect((await f.work(continued.id)).status.state).toBe("TASK_STATE_COMPLETED");
+    await expect(f.t.query(api.platform.agentTasks.get, { ...f.auth, id: "unknown" })).rejects.toThrow("TASK_NOT_FOUND");
+    const other = await fixture(); const mcp = await other.mint();
+    await expect(f.t.query(api.platform.agentTasks.get, { token: mcp.token, resource, id: pending.id })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    const { internal } = await import("../_generated/api");
+    await f.t.mutation(internal.platform.agentTasks.recover, { taskId: pending.id as import("../_generated/dataModel").Id<"agentTasks">, attempt: 1 });
+    expect((await f.t.query(api.platform.agentTasks.get, { ...f.auth, id: pending.id })).status.state).toBe("TASK_STATE_COMPLETED");
+  });
+});

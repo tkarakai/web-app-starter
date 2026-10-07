@@ -3,6 +3,12 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
+export interface AdminToolConnection {
+  listTools(): Promise<{ tools: { name: string; title?: string; description?: string; inputSchema: Record<string, unknown> }[] }>;
+  callTool(input: { name: string; arguments?: Record<string, unknown> }, unused?: undefined, options?: { signal?: AbortSignal }): Promise<{ [key: string]: unknown; content?: unknown; isError?: unknown }>;
+  close(): Promise<void>;
+}
+
 export async function connectMcp(origin: string, token: string) {
   const client = new Client({ name: "pi-announcements", version: "0.1.0" });
   await client.connect(new StreamableHTTPClientTransport(new URL(`${origin}/api/mcp`), {
@@ -10,7 +16,7 @@ export async function connectMcp(origin: string, token: string) {
   }));
   return client;
 }
-export async function discoverTools(connection: () => Client) {
+export async function discoverTools(connection: () => AdminToolConnection) {
   const { tools } = await connection().listTools();
   return tools.map(tool => defineTool({
     name: tool.name, label: tool.title ?? tool.name, description: tool.description ?? tool.name,

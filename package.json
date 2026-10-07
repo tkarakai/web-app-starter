@@ -91,7 +91,10 @@
     "test:landing-export": "./platform/tooling/test-landing-export.sh",
     "test:startup": "./platform/tooling/node-ts.sh platform/tooling/startup-smoke.ts",
     "test:landing-artifacts": "./platform/tooling/test-landing-export.sh --variants",
-    "agent:announcements": "bun run --cwd platform/packages/announcement-agent start"
+    "agent:announcements": "bun run --cwd platform/packages/announcement-agent start",
+    "agent:admin": "bun run --cwd platform/packages/announcement-agent start",
+    "admin:cli": "bun run --cwd platform/packages/announcement-agent cli",
+    "agent:simulator": "bun run --cwd platform/packages/announcement-agent simulate"
   },
   "overrides": {
     "@peculiar/asn1-schema": "2.9.5",

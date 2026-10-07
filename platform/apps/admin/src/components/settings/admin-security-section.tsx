@@ -41,7 +41,7 @@ export function AdminSecuritySection() {
   const enforce = searchParams.get("enforce");
 
   return (
-    <Card>
+    <Card data-agent-sensitive>
       <CardHeader>
         <CardTitle>Security</CardTitle>
       </CardHeader>

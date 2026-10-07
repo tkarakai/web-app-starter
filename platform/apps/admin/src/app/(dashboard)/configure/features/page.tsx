@@ -1,5 +1,5 @@
 import { agentConfig } from "@/lib/agentic/config";
-import { McpFeatureCard } from "@/components/features/mcp-feature-card";
+import { AgentSurfaceCard } from "@/components/features/agent-surface-card";
 import { appConfig } from "@web-app-starter/app-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@web-app-starter/design-system";
 import { InviteOnlyFeatureCard } from "@/components/features/invite-only-feature-card";
@@ -19,7 +19,7 @@ export default function FeaturesPage() {
           Manage feature controls for the application.
         </p>
       </div>
-      <McpFeatureCard deploymentReady={Boolean(agentConfig())} />
+      {(["mcp", "cli", "webmcp", "a2a"] as const).map(surface => <AgentSurfaceCard key={surface} surface={surface} deploymentReady={Boolean(agentConfig())} />)}
       <div id="onboarding-feature" className="max-w-3xl">
         <Card>
           <CardHeader>

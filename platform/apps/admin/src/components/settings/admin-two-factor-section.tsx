@@ -219,7 +219,7 @@ export function AdminTwoFactorSection() {
             </Button>
 
             <AlertDialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
-              <AlertDialogContent>
+              <AlertDialogContent data-agent-sensitive>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Regenerate backup codes?</AlertDialogTitle>
                   <AlertDialogDescription>
@@ -236,7 +236,7 @@ export function AdminTwoFactorSection() {
             </AlertDialog>
 
             <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>
-              <AlertDialogContent>
+              <AlertDialogContent data-agent-sensitive>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
                   <AlertDialogDescription>

@@ -4,7 +4,9 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { authenticate } from "./auth";
-import { connectMcp, discoverTools } from "./client";
+import { connectMcp, discoverTools, type AdminToolConnection } from "./client";
+import { connectCli } from "./cli-client";
+import { connectA2a } from "./a2a-client";
 
 const args = process.argv.slice(2);
 function option(name: string) { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; }
@@ -12,9 +14,15 @@ const origin = option("--origin") ?? process.env.AGENT_ADMIN_ORIGIN ?? "http://l
 
 async function main() {
   if (args.includes("--help")) {
-    process.stdout.write("Announcement pi agent: --origin <admin-origin> [--provider <provider> --model <model>] [--prompt <text>] [--smoke]\nBrowser admin sign-in is required. Provider credentials use pi's normal configuration or environment. /auth renews app access; /quit exits.\n"); return;
+    process.stdout.write("Admin pi agent: --origin <admin-origin> [--surface mcp|cli|a2a] [--provider <provider> --model <model>] [--prompt <text>] [--smoke]\nBrowser admin sign-in is required. Provider credentials use pi's normal configuration or environment. /auth renews app access; /quit exits.\n"); return;
   }
-  let client = await connectMcp(origin, await authenticate(origin));
+  const surface = option("--surface") ?? "mcp";
+  if (!["mcp", "cli", "a2a"].includes(surface)) throw new Error("Use --surface mcp, cli or a2a");
+  async function connect(): Promise<AdminToolConnection> {
+    const token = await authenticate(origin, surface as "mcp" | "cli" | "a2a");
+    return surface === "mcp" ? connectMcp(origin, token) : surface === "cli" ? connectCli(origin, token) : connectA2a(origin, token);
+  }
+  let client = await connect();
   const execute = (name: string, input: Record<string, unknown>) => client.callTool({ name: "capabilities_execute", arguments: { name, input } });
   if (args.includes("--smoke")) {
     try {
@@ -39,7 +47,7 @@ async function main() {
       const deleted = await execute("announcements_get", { announcementId: id });
       const deletedContent = deleted.content as { type: string; text?: string }[];
       if (JSON.parse(deletedContent.find(c => c.type === "text")?.text ?? "{}").result !== null) throw new Error("Delete did not persist");
-      process.stdout.write("Authenticated remote MCP CRUD acceptance passed. Draft cleaned up.\n");
+      process.stdout.write(`Authenticated remote ${surface.toUpperCase()} CRUD acceptance passed. Draft cleaned up.\n`);
     } finally { await client.close(); }
     return;
   }
@@ -66,13 +74,13 @@ async function main() {
     const prompt = option("--prompt");
     if (prompt) { await session.prompt(prompt); process.stdout.write("\n"); }
     else {
-      process.stdout.write(`\nAnnouncement agent · ${model.provider}/${model.id}\n/auth renews app access; /quit exits.\n`);
+      process.stdout.write(`\nAdmin agent · ${model.provider}/${model.id}\n/auth renews app access; /quit exits.\n`);
       for (;;) {
         const text = await terminal.question("\nYou: ");
         if (["/quit", "/exit"].includes(text.trim())) break;
         if (text.trim() === "/auth") {
           try {
-            const renewed = await connectMcp(origin, await authenticate(origin));
+            const renewed = await connect();
             await client.close(); client = renewed;
             process.stdout.write("Access renewed.\n");
           } catch (error) {

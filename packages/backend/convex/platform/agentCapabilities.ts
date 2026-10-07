@@ -50,3 +50,8 @@ export const browserWrite = mutation({ args, returns: v.any(), handler: async (c
   await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
   return (await runCapability(ctx, auth, name, input, true)) ?? null;
 } });
+/** Random request IDs avoid replaying a reactive query's time-dependent authorization result. */
+export const browserPermit = query({ args: { requestId: v.string() }, returns: v.boolean(), handler: async (ctx, { requestId }) => {
+  if (!/^[a-f0-9-]{36}$/.test(requestId)) throw new Error("INVALID_REQUEST");
+  await browserAuth(ctx, true); return true;
+} });

@@ -7,7 +7,9 @@
     "start": "bun src/cli.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --max-warnings 0",
-    "test": "bun test tests"
+    "test": "bun test tests",
+    "cli": "bun src/admin-cli.ts",
+    "simulate": "bun src/simulator.ts"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "0.87.1",

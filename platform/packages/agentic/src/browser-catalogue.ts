@@ -1,0 +1,15 @@
+/** Page capabilities supplement native data operations without inventing duplicate business APIs. */
+import { z } from "zod";
+import type { CapabilityCatalogue } from "./discovery";
+const control = z.string().max(50);
+export const browserCatalogue: CapabilityCatalogue = {
+  browser_readPage: { title: "Read live admin page", effect: "browser", description: "Read visible page text and controls with opaque control IDs. Excludes credential/security ceremonies. Offset pages the text; controlsOffset pages up to 40 controls. Requires an authenticated live WebMCP page.", schema: z.object({ offset: z.number().int().min(0).default(0), controlsOffset: z.number().int().min(0).default(0) }).strict() },
+  browser_navigate: { title: "Navigate admin page", effect: "browser", description: "Navigate to a relative protected admin path. Cannot open public authentication pages, the auth-only origin or an external site. Navigation discards current page state; respect unsaved work.", schema: z.object({ path: z.string().max(1000) }).strict() },
+  browser_activate: { title: "Activate page control", effect: "browser", description: "Click a visible enabled button, link, tab, option or menu item by its control ID from readPage. Existing confirmation dialogs and native authorization still apply. Never click destructive confirmation without explicit user intent.", schema: z.object({ controlId: control }).strict() },
+  browser_fill: { title: "Edit live form or search", effect: "browser", description: "Set a non-secret input, textarea or contenteditable value in the live page. This changes the draft/search only; saving requires its normal control. Password, token and security-ceremony controls are excluded.", schema: z.object({ controlId: control, value: z.string().max(50_000) }).strict() },
+  browser_select: { title: "Select form value", effect: "browser", description: "Choose an existing option in a native select control. For custom dropdowns use activate to open it and activate its visible option.", schema: z.object({ controlId: control, value: z.string().max(200) }).strict() },
+  browser_toggle: { title: "Toggle page control", effect: "browser", description: "Set a checkbox or switch to the requested state using its existing UI behavior. Feature/security switches may have real consequences.", schema: z.object({ controlId: control, checked: z.boolean() }).strict() },
+  browser_scroll: { title: "Scroll admin page", effect: "browser", description: "Scroll the live admin page to a vertical pixel offset. readPage provides currently loaded data; use existing Load more controls to fetch additional rows.", schema: z.object({ top: z.number().int().min(0).max(1_000_000) }).strict() },
+  browser_reload: { title: "Reload admin page", effect: "browser", description: "Reload the current admin page. Unsaved drafts may be lost; require the user's intent.", schema: z.object({}).strict() },
+};
+export function withBrowserCapabilities(catalogue: CapabilityCatalogue): CapabilityCatalogue { return { ...catalogue, ...browserCatalogue }; }

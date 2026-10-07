@@ -24,6 +24,9 @@ export const platformTables = {
     resource: v.string(), scope: v.string(), createdAt: v.number(), expiresAt: v.number(), revokedAt: v.optional(v.number()),
   }).index("by_token_hash", ["tokenHash"]).index("by_user", ["userId"]),
 
+  agentTaskMessages: defineTable({ userId: v.string(), messageId: v.string(), taskId: v.id("agentTasks"), requestHash: v.string(), expiresAt: v.number() }).index("by_user_message", ["userId", "messageId"]).index("by_task", ["taskId"]),
+  agentTasks: defineTable({ userId: v.string(), grantId: v.id("agentGrants"), resource: v.string(), generation: v.string(), contextId: v.string(), messageId: v.string(), requestHash: v.string(), command: v.optional(v.string()), state: v.string(), createdAt: v.number(), updatedAt: v.number(), expiresAt: v.number(), result: v.optional(v.string()), error: v.optional(v.string()) }).index("by_user", ["userId"]).index("by_user_message", ["userId", "messageId"]),
+
   userProfiles: defineTable({
     ownerId: v.string(),
     locale: v.optional(v.string()),
