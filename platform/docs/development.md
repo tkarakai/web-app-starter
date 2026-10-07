@@ -116,6 +116,12 @@ CI artifacts or hosted configuration. Missing or incorrect authorization returns
 creating an invitation or account. Addresses remain restricted to `e2e-<token>@e2e.local`;
 existing fixture addresses are rejected rather than reused or assigned a different role.
 
+Disposable account creation omits the external Have I Been Pwned lookup after these local
+authorization and address checks. Better Auth password hashing, strength validation and
+database hooks still run. Ordinary signup, password changes and resets retain the breach
+check, including on local deployments. This keeps unrelated E2E tests independent of an
+external password-service outage.
+
 The seed is idempotent. Restart `bun run dev` after resetting the database, or after upgrading
 a running dev backend to provision its new fixture authorization. Delete `.env.e2e.local` and
 restart to rotate the capability; the previous capability then stops working. Neither local app

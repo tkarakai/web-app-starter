@@ -21,11 +21,13 @@
  */
 
 import { v } from "convex/values";
+import { betterAuth } from "better-auth";
 
 import { components, internal } from "../_generated/api";
 import { httpAction, internalMutation } from "../_generated/server";
-import { createAuth } from "./auth";
+import { createAuthOptions } from "./auth";
 import { assertLocalFixtures, authorizeFixtureRequest } from "./localFixtures";
+import { validatePasswordStrength } from "./passwordStrength";
 
 /**
  * Fixture addresses are confined to a reserved TLD that cannot receive mail.
@@ -125,8 +127,22 @@ export const createE2eUser = httpAction(async (ctx, request) => {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return badRequest("PASSWORD_TOO_SHORT");
   }
+  // Programmatic signUpEmail does not invoke onRequest plugins. Apply the same
+  // native strength policy explicitly before preparing any invitation rows.
+  if (!validatePasswordStrength(password, email, isAdmin ? "admin" : "user").valid) {
+    return badRequest("PASSWORD_TOO_WEAK");
+  }
 
-  const auth = createAuth(ctx);
+  // Only this capability-authorized local fixture path omits the network breach
+  // lookup. Keep Better Auth's hashing, password-strength validation and database
+  // hooks; ordinary signup/change/reset paths still use the complete plugin set.
+  // A third-party outage must not prevent unrelated E2E tests from signing in.
+  assertLocalFixtures();
+  const options = createAuthOptions(ctx);
+  const auth = betterAuth({
+    ...options,
+    plugins: options.plugins.filter(plugin => plugin.id !== "have-i-been-pwned"),
+  });
   const authContext = await auth.$context;
   if (await authContext.internalAdapter.findUserByEmail(email)) return badRequest("FIXTURE_ALREADY_EXISTS");
 
@@ -134,7 +150,8 @@ export const createE2eUser = httpAction(async (ctx, request) => {
   await ctx.runMutation(internal.platform.e2eFixtures.prepareE2eInvitation, { email, isAdmin });
 
   // 2. Create the account through Better Auth so the password is hashed and
-  //    every database hook runs exactly as it would for a real signup.
+  //    every database hook runs exactly as it would for a real signup (without
+  //    the external breached-password lookup for this disposable fixture).
   let createdUserId: string;
   try {
     const result = await auth.api.signUpEmail({ body: { email, password, name } });

@@ -81,7 +81,38 @@ describe("local fixture authorization", () => {
 
   test("authorized malformed bodies are rejected without creating accounts", async () => {
     const t = fixture();
-    for (const data of [null, [], { ...body, email: "real@example.test" }, { ...body, password: "short" }]) expect((await post(t, secret, data)).status).toBe(400);
+    for (const data of [null, [], { ...body, email: "real@example.test" }, { ...body, password: "short" }, { ...body, password: "aaaaaaaaaaaa" }]) expect((await post(t, secret, data)).status).toBe(400);
+    await noUsers(t);
+  });
+
+  test("a breached-password service outage cannot prevent local fixture creation", async () => {
+    const network = vi.fn(async () => new Response("Upstream unavailable", { status: 502 }));
+    vi.stubGlobal("fetch", network);
+    const t = fixture();
+    const response = await post(t);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, email });
+    expect(network).not.toHaveBeenCalled();
+    const user = await t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
+    const account = await t.query(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: user!._id }] });
+    expect(account?.password).toBeTruthy();
+    expect(account?.password).not.toBe(body.password);
+  });
+
+  test("ordinary signup still checks breached passwords, even for a fixture address", async () => {
+    const requestedUrls: string[] = [];
+    const network = vi.fn(async (input: string) => { requestedUrls.push(String(input)); return new Response("Upstream unavailable", { status: 502 }); });
+    vi.stubGlobal("fetch", network);
+    const t = fixture();
+    await t.mutation(internal.platform.e2eFixtures.prepareE2eInvitation, { email, isAdmin: false });
+    const response = await t.fetch("/api/auth/sign-up/email", {
+      method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+      body: JSON.stringify({ email, password: body.password, name: "Ordinary signup" }),
+    });
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain("Failed to check password");
+    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls[0]).toMatch(/^https:\/\/api\.pwnedpasswords\.com\/range\//);
     await noUsers(t);
   });
 
