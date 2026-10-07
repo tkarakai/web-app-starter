@@ -1,8 +1,73 @@
 /** Public and internal app API: authorization stays here; the component owns storage and scheduling. */
-import { v } from "convex/values";
+import { v, type ObjectType } from "convex/values";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
+import type { authorizedSession } from "./sessionPolicy";
+type AnnouncementIdentity = Pick<NonNullable<Awaited<ReturnType<typeof authorizedSession>>>, "user" | "ownerId">;
 import { components } from "../_generated/api";
 import { internalMutation, internalQuery, query } from "../_generated/server";
 import { adminMutation, authedQuery } from "./functions";
+
+// Shared native handlers used by the UI and authenticated capability adapters.
+export const announcementListArgs = {
+    includeArchived: v.optional(v.boolean()),
+    sortBy: v.optional(
+      v.union(
+        v.literal("scheduleStart"),
+        v.literal("scheduleEnd"),
+        v.literal("status"),
+        v.literal("name")
+      )
+    ),
+    sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+  };
+
+export async function listAnnouncement(ctx: QueryCtx & AnnouncementIdentity, args: ObjectType<typeof announcementListArgs>) {
+    if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
+    return await ctx.runQuery(components.platform.announcements.list, args);
+  }
+
+export const announcementCreateArgs = {
+    name: v.string(),
+    bannerText: v.string(),
+    callToActionName: v.optional(v.string()),
+    callToActionUrl: v.optional(v.string()),
+    learnMoreName: v.optional(v.string()),
+    learnMoreContent: v.optional(v.string()),
+    scheduleStart: v.optional(v.number()),
+    scheduleEnd: v.optional(v.number()),
+  };
+
+export async function createAnnouncement(ctx: MutationCtx & AnnouncementIdentity, args: ObjectType<typeof announcementCreateArgs>) {
+    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    return await ctx.runMutation(components.platform.announcements.create, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
+  }
+
+export const announcementUpdateArgs = {
+    announcementId: v.string(),
+    patch: v.object({
+      name: v.optional(v.string()),
+      bannerText: v.optional(v.string()),
+      callToActionName: v.optional(v.string()),
+      callToActionUrl: v.optional(v.string()),
+      learnMoreName: v.optional(v.string()),
+      learnMoreContent: v.optional(v.string()),
+      scheduleStart: v.optional(v.union(v.number(), v.null())),
+      scheduleEnd: v.optional(v.union(v.number(), v.null())),
+    }),
+  };
+
+export async function updateAnnouncement(ctx: MutationCtx & AnnouncementIdentity, args: ObjectType<typeof announcementUpdateArgs>) {
+    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    return await ctx.runMutation(components.platform.announcements.update, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
+  }
+
+export const announcementRemoveArgs = { announcementId: v.string() };
+
+export async function removeAnnouncement(ctx: MutationCtx & AnnouncementIdentity, args: ObjectType<typeof announcementRemoveArgs>) {
+    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    return await ctx.runMutation(components.platform.announcements.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
+  }
+
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -70,22 +135,8 @@ export const handleScheduledEnd = internalMutation({
 });
 
 export const list = authedQuery({
-  args: {
-    includeArchived: v.optional(v.boolean()),
-    sortBy: v.optional(
-      v.union(
-        v.literal("scheduleStart"),
-        v.literal("scheduleEnd"),
-        v.literal("status"),
-        v.literal("name")
-      )
-    ),
-    sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-  },
-  handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
-    return await ctx.runQuery(components.platform.announcements.list, args);
-  },
+  args: announcementListArgs,
+  handler: listAnnouncement,
 });
 
 export const getAdminListInternal = internalQuery({
@@ -98,40 +149,13 @@ export const getAdminListInternal = internalQuery({
 });
 
 export const create = adminMutation({
-  args: {
-    name: v.string(),
-    bannerText: v.string(),
-    callToActionName: v.optional(v.string()),
-    callToActionUrl: v.optional(v.string()),
-    learnMoreName: v.optional(v.string()),
-    learnMoreContent: v.optional(v.string()),
-    scheduleStart: v.optional(v.number()),
-    scheduleEnd: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
-    return await ctx.runMutation(components.platform.announcements.create, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
-  },
+  args: announcementCreateArgs,
+  handler: createAnnouncement,
 });
 
 export const update = adminMutation({
-  args: {
-    announcementId: v.string(),
-    patch: v.object({
-      name: v.optional(v.string()),
-      bannerText: v.optional(v.string()),
-      callToActionName: v.optional(v.string()),
-      callToActionUrl: v.optional(v.string()),
-      learnMoreName: v.optional(v.string()),
-      learnMoreContent: v.optional(v.string()),
-      scheduleStart: v.optional(v.union(v.number(), v.null())),
-      scheduleEnd: v.optional(v.union(v.number(), v.null())),
-    }),
-  },
-  handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
-    return await ctx.runMutation(components.platform.announcements.update, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
-  },
+  args: announcementUpdateArgs,
+  handler: updateAnnouncement,
 });
 
 export const publishNow = adminMutation({
@@ -195,9 +219,7 @@ export const archive = adminMutation({
 });
 
 export const remove = adminMutation({
-  args: { announcementId: v.string() },
-  handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
-    return await ctx.runMutation(components.platform.announcements.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
-  },
+  args: announcementRemoveArgs,
+  handler: removeAnnouncement,
 });
+

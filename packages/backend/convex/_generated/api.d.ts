@@ -16,6 +16,8 @@ import type * as platform_adminAuth from "../platform/adminAuth.js";
 import type * as platform_adminEmails from "../platform/adminEmails.js";
 import type * as platform_adminInvitationActions from "../platform/adminInvitationActions.js";
 import type * as platform_adminInvitations from "../platform/adminInvitations.js";
+import type * as platform_agentAccess from "../platform/agentAccess.js";
+import type * as platform_agentAnnouncements from "../platform/agentAnnouncements.js";
 import type * as platform_announcements from "../platform/announcements.js";
 import type * as platform_appSettings from "../platform/appSettings.js";
 import type * as platform_auditTrail from "../platform/auditTrail.js";
@@ -74,6 +76,8 @@ declare const fullApi: ApiFromModules<{
   "platform/adminEmails": typeof platform_adminEmails;
   "platform/adminInvitationActions": typeof platform_adminInvitationActions;
   "platform/adminInvitations": typeof platform_adminInvitations;
+  "platform/agentAccess": typeof platform_agentAccess;
+  "platform/agentAnnouncements": typeof platform_agentAnnouncements;
   "platform/announcements": typeof platform_announcements;
   "platform/appSettings": typeof platform_appSettings;
   "platform/auditTrail": typeof platform_auditTrail;

@@ -13,6 +13,15 @@ export const platformTables = {
   // --- Migrations state (convex-helpers framework) ---
   migrations: migrationsTable,
 
+  agentAuthorizationCodes: defineTable({
+    codeHash: v.string(), userId: v.string(), sessionId: v.string(), clientId: v.string(),
+    redirectUri: v.string(), resource: v.string(), challenge: v.string(), scope: v.string(), expiresAt: v.number(),
+  }).index("by_code_hash", ["codeHash"]),
+  agentGrants: defineTable({
+    tokenHash: v.string(), userId: v.string(), sessionId: v.string(), clientId: v.string(),
+    resource: v.string(), scope: v.string(), createdAt: v.number(), expiresAt: v.number(), revokedAt: v.optional(v.number()),
+  }).index("by_token_hash", ["tokenHash"]).index("by_user", ["userId"]),
+
   userProfiles: defineTable({
     ownerId: v.string(),
     locale: v.optional(v.string()),
