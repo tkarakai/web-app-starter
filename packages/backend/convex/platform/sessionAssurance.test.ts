@@ -652,3 +652,22 @@ test.each(["password", "factor", "session"])("HTTP replacement cannot complete a
     expect(session?.recoveryFactorId).toBeFalsy();
   } finally { spy.mockRestore(); }
 });
+
+test("auth-only-origin login creates a restricted session and cannot access general admin APIs", async () => {
+  vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001");
+  vi.stubEnv("SITE_URL", "http://localhost:3001,http://mcp-auth.localhost:3001");
+  const f = await fixture("admin");
+  const response = await f.t.fetch("/api/auth/sign-in/email", { method: "POST", headers: { origin: "http://mcp-auth.localhost:3001", "content-type": "application/json" }, body: JSON.stringify({ email: f.email, password }) });
+  expect(response.status, await response.clone().text()).toBe(200);
+  const token = (await response.json()).token;
+  const { session, client } = await f.caller(token);
+  expect(session.authPurpose).toBe("mcp-authorization");
+  expect(await client.query(api.platform.announcements.list, {})).toBeNull();
+  await expect(client.mutation(api.platform.announcements.create, { name: "Forbidden", bannerText: "Forbidden" })).rejects.toThrow("NOT_AUTHENTICATED");
+  const administrative = await f.request("/admin/list-users", undefined, token);
+  expect(administrative.status).toBe(403);
+  expect(await administrative.text()).toContain("MCP_AUTHORIZATION_ONLY");
+  const verify = await f.request("/verify-password", { password }, token);
+  expect(verify.status).toBe(200);
+  expect((await f.caller(token)).session.authPurpose).toBe("mcp-authorization");
+});

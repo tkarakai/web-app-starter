@@ -38,7 +38,8 @@
         "NEXT_PUBLIC_BUILD_ID",
         "NEXT_PUBLIC_APP_NAME",
         "AGENT_MCP_ENABLED",
-        "AGENT_MCP_ORIGIN"
+        "AGENT_MCP_ORIGIN",
+        "AGENT_MCP_AUTH_ORIGIN"
       ]
     },
     "dev": {
@@ -57,7 +58,8 @@
       ],
       "passThroughEnv": [
         "AGENT_MCP_ENABLED",
-        "AGENT_MCP_ORIGIN"
+        "AGENT_MCP_ORIGIN",
+        "AGENT_MCP_AUTH_ORIGIN"
       ]
     },
     "lint": {

@@ -9,9 +9,10 @@ import {
 import { AuthGuard } from "@/components/auth/auth-guard";
 
 export async function AdminSessionLayout({
-  children,
+  children, authorizationOnly = false,
 }: {
   children: React.ReactNode;
+  authorizationOnly?: boolean;
 }) {
   const authed = await isAuthenticated();
   if (!authed) {
@@ -25,7 +26,9 @@ export async function AdminSessionLayout({
     redirect("/api/auth/clear-session");
   }
 
-  const pending = await fetchAuthQuery(api.platform.adminInvitations.getMyOnboardingStatus);
+  const status = await fetchAuthQuery(api.platform.sessionAssurance.status, {});
+  if (authorizationOnly !== (status?.authPurpose === "mcp-authorization")) redirect("/api/auth/clear-session");
+  const pending = authorizationOnly ? null : await fetchAuthQuery(api.platform.adminInvitations.getMyOnboardingStatus);
   if (pending && !pending.completed) redirect("/onboarding");
 
   // Verify user has admin role (fetchAuthQuery returns the actual data)
@@ -40,7 +43,7 @@ export async function AdminSessionLayout({
   }
 
   return (
-    <AuthGuard preloadedUser={preloadedUser}>
+    <AuthGuard preloadedUser={preloadedUser} authorizationOnly={authorizationOnly}>
       {children}
     </AuthGuard>
   );

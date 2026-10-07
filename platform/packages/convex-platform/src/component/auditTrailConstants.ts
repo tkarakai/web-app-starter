@@ -46,6 +46,8 @@ export const AUDIT_ACTIONS = [
   "admin.user.unbanned",
   "admin.user.deleted",
   "admin.role_changed",
+  "admin.mcp_enabled",
+  "admin.mcp_disabled",
   "admin.mfa_policy_changed",
   "admin.email_verification_policy_changed",
   "admin.user_mfa_policy_changed",

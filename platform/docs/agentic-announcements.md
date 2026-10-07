@@ -7,13 +7,13 @@ validation, scheduling, audit identity and storage; MCP adds no separate busines
 
 ## Authentication
 
-The only registered client is `pi-announcements`, a public local test client. It opens the
-admin browser's `/settings/agent-access` page for sign-in, current security checks and explicit
+The only registered client is `pi-announcements`, a public local test client. It discovers the
+separate authorization origin and opens its `/settings/agent-access` page for sign-in, current security checks and explicit
 consent. Consent uses an isolated, protected modal screen: it has no dashboard navigation,
 status-banner controls or grant management. Focus stays inside the dialog, and Escape/outside
 clicks cannot dismiss it. Approve access or explicitly deny it; denial returns an OAuth
 `access_denied` response to pi without issuing a code or grant. Grant management remains a
-separate dashboard page at `/settings/agent-grants` (old queryless access bookmarks redirect there).
+separate dashboard page at `/settings/agent-grants` on the admin origin.
 The redirect must use `http://127.0.0.1:<port>/callback`. Authorization-code exchange
 requires S256 PKCE and the exact client, redirect and MCP resource. Codes expire after one
 minute and are single-use. Grants expire after at most fifteen minutes and bind to the original
@@ -30,7 +30,8 @@ is provided. Editing live content or assigning schedules can affect public annou
 Start the normal local dev harness with `bun run dev:admin`. Set runtime variables
 `AGENT_MCP_ENABLED=true` and `AGENT_MCP_ORIGIN` to the canonical admin origin, without a
 trailing slash. Set backend `AGENT_MCP_RESOURCE` to that origin plus `/api/mcp`. Disabled or
-missing configuration fails closed. The default configured admin origin is `http://localhost:3002`;
+missing configuration fails closed. Also configure `AGENT_MCP_AUTH_ORIGIN` on both admin and backend. It must have a different
+hostname from the admin origin. The default configured admin origin is `http://localhost:3002`;
 use the actual configured port. Never set a cloud deployment key for the local dev harness.
 
 ## Adapter boundary
@@ -47,10 +48,9 @@ host context and are absent from tool input schemas and model context.
 From the repository root:
 
 ```sh
-AGENT_MCP_ENABLED=true AGENT_MCP_ORIGIN=http://localhost:3002 bun run dev:admin
-# In a second terminal, from packages/backend, targeting the same anonymous local deployment:
-bunx convex env set AGENT_MCP_RESOURCE http://localhost:3002/api/mcp
-# Back at the repository root:
+AGENT_MCP_ENABLED=true bun run dev:admin
+# The launcher configures localhost:3002 + mcp-auth.localhost:3002 on the same listener.
+# Enable Configure → Features → MCP server in the admin app, then in another terminal:
 bun run agent:announcements -- --origin http://localhost:3002
 ```
 
@@ -94,3 +94,21 @@ or transcript store. `get` currently selects from the native full admin list, wh
 for this bounded catalogue but should become an indexed read if announcement volume grows.
 The schemas describe inputs; business rules remain in native functions. Do not automatically
 retry a write after an uncertain transport failure.
+
+## Operator control and origin isolation
+
+**Configure → Features → MCP server** is the live availability switch. It defaults off, requires
+recent normal admin authentication, and records an audit event. Disabling immediately blocks new
+consent/exchanges and existing grant use. Every transition changes the generation, so re-enabling
+requires fresh consent. Deployment configuration is an additional prerequisite, not authority
+the UI can override.
+
+The same Next.js deployment serves two hostnames; no second server is needed. Only authentication
+and consent are exposed on the issuer hostname. Admin routes typed into its address bar return
+404. Its host-only cookies hold MCP-authorization sessions; those sessions cannot invoke normal
+admin Convex functions or administrative Better Auth APIs. Browsing the separate normal admin
+host still uses that host's ordinary session. Recovery/enrollment belongs in the admin app.
+
+See [local startup](development.md#optional-mcp-authorization-hostname),
+[deployment architecture](deployment-architecture.md#optional-mcp-authorization-hostname) and
+[rollout checklist](deployment-runbook.md#optional-mcp-authorization-origin).

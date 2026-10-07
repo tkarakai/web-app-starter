@@ -51,6 +51,7 @@ export const tables = {
     userId: v.string(),
     impersonatedBy: v.optional(v.union(v.null(), v.string())),
     // Server-owned session assurance. Optional so existing sessions can be reauthenticated.
+    authPurpose: v.optional(v.union(v.null(), v.string())),
     assuranceVersion: v.optional(v.union(v.null(), v.number())),
     authMethod: v.optional(v.union(v.null(), v.string())),
     authenticatedAt: v.optional(v.union(v.null(), v.number())),

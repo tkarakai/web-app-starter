@@ -6,7 +6,8 @@ export async function POST(request: Request) {
   const config = agentConfig();
   if (!config) return new Response(null, { status: 404 });
   const limited = agentRateLimit(); if (limited) return limited;
-  if (!allowedRequest(request, config.origin)) return privateJson({ error: "invalid_origin" }, 403);
+  if (!(await backendClient().query(api.platform.agentMcp.availability, {})).enabled) return privateJson({ error: "mcp_disabled" }, 503);
+  if (!allowedRequest(request, config.authorizationOrigin)) return privateJson({ error: "invalid_origin" }, 403);
   const raw = await request.text();
   if (raw.length > 4096) return privateJson({ error: "invalid_request" }, 400);
   const params = new URLSearchParams(raw);

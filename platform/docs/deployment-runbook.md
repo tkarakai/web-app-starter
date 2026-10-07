@@ -920,3 +920,42 @@ to a hosted deployment. The runtime independently requires local app/backend ori
 capability, so a stray seed flag does not enable an anonymous administrator fixture route.
 Canonical backend URLs can be overridden by deployment administrators; the URL check is
 defense in depth alongside capability authorization and provisioning/deployment checks.
+
+## Optional MCP authorization origin
+
+This POC uses the existing admin artifact and process with an additional hostname. It does not
+add a hosting project, server process, database, pipeline job or worker role.
+
+1. Add an auth-only hostname to the **admin** hosting project/load balancer, provision its DNS
+   and TLS certificate, and route it to the same admin deployment. For example, admin at
+   `https://admin.example.com` and authorization at `https://mcp-auth.admin.example.com`.
+   Preserve the public Host and HTTPS scheme to Next.js; do not route the auth host to web/landing.
+2. Set admin runtime variables `AGENT_MCP_ENABLED=true`, `AGENT_MCP_ORIGIN=<admin-origin>` and
+   `AGENT_MCP_AUTH_ORIGIN=<auth-origin>`. Origins have no trailing slash or path. They must use
+   distinct hostnames; changing only ports is rejected because cookies are not port-scoped.
+3. Set backend `AGENT_MCP_RESOURCE=<admin-origin>/api/mcp` and
+   `AGENT_MCP_AUTH_ORIGIN=<auth-origin>`. Add the auth origin to the existing `SITE_URL` trusted
+   origin list, preserving all other entries and their existing primary origin.
+4. Check the passkey RP ID before choosing the auth hostname. Both browser hosts must be valid
+   for the existing RP ID; a child of `admin.example.com` can use passkeys bound to that RP ID.
+   If the configured RP ID is a shared parent, both hosts must fall under it. Changing an RP ID
+   can strand existing credentials; do not change it merely to activate MCP.
+5. Deploy the backend's optional session-purpose/schema additions and the admin artifact as one
+   compatible rollout. Existing normal sessions retain their existing purpose; prior POC grants
+   require new consent. The MCP feature remains off until an admin enables it in
+   **Configure → Features → MCP server**.
+6. Verify resource metadata advertises the auth issuer, login/consent works there, and `/dashboard`,
+   `/manage/announcements`, `/configure/features`, `/api/mcp` and administrative auth APIs return
+   404 on the auth hostname. Verify a purpose-limited session is rejected by normal Convex admin
+   functions and authenticated MCP CRUD works after approval. Disable, re-enable and check that
+   old tokens remain rejected.
+
+The resource remains on the admin origin; OAuth authorization and code exchange use the auth
+origin. Host-only cookies and server-owned session purpose separate browser authority. Do not
+set a shared cookie Domain. No refresh/offline access or dynamic client registration is provided.
+
+To stop access, use the admin switch: new requests are blocked and the grant generation changes,
+so re-enabling does not revive old codes/tokens. The deployment flag is an additional transport
+switch; leave canonical host settings in place while the auth DNS name still points to this
+artifact so host isolation continues even when transport is disabled. Update both app/backend
+origins together when changing domains and require new consent.

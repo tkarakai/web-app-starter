@@ -209,3 +209,17 @@ do not set it in deployment environments. For a custom app, import `getPlatformV
 where `monorepoRoot` is the absolute repository root. Keep `platform/VERSION` in the root
 `turbo.json` `globalDependencies` so a version change invalidates cached builds. Restart dev
 after a platform upgrade. Direct `EnvironmentBanner` users can pass `platformVersion`.
+
+### Optional MCP authorization hostname
+
+`AGENT_MCP_ENABLED=true bun run dev:admin` starts the usual admin and anonymous Convex
+processes and provisions the MCP resource plus `http://mcp-auth.localhost:<admin-port>`.
+Both names use the same Next.js listener. No additional app process or database is started.
+The launcher writes the two canonical origins to admin `.env.local`, sets backend
+`AGENT_MCP_RESOURCE` / `AGENT_MCP_AUTH_ORIGIN`, and retains the auth hostname in `SITE_URL`.
+
+Open the regular admin app and enable **Configure → Features → MCP server** before testing.
+The database switch defaults off. Start pi with `bun run agent:announcements -- --origin <admin-origin>`;
+it discovers the authorization hostname from MCP metadata. Ordinary admin routes and APIs return
+404 on the auth hostname. Browser cookies are host-only: a different port on `localhost` would
+not isolate sessions. See [announcement MCP](agentic-announcements.md) for setup and limits.

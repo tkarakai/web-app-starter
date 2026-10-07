@@ -67,7 +67,7 @@ function toBoolean(value: unknown, defaultValue: boolean): boolean {
   return typeof value === "boolean" ? value : defaultValue;
 }
 
-export function AdminSignInForm() {
+export function AdminSignInForm({ authorizationOnly = false }: { authorizationOnly?: boolean }) {
   const router = useRouter();
   const { supported: passkeySupported } = usePasskeySupport();
   const [pending, setPending] = React.useState(false);
@@ -136,6 +136,7 @@ export function AdminSignInForm() {
     }
 
     if (!usedPasskey && policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
+      if (authorizationOnly) { setError("Complete account security setup in the admin app, then restart MCP authorization."); return true; }
       router.push("/dashboard/security?tab=2fa");
       return true;
     }
@@ -155,13 +156,14 @@ export function AdminSignInForm() {
 
       const passkeys = passkeyResult.data ?? [];
       if (passkeys.length === 0) {
+        if (authorizationOnly) { setError("Complete account security setup in the admin app, then restart MCP authorization."); return true; }
         router.push("/dashboard/security?tab=passkeys");
         return true;
       }
     }
 
     return false;
-  }, [getRolePolicies, router]);
+  }, [getRolePolicies, router, authorizationOnly]);
 
   // Step 0 → Step 1: Continue from email
   const handleEmailContinue = (event: React.FormEvent<HTMLFormElement>) => {
@@ -380,7 +382,8 @@ export function AdminSignInForm() {
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                         onClick={() => {
                           window.sessionStorage.setItem("forgot-password-email", email);
-                          router.push("/forgot-password");
+                          if (authorizationOnly) setError("Use the admin app to recover your account, then restart MCP authorization.");
+                          else router.push("/forgot-password");
                         }}
                       >
                         Forgot password?

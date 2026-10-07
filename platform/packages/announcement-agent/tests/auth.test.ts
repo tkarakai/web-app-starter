@@ -7,8 +7,15 @@ test("explicit browser denial verifies state and closes the loopback authorizati
   process.env.AGENT_NO_OPEN = "true";
   let receive!: (url: URL) => void;
   const requested = new Promise<URL>(resolve => { receive = resolve; });
+  const originalFetch = globalThis.fetch;
+  const http = spyOn(globalThis, "fetch").mockImplementation(Object.assign(async (input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.endsWith("/.well-known/oauth-protected-resource/api/mcp")) return Response.json({ resource: "http://localhost:3002/api/mcp", authorization_servers: ["http://mcp-auth.localhost:3002"] });
+    if (url === "http://mcp-auth.localhost:3002/.well-known/oauth-authorization-server") return Response.json({ issuer: "http://mcp-auth.localhost:3002", authorization_endpoint: "http://mcp-auth.localhost:3002/api/agent/authorize", token_endpoint: "http://mcp-auth.localhost:3002/api/agent/token" });
+    return originalFetch(input, init);
+  }, { preconnect: originalFetch.preconnect }));
   const output = spyOn(process.stdout, "write").mockImplementation(chunk => {
-    const url = String(chunk).split("\n").find(line => line.startsWith("http://localhost:3002/api/agent/authorize?"));
+    const url = String(chunk).split("\n").find(line => line.startsWith("http://mcp-auth.localhost:3002/api/agent/authorize?"));
     if (url) receive(new URL(url));
     return true;
   });
@@ -23,5 +30,5 @@ test("explicit browser denial verifies state and closes the loopback authorizati
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("No authorization was granted");
     expect(await outcome).toContain("Announcement access was denied");
-  } finally { output.mockRestore(); }
+  } finally { output.mockRestore(); http.mockRestore(); }
 });

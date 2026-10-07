@@ -21,6 +21,9 @@ const PUBLIC = new Set([
   "/convex/token", "/convex/jwks", "/convex/.well-known/openid-configuration",
   "/passkey/generate-authenticate-options", "/passkey/verify-authentication", "/sign-in/magic-link", "/magic-link/verify",
 ]);
+// Match the auth-only frontend's allowlist; enforce purpose at the backend as well.
+const MCP_AUTH = new Set(["/sign-in/email", "/sign-out", "/get-session", "/verify-password", "/convex/token",
+  "/passkey/generate-authenticate-options", "/passkey/verify-authentication", "/passkey/list-user-passkeys", "/two-factor/verify-totp"]);
 const SELF = new Set(["/verify-password", "/passkey/list-user-passkeys", "/revoke-session", "/revoke-other-sessions", "/revoke-sessions"]);
 const FACTOR = new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code", "/two-factor/send-otp", "/two-factor/verify-otp"]);
 const ENROLL = new Set(["/two-factor/enable", "/passkey/generate-register-options", "/passkey/verify-registration"]);
@@ -81,6 +84,8 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       if (user && (await readPolicies(convexCtx, user)).scope === "admin") return endpoint.json({ status: true });
     }
     const pair = await endpointSession(endpoint);
+    const fromAuthOrigin = Boolean(process.env.AGENT_MCP_AUTH_ORIGIN && endpoint.headers?.get("origin") === process.env.AGENT_MCP_AUTH_ORIGIN);
+    if ((pair?.session.authPurpose === "mcp-authorization" || fromAuthOrigin) && !MCP_AUTH.has(path)) refuse("MCP_AUTHORIZATION_ONLY");
     if (ACTIVE_SESSION_ROTATION.has(path)) rotationSource = pair;
     if (path === "/passkey/verify-authentication") {
       const id = endpoint.body?.response?.id;
@@ -204,6 +209,10 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     }
     const user = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: session.userId }] }) as Doc<"user"> | null;
     if (!user || user.banned) refuse("NOT_AUTHENTICATED");
+    const authOnly = Boolean(process.env.AGENT_MCP_AUTH_ORIGIN && endpoint?.headers?.get("origin") === process.env.AGENT_MCP_AUTH_ORIGIN)
+      || data.authPurpose === "mcp-authorization";
+    data.authPurpose = authOnly ? "mcp-authorization" : "application";
+    if (authOnly && user.role !== "admin") refuse("NOT_ADMIN");
     const policy = await readPolicies(convexCtx, user);
     if (data.authMethod === "magic-link" && (policy.scope === "admin" || !await emailLoginEnabled(convexCtx))) refuse("AUTH_METHOD_DISABLED");
     if (policy.scope === "admin") data.expiresAt = new Date(Math.min(new Date(session.expiresAt).getTime(), Number(data.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS));

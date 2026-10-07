@@ -1085,6 +1085,19 @@ if [ "$NEED_CONVEX" = true ] && [ -n "$APP_URLS" ]; then
     fi
 fi
 
+# Optional MCP origins share the admin listener but use distinct cookie hosts.
+if [ "$START_ADMIN" = true ] && [ "${AGENT_MCP_ENABLED:-false}" = true ]; then
+    AGENT_ORIGIN_VALUES=$("$NODE_TS" "$SCRIPT_DIR/agentic-origins.ts" "$ADMIN_APP_URL")
+    eval "$AGENT_ORIGIN_VALUES"
+    update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "AGENT_MCP_ENABLED" "true"
+    update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "AGENT_MCP_ORIGIN" "$AGENT_LOCAL_RESOURCE_ORIGIN"
+    update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "AGENT_MCP_AUTH_ORIGIN" "$AGENT_LOCAL_AUTH_ORIGIN"
+    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set AGENT_MCP_RESOURCE "$AGENT_LOCAL_RESOURCE_ORIGIN/api/mcp" > /dev/null)
+    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set AGENT_MCP_AUTH_ORIGIN "$AGENT_LOCAL_AUTH_ORIGIN" > /dev/null)
+    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$APP_URLS,$AGENT_LOCAL_AUTH_ORIGIN" > /dev/null)
+    echo "MCP auth-only origin: $AGENT_LOCAL_AUTH_ORIGIN (same admin listener)"
+fi
+
 # In CI mode, show final env contents
 if [ "$NON_INTERACTIVE" = true ]; then
     echo ""

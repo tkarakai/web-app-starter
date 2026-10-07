@@ -11,10 +11,10 @@ import { PasswordInput, OtpInput } from "./localized-controls";
 import { TwoFactorSection } from "../settings/two-factor-section";
 import { PasskeySection } from "../settings/passkey-section";
 
-type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean };
+type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean };
 
 /** Presentation of the server's decision; every API enforces that decision independently. */
-export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false }: Props) {
+export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, authorizationOnly = false }: Props) {
   const currentStatus = useQuery(api.platform.sessionAssurance.status, {});
   const [lastStatus, setLastStatus] = React.useState(currentStatus);
   React.useEffect(() => {
@@ -49,7 +49,8 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   const enrolling = enrollment && status?.reason === "enrollment";
   const recent = status && (enrolling && !hasFactor
     ? status.primaryRecentUntil > now : status.recent && status.recentUntil > now);
-  const allowed = live && (status.allowed || enrolling) && (!requireRecent || recent);
+  const purposeAllowed = authorizationOnly ? status?.authPurpose === "mcp-authorization" : status?.authPurpose !== "mcp-authorization";
+  const allowed = purposeAllowed && live && (status.allowed || enrolling) && (!requireRecent || recent);
   const [admitted, setAdmitted] = React.useState(false);
   React.useEffect(() => { if (allowed && !panel) setAdmitted(true); }, [allowed, panel]);
   const sendVerification = async () => {

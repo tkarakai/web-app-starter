@@ -16,9 +16,14 @@ async function fixture(role = "admin") {
     input: { model: "user", data: { name: "Agent admin", email: "agent@example.test", emailVerified: true, role, createdAt: now, updatedAt: now } },
   });
   const session = await t.mutation(components.betterAuth.adapter.create, {
-    input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token: "fixture", expiresAt: now + 3600_000, createdAt: now, updatedAt: now } },
+    input: { model: "session", data: { authPurpose: "mcp-authorization", assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token: "fixture", expiresAt: now + 3600_000, createdAt: now, updatedAt: now } },
   });
   const admin = t.withIdentity({ subject: user._id, sessionId: session._id });
+  const applicationSession = await t.mutation(components.betterAuth.adapter.create, {
+    input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: now, primaryVerifiedAt: now, userId: user._id, token: "application", expiresAt: now + 3600_000, createdAt: now, updatedAt: now } },
+  });
+  const application = t.withIdentity({ subject: user._id, sessionId: applicationSession._id });
+  if (role === "admin") await application.mutation(api.platform.agentMcp.setEnabled, { enabled: true });
   const request = { clientId: "pi-announcements", redirectUri: "http://127.0.0.1:45991/callback", resource, challenge: await challenge(verifier), scope: "announcements:manage" };
   const mint = async () => {
     const { code } = await admin.mutation(api.platform.agentAccess.authorize, request);
@@ -26,11 +31,11 @@ async function fixture(role = "admin") {
     const grant = await t.mutation(api.platform.agentAccess.exchange, exchange);
     return { token: grant.access_token, resource, exchange };
   };
-  return { t, admin, user, session, request, mint };
+  return { t, admin, application, user, session, request, mint };
 }
 
 describe("session-bound agent access", () => {
-  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); });
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
   test("CRUD uses native storage, validation and audit attribution; credentials stay hashed", async () => {
     const { t, mint, user } = await fixture(); const { token } = await mint(); const auth = { token, resource };
@@ -55,6 +60,25 @@ describe("session-bound agent access", () => {
     vi.advanceTimersByTime(5 * 60_000 + 1);
     await expect(a.admin.mutation(api.platform.agentAccess.authorize, a.request)).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
   });
+  test("an MCP authorization session cannot use native admin APIs, while grants can perform CRUD", async () => {
+    const f = await fixture();
+    expect(await f.admin.query(api.platform.announcements.list, {})).toBeNull();
+    await expect(f.admin.mutation(api.platform.announcements.create, { name: "No", bannerText: "No" })).rejects.toThrow("NOT_AUTHENTICATED");
+    expect(await f.application.query(api.platform.announcements.list, {})).toEqual([]);
+    await expect(f.application.mutation(api.platform.agentAccess.authorize, f.request)).rejects.toThrow("MCP_AUTHORIZATION_ONLY");
+  });
+  test("disabling blocks issued codes and grants, and re-enabling requires fresh consent", async () => {
+    const f = await fixture(); const { token } = await f.mint();
+    const code = await f.admin.mutation(api.platform.agentAccess.authorize, f.request);
+    await f.application.mutation(api.platform.agentMcp.setEnabled, { enabled: false });
+    await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await expect(f.admin.mutation(api.platform.agentAccess.authorize, f.request)).rejects.toThrow("MCP_DISABLED");
+    await f.application.mutation(api.platform.agentMcp.setEnabled, { enabled: true });
+    await expect(f.t.query(api.platform.agentAnnouncements.list, { token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+    await expect(f.t.mutation(api.platform.agentAccess.exchange, { code: code.code, verifier, clientId: f.request.clientId, redirectUri: f.request.redirectUri, resource })).rejects.toThrow("INVALID_GRANT");
+    const fresh = await f.mint();
+    expect(await f.t.query(api.platform.agentAnnouncements.list, { token: fresh.token, resource })).toEqual([]);
+  });
   test("PKCE, redirect and audience binding; codes expire and cannot be replayed", async () => {
     const f = await fixture(); const { code } = await f.admin.mutation(api.platform.agentAccess.authorize, f.request);
     const args = { code, verifier, clientId: f.request.clientId, redirectUri: f.request.redirectUri, resource };
@@ -78,8 +102,8 @@ describe("session-bound agent access", () => {
   });
   test("grant revocation and sign-out immediately disable access", async () => {
     const f = await fixture(); const first = await f.mint();
-    const grants = await f.admin.query(api.platform.agentAccess.listMine, {});
-    await f.admin.mutation(api.platform.agentAccess.revoke, { grantId: grants[0]._id });
+    const grants = await f.application.query(api.platform.agentAccess.listMine, {});
+    await f.application.mutation(api.platform.agentAccess.revoke, { grantId: grants[0]._id });
     await expect(f.t.query(api.platform.agentAnnouncements.list, { token: first.token, resource })).rejects.toThrow();
     const second = await f.mint();
     await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "session", where: [{ field: "_id", value: f.session._id }] } });

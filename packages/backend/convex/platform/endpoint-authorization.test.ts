@@ -22,6 +22,9 @@ type Access = "public" | "user" | "admin" | "agent";
 type Kind = "query" | "mutation" | "action";
 
 const ACCESS: Record<string, Access> = {
+  "platform/agentMcp:availability": "public",
+  "platform/agentMcp:configuration": "admin",
+  "platform/agentMcp:setEnabled": "admin",
   "platform/agentAccess:authorize": "admin",
   "platform/agentAccess:exchange": "agent", // single-use, PKCE-bound authorization code
   "platform/agentAccess:inspect": "agent",

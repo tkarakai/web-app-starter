@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- MCP authorization uses a separate auth-only hostname on the existing admin deployment, with
+  purpose-limited browser sessions. Configure → Features now controls MCP availability; disabling
+  invalidates existing grants, and re-enabling requires new consent. DNS/TLS and origin configuration
+  steps are in the [deployment runbook](docs/deployment-runbook.md#optional-mcp-authorization-origin).
+
 - Opt-in authenticated announcement MCP POC with a lightweight capability catalogue,
   session-bound browser consent and an earendil pi test conversation. See
   [announcement MCP](docs/agentic-announcements.md) for local setup and scope.

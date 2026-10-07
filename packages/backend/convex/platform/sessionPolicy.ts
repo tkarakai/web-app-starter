@@ -128,9 +128,10 @@ export async function evaluateSession(ctx: Reader, pair: AuthSession) {
   };
 }
 
-export async function authorizedSession(ctx: GenericCtx<DataModel>, recent = false) {
+export async function authorizedSession(ctx: GenericCtx<DataModel>, recent = false, forAgentAuthorization = false) {
   const pair = await identitySession(ctx);
   if (!pair) return null;
+  if (!forAgentAuthorization && pair.session.authPurpose === "mcp-authorization") return null;
   const assurance = await evaluateSession(ctx, pair);
   if (!assurance.allowed || (recent && !assurance.recent)) return null;
   return { ...pair, assurance, ownerId: (pair.user.userId ?? pair.user._id).toString() };

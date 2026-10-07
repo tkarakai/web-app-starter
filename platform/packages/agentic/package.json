@@ -7,7 +7,8 @@
     "./catalogue": "./src/catalogue.ts",
     "./adapter": "./src/adapter.ts",
     "./mcp": "./src/mcp.ts",
-    "./oauth": "./src/oauth.ts"
+    "./oauth": "./src/oauth.ts",
+    "./auth-boundary": "./src/auth-boundary.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

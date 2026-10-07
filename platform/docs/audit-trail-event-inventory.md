@@ -368,3 +368,11 @@ changing them leaves no trace:
   a rejected admin action (`NOT_ADMIN`, `CANNOT_DELETE_CLAIMED`, `ENTRY_NOT_FOUND`) is
   invisible. Compare section 5, where the client emits from a `finally` and failures are
   captured.
+
+### MCP service availability
+
+`platform/agentMcp:setEnabled` requires a normal admin session and recent authentication.
+It records `admin.mcp_enabled` or `admin.mcp_disabled`, source `server:agent-mcp`, resource
+`agent-mcp`, with the authenticated operator. State and audit are written transactionally.
+Every availability transition creates a new grant generation; disabled/re-enabled services do
+not revive old codes or tokens.
