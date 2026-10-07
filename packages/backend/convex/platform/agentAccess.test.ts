@@ -292,3 +292,39 @@ describe("durable A2A task lifecycle", () => {
     expect((await f.t.query(api.platform.agentTasks.get, { ...f.auth, id: pending.id })).status.state).toBe("TASK_STATE_COMPLETED");
   });
 });
+
+describe("capability maintenance edge cases", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
+  test("grant and own-session operations preserve ownership and the current browser session", async () => {
+    const f = await fixture(); const auth = await f.mint();
+    const grants = await f.t.query(api.platform.agentCapabilities.read, { token: auth.token, resource, name: "grants_listMine", input: {} });
+    expect(grants).toHaveLength(1); expect(JSON.stringify(grants)).not.toContain(auth.token);
+    await f.application.mutation(api.platform.agentSurfaces.setEnabled, { surface: "webmcp", enabled: true });
+    const current = await f.application.query(api.platform.auth.getCurrentUser, {}); expect(current).not.toBeNull();
+    const result = await f.application.mutation(api.platform.agentCapabilities.browserWrite, { name: "account_revokeOtherSessions", input: {} });
+    expect(result).toMatchObject({ currentBrowserSessionPreserved: true });
+    expect(await f.application.query(api.platform.auth.getCurrentUser, {})).not.toBeNull();
+    const grantId = (grants as { _id: import("../_generated/dataModel").Id<"agentGrants"> }[])[0]!._id;
+    await f.t.mutation(api.platform.agentCapabilities.write, { token: auth.token, resource, name: "grants_revoke", input: { grantId } });
+    await expect(f.t.query(api.platform.agentCapabilities.catalogue, { token: auth.token, resource })).rejects.toThrow("INVALID_AGENT_TOKEN");
+  });
+  test("passkey metadata and mutation omit credentials and never cross ownership", async () => {
+    const f = await fixture(); const auth = await f.mint(); const now = Date.now();
+    const key = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: { userId: f.user._id, publicKey: "PRIVATE_KEY_MATERIAL_NOT_FOR_THE_MODEL", credentialID: "credential-id", counter: 0, deviceType: "singleDevice", backedUp: false, name: "Test key", createdAt: now } } });
+    await expect(f.t.mutation(api.platform.agentCapabilities.write, { token: auth.token, resource, name: "account_renamePasskey", input: { passkeyId: key._id, name: "Rejected without strong proof" } })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
+    const fresh = await f.login();
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: fresh.session._id }], update: { authMethod: "passkey", strongVerifiedAt: now, strongFactorId: key._id, strongFactorType: "passkey" } } });
+    const { code } = await fresh.client.mutation(api.platform.agentAccess.authorize, f.request);
+    const grant = await f.t.mutation(api.platform.agentAccess.exchange, { code, verifier, clientId: f.request.clientId, redirectUri: f.request.redirectUri, resource });
+    const query = (name: string, input = {}) => f.t.query(api.platform.agentCapabilities.read, { token: grant.access_token, resource, name, input });
+    const write = (name: string, input = {}) => f.t.mutation(api.platform.agentCapabilities.write, { token: grant.access_token, resource, name, input });
+    const keys = await query("account_ownPasskeys"); expect(JSON.stringify(keys)).not.toContain("PRIVATE_KEY");
+    await write("account_renamePasskey", { passkeyId: key._id, name: "Renamed" });
+    expect(await query("account_ownPasskeys")).toMatchObject({ page: [expect.objectContaining({ name: "Renamed" })] });
+    await expect(write("account_removePasskey", { passkeyId: "another-key" })).rejects.toThrow("PASSKEY_NOT_FOUND");
+    await write("account_removePasskey", { passkeyId: key._id });
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "_id", value: key._id }] })).toBeNull();
+    await expect(query("account_ownPasskeys")).rejects.toThrow("INVALID_AGENT_TOKEN");
+  });
+});

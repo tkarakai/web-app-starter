@@ -4,7 +4,7 @@ import { gatewaySchemas, type CapabilityCatalogue } from "./discovery";
 export const A2A_VERSION = "1.0";
 export const commandSchema = z.object({ operation: z.enum(["search", "describe", "execute"]), input: z.record(z.string(), z.unknown()).default({}) }).strict();
 export const messageRequest = z.object({
-  message: z.object({ messageId: z.string().min(1).max(150), role: z.literal("ROLE_USER"), contextId: z.string().max(150).optional(), taskId: z.string().max(150).optional(), parts: z.array(z.object({ text: z.string().max(1000).optional(), data: z.unknown().optional(), mediaType: z.string().optional() }).passthrough()).min(1).max(5) }).passthrough(),
+  message: z.object({ messageId: z.string().min(1).max(150), role: z.literal("ROLE_USER"), contextId: z.string().max(150).optional(), taskId: z.string().max(150).optional(), parts: z.array(z.object({ text: z.string().max(1000).optional(), data: z.unknown().optional(), mediaType: z.string().optional() }).passthrough().refine(part => ["text", "data", "raw", "url"].filter(key => part[key] !== undefined).length === 1, "A part must contain exactly one content value")).min(1).max(5) }).passthrough(),
   configuration: z.object({ returnImmediately: z.boolean().default(false), historyLength: z.number().int().min(0).max(100).optional(), acceptedOutputModes: z.array(z.string()).max(10).optional(), taskPushNotificationConfig: z.unknown().optional() }).passthrough().optional(),
 }).passthrough();
 export function validateCommand(value: unknown, catalogue: CapabilityCatalogue) {
@@ -29,3 +29,16 @@ export function a2aAgentCard(origin: string, issuer: string, name: string) {
   };
 }
 export function a2aError(id: unknown, code: number, message: string) { return { jsonrpc: "2.0", id: typeof id === "string" || typeof id === "number" ? id : null, error: { code, message } }; }
+
+/** Convex stores/returns artifact JSON as text because JSON Schema dollar keys are reserved there. */
+export function a2aWireValue(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  if (record.task) return { ...record, task: a2aWireValue(record.task) };
+  if (Array.isArray(record.tasks)) return { ...record, tasks: record.tasks.map(a2aWireValue) };
+  if (!Array.isArray(record.artifacts)) return value;
+  return { ...record, artifacts: record.artifacts.map(artifact => {
+    const item = artifact as { parts?: { text?: string; mediaType?: string }[] };
+    return { ...item, parts: item.parts?.map(part => part.mediaType === "application/json" && typeof part.text === "string" ? { data: JSON.parse(part.text), mediaType: part.mediaType } : part) };
+  }) };
+}

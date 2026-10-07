@@ -1,7 +1,7 @@
 /** Durable A2A tasks. Jobs store grant IDs, not raw tokens; native writes and completion commit together. */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { query, mutation, internalMutation, internalAction, type QueryCtx } from "../_generated/server";
+import { query, mutation, internalMutation, internalAction } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { credentialHash, requireGrant, requireGrantById } from "./agentAccess";
 import { surfaceForResource } from "./agentSurfaces";
@@ -13,20 +13,9 @@ import { withBrowserCapabilities } from "@web-app-starter/agentic/browser-catalo
 import { messageRequest, validateCommand } from "@web-app-starter/agentic/a2a";
 import { safeCapabilityError } from "@web-app-starter/agentic/errors";
 const credentialArgs = { token: v.string(), resource: v.string() };
-const terminal = new Set(["TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"]);
+import { taskDto as dto, ownedTask as owned, taskTerminalStates as terminal, type TaskDto } from "./agentTaskModel";
 const catalogue = () => withBrowserCapabilities(catalogueFromRows(catalogueRows()));
 function requireAudience(resource: string) { if (surfaceForResource(resource) !== "a2a") throw new Error("INVALID_AGENT_TOKEN"); }
-export interface TaskDto { id: string; contextId: string; status: { state: string; timestamp: string; message?: { messageId: string; role: string; contextId: string; taskId: string; parts: { text: string }[] } }; artifacts?: { artifactId: string; name: string; parts: { data: unknown; mediaType: string }[] }[]; }
-function dto(row: Doc<"agentTasks">, artifacts = true): TaskDto {
-  return { id: row._id, contextId: row.contextId, status: { state: row.state, timestamp: new Date(row.updatedAt).toISOString(), ...(row.error ? { message: { messageId: `${row._id}-status`, role: "ROLE_AGENT", contextId: row.contextId, taskId: row._id, parts: [{ text: row.error }] } } : {}) },
-    ...(artifacts && row.result ? { artifacts: [{ artifactId: `${row._id}-result`, name: "Administration capability result", parts: [{ data: JSON.parse(row.result), mediaType: "application/json" }] }] } : {}),
-  };
-}
-async function owned(ctx: QueryCtx, userId: string, id: string) {
-  const key = ctx.db.normalizeId("agentTasks", id); const row = key ? await ctx.db.get(key) : null;
-  if (!row || row.userId !== userId || row.expiresAt <= Date.now()) throw new Error("TASK_NOT_FOUND");
-  return row;
-}
 function canonical(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`; if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`; return JSON.stringify(value) ?? "null"; }
 export const send = mutation({ args: { ...credentialArgs, params: v.any() }, returns: v.any(), handler: async (ctx, { token, resource, params }): Promise<TaskDto> => {
   requireAudience(resource); const auth = await requireGrant(ctx, token, resource);
@@ -96,7 +85,9 @@ export const perform = internalMutation({ args: { taskId: v.id("agentTasks") }, 
   if (execution && definitions[execution.name]?.effect === "write") await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
   const adapter = { async execute(name: string, input: Record<string, unknown>) { if (definitions[name]?.effect === "browser") return { status: "requires_browser", executed: false, instructions: "Use WebMCP in a connected authenticated admin page." }; return runCapability(ctx, auth, name, input, definitions[name]?.effect === "write"); } };
   const result = command.operation === "search" ? searchCapabilities(definitions, command.input) : command.operation === "describe" ? describeCapabilities(definitions, command.input) : await executeCapability(adapter, definitions, command.input);
-  await ctx.db.patch(taskId, { state: "TASK_STATE_COMPLETED", updatedAt: Date.now(), result: JSON.stringify(result), error: undefined });
+  const outcome = (result as { result?: { status?: string; instructions?: string } }).result;
+  const dependency = outcome?.status === "requires_user_action" || outcome?.status === "requires_browser";
+  await ctx.db.patch(taskId, { state: dependency ? "TASK_STATE_INPUT_REQUIRED" : "TASK_STATE_COMPLETED", updatedAt: Date.now(), result: JSON.stringify(result), error: dependency ? outcome.instructions ?? "A user or connected browser must complete this workflow before continuing." : undefined });
 } });
 export const fail = internalMutation({ args: { taskId: v.id("agentTasks"), error: v.string() }, returns: v.null(), handler: async (ctx, { taskId, error }) => { const row = await ctx.db.get(taskId); if (row?.state === "TASK_STATE_WORKING") await ctx.db.patch(taskId, { state: "TASK_STATE_FAILED", updatedAt: Date.now(), error: error.slice(0, 200) }); } });
 export const work = internalAction({ args: { taskId: v.id("agentTasks") }, returns: v.null(), handler: async (ctx, { taskId }) => {

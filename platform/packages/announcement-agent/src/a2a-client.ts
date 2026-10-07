@@ -20,7 +20,8 @@ export class A2aClient implements AdminToolConnection {
     while (["TASK_STATE_SUBMITTED", "TASK_STATE_WORKING"].includes(task.status.state)) {
       if (options?.signal?.aborted || Date.now() > deadline) throw new Error(`A2A task ${task.id} is still running. GetTask before retrying a write.`);
       await new Promise(resolve => setTimeout(resolve, 150));
-      task = await this.rpc("GetTask", { id: task.id, historyLength: 0 }, options?.signal) as A2aTask;
+      try { task = await this.rpc("GetTask", { id: task.id, historyLength: 0 }, options?.signal) as A2aTask; }
+      catch (error) { throw new Error(`${error instanceof Error ? error.message : "A2A request failed"}. Cannot read A2A task ${task.id}; it may have completed and changed authorization. Use /auth, then inspect tasks_get before retrying the operation.`, { cause: error }); }
     }
     const result = task.status.state === "TASK_STATE_COMPLETED" ? task.artifacts?.[0]?.parts[0]?.data : task.status.message?.parts?.[0]?.text ?? task.status.state;
     return { taskId: task.id, ...(task.status.state !== "TASK_STATE_COMPLETED" ? { isError: true } : {}), content: [{ type: "text", text: JSON.stringify(result) }] };

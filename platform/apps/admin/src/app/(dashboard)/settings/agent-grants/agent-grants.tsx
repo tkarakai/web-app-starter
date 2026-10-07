@@ -15,7 +15,7 @@ export function AgentGrants() {
   return <div className="mx-auto max-w-2xl p-6">
     <Card><CardHeader><CardTitle>Your agent grants</CardTitle></CardHeader><CardContent className="space-y-3">
       {grants?.map(grant => <div key={grant._id} className="flex flex-wrap items-center justify-between gap-3">
-        <span>{grant.clientId} · {grant.revokedAt || !grant.active ? "revoked" : new Date(grant.expiresAt).toLocaleString()}</span>
+        <span>{grant.surface?.toUpperCase() ?? "Legacy"} · {grant.clientId} · {grant.revokedAt ? "revoked" : !grant.active ? "inactive" : new Date(grant.expiresAt).toLocaleString()}</span>
         {grant.active && <Button variant="outline" onClick={() => revokeGrant(grant._id)}>Revoke</Button>}
       </div>)}
       {grants?.length === 0 && <p>No agent grants.</p>}

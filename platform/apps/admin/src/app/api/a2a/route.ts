@@ -1,5 +1,5 @@
 import { api } from "@repo/backend";
-import { A2A_VERSION, a2aError, messageRequest } from "@web-app-starter/agentic/a2a";
+import { A2A_VERSION, a2aError, messageRequest, a2aWireValue } from "@web-app-starter/agentic/a2a";
 import { safeCapabilityError } from "@web-app-starter/agentic/errors";
 import { remoteRequest, limitedBody } from "@/lib/agentic/remote-request";
 import { privateJson } from "@/lib/agentic/config";
@@ -14,11 +14,13 @@ export async function POST(request: Request) {
   if (request.headers.get("A2A-Version") !== A2A_VERSION) return privateJson(a2aError(id, -32009, "VersionNotSupportedError: use A2A-Version: 1.0"), 400);
   const params = rpc.params && typeof rpc.params === "object" && !Array.isArray(rpc.params) ? rpc.params as Record<string, unknown> : {};
   const credentials = { token: auth.token!, resource: auth.resource! }; const client = auth.client!;
+  let pendingTaskId: string | undefined;
   try {
     let result;
     if (rpc.method === "SendMessage") {
       const parsed = messageRequest.parse(params);
       let task = await client.mutation(api.platform.agentTasks.send, { ...credentials, params: parsed }) as { id: string; status: { state: string } };
+      pendingTaskId = task.id;
       if (!parsed.configuration?.returnImmediately) {
         const deadline = Date.now() + 25_000;
         while (["TASK_STATE_SUBMITTED", "TASK_STATE_WORKING"].includes(task.status.state)) {
@@ -37,11 +39,12 @@ export async function POST(request: Request) {
     } else if (rpc.method.includes("PushNotification")) return privateJson(a2aError(id, -32003, "PushNotificationNotSupportedError"), 400);
     else if (["SendStreamingMessage", "SubscribeToTask", "GetExtendedAgentCard"].includes(rpc.method)) return privateJson(a2aError(id, -32004, "UnsupportedOperationError"), 400);
     else return privateJson(a2aError(id, -32601, "Method not found"), 400);
-    return privateJson({ jsonrpc: "2.0", id, result });
+    return privateJson({ jsonrpc: "2.0", id, result: a2aWireValue(result) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const code = message.includes("TASK_NOT_FOUND") ? -32001 : message.includes("TASK_NOT_CANCELABLE") ? -32002 : message.includes("PUSH_NOT_SUPPORTED") ? -32003 : message.includes("CONTENT_TYPE_NOT_SUPPORTED") ? -32005 : -32602;
     const text = code === -32001 ? "TaskNotFoundError" : code === -32002 ? "TaskNotCancelableError" : code === -32003 ? "PushNotificationNotSupportedError" : code === -32005 ? "ContentTypeNotSupportedError" : safeCapabilityError(error);
-    return privateJson(a2aError(id, code, text), 400);
+    const errorResult = a2aError(id, code, text);
+    return privateJson(pendingTaskId ? { ...errorResult, error: { ...errorResult.error, data: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "INSPECT_TASK_BEFORE_RETRY", metadata: { taskId: pendingTaskId } }] } } : errorResult, 400);
   }
 }

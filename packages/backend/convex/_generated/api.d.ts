@@ -23,6 +23,8 @@ import type * as platform_agentMcp from "../platform/agentMcp.js";
 import type * as platform_agentProof from "../platform/agentProof.js";
 import type * as platform_agentRegistry from "../platform/agentRegistry.js";
 import type * as platform_agentSurfaces from "../platform/agentSurfaces.js";
+import type * as platform_agentTaskAdmin from "../platform/agentTaskAdmin.js";
+import type * as platform_agentTaskModel from "../platform/agentTaskModel.js";
 import type * as platform_agentTasks from "../platform/agentTasks.js";
 import type * as platform_agentUsers from "../platform/agentUsers.js";
 import type * as platform_announcements from "../platform/announcements.js";
@@ -91,6 +93,8 @@ declare const fullApi: ApiFromModules<{
   "platform/agentProof": typeof platform_agentProof;
   "platform/agentRegistry": typeof platform_agentRegistry;
   "platform/agentSurfaces": typeof platform_agentSurfaces;
+  "platform/agentTaskAdmin": typeof platform_agentTaskAdmin;
+  "platform/agentTaskModel": typeof platform_agentTaskModel;
   "platform/agentTasks": typeof platform_agentTasks;
   "platform/agentUsers": typeof platform_agentUsers;
   "platform/announcements": typeof platform_announcements;

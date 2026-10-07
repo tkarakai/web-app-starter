@@ -1,3 +1,5 @@
+import { writeFile } from "node:fs/promises";
+import { instrumentConnection, type ToolEvidence } from "./telemetry";
 /** Minimal pi-powered conversation, with no coding tools or discovered project instructions. */
 import { createInterface } from "node:readline/promises";
 import { homedir } from "node:os";
@@ -22,7 +24,8 @@ async function main() {
     const token = await authenticate(origin, surface as "mcp" | "cli" | "a2a");
     return surface === "mcp" ? connectMcp(origin, token) : surface === "cli" ? connectCli(origin, token) : connectA2a(origin, token);
   }
-  let client = await connect();
+  const evidence: ToolEvidence[] = [];
+  let client = instrumentConnection(await connect(), evidence);
   const execute = (name: string, input: Record<string, unknown>) => client.callTool({ name: "capabilities_execute", arguments: { name, input } });
   if (args.includes("--smoke")) {
     try {
@@ -80,7 +83,7 @@ async function main() {
         if (["/quit", "/exit"].includes(text.trim())) break;
         if (text.trim() === "/auth") {
           try {
-            const renewed = await connect();
+            const renewed = instrumentConnection(await connect(), evidence);
             await client.close(); client = renewed;
             process.stdout.write("Access renewed.\n");
           } catch (error) {
@@ -92,6 +95,10 @@ async function main() {
         await session.prompt(text); process.stdout.write("\n");
       }
     }
-  } finally { terminal.close(); unsubscribe(); session.dispose(); await client.close(); }
+  } finally {
+    const reportPath = option("--report");
+    if (reportPath) { const stats = session.getSessionStats(); await writeFile(reportPath, JSON.stringify({ surface, provider: model.provider, model: model.id, tools: evidence, tokens: stats.tokens, contextUsage: stats.contextUsage, toolCalls: stats.toolCalls }, null, 2) + "\n"); }
+    terminal.close(); unsubscribe(); session.dispose(); await client.close();
+  }
 }
 main().catch(error => { process.stderr.write(`${error instanceof Error ? error.message : "Agent failed"}\n`); process.exitCode = 1; });

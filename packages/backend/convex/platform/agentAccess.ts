@@ -1,3 +1,5 @@
+import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { rememberNative } from "./nativeCapabilities";
 /** One-use browser authorization and scoped delegations. Raw credentials are never stored. */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -133,25 +135,25 @@ export const inspect = query({
     return { scope: AGENT_SCOPE, recent: auth.assurance.recent };
   },
 });
-export const listMine = query({
-  args: {},
-  handler: async ctx => {
-    const auth = await authorizedSession(ctx);
-    if (!auth || auth.user.role !== "admin") return [];
-    const grants = await ctx.db.query("agentGrants").withIndex("by_user", q => q.eq("userId", auth.user._id)).collect();
-    return await Promise.all(grants.map(async ({ _id, createdAt, expiresAt, revokedAt, clientId, generation, resource }) => {
-      const surface = surfaceForResource(resource);
-      const config = surface ? await surfaceConfiguration(ctx, surface) : null;
-      return { _id, createdAt, expiresAt, revokedAt, clientId, surface, active: Boolean(config?.enabled && generation === config.generation && !revokedAt && expiresAt > Date.now()) };
-    }));
-  },
-});
+async function listGrants(ctx: QueryCtx, userId: string) {
+  const grants = await ctx.db.query("agentGrants").withIndex("by_user", q => q.eq("userId", userId)).collect();
+  return await Promise.all(grants.map(async ({ _id, createdAt, expiresAt, revokedAt, clientId, generation, resource, scope }) => {
+    const surface = surfaceForResource(resource);
+    const config = surface ? await surfaceConfiguration(ctx, surface) : null;
+    return { _id, createdAt, expiresAt, revokedAt, clientId, surface, active: Boolean(scope === AGENT_SCOPE && config?.enabled && generation === config.generation && !revokedAt && expiresAt > Date.now()) };
+  }));
+}
+export const listMine = rememberNative(query({ args: {}, handler: async ctx => {
+  const auth = await authorizedSession(ctx); return !auth || auth.user.role !== "admin" ? [] : listGrants(ctx, auth.user._id);
+} }), { args: {}, handler: (ctx: QueryCtx & { user: { _id: string } }) => listGrants(ctx, ctx.user._id) }, "query");
+
 export const revoke = adminMutation({
   args: { grantId: v.id("agentGrants") },
   handler: async (ctx, args) => {
     const grant = await ctx.db.get(args.grantId);
     if (!grant || grant.userId !== ctx.user._id) throw new Error("GRANT_NOT_FOUND");
     await ctx.db.patch(grant._id, { revokedAt: Date.now() });
+    await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-access", action: "admin.agent_grant_revoked", resource: `agent-grant:${grant._id}`, status: "succeeded" });
   },
 });
 

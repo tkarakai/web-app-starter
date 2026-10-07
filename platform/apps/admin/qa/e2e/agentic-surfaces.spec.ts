@@ -22,7 +22,7 @@ test("CLI and A2A independently authenticate, execute native CRUD and enforce pr
   const origin = new URL(baseURL!).origin;
   const issuer = (await (await request.get(origin + "/.well-known/oauth-protected-resource/api/mcp")).json()).authorization_servers[0] as string;
   const user = await signInAsAdmin(page); await page.goto("/configure/features");
-  for (const title of ["Admin CLI", "A2A"]) { const control = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); if (!await control.isChecked()) await control.click(); await expect(control).toBeChecked(); }
+  for (const title of ["Admin CLI", "A2A"]) { const control = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(control).toBeEnabled(); if (!await control.isChecked()) await control.click(); await expect(control).toBeChecked(); }
   const card = await request.get(origin + "/.well-known/agent-card.json"); expect(card.status()).toBe(200); expect((await card.json()).supportedInterfaces).toContainEqual(expect.objectContaining({ protocolVersion: "1.0", protocolBinding: "JSONRPC" }));
   expect((await request.post(origin + "/api/a2a", { data: {} })).status()).toBe(401);
   expect((await request.post(origin + "/api/agent/cli", { data: {} })).status()).toBe(401);
@@ -59,7 +59,7 @@ test("WebMCP provider simulator uses a real admin session, native CRUD, live con
   test.setTimeout(90_000); await installWebMcpSimulator(page);
   await page.goto("/sign-in"); expect(await webMcpTools(page)).toHaveLength(0);
   await signInAsAdmin(page); await page.goto("/configure/features");
-  const toggle = page.getByRole("switch", { name: "Enable WebMCP", exact: true }); if (!await toggle.isChecked()) await toggle.click();
+  const toggle = page.getByRole("switch", { name: "Enable WebMCP", exact: true }); await expect(toggle).toBeEnabled(); if (!await toggle.isChecked()) await toggle.click();
   await expect.poll(async () => (await webMcpTools(page)).length).toBe(3);
   const execute = async (name: string, input: Record<string, unknown> = {}) => (await callWebMcp(page, "capabilities_execute", { name, input })) as { result: Record<string, unknown> };
   expect(await callWebMcp(page, "capabilities_search", { query: "browser" })).toMatchObject({ matches: expect.arrayContaining([expect.objectContaining({ name: "browser_readPage" })]) });
@@ -71,6 +71,11 @@ test("WebMCP provider simulator uses a real admin session, native CRUD, live con
   const create = snapshot.result.controls.find(control => /new announcement|create announcement/i.test(control.name)); expect(create).toBeDefined();
   await execute("browser_activate", { controlId: create!.controlId });
   await expect(page.getByRole("dialog")).toBeVisible();
+  const editor = await execute("browser_readPage") as unknown as { result: { controls: { controlId: string; name: string; role: string; value?: string }[] } };
+  const nameField = editor.result.controls.find(control => /name/i.test(control.name) && control.role === "input"); expect(nameField).toBeDefined();
+  await execute("browser_fill", { controlId: nameField!.controlId, value: "Unsaved browser draft" });
+  await expect(page.getByRole("dialog").getByLabel("Name", { exact: true })).toHaveValue("Unsaved browser draft");
+  await expect(execute("browser_navigate", { path: "/manage/../sign-in" })).rejects.toThrow("INVALID_ADMIN_PATH");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.goto("/settings?tab=security"); await expect.poll(async () => (await webMcpTools(page)).length).toBe(3);
   const secure = await execute("browser_readPage"); expect(JSON.stringify(secure)).not.toContain("Current Password");
