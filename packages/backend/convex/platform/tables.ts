@@ -1,3 +1,4 @@
+import { delegationProof } from "./agentProof";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { migrationsTable } from "convex-helpers/server/migrations";
@@ -13,12 +14,13 @@ export const platformTables = {
   // --- Migrations state (convex-helpers framework) ---
   migrations: migrationsTable,
 
+  agentDelegations: defineTable({ userId: v.string(), expiresAt: v.number(), credentialFingerprint: v.string(), proof: delegationProof }),
   agentAuthorizationCodes: defineTable({
-    generation: v.optional(v.string()), codeHash: v.string(), userId: v.string(), sessionId: v.string(), clientId: v.string(),
+    generation: v.optional(v.string()), codeHash: v.string(), userId: v.string(), sessionId: v.optional(v.string()), delegationId: v.optional(v.id("agentDelegations")), clientId: v.string(),
     redirectUri: v.string(), resource: v.string(), challenge: v.string(), scope: v.string(), expiresAt: v.number(),
   }).index("by_code_hash", ["codeHash"]),
   agentGrants: defineTable({
-    generation: v.optional(v.string()), tokenHash: v.string(), userId: v.string(), sessionId: v.string(), clientId: v.string(),
+    generation: v.optional(v.string()), tokenHash: v.string(), userId: v.string(), sessionId: v.optional(v.string()), delegationId: v.optional(v.id("agentDelegations")), clientId: v.string(),
     resource: v.string(), scope: v.string(), createdAt: v.number(), expiresAt: v.number(), revokedAt: v.optional(v.number()),
   }).index("by_token_hash", ["tokenHash"]).index("by_user", ["userId"]),
 

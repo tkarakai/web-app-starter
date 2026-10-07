@@ -26,6 +26,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- MCP approval and denial end the auth-origin browser login immediately. Approved access uses
+  separate short-lived delegation proof; every later authorization request requires new sign-in.
+
 - Local dev port selection checks TCP listeners, so closed or outgoing browser connections
   do not move the app to a different port after restart.
 

@@ -941,7 +941,9 @@ add a hosting project, server process, database, pipeline job or worker role.
    If the configured RP ID is a shared parent, both hosts must fall under it. Changing an RP ID
    can strand existing credentials; do not change it merely to activate MCP.
 5. Deploy the backend's optional session-purpose/schema additions and the admin artifact as one
-   compatible rollout. Existing normal sessions retain their existing purpose; prior POC grants
+   compatible rollout, including the optional delegation-reference fields and new delegation
+   proof table. Browser auth sessions are consumed on decisions; approval records remain valid
+   independently and expire automatically. Existing normal sessions retain their existing purpose; prior POC grants
    require new consent. The MCP feature remains off until an admin enables it in
    **Configure → Features → MCP server**.
 6. Verify resource metadata advertises the auth issuer, login/consent works there, and `/dashboard`,

@@ -26,6 +26,7 @@ const ACCESS: Record<string, Access> = {
   "platform/agentMcp:configuration": "admin",
   "platform/agentMcp:setEnabled": "admin",
   "platform/agentAccess:authorize": "admin",
+  "platform/agentAccess:deny": "user", // only the caller's one-use MCP login
   "platform/agentAccess:exchange": "agent", // single-use, PKCE-bound authorization code
   "platform/agentAccess:inspect": "agent",
   "platform/agentAccess:listMine": "admin",

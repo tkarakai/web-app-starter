@@ -3,7 +3,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
+import { SESSION_COOKIE_NAME, isSessionCookie } from "@web-app-starter/auth/cookies";
 import { fillStable, signInAsAdmin } from "./helpers/auth";
 
 test("browser login, consent and PKCE grant support announcement CRUD and revocation", async ({ page, baseURL, request }) => {
@@ -61,9 +61,11 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await expect(dialog).toBeVisible();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/);
   await dialog.getByRole("button", { name: "Authorize pi announcement agent" }).click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:45999\/callback\?code=/);
+  await expect(page).toHaveURL(/127\.0\.0\.1:45999\/callback\?.*code=/);
   const callback = new URL(page.url());
   expect(callback.searchParams.get("state")).toBe(state);
+  const remaining = await page.context().cookies();
+  expect(remaining.filter(cookie => cookie.domain === new URL(issuer).hostname && isSessionCookie(cookie.name))).toEqual([]);
   const exchange = { grant_type: "authorization_code", code: callback.searchParams.get("code")!, code_verifier: verifier, client_id: "pi-announcements", redirect_uri: redirectUri, resource };
   expect((await request.post(issuer + "/api/agent/token", { form: { ...exchange, code_verifier: "x".repeat(43) } })).status()).toBe(400);
   expect((await request.post(origin + "/api/agent/token", { form: exchange })).status()).toBe(403);
@@ -89,6 +91,8 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
       expect(await call("announcements_list", {})).toEqual(expect.arrayContaining([expect.objectContaining({ _id: id })]));
     } finally { await call("announcements_delete", { announcementId: id }); }
     expect(await call("announcements_get", { announcementId: id })).toBeNull();
+    await page.goto(`${issuer}/api/agent/authorize?${params}`);
+    await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
     await page.goto(origin + "/settings/agent-grants");
     await page.goto(origin + "/configure/features");
     await page.getByRole("switch", { name: "Enable MCP server" }).click();
@@ -124,10 +128,13 @@ test("denying modal consent returns to pi without granting access", async ({ pag
   const dialog = page.getByRole("alertdialog", { name: "Authorize announcement agent" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Deny access", exact: true }).click();
-  await expect(page).toHaveURL(/callback\?error=access_denied/);
+  await expect(page).toHaveURL(/callback\?.*error=access_denied/);
   const callback = new URL(page.url());
   expect(callback.searchParams.get("state")).toBe(state);
   expect(callback.searchParams.has("code")).toBe(false);
-  await page.goto("/settings/agent-grants");
+  expect((await page.context().cookies()).filter(cookie => cookie.domain === new URL(issuer).hostname && isSessionCookie(cookie.name))).toEqual([]);
+  await page.goto(`${issuer}/api/agent/authorize?${params}`);
+  await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
+  await page.goto(origin + "/settings/agent-grants");
   await expect(page.getByText("No agent grants.", { exact: true })).toBeVisible();
 });

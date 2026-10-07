@@ -16,10 +16,14 @@ clicks cannot dismiss it. Approve access or explicitly deny it; denial returns a
 separate dashboard page at `/settings/agent-grants` on the admin origin.
 The redirect must use `http://127.0.0.1:<port>/callback`. Authorization-code exchange
 requires S256 PKCE and the exact client, redirect and MCP resource. Codes expire after one
-minute and are single-use. Grants expire after at most fifteen minutes and bind to the original
-live authorization session. Signing out of that session, revocation, expiry, ban, demotion or a
-newly unmet policy disables them. The separate normal admin session does not refresh or revoke
-this session just by signing in/out.
+minute and are single-use. Grants expire after at most fifteen minutes and use immutable, server-captured verification
+proof. Both approval and denial immediately delete the MCP browser login and clear its cookies.
+Approval creates a separate short-lived delegation record before deleting the login; denial
+creates no delegation, code or grant. Every new request, including pi `/auth`, requires sign-in
+again. The normal admin hostname's session is unaffected.
+Grant revocation/expiry, MCP disable/re-enable, ban, demotion, changed credentials/factors or a
+newly unmet policy disables delegated access. Closing the completed browser login does not
+cancel the just-approved grant.
 Administrative writes require recent authentication on every call. Reauthenticate in the browser
 and renew the grant when needed. Raw codes/tokens are stored only as hashes in Convex.
 
@@ -114,3 +118,17 @@ host still uses that host's ordinary session. Recovery/enrollment belongs in the
 See [local startup](development.md#optional-mcp-authorization-hostname),
 [deployment architecture](deployment-architecture.md#optional-mcp-authorization-hostname) and
 [rollout checklist](deployment-runbook.md#optional-mcp-authorization-origin).
+
+## One-use browser authentication
+
+The auth origin has no remembered login after a decision. The decision handler atomically
+creates approval/code state and deletes the Better Auth session, or deletes it on denial. Its
+HTTP response clears session, session-cache and JWT cookies before the browser returns to pi.
+Cached JWTs from the deleted login fail live checks. Successful approval can still be exchanged
+using PKCE because its delegation proof is independent of the browser login. These records
+are server-only, expire automatically and re-evaluate the current user, security policy and
+credential fingerprint. The existing five-minute recent-proof requirement remains unchanged.
+
+For regression testing, approve or deny, then invoke `/auth` again: sign-in must appear. After
+approval, CRUD must still work until the grant/proof limits or explicit revocation stop it.
+Prior POC grants without delegation records require fresh authorization after this change.

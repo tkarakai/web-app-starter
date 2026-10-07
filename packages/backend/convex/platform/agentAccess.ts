@@ -1,10 +1,13 @@
-/** Session-bound OAuth grant storage. Raw credentials are never stored. */
+/** One-use browser authorization and scoped delegations. Raw credentials are never stored. */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { query, mutation, internalMutation, type QueryCtx } from "../_generated/server";
 import { customMutation, customCtx } from "convex-helpers/server/customFunctions";
 import { adminMutation } from "./functions";
-import { authorizedSession, readSession, evaluateSession } from "./sessionPolicy";
+import { authorizedSession, evaluateSession } from "./sessionPolicy";
+import { components } from "../_generated/api";
+import type { Doc } from "./betterAuth/_generated/dataModel";
+import { captureDelegation, readDelegation, deleteAuthorizationSession } from "./agentProof";
 import { mcpConfiguration } from "./agentMcp";
 import { rateLimit } from "./rateLimits";
 
@@ -43,13 +46,28 @@ export const authorize = consentMutation({
       || !validRedirect(args.redirectUri) || !/^[A-Za-z0-9_-]{43}$/.test(args.challenge)) throw new Error("INVALID_AUTHORIZATION_REQUEST");
     const config = await mcpConfiguration(ctx);
     if (!config.enabled) throw new Error("MCP_DISABLED");
+    const delegationId = await captureDelegation(ctx, { user: ctx.user, session: ctx.session });
     const code = secret();
     const codeId = await ctx.db.insert("agentAuthorizationCodes", {
-      generation: config.generation, codeHash: await credentialHash(code), userId: ctx.user._id, sessionId: ctx.session._id,
+      generation: config.generation, codeHash: await credentialHash(code), userId: ctx.user._id, delegationId,
       ...args, expiresAt: Date.now() + 60_000,
     });
     await ctx.scheduler.runAfter(60_000, internal.platform.agentAccess.expireCode, { codeId });
+    // Consuming the browser login is atomic with the approval/code issuance.
+    await deleteAuthorizationSession(ctx, ctx.session._id);
     return { code };
+  },
+});
+
+/** Denial must work even when current policy or recent proof no longer allows approval. */
+export const deny = mutation({
+  args: {}, handler: async ctx => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || typeof identity.sessionId !== "string") throw new Error("NOT_AUTHENTICATED");
+    const session = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "_id", value: identity.sessionId }] }) as Doc<"session"> | null;
+    if (!session) return;
+    if (session.userId !== identity.subject || session.authPurpose !== "mcp-authorization") throw new Error("FORBIDDEN");
+    await deleteAuthorizationSession(ctx, session._id);
   },
 });
 
@@ -61,8 +79,8 @@ export async function requireGrant(ctx: QueryCtx, token: string, resource: strin
   const grant = await ctx.db.query("agentGrants").withIndex("by_token_hash", q => q.eq("tokenHash", tokenHash)).unique();
   if (!grant || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE)
     throw new Error("INVALID_AGENT_TOKEN");
-  const pair = await readSession(ctx, grant.userId, grant.sessionId);
-  if (!pair || pair.user.role !== "admin" || pair.session.authPurpose !== "mcp-authorization") throw new Error("INVALID_AGENT_TOKEN");
+  const pair = await readDelegation(ctx, grant.delegationId, grant.userId);
+  if (!pair || pair.user.role !== "admin") throw new Error("INVALID_AGENT_TOKEN");
   const assurance = await evaluateSession(ctx, pair);
   if (!assurance.allowed) throw new Error("INVALID_AGENT_TOKEN");
   if (recent && !assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
@@ -81,15 +99,15 @@ export const exchange = mutation({
     const challengeBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new globalThis.TextEncoder().encode(args.verifier)));
     const challenge = btoa(String.fromCharCode(...challengeBytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
     if (challenge !== row.challenge) throw new Error("INVALID_GRANT");
-    const pair = await readSession(ctx, row.userId, row.sessionId);
-    if (!pair || pair.user.role !== "admin" || pair.session.authPurpose !== "mcp-authorization") throw new Error("INVALID_GRANT");
+    const pair = await readDelegation(ctx, row.delegationId, row.userId);
+    if (!pair || pair.user.role !== "admin") throw new Error("INVALID_GRANT");
     const assurance = await evaluateSession(ctx, pair);
     if (!assurance.allowed || !assurance.recent) throw new Error("INVALID_GRANT");
     // A mutation atomically consumes the code. Racing or repeated exchanges cannot mint two tokens.
     await ctx.db.delete(row._id);
     const token = secret();
     const expiresAt = Math.min(Date.now() + 15 * 60_000, assurance.expiresAt);
-    const grantId = await ctx.db.insert("agentGrants", { generation: config.generation, tokenHash: await credentialHash(token), userId: row.userId, sessionId: row.sessionId,
+    const grantId = await ctx.db.insert("agentGrants", { generation: config.generation, tokenHash: await credentialHash(token), userId: row.userId, delegationId: row.delegationId,
       resource: row.resource, scope: row.scope, clientId: row.clientId, expiresAt, createdAt: Date.now() });
     await ctx.scheduler.runAfter(expiresAt - Date.now(), internal.platform.agentAccess.expireGrant, { grantId });
     return { access_token: token, token_type: "Bearer", expires_in: Math.floor((expiresAt - Date.now()) / 1000), scope: row.scope };
@@ -134,5 +152,13 @@ export const expireGrant = internalMutation({
   handler: async (ctx, { grantId }) => {
     const row = await ctx.db.get(grantId);
     if (row && row.expiresAt <= Date.now()) await ctx.db.delete(grantId);
+  },
+});
+
+export const expireDelegation = internalMutation({
+  args: { delegationId: v.id("agentDelegations") },
+  handler: async (ctx, { delegationId }) => {
+    const row = await ctx.db.get(delegationId);
+    if (row && row.expiresAt <= Date.now()) await ctx.db.delete(delegationId);
   },
 });
