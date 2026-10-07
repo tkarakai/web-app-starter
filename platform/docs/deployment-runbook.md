@@ -959,3 +959,8 @@ so re-enabling does not revive old codes/tokens. The deployment flag is an addit
 switch; leave canonical host settings in place while the auth DNS name still points to this
 artifact so host isolation continues even when transport is disabled. Disable MCP before changing domains, update both app/backend origins together, deploy, then
 re-enable and require new consent.
+
+The existing guided deployment setup manages the normal web/admin/landing origins; it does not
+provision the optional MCP alias. Complete the extra steps above after guided setup, and review
+`SITE_URL` after any later environment reconciliation so the auth-origin entry is retained.
+The normal promotion/build workflows continue to use the same admin artifact.
