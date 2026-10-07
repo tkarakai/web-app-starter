@@ -18,7 +18,7 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   const redirectUri = "http://127.0.0.1:45999/callback";
   const resource = origin + "/api/mcp";
   const params = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: redirectUri,
-    code_challenge_method: "S256", code_challenge: createHash("sha256").update(verifier).digest("base64url"), scope: "announcements:manage", state, resource });
+    code_challenge_method: "S256", code_challenge: createHash("sha256").update(verifier).digest("base64url"), scope: "admin:manage", state, resource });
   const user = await signInAsAdmin(page);
   await page.goto("/configure/features");
   const serverSwitch = page.getByRole("switch", { name: "Enable MCP server" });
@@ -36,7 +36,7 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await fillStable(page, "#password", user.password);
   await page.locator('form:has(#password) button[type="submit"]').click();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/, { timeout: 20_000 });
-  const dialog = page.getByRole("alertdialog", { name: "Authorize announcement agent" });
+  const dialog = page.getByRole("alertdialog", { name: "Authorize admin agent" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-modal", "true");
   expect(new URL(page.url()).origin).toBe(issuer);
@@ -60,7 +60,7 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await page.mouse.click(4, 4);
   await expect(dialog).toBeVisible();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/);
-  await dialog.getByRole("button", { name: "Authorize pi announcement agent" }).click();
+  await dialog.getByRole("button", { name: "Authorize admin agent" }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:45999\/callback\?.*code=/);
   const callback = new URL(page.url());
   expect(callback.searchParams.get("state")).toBe(state);
@@ -116,7 +116,7 @@ test("denying modal consent returns to pi without granting access", async ({ pag
   const issuer = metadata.authorization_servers[0] as string;
   const state = randomBytes(32).toString("base64url");
   const params = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: "http://127.0.0.1:45999/callback",
-    code_challenge_method: "S256", code_challenge: randomBytes(32).toString("base64url"), scope: "announcements:manage", state, resource: origin + "/api/mcp" });
+    code_challenge_method: "S256", code_challenge: randomBytes(32).toString("base64url"), scope: "admin:manage", state, resource: origin + "/api/mcp" });
   await page.route("http://127.0.0.1:45999/callback**", route => route.fulfill({ status: 200, body: "Access denied" }));
   await page.goto(`${issuer}/api/agent/authorize?${params}`);
   await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
@@ -125,7 +125,7 @@ test("denying modal consent returns to pi without granting access", async ({ pag
   await fillStable(page, "#password", user.password);
   await page.locator('form:has(#password) button[type="submit"]').click();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/, { timeout: 20_000 });
-  const dialog = page.getByRole("alertdialog", { name: "Authorize announcement agent" });
+  const dialog = page.getByRole("alertdialog", { name: "Authorize admin agent" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Deny access", exact: true }).click();
   await expect(page).toHaveURL(/callback\?.*error=access_denied/);

@@ -8,11 +8,11 @@ import { authorizedSession, evaluateSession } from "./sessionPolicy";
 import { components } from "../_generated/api";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { captureDelegation, readDelegation, deleteAuthorizationSession } from "./agentProof";
-import { mcpConfiguration } from "./agentMcp";
+import { surfaceConfiguration, surfaceForResource } from "./agentSurfaces";
 import { rateLimit } from "./rateLimits";
 
 export const AGENT_CLIENT_ID = "pi-announcements";
-export const AGENT_SCOPE = "announcements:manage";
+export const AGENT_SCOPE = "admin:manage";
 
 export async function credentialHash(value: string): Promise<string> {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new globalThis.TextEncoder().encode(value))))
@@ -20,7 +20,7 @@ export async function credentialHash(value: string): Promise<string> {
 }
 function secret(): string { return crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", ""); }
 function resourceEnabled(resource: string): boolean {
-  return Boolean(process.env.AGENT_MCP_RESOURCE && resource === process.env.AGENT_MCP_RESOURCE);
+  return surfaceForResource(resource) !== null;
 }
 export function validRedirect(value: string): boolean {
   try {
@@ -44,7 +44,7 @@ export const authorize = consentMutation({
   handler: async (ctx, args) => {
     if (args.clientId !== AGENT_CLIENT_ID || args.scope !== AGENT_SCOPE || !resourceEnabled(args.resource)
       || !validRedirect(args.redirectUri) || !/^[A-Za-z0-9_-]{43}$/.test(args.challenge)) throw new Error("INVALID_AUTHORIZATION_REQUEST");
-    const config = await mcpConfiguration(ctx);
+    const config = await surfaceConfiguration(ctx, surfaceForResource(args.resource) ?? "mcp");
     if (!config.enabled) throw new Error("MCP_DISABLED");
     const delegationId = await captureDelegation(ctx, { user: ctx.user, session: ctx.session });
     const code = secret();
@@ -73,7 +73,7 @@ export const deny = mutation({
 
 export async function requireGrant(ctx: QueryCtx, token: string, resource: string, recent = false) {
   if (!/^[a-f0-9]{64}$/.test(token) || !resourceEnabled(resource)) throw new Error("INVALID_AGENT_TOKEN");
-  const config = await mcpConfiguration(ctx);
+  const config = await surfaceConfiguration(ctx, surfaceForResource(resource) ?? "mcp");
   if (!config.enabled) throw new Error("INVALID_AGENT_TOKEN");
   const tokenHash = await credentialHash(token);
   const grant = await ctx.db.query("agentGrants").withIndex("by_token_hash", q => q.eq("tokenHash", tokenHash)).unique();
@@ -91,7 +91,7 @@ export const exchange = mutation({
   args: { code: v.string(), verifier: v.string(), clientId: v.string(), redirectUri: v.string(), resource: v.string() },
   handler: async (ctx, args) => {
     await rateLimit(ctx, { name: "mutationGlobal", key: `agent-exchange:${await credentialHash(args.code)}`, throws: true });
-    const config = await mcpConfiguration(ctx);
+    const config = await surfaceConfiguration(ctx, surfaceForResource(args.resource) ?? "mcp");
     const hash = await credentialHash(args.code);
     const row = await ctx.db.query("agentAuthorizationCodes").withIndex("by_code_hash", q => q.eq("codeHash", hash)).unique();
     if (!config.enabled || !row || row.generation !== config.generation || row.expiresAt <= Date.now() || !resourceEnabled(args.resource) || row.resource !== args.resource
@@ -126,8 +126,11 @@ export const listMine = query({
     const auth = await authorizedSession(ctx);
     if (!auth || auth.user.role !== "admin") return [];
     const grants = await ctx.db.query("agentGrants").withIndex("by_user", q => q.eq("userId", auth.user._id)).collect();
-    const config = await mcpConfiguration(ctx);
-    return grants.map(({ _id, createdAt, expiresAt, revokedAt, clientId, generation }) => ({ _id, createdAt, expiresAt, revokedAt, clientId, active: config.enabled && generation === config.generation && !revokedAt && expiresAt > Date.now() }));
+    return await Promise.all(grants.map(async ({ _id, createdAt, expiresAt, revokedAt, clientId, generation, resource }) => {
+      const surface = surfaceForResource(resource);
+      const config = surface ? await surfaceConfiguration(ctx, surface) : null;
+      return { _id, createdAt, expiresAt, revokedAt, clientId, surface, active: Boolean(config?.enabled && generation === config.generation && !revokedAt && expiresAt > Date.now()) };
+    }));
   },
 });
 export const revoke = adminMutation({

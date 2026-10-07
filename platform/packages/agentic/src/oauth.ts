@@ -1,5 +1,5 @@
 export const CLIENT_ID = "pi-announcements";
-export const SCOPE = "announcements:manage";
+export const SCOPE = "admin:manage";
 export function validateAuthorization(params: URLSearchParams) {
   const redirectUri = params.get("redirect_uri") ?? "";
   const redirect = new URL(redirectUri);

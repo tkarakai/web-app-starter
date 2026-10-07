@@ -2,7 +2,7 @@ import { agentRateLimit } from "@/lib/agentic/rate-limit";
 import { handleMcp } from "@web-app-starter/agentic/mcp";
 import { bearer } from "@web-app-starter/agentic/oauth";
 import { api } from "@repo/backend";
-import { backendClient, convexAdapter } from "@/lib/agentic/convex-adapter";
+import { backendClient, convexAdapter, convexCatalogue } from "@/lib/agentic/convex-adapter";
 import { agentConfig, allowedRequest, privateJson } from "@/lib/agentic/config";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -30,7 +30,8 @@ export async function POST(request: Request) {
   }
   const body = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
-  const response = await handleMcp(new Request(request.url, { method: "POST", headers: request.headers, body }), convexAdapter(client, token, config.resource));
+  const catalogue = await convexCatalogue(client, token, config.resource);
+  const response = await handleMcp(new Request(request.url, { method: "POST", headers: request.headers, body }), convexAdapter(client, token, config.resource, catalogue), catalogue);
   response.headers.set("Cache-Control", "no-store");
   return response;
 }

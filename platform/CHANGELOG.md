@@ -1000,3 +1000,12 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...HEAD
 [4.1.0]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...v4.1.0
+
+### Admin capability expansion (unreleased feature branch)
+
+- MCP now offers bounded search, schema lookup and execution across the admin registry, with
+  blanket `admin:manage` consent. Existing announcement-only grants require new authorization.
+- Native Convex handlers and validators remain authoritative. User/session adapters use the
+  existing Better Auth component with protected-admin guards and credential-free result DTOs.
+- Independent surface generations prevent disabling/re-enabling one interface from reviving
+  old access or revoking another interface's grants.

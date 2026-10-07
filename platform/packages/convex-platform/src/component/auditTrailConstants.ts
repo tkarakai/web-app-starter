@@ -48,6 +48,8 @@ export const AUDIT_ACTIONS = [
   "admin.role_changed",
   "admin.mcp_enabled",
   "admin.mcp_disabled",
+  "admin.agent_surface_enabled",
+  "admin.agent_surface_disabled",
   "admin.mfa_policy_changed",
   "admin.email_verification_policy_changed",
   "admin.user_mfa_policy_changed",

@@ -30,3 +30,14 @@ export function isAuthorizationHost(host: string | null) {
 export function privateJson(value: unknown, status = 200, headers: Record<string, string> = {}) {
   return Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
 }
+
+export type RemoteSurface = "mcp" | "cli" | "a2a";
+export function remoteResource(surface: RemoteSurface) {
+  const config = agentConfig();
+  if (!config) return null;
+  return `${config.origin}${surface === "mcp" ? "/api/mcp" : surface === "cli" ? "/api/agent/cli" : "/api/a2a"}`;
+}
+export function configuredSurface(resource: string | null): RemoteSurface | null {
+  for (const surface of ["mcp", "cli", "a2a"] as const) if (resource && resource === remoteResource(surface)) return surface;
+  return null;
+}

@@ -4,7 +4,7 @@ import { fetchAuthMutation } from "@web-app-starter/auth/server";
 import { isSessionCookie, AUTH_COOKIE_PREFIX, SESSION_COOKIE_SUFFIXES } from "@web-app-starter/auth/cookies";
 import { validateAuthorization } from "@web-app-starter/agentic/oauth";
 import { api } from "@repo/backend";
-import { agentConfig, allowedRequest, privateJson } from "@/lib/agentic/config";
+import { agentConfig, configuredSurface, allowedRequest, privateJson } from "@/lib/agentic/config";
 import { agentRateLimit } from "@/lib/agentic/rate-limit";
 
 /** Finish one authorization request and clear its browser credentials before returning to pi. */
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   const limited = agentRateLimit(); if (limited) return limited;
   let input;
   let decision;
+  let resource;
   try {
     const raw = await request.text();
     if (raw.length > 4096) throw new Error("Request too large");
@@ -25,14 +26,15 @@ export async function POST(request: Request) {
     const r = body.request as Record<string, string>;
     input = validateAuthorization(new URLSearchParams({ client_id: r.clientId, response_type: "code", redirect_uri: r.redirectUri,
       resource: r.resource, scope: r.scope, state: r.state, code_challenge_method: "S256", code_challenge: r.challenge }));
-    if (r.resource !== config.resource) throw new Error("Wrong resource");
+    if (!configuredSurface(r.resource)) throw new Error("Wrong resource");
+    resource = r.resource;
   } catch { return privateJson({ error: "invalid_request" }, 400); }
   const callback = new URL(input.redirectUri);
   callback.searchParams.set("state", input.state);
   try {
     if (decision === "approve") {
       const { clientId, redirectUri, challenge, scope } = input;
-      const { code } = await fetchAuthMutation(api.platform.agentAccess.authorize, { clientId, redirectUri, challenge, scope, resource: config.resource });
+      const { code } = await fetchAuthMutation(api.platform.agentAccess.authorize, { clientId, redirectUri, challenge, scope, resource: resource! });
       callback.searchParams.set("code", code);
     } else {
       await fetchAuthMutation(api.platform.agentAccess.deny, {});

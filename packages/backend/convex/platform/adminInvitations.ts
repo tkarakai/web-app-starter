@@ -1,3 +1,6 @@
+import { rememberNative } from "./nativeCapabilities";
+import type { QueryCtx } from "../_generated/server";
+import type { ObjectType } from "convex/values";
 import { assertLocalFixtures } from "./localFixtures";
 /* global TextEncoder */
 /** App boundary: authorize here; storage lives in the platform component. */
@@ -12,8 +15,9 @@ import { identitySession, evaluateSession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { adminMutation, getAuth } from "./functions";
 
-export const list = query({
-  args: { paginationOpts: paginationOptsValidator },
+const listNativeArgs = { paginationOpts: paginationOptsValidator };
+export const list = rememberNative(query({
+  args: listNativeArgs,
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
@@ -28,7 +32,7 @@ export const list = query({
 
     return await ctx.runQuery(components.platform.adminInvitations.list, args);
   },
-});
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
 
 export const invite = adminMutation({
   args: { email: v.string() },

@@ -1,8 +1,7 @@
-# Announcement MCP POC
+# Admin capability MCP
 
-This opt-in service adds five tools (`announcements_list`, `announcements_get`,
-`announcements_create`, `announcements_update`, `announcements_delete`) on the admin app's
-`POST /api/mcp` endpoint. UI APIs remain native Convex functions. Native handlers retain
+This opt-in service provides bounded discovery over the admin capability catalogue on the
+admin app's `POST /api/mcp` endpoint. UI APIs remain native Convex functions. Native handlers retain
 validation, scheduling, audit identity and storage; MCP adds no separate business database.
 
 ## Authentication
@@ -27,9 +26,14 @@ cancel the just-approved grant.
 Administrative writes require recent authentication on every call. Reauthenticate in the browser
 and renew the grant when needed. Raw codes/tokens are stored only as hashes in Convex.
 
-The grant provides announcement CRUD only. No refresh token, anonymous tools, arbitrary
-Convex invocation, dynamic registration, service identities, publishing tool or other surface
-is provided. Editing live content or assigning schedules can affect public announcements.
+The `admin:manage` grant covers all registered administration capabilities, including users,
+sessions, invitations, waitlist, settings/security policy, announcement publishing, audit,
+integrations and profiles. Consent describes broad administration rather than an exhaustive
+operation list. Earlier `announcements:manage` grants are rejected; authorize again. Passwords,
+biometrics, factor secrets and invitation-bound enrollment remain explicit human workflows,
+which return `requires_user_action` rather than pretending to perform a ceremony. Internal
+seed/scheduler/proof functions and arbitrary Convex invocation are not capabilities. No refresh
+token, anonymous tools, dynamic registration or service identities are provided.
 
 ## Configure locally
 
@@ -42,10 +46,11 @@ use the actual configured port. Never set a cloud deployment key for the local d
 
 ## Adapter boundary
 
-`@web-app-starter/agentic/catalogue` exports input schemas and descriptions; `/adapter` defines
+`platform/agentRegistry.ts` selects native definitions and descriptions; input JSON schemas
+are derived from the original Convex validators. `/adapter` defines
 `CapabilityAdapter.execute`. The admin Convex adapter validates inputs and calls grant-aware
 native entry points. These entry points resolve grants and current policy inside the same
-backend transaction as each write. Future surfaces can use the adapter without introducing a
+backend transaction as each write. Other surfaces use the adapter without introducing a
 new action engine or flattening Convex queries and mutations. Authentication credentials are
 host context and are absent from tool input schemas and model context.
 
@@ -61,7 +66,7 @@ bun run agent:announcements -- --origin http://localhost:3002
 ```
 
 The agent opens a browser. Sign in with your normal admin account, complete its security gate,
-and select **Authorize pi announcement agent**. Return to the terminal and ask it to manage a
+and select **Authorize admin agent**. Return to the terminal and ask it to manage a
 draft. For example: “Create a draft named October release with banner text Welcome to October.”
 Then ask it to read, edit and delete that exact draft. `/auth` renews access without discarding the
 conversation; `/quit` exits. Revoke grants at `/settings/agent-grants`.

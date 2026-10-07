@@ -1,22 +1,23 @@
 import { ConvexHttpClient } from "convex/browser";
+import { catalogueFromRows } from "@web-app-starter/agentic/discovery";
 import { api } from "@repo/backend";
 import type { CapabilityAdapter } from "@web-app-starter/agentic/adapter";
-import { announcementCatalogue } from "@web-app-starter/agentic/catalogue";
+import type { CapabilityCatalogue } from "@web-app-starter/agentic/discovery";
 export function backendClient() {
   const url = process.env.CONVEX_URL;
   if (!url) throw new Error("CONVEX_URL is required");
   return new ConvexHttpClient(url);
 }
-export function convexAdapter(client: ConvexHttpClient, token: string, resource: string): CapabilityAdapter {
-  const auth = { token, resource };
-  return { async execute(name, input) {
-    // Parse locally for non-MCP future callers as well; native validators validate again in Convex.
-    switch (name) {
-      case "announcements_list": return client.query(api.platform.agentAnnouncements.list, { ...auth, ...announcementCatalogue.announcements_list.schema.parse(input) });
-      case "announcements_get": return client.query(api.platform.agentAnnouncements.get, { ...auth, ...announcementCatalogue.announcements_get.schema.parse(input) });
-      case "announcements_create": return client.mutation(api.platform.agentAnnouncements.create, { ...auth, ...announcementCatalogue.announcements_create.schema.parse(input) });
-      case "announcements_update": return client.mutation(api.platform.agentAnnouncements.update, { ...auth, ...announcementCatalogue.announcements_update.schema.parse(input) });
-      case "announcements_delete": return client.mutation(api.platform.agentAnnouncements.remove, { ...auth, ...announcementCatalogue.announcements_delete.schema.parse(input) });
-    }
+export async function convexCatalogue(client: ConvexHttpClient, token: string, resource: string): Promise<CapabilityCatalogue> {
+  const rows = await client.query(api.platform.agentCapabilities.catalogue, { token, resource });
+  return catalogueFromRows(rows);
+}
+export function convexAdapter(client: ConvexHttpClient, token: string, resource: string, catalogue: CapabilityCatalogue): CapabilityAdapter {
+  return { async execute(name, input, signal) {
+    if (signal?.aborted) throw new Error("ABORTED");
+    const definition = catalogue[name];
+    if (!definition) throw new Error("UNKNOWN_CAPABILITY");
+    const args = { token, resource, name, input: definition.schema.parse(input) };
+    return definition.effect === "write" ? client.mutation(api.platform.agentCapabilities.write, args) : client.query(api.platform.agentCapabilities.read, args);
   } };
 }

@@ -54,3 +54,8 @@ export async function executeCapability(adapter: CapabilityAdapter, catalogue: C
   return boundedResult(value, resultOffset);
 }
 export const defaultCatalogue: CapabilityCatalogue = announcementCatalogue;
+
+export interface CapabilityDescriptor { name: string; title: string; description: string; effect: CapabilityDefinition["effect"]; inputSchema: Record<string, unknown>; }
+export function catalogueFromRows(rows: CapabilityDescriptor[]): CapabilityCatalogue {
+  return Object.fromEntries(rows.map(row => [row.name, { title: row.title, description: row.description, effect: row.effect, schema: z.fromJSONSchema(row.inputSchema) }]));
+}

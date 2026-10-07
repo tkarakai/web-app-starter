@@ -1,3 +1,6 @@
+import { rememberNative } from "./nativeCapabilities";
+import type { QueryCtx } from "../_generated/server";
+import type { ObjectType } from "convex/values";
 /** App boundary: authorize here; storage lives in the platform component. */
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -38,8 +41,9 @@ export const join = internalMutation({
   },
 });
 
-export const list = query({
-  args: { paginationOpts: paginationOptsValidator },
+const listNativeArgs = { paginationOpts: paginationOptsValidator };
+export const list = rememberNative(query({
+  args: listNativeArgs,
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
@@ -54,7 +58,7 @@ export const list = query({
 
     return await ctx.runQuery(components.platform.waitlist.list, args);
   },
-});
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.waitlist.list, args); } }, "query");
 
 export const invite = adminMutation({
   args: { entryId: v.string() },

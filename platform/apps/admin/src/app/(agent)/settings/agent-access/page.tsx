@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { validateAuthorization } from "@web-app-starter/agentic/oauth";
 import { headers } from "next/headers";
-import { agentConfig, isAuthorizationHost } from "@/lib/agentic/config";
+import { agentConfig, configuredSurface, isAuthorizationHost } from "@/lib/agentic/config";
 import { AgentAccess } from "./agent-access";
 
 export default async function AgentAccessPage({ searchParams }: {
@@ -19,7 +19,7 @@ export default async function AgentAccessPage({ searchParams }: {
   let request;
   try {
     request = validateAuthorization(params);
-    if (params.get("resource") !== config.resource) notFound();
+    if (!configuredSurface(params.get("resource"))) notFound();
   } catch { notFound(); }
-  return <AgentAccess request={{ ...request, resource: config.resource }} />;
+  return <AgentAccess request={{ ...request, resource: params.get("resource")! }} />;
 }

@@ -52,7 +52,7 @@ describe("bounded MCP discovery", () => {
     } finally { await client.close(); }
   });
   test("authorization rejects non-loopback redirects and weak PKCE/state", () => {
-    const base = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: "http://127.0.0.1:45678/callback", scope: "announcements:manage", code_challenge_method: "S256", code_challenge: "c".repeat(43), state: "s".repeat(43) });
+    const base = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: "http://127.0.0.1:45678/callback", scope: "admin:manage", code_challenge_method: "S256", code_challenge: "c".repeat(43), state: "s".repeat(43) });
     expect(validateAuthorization(base).clientId).toBe("pi-announcements");
     for (const [key, value] of [["redirect_uri", "https://attacker.test/callback"], ["code_challenge_method", "plain"], ["state", ""], ["scope", "all"]]) {
       const bad = new URLSearchParams(base); bad.set(key, value); expect(() => validateAuthorization(bad)).toThrow();

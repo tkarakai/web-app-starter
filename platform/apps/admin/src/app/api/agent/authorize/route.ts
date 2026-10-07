@@ -3,17 +3,18 @@ import { agentRateLimit } from "@/lib/agentic/rate-limit";
 import { fetchAuthQuery } from "@web-app-starter/auth/server";
 import { api } from "@repo/backend";
 import { validateAuthorization } from "@web-app-starter/agentic/oauth";
-import { agentConfig, allowedRequest, privateJson } from "@/lib/agentic/config";
+import { agentConfig, configuredSurface, allowedRequest, privateJson } from "@/lib/agentic/config";
 export async function GET(request: Request) {
   const config = agentConfig();
   if (!config) return new Response(null, { status: 404 });
   const limited = agentRateLimit(); if (limited) return limited;
-  if (!(await backendClient().query(api.platform.agentMcp.availability, {})).enabled) return privateJson({ error: "mcp_disabled" }, 503);
   if (!allowedRequest(request, config.authorizationOrigin)) return privateJson({ error: "invalid_origin" }, 403);
   const params = new URL(request.url).searchParams;
+  const surface = configuredSurface(params.get("resource"));
+  if (!surface) return privateJson({ error: "invalid_request" }, 400);
+  if (!(await backendClient().query(api.platform.agentSurfaces.availability, { surface })).enabled) return privateJson({ error: "surface_disabled" }, 503);
   try {
     validateAuthorization(params);
-    if (params.get("resource") !== config.resource) throw new Error("Wrong resource");
   } catch { return privateJson({ error: "invalid_request" }, 400); }
   const returnPath = `/settings/agent-access?${params.toString()}`;
   let user;

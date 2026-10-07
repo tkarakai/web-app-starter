@@ -1,3 +1,4 @@
+import { rememberNative, captureNativeBuilder } from "./nativeCapabilities";
 import { components } from "../_generated/api";
 import {
   customCtx,
@@ -76,7 +77,7 @@ export function authedQuery<
     args: ObjectType<ArgsValidator>,
   ) => Output | Promise<Output>;
 }) {
-  return query({
+  return rememberNative(query({
     args: func.args,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handler: async (ctx: QueryCtx, args: any): Promise<Output | null> => {
@@ -84,7 +85,7 @@ export function authedQuery<
       if (!auth) return null;
       return func.handler({ ...ctx, ...auth }, args);
     },
-  });
+  }), func, "query");
 }
 
 /**
@@ -93,7 +94,7 @@ export function authedQuery<
  * Throws if the caller is not authenticated.
  * Enforces a global per-user rate limit on all mutations.
  */
-export const authedMutation = customMutation(
+export const authedMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async (ctx) => {
     const auth = await getAuth(ctx);
@@ -107,10 +108,10 @@ export const authedMutation = customMutation(
 
     return auth;
   }),
-);
+), "mutation");
 
 /** Administrative writes additionally require recent authentication under current policy. */
-export const adminMutation = customMutation(
+export const adminMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async ctx => {
     const auth = await getAuth(ctx);
@@ -120,6 +121,6 @@ export const adminMutation = customMutation(
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth;
   }),
-);
+), "mutation");
 
 export { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, assertMaxLength } from "@web-app-starter/convex-platform/validation";
