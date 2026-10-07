@@ -3,6 +3,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
 import { createDisposableUser } from "./helpers/fixtures";
 import { fillStable } from "./helpers/auth";
 
@@ -21,8 +22,9 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   expect((await request.post("/api/mcp", { data: {}, headers: { Origin: "https://attacker.test" } })).status()).toBe(403);
   const user = await createDisposableUser({ isAdmin: true });
   await page.route("http://127.0.0.1:45999/callback**", route => route.fulfill({ status: 200, body: "Authenticated" }));
+  await page.context().addCookies([{ name: SESSION_COOKIE_NAME, value: "expired-fixture-cookie", url: origin }]);
   await page.goto(`/api/agent/authorize?${params}`);
-  await expect(page).toHaveURL(/sign-in\?agent_return=/);
+  await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
   await fillStable(page, "#email", user.email);
   await page.locator('form:has(#email) button[type="submit"]').click();
   await fillStable(page, "#password", user.password);
