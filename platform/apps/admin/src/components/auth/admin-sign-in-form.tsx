@@ -9,6 +9,20 @@ import { api } from "@repo/backend";
 import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@web-app-starter/auth/client";
 import { broadcastAuth } from "@web-app-starter/auth-ui";
 
+import { validateAuthorization } from "@web-app-starter/agentic/oauth";
+
+function postSignInPath(): string {
+  try {
+    const path = new URLSearchParams(window.location.search).get("agent_return");
+    if (!path) return "/dashboard";
+    const url = new URL(path, window.location.origin);
+    if (url.origin !== window.location.origin || url.pathname !== "/settings/agent-access"
+      || url.searchParams.get("resource") !== window.location.origin + "/api/mcp") return "/dashboard";
+    validateAuthorization(url.searchParams);
+    return url.pathname + url.search;
+  } catch { return "/dashboard"; }
+}
+
 const PREFERRED_METHOD_KEY = "adminSignInPreferredMethod";
 
 type PreferredMethod = "password" | "passkey";
@@ -179,7 +193,7 @@ export function AdminSignInForm() {
       const result = await authClient.signIn.email({
         email,
         password,
-        callbackURL: "/dashboard",
+        callbackURL: postSignInPath(),
         rememberMe: true,
       });
 
@@ -193,7 +207,7 @@ export function AdminSignInForm() {
         if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
         setStoredPreferredMethod(email, "password");
         broadcastAuth();
-        router.push("/dashboard");
+        router.push(postSignInPath());
       }
     } catch (err) {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
@@ -217,7 +231,7 @@ export function AdminSignInForm() {
         };
       }).signIn.passkey({
         email: email.trim(),
-        callbackURL: "/dashboard",
+        callbackURL: postSignInPath(),
       });
 
       if (result.error) {
@@ -228,7 +242,7 @@ export function AdminSignInForm() {
       if (await enforcePostSignInPolicies({ usedPasskey: true })) return;
       setStoredPreferredMethod(email, "passkey");
       broadcastAuth();
-      router.push("/dashboard");
+      router.push(postSignInPath());
     } catch (err) {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
@@ -256,7 +270,7 @@ export function AdminSignInForm() {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           setStoredPreferredMethod(email, "password");
           broadcastAuth();
-          router.push("/dashboard");
+          router.push(postSignInPath());
         }
       } else {
         const result = await authClient.twoFactor.verifyTotp({ code: effectiveCode });
@@ -266,7 +280,7 @@ export function AdminSignInForm() {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           setStoredPreferredMethod(email, "password");
           broadcastAuth();
-          router.push("/dashboard");
+          router.push(postSignInPath());
         }
       }
     } catch (err) {

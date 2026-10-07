@@ -25,7 +25,7 @@ is provided. Editing live content or assigning schedules can affect public annou
 Start the normal local dev harness with `bun run dev:admin`. Set runtime variables
 `AGENT_MCP_ENABLED=true` and `AGENT_MCP_ORIGIN` to the canonical admin origin, without a
 trailing slash. Set backend `AGENT_MCP_RESOURCE` to that origin plus `/api/mcp`. Disabled or
-missing configuration fails closed. The default configured admin origin is `http://localhost:3001`;
+missing configuration fails closed. The default configured admin origin is `http://localhost:3002`;
 use the actual configured port. Never set a cloud deployment key for the local dev harness.
 
 ## Adapter boundary

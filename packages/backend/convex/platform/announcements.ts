@@ -222,4 +222,3 @@ export const remove = adminMutation({
   args: announcementRemoveArgs,
   handler: removeAnnouncement,
 });
-

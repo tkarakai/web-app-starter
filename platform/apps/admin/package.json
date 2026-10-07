@@ -37,7 +37,8 @@
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sonner": "^2.0.8"
+    "sonner": "^2.0.8",
+    "@web-app-starter/agentic": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
