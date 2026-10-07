@@ -1,46 +1,61 @@
 import { describe, expect, test } from "bun:test";
+import { z } from "zod";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { handleMcp } from "../src/mcp";
 import { validateAuthorization } from "../src/oauth";
+import { searchCapabilities, describeCapabilities, executeCapability, boundedResult, defaultCatalogue } from "../src/discovery";
 
-describe("MCP catalogue adapter", () => {
-  test("independent SDK client discovers five tools and executes through the common adapter", async () => {
+async function connection(catalogue = defaultCatalogue, execute = async (_name: string, _input: Record<string, unknown>): Promise<unknown> => ({ id: "native-id" })) {
+  const client = new Client({ name: "independent-test", version: "1" });
+  await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost/api/mcp"), {
+    fetch: async (url, init) => handleMcp(new Request(url, init), { execute }, catalogue),
+  }));
+  return client;
+}
+describe("bounded MCP discovery", () => {
+  test("independent SDK client discovers schemas on demand and validates execution", async () => {
     const calls: unknown[] = [];
-    const transport = new StreamableHTTPClientTransport(new URL("http://localhost/api/mcp"), {
-      fetch: async (url, init) => handleMcp(new Request(url, init), { async execute(name, input) { calls.push({ name, input }); return { id: "native-id" }; } }),
-    });
-    const client = new Client({ name: "independent-test", version: "1" });
-    await client.connect(transport);
+    const client = await connection(defaultCatalogue, async (name, input) => { calls.push({ name, input }); return { id: "native-id" }; });
     try {
-      const tools = await client.listTools();
-      expect(tools.tools).toHaveLength(5);
-      expect(tools.tools.find(t => t.name === "announcements_create")?.inputSchema.required).toEqual(["name", "bannerText"]);
-      const result = await client.callTool({ name: "announcements_create", arguments: { name: "Draft", bannerText: "Hello" } });
+      expect((await client.listTools()).tools.map(t => t.name)).toEqual(["capabilities_search", "capabilities_describe", "capabilities_execute"]);
+      const described = await client.callTool({ name: "capabilities_describe", arguments: { names: ["announcements_create"] } });
+      expect(JSON.stringify(described)).toContain("bannerText");
+      const result = await client.callTool({ name: "capabilities_execute", arguments: { name: "announcements_create", input: { name: "Draft", bannerText: "Hello" } } });
       expect(result.isError).not.toBe(true);
       expect(calls).toEqual([{ name: "announcements_create", input: { name: "Draft", bannerText: "Hello" } }]);
-      const invalid = await client.callTool({ name: "announcements_create", arguments: { name: "Draft", token: "injected" } });
-      expect(invalid.isError).toBe(true);
-      expect(calls).toHaveLength(1);
+      const invalid = await client.callTool({ name: "capabilities_execute", arguments: { name: "announcements_create", input: { name: "Draft", token: "injected" } } });
+      expect(invalid.isError).toBe(true); expect(calls).toHaveLength(1);
     } finally { await client.close(); }
   });
-  test("backend exceptions cannot leak secrets into tool responses", async () => {
-    const client = new Client({ name: "test", version: "1" });
-    await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost/api/mcp"), {
-      fetch: async (url, init) => handleMcp(new Request(url, init), { async execute() { throw new Error("sensitive credential trace"); } }),
-    }));
+  test("1,000 capabilities do not grow bootstrap context; discovery and results are bounded", async () => {
+    const large = Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`test_${i}`, { title: `Test ${i}`, description: "Example capability", effect: "read" as const, schema: z.object({ text: z.string() }).strict() }]));
+    const smallClient = await connection(); const bigClient = await connection(large);
     try {
-      const result = await client.callTool({ name: "announcements_list", arguments: {} });
-      expect(result.isError).toBe(true);
-      expect(JSON.stringify(result)).not.toContain("sensitive");
+      const small = JSON.stringify(await smallClient.listTools()); const big = JSON.stringify(await bigClient.listTools());
+      expect(big).toBe(small); expect(big.length).toBeLessThan(5000);
+      expect(searchCapabilities(large, {}).matches).toHaveLength(8);
+      expect(searchCapabilities(large, { limit: 15, offset: 990 }).nextOffset).toBeNull();
+      expect(() => describeCapabilities(large, { names: ["test_1", "test_2", "test_3", "test_4"] })).toThrow();
+      const value = "x".repeat(25_000); const first = boundedResult(value); const second = boundedResult(value, first.nextOffset ?? 0);
+      expect(first.chunk?.length).toBe(12_000); expect(second.nextOffset).toBe(24_000);
+      let calls = 0;
+      await expect(executeCapability({ async execute() { calls++; } }, defaultCatalogue, { name: "announcements_create", input: { name: "x", bannerText: "x" }, resultOffset: 1 })).rejects.toThrow("WRITE_OUTPUT");
+      expect(calls).toBe(0);
+    } finally { await smallClient.close(); await bigClient.close(); }
+  });
+  test("backend exceptions cannot leak credentials into tool responses", async () => {
+    const client = await connection(defaultCatalogue, async () => { throw new Error("sensitive credential trace"); });
+    try {
+      const result = await client.callTool({ name: "capabilities_execute", arguments: { name: "announcements_list" } });
+      expect(result.isError).toBe(true); expect(JSON.stringify(result)).not.toContain("sensitive");
     } finally { await client.close(); }
   });
-  test("authorization requests reject non-loopback redirects and weak or missing PKCE/state", () => {
+  test("authorization rejects non-loopback redirects and weak PKCE/state", () => {
     const base = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: "http://127.0.0.1:45678/callback", scope: "announcements:manage", code_challenge_method: "S256", code_challenge: "c".repeat(43), state: "s".repeat(43) });
     expect(validateAuthorization(base).clientId).toBe("pi-announcements");
     for (const [key, value] of [["redirect_uri", "https://attacker.test/callback"], ["code_challenge_method", "plain"], ["state", ""], ["scope", "all"]]) {
-      const bad = new URLSearchParams(base); bad.set(key, value);
-      expect(() => validateAuthorization(bad)).toThrow();
+      const bad = new URLSearchParams(base); bad.set(key, value); expect(() => validateAuthorization(bad)).toThrow();
     }
   });
 });

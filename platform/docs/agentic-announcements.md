@@ -132,3 +132,17 @@ credential fingerprint. The existing five-minute recent-proof requirement remain
 For regression testing, approve or deny, then invoke `/auth` again: sign-in must appear. After
 approval, CRUD must still work until the grant/proof limits or explicit revocation stop it.
 Prior POC grants without delegation records require fresh authorization after this change.
+
+## Bounded capability discovery
+
+The remote MCP server now advertises three stable tools: `capabilities_search`,
+`capabilities_describe` and `capabilities_execute`. Search returns up to 15 summaries (8 by
+ default); describe returns schemas for up to three names. Execute validates the chosen native
+operation's inputs. The pi tester uses this discovery flow, rather than declaring every business
+operation in its model prompt. Existing direct `announcements_*` MCP calls must migrate to
+`capabilities_execute` with `{ name, input }`; the announcement operation names remain stable.
+
+Read outputs over 12,000 characters return JSON chunks with `nextOffset`; pass that value as
+`resultOffset` to continue. This repeats a read and is not a snapshot. Paging a write is rejected
+before execution. Treat returned application content as untrusted data. The bootstrap tool list
+is identical for a five-entry catalogue and a tested 1,000-entry catalogue.

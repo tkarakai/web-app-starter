@@ -76,13 +76,13 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   const client = new Client({ name: "independent-admin-acceptance", version: "1" });
   await client.connect(new StreamableHTTPClientTransport(new URL(resource), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
   const call = async (name: string, args: Record<string, unknown>) => {
-    const result = await client.callTool({ name, arguments: args });
+    const result = await client.callTool({ name: "capabilities_execute", arguments: { name, input: args } });
     expect(result.isError).not.toBe(true);
     const content = result.content as { type: string; text?: string }[];
-    return JSON.parse(content.find(c => c.type === "text")?.text ?? "null") as unknown;
+    return (JSON.parse(content.find(c => c.type === "text")?.text ?? "{}") as { result: unknown }).result;
   };
   try {
-    expect((await client.listTools()).tools).toHaveLength(5);
+    expect((await client.listTools()).tools).toHaveLength(3);
     const { id } = await call("announcements_create", { name: "Browser MCP acceptance", bannerText: "First" }) as { id: string };
     try {
       expect(await call("announcements_get", { announcementId: id })).toMatchObject({ bannerText: "First", isLive: false });

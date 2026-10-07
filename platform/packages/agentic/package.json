@@ -8,7 +8,8 @@
     "./adapter": "./src/adapter.ts",
     "./mcp": "./src/mcp.ts",
     "./oauth": "./src/oauth.ts",
-    "./auth-boundary": "./src/auth-boundary.ts"
+    "./auth-boundary": "./src/auth-boundary.ts",
+    "./discovery": "./src/discovery.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
