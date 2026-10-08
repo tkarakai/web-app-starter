@@ -26,3 +26,18 @@ exit 1
     assert.equal(result.stdout.trim(), mode === "listener" ? "43003" : "43002");
   });
 }
+
+test("port selection excludes planned listeners and refuses an unknown startup port", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dev-ports-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(root, "lsof"), "#!/bin/bash\nexit 1\n", { mode: 0o755 });
+  const env = { ...process.env, PATH: root + path.delimiter + process.env.PATH };
+  const planned = spawnSync("bash", ["-eu", "-c", `${portSelection}\nSELECTED_PORTS='43002 43003'; find_available_port 43002`], { encoding: "utf8", env });
+  assert.equal(planned.status, 0, planned.stderr);
+  assert.equal(planned.stdout.trim(), "43004");
+  fs.writeFileSync(path.join(root, "lsof"), "#!/bin/bash\nexit 0\n", { mode: 0o755 });
+  const exhausted = spawnSync("bash", ["-eu", "-c", `${portSelection}\nfind_available_port 43002`], { encoding: "utf8", env });
+  assert.notEqual(exhausted.status, 0);
+  assert.equal(exhausted.stdout, "");
+  assert.match(exhausted.stderr, /No available local port/);
+});

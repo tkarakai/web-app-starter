@@ -44,6 +44,12 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
+Before starting any Next listener, the launcher selects distinct available ports and stages
+app configuration, cross-app links and optional MCP origins. When a linked app is started,
+links use its selected port; single-app startup preserves a non-empty configured link or
+supplies the configured local default. Port selection stops if no port in the preferred
+port’s eleven-port range is available, so configuration never depends on an unknown port.
+
 Whenever web, admin or landing starts Convex, the launcher also sets the
 backend's `LANDING_URL` to the landing's actual URL, or its configured local
 origin if it is not started. The backend needs this for CORS and announcement links

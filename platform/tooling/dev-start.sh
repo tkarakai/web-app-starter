@@ -823,6 +823,9 @@ find_available_port() {
     local max_port=$((preferred + 10))
 
     while [ "$port" -le "$max_port" ]; do
+        case " ${SELECTED_PORTS:-} " in
+            *" $port "*) port=$((port + 1)); continue ;;
+        esac
         if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
             echo "$port"
             return
@@ -830,30 +833,20 @@ find_available_port() {
         port=$((port + 1))
     done
 
-    # Fallback: let the OS pick
-    echo "0"
+    # Cross-app configuration must know the port before any listener starts.
+    echo "No available local port between $preferred and $max_port" >&2
+    return 1
 }
 
 start_next_app() {
     local app_name="$1"
     local app_dir; app_dir="$(app_dir "$app_name")"
     local log_file="$PROJECT_DIR/.next-${app_name}.log"
-    local preferred_port="$2"
+    local actual_port="$2"
 
     echo ""
     echo -e "${GREEN}▶ Starting Next.js ($app_name)...${NC}"
 
-    # Find an available port, starting from the preferred one
-    local actual_port=$(find_available_port "$preferred_port")
-    if [ "$actual_port" != "$preferred_port" ] && [ "$actual_port" != "0" ]; then
-        echo -e "  ${YELLOW}Port $preferred_port in use, using $actual_port${NC}"
-    fi
-
-    # Convex may have created landing's env file before ensure-app-env can seed it.
-    # Set the known origin before Next loads its environment and compiles metadata.
-    if [ "$app_name" = landing ] && [ "$actual_port" != "0" ]; then
-        update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$actual_port"
-    fi
     local next_bin; next_bin=$("$NODE_TS" "$SCRIPT_DIR/local-dev-deps.ts" bin "$app_dir" next)
     (cd "$app_dir" && exec node "$next_bin" dev --turbopack --port "$actual_port" > "$log_file" 2>&1) &
     local next_pid=$!
@@ -900,184 +893,57 @@ start_next_app() {
         exit 1
     fi
 
-    # Read the actual URL/port from the log (Next.js reports it)
-    local next_url=$(grep -o 'http://localhost:[0-9]*' "$log_file" | head -1)
-    if [ -z "$next_url" ]; then
-        next_url="http://localhost:$actual_port"
-    fi
-
-    local next_port=$(echo "$next_url" | grep -o '[0-9]*$')
-
-    # Record this app's origin.
-    #
-    # web and admin derive their own origin from the request Host header, so this
-    # is written as APP_ORIGIN and consumed only by the Playwright config, as the
-    # URL to point tests at. It is deliberately NOT called SITE_URL: that name
-    # already belongs to Convex, where it holds a comma-separated list of trusted
-    # origins (see the sync below and getSiteUrls() in convex/platform/auth.ts).
-    # landing still inlines NEXT_PUBLIC_SITE_URL at build time.
-    if [ -n "$next_port" ]; then
-        case "$app_name" in
-            web|admin)
-                update_env_var "$app_dir/.env.local" "APP_ORIGIN" "http://localhost:$next_port"
-                ;;
-            *)
-                update_env_var "$app_dir/.env.local" "NEXT_PUBLIC_SITE_URL" "http://localhost:$next_port"
-                ;;
-        esac
-    fi
-
-    # Sync this app's origin into Convex's SITE_URL.
-    #
-    # SITE_URL is a comma-separated list; the backend splits it and uses every
-    # entry as a trusted origin, including browser HTTP calls from landing.
-    if [ "$NEED_CONVEX" = true ] && { [ "$app_name" = web ] || [ "$app_name" = admin ] || [ "$app_name" = landing ]; } && [ -n "$next_port" ]; then
-        local app_origin="http://localhost:$next_port"
-        local existing_site_url
-        existing_site_url=$(cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env get SITE_URL 2>/dev/null | tr -d '\r\n')
-
-        local merged_site_url="$app_origin"
-        if [ -n "$existing_site_url" ] && [ "$existing_site_url" != "$app_origin" ]; then
-            case ",$existing_site_url," in
-                *",$app_origin,"*) merged_site_url="$existing_site_url" ;;
-                *) merged_site_url="$app_origin,$existing_site_url" ;;
-            esac
-        fi
-
-        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$merged_site_url" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} SITE_URL synced to Convex ($merged_site_url)"
-        else
-            echo -e "  ${YELLOW}⚠${NC} Failed to sync SITE_URL to Convex"
-        fi
-    fi
-
-    # Export the URL so callers can use it (e.g. to configure cross-app links)
-    LAST_APP_URL="$next_url"
-
     echo -e "${GREEN}✔ Next.js ($app_name) listening; checking pages next (PID: $next_pid)${NC}"
-    echo -e "  ${BLUE}App URL:${NC}    $next_url"
+    echo -e "  ${BLUE}App URL:${NC}    http://localhost:$actual_port"
 }
 
-# Start apps in dependency order:
-#   1. Web first (so we know its URL for cross-app links)
-#   2. Admin
-#   3. Landing last (needs WEB_APP_URL configured)
-LAST_APP_URL=""
+# Select all ports and stage app/backend configuration before spawning Next.
+# Reserving selected ports avoids collisions while none of the listeners exist yet.
+SELECTED_PORTS=""
 WEB_APP_URL=""
 ADMIN_APP_URL=""
 LANDING_APP_URL=""
 STORYBOOK_APP_URL=""
-APP_URLS=""  # Comma-separated list of all app URLs for Better Auth
+APP_URLS=""
+for app_name in web admin landing storybook; do
+    flag="START_$(echo "$app_name" | tr '[:lower:]' '[:upper:]')"
+    [ "${!flag}" = true ] || continue
+    port_var="APP_CONFIG_PORT_$(echo "$app_name" | tr '[:lower:]' '[:upper:]')"
+    actual_port=$(find_available_port "${!port_var}")
+    SELECTED_PORTS="$SELECTED_PORTS $actual_port"
+    url_var="$(echo "$app_name" | tr '[:lower:]' '[:upper:]')_APP_URL"
+    printf -v "$url_var" '%s' "http://localhost:$actual_port"
+    if [ "$actual_port" != "${!port_var}" ]; then
+        echo -e "  ${YELLOW}Port ${!port_var} in use, using $actual_port for $app_name${NC}"
+    fi
+    case "$app_name" in
+        web|admin) origin_key="APP_ORIGIN" ;;
+        *) origin_key="NEXT_PUBLIC_SITE_URL" ;;
+    esac
+    update_env_var "$(app_dir "$app_name")/.env.local" "$origin_key" "${!url_var}"
+    if [ "$app_name" != storybook ]; then
+        APP_URLS="${APP_URLS:+$APP_URLS,}${!url_var}"
+    fi
+done
 
 if [ "$START_WEB" = true ]; then
-    start_next_app "web" "$APP_CONFIG_PORT_WEB"
-    WEB_APP_URL="$LAST_APP_URL"
-    APP_URLS="$LAST_APP_URL"
-fi
-
-if [ "$START_ADMIN" = true ]; then
-    start_next_app "admin" "$APP_CONFIG_PORT_ADMIN"
-    ADMIN_APP_URL="$LAST_APP_URL"
-    if [ -n "$APP_URLS" ]; then
-        APP_URLS="$APP_URLS,$LAST_APP_URL"
-    else
-        APP_URLS="$LAST_APP_URL"
-    fi
-
-    # Sync ADMIN_SITE_URL to Convex so CORS and admin invitation links work
-    if [ "$NEED_CONVEX" = true ] && [ -n "$ADMIN_APP_URL" ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set ADMIN_SITE_URL "$ADMIN_APP_URL" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL synced to Convex"
-        else
-            echo -e "  ${YELLOW}⚠${NC} Failed to sync ADMIN_SITE_URL to Convex"
-        fi
+    if [ -n "$LANDING_APP_URL" ] || ! grep -q '^LANDING_URL=.' "$(app_dir web)/.env.local"; then
+        update_env_var "$(app_dir web)/.env.local" "LANDING_URL" "${LANDING_APP_URL:-$APP_CONFIG_ORIGIN_LANDING}"
     fi
 fi
-
 if [ "$START_LANDING" = true ]; then
-    # Ensure landing's .env.local has the web app URL for cross-app links
-    touch "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local"
-    if [ -n "$WEB_APP_URL" ] || ! grep -q '^NEXT_PUBLIC_WEB_APP_URL=.' "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local"; then
-        update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "${WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
-    fi
-    start_next_app "landing" "$APP_CONFIG_PORT_LANDING"
-    LANDING_APP_URL="$LAST_APP_URL"
-
-    # The backend needs the landing URL for CORS and announcement links,
-    # including the landing browser requests.
-    if [ "$NEED_CONVEX" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set LANDING_URL "$LANDING_APP_URL" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} LANDING_URL synced to Convex"
-        else
-            echo -e "  ${YELLOW}⚠${NC} Failed to sync LANDING_URL to Convex"
-        fi
-    fi
-
-    # Set the landing URL in the web app so auth pages can link back
-    if [ "$START_WEB" = true ] && [ -n "$LANDING_APP_URL" ]; then
-        update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "LANDING_URL" "$LANDING_APP_URL"
-        echo -e "  ${GREEN}✔${NC} LANDING_URL set to $LANDING_APP_URL for web"
+    if [ -n "$WEB_APP_URL" ] || ! grep -q '^NEXT_PUBLIC_WEB_APP_URL=.' "$(app_dir landing)/.env.local"; then
+        update_env_var "$(app_dir landing)/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "${WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
     fi
 fi
-
-if [ "$START_STORYBOOK" = true ]; then
-    start_next_app "storybook" "$APP_CONFIG_PORT_STORYBOOK"
-    STORYBOOK_APP_URL="$LAST_APP_URL"
-fi
-
-# ============================================================
-# SEED DEFAULT CROSS-APP VARS FOR SINGLE-APP MODE
-# ============================================================
-# When only some apps are started, seed default localhost URLs for missing
-# cross-app env vars and Convex env vars so pages don't crash at runtime.
 
 if [ "$NEED_CONVEX" = true ]; then
-    echo ""
-    echo -e "${GREEN}▶ Ensuring cross-app env vars are populated...${NC}"
-
-    # Seed LANDING_URL for web when landing is not started
-    if [ "$START_WEB" = true ] && [ "$START_LANDING" = false ]; then
-        if ! grep -q "^LANDING_URL=" "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_WEB/.env.local" "LANDING_URL" "$APP_CONFIG_ORIGIN_LANDING"
-            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING for web"
-        else
-            echo -e "  ${GREEN}✔${NC} LANDING_URL already set for web (preserved)"
-        fi
-    fi
-
-    # Seed NEXT_PUBLIC_WEB_APP_URL for landing when web is not started
-    if [ "$START_LANDING" = true ] && [ "$START_WEB" = false ]; then
-        if ! grep -q "^NEXT_PUBLIC_WEB_APP_URL=" "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" 2>/dev/null; then
-            update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "$APP_CONFIG_ORIGIN_WEB"
-            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL defaulted to $APP_CONFIG_ORIGIN_WEB for landing"
-        else
-            echo -e "  ${GREEN}✔${NC} NEXT_PUBLIC_WEB_APP_URL already set for landing (preserved)"
-        fi
-    fi
-
-    # Seed ADMIN_SITE_URL in Convex when admin is not started
-    if [ "$START_ADMIN" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set ADMIN_SITE_URL "$APP_CONFIG_ORIGIN_ADMIN" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} ADMIN_SITE_URL defaulted to $APP_CONFIG_ORIGIN_ADMIN in Convex"
-        fi
-    fi
-
-    # Seed LANDING_URL in Convex when landing is not started
-    if [ "$START_LANDING" = false ]; then
-        if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set LANDING_URL "$APP_CONFIG_ORIGIN_LANDING" > /dev/null 2>&1); then
-            echo -e "  ${GREEN}✔${NC} LANDING_URL defaulted to $APP_CONFIG_ORIGIN_LANDING in Convex"
-        fi
-    fi
+    # Keep the same local backend origin policy, including defaults for absent apps.
+    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set ADMIN_SITE_URL "${ADMIN_APP_URL:-$APP_CONFIG_ORIGIN_ADMIN}" > /dev/null 2>&1) || echo "Failed to sync ADMIN_SITE_URL to Convex"
+    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set LANDING_URL "${LANDING_APP_URL:-$APP_CONFIG_ORIGIN_LANDING}" > /dev/null 2>&1) || echo "Failed to sync LANDING_URL to Convex"
 fi
 
-# ============================================================
-# UPDATE BETTER AUTH WITH ALL APP URLS
-# ============================================================
-# Better Auth needs to know all the app origins that will authenticate
-# Set SITE_URL to comma-separated list of all app URLs
 if [ "$NEED_CONVEX" = true ] && [ -n "$APP_URLS" ]; then
-    echo ""
-    echo -e "${GREEN}▶ Updating Better Auth with app origins...${NC}"
     if (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$APP_URLS" > /dev/null 2>&1); then
         echo -e "  ${GREEN}✔${NC} SITE_URL set to: $APP_URLS"
     else
@@ -1085,18 +951,26 @@ if [ "$NEED_CONVEX" = true ] && [ -n "$APP_URLS" ]; then
     fi
 fi
 
-# Optional MCP origins share the admin listener but use distinct cookie hosts.
+# Optional MCP origins share the selected admin listener but use distinct cookie hosts.
 if [ "$START_ADMIN" = true ] && [ "${AGENT_MCP_ENABLED:-false}" = true ]; then
     AGENT_ORIGIN_VALUES=$("$NODE_TS" "$SCRIPT_DIR/agentic-origins.ts" "$ADMIN_APP_URL")
     eval "$AGENT_ORIGIN_VALUES"
-    update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "AGENT_MCP_ENABLED" "true"
-    update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "AGENT_MCP_ORIGIN" "$AGENT_LOCAL_RESOURCE_ORIGIN"
-    update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_ADMIN/.env.local" "AGENT_MCP_AUTH_ORIGIN" "$AGENT_LOCAL_AUTH_ORIGIN"
+    update_env_var "$(app_dir admin)/.env.local" "AGENT_MCP_ENABLED" "true"
+    update_env_var "$(app_dir admin)/.env.local" "AGENT_MCP_ORIGIN" "$AGENT_LOCAL_RESOURCE_ORIGIN"
+    update_env_var "$(app_dir admin)/.env.local" "AGENT_MCP_AUTH_ORIGIN" "$AGENT_LOCAL_AUTH_ORIGIN"
     (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set AGENT_MCP_RESOURCE "$AGENT_LOCAL_RESOURCE_ORIGIN/api/mcp" > /dev/null)
     (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set AGENT_MCP_AUTH_ORIGIN "$AGENT_LOCAL_AUTH_ORIGIN" > /dev/null)
-    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$APP_URLS,$AGENT_LOCAL_AUTH_ORIGIN" > /dev/null)
+    APP_URLS="$APP_URLS,$AGENT_LOCAL_AUTH_ORIGIN"
+    (cd "$PROJECT_DIR/packages/backend" && node "$CONVEX_BIN" env set SITE_URL "$APP_URLS" > /dev/null)
     echo "MCP auth-only origin: $AGENT_LOCAL_AUTH_ORIGIN (same admin listener)"
 fi
+
+for app_name in web admin landing storybook; do
+    url_var="$(echo "$app_name" | tr '[:lower:]' '[:upper:]')_APP_URL"
+    [ -n "${!url_var}" ] || continue
+    app_url="${!url_var}"
+    start_next_app "$app_name" "${app_url##*:}"
+done
 
 # In CI mode, show final env contents
 if [ "$NON_INTERACTIVE" = true ]; then

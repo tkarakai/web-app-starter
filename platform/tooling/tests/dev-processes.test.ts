@@ -31,7 +31,7 @@ function install(checkout: string): void {
     fs.mkdirSync(path.dirname(path.join(checkout, name)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, name), path.join(checkout, name));
   }
-  for (const [name, source] of Object.entries({next: "const {createServer}=require('node:http');const server=createServer((req,res)=>res.end('fixture'));server.listen(0,()=>{console.log('Local: http://localhost:'+server.address().port);console.log('Ready in 1ms');});", convex: "console.log('fixture');"})) {
+  for (const [name, source] of Object.entries({next: "const {createServer}=require('node:http');const server=createServer((req,res)=>res.end('fixture'));server.listen(Number(process.argv[process.argv.indexOf('--port')+1]),()=>{console.log('Local: http://localhost:'+server.address().port);console.log('Ready in 1ms');});", convex: "console.log('fixture');"})) {
     const pkg = path.join(checkout, "packages", name);
     fs.mkdirSync(pkg, {recursive:true});
     fs.writeFileSync(path.join(pkg,"package.json"),JSON.stringify({name,version:"0.0.0",bin:{[name]:"fixture.cjs"}}));
