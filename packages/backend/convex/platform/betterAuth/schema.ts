@@ -198,16 +198,30 @@ export const tables = {
     inviterId: v.string(),
     createdAt: v.number(),
     intendedRole: v.optional(v.union(v.null(), v.string())),
+    // Platform invitation capability/acceptance receipts; native routes remain denied.
+    tokenHash: v.optional(v.string()),
+    acceptedUserId: v.optional(v.string()),
+    acceptedMemberId: v.optional(v.id("member")),
   }).index("organizationId", ["organizationId"])
     .index("email", ["email"])
     .index("email_organizationId_status", ["email", "organizationId", "status"])
-    .index("organizationId_status", ["organizationId", "status"]),
+    .index("organizationId_status", ["organizationId", "status"])
+    .index("tokenHash", ["tokenHash"]),
+  // Registration capability receipts only; invitation/member remain canonical.
+  organizationInvitationClaims: defineTable({
+    invitationId: v.id("invitation"),
+    invitationTokenHash: v.string(),
+    capabilityHash: v.string(),
+    expiresAt: v.number(),
+    userId: v.optional(v.id("user")),
+    createdAt: v.number(),
+  }).index("capabilityHash", ["capabilityHash"]),
   // Platform state, not a duplicate editable membership/role model.
   organizationEnrollments: defineTable({
     organizationId: v.string(),
     userId: v.string(),
     memberId: v.id("member"),
-    purpose: v.union(v.literal("collaboration"), v.literal("promotion")),
+    purpose: v.union(v.literal("collaboration"), v.literal("promotion"), v.literal("invitation")),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     passwordProof: v.optional(v.string()),

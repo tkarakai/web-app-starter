@@ -207,9 +207,62 @@ An ordinary status with `allowed: true` does not satisfy the scoped setup requir
 
 No public completion or member-management endpoint is exposed here: successful setup still leaves
 collaboration/promotion pending. Activation, elevated future-login enforcement, factor-change
-last-admin protection, preserving tenant cutover, member invitation admission and their browser
+last-admin protection, preserving tenant cutover and the enrollment/invitation browser
 flows must be integrated before collaborative customer access can be enabled. Do not activate it
 by directly calling the component's completion primitive.
+
+### Invitation-bound member admission API
+
+`api.platform.memberInvitations` handles entry to an **existing** collaborative organization,
+separately from customer waitlist/signup and platform-operator invitations.
+
+Every token-based operation requires the invitation's exact immutable `organizationId`;
+empty or foreign context is rejected. Registration instead uses the exchanged capability,
+which already binds the invitation and its organization.
+
+- `preview({ organizationId, token })`: token-holder metadata (name, recipient, intended role,
+  expiry). Neither an invitation ID nor knowledge of a slug authorizes admission.
+- `claim({ organizationId, token })`: exchanges a random invitation token for a short-lived,
+  email/invitation-bound registration capability. Existing identities should sign in instead.
+- `register({ capability, email, name, password })`: creates one ordinary credential identity
+  with unverified email. Member passwords use user policy; invited-admin passwords use admin
+  policy. Strength and breach checks run server-side. It does not create a session, personal
+  organization or membership, and does not require new-customer admission to be enabled.
+- After normal sign-in, `requestVerification({ organizationId, token })` sends the existing
+  email-verification ceremony to the exact signed-in recipient. It remains available when
+  ordinary user email verification is optional; invitation acceptance always requires it.
+- `accept({ organizationId, token })`: requires the live verified recipient, applicable ordinary
+  session policy and active organization. Member admission and invitation consumption commit
+  atomically. Invited admins receive `member` plus pending `invitation` enrollment; setup uses
+  the parent enrollment APIs above, not a global admin role.
+
+Canonical Better Auth `invitation` and `member` rows own status/role. A separate claim receipt
+only binds registration intent/account; it is not another editable invitation/membership model.
+Only token/capability hashes are stored. Concurrent registration retries cannot duplicate or reset
+credentials; a lost registration response can be retried while its capability remains valid and
+its invitation remains live and pending. Same-recipient acceptance retries return the same current
+membership without repeating admission. Removal/recreation, expiry, cancellation, token rotation,
+changed inviter eligibility, wrong recipient/context or disabled lifecycle fail closed. An account
+left behind by interrupted or failed acceptance stays an identity; sign-in never guesses a personal
+organization for it.
+
+Tokens/capabilities/passwords must not be logged, persisted in browser storage or passed through
+agent tools. Wrong-email clients should offer switch-account, never reinterpret the recipient.
+Verification delivery failure does not roll back registration; retry delivery without recreating
+or changing the account. Operator/reserved enrollment addresses and auth-only sessions cannot
+use these APIs to gain customer membership.
+
+Invitation issuance/cancellation live only in the server-only component
+`betterAuth/memberInvitations.ts`. No public invitation management, delivery UI or collaboration
+activation is enabled yet. Future wrappers must require live enrolled-org-admin assurance, apply
+cutover gates and deliver tokens securely; do not register component primitives or password/token
+entry actions in the agent catalogue. Legacy invitations without the guarded token metadata are
+not silently accepted by ID. App-data context, preserving migration, operator/agent boundaries,
+future elevated-login enforcement and last-admin security-state guards remain prerequisites for
+full collaboration. Tests: `platform/memberInvitations.test.ts` (mock email/breach transports,
+real auth sign-in/verification and persisted admission behavior); inbox delivery is separate.
+
+### Server-only organization primitives
 
 The canonical server-only operations live in
 `packages/backend/convex/platform/betterAuth/organizations.ts`. They require explicit organization
