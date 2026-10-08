@@ -207,14 +207,18 @@ An ordinary status with `allowed: true` does not satisfy the scoped setup requir
 
 No public completion or member-management endpoint is exposed here: successful setup still leaves
 collaboration/promotion pending. Activation, elevated future-login enforcement, factor-change
-last-admin protection, preserving tenant cutover, member invitation admission and their browser
+last-admin protection, preserving tenant cutover and the enrollment/invitation browser
 flows must be integrated before collaborative customer access can be enabled. Do not activate it
 by directly calling the component's completion primitive.
 
 ### Invitation-bound member admission API
 
 `api.platform.memberInvitations` handles entry to an **existing** collaborative organization,
-separately from customer waitlist/signup and platform-operator invitations:
+separately from customer waitlist/signup and platform-operator invitations.
+
+Every token-based operation requires the invitation's exact immutable `organizationId`;
+empty or foreign context is rejected. Registration instead uses the exchanged capability,
+which already binds the invitation and its organization.
 
 - `preview({ organizationId, token })`: token-holder metadata (name, recipient, intended role,
   expiry). Neither an invitation ID nor knowledge of a slug authorizes admission.
@@ -235,11 +239,12 @@ separately from customer waitlist/signup and platform-operator invitations:
 Canonical Better Auth `invitation` and `member` rows own status/role. A separate claim receipt
 only binds registration intent/account; it is not another editable invitation/membership model.
 Only token/capability hashes are stored. Concurrent registration retries cannot duplicate or reset
-credentials; a lost registration response can be retried while its capability/invitation remains
-valid. Same-recipient acceptance retries return the same current membership without repeating
-admission. Removal/recreation, expiry, cancellation, token rotation, changed inviter eligibility,
-wrong recipient/context or disabled lifecycle fail closed. An account left behind by interrupted
-or failed acceptance stays an identity; sign-in never guesses a personal organization for it.
+credentials; a lost registration response can be retried while its capability remains valid and
+its invitation remains live and pending. Same-recipient acceptance retries return the same current
+membership without repeating admission. Removal/recreation, expiry, cancellation, token rotation,
+changed inviter eligibility, wrong recipient/context or disabled lifecycle fail closed. An account
+left behind by interrupted or failed acceptance stays an identity; sign-in never guesses a personal
+organization for it.
 
 Tokens/capabilities/passwords must not be logged, persisted in browser storage or passed through
 agent tools. Wrong-email clients should offer switch-account, never reinterpret the recipient.
