@@ -14,5 +14,5 @@ export function sessionBackLabel(locale: Locale): string {
 
 /** Select the sessions page's back control independently of the product name. */
 export function sessionBackButton(page: Page, locale: Locale): Locator {
-  return page.getByRole("button", { name: sessionBackLabel(locale), exact: true });
+  return page.getByRole("main").getByRole("button", { name: sessionBackLabel(locale), exact: true });
 }

@@ -5,13 +5,13 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { constants, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { constants, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { adopt } from "../../../../platform/tooling/adopt.ts";
 import { validateAppConfig } from "../../../../platform/packages/app-config/src/schema.ts";
+import { copyConfigurationFixture, englishLandingConfig } from "./configuration-fixture.ts";
 
 const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const configBefore = readFileSync(path.join(source, "app.config.ts"), "utf8");
@@ -19,7 +19,8 @@ const requested = process.argv.slice(2);
 const stages = requested.length === 0 || requested.includes("--all")
   ? ["--components", "--e2e", "--exports"] : requested;
 assert(stages.every(stage => ["--components", "--e2e", "--exports"].includes(stage)), "Unknown acceptance stage");
-const root = mkdtempSync(path.join(tmpdir(), "landing-configuration-"));
+mkdirSync(path.join(source, ".lavish"), { recursive: true });
+const root = mkdtempSync(path.join(source, ".lavish/landing-configuration-"));
 const app = path.join(root, "apps/landing");
 
 function run(command: string, args: string[], cwd = root, env: Record<string, string> = {}): void {
@@ -39,14 +40,7 @@ async function availablePort(): Promise<number> {
 try {
   // Keep workspace symlinks relative so they resolve to the fixture's app configuration.
   // Copy pinned dependencies too: Turbopack requires their real paths inside its root.
-  cpSync(source, root, {
-    recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE,
-    filter: file => {
-      const relative = path.relative(source, file);
-      return !relative.split(path.sep).some(part => [".git", ".bun", ".next", ".vite", "out", ".turbo", ".lavish", "test-results", "playwright-report", "coverage"].includes(part))
-        && (!path.basename(file).startsWith(".env") || path.basename(file) === ".env.example");
-    },
-  });
+  copyConfigurationFixture(source, root);
   if (stages.includes("--e2e") || stages.includes("--exports")) {
     cpSync(path.join(source, "node_modules/.bun"), path.join(root, "node_modules/.bun"), {
       recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE,
@@ -64,7 +58,7 @@ try {
     release: () => ({ commit, version: readFileSync(path.join(root, "platform/VERSION"), "utf8").trim() }),
     command: () => "",
   }), 0, lines.join("\n"));
-  const adopted = readFileSync(path.join(root, "app.config.ts"), "utf8");
+  const adopted = validateAppConfig((await import(pathToFileURL(path.join(root, "app.config.ts")).href)).default);
   assert(existsSync(path.join(root, ".platform-base.json")));
   for (const file of ["qa/tests/hero-cta.test.tsx", "qa/e2e/dynamic-features.spec.ts"]) {
     assert.equal(readFileSync(path.join(app, file), "utf8"), readFileSync(path.join(source, "apps/landing", file), "utf8"), `Adoption changed retained ${file}`);
@@ -73,15 +67,14 @@ try {
 
   for (const [waitlist, announcements] of [[true, true], [false, true], [true, false], [false, false]]) {
     process.stdout.write(`\n=== Adopted landing: waitlist=${waitlist}, announcements=${announcements}, locales=en ===\n`);
-    const text = adopted.replace(/(\s+waitlist:) (?:true|false),/, `$1 ${waitlist},`)
-      .replace(/(\s+announcements:) (?:true|false),/, `$1 ${announcements},`)
-      .replace(/(\s+locales:) \[[^\]]+\],/, '$1 ["en"],');
+    const text = `export default ${JSON.stringify(englishLandingConfig(adopted, waitlist, announcements), null, 2)};\n`;
     writeFileSync(path.join(root, "app.config.ts"), text);
     const raw = (await import(`${pathToFileURL(path.join(root, "app.config.ts")).href}?waitlist=${waitlist}&announcements=${announcements}`)).default;
     const config = validateAppConfig(raw);
     assert.equal(config.features.waitlist, waitlist);
     assert.equal(config.features.announcements, announcements);
     assert.deepEqual(config.i18n.locales, ["en"]);
+    assert.equal(config.i18n.defaultLocale, "en");
     assert.equal(config.identity.productName, "Landing Acceptance");
     const env = {
       NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3000", NEXT_PUBLIC_WEB_APP_URL: "https://web.example.test",
