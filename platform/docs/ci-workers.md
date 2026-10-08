@@ -136,7 +136,9 @@ mounted in the worker. Commit changes before testing. Native CI inside the conta
 emulate GitHub orchestration or upload GitHub artifacts; the next diagnostic tests real scheduling.
 
 `--quick` and `--ci` index the extracted archive in a new Git repository inside the disposable
-worker, so zone checks compare the committed source files. This snapshot's commit is local
+worker, so zone checks compare the committed source files. The installed manager copies its
+reviewed baseline helper into that worker, including when `--ref` selects an older app archive.
+This snapshot's commit is local
 metadata; the check proof still identifies the original source SHA. For an adopted app, they
 make the baseline in `.platform-base.json` available before running CI. An absent baseline is
 fetched by its full 40-character SHA, with `--no-tags --depth=1` and a two-minute timeout, from

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test, type TestContext } from 'node:test';
@@ -29,8 +29,6 @@ async function fixture(t: TestContext) {
   for (const { file, hook } of SEAM_HOOKS) seams.set(file, [...(seams.get(file) ?? []), hook]);
   for (const [file, hooks] of seams) await write(file, hooks.join('\n') + '\n');
   await write('platform/VERSION', '4.1.0\n');
-  await mkdir(path.join(upstream, 'platform/tooling/ci-workers'), { recursive: true });
-  for (const file of ['baseline.ts', 'core.ts']) await cp(path.join(modules, file), path.join(upstream, 'platform/tooling/ci-workers', file));
   await git(upstream, 'add', '--all'); await git(upstream, 'commit', '--quiet', '-m', 'release');
   const baseline = await git(upstream, 'rev-parse', 'HEAD');
   await git(upstream, 'tag', 'v4.1.0');
@@ -49,7 +47,7 @@ async function fixture(t: TestContext) {
   await writeFile(path.join(bin, 'bun'), `#!${process.execPath}\nimport fs from 'node:fs';\nimport { checkZone } from ${JSON.stringify(new URL('../check-zone.ts', import.meta.url).href)};\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.CHECK_CALLS, JSON.stringify(args) + '\\n');\nif (args[0] === 'run') { const result = checkZone(process.cwd()); if (result.errors.length) { console.error(result.errors.join('\\n')); process.exit(1); } }\n`, { mode: 0o755 });
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, CHECK_CALLS: calls, GIT_CONFIG_GLOBAL: config, GIT_CONFIG_NOSYSTEM: '1', GIT_ALLOW_PROTOCOL: 'file' };
   const run = (mode: 'ci' | 'quick' | 'install', repository = repo) => {
-    const argv = sourceCheck(mode, repository);
+    const argv = sourceCheck(mode, repository, path.join(modules, 'baseline.ts'));
     return command(argv[1], argv.slice(2), { cwd: root, env });
   };
   const invocations = async () => (await readFile(calls, 'utf8').catch(() => '')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as string[]);
@@ -71,7 +69,7 @@ for (const mode of ['ci', 'quick'] as const) test(`archive ${mode} fetches only 
   assert.equal(await readFile(path.join(f.root, 'apps/web/page.ts'), 'utf8'), 'export const page = 2;\n');
   const head = await f.git(f.root, 'rev-parse', 'HEAD');
   // An existing baseline needs no reachable source: the protocol policy forbids HTTPS.
-  await command(process.execPath, [path.join(f.root, 'platform/tooling/ci-workers/baseline.ts')], { cwd: f.root, env: { ...f.env, PLATFORM_SOURCE_REPOSITORY: 'unreachable/source' } });
+  await command(process.execPath, [path.join(modules, 'baseline.ts')], { cwd: f.root, env: { ...f.env, PLATFORM_SOURCE_REPOSITORY: 'unreachable/source' } });
   assert.equal(await f.git(f.root, 'rev-parse', 'HEAD'), head);
   const calls = await f.invocations();
   assert.deepEqual(calls.slice(-2), [['install', '--offline', '--frozen-lockfile'], ['run', mode === 'ci' ? 'ci' : 'ci:quick']]);
