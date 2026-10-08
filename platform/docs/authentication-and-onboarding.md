@@ -736,14 +736,12 @@ See [route protection](architecture.md#route-protection-authentication) for the 
 server layout and client guard. Enrollment and email/factor verification are presented by
 the shared gate under the [live session policy](#85-session-assurance-and-reauthentication).
 
-### MCP authorization sessions
+### Agent authorization sessions
 
-The optional auth-only MCP hostname issues server-owned `mcp-authorization` sessions. These
-use the existing users, authentication methods and assurance rules, but cannot access ordinary
+The optional auth-only hostname for MCP, CLI and A2A issues server-owned `mcp-authorization`
+sessions. These use the existing users, authentication methods and assurance rules, but cannot access ordinary
 admin Convex functions or administrative Better Auth APIs. Input cannot select or change the
-purpose, and verification/rotation preserves it. Only a ready administrator can grant scoped
-announcement access after explicit consent. Ordinary browser sessions retain their current
-application purpose; the two hostnames use separate host-only cookies. The MCP browser login
-is consumed on either consent decision. Approval retains only a short-lived, server-captured
-delegation proof; denial retains no access. Subsequent requests require fresh sign-in. See
-[announcement MCP](agentic-announcements.md) and its [deployment steps](deployment-runbook.md#optional-mcp-authorization-origin).
+purpose, and verification/rotation preserves it. Ordinary browser sessions retain their current
+application purpose. For consent scope, verification prerequisites and delegation lifetime, see
+[admin agentic surfaces](agentic-announcements.md#enable-and-authenticate); for hostname setup,
+see [deployment steps](deployment-runbook.md#optional-mcp-authorization-origin).

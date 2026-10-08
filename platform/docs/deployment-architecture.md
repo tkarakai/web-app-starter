@@ -671,14 +671,11 @@ gh api repos/{owner}/{repo}/deployments --jq '.[0:5] | .[] | "\(.environment) \(
 
 ### Optional MCP authorization hostname
 
-Announcement MCP adds one optional public hostname to the existing admin deployment, rather than
-another service. `AGENT_MCP_ORIGIN` identifies the resource, and `AGENT_MCP_AUTH_ORIGIN` identifies
-its OAuth issuer. Host routing serves only sign-in, session verification, consent, code exchange
-and required assets on the issuer host. All normal admin pages/APIs are rejected there, including
-prefetch requests. Authentication hooks mark these browser sessions with a server-owned purpose;
-normal Convex/admin auth operations reject that purpose. The announcement grant remains a separate,
-revocable credential whose backend calls apply current policy.
+Remote MCP, CLI and A2A share one optional authorization hostname on the existing admin
+deployment. The resources remain on the canonical admin hostname. For origin variables,
+host isolation and rollout requirements, see
+[the deployment runbook](deployment-runbook.md#optional-mcp-authorization-origin).
 
 Runtime variables are passed through the existing admin build/deployment and do not change the
 artifact hash. The hosting change is DNS/TLS plus one alias on the admin target; there is no new
-workspace app, CI target or database. See [rollout steps](deployment-runbook.md#optional-mcp-authorization-origin).
+workspace app, CI target or database.

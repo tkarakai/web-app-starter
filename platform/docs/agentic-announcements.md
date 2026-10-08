@@ -42,10 +42,15 @@ The registered public test client remains `pi-announcements` for compatibility. 
 be `http://127.0.0.1:<port>/callback`. Authorization uses S256 PKCE and state; one-minute codes
 are single-use, and grants last at most fifteen minutes. Writes require verification within five
 minutes, matching the existing administrative write policy. Both approval and denial delete the
-browser's authorization session and clear its cookies. Every new request requires sign-in;
+browser's authorization session and clear its cookies. Every new authorization request requires sign-in;
 the normal admin hostname's session remains independent. Server-captured delegation proof,
 current account/policy/factor checks, expiry, revocation and surface generation protect each call.
 No refresh token, dynamic client registration or service identity is provided.
+
+The authorization host supports password, TOTP and passkey verification with existing factors.
+Complete email verification, factor enrollment or account recovery in the normal admin app
+before starting authorization again. The auth-only UI provides guidance when setup is required;
+it does not offer enrollment, verification-email delivery, password recovery or backup-code controls.
 
 The consent dialog identifies the app using its configured product name and `/icon.svg`.
 The first-party terminal testers serve styled approval, denial and invalid-callback pages from

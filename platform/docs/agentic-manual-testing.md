@@ -144,7 +144,7 @@ bun run agent:simulator -- --surface a2a --origin http://localhost:3002
 
 Run them sequentially and authorize each.
 
-Expected: **80 catalogue entries**, valid schemas, successful representative reads, and `disposableDraftCleaned: true`. Add `--output mcp-summary.json`, for example, to save measurements.
+Expected: all entries selected by [the native registry](../../packages/backend/convex/platform/agentRegistry.ts) and [browser catalogue](../packages/agentic/src/browser-catalogue.ts), valid schemas, successful representative reads, and `disposableDraftCleaned: true`. Add `--output mcp-summary.json`, for example, to save measurements.
 
 These enumerate the whole catalogue; they exercise representative reads and disposable announcement CRUD rather than executing every destructive administration operation.
 
