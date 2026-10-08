@@ -31,6 +31,30 @@ additional DNS/TLS hostname on the admin deployment, as described in
 [the deployment runbook](deployment-runbook.md). WebMCP alone uses the normal admin session
 and does not require the remote authorization hostname.
 
+Local remote clients also require `mcp-auth.localhost` (or your configured authorization
+hostname) to resolve to loopback through **OS DNS**, in every environment running a client.
+Chromium can resolve `.localhost` internally even when native HTTP clients cannot; a working
+browser sign-in alone does not establish this prerequisite. It applies to MCP, CLI and A2A
+testers/simulators, pi token exchange and Playwright's `APIRequestContext`. A
+`getaddrinfo ENOTFOUND mcp-auth.localhost` error indicates missing OS resolution.
+
+Check resolution from the same host or container as the client:
+
+```sh
+node -e "require('node:dns').lookup('mcp-auth.localhost', console.log)"
+```
+
+The result must have no error and a loopback address such as `127.0.0.1` or `::1`.
+For a disposable Docker environment with the local app running in that same container,
+include the loopback mapping when creating it:
+
+```sh
+docker run --add-host=mcp-auth.localhost:127.0.0.1 <image> <command>
+```
+
+Loopback refers to that container, not the Docker host. Keep the separate authorization
+origin; DNS setup does not change authentication or combine it with the normal admin origin.
+
 Remote clients discover protected-resource metadata, open the auth-only origin, and request
 blanket **`admin:manage`** permission. Consent describes broad administration: private data,
 users/sessions, invitations, policy/settings, publishing and deletion. It does not list every

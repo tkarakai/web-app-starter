@@ -19,6 +19,22 @@ AGENT_MCP_ENABLED=true bun run dev:admin
 
 `setup:e2e` installs the browser binaries; you only need it initially or after browser dependency updates.
 
+Before testing remote MCP, CLI or A2A, verify that `mcp-auth.localhost` (or your configured
+authorization hostname) resolves to loopback through OS DNS in the environment running the
+tester:
+
+```sh
+node -e "require('node:dns').lookup('mcp-auth.localhost', console.log)"
+```
+
+Expect no error and a loopback address such as `127.0.0.1` or `::1`. Chromium's internal
+`.localhost` resolution is insufficient for native HTTP clients, pi token exchange and
+Playwright's `APIRequestContext`; those can fail with `getaddrinfo ENOTFOUND mcp-auth.localhost`
+even when browser sign-in works. When creating a disposable Docker container that runs both
+the app and testers, add `--add-host=mcp-auth.localhost:127.0.0.1` to `docker run`.
+See [the local DNS setup prerequisite](agentic-announcements.md#enable-and-authenticate).
+Keep the separate authorization hostname served by the same admin process.
+
 Open **http://localhost:3002**, sign in as an admin, and enable all four switches under **Configure → Features**:
 
 - MCP server
