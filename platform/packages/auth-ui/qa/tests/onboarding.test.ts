@@ -1,5 +1,6 @@
 import { afterEach, expect, test, spyOn } from "bun:test";
-import { fetchOnboardingType, parseOnboardingStatus } from "../../src/lib/onboarding";
+import { appConfig } from "@web-app-starter/app-config";
+import { configuredOnboardingType, fetchOnboardingType, parseOnboardingStatus } from "../../src/lib/onboarding";
 
 const originalUrl = process.env.CONVEX_SITE_URL;
 afterEach(() => {
@@ -14,7 +15,7 @@ test("each onboarding decision fetches current mode without Next's data cache", 
     .mockResolvedValueOnce(Response.json({ onboardingType: "publicWaitlist" }));
   try {
     expect(await fetchOnboardingType()).toBe("publicSignup");
-    expect(await fetchOnboardingType()).toBe("publicWaitlist");
+    expect(await fetchOnboardingType()).toBe(appConfig.features.waitlist ? "publicWaitlist" : "inviteOnly");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchSpy).toHaveBeenLastCalledWith("https://backend.example.test/api/waitlist/status", { cache: "no-store" });
   } finally { fetchSpy.mockRestore(); }
@@ -31,6 +32,23 @@ test("status failures and malformed responses fail closed", async () => {
     fetchSpy.mockRejectedValueOnce(new Error("offline"));
     expect(await fetchOnboardingType()).toBe("inviteOnly");
   } finally { fetchSpy.mockRestore(); }
+});
+
+test("disabled waitlist stays closed for every supported backend status shape", () => {
+  for (const payload of [
+    { onboardingType: "publicWaitlist" },
+    { onboardingType: "waitlist" },
+    { waitlistEnabled: true },
+    { enabled: true },
+  ]) {
+    const mode = parseOnboardingStatus(payload);
+    expect(configuredOnboardingType(mode, false)).toBe("inviteOnly");
+    expect(configuredOnboardingType(mode, true)).toBe("publicWaitlist");
+  }
+  for (const enabled of [false, true]) {
+    expect(configuredOnboardingType("publicSignup", enabled)).toBe("publicSignup");
+    expect(configuredOnboardingType("inviteOnly", enabled)).toBe("inviteOnly");
+  }
 });
 
 test("legacy explicit statuses remain supported, unknown mode never opens signup", () => {
