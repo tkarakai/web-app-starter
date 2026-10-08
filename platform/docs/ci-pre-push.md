@@ -135,5 +135,7 @@ When you need to verify the exact image and runtime policy used by your local Gi
 use `starter-workers check --install` or `starter-workers check --ci` after
 [worker setup](ci-workers.md#test-a-branch-before-enabling-normal-ci). These checks use committed
 source without mounting the checkout. They therefore omit uncommitted changes, unlike native
-pre-push CI. `check --github` separately exercises actual GitHub scheduling and certifies parity.
+pre-push CI. Full and quick checks prepare the adopted app's baseline commit for zone checking
+through the same validated, bounded fetch used by shared GitHub CI; a failed fetch stops CI.
+`check --github` separately exercises actual GitHub scheduling and certifies parity.
 The [worker guide](ci-workers.md) owns those commands and their operating requirements.

@@ -32,6 +32,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Exact-source worker `check --quick` and `check --ci` now initialize the archive's Git index
+  and fetch an adopted app's missing platform baseline before zone checking. Local and shared
+  GitHub CI use the same validated, shallow SHA fetch; failures stop CI without broadening
+  history or changing runner routing. See [local worker checks](docs/ci-workers.md#test-a-branch-before-enabling-normal-ci).
+
 - MCP approval and denial end the auth-origin browser login immediately. Approved access uses
   separate short-lived delegation proof; every later authorization request requires new sign-in.
 

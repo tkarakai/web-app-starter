@@ -91,12 +91,7 @@ jobs:
         env:
           PLATFORM_SOURCE_REPOSITORY: ${{ vars.PLATFORM_SOURCE_REPOSITORY || 'tkarakai/web-app-starter' }}
         run: |
-          if [[ -f .platform-base.json ]]; then
-            base="$(jq -r .commit .platform-base.json)"
-            [[ "$base" =~ ^[0-9a-f]{7,40}$ ]] || { echo "Invalid platform baseline commit" >&2; exit 1; }
-            [[ "$PLATFORM_SOURCE_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "Invalid platform source" >&2; exit 1; }
-            git cat-file -e "${base}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 "https://github.com/$PLATFORM_SOURCE_REPOSITORY.git" "$base"
-          fi
+          ./platform/tooling/node-ts.sh platform/tooling/ci-workers/baseline.ts
           ./platform/tooling/node-ts.sh platform/tooling/ci-checks.ts checkout
 
       - name: Shared platform checks
