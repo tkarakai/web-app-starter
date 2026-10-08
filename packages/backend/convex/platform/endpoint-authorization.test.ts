@@ -99,6 +99,10 @@ const ACCESS: Record<string, Access> = {
   "platform/auth:getCurrentUser": "public", // the caller's own user, or null
   "platform/auth:viewBackupCodes": "user",
   "platform/sessionAssurance:status": "user",
+  "platform/organizationEnrollment:begin": "user",
+  "platform/organizationEnrollment:status": "user",
+  "platform/organizationEnrollment:verifyCredential": "user",
+  "platform/organizationEnrollment:acknowledgeRecovery": "user",
   "platform/integrations:getStatus": "admin",
   "platform/meta:health": "public",
   "platform/passwordStrength:evaluate": "public",

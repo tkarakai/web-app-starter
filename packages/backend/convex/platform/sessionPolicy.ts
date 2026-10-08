@@ -46,7 +46,7 @@ export async function readPolicies(ctx: Reader, user: Doc<"user">) {
   const passkeyPolicy: PasskeyPolicy = rawPasskey === undefined ? "optional"
     : rawPasskey === "disabled" || rawPasskey === "optional" ? rawPasskey : "required";
   return {
-    scope, enrollment, passkeyPolicy,
+    scope, securityScope: scope, enrollment, passkeyPolicy,
     emailRequired: await booleanPolicy(ctx, getEmailVerificationRequiredKey(scope), LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true),
     mfaRequired: enrollment || await booleanPolicy(ctx, getMfaRequiredKey(scope), LEGACY_MFA_REQUIRED_KEY, false),
   };
@@ -83,8 +83,25 @@ export type AssuranceReason = "ready" | "reauthenticate" | "email_verification" 
 
 /** Shared by Convex and Better Auth. Account flags are requirements, never session proof. */
 export async function evaluateSession(ctx: Reader, pair: AssuranceSubject) {
+  return evaluateWithPolicy(ctx, pair, await readPolicies(ctx, pair.user));
+}
+
+/** Elevated proof for this enrollment only: never changes identity/operator authority or personal access. */
+export async function evaluateOrganizationEnrollment(ctx: Reader, pair: AssuranceSubject, organizationId: string) {
+  const ordinary = await readPolicies(ctx, pair.user);
+  if (ordinary.scope !== "user") throw new Error("NOT_CUSTOMER");
+  const enrollment = await ctx.runQuery(components.betterAuth.organizations.enrollmentStatus, { organizationId, userId: pair.user._id });
+  if (!enrollment || enrollment.completed) throw new Error("INVALID_ENROLLMENT");
+  const rawPasskey = await setting(ctx, getPasskeyPolicyKey("admin"));
+  const passkeyPolicy: PasskeyPolicy = rawPasskey === undefined ? "optional"
+    : rawPasskey === "disabled" || rawPasskey === "optional" ? rawPasskey : "required";
+  const policy = { scope: "user" as const, securityScope: "admin" as const, enrollment: false,
+    emailRequired: true, mfaRequired: true, passkeyPolicy };
+  return { ...await evaluateWithPolicy(ctx, pair, policy), setup: enrollment };
+}
+
+async function evaluateWithPolicy(ctx: Reader, pair: AssuranceSubject, policy: Awaited<ReturnType<typeof readPolicies>>) {
   const { user, session } = pair;
-  const policy = await readPolicies(ctx, user);
   const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, {
     model: "twoFactor", where: [{ field: "userId", value: user._id }],
   });
@@ -110,8 +127,9 @@ export async function evaluateSession(ctx: Reader, pair: AssuranceSubject) {
   const primary = session.assuranceVersion === 1 && Boolean(session.primaryVerifiedAt && session.primaryVerifiedAt <= now)
     && ["password", "magic-link", "passkey"].includes(session.authMethod ?? "");
   let reason: AssuranceReason = "ready";
-  if (!primary) reason = "reauthenticate";
-  else if (session.authMethod === "magic-link" && (policy.scope === "admin" || !await emailLoginEnabled(ctx))) reason = "method_disabled";
+  if (!primary || session.expiresAt <= now || (policy.securityScope === "admin"
+    && (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS <= now)) reason = "reauthenticate";
+  else if (session.authMethod === "magic-link" && (policy.securityScope === "admin" || !await emailLoginEnabled(ctx))) reason = "method_disabled";
   else if (session.authMethod === "passkey" && !strong) reason = "reauthenticate";
   else if (policy.emailRequired && !user.emailVerified) reason = "email_verification";
   else if (session.recoveryOnly) reason = "recovery";
@@ -126,7 +144,7 @@ export async function evaluateSession(ctx: Reader, pair: AssuranceSubject) {
     ...policy, hasTotp, hasPasskey, strong, strongForChanges, reason,
     primaryRecentUntil: (session.primaryVerifiedAt ?? 0) + RECENT_AUTH_MS,
     allowed: reason === "ready", recent: recentUntil > now, recentUntil,
-    expiresAt: Math.min(session.expiresAt, policy.scope === "admin" ? (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS : session.expiresAt),
+    expiresAt: Math.min(session.expiresAt, policy.securityScope === "admin" ? (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS : session.expiresAt),
   };
 }
 
