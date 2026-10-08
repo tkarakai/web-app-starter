@@ -138,7 +138,7 @@ export const createE2eUser = httpAction(async (ctx, request) => {
   // hooks; ordinary signup/change/reset paths still use the complete plugin set.
   // A third-party outage must not prevent unrelated E2E tests from signing in.
   assertLocalFixtures();
-  const options = createAuthOptions(ctx);
+  const options = createAuthOptions(ctx, { localOperatorSignup: isAdmin });
   const auth = betterAuth({
     ...options,
     plugins: options.plugins.filter(plugin => plugin.id !== "have-i-been-pwned"),

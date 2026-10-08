@@ -43,7 +43,9 @@ export const resumeCustomerProvisioning = mutation({
     const id = ctx.db.normalizeId("user", userId);
     const user = id ? await ctx.db.get(id) : null;
     if (!user) throw new Error("NOT_AUTHENTICATED");
-    if (!user.customerAdmission) return null;
+    // Identity login remains available to operators; stale customer intent never
+    // provisions or confers tenant access after a trusted role transition.
+    if (isOperator(user.role) || !user.customerAdmission) return null;
     if (!["public-signup", "customer-invitation"].includes(user.customerAdmission)) throw new Error("INVALID_CUSTOMER_ADMISSION");
     // Operator enrollment is separate even while its bound candidate has role=user.
     // Such accounts are created by the operator registration transaction without this field.

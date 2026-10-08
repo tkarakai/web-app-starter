@@ -197,7 +197,10 @@ intent after account creation and before session creation, atomically creating t
 organization and first membership. A failed after-hook does not lose the intent; subsequent
 sign-in retries it, even if public admission has closed. Unmarked legacy, member-only and operator
 accounts do not acquire personal organizations on login. Existing accounts require explicit
-preserving migration, not an inferred signup intent. Unknown intent fails closed. `beginCollaboration` keeps the organization
+preserving migration, not an inferred signup intent. Unknown customer intent fails closed. Operator
+sign-in ignores stale customer intent and never provisions a tenant. Development operator fixtures
+use a server-only signup option guarded by the full local fixture authorization; ordinary HTTP
+signup cannot select it. This option does not exist for hosted operator onboarding. `beginCollaboration` keeps the organization
 personal while enrollment is pending; promotion likewise keeps a peer's role as `member`.
 Initial completion requires verified email, a recent proof matching the current credential hash,
 a verified enabled two-factor row and recorded acknowledgment matching its current backup-code

@@ -29,6 +29,7 @@ import { readBackupCodes } from "./recoveryCodes";
 import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields } from "./sessionFields";
 import { customerAdmissionFields } from "./customerAdmissionFields";
+import { assertLocalFixtures } from "./localFixtures";
 import { identitySession } from "./sessionPolicy";
 
 /** Truncate a string to at most `max` characters. */
@@ -440,7 +441,9 @@ const emailVerifiedOnResetPlugin = (
 
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
+  options: { localOperatorSignup?: boolean } = {},
 ) => {
+  if (options.localOperatorSignup) assertLocalFixtures();
   const { siteUrl, siteUrls } = getSiteUrls();
   const passkeyRpId = getPasskeyRpId();
   const assurance = createAssuranceHooks(ctx);
@@ -709,7 +712,7 @@ export const createAuthOptions = (
             if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
               throw new Error("ADMIN_ENROLLMENT_REQUIRED");
             }
-            return { data: { ...user, customerAdmission: hasWaitlistInvitation ? "customer-invitation" : "public-signup" } };
+            return { data: { ...user, customerAdmission: options.localOperatorSignup ? null : hasWaitlistInvitation ? "customer-invitation" : "public-signup" } };
           },
           after: async (user) => {
             const actionCtx = requireActionCtx(ctx);
@@ -801,8 +804,8 @@ export const createAuthOptions = (
   } satisfies BetterAuthOptions;
 };
 
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
-  return betterAuth(createAuthOptions(ctx));
+export const createAuth = (ctx: GenericCtx<DataModel>, options: { localOperatorSignup?: boolean } = {}) => {
+  return betterAuth(createAuthOptions(ctx, options));
 };
 
 export const getCurrentUser = query({

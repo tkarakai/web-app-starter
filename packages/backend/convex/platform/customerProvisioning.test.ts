@@ -113,12 +113,13 @@ describe("durable new-customer admission and personal provisioning", () => {
     expect(await f.t.mutation(organizations.resumeCustomerProvisioning, { userId: user._id })).toBeNull();
   });
 
-  test("unknown intent and an operator with customer intent fail closed", async () => {
+  test("unknown intent fails closed and stale operator intent never provisions", async () => {
     const f = fixture();
     const unknown = await f.user("unknown@example.test", "unknown-intent");
     const operator = await f.user("operator@example.test", "public-signup", "admin");
     await expect(f.t.mutation(organizations.resumeCustomerProvisioning, { userId: unknown._id })).rejects.toThrow("INVALID_CUSTOMER_ADMISSION");
-    await expect(f.t.mutation(organizations.resumeCustomerProvisioning, { userId: operator._id })).rejects.toThrow("NOT_CUSTOMER");
+    expect(await f.t.mutation(organizations.resumeCustomerProvisioning, { userId: operator._id })).toBeNull();
+    expect((await f.post("sign-in/email", { email: operator.email, password })).status).toBe(200);
     expect(await f.rows("organization")).toEqual([]);
   });
 });
