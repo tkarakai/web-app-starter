@@ -252,9 +252,9 @@ cursors and returned rows to the requested organization. Platform operators inst
 organization metadata and org-admin names/emails through `contacts`; `setLifecycle` disables or
 reactivates customer access through these component operations without deleting memberships. They have component
 regression coverage in `packages/backend/convex/platform/organizations.test.ts`; signup/provisioning
-HTTP behavior is covered by `customerProvisioning.test.ts`. Parent collaboration/session-policy
-integration, organization invitation flows, application-data migration and browser flows remain
-outstanding.
+HTTP behavior is covered by `customerProvisioning.test.ts`, and parent setup/scoped assurance by
+`organizationEnrollment.test.ts`. See [parent enrollment setup API](#parent-enrollment-setup-api)
+for the current integration limits.
 
 ## Platform data component
 
