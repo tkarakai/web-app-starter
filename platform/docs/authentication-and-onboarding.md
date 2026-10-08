@@ -9,8 +9,8 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 |---|---|---|
 | App | Admin app | Web app |
 | Sign-in URL | `admin-app/sign-in` | `web-app/sign-in` |
-| Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` (signup flow *is* onboarding) |
-| How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |
+| Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` for customer signup; [member admission API](architecture.md#invitation-bound-member-admission-api) for organization invitations |
+| How account is created | Bootstrap or admin invitation only | Self-signup (if enabled), customer invitation or [invitation-bound member registration](architecture.md#invitation-bound-member-admission-api) |
 | Password required | Yes — see §5 | Yes — see §5 |
 | 2FA (TOTP) | Required for invitation enrollment; subsequent access follows live MFA policy | Admin-configurable: optional or required |
 | Passkey | According to `adminPasskeyPolicy` | According to `userPasskeyPolicy` |
@@ -213,6 +213,14 @@ invisible personal organization with the customer as `org-admin`, without granti
 role or requiring administrator factor enrollment. Customer onboarding invitations remain new-customer
 admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
 for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
+
+### Organization-member invitations are not customer signup
+
+A member invitation joins an existing organization, rather than admitting a new customer.
+The [invitation-bound admission API](architecture.md#invitation-bound-member-admission-api)
+owns the registration, recipient verification, acceptance and pending administrator setup
+contract, including its current integration limits. The customer signup steps below apply to
+new-customer admission.
 
 ### 7.2 Step 2 — Verify Email (if required by admin policy)
 
