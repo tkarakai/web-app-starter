@@ -100,3 +100,51 @@ it.each([false, true])("ignores disabled passkeys during enrollment (bound=%s)",
   if (enrollment) expect(screen.getByLabelText("Work in progress")).toBeVisible();
   else expect(screen.getByRole("button", { name: english.accountSecurity.twoFactor.enable })).toBeVisible();
 });
+
+it.each(["mfa_enrollment", "passkey_enrollment", "email_verification", "recovery", "enrollment"])("authorization-only policy change to %s offers setup guidance without account controls", reason => {
+  mocks.status = { ...ready(), authPurpose: "mcp-authorization" };
+  const result = render(view({ authorizationOnly: true, enrollment: true, requireRecent: true }));
+  expect(screen.getByLabelText("Work in progress")).toBeVisible();
+  mocks.status = { ...mocks.status, reason, allowed: false };
+  result.rerender(view({ authorizationOnly: true, enrollment: true, requireRecent: true }));
+  expect(screen.getByLabelText("Work in progress")).not.toBeVisible();
+  expect(screen.getByText(/Complete account verification and security setup in the normal admin app/)).toBeVisible();
+  expect(screen.queryByRole("button", { name: english.accountSecurity.twoFactor.enable })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: english.accountSecurity.session.addPasskey })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: english.accountSecurity.session.verifyEmail })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: english.accountSecurity.twoFactor.backupCodes })).not.toBeInTheDocument();
+  expect(screen.queryByText("Enroll authenticator")).not.toBeInTheDocument();
+  expect(screen.queryByText("Replace authenticator")).not.toBeInTheDocument();
+  expect(screen.queryByText("Add authenticator passkey")).not.toBeInTheDocument();
+  expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  mocks.status = { ...ready(), authPurpose: "mcp-authorization" };
+  result.rerender(view({ authorizationOnly: true, enrollment: true, requireRecent: true }));
+  expect(screen.getByLabelText("Work in progress")).toBeVisible();
+});
+
+it("authorization-only password verification waits for current server policy before admitting consent", async () => {
+  mocks.status = { ...ready(), authPurpose: "mcp-authorization", allowed: false, reason: "reauthenticate", recent: false };
+  const result = render(view({ authorizationOnly: true, requireRecent: true }));
+  fireEvent.change(screen.getByLabelText(english.accountSecurity.changePassword.currentPassword), { target: { value: "secret" } });
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.session.verify })));
+  expect(mocks.verify).toHaveBeenCalledWith("/verify-password", { method: "POST", body: { password: "secret" } });
+  expect(screen.queryByLabelText("Work in progress")).not.toBeInTheDocument();
+  mocks.status = { ...ready(), authPurpose: "mcp-authorization" };
+  result.rerender(view({ authorizationOnly: true, requireRecent: true }));
+  expect(screen.getByLabelText("Work in progress")).toBeVisible();
+});
+
+it("authorization-only factor verification excludes backup codes and retains passkey verification", async () => {
+  mocks.status = { ...ready(), authPurpose: "mcp-authorization", allowed: false, reason: "mfa_verification", hasTotp: true, hasPasskey: true, strongForChanges: true, recent: false };
+  mocks.passkey.mockResolvedValue({ data: {} });
+  mocks.totp.mockResolvedValue({ data: {} });
+  render(view({ authorizationOnly: true, requireRecent: true }));
+  expect(screen.getAllByRole("textbox").length).toBe(6);
+  expect(screen.queryByRole("button", { name: english.accountSecurity.twoFactor.backupCodes })).not.toBeInTheDocument();
+  fireEvent.paste(screen.getAllByRole("textbox")[0], { clipboardData: { getData: () => "123456" } });
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.session.verify })));
+  expect(mocks.totp).toHaveBeenCalledWith({ code: "123456" });
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.session.usePasskey })));
+  expect(mocks.passkey).toHaveBeenCalledOnce();
+  expect(mocks.backup).not.toHaveBeenCalled();
+});
