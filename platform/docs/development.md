@@ -4,6 +4,10 @@ Root development commands and each app's `dev` script reconcile the committed wo
 
 The default dev launcher, local CI and deployment workflows require `apps/landing`. `bun run dev:landing` starts it on its own, through the managed launcher, logs and stop/status commands. The landing app remains a static export; its browser-side onboarding, waitlist and announcements use Convex. `dev:landing` starts Convex and supplies its public HTTP URL. See [onboarding ownership](authentication-and-onboarding.md#onboarding-ownership-and-landing-handoff) for the marketing-to-web flow.
 
+Foreground launcher shutdown shields cleanup from repeated INT/TERM signals before doing any
+cleanup work. It preserves the original exit status and clears ownership records only after
+checkout-scoped, identity-verified termination; processes that survive remain recorded.
+
 > Detailed guide. See [platform/AGENTS.md](../AGENTS.md) for the quick reference.
 
 ## After pulling dependency or workspace changes
