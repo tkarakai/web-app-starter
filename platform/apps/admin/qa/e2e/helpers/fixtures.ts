@@ -77,10 +77,11 @@ export function disposableEmail(): string {
 
 /**
  * A password with enough entropy to clear zxcvbn — the app scores credentials,
- * not just their length, and rejects anything derived from the email.
+ * not just their length, and rejects anything derived from the email. Also
+ * exceed the administrator's 40-character minimum.
  */
 export function disposablePassword(): string {
-  return `Qx7!${randomBytes(18).toString("base64url")}#2z`;
+  return `Qx7!${randomBytes(32).toString("base64url")}#2z`;
 }
 
 /**

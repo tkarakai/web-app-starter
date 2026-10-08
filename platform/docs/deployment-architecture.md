@@ -668,3 +668,14 @@ gh api repos/{owner}/{repo}/deployments --jq '.[0:5] | .[] | "\(.environment) \(
 | Solo / small team | GitHub email notifications (built-in, zero setup) |
 | Team with Slack | Add Slack webhook to CD workflows |
 | Production-critical | PagerDuty or Opsgenie integration via webhook |
+
+### Optional MCP authorization hostname
+
+Remote MCP, CLI and A2A share one optional authorization hostname on the existing admin
+deployment. The resources remain on the canonical admin hostname. For origin variables,
+host isolation and rollout requirements, see
+[the deployment runbook](deployment-runbook.md#optional-mcp-authorization-origin).
+
+Runtime variables are passed through the existing admin build/deployment and do not change the
+artifact hash. The hosting change is DNS/TLS plus one alias on the admin target; there is no new
+workspace app, CI target or database.

@@ -1,48 +1,7 @@
-import { redirect } from "next/navigation";
-
-import { api } from "@repo/backend";
-import {
-  preloadAuthQuery,
-  fetchAuthQuery,
-  isAuthenticated,
-} from "@web-app-starter/auth/server";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AgentBrowserBridge } from "@/components/agent-browser-bridge";
+import { AdminSessionLayout } from "@/components/auth/admin-session-layout";
 import { AdminShellLayout } from "@/components/admin-shell-layout";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const authed = await isAuthenticated();
-  if (!authed) {
-    redirect("/api/auth/clear-session");
-  }
-
-  let preloadedUser;
-  try {
-    preloadedUser = await preloadAuthQuery(api.platform.auth.getCurrentUser);
-  } catch {
-    redirect("/api/auth/clear-session");
-  }
-
-  const pending = await fetchAuthQuery(api.platform.adminInvitations.getMyOnboardingStatus);
-  if (pending && !pending.completed) redirect("/onboarding");
-
-  // Verify user has admin role (fetchAuthQuery returns the actual data)
-  const user = await fetchAuthQuery(api.platform.auth.getCurrentUser);
-  if (!user || (user as Record<string, unknown>).role !== "admin") {
-    redirect("/api/auth/clear-session");
-  }
-
-  // Banned admins cannot access the dashboard (spec §14)
-  if ((user as Record<string, unknown>).banned === true) {
-    redirect("/forbidden");
-  }
-
-  return (
-    <AuthGuard preloadedUser={preloadedUser}>
-      <AdminShellLayout>{children}</AdminShellLayout>
-    </AuthGuard>
-  );
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return <AdminSessionLayout><AdminShellLayout><AgentBrowserBridge />{children}</AdminShellLayout></AdminSessionLayout>;
 }

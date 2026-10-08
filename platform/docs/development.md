@@ -44,6 +44,12 @@ bun run dev:stop
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
 
+Before starting any Next listener, the launcher selects distinct available ports and stages
+app configuration, cross-app links and optional MCP origins. When a linked app is started,
+links use its selected port; single-app startup preserves a non-empty configured link or
+supplies the configured local default. Port selection stops if no port in the preferred
+port’s eleven-port range is available, so configuration never depends on an unknown port.
+
 Whenever web, admin or landing starts Convex, the launcher also sets the
 backend's `LANDING_URL` to the landing's actual URL, or its configured local
 origin if it is not started. The backend needs this for CORS and announcement links
@@ -115,6 +121,12 @@ browsers do not receive it. Do not copy it into `NEXT_PUBLIC_*`,
 CI artifacts or hosted configuration. Missing or incorrect authorization returns 404 before
 creating an invitation or account. Addresses remain restricted to `e2e-<token>@e2e.local`;
 existing fixture addresses are rejected rather than reused or assigned a different role.
+
+Disposable account creation omits the external Have I Been Pwned lookup after these local
+authorization and address checks. Better Auth password hashing, strength validation and
+database hooks still run. Ordinary signup, password changes and resets retain the breach
+check, including on local deployments. This keeps unrelated E2E tests independent of an
+external password-service outage.
 
 The seed is idempotent. Restart `bun run dev` after resetting the database, or after upgrading
 a running dev backend to provision its new fixture authorization. Delete `.env.e2e.local` and
@@ -209,3 +221,17 @@ do not set it in deployment environments. For a custom app, import `getPlatformV
 where `monorepoRoot` is the absolute repository root. Keep `platform/VERSION` in the root
 `turbo.json` `globalDependencies` so a version change invalidates cached builds. Restart dev
 after a platform upgrade. Direct `EnvironmentBanner` users can pass `platformVersion`.
+
+### Optional MCP authorization hostname
+
+`AGENT_MCP_ENABLED=true bun run dev:admin` starts the usual admin and anonymous Convex
+processes and provisions the MCP resource plus `http://mcp-auth.localhost:<admin-port>`.
+Both names use the same Next.js listener. No additional app process or database is started.
+The launcher writes the two canonical origins to admin `.env.local`, sets backend
+`AGENT_MCP_RESOURCE` / `AGENT_MCP_AUTH_ORIGIN`, and retains the auth hostname in `SITE_URL`.
+
+Open the regular admin app and enable **Configure → Features → MCP server** before testing.
+The database switch defaults off. Start pi with `bun run agent:announcements -- --origin <admin-origin>`;
+it discovers the authorization hostname from MCP metadata. Ordinary admin routes and APIs return
+404 on the auth hostname. Browser cookies are host-only: a different port on `localhost` would
+not isolate sessions. See [admin agentic surfaces](agentic-announcements.md) for setup and limits.

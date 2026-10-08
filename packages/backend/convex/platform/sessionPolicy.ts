@@ -11,6 +11,8 @@ import { ADMIN_SESSION_MS, RECENT_AUTH_MS } from "./sessionFields";
 
 type Reader = Pick<GenericCtx<DataModel>, "runQuery">;
 export type AuthSession = { user: Doc<"user">; session: Doc<"session"> };
+export type SessionProof = Pick<Doc<"session">, "createdAt" | "expiresAt" | "assuranceVersion" | "authMethod" | "authenticatedAt" | "primaryVerifiedAt" | "strongVerifiedAt" | "strongFactorId" | "strongFactorType" | "recoveryOnly">;
+export type AssuranceSubject = { user: Doc<"user">; session: SessionProof };
 
 async function setting(ctx: Reader, key: string): Promise<unknown> {
   const row = await ctx.runQuery(components.platform.appSettings.getRaw, { key });
@@ -80,7 +82,7 @@ export type AssuranceReason = "ready" | "reauthenticate" | "email_verification" 
   | "method_disabled" | "recovery" | "mfa_enrollment" | "mfa_verification" | "passkey_enrollment" | "passkey_verification";
 
 /** Shared by Convex and Better Auth. Account flags are requirements, never session proof. */
-export async function evaluateSession(ctx: Reader, pair: AuthSession) {
+export async function evaluateSession(ctx: Reader, pair: AssuranceSubject) {
   const { user, session } = pair;
   const policy = await readPolicies(ctx, user);
   const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, {
@@ -128,9 +130,10 @@ export async function evaluateSession(ctx: Reader, pair: AuthSession) {
   };
 }
 
-export async function authorizedSession(ctx: GenericCtx<DataModel>, recent = false) {
+export async function authorizedSession(ctx: GenericCtx<DataModel>, recent = false, forAgentAuthorization = false) {
   const pair = await identitySession(ctx);
   if (!pair) return null;
+  if (!forAgentAuthorization && pair.session.authPurpose === "mcp-authorization") return null;
   const assurance = await evaluateSession(ctx, pair);
   if (!assurance.allowed || (recent && !assurance.recent)) return null;
   return { ...pair, assurance, ownerId: (pair.user.userId ?? pair.user._id).toString() };

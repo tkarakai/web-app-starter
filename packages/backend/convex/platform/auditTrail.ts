@@ -1,3 +1,6 @@
+import { rememberNative } from "./nativeCapabilities";
+import type { QueryCtx } from "../_generated/server";
+import type { ObjectType } from "convex/values";
 /**
  * App-side wrappers for the platform component's audit trail.
  *
@@ -97,15 +100,16 @@ export const postEvent = mutation({
 // list — admin-only paginated read, reverse chronological
 // ---------------------------------------------------------------------------
 
-export const list = query({
-  args: {
+const listNativeArgs = {
     paginationOpts: paginationOptsValidator,
     filterAction: v.optional(v.string()),
     filterActor: v.optional(v.string()),
     filterSource: v.optional(v.string()),
     filterStatus: v.optional(v.string()),
     filterAuthenticatedUserId: v.optional(v.string()),
-  },
+  };
+export const list = rememberNative(query({
+  args: listNativeArgs,
   handler: async (ctx, args) => {
     // Return an empty page while auth resolves or for non-admins; the query
     // re-runs reactively once auth resolves.
@@ -115,4 +119,4 @@ export const list = query({
     }
     return await ctx.runQuery(components.platform.auditTrail.list, args);
   },
-});
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.auditTrail.list, args); } }, "query");

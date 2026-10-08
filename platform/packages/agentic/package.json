@@ -1,0 +1,36 @@
+{
+  "name": "@web-app-starter/agentic",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./adapter": "./src/adapter.ts",
+    "./mcp": "./src/mcp.ts",
+    "./oauth": "./src/oauth.ts",
+    "./auth-boundary": "./src/auth-boundary.ts",
+    "./discovery": "./src/discovery.ts",
+    "./errors": "./src/errors.ts",
+    "./webmcp": "./src/webmcp.ts",
+    "./browser-catalogue": "./src/browser-catalogue.ts",
+    "./browser-actions": "./src/browser-actions.ts",
+    "./a2a": "./src/a2a.ts",
+    "./catalogue-cache": "./src/catalogue-cache.ts",
+    "./gateway-contract": "./src/gateway-contract.ts",
+    "./browser-contract": "./src/browser-contract.ts",
+    "./results": "./src/results.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests --max-warnings 0",
+    "test": "bun test tests",
+    "generate:contracts": "bun src/generate-contracts.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,3 +1,5 @@
+import { agentConfig, authorizationOrigin, requestOrigin } from "./lib/agentic/config.ts";
+import { authOnlyPath } from "@web-app-starter/agentic/auth-boundary";
 import { type NextRequest, NextResponse } from "next/server";
 import { authRedirect } from "@web-app-starter/auth-ui/proxy";
 import {
@@ -28,6 +30,15 @@ const PROTECTED_PREFIXES = [
 const AUTH_ROUTES = ["/sign-in", "/forgot-password", "/reset-password"];
 
 export function proxy(request: NextRequest) {
+  const config = agentConfig();
+  const isAuthOnly = requestOrigin(request) === authorizationOrigin();
+  const path = request.nextUrl.pathname;
+  if (isAuthOnly && !authOnlyPath(path)) return new NextResponse(null, { status: 404 });
+  if (config && !isAuthOnly && (path === "/settings/agent-access" || path === "/.well-known/oauth-authorization-server"))
+    return new NextResponse(null, { status: 404 });
+  // These API routes were already outside the page middleware. Host isolation now includes them.
+  if (path.startsWith("/api/") || path.startsWith("/_next/")) return NextResponse.next();
+
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
   const rl = checkEdgeRateLimit(clientIp, RATE_LIMIT_CONFIG);
@@ -37,7 +48,7 @@ export function proxy(request: NextRequest) {
   }
 
   // --- Auth redirects (session cookie only; pages validate the session) ---
-  const redirect = authRedirect(request, { protectedPrefixes: PROTECTED_PREFIXES, authRoutes: AUTH_ROUTES });
+  const redirect = !isAuthOnly && authRedirect(request, { protectedPrefixes: PROTECTED_PREFIXES, authRoutes: AUTH_ROUTES });
   if (redirect) return redirect;
 
   const nonce = btoa(crypto.randomUUID());
@@ -103,11 +114,7 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
+      source: "/:path*",
     },
   ],
 };

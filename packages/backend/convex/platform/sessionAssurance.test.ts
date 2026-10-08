@@ -652,3 +652,66 @@ test.each(["password", "factor", "session"])("HTTP replacement cannot complete a
     expect(session?.recoveryFactorId).toBeFalsy();
   } finally { spy.mockRestore(); }
 });
+
+test("auth-only-origin login creates a restricted session and cannot access general admin APIs", async () => {
+  vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001");
+  vi.stubEnv("SITE_URL", "http://localhost:3001,http://mcp-auth.localhost:3001");
+  const f = await fixture("admin");
+  const response = await f.t.fetch("/api/auth/sign-in/email", { method: "POST", headers: { origin: "http://mcp-auth.localhost:3001", "content-type": "application/json" }, body: JSON.stringify({ email: f.email, password }) });
+  expect(response.status, await response.clone().text()).toBe(200);
+  const token = (await response.json()).token;
+  const { session, client } = await f.caller(token);
+  expect(session.authPurpose).toBe("mcp-authorization");
+  expect(await client.query(api.platform.announcements.list, {})).toBeNull();
+  await expect(client.mutation(api.platform.announcements.create, { name: "Forbidden", bannerText: "Forbidden" })).rejects.toThrow("NOT_AUTHENTICATED");
+  const administrative = await f.request("/admin/list-users", undefined, token);
+  expect(administrative.status).toBe(403);
+  expect(await administrative.text()).toContain("MCP_AUTHORIZATION_ONLY");
+  const verify = await f.request("/verify-password", { password }, token);
+  expect(verify.status).toBe(200);
+  expect((await f.caller(token)).session.authPurpose).toBe("mcp-authorization");
+  const again = await f.request("/sign-in/email", { email: f.email, password }, token);
+  expect(again.status).toBe(200);
+  const replacement = (await again.json()).token;
+  expect((await f.caller(replacement)).session.authPurpose).toBe("mcp-authorization");
+});
+
+test("auth-only TOTP verification and JWT issuance preserve isolation through consent", async () => {
+  const authOrigin = "http://mcp-auth.localhost:3001";
+  const resource = "http://localhost:3001/api/mcp";
+  vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", authOrigin);
+  vi.stubEnv("AGENT_MCP_RESOURCE", resource);
+  vi.stubEnv("SITE_URL", `http://localhost:3001,${authOrigin}`);
+  const f = await fixture("admin");
+  const enrolled = await f.enroll((await f.signIn()).body.token);
+  const application = await f.caller(enrolled.token);
+  await application.client.mutation(api.platform.agentSurfaces.setEnabled, { surface: "mcp", enabled: true });
+  vi.setSystemTime(Date.now() + 30_000);
+  const signIn = await f.t.fetch("/api/auth/sign-in/email", { method: "POST", headers: { origin: authOrigin, "content-type": "application/json" }, body: JSON.stringify({ email: f.email, password }) });
+  expect(signIn.status).toBe(200);
+  expect(await signIn.json()).toMatchObject({ twoFactorRedirect: true });
+  const cookie = signIn.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+  const verified = await f.t.fetch("/api/auth/two-factor/verify-totp", { method: "POST", headers: { origin: authOrigin, "content-type": "application/json", cookie }, body: JSON.stringify({ code: totp(enrolled.uri) }) });
+  expect(verified.status).toBe(200);
+  const token = (await verified.json()).token;
+  const authorization = await f.caller(token);
+  expect(await authorization.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ authPurpose: "mcp-authorization", strong: true, recent: true, allowed: true });
+  const jwt = await f.request("/convex/token", undefined, token);
+  expect(jwt.status).toBe(200);
+  expect(typeof (await jwt.json()).token).toBe("string");
+  await expect(authorization.client.action(api.platform.auth.viewBackupCodes, { password })).rejects.toThrow("NOT_AUTHENTICATED");
+  const backup = await f.t.fetch("/api/two-factor/backup-codes", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ password }) });
+  expect(backup.status).toBe(403);
+  expect(await backup.json()).toEqual({ error: "REAUTHENTICATION_REQUIRED" });
+  expect(await authorization.client.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toBeNull();
+  for (const step of [1, 2, 3]) await expect(authorization.client.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step })).rejects.toThrow("NOT_AUTHENTICATED");
+  await expect(authorization.client.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("NOT_AUTHENTICATED");
+  const verifier = "v".repeat(64);
+  const request = { clientId: "pi-announcements", redirectUri: "http://127.0.0.1:45991/callback", resource, scope: "admin:manage", challenge: createHash("sha256").update(verifier).digest("base64url") };
+  const { code } = await authorization.client.mutation(api.platform.agentAccess.authorize, request);
+  expect(await authorization.client.query(api.platform.auth.getCurrentUser, {})).toBeNull();
+  const grant = await f.t.mutation(api.platform.agentAccess.exchange, { code, verifier, clientId: request.clientId, redirectUri: request.redirectUri, resource });
+  expect(await f.t.query(api.platform.agentCapabilities.catalogue, { token: grant.access_token, resource })).not.toHaveLength(0);
+  expect(await application.client.action(api.platform.auth.viewBackupCodes, { password })).toEqual(enrolled.codes);
+  expect(await application.client.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toMatchObject({ completed: true });
+});

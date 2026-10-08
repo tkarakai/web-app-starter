@@ -51,6 +51,17 @@ describe("GuestGuard", () => {
     mockGetSession.mockResolvedValue({ data: null });
   });
 
+  it("preserves the host's validated redirect on broadcast and visibility", async () => {
+    const path = "/settings/agent-access?state=test";
+    mockGetSession.mockResolvedValue({ data: { session: { id: "session" } } });
+    render(<GuestGuard getRedirectPath={() => path}>Sign in</GuestGuard>);
+    await act(async () => { broadcastCallback?.(); });
+    expect(mockLocationReplace).toHaveBeenLastCalledWith(path);
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(mockLocationReplace).toHaveBeenLastCalledWith(path);
+  });
+
   it("renders children normally", () => {
     render(
       <GuestGuard>

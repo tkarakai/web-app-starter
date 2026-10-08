@@ -1,3 +1,6 @@
+import { rememberNative } from "./nativeCapabilities";
+import type { QueryCtx } from "../_generated/server";
+import type { ObjectType } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { getAuth } from "./functions";
@@ -13,8 +16,9 @@ export const list = internalQuery({
  * Returns the list of protected admin emails.
  * Restricted to admin users only to prevent information disclosure.
  */
-export const listProtected = query({
-  args: {},
+const listProtectedNativeArgs = {};
+export const listProtected = rememberNative(query({
+  args: listProtectedNativeArgs,
   handler: async (ctx) => {
     let user;
     try {
@@ -37,4 +41,4 @@ export const listProtected = query({
     const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
     return rows.map((r) => r.email);
   },
-});
+}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { const rows = await ctx.runQuery(components.platform.adminEmails.list, {}); return rows.map(row => row.email); } }, "query");

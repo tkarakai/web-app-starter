@@ -55,6 +55,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 data: {
                   assuranceVersion?: null | number;
                   authMethod?: null | string;
+                  authPurpose?: null | string;
                   authenticatedAt?: null | number;
                   createdAt: number;
                   expiresAt: number;
@@ -253,6 +254,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "authPurpose"
                     | "assuranceVersion"
                     | "authMethod"
                     | "authenticatedAt"
@@ -675,6 +677,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "authPurpose"
                     | "assuranceVersion"
                     | "authMethod"
                     | "authenticatedAt"
@@ -1215,6 +1218,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 update: {
                   assuranceVersion?: null | number;
                   authMethod?: null | string;
+                  authPurpose?: null | string;
                   authenticatedAt?: null | number;
                   createdAt?: number;
                   expiresAt?: number;
@@ -1242,6 +1246,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "authPurpose"
                     | "assuranceVersion"
                     | "authMethod"
                     | "authenticatedAt"
@@ -1759,6 +1764,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 update: {
                   assuranceVersion?: null | number;
                   authMethod?: null | string;
+                  authPurpose?: null | string;
                   authenticatedAt?: null | number;
                   createdAt?: number;
                   expiresAt?: number;
@@ -1786,6 +1792,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "impersonatedBy"
+                    | "authPurpose"
                     | "assuranceVersion"
                     | "authMethod"
                     | "authenticatedAt"

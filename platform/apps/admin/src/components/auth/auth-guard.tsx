@@ -24,9 +24,10 @@ export function useAuthUser(): AuthUser | null {
 type AuthGuardProps = {
   preloadedUser: Preloaded<typeof api.platform.auth.getCurrentUser>;
   children: React.ReactNode;
+  authorizationOnly?: boolean;
 };
 
-export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
+export function AuthGuard({ preloadedUser, children, authorizationOnly = false }: AuthGuardProps) {
   const router = useRouter();
   const user = usePreloadedAuthQuery(preloadedUser);
   const session = authClient.useSession();
@@ -69,7 +70,7 @@ export function AuthGuard({ preloadedUser, children }: AuthGuardProps) {
 
   return (
     <AuthUserContext.Provider value={authUser}>
-      <AdminSessionAccessGate requireRecent>{children}</AdminSessionAccessGate>
+      <AdminSessionAccessGate requireRecent authorizationOnly={authorizationOnly}>{children}</AdminSessionAccessGate>
     </AuthUserContext.Provider>
   );
 }

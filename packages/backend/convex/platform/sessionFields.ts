@@ -1,5 +1,6 @@
 /** Only trusted authentication hooks may write proof. Never accept it from a client. */
 export const sessionFields = {
+  authPurpose: { type: "string", required: false, input: false, returned: false },
   assuranceVersion: { type: "number", required: false, input: false, returned: false },
   authMethod: { type: "string", required: false, input: false, returned: false },
   authenticatedAt: { type: "number", required: false, input: false, returned: false },

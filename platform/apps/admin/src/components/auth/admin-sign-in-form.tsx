@@ -9,6 +9,8 @@ import { api } from "@repo/backend";
 import { authClient, formatAuthError, isConvexRateLimited, AUTH_RATE_LIMIT_MESSAGE } from "@web-app-starter/auth/client";
 import { broadcastAuth } from "@web-app-starter/auth-ui";
 
+import { postSignInPath } from "@/lib/agentic/return-path";
+
 const PREFERRED_METHOD_KEY = "adminSignInPreferredMethod";
 
 type PreferredMethod = "password" | "passkey";
@@ -65,7 +67,7 @@ function toBoolean(value: unknown, defaultValue: boolean): boolean {
   return typeof value === "boolean" ? value : defaultValue;
 }
 
-export function AdminSignInForm() {
+export function AdminSignInForm({ authorizationOnly = false }: { authorizationOnly?: boolean }) {
   const router = useRouter();
   const { supported: passkeySupported } = usePasskeySupport();
   const [pending, setPending] = React.useState(false);
@@ -80,6 +82,7 @@ export function AdminSignInForm() {
   const [totpCode, setTotpCode] = React.useState("");
   const [useBackupCode, setUseBackupCode] = React.useState(false);
   const [backupCode, setBackupCode] = React.useState("");
+  const usingBackupCode = !authorizationOnly && useBackupCode;
   const otpRef = React.useRef<OtpInputHandle>(null);
 
   // Preferred method from localStorage
@@ -134,6 +137,7 @@ export function AdminSignInForm() {
     }
 
     if (!usedPasskey && policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
+      if (authorizationOnly) { setError("Complete account security setup in the admin app, then restart authorization."); return true; }
       router.push("/dashboard/security?tab=2fa");
       return true;
     }
@@ -153,13 +157,14 @@ export function AdminSignInForm() {
 
       const passkeys = passkeyResult.data ?? [];
       if (passkeys.length === 0) {
+        if (authorizationOnly) { setError("Complete account security setup in the admin app, then restart authorization."); return true; }
         router.push("/dashboard/security?tab=passkeys");
         return true;
       }
     }
 
     return false;
-  }, [getRolePolicies, router]);
+  }, [getRolePolicies, router, authorizationOnly]);
 
   // Step 0 → Step 1: Continue from email
   const handleEmailContinue = (event: React.FormEvent<HTMLFormElement>) => {
@@ -179,7 +184,7 @@ export function AdminSignInForm() {
       const result = await authClient.signIn.email({
         email,
         password,
-        callbackURL: "/dashboard",
+        callbackURL: postSignInPath(),
         rememberMe: true,
       });
 
@@ -193,7 +198,7 @@ export function AdminSignInForm() {
         if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
         setStoredPreferredMethod(email, "password");
         broadcastAuth();
-        router.push("/dashboard");
+        router.push(postSignInPath());
       }
     } catch (err) {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
@@ -217,7 +222,7 @@ export function AdminSignInForm() {
         };
       }).signIn.passkey({
         email: email.trim(),
-        callbackURL: "/dashboard",
+        callbackURL: postSignInPath(),
       });
 
       if (result.error) {
@@ -228,7 +233,7 @@ export function AdminSignInForm() {
       if (await enforcePostSignInPolicies({ usedPasskey: true })) return;
       setStoredPreferredMethod(email, "passkey");
       broadcastAuth();
-      router.push("/dashboard");
+      router.push(postSignInPath());
     } catch (err) {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
@@ -239,14 +244,14 @@ export function AdminSignInForm() {
   // Step 2: TOTP verification
   const handleTotpSubmit = async (codeOverride?: string) => {
     const effectiveCode = codeOverride ?? totpCode;
-    if (useBackupCode && !backupCode.trim()) return;
-    if (!useBackupCode && effectiveCode.length !== 6) return;
+    if (usingBackupCode && !backupCode.trim()) return;
+    if (!usingBackupCode && effectiveCode.length !== 6) return;
 
     setError(null);
     setPending(true);
 
     try {
-      if (useBackupCode) {
+      if (usingBackupCode) {
         const result = await authClient.twoFactor.verifyBackupCode({
           code: backupCode.trim(),
         });
@@ -256,7 +261,7 @@ export function AdminSignInForm() {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           setStoredPreferredMethod(email, "password");
           broadcastAuth();
-          router.push("/dashboard");
+          router.push(postSignInPath());
         }
       } else {
         const result = await authClient.twoFactor.verifyTotp({ code: effectiveCode });
@@ -266,14 +271,14 @@ export function AdminSignInForm() {
           if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
           setStoredPreferredMethod(email, "password");
           broadcastAuth();
-          router.push("/dashboard");
+          router.push(postSignInPath());
         }
       }
     } catch (err) {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");
     } finally {
       setPending(false);
-      if (!useBackupCode) window.requestAnimationFrame(() => otpRef.current?.focus());
+      if (!usingBackupCode) window.requestAnimationFrame(() => otpRef.current?.focus());
     }
   };
 
@@ -298,13 +303,13 @@ export function AdminSignInForm() {
   const stepTitle = [
     "Sign in",
     "Sign in",
-    useBackupCode ? "Backup code" : "Two-factor authentication",
+    usingBackupCode ? "Backup code" : "Two-factor authentication",
   ][step];
 
   const stepDescription = [
     "Admin access only. Enter your email to continue.",
     `Signing in as ${email}`,
-    useBackupCode
+    usingBackupCode
       ? "Enter one of your backup codes to sign in."
       : "Enter the 6-digit code from your authenticator app.",
   ][step];
@@ -314,6 +319,7 @@ export function AdminSignInForm() {
       <CardHeader>
         <CardTitle className="text-xl font-semibold">{stepTitle}</CardTitle>
         <CardDescription>{stepDescription}</CardDescription>
+        {authorizationOnly && <p className="text-sm text-muted-foreground">For account recovery or security setup, use the normal admin app, then restart authorization.</p>}
       </CardHeader>
       <CardContent>
         <SlideTransition stepIndex={step}>
@@ -373,7 +379,7 @@ export function AdminSignInForm() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <button
+                      {!authorizationOnly && <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                         onClick={() => {
@@ -382,7 +388,7 @@ export function AdminSignInForm() {
                         }}
                       >
                         Forgot password?
-                      </button>
+                      </button>}
                     </div>
                     <PasswordInput
                       id="password"
@@ -419,7 +425,7 @@ export function AdminSignInForm() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <button
+                    {!authorizationOnly && <button
                       type="button"
                       className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                       onClick={() => {
@@ -428,7 +434,7 @@ export function AdminSignInForm() {
                       }}
                     >
                       Forgot password?
-                    </button>
+                    </button>}
                   </div>
                   <PasswordInput
                     id="password"
@@ -478,7 +484,7 @@ export function AdminSignInForm() {
           ) : (
             /* ── Step 2: TOTP ── */
             <div className="space-y-4">
-              {useBackupCode ? (
+              {usingBackupCode ? (
                 <div className="space-y-2">
                   <Label htmlFor="backup-code">Backup code</Label>
                   <Input
@@ -516,11 +522,11 @@ export function AdminSignInForm() {
                 className="w-full"
                 type="button"
                 onClick={() => handleTotpSubmit()}
-                disabled={pending || (useBackupCode ? !backupCode.trim() : totpCode.length !== 6)}
+                disabled={pending || (usingBackupCode ? !backupCode.trim() : totpCode.length !== 6)}
               >
                 {pending ? "Verifying..." : "Verify"}
               </Button>
-              <button
+              {!authorizationOnly && <button
                 type="button"
                 className="w-full text-center text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                 onClick={() => {
@@ -530,8 +536,8 @@ export function AdminSignInForm() {
                   setBackupCode("");
                 }}
               >
-                {useBackupCode ? "Use authenticator app instead" : "Use a backup code instead"}
-              </button>
+                {usingBackupCode ? "Use authenticator app instead" : "Use a backup code instead"}
+              </button>}
               <Button
                 className="w-full"
                 type="button"

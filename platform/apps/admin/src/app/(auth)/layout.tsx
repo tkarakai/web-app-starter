@@ -1,4 +1,5 @@
-import { ForceSystemTheme, GuestGuard } from "@web-app-starter/auth-ui";
+import { ForceSystemTheme } from "@web-app-starter/auth-ui";
+import { AdminGuestGuard } from "@/components/auth/admin-guest-guard";
 import { PublicPageBrandTokens } from "@/components/auth/public-page-brand-tokens";
 
 export default function AuthLayout({
@@ -7,10 +8,10 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <GuestGuard>
+    <AdminGuestGuard>
       <ForceSystemTheme />
       <PublicPageBrandTokens />
       {children}
-    </GuestGuard>
+    </AdminGuestGuard>
   );
 }

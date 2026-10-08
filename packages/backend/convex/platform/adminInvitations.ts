@@ -1,3 +1,6 @@
+import { rememberNative } from "./nativeCapabilities";
+import type { QueryCtx } from "../_generated/server";
+import type { ObjectType } from "convex/values";
 import { assertLocalFixtures } from "./localFixtures";
 /* global TextEncoder */
 /** App boundary: authorize here; storage lives in the platform component. */
@@ -12,8 +15,9 @@ import { identitySession, evaluateSession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { adminMutation, getAuth } from "./functions";
 
-export const list = query({
-  args: { paginationOpts: paginationOptsValidator },
+const listNativeArgs = { paginationOpts: paginationOptsValidator };
+export const list = rememberNative(query({
+  args: listNativeArgs,
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
@@ -28,7 +32,7 @@ export const list = query({
 
     return await ctx.runQuery(components.platform.adminInvitations.list, args);
   },
-});
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
 
 export const invite = adminMutation({
   args: { email: v.string() },
@@ -98,7 +102,7 @@ export const advanceOnboardingStep = mutation({
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
-    if (!user) throw new ConvexError("NOT_AUTHENTICATED");
+    if (!user || pair?.session.authPurpose === "mcp-authorization") throw new ConvexError("NOT_AUTHENTICATED");
 
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (!bound && user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
@@ -121,7 +125,7 @@ export const completeOnboarding = mutation({
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
-    if (!user) throw new Error("NOT_AUTHENTICATED");
+    if (!user || pair?.session.authPurpose === "mcp-authorization") throw new Error("NOT_AUTHENTICATED");
 
     const assurance = await evaluateSession(ctx, pair!);
     if (!assurance.strong || !assurance.recent || !assurance.hasTotp || user.banned || !user.emailVerified || user.twoFactorEnabled !== true) throw new Error("MFA_REQUIRED");
@@ -152,7 +156,7 @@ export const getMyOnboardingStatus = query({
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
-    if (!user) return null;
+    if (!user || pair?.session.authPurpose === "mcp-authorization") return null;
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (bound) return bound;
     if ((user as Record<string, unknown>).role !== "admin") return null;

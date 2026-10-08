@@ -8,7 +8,7 @@ export const status = query({
   args: {},
   handler: async ctx => {
     const pair = await identitySession(ctx);
-    return pair ? await evaluateSession(ctx, pair) : null;
+    return pair ? { ...await evaluateSession(ctx, pair), authPurpose: pair.session.authPurpose ?? "application" } : null;
   },
 });
 

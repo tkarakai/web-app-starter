@@ -29,7 +29,7 @@ starter upgrade checks use the root scripts):
 
 1. **Workspace TypeScript check** (`turbo typecheck`).
 2. **Workspace ESLint** (`turbo lint`).
-3. **Shared checkout and platform inventory** (`platform/tooling/ci-checks.ts`): runtime, skills, pinned Actions, i18n, zone, dependency floors in the product, tooling typecheck/lint/tests, ops, auth UI and shared-package coverage. Native CI and GitHub execute the same inventory.
+3. **Shared checkout and platform inventory** (`platform/tooling/ci-checks.ts`): runtime, skills, pinned Actions, i18n, zone, dependency floors in the product, tooling typecheck/lint/tests, ops, auth UI, agentic gateway/test-client contracts and shared-package coverage. Native CI and GitHub execute the same inventory.
 4. **Authorization contracts** (`bun run test:contracts`).
 5. **Public startup smoke** (`bun run test:startup`): a stale Bun workspace installation, real Next/Tailwind pages and CSS, and a compile-failure cleanup check. Only this isolated regression stubs the backend executable; normal E2E uses the real local backend.
 6. **Bun unit tests** (`turbo test`, per app).

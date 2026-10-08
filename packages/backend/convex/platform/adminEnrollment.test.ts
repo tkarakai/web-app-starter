@@ -52,6 +52,31 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("administrator enrollment", () => {
+  test.each(["bootstrap", "admin"] as const)("authorization-only sessions cannot read or mutate %s onboarding", async kind => {
+    const t = fixture(); await invite(t, kind);
+    const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token });
+    await t.action(api.platform.adminInvitations.register, { capability: claim.capability, email, name: "Owner", password });
+    const account = (await user(t))!;
+    const owner = await session(t, account._id);
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: account._id }], update: { twoFactorEnabled: true } } });
+    await verifiedFactor(t, account._id);
+    const onboarding = () => t.query(components.platform.adminInvitations.boundOnboarding, { email, userId: account._id });
+    const before = await onboarding();
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "token", value: `session-${account._id}` }], update: { authPurpose: "mcp-authorization" } } });
+    expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toBeNull();
+    for (const step of [1, 2, 3]) {
+      await expect(owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step })).rejects.toThrow("NOT_AUTHENTICATED");
+      expect(await onboarding()).toEqual(before);
+    }
+    await expect(owner.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("NOT_AUTHENTICATED");
+    expect(await onboarding()).toEqual(before);
+    expect(await user(t)).toMatchObject({ role: "user" });
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "token", value: `session-${account._id}` }], update: { authPurpose: "application" } } });
+    await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
+    await owner.mutation(api.platform.adminInvitations.completeOnboarding, {});
+    expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toMatchObject({ completed: true });
+    expect(await user(t)).toMatchObject({ role: "admin" });
+  });
   test("backup-step progress rejects stale authentication and persists on authenticated retry", async () => {
     const t = fixture(); await invite(t, "admin");
     const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token });

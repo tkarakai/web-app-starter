@@ -54,6 +54,7 @@ const rateLimitDefs = {
   /** Log at most one exhaustion signal per five minutes, regardless of attacker retries. */
   authEmailAlert: { kind: "token bucket", rate: 1, period: 5 * MINUTE, capacity: 1 },
   /** Global per-user mutation rate limit applied to all authedMutation calls. */
+  agentRequest: { kind: "token bucket", rate: 100, period: MINUTE, capacity: 100 },
   mutationGlobal: {
     kind: "token bucket",
     rate: positiveInt(process.env.MUTATION_RATE_LIMIT_RATE, 30),

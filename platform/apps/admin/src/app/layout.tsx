@@ -7,13 +7,13 @@ import "./globals.css";
 import { ConvexClientProvider } from "@web-app-starter/auth/provider";
 import {
   BrandTokenStyle,
-  EnvironmentBannerWrapper,
-  OfflineBanner,
   PublicConfigProvider,
 } from "@web-app-starter/design-system";
 import { readPublicConfigFromEnv } from "@web-app-starter/design-system/server";
 import { getToken } from "@web-app-starter/auth/server";
 import { ConvexErrorToast } from "@/components/convex-error-toast";
+import { isAuthorizationHost } from "@/lib/agentic/config";
+import { AdminStatusBanners } from "@/components/admin-status-banners";
 import { appConfig, tokenOverrideCss } from "@web-app-starter/app-config";
 
 const raleway = Raleway({
@@ -39,11 +39,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [token, nonce] = await Promise.all([
+  const [token, requestHeaders] = await Promise.all([
     getToken(),
-    headers().then((h) => h.get("x-nonce") ?? undefined),
+    headers(),
   ]);
 
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
   // Read at request time, not build time, so one artifact can serve any
   // environment. See platform/docs/deployment-architecture.md
   const publicConfig = readPublicConfigFromEnv();
@@ -52,9 +53,8 @@ export default async function RootLayout({
     <html lang="en" className={raleway.variable} suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
-          {appConfig.features.environmentBanner && <EnvironmentBannerWrapper appName="admin" />}
+          <AdminStatusBanners authOnly={isAuthorizationHost(requestHeaders.get("host"))} />
           <BrandTokenStyle css={tokenOverrideCss(appConfig, "admin")} />
-          <OfflineBanner />
           <PublicConfigProvider value={publicConfig}>
             <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
               <ConvexErrorToast />

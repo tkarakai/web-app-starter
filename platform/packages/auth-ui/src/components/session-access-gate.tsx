@@ -11,10 +11,10 @@ import { PasswordInput, OtpInput } from "./localized-controls";
 import { TwoFactorSection } from "../settings/two-factor-section";
 import { PasskeySection } from "../settings/passkey-section";
 
-type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean };
+type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean };
 
 /** Presentation of the server's decision; every API enforces that decision independently. */
-export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false }: Props) {
+export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, authorizationOnly = false }: Props) {
   const currentStatus = useQuery(api.platform.sessionAssurance.status, {});
   const [lastStatus, setLastStatus] = React.useState(currentStatus);
   React.useEffect(() => {
@@ -36,6 +36,7 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   const [code, setCode] = React.useState("");
   const codeId = React.useId();
   const [backup, setBackup] = React.useState(false);
+  const usingBackup = !authorizationOnly && backup;
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(false);
   React.useEffect(() => {
@@ -46,12 +47,13 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   const live = currentStatus != null && status && status.expiresAt > now;
   const hasPasskey = Boolean(status?.hasPasskey && status.passkeyPolicy !== "disabled");
   const hasFactor = Boolean(status?.hasTotp || hasPasskey);
-  const enrolling = enrollment && status?.reason === "enrollment";
+  const enrolling = !authorizationOnly && enrollment && status?.reason === "enrollment";
   const recent = status && (enrolling && !hasFactor
     ? status.primaryRecentUntil > now : status.recent && status.recentUntil > now);
-  const allowed = live && (status.allowed || enrolling) && (!requireRecent || recent);
+  const purposeAllowed = authorizationOnly ? status?.authPurpose === "mcp-authorization" : status?.authPurpose !== "mcp-authorization";
+  const allowed = purposeAllowed && live && (status.allowed || enrolling) && (!requireRecent || recent);
   const [admitted, setAdmitted] = React.useState(false);
-  React.useEffect(() => { if (allowed && !panel) setAdmitted(true); }, [allowed, panel]);
+  React.useEffect(() => { if (allowed && (!panel || authorizationOnly)) setAdmitted(true); }, [allowed, panel, authorizationOnly]);
   const sendVerification = async () => {
     if (!user?.email) return;
     setBusy(true); setError(false);
@@ -75,12 +77,12 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
       setPassword(""); setCode(""); setBackup(false);
     } catch { setError(true); } finally { setBusy(false); }
   };
-  const panelAllowed = panel && live && (panel !== "passkey" || status.passkeyPolicy !== "disabled") && (
+  const panelAllowed = !authorizationOnly && panel && live && (panel !== "passkey" || status.passkeyPolicy !== "disabled") && (
     (status.allowed || enrolling || status.reason === "passkey_enrollment") && recent
     || status.reason === "recovery" && panel === "recovery"
     || status.reason === "mfa_enrollment" && !hasFactor && status.primaryRecentUntil > now
   );
-  const panelContent = panel && status && <Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
+  const panelContent = !authorizationOnly && panel && status && <Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
     {panel === "passkey" ? <><PasskeySection />{hasPasskey && !allowed && <Button disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}<Button disabled={!allowed} onClick={() => setPanel(null)}>{t("continue")}</Button></>
       : <TwoFactorSection recover={panel === "recovery"} onComplete={() => setPanel(null)} onCancel={() => setPanel(null)} />}
     <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>
@@ -96,12 +98,13 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   </>;
   if (status == null || now === 0 || currentStatus == null) return display(<p role="status">{tc("loading")}</p>);
   if (panelAllowed) return display(null);
-  if (allowed && !panel) return display(null, true);
+  if (allowed && (!panel || authorizationOnly)) return display(null, true);
   const needsPassword = status.reason === "reauthenticate" || status.reason === "method_disabled" || !status.strongForChanges || ((status.reason === "mfa_enrollment" || status.reason === "passkey_enrollment") && status.primaryRecentUntil <= now && !hasFactor) || (enrolling && !hasFactor);
   return display(<Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
     <p>{t(live ? "description" : "expired")}</p>
     {error && <p role="alert" className="text-destructive">{t("failed")}</p>}
-    {live && status.reason === "email_verification" ? <>{emailSent && <p role="status">{te("resent")}</p>}<Button disabled={busy || !user} onClick={() => void sendVerification()}>{t("verifyEmail")}</Button></>
+    {live && authorizationOnly && ["email_verification", "enrollment", "recovery", "mfa_enrollment", "passkey_enrollment"].includes(status.reason) ? <p>Complete account verification and security setup in the normal admin app, then restart authorization.</p>
+      : live && status.reason === "email_verification" ? <>{emailSent && <p role="status">{te("resent")}</p>}<Button disabled={busy || !user} onClick={() => void sendVerification()}>{t("verifyEmail")}</Button></>
       : live && status.reason === "enrollment" && !enrollment ? <p>{t("enrollment")}</p>
       : live && (status.reason === "recovery" || status.reason === "mfa_enrollment" && status.primaryRecentUntil > now) ? <>
         <p>{status.reason === "recovery" ? t("recovery") : t2("requiredNotice")}</p>
@@ -114,12 +117,12 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
           <Label htmlFor={passwordId}>{tp("currentPassword")}</Label>
           <PasswordInput id={passwordId} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} disabled={busy} />
           <Button disabled={busy || !password}>{t("verify")}</Button>
-        </form> : status.hasTotp && status.reason !== "passkey_verification" ? <form className="space-y-3" onSubmit={event => { event.preventDefault(); void verify(backup ? "backup" : "totp"); }}>
-          <Label htmlFor={codeId}>{backup ? t2("backupCodes") : t2("enterCode")}</Label>
-          {backup ? <Input id={codeId} value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
+        </form> : status.hasTotp && status.reason !== "passkey_verification" ? <form className="space-y-3" onSubmit={event => { event.preventDefault(); void verify(usingBackup ? "backup" : "totp"); }}>
+          <Label htmlFor={codeId}>{usingBackup ? t2("backupCodes") : t2("enterCode")}</Label>
+          {usingBackup ? <Input id={codeId} value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
             : <OtpInput aria-label={t2("enterCode")} value={code} onChange={setCode} disabled={busy} />}
           <Button disabled={busy || !code}>{t("verify")}</Button>
-          <Button type="button" variant="ghost" onClick={() => { setBackup(!backup); setCode(""); }}>{backup ? t2("enterCode") : t2("backupCodes")}</Button>
+          {!authorizationOnly && <Button type="button" variant="ghost" onClick={() => { setBackup(!backup); setCode(""); }}>{usingBackup ? t2("enterCode") : t2("backupCodes")}</Button>}
         </form> : null}
         {hasPasskey && <Button variant="outline" disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}
       </> : null}

@@ -194,6 +194,14 @@ Emitters:
 Failure status on all of these is `failed.unknown` unless noted; the client maps only the
 password case more precisely.
 
+The native account capabilities in `packages/backend/convex/platform/agentRegistry.ts`
+schedule successful events with `source: server:agent-account`, the acting admin's email
+and `ctx.ownerId`. `renamePasskey` and `removePasskey` use the passkey actions above and
+`passkey:<id>` resources. `revokeOtherSessions` uses `auth.session.revoked_all` with
+`user:<actingUserId>`; it preserves a live browser caller's session, while a remote delegation
+has no browser session to preserve. These direct component operations do not emit the
+Better Auth endpoint-hook sign-out events. Rejected operations write no success event.
+
 ---
 
 ## 5. Admin user management
@@ -221,6 +229,15 @@ mapped from the auth API error: `failed.validation_error`, `failed.unauthorized`
 | Revoke all sessions | `admin.session.revoked_all` | `user:<targetUserId>` | |
 
 On failure the extra fields still reflect what was *requested*, not what took effect.
+
+Native user capabilities in `packages/backend/convex/platform/agentUsers.ts` schedule
+successful events with `source: server:agent-users`, the acting admin's email and
+`ctx.ownerId`. Ban, unban, delete, role change and session revocation use the actions above;
+`update` uses `user.profile_updated` with `user:<targetUserId>`. Differences from the UI
+records: ban records `reason` without `banExpiresIn` metadata; role change records the old
+and new role as plain strings; single-session revocation uses `session:<opaqueSessionId>`.
+Direct component changes do not emit Better Auth endpoint-hook events, and rejected
+operations write no success event.
 
 ---
 
@@ -368,3 +385,23 @@ changing them leaves no trace:
   a rejected admin action (`NOT_ADMIN`, `CANNOT_DELETE_CLAIMED`, `ENTRY_NOT_FOUND`) is
   invisible. Compare section 5, where the client emits from a `finally` and failures are
   captured.
+
+### Agent surface availability and grant revocation
+
+`agentSurfaces.setEnabled` in `packages/backend/convex/platform/agentSurfaces.ts` resolves
+the normal admin session or the calling capability's delegation and requires recent authentication.
+State and audit are written transactionally; an unchanged value writes no event.
+
+| Surface | Enable / disable `action` | `resource` |
+|---|---|---|
+| MCP | `admin.mcp_enabled` / `admin.mcp_disabled` | `agent-mcp` |
+| CLI, WebMCP, A2A | `admin.agent_surface_enabled` / `admin.agent_surface_disabled` | `agent-cli`, `agent-webmcp`, `agent-a2a`, respectively |
+
+These records use `source: server:agent-surface`, the authenticated operator's email and
+`ctx.ownerId`, with `status: succeeded`. For grant invalidation behavior, see
+[the surface controls](agentic-announcements.md#enable-and-authenticate).
+
+`agentAccess.revoke` in `packages/backend/convex/platform/agentAccess.ts` schedules
+`admin.agent_grant_revoked`, `source: server:agent-access`, `resource: agent-grant:<id>`,
+`status: succeeded`, with the acting admin's email and `ctx.ownerId`. It requires ownership
+and recent authentication; rejected revocations write no success event.

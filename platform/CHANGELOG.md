@@ -13,7 +13,29 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Added
+
+- MCP authorization uses a separate auth-only hostname on the existing admin deployment, with
+  purpose-limited browser sessions. Configure → Features now controls MCP availability; disabling
+  invalidates existing grants, and re-enabling requires new consent. DNS/TLS and origin configuration
+  steps are in the [deployment runbook](docs/deployment-runbook.md#optional-mcp-authorization-origin).
+
+- Bounded MCP search/schema lookup/execution over the admin capability catalogue, plus
+  independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. Blanket `admin:manage`
+  consent preserves native policy and validation. Existing announcement-only test grants
+  require new authorization and clients use the gateway tools. Reusable independent and pi
+  testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
+
 ### Fixed
+
+- MCP approval and denial end the auth-origin browser login immediately. Approved access uses
+  separate short-lived delegation proof; every later authorization request requires new sign-in.
+
+- Local dev port selection checks TCP listeners, so closed or outgoing browser connections
+  do not move the app to a different port after restart.
+
+- Agent authorization uses an isolated modal with trapped focus and no admin navigation;
+  explicit denial returns to pi without issuing access. Grant management has its own page.
 
 - Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.
   See the [near-gate advisory procedure](docs/dependency-updates.md#advisory-recognition-near-a-merge-or-release-gate)

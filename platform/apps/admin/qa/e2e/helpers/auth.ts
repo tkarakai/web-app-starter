@@ -13,6 +13,7 @@
  */
 
 import { createHmac } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 
 import { expect, type Page } from "@playwright/test";
 
@@ -51,7 +52,13 @@ export async function fillStable(page: Page, selector: string, value: string): P
 export async function signInAsAdmin(page: Page): Promise<DisposableUser> {
   const user = await createDisposableUser({ isAdmin: true });
 
-  await page.goto("/sign-in");
+  const response = await page.goto("/sign-in");
+  if (response?.status() === 429) {
+    const seconds = Number(response.headers()["retry-after"] ?? 60);
+    await delay(Math.min(60, Math.max(1, Number.isFinite(seconds) ? seconds : 60)) * 1000);
+    const retry = await page.goto("/sign-in");
+    if (retry?.status() === 429) throw new Error("Sign-in remained rate limited after Retry-After; retry this scenario later.");
+  }
   await fillStable(page, "#email", user.email);
   await page.locator('form:has(#email) button[type="submit"]').click();
 

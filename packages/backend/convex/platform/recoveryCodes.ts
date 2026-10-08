@@ -22,7 +22,7 @@ export const snapshot = internalQuery({
     });
     if (!user || user.banned) throw new Error("NOT_AUTHENTICATED");
     const pair = await readSession(ctx, userId, sessionId);
-    if (!pair) throw new Error("NOT_AUTHENTICATED");
+    if (!pair || pair.session.authPurpose === "mcp-authorization") throw new Error("NOT_AUTHENTICATED");
     const assurance = await evaluateSession(ctx, pair);
     // Bound enrollment may acknowledge its recovery set after fresh TOTP verification.
     if ((!assurance.allowed && assurance.reason !== "enrollment") || !assurance.strong || !assurance.recent) {
