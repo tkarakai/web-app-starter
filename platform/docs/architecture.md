@@ -163,6 +163,50 @@ export function MyComponent() {
 }
 ```
 
+## Organization primitives and authority
+
+The auth package includes Better Auth's organization client and server schema. Organization roles
+(`org-admin`, `member`) are membership roles, not the global `user.role` used for platform
+administrator access. Never set a customer's global role to `admin` to represent organization
+management, and never treat membership as permission to read another owner's private resources.
+
+Installing the plugin does not make an existing application multi-tenant. Its native organization
+HTTP endpoints are denied by the platform's auth endpoint policy; the client namespace is not
+permission to use them. Do not call low-level auth-component organization operations from app
+clients or bypass the platform policy. Existing signup, waitlist and platform-administrator
+onboarding behavior is unchanged by the additive primitives. Application-data scope and a preserving
+migration must be implemented before enabling collaborative customer access.
+
+The canonical server-only operations live in
+`packages/backend/convex/platform/betterAuth/organizations.ts`. They require explicit organization
+and actor IDs; these arguments are not authentication. Before integrating them, parent wrappers
+must derive the actor from a live session, enforce session assurance and bind the requested tenant
+context. Password verification and recovery-code acknowledgment are parent responsibilities;
+the component does not accept a password or validate a submitted recovery code. When calling
+`acknowledgeRecovery`, pass `backupCodesProof`: the SHA-256 fingerprint of the exact encrypted
+recovery material the parent decrypted and validated, not a fresh snapshot taken afterward.
+The component compares that proof atomically with the current factor and rejects a changed set;
+completion checks it again. Regeneration requires renewed validation and acknowledgment.
+
+`provisionPersonal` is idempotent for a personal owner and must only be called for new-customer
+intent, never signup to join an existing organization. `beginCollaboration` keeps the organization
+personal while enrollment is pending; promotion likewise keeps a peer's role as `member`.
+Initial completion requires verified email, a recent proof matching the current credential hash,
+a verified enabled two-factor row and recorded acknowledgment matching its current backup-code
+material. Enrollment stores hashes, not plaintext credentials or recovery codes. A passkey is
+required when the trusted caller sets `requirePasskey`, including completed-enrollment retries.
+Completion atomically grants membership authority and, for collaboration, renames and activates
+the same organization ID. Management authority is rechecked against the live user and verified
+factor; a stored `org-admin` role alone is insufficient.
+
+Member removal, demotion and leaving protect the last enrolled administrator in the same mutation
+and preserve global identity and other memberships. The org-admin directory scopes both pagination
+cursors and returned rows to the requested organization. Platform operators instead receive only
+organization metadata and org-admin names/emails through `contacts`; `setLifecycle` disables or
+reactivates customer access through these component operations without deleting memberships. They have component
+regression coverage in `packages/backend/convex/platform/organizations.test.ts`; parent integration,
+organization invitation flows, application-data migration and browser flows remain outside this foundation.
+
 ## Platform data component
 
 `@web-app-starter/convex-platform` owns audit events, app settings and announcements. The

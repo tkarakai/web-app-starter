@@ -50,6 +50,7 @@ export const tables = {
     userAgent: v.optional(v.union(v.null(), v.string())),
     userId: v.string(),
     impersonatedBy: v.optional(v.union(v.null(), v.string())),
+    activeOrganizationId: v.optional(v.union(v.null(), v.string())),
     // Server-owned session assurance. Optional so existing sessions can be reauthenticated.
     authPurpose: v.optional(v.union(v.null(), v.string())),
     assuranceVersion: v.optional(v.union(v.null(), v.number())),
@@ -164,6 +165,57 @@ export const tables = {
   })
     .index("clientId_userId", ["clientId","userId"])
     .index("userId", ["userId"]),
+  // Better Auth organization 1.6 schema, extended with server-owned lifecycle/enrollment.
+  organization: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    logo: v.optional(v.union(v.null(), v.string())),
+    metadata: v.optional(v.union(v.null(), v.string())),
+    createdAt: v.number(),
+    experience: v.optional(v.union(v.null(), v.string())),
+    lifecycle: v.optional(v.union(v.null(), v.string())),
+    personalOwnerId: v.optional(v.union(v.null(), v.string())),
+  }).index("slug", ["slug"]).index("personalOwnerId", ["personalOwnerId"]),
+  member: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    role: v.string(),
+    createdAt: v.number(),
+    adminEnrolledAt: v.optional(v.union(v.null(), v.number())),
+    adminFactorId: v.optional(v.union(v.null(), v.string())),
+  }).index("organizationId", ["organizationId"])
+    .index("userId", ["userId"])
+    .index("organizationId_userId", ["organizationId", "userId"])
+    .index("organizationId_role", ["organizationId", "role"]),
+  invitation: defineTable({
+    organizationId: v.string(),
+    email: v.string(),
+    role: v.optional(v.union(v.null(), v.string())),
+    status: v.string(),
+    expiresAt: v.number(),
+    inviterId: v.string(),
+    createdAt: v.number(),
+    intendedRole: v.optional(v.union(v.null(), v.string())),
+  }).index("organizationId", ["organizationId"])
+    .index("email", ["email"])
+    .index("email_organizationId_status", ["email", "organizationId", "status"])
+    .index("organizationId_status", ["organizationId", "status"]),
+  // Platform state, not a duplicate editable membership/role model.
+  organizationEnrollments: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    memberId: v.id("member"),
+    purpose: v.union(v.literal("collaboration"), v.literal("promotion")),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    passwordProof: v.optional(v.string()),
+    passwordVerifiedAt: v.optional(v.number()),
+    backupAcknowledgedAt: v.optional(v.number()),
+    backupFactorId: v.optional(v.string()),
+    backupCodesProof: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("memberId", ["memberId"]).index("userId", ["userId"]),
   jwks: defineTable({
     publicKey: v.string(),
     privateKey: v.string(),
