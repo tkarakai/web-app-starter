@@ -156,7 +156,7 @@ for (const surface of ["mcp", "cli", "a2a"] as const) {
         expect(body.get("redirect_uri")).toBe(authorization.searchParams.get("redirect_uri"));
         expect(body.get("code_verifier")).toHaveLength(43);
         expect(createHash("sha256").update(body.get("code_verifier")!).digest("base64url"))
-          .toBe(authorization.searchParams.get("code_challenge"));
+          .toBe(authorization.searchParams.get("code_challenge") ?? "");
         const replay = await fetch(callback);
         expect(replay.status).toBe(400);
         expect(exchanges).toBe(1);

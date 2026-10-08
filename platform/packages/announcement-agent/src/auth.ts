@@ -22,6 +22,7 @@ export async function authenticate(origin: string, surface: "mcp" | "cli" | "a2a
   const issuerMetadata = await issuerMetadataResponse.json() as { issuer?: string; authorization_endpoint?: string; token_endpoint?: string };
   if (issuerMetadata.issuer !== issuer.origin || issuerMetadata.authorization_endpoint !== issuer.origin + "/api/agent/authorize"
     || issuerMetadata.token_endpoint !== issuer.origin + "/api/agent/token") throw new Error("Invalid authorization server metadata");
+  const tokenEndpoint = issuerMetadata.token_endpoint;
   const state = randomBytes(32).toString("base64url");
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
@@ -50,7 +51,7 @@ export async function authenticate(origin: string, surface: "mcp" | "cli" | "a2a
     callbackReceived = true;
     clearTimeout(timeout);
     try {
-      const tokenResponse = await fetch(issuerMetadata.token_endpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      const tokenResponse = await fetch(tokenEndpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: CLIENT_ID, redirect_uri: redirectUri, resource }), signal: AbortSignal.timeout(15_000) });
       if (!tokenResponse.ok) throw new Error("Authorization exchange failed. Sign in again and retry.");
       const result: unknown = await tokenResponse.json();
