@@ -4,8 +4,23 @@ import { NextIntlClientProvider } from "next-intl";
 import appMessages from "@repo/messages/en.json";
 import platformMessages from "@web-app-starter/i18n/messages/en.json";
 import type { ComponentProps } from "react";
+import { appConfig } from "@web-app-starter/app-config";
 const messages = { ...platformMessages, ...appMessages };
 vi.mock("@web-app-starter/i18n/navigation", () => ({ Link: (props: ComponentProps<"a">) => <a {...props} /> }));
+const featureOverride = vi.hoisted(() => ({ waitlist: null as boolean | null }));
+vi.mock("@web-app-starter/app-config", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@web-app-starter/app-config")>();
+  return {
+    ...original,
+    appConfig: {
+      ...original.appConfig,
+      features: {
+        ...original.appConfig.features,
+        get waitlist() { return featureOverride.waitlist ?? original.appConfig.features.waitlist; },
+      },
+    },
+  };
+});
 
 vi.stubEnv("NEXT_PUBLIC_WEB_APP_URL", "https://web.example.test/");
 vi.stubEnv("NEXT_PUBLIC_CONVEX_SITE_URL", "https://backend.example.test");
@@ -14,6 +29,7 @@ vi.stubEnv("NEXT_PUBLIC_CONTACT_URL", "mailto:team@example.test");
 const { HeroCta } = await import("../../src/components/hero-cta");
 const fetchMock = vi.fn<typeof fetch>();
 beforeEach(() => {
+  featureOverride.waitlist = null;
   vi.stubEnv("NEXT_PUBLIC_CONVEX_SITE_URL", "https://backend.example.test");
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockReset();
@@ -31,13 +47,27 @@ test("waits for backend mode without prematurely offering signup", async () => {
   expect(fetchMock).toHaveBeenCalledWith("https://backend.example.test/api/waitlist/status", expect.objectContaining({ cache: "no-store" }));
 });
 
-test("waitlist mode mounts the full question form and sign-in link", async () => {
+async function expectWaitlistMode(enabled: boolean) {
   fetchMock.mockResolvedValue(Response.json({ onboardingType: "publicWaitlist" }));
   show();
-  expect(await screen.findByLabelText(messages.landing.waitlist.emailLabel)).toBeVisible();
-  expect(screen.getByLabelText(messages.landing.waitlist.companyLabel)).toBeVisible();
-  expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "https://web.example.test/en/sign-in");
+  expect(await screen.findByRole("link", { name: "Sign in" })).toHaveAttribute("href", "https://web.example.test/en/sign-in");
+  if (enabled) {
+    expect(screen.getByLabelText(messages.landing.waitlist.emailLabel)).toBeVisible();
+    expect(screen.getByLabelText(messages.landing.waitlist.companyLabel)).toBeVisible();
+  } else {
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: messages.landing.waitlist.submit })).toBeNull();
+  }
   expect(screen.queryByRole("link", { name: "Get started" })).toBeNull();
+}
+
+test("waitlist mode respects the adopted app's configured feature switch", async () => {
+  await expectWaitlistMode(appConfig.features.waitlist);
+});
+
+test.each([true, false])("backend publicWaitlist respects features.waitlist=%s", async (enabled) => {
+  featureOverride.waitlist = enabled;
+  await expectWaitlistMode(enabled);
 });
 
 for (const payload of [{ onboardingType: "inviteOnly" }, { onboardingType: "unknown", signupEnabled: true }, null]) {
