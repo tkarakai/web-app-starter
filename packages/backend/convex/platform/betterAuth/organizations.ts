@@ -80,9 +80,9 @@ export const recordPasswordProof = mutation({
   },
 });
 
-/** Parent has validated recovery acknowledgment with password proof and actual current codes. */
+/** Parent passes the fingerprint of the exact encrypted recovery set it decrypted/validated. */
 export const acknowledgeRecovery = mutation({
-  args: { organizationId: v.string(), userId: v.string(), factorId: v.string() },
+  args: { organizationId: v.string(), userId: v.string(), factorId: v.string(), backupCodesProof: v.string() },
   handler: async (ctx, args) => {
     const user = await customer(ctx, args.userId);
     await organization(ctx, args.organizationId);
@@ -91,8 +91,9 @@ export const acknowledgeRecovery = mutation({
     const id = ctx.db.normalizeId("twoFactor", args.factorId);
     const factor = id ? await ctx.db.get(id) : null;
     if (!enrollment || enrollment.completedAt || !user.twoFactorEnabled || !factor?.verified || factor.userId !== user._id) throw new Error("INVALID_ENROLLMENT");
+    if (args.backupCodesProof !== sha256Hex(factor.backupCodes)) throw new Error("RECOVERY_CODES_CHANGED");
     await ctx.db.patch(enrollment._id, { backupAcknowledgedAt: Date.now(), backupFactorId: factor._id,
-      backupCodesProof: sha256Hex(factor.backupCodes) });
+      backupCodesProof: args.backupCodesProof });
   },
 });
 

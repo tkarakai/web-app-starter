@@ -182,7 +182,11 @@ The canonical server-only operations live in
 and actor IDs; these arguments are not authentication. Before integrating them, parent wrappers
 must derive the actor from a live session, enforce session assurance and bind the requested tenant
 context. Password verification and recovery-code acknowledgment are parent responsibilities;
-the component does not accept a password or validate a submitted recovery code.
+the component does not accept a password or validate a submitted recovery code. When calling
+`acknowledgeRecovery`, pass `backupCodesProof`: the SHA-256 fingerprint of the exact encrypted
+recovery material the parent decrypted and validated, not a fresh snapshot taken afterward.
+The component compares that proof atomically with the current factor and rejects a changed set;
+completion checks it again. Regeneration requires renewed validation and acknowledgment.
 
 `provisionPersonal` is idempotent for a personal owner and must only be called for new-customer
 intent, never signup to join an existing organization. `beginCollaboration` keeps the organization

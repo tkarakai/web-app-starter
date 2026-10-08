@@ -37,7 +37,7 @@ function fixture() {
   }
   async function complete(organizationId: string, userId: string, factorId: string) {
     await t.mutation(orgApi.recordPasswordProof, { organizationId, userId, credentialProof: sha256Hex("fixture-credential-hash") });
-    await t.mutation(orgApi.acknowledgeRecovery, { organizationId, userId, factorId });
+    await t.mutation(orgApi.acknowledgeRecovery, { organizationId, userId, factorId, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     return await t.mutation(orgApi.completeEnrollment, { organizationId, userId, requirePasskey: false });
   }
   async function collaborative(email: string, slug: string) {
@@ -111,7 +111,7 @@ describe("canonical organization component boundary", () => {
     await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: user._id, name: "Passkey", slug: "passkey-required" });
     const factor = await f.security(user._id);
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId: org.organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
-    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: user._id, factorId: factor._id });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: user._id, factorId: factor._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     await expect(f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: user._id, requirePasskey: true })).rejects.toThrow("PASSKEY_REQUIRED");
     expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ experience: "personal", canManageMembers: false });
   });
@@ -123,7 +123,7 @@ describe("canonical organization component boundary", () => {
     await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: user._id, name: "Proof", slug: "proof-org" });
     const factor = await f.security(user._id);
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId: org.organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
-    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: user._id, factorId: factor._id });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: user._id, factorId: factor._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     vi.setSystemTime(Date.now() + RECENT_AUTH_MS + 1);
     await expect(f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: user._id, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId: org.organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
@@ -148,14 +148,42 @@ describe("canonical organization component boundary", () => {
     const factor = await f.security(user._id);
     const args = { organizationId, userId: user._id };
     await f.t.mutation(orgApi.recordPasswordProof, { ...args, credentialProof: sha256Hex("fixture-credential-hash") });
-    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { backupCodes: "regenerated-encrypted-codes" } } });
     await expect(f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
     expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: false,
       experience: purpose === "collaboration" ? "personal" : "collaborative", role: purpose === "collaboration" ? "org-admin" : "member" });
-    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id, backupCodesProof: sha256Hex("regenerated-encrypted-codes") });
     expect(await f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).toBe(organizationId);
     expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: true, role: "org-admin" });
+  });
+
+  test.each(["collaboration", "promotion"] as const)("%s rejects recovery regeneration between validation and recording", async purpose => {
+    const f = fixture();
+    const user = await f.user(`recovery-race-${purpose}@example.test`);
+    let organizationId: string;
+    if (purpose === "collaboration") {
+      const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
+      organizationId = org.organizationId;
+      await f.t.mutation(orgApi.beginCollaboration, { organizationId, userId: user._id, name: "Recovery race", slug: "recovery-race" });
+    } else {
+      const org = await f.collaborative("race-owner@example.test", "recovery-race");
+      organizationId = org.organizationId;
+      const member = await f.addMember(organizationId, user._id);
+      await f.t.mutation(orgApi.changeMember, { organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
+    }
+    const factor = await f.security(user._id);
+    const args = { organizationId, userId: user._id };
+    await f.t.mutation(orgApi.recordPasswordProof, { ...args, credentialProof: sha256Hex("fixture-credential-hash") });
+    const validatedProof = sha256Hex(factor.backupCodes);
+    // Another session regenerates on the same row after the parent validated the original set.
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { backupCodes: "race-regenerated-encrypted-codes" } } });
+    await expect(f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id, backupCodesProof: validatedProof })).rejects.toThrow("RECOVERY_CODES_CHANGED");
+    await expect(f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
+    expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: false });
+    // Only validating and acknowledging the new set can finish the pending grant.
+    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id, backupCodesProof: sha256Hex("race-regenerated-encrypted-codes") });
+    expect(await f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).toBe(organizationId);
   });
 
   test.each(["collaboration", "promotion"] as const)("%s replay checks the current required passkey", async purpose => {
@@ -175,7 +203,7 @@ describe("canonical organization component boundary", () => {
     const factor = await f.security(user._id);
     const args = { organizationId, userId: user._id, requirePasskey: true };
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
-    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId, userId: user._id, factorId: factor._id });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId, userId: user._id, factorId: factor._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     const passkey = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
       userId: user._id, publicKey: "fixture-public-key", credentialID: "fixture-credential-id", counter: 0, deviceType: "singleDevice", backedUp: false,
     } } });
@@ -194,9 +222,9 @@ describe("canonical organization component boundary", () => {
     await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: a._id, name: "Factors", slug: "factor-org" });
     const af = await f.security(a._id);
     const bf = await f.security(b._id);
-    await expect(f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: a._id, factorId: bf._id })).rejects.toThrow("INVALID_ENROLLMENT");
+    await expect(f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: a._id, factorId: bf._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") })).rejects.toThrow("INVALID_ENROLLMENT");
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId: org.organizationId, userId: a._id, credentialProof: sha256Hex("fixture-credential-hash") });
-    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: a._id, factorId: af._id });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: a._id, factorId: af._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: af._id }], update: { verified: false } } });
     await expect(f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: a._id, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
   });

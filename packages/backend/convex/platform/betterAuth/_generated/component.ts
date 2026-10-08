@@ -209,6 +209,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 data: {
                   backupAcknowledgedAt?: number;
+                  backupCodesProof?: string;
                   backupFactorId?: string;
                   completedAt?: number;
                   createdAt: number;
@@ -719,6 +720,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
                     | "_id";
@@ -1289,6 +1291,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
                     | "_id";
@@ -2104,6 +2107,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 model: "organizationEnrollments";
                 update: {
                   backupAcknowledgedAt?: number;
+                  backupCodesProof?: string;
                   backupFactorId?: string;
                   completedAt?: number;
                   createdAt?: number;
@@ -2129,6 +2133,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
                     | "_id";
@@ -2840,6 +2845,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 model: "organizationEnrollments";
                 update: {
                   backupAcknowledgedAt?: number;
+                  backupCodesProof?: string;
                   backupFactorId?: string;
                   completedAt?: number;
                   createdAt?: number;
@@ -2865,6 +2871,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
                     | "_id";
@@ -2970,7 +2977,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       acknowledgeRecovery: FunctionReference<
         "mutation",
         "internal",
-        { factorId: string; organizationId: string; userId: string },
+        {
+          backupCodesProof: string;
+          factorId: string;
+          organizationId: string;
+          userId: string;
+        },
         any,
         Name
       >;
