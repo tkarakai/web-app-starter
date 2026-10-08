@@ -56,7 +56,7 @@ async function fixture() {
     return { id, email: email.trim().toLowerCase(), role, token, organizationId: target.organizationId };
   }
   const setting = (key: string, value: unknown) => t.mutation(components.platform.appSettings.putRaw, { key, value: JSON.stringify(value) });
-  const rows = async (model: "user" | "organization" | "member" | "session" | "account") => (await t.query(components.betterAuth.adapter.findMany, { model, paginationOpts: { cursor: null, numItems: 100 } })).page;
+  const rows = async (model: "user" | "organization" | "member" | "session" | "account" | "invitation" | "organizationInvitationClaims" | "organizationEnrollments" | "verification") => (await t.query(components.betterAuth.adapter.findMany, { model, paginationOpts: { cursor: null, numItems: 100 } })).page;
   const findUser = (email: string) => t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
   const context = (invitation: Awaited<ReturnType<typeof invite>>) => ({ organizationId: invitation.organizationId, token: invitation.token });
   return { t, org, user, client, organization, invite, setting, rows, findUser, context };
@@ -145,6 +145,37 @@ describe("canonical invitation-bound member admission", () => {
     await expect(client.mutation(api.platform.memberInvitations.accept, f.context(invite))).rejects.toThrow("INVALID_MEMBER_INVITATION");
     expect((await f.rows("member")).filter(row => row.userId === user._id)).toHaveLength(0);
     expect(await f.findUser(user.email)).not.toBeNull();
+  });
+
+  test.each([
+    ["empty", "member"], ["foreign", "member"],
+    ["empty", "org-admin"], ["foreign", "org-admin"],
+  ] as const)("%s context rejects every public invitation operation for %s", async (context, role) => {
+    const f = await fixture();
+    const user = await f.user();
+    const invite = await f.invite(user.email, role);
+    const other = await f.organization();
+    const client = await f.client(user._id);
+    const args = { ...f.context(invite), organizationId: context === "empty" ? "" : other.organizationId };
+    const snapshot = () => Promise.all(([
+      "user", "account", "organization", "member", "session", "invitation",
+      "organizationInvitationClaims", "organizationEnrollments", "verification",
+    ] as const).map(model => f.rows(model)));
+    const before = await snapshot();
+    await expect(f.t.action(api.platform.memberInvitations.preview, args)).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    await expect(f.t.action(api.platform.memberInvitations.claim, args)).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    await expect(client.action(api.platform.memberInvitations.requestVerification, args)).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    await expect(client.mutation(api.platform.memberInvitations.accept, args)).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    expect(await snapshot()).toEqual(before);
+    expect(sendAuthEmail).not.toHaveBeenCalled();
+    const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
+    expect(claim).toMatchObject({ organizationId: invite.organizationId, email: user.email, role });
+    const accepted = await client.mutation(api.platform.memberInvitations.accept, f.context(invite));
+    expect(accepted).toMatchObject({ organizationId: invite.organizationId, adminPending: role === "org-admin" });
+    const after = await snapshot();
+    await expect(client.mutation(api.platform.memberInvitations.accept, args)).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    expect(await snapshot()).toEqual(after);
+    expect(await client.mutation(api.platform.memberInvitations.accept, f.context(invite))).toEqual(accepted);
   });
 
   test("wrong recipient, foreign organization, invitation IDs and forged tokens fail closed", async () => {

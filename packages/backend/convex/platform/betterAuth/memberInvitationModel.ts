@@ -9,7 +9,7 @@ export const invitationRole = (role: string | null | undefined) => {
 
 export async function liveInvitation(ctx: QueryCtx, id: Id<"invitation">, organizationId?: string, pending = true) {
   const invite = await ctx.db.get(id);
-  if (!invite || invite.expiresAt <= Date.now() || (organizationId && invite.organizationId !== organizationId)
+  if (!invite || invite.expiresAt <= Date.now() || (organizationId !== undefined && invite.organizationId !== organizationId)
     || (pending ? invite.status !== "pending" : !["pending", "accepted"].includes(invite.status))) throw new Error("INVALID_MEMBER_INVITATION");
   invitationRole(invite.role);
   const org = await organization(ctx, invite.organizationId);
