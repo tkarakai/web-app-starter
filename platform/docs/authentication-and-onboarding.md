@@ -204,15 +204,11 @@ User enters their email and creates a password that meets the shared policy in Â
 
 On submit, Better Auth's `signUp.email()` creates the credential account and sends a verification email (if email verification is enabled by admin policy).
 
-Server-authorized new-customer signup also records durable admission intent and provisions one
+Server-authorized new-customer signup also provisions one
 invisible personal organization with the customer as `org-admin`, without granting platform-admin
-role or requiring administrator factor enrollment. Account-creation/session hooks retry provisioning
-idempotently from that server-owned intent. Failed after-hooks can leave the account committed;
-subsequent sign-in resumes provisioning rather than creating a second account or organization.
-Legacy identities without intent are not automatically mapped, and operator registration does not
-provision a customer organization. Customer onboarding invitations remain new-customer admission,
-not membership invitations. See [organization foundation](architecture.md#organization-primitives-and-authority)
-for the current integration limits; tenant application-data cutover is not yet available.
+role or requiring administrator factor enrollment. Customer onboarding invitations remain new-customer
+admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
+for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
 
 ### 7.2 Step 2 â€” Verify Email (if required by admin policy)
 

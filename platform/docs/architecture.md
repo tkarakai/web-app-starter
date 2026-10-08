@@ -173,9 +173,8 @@ management, and never treat membership as permission to read another owner's pri
 Installing the plugin does not make an existing application multi-tenant. Its native organization
 HTTP endpoints are denied by the platform's auth endpoint policy; the client namespace is not
 permission to use them. Do not call low-level auth-component organization operations from app
-clients or bypass the platform policy. New customer signup now provisions an invisible personal
-organization; ordinary onboarding screens and user security policy are unchanged. Platform-operator
-onboarding remains separate. Application-data scope and a preserving migration must be implemented
+clients or bypass the platform policy. See [customer onboarding](authentication-and-onboarding.md#71-step-1--create-account-email--password)
+for signup behavior. Application-data scope and a preserving migration must be implemented
 before enabling collaborative customer access.
 
 The canonical server-only operations live in
@@ -189,8 +188,9 @@ recovery material the parent decrypted and validated, not a fresh snapshot taken
 The component compares that proof atomically with the current factor and rejects a changed set;
 completion checks it again. Regeneration requires renewed validation and acknowledgment.
 
-`provisionPersonal` is idempotent for a personal owner and must only be called for new-customer
-intent, never signup to join an existing organization. Auth signup persists `customerAdmission`
+`provisionPersonal` is idempotent for a personal owner and is reserved for trusted new-customer
+admission or explicit preserving migration, never signup to join an existing organization.
+Auth signup persists `customerAdmission`
 only after server-side public/customer-invitation admission succeeds. This field is not accepted
 from clients or returned in Better Auth user output. `resumeCustomerProvisioning` retries that
 intent after account creation and before session creation, atomically creating the personal
@@ -200,8 +200,10 @@ accounts do not acquire personal organizations on login. Existing accounts requi
 preserving migration, not an inferred signup intent. Unknown customer intent fails closed. Operator
 sign-in ignores stale customer intent and never provisions a tenant. Development operator fixtures
 use a server-only signup option guarded by the full local fixture authorization; ordinary HTTP
-signup cannot select it. This option does not exist for hosted operator onboarding. `beginCollaboration` keeps the organization
-personal while enrollment is pending; promotion likewise keeps a peer's role as `member`.
+signup cannot select it. This option does not exist for hosted operator onboarding.
+
+`beginCollaboration` keeps the organization personal while enrollment is pending; promotion likewise
+keeps a peer's role as `member`.
 Initial completion requires verified email, a recent proof matching the current credential hash,
 a verified enabled two-factor row and recorded acknowledgment matching its current backup-code
 material. Enrollment stores hashes, not plaintext credentials or recovery codes. A passkey is
