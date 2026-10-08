@@ -1,7 +1,7 @@
 import { hashPassword, symmetricEncrypt } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { api, components } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
@@ -59,6 +59,24 @@ async function fixture(encrypted = true) {
 }
 
 describe("recovery-secret reauthentication", () => {
+  test.each([true, false])("authorization-only sessions cannot disclose recovery secrets through either transport (encrypted=%s)", async encrypted => {
+    const f = await fixture(encrypted);
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: { role: "admin" } } });
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: f.first.session._id }], update: { authPurpose: "mcp-authorization" } } });
+    const factor = () => f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] });
+    const before = await factor();
+    await expect(f.t.query(internal.platform.recoveryCodes.snapshot, { userId: f.user._id, sessionId: f.first.session._id })).rejects.toThrow("NOT_AUTHENTICATED");
+    await expect(f.first.caller.action(api.platform.auth.viewBackupCodes, { password })).rejects.toThrow("NOT_AUTHENTICATED");
+    const response = await f.http("/api/two-factor/backup-codes", { password });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "REAUTHENTICATION_REQUIRED" });
+    expect(await factor()).toEqual(before);
+    expect(await f.first.caller.query(api.platform.sessionAssurance.status, {})).toMatchObject({ allowed: true, recent: true, strong: true, authPurpose: "mcp-authorization" });
+    await expect(f.second.caller.action(api.platform.auth.viewBackupCodes, { password })).resolves.toEqual(codes);
+    const normal = await f.http("/api/two-factor/backup-codes", { password }, f.second.session.token);
+    expect(normal.status).toBe(200);
+    expect(await normal.json()).toEqual({ backupCodes: codes });
+  });
   test.each([true, false])("current password also needs recent factor proof (encrypted=%s)", async (encrypted) => {
     const f = await fixture(encrypted);
     vi.setSystemTime(Date.now() + 86400000);
