@@ -108,7 +108,7 @@ export const seed = internalAction({
 
       // 2. Create the user via Better Auth; local fixture privileges are assigned explicitly below.
       //    "User already exists" is expected on retry after partial failure — treat as success.
-      const auth = createAuth(ctx);
+      const auth = createAuth(ctx, { localOperatorSignup: user.isAdmin });
       try {
         const result = await auth.api.signUpEmail({
           body: {

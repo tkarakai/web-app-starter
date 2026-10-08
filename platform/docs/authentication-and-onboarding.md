@@ -204,6 +204,12 @@ User enters their email and creates a password that meets the shared policy in Â
 
 On submit, Better Auth's `signUp.email()` creates the credential account and sends a verification email (if email verification is enabled by admin policy).
 
+Server-authorized new-customer signup also provisions one
+invisible personal organization with the customer as `org-admin`, without granting platform-admin
+role or requiring administrator factor enrollment. Customer onboarding invitations remain new-customer
+admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
+for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
+
 ### 7.2 Step 2 â€” Verify Email (if required by admin policy)
 
 If `userEmailVerificationRequired` is `true` (the default), the user must click the verification link before accessing the app. If disabled by admin, this step is skipped.

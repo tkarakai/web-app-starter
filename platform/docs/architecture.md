@@ -173,9 +173,9 @@ management, and never treat membership as permission to read another owner's pri
 Installing the plugin does not make an existing application multi-tenant. Its native organization
 HTTP endpoints are denied by the platform's auth endpoint policy; the client namespace is not
 permission to use them. Do not call low-level auth-component organization operations from app
-clients or bypass the platform policy. Existing signup, waitlist and platform-administrator
-onboarding behavior is unchanged by the additive primitives. Application-data scope and a preserving
-migration must be implemented before enabling collaborative customer access.
+clients or bypass the platform policy. See [customer onboarding](authentication-and-onboarding.md#71-step-1--create-account-email--password)
+for signup behavior. Application-data scope and a preserving migration must be implemented
+before enabling collaborative customer access.
 
 The canonical server-only operations live in
 `packages/backend/convex/platform/betterAuth/organizations.ts`. They require explicit organization
@@ -188,9 +188,22 @@ recovery material the parent decrypted and validated, not a fresh snapshot taken
 The component compares that proof atomically with the current factor and rejects a changed set;
 completion checks it again. Regeneration requires renewed validation and acknowledgment.
 
-`provisionPersonal` is idempotent for a personal owner and must only be called for new-customer
-intent, never signup to join an existing organization. `beginCollaboration` keeps the organization
-personal while enrollment is pending; promotion likewise keeps a peer's role as `member`.
+`provisionPersonal` is idempotent for a personal owner and is reserved for trusted new-customer
+admission or explicit preserving migration, never signup to join an existing organization.
+Auth signup persists `customerAdmission`
+only after server-side public/customer-invitation admission succeeds. This field is not accepted
+from clients or returned in Better Auth user output. `resumeCustomerProvisioning` retries that
+intent after account creation and before session creation, atomically creating the personal
+organization and first membership. A failed after-hook does not lose the intent; subsequent
+sign-in retries it, even if public admission has closed. Unmarked legacy, member-only and operator
+accounts do not acquire personal organizations on login. Existing accounts require explicit
+preserving migration, not an inferred signup intent. Unknown customer intent fails closed. Operator
+sign-in ignores stale customer intent and never provisions a tenant. Development operator fixtures
+use a server-only signup option guarded by the full local fixture authorization; ordinary HTTP
+signup cannot select it. This option does not exist for hosted operator onboarding.
+
+`beginCollaboration` keeps the organization personal while enrollment is pending; promotion likewise
+keeps a peer's role as `member`.
 Initial completion requires verified email, a recent proof matching the current credential hash,
 a verified enabled two-factor row and recorded acknowledgment matching its current backup-code
 material. Enrollment stores hashes, not plaintext credentials or recovery codes. A passkey is
@@ -204,8 +217,10 @@ and preserve global identity and other memberships. The org-admin directory scop
 cursors and returned rows to the requested organization. Platform operators instead receive only
 organization metadata and org-admin names/emails through `contacts`; `setLifecycle` disables or
 reactivates customer access through these component operations without deleting memberships. They have component
-regression coverage in `packages/backend/convex/platform/organizations.test.ts`; parent integration,
-organization invitation flows, application-data migration and browser flows remain outside this foundation.
+regression coverage in `packages/backend/convex/platform/organizations.test.ts`; signup/provisioning
+HTTP behavior is covered by `customerProvisioning.test.ts`. Parent collaboration/session-policy
+integration, organization invitation flows, application-data migration and browser flows remain
+outstanding.
 
 ## Platform data component
 

@@ -3,6 +3,7 @@ import { createTestEnv } from "../test.modules";
 import { components, internal } from "../_generated/api";
 import schema from "./betterAuth/schema";
 import { FIXTURE_HEADER } from "./localFixtures";
+import { createAuthOptions } from "./auth";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const secret = "a1".repeat(32);
@@ -74,6 +75,8 @@ describe("local fixture authorization", () => {
     expect(response.status).toBe(200);
     const user = await t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
     expect(user).toMatchObject({ email, emailVerified: true, role: "admin" });
+    expect(user?.customerAdmission).toBeNull();
+    expect(await t.query(components.betterAuth.adapter.findMany, { model: "organization", paginationOpts: { cursor: null, numItems: 10 } })).toMatchObject({ page: [] });
     expect((await post(t, secret, { ...body, isAdmin: false })).status).toBe(400);
     expect(await t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] })).toMatchObject({ _id: user!._id, role: "admin" });
     expect((await t.fetch("/api/dev/totp-code", { headers: { [FIXTURE_HEADER]: secret } })).status).toBe(200);
@@ -114,6 +117,24 @@ describe("local fixture authorization", () => {
     expect(requestedUrls).toHaveLength(1);
     expect(requestedUrls[0]).toMatch(/^https:\/\/api\.pwnedpasswords\.com\/range\//);
     await noUsers(t);
+  });
+
+  test("development seed separates operator signup from personal customer provisioning", async () => {
+    const t = fixture();
+    await t.action(internal.platform.devSeed.seed, {});
+    const admin = await t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: "admin@admin.com" }] });
+    const customer = await t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: "user@user.com" }] });
+    expect(admin).toMatchObject({ role: "admin", customerAdmission: null });
+    expect(customer).toMatchObject({ role: "user", customerAdmission: "customer-invitation" });
+    const organizations = await t.query(components.betterAuth.adapter.findMany, { model: "organization", paginationOpts: { cursor: null, numItems: 10 } });
+    expect(organizations.page).toMatchObject([{ personalOwnerId: customer!._id, experience: "personal" }]);
+    await t.action(internal.platform.devSeed.seed, {});
+    expect(await t.query(components.betterAuth.adapter.findMany, { model: "organization", paginationOpts: { cursor: null, numItems: 10 } })).toEqual(organizations);
+  });
+
+  test("local operator signup option is rejected on hosted backends", () => {
+    vi.stubEnv("CONVEX_CLOUD_URL", "https://hosted.convex.cloud");
+    expect(() => createAuthOptions({} as never, { localOperatorSignup: true })).toThrow("DEV_SEED_NOT_LOCAL");
   });
 
   test("internal seed and invitation mutators also fail closed on a hosted backend", async () => {
