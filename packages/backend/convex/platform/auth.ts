@@ -441,7 +441,7 @@ const emailVerifiedOnResetPlugin = (
 
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
-  options: { localOperatorSignup?: boolean } = {},
+  options: { localOperatorSignup?: boolean; requireMemberVerification?: boolean } = {},
 ) => {
   if (options.localOperatorSignup) assertLocalFixtures();
   const { siteUrl, siteUrls } = getSiteUrls();
@@ -506,8 +506,9 @@ export const createAuthOptions = (
           internal.platform.appSettings.getInternal,
           { key: USER_EMAIL_VERIFICATION_REQUIRED_KEY }
         );
-        // If the admin has disabled email verification, skip sending.
-        if (emailVerifRequired === false) return;
+        // Member acceptance always requires verified email, even if ordinary
+        // customer verification is optional. Only a bound server flow selects this.
+        if (emailVerifRequired === false && !options.requireMemberVerification) return;
 
         const verificationTemplateSetting = await actionCtx.runQuery(
           internal.platform.appSettings.getInternal,
@@ -804,7 +805,7 @@ export const createAuthOptions = (
   } satisfies BetterAuthOptions;
 };
 
-export const createAuth = (ctx: GenericCtx<DataModel>, options: { localOperatorSignup?: boolean } = {}) => {
+export const createAuth = (ctx: GenericCtx<DataModel>, options: { localOperatorSignup?: boolean; requireMemberVerification?: boolean } = {}) => {
   return betterAuth(createAuthOptions(ctx, options));
 };
 

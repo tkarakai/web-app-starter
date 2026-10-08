@@ -46,6 +46,7 @@ import type * as platform_functions from "../platform/functions.js";
 import type * as platform_httpRoutes from "../platform/httpRoutes.js";
 import type * as platform_integrations from "../platform/integrations.js";
 import type * as platform_localFixtures from "../platform/localFixtures.js";
+import type * as platform_memberInvitations from "../platform/memberInvitations.js";
 import type * as platform_meta from "../platform/meta.js";
 import type * as platform_nativeCapabilities from "../platform/nativeCapabilities.js";
 import type * as platform_onboardingType from "../platform/onboardingType.js";
@@ -116,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   "platform/httpRoutes": typeof platform_httpRoutes;
   "platform/integrations": typeof platform_integrations;
   "platform/localFixtures": typeof platform_localFixtures;
+  "platform/memberInvitations": typeof platform_memberInvitations;
   "platform/meta": typeof platform_meta;
   "platform/nativeCapabilities": typeof platform_nativeCapabilities;
   "platform/onboardingType": typeof platform_onboardingType;

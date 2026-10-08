@@ -103,6 +103,11 @@ const ACCESS: Record<string, Access> = {
   "platform/organizationEnrollment:status": "user",
   "platform/organizationEnrollment:verifyCredential": "user",
   "platform/organizationEnrollment:acknowledgeRecovery": "user",
+  "platform/memberInvitations:preview": "public", // holder of an organization-bound random token
+  "platform/memberInvitations:claim": "public", // token-holder registration capability exchange
+  "platform/memberInvitations:register": "public", // bound registration capability, never a session
+  "platform/memberInvitations:requestVerification": "user",
+  "platform/memberInvitations:accept": "user",
   "platform/integrations:getStatus": "admin",
   "platform/meta:health": "public",
   "platform/passwordStrength:evaluate": "public",

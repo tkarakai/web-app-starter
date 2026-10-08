@@ -210,6 +210,18 @@ role or requiring administrator factor enrollment. Customer onboarding invitatio
 admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
 for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
 
+### Organization-member invitations are not customer signup
+
+A member invitation joins an existing organization, rather than admitting a new customer.
+Use the [invitation-bound admission API](architecture.md#invitation-bound-member-admission-api):
+existing identities sign in and accept with verified recipient email; new identities register
+through the bound capability, sign in, verify email and accept. Neither path creates a new
+personal organization. Member acceptance requires email verification even when ordinary user
+verification is optional. Invited administrators remain members pending scoped security setup;
+this never grants platform-admin role or admin-app access. Public signup/waitlist tokens are
+not organization join authority. Invitation management/browser UI and full tenant cutover are
+not yet enabled by these additive APIs.
+
 ### 7.2 Step 2 — Verify Email (if required by admin policy)
 
 If `userEmailVerificationRequired` is `true` (the default), the user must click the verification link before accessing the app. If disabled by admin, this step is skipped.
