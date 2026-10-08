@@ -131,6 +131,61 @@ describe("canonical organization component boundary", () => {
     await expect(f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: user._id, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
   });
 
+  test.each(["collaboration", "promotion"] as const)("%s requires acknowledgment of regenerated recovery codes", async purpose => {
+    const f = fixture();
+    const user = await f.user(`recovery-${purpose}@example.test`);
+    let organizationId: string;
+    if (purpose === "collaboration") {
+      const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
+      organizationId = org.organizationId;
+      await f.t.mutation(orgApi.beginCollaboration, { organizationId, userId: user._id, name: "Recovery", slug: "recovery-org" });
+    } else {
+      const org = await f.collaborative("recovery-owner@example.test", "recovery-org");
+      organizationId = org.organizationId;
+      const member = await f.addMember(organizationId, user._id);
+      await f.t.mutation(orgApi.changeMember, { organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
+    }
+    const factor = await f.security(user._id);
+    const args = { organizationId, userId: user._id };
+    await f.t.mutation(orgApi.recordPasswordProof, { ...args, credentialProof: sha256Hex("fixture-credential-hash") });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id });
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { backupCodes: "regenerated-encrypted-codes" } } });
+    await expect(f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
+    expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: false,
+      experience: purpose === "collaboration" ? "personal" : "collaborative", role: purpose === "collaboration" ? "org-admin" : "member" });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id });
+    expect(await f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).toBe(organizationId);
+    expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: true, role: "org-admin" });
+  });
+
+  test.each(["collaboration", "promotion"] as const)("%s replay checks the current required passkey", async purpose => {
+    const f = fixture();
+    const user = await f.user(`replay-${purpose}@example.test`);
+    let organizationId: string;
+    if (purpose === "collaboration") {
+      const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
+      organizationId = org.organizationId;
+      await f.t.mutation(orgApi.beginCollaboration, { organizationId, userId: user._id, name: "Replay", slug: "replay-org" });
+    } else {
+      const org = await f.collaborative("replay-owner@example.test", "replay-org");
+      organizationId = org.organizationId;
+      const member = await f.addMember(organizationId, user._id);
+      await f.t.mutation(orgApi.changeMember, { organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
+    }
+    const factor = await f.security(user._id);
+    const args = { organizationId, userId: user._id, requirePasskey: true };
+    await f.t.mutation(orgApi.recordPasswordProof, { organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
+    await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId, userId: user._id, factorId: factor._id });
+    const passkey = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
+      userId: user._id, publicKey: "fixture-public-key", credentialID: "fixture-credential-id", counter: 0, deviceType: "singleDevice", backedUp: false,
+    } } });
+    expect(await f.t.mutation(orgApi.completeEnrollment, args)).toBe(organizationId);
+    expect(await f.t.mutation(orgApi.completeEnrollment, args)).toBe(organizationId);
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "passkey", where: [{ field: "_id", value: passkey._id }] } });
+    await expect(f.t.mutation(orgApi.completeEnrollment, args)).rejects.toThrow("PASSKEY_REQUIRED");
+    expect(await f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).toBe(organizationId);
+  });
+
   test("foreign-factor acknowledgment and changed verified factor cannot complete", async () => {
     const f = fixture();
     const a = await f.user("factor-a@example.test");
@@ -300,6 +355,33 @@ describe("canonical organization component boundary", () => {
     expect([...first.page, ...second.page].map(row => row.email).sort()).toEqual([a.admin.email, member.email].sort());
     expect([...first.page, ...second.page].some(row => row.email === b.admin.email)).toBe(false);
     expect(Object.keys(second.page[0]).sort()).toEqual(["adminPending", "email", "enrolled", "memberId", "name", "role"]);
+  });
+
+  test("directory rejects foreign start and end cursors in both tenant directions", async () => {
+    const f = fixture();
+    const a = await f.collaborative("cursor-a@example.test", "cursor-org-a");
+    const b = await f.collaborative("cursor-b@example.test", "cursor-org-b");
+    for (const org of [a, b]) {
+      for (let i = 0; i < 2; i++) {
+        const user = await f.user(`cursor-${org.organizationId}-${i}@example.test`);
+        await f.addMember(org.organizationId, user._id);
+      }
+    }
+    for (const [own, foreign] of [[a, b], [b, a]]) {
+      const args = { organizationId: own.organizationId, actorId: own.admin._id };
+      const foreignPage = await f.t.query(orgApi.directory, { organizationId: foreign.organizationId, actorId: foreign.admin._id, paginationOpts: { cursor: null, numItems: 1 } });
+      expect(foreignPage.isDone).toBe(false);
+      await expect(f.t.query(orgApi.directory, { ...args, paginationOpts: { cursor: foreignPage.continueCursor, numItems: 1 } })).rejects.toThrow("INVALID_DIRECTORY_CURSOR");
+      await expect(f.t.query(orgApi.directory, { ...args, paginationOpts: { cursor: null, endCursor: foreignPage.continueCursor, numItems: 1 } })).rejects.toThrow("INVALID_DIRECTORY_CURSOR");
+      const first = await f.t.query(orgApi.directory, { ...args, paginationOpts: { cursor: null, numItems: 1 } });
+      const bounded = await f.t.query(orgApi.directory, { ...args, paginationOpts: { cursor: null, endCursor: first.continueCursor, numItems: 1 } });
+      expect(bounded.page).toEqual(first.page);
+      for (const cursor of ["not-json", "{}", JSON.stringify([foreign.organizationId]), JSON.stringify([own.organizationId])]) {
+        for (const field of ["cursor", "endCursor"] as const) {
+          await expect(f.t.query(orgApi.directory, { ...args, paginationOpts: { cursor: null, numItems: 1, [field]: cursor } })).rejects.toThrow("INVALID_DIRECTORY_CURSOR");
+        }
+      }
+    }
   });
 
   test("factor invalidation removes administrative authority and cannot satisfy last-admin replacement", async () => {

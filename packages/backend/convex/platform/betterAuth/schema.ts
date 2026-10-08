@@ -212,6 +212,7 @@ export const tables = {
     passwordVerifiedAt: v.optional(v.number()),
     backupAcknowledgedAt: v.optional(v.number()),
     backupFactorId: v.optional(v.string()),
+    backupCodesProof: v.optional(v.string()),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("memberId", ["memberId"]).index("userId", ["userId"]),

@@ -91,7 +91,8 @@ export const acknowledgeRecovery = mutation({
     const id = ctx.db.normalizeId("twoFactor", args.factorId);
     const factor = id ? await ctx.db.get(id) : null;
     if (!enrollment || enrollment.completedAt || !user.twoFactorEnabled || !factor?.verified || factor.userId !== user._id) throw new Error("INVALID_ENROLLMENT");
-    await ctx.db.patch(enrollment._id, { backupAcknowledgedAt: Date.now(), backupFactorId: factor._id });
+    await ctx.db.patch(enrollment._id, { backupAcknowledgedAt: Date.now(), backupFactorId: factor._id,
+      backupCodesProof: sha256Hex(factor.backupCodes) });
   },
 });
 
@@ -104,6 +105,7 @@ export const completeEnrollment = mutation({
     const member = await membership(ctx, args.organizationId, args.userId);
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
     if (!enrollment) throw new Error("INVALID_ENROLLMENT");
+    if (args.requirePasskey && !await ctx.db.query("passkey").withIndex("userId", q => q.eq("userId", args.userId)).first()) throw new Error("PASSKEY_REQUIRED");
     if (enrollment.completedAt) {
       if (!await enrolledAdmin(ctx, member)) throw new Error("ADMIN_ENROLLMENT_REQUIRED");
       return org._id;
@@ -113,8 +115,8 @@ export const completeEnrollment = mutation({
     if (!user.emailVerified || !user.twoFactorEnabled || !factor?.verified || !account?.password
       || !enrollment.passwordVerifiedAt || enrollment.passwordVerifiedAt + RECENT_AUTH_MS <= Date.now()
       || enrollment.passwordProof !== sha256Hex(account.password)
-      || !enrollment.backupAcknowledgedAt || enrollment.backupFactorId !== factor._id) throw new Error("ADMIN_ENROLLMENT_REQUIRED");
-    if (args.requirePasskey && !await ctx.db.query("passkey").withIndex("userId", q => q.eq("userId", args.userId)).first()) throw new Error("PASSKEY_REQUIRED");
+      || !enrollment.backupAcknowledgedAt || enrollment.backupFactorId !== factor._id
+      || enrollment.backupCodesProof !== sha256Hex(factor.backupCodes)) throw new Error("ADMIN_ENROLLMENT_REQUIRED");
     if (enrollment.purpose === "collaboration") {
       if (org.experience !== "personal" || org.personalOwnerId !== user._id || member.role !== ROLE_ADMIN
         || !enrollment.name || !enrollment.slug) throw new Error("INVALID_ENROLLMENT");
@@ -174,9 +176,18 @@ export const directory = query({
   handler: async (ctx, args) => {
     await administrator(ctx, args.organizationId, args.actorId);
     if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
+    for (const cursor of [args.paginationOpts.cursor, args.paginationOpts.endCursor]) {
+      if (cursor === null || cursor === undefined) continue;
+      let key: unknown;
+      try { key = JSON.parse(cursor); } catch { throw new Error("INVALID_DIRECTORY_CURSOR"); }
+      if (!Array.isArray(key) || (key.length !== 0 && (key.length !== 3
+        || key[0] !== args.organizationId || typeof key[1] !== "number" || !Number.isFinite(key[1])
+        || typeof key[2] !== "string" || !ctx.db.normalizeId("member", key[2])))) throw new Error("INVALID_DIRECTORY_CURSOR");
+    }
     const result = await paginator(ctx.db, schema).query("member").withIndex("organizationId", q => q.eq("organizationId", args.organizationId)).paginate(args.paginationOpts);
     const page = [];
     for (const member of result.page) {
+      if (member.organizationId !== args.organizationId) throw new Error("INVALID_DIRECTORY_CURSOR");
       const userId = ctx.db.normalizeId("user", member.userId);
       const user = userId ? await ctx.db.get(userId) : null;
       if (!user || isOperator(user.role)) throw new Error("INVALID_MEMBER_IDENTITY");
