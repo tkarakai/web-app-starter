@@ -307,6 +307,17 @@ bun run test:watch
 
 App-owned shared UI needs a package-local component suite and `test:coverage` command. `bun run test:shared-packages` runs those commands in both native and GitHub CI. The onboarding form owns its behavior tests in `packages/onboarding/qa/tests` and enforces V8 coverage thresholds in its Vitest configuration; consuming apps retain wiring tests. When extracting UI, move its behavior tests and coverage with the code.
 
-`bun run test:landing-export` serves the existing production export and runs Chromium against it. Build first with `NEXT_PUBLIC_CONVEX_SITE_URL` configured; set `EXPORT_EXPECT_CONFIGURED=false` only for an export built with that variable empty. The test uses controlled HTTP responses while exercising real built HTML, JS and CSS. Dev-server E2E remains a separate check.
+`bun run test:landing-export` serves the existing production export and runs Chromium against it. Build first with `NEXT_PUBLIC_CONVEX_SITE_URL` configured; set `EXPORT_EXPECT_CONFIGURED=false` only for an export built with that variable empty. The test uses controlled enabling HTTP responses while exercising real built HTML, JS and CSS, asserting waitlist and announcement presence or absence according to the build's feature switches. Dev-server E2E remains a separate check.
 
 `bun run test:landing-artifacts` builds and tests both missing and configured variants, leaving the configured output last. Native CI, GitHub CI and upgrade verification use this command.
+
+For the retained reference landing, run
+`./platform/tooling/node-ts.sh apps/landing/qa/helpers/configuration-acceptance.ts --all`
+to exercise all four waitlist/announcement combinations after real adoption in a disposable
+repository inside the checkout. The fixture starts fresh from either a product or adopted
+app source, omitting existing adoption and update-delivery state, and explicitly ships English
+as its only locale and default. It reuses pinned dependencies without installs or remote
+repository operations, and removes the fixture afterward. Select `--components`, `--e2e`, or `--exports`
+for a focused run; `--all` is the default. `test:dev-scripts` runs the component and E2E
+discovery matrix when this app-owned helper exists; browser execution and production export
+smokes require the other stages.

@@ -157,6 +157,10 @@ For users, sign-up *is* onboarding. Factor enrollment depends on the current use
 
 ### Onboarding ownership and landing handoff
 
+In both reference apps, `features.waitlist=false` makes a backend `publicWaitlist`
+response behave as invite-only: no waitlist form or account creation is offered.
+It does not change `publicSignup` account creation.
+
 The reference landing is a static export with dynamic browser features. It reads
 `NEXT_PUBLIC_CONVEX_SITE_URL/api/waitlist/status` after hydration: `publicWaitlist`
 shows the inline form, `publicSignup` offers localized web sign-up and sign-in links, and

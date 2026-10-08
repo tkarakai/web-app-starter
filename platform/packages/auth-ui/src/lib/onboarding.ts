@@ -36,8 +36,9 @@ export function configuredOnboardingType(mode: OnboardingType, waitlistEnabled: 
 }
 
 /**
- * Fetch the onboarding mode from Convex (`CONVEX_SITE_URL`, read at request time), uncached
- * so admin changes apply on the next request. Fail closed on backend errors.
+ * Fetch the effective onboarding mode from Convex (`CONVEX_SITE_URL`, read at request time),
+ * uncached so admin changes apply on the next request. Fail closed on backend errors and
+ * apply the app's waitlist switch.
  */
 export async function fetchOnboardingType(): Promise<OnboardingType> {
   const convexSiteUrl = process.env.CONVEX_SITE_URL;
