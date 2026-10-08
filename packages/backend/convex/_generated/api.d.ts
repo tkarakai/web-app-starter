@@ -49,6 +49,7 @@ import type * as platform_localFixtures from "../platform/localFixtures.js";
 import type * as platform_meta from "../platform/meta.js";
 import type * as platform_nativeCapabilities from "../platform/nativeCapabilities.js";
 import type * as platform_onboardingType from "../platform/onboardingType.js";
+import type * as platform_organizationEnrollment from "../platform/organizationEnrollment.js";
 import type * as platform_parseUserAgent from "../platform/parseUserAgent.js";
 import type * as platform_passwordStrength from "../platform/passwordStrength.js";
 import type * as platform_rateLimits from "../platform/rateLimits.js";
@@ -118,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "platform/meta": typeof platform_meta;
   "platform/nativeCapabilities": typeof platform_nativeCapabilities;
   "platform/onboardingType": typeof platform_onboardingType;
+  "platform/organizationEnrollment": typeof platform_organizationEnrollment;
   "platform/parseUserAgent": typeof platform_parseUserAgent;
   "platform/passwordStrength": typeof platform_passwordStrength;
   "platform/rateLimits": typeof platform_rateLimits;

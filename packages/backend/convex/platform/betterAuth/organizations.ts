@@ -64,6 +64,27 @@ export const context = query({
   },
 });
 
+/** Enrollment progress for the exact current membership; never exports factor or credential material. */
+export const enrollmentStatus = query({
+  args: { organizationId: v.string(), userId: v.string() },
+  handler: async (ctx, args) => {
+    await customer(ctx, args.userId);
+    const org = await organization(ctx, args.organizationId);
+    const member = await membership(ctx, org._id, args.userId);
+    const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
+    if (!enrollment) return null;
+    if (enrollment.organizationId !== org._id || enrollment.userId !== args.userId) throw new Error("INVALID_ENROLLMENT");
+    const account = await ctx.db.query("account").withIndex("providerId_userId", q => q.eq("providerId", "credential").eq("userId", args.userId)).unique();
+    const factor = await ctx.db.query("twoFactor").withIndex("userId", q => q.eq("userId", args.userId)).unique();
+    return { organizationId: org._id, memberId: member._id, purpose: enrollment.purpose,
+      name: enrollment.name ?? org.name, slug: enrollment.slug ?? org.slug, completed: Boolean(enrollment.completedAt),
+      passwordVerified: Boolean(account?.password && enrollment.passwordProof === sha256Hex(account.password)
+        && enrollment.passwordVerifiedAt && enrollment.passwordVerifiedAt + RECENT_AUTH_MS > Date.now()),
+      backupAcknowledged: Boolean(factor?.verified && enrollment.backupFactorId === factor._id
+        && enrollment.backupCodesProof === sha256Hex(factor.backupCodes) && enrollment.backupAcknowledgedAt) };
+  },
+});
+
 export const beginCollaboration = mutation({
   args: { organizationId: v.string(), userId: v.string(), name: v.string(), slug: v.string() },
   handler: async (ctx, args) => {

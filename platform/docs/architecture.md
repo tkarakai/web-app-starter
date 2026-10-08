@@ -177,6 +177,40 @@ clients or bypass the platform policy. See [customer onboarding](authentication-
 for signup behavior. Application-data scope and a preserving migration must be implemented
 before enabling collaborative customer access.
 
+### Parent enrollment setup API
+
+`api.platform.organizationEnrollment` exposes **setup only**, with an explicit `organizationId`:
+
+- `begin({ organizationId, name, slug })`: starts/resumes collaboration setup for the personal
+  owner with a recent ordinary application session. It preserves the organization ID and data.
+- `status({ organizationId })`: returns live scoped assurance plus non-secret setup progress.
+  This is self-service state, not authorization to access tenant data or manage members.
+- `verifyCredential({ organizationId, password })`: verifies the current credential against
+  administrator password policy and records a recent proof of its exact hash.
+- `acknowledgeRecovery({ organizationId, password, codes })`: requires recent strong proof,
+  a verified TOTP factor, the current password and two distinct codes from the current set.
+  The parent decrypts/validates one captured set and records its exact encrypted fingerprint.
+
+These operations derive identity and session from authentication, require live membership and an
+active organization, reject operator and auth-only sessions, and recheck action snapshots in the
+recording transaction. Revocation, credential changes or recovery regeneration racing validation
+fail closed. Failed password/code attempts consume committed account budgets. Never log passwords
+or recovery codes or persist them in browser storage.
+
+Setup assurance reports `scope: "user"` (authority) and `securityScope: "admin"` (requirements).
+Verified email and MFA are mandatory; the administrator passkey setting applies, invalid settings
+fail closed, magic-link and recovery-only sessions are ineligible, and the four-hour absolute
+session clock is measured from the original authentication. Recent password proof cannot restart
+that clock. Pending setup does **not** elevate the identity's ordinary user policy, so abandoning
+setup preserves personal access. Promotion candidates likewise keep their current member role.
+An ordinary status with `allowed: true` does not satisfy the scoped setup requirements.
+
+No public completion or member-management endpoint is exposed here: successful setup still leaves
+collaboration/promotion pending. Activation, elevated future-login enforcement, factor-change
+last-admin protection, preserving tenant cutover, member invitation admission and their browser
+flows must be integrated before collaborative customer access can be enabled. Do not activate it
+by directly calling the component's completion primitive.
+
 The canonical server-only operations live in
 `packages/backend/convex/platform/betterAuth/organizations.ts`. They require explicit organization
 and actor IDs; these arguments are not authentication. Before integrating them, parent wrappers
@@ -218,9 +252,9 @@ cursors and returned rows to the requested organization. Platform operators inst
 organization metadata and org-admin names/emails through `contacts`; `setLifecycle` disables or
 reactivates customer access through these component operations without deleting memberships. They have component
 regression coverage in `packages/backend/convex/platform/organizations.test.ts`; signup/provisioning
-HTTP behavior is covered by `customerProvisioning.test.ts`. Parent collaboration/session-policy
-integration, organization invitation flows, application-data migration and browser flows remain
-outstanding.
+HTTP behavior is covered by `customerProvisioning.test.ts`, and parent setup/scoped assurance by
+`organizationEnrollment.test.ts`. See [parent enrollment setup API](#parent-enrollment-setup-api)
+for the current integration limits.
 
 ## Platform data component
 
