@@ -36,6 +36,7 @@ import type * as platform_authRateLimits from "../platform/authRateLimits.js";
 import type * as platform_bootstrap from "../platform/bootstrap.js";
 import type * as platform_componentMigration from "../platform/componentMigration.js";
 import type * as platform_componentMigrationLegacy from "../platform/componentMigrationLegacy.js";
+import type * as platform_customerAdmissionFields from "../platform/customerAdmissionFields.js";
 import type * as platform_devSeed from "../platform/devSeed.js";
 import type * as platform_devTotp from "../platform/devTotp.js";
 import type * as platform_developmentOnly from "../platform/developmentOnly.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   "platform/bootstrap": typeof platform_bootstrap;
   "platform/componentMigration": typeof platform_componentMigration;
   "platform/componentMigrationLegacy": typeof platform_componentMigrationLegacy;
+  "platform/customerAdmissionFields": typeof platform_customerAdmissionFields;
   "platform/devSeed": typeof platform_devSeed;
   "platform/devTotp": typeof platform_devTotp;
   "platform/developmentOnly": typeof platform_developmentOnly;

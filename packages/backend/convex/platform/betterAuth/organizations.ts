@@ -2,7 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import schema from "./schema";
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { sha256Hex } from "../tokenHash";
 import { RECENT_AUTH_MS } from "../sessionFields";
 import {
@@ -11,25 +11,43 @@ import {
 } from "./organizationModel";
 
 /** Component APIs are server-only. Parent wrappers must bind live session/assurance and actor. */
+async function provision(ctx: MutationCtx, userId: string) {
+  await customer(ctx, userId);
+  const existing = await ctx.db.query("organization").withIndex("personalOwnerId", q => q.eq("personalOwnerId", userId)).unique();
+  if (existing) {
+    const member = await membership(ctx, existing._id, userId);
+    return { organizationId: existing._id, memberId: member._id };
+  }
+  // Invocation expresses new-customer intent; member-only signup must not call this function.
+  const existingMembership = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).first();
+  if (existingMembership) throw new Error("CUSTOMER_ALREADY_HAS_MEMBERSHIP");
+  const now = Date.now();
+  const organizationId = await ctx.db.insert("organization", {
+    name: "Personal", slug: `personal-${crypto.randomUUID()}`,
+    personalOwnerId: userId, experience: "personal", lifecycle: "active", createdAt: now,
+  });
+  const memberId = await ctx.db.insert("member", { organizationId, userId, role: ROLE_ADMIN, createdAt: now });
+  return { organizationId, memberId };
+}
+
+/** Explicit provisioning for trusted migration/admission callers, not arbitrary session creation. */
 export const provisionPersonal = mutation({
   args: { userId: v.string() },
+  handler: (ctx, { userId }) => provision(ctx, userId),
+});
+
+/** Retry durable signup intent without guessing a mapping for existing identities. */
+export const resumeCustomerProvisioning = mutation({
+  args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
-    await customer(ctx, userId);
-    const existing = await ctx.db.query("organization").withIndex("personalOwnerId", q => q.eq("personalOwnerId", userId)).unique();
-    if (existing) {
-      const member = await membership(ctx, existing._id, userId);
-      return { organizationId: existing._id, memberId: member._id };
-    }
-    // Invocation expresses new-customer intent; member-only signup must not call this function.
-    const existingMembership = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).first();
-    if (existingMembership) throw new Error("CUSTOMER_ALREADY_HAS_MEMBERSHIP");
-    const now = Date.now();
-    const organizationId = await ctx.db.insert("organization", {
-      name: "Personal", slug: `personal-${crypto.randomUUID()}`,
-      personalOwnerId: userId, experience: "personal", lifecycle: "active", createdAt: now,
-    });
-    const memberId = await ctx.db.insert("member", { organizationId, userId, role: ROLE_ADMIN, createdAt: now });
-    return { organizationId, memberId };
+    const id = ctx.db.normalizeId("user", userId);
+    const user = id ? await ctx.db.get(id) : null;
+    if (!user) throw new Error("NOT_AUTHENTICATED");
+    if (!user.customerAdmission) return null;
+    if (!["public-signup", "customer-invitation"].includes(user.customerAdmission)) throw new Error("INVALID_CUSTOMER_ADMISSION");
+    // Operator enrollment is separate even while its bound candidate has role=user.
+    // Such accounts are created by the operator registration transaction without this field.
+    return await provision(ctx, userId);
   },
 });
 

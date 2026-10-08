@@ -32,6 +32,8 @@ export const tables = {
     phoneNumberVerified: v.optional(v.union(v.null(), v.boolean())),
     userId: v.optional(v.union(v.null(), v.string())),
     role: v.optional(v.union(v.null(), v.string())),
+    // Server-owned customer admission; absence never authorizes automatic provisioning.
+    customerAdmission: v.optional(v.union(v.null(), v.string())),
     banned: v.optional(v.union(v.null(), v.boolean())),
     banReason: v.optional(v.union(v.null(), v.string())),
     banExpires: v.optional(v.union(v.null(), v.number())),
