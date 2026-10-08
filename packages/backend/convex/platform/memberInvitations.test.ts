@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "../_generated/api";
@@ -10,6 +10,8 @@ import { catalogueRows } from "./agentRegistry";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const password = "orchid quartz lantern telescope meadow violin glacier";
+// HIBP range-response suffix for the fixed password above, independently computed with shasum.
+const breachedPasswordResponse = "0669B906969E3D26AA2743D5EFE5A422263:1";
 let passwordHash: string;
 beforeAll(async () => { passwordHash = await hashPassword(password); });
 beforeEach(() => {
@@ -263,7 +265,7 @@ describe("canonical invitation-bound member admission", () => {
     const f = await fixture();
     const invite = await f.invite();
     const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
-    vi.stubGlobal("fetch", vi.fn(async () => kind === "outage" ? new Response("", { status: 503 }) : new Response(`${createHash("sha1").update(password).digest("hex").toUpperCase().slice(5)}:1`)));
+    vi.stubGlobal("fetch", vi.fn(async () => kind === "outage" ? new Response("", { status: 503 }) : new Response(breachedPasswordResponse)));
     await expect(f.t.action(api.platform.memberInvitations.register, { capability: claim.capability, email: invite.email, name: "New", password })).rejects.toThrow(kind === "outage" ? "PASSWORD_CHECK_UNAVAILABLE" : "PASSWORD_COMPROMISED");
     expect(await f.findUser(invite.email)).toBeNull();
   });
