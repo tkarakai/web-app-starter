@@ -6,9 +6,10 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { v } from "convex/values";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
+import { admin, emailOTP, haveIBeenPwned, magicLink, organization, twoFactor } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
 import { getMinPasswordLength } from "@web-app-starter/auth/password-policy";
+import { organizationDefaults } from "@web-app-starter/auth/organizations";
 import { AUTH_COOKIE_PREFIX, SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
 
 import { components, internal } from "../_generated/api";
@@ -728,6 +729,8 @@ export const createAuthOptions = (
       protectedAdminPlugin(ctx),
       passwordStrengthPlugin(ctx),
       admin(),
+      // Organization endpoints remain denied by authRoutePolicy until explicitly integrated.
+      organization(organizationDefaults),
       twoFactor({
         issuer: getTotpIssuer(siteUrl),
         totpOptions: {

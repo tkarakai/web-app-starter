@@ -5,8 +5,11 @@ import {
   adminClient,
   emailOTPClient,
   magicLinkClient,
+  organizationClient,
   twoFactorClient,
 } from "better-auth/client/plugins";
+
+import { organizationAccess, organizationRoles } from "./organizations";
 
 /**
  * Check if an auth API error is a rate limit (HTTP 429).
@@ -64,6 +67,7 @@ export const authClient = createAuthClient({
   plugins: [
     convexClient(),
     adminClient(),
+    organizationClient({ ac: organizationAccess, roles: organizationRoles }),
     emailOTPClient(),
     magicLinkClient(),
     twoFactorClient(),

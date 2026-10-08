@@ -163,6 +163,20 @@ export function MyComponent() {
 }
 ```
 
+## Organization primitives and authority
+
+The auth package includes Better Auth's organization client and server schema. Organization roles
+(`org-admin`, `member`) are membership roles, not the global `user.role` used for platform
+administrator access. Never set a customer's global role to `admin` to represent organization
+management, and never treat membership as permission to read another owner's private resources.
+
+Installing the plugin does not make an existing application multi-tenant. Its native organization
+HTTP endpoints are denied by the platform's auth endpoint policy; the client namespace is not
+permission to use them. Do not call low-level auth-component organization operations from app
+clients or bypass the platform policy. Existing signup, waitlist and platform-administrator
+onboarding behavior is unchanged by the additive primitives. Application-data scope and a preserving
+migration must be implemented before enabling collaborative customer access.
+
 ## Platform data component
 
 `@web-app-starter/convex-platform` owns audit events, app settings and announcements. The

@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Additive Better Auth organization schema/client primitives with disjoint `org-admin` and
+  `member` membership roles. Native organization HTTP endpoints remain denied; this does not
+  enable collaboration or automatically scope existing app data. See
+  [organization authority](docs/architecture.md#organization-primitives-and-authority).
+
 - MCP authorization uses a separate auth-only hostname on the existing admin deployment, with
   purpose-limited browser sessions. Configure → Features now controls MCP availability; disabling
   invalidates existing grants, and re-enabling requires new consent. DNS/TLS and origin configuration
