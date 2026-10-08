@@ -268,6 +268,19 @@ describe("canonical organization component boundary", () => {
     expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ canManageMembers: true });
   });
 
+  test("leaving protects the personal/collaborative sole admin and affects only the selected membership", async () => {
+    const f = fixture();
+    const user = await f.user("leaving@example.test");
+    const own = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
+    await expect(f.t.mutation(orgApi.leave, { organizationId: own.organizationId, userId: user._id })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
+    const other = await f.collaborative("leave-other@example.test", "leave-other-org");
+    await f.addMember(other.organizationId, user._id);
+    await f.t.mutation(orgApi.leave, { organizationId: other.organizationId, userId: user._id });
+    await expect(f.t.query(orgApi.context, { organizationId: other.organizationId, userId: user._id })).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
+    expect(await f.t.query(orgApi.context, { organizationId: own.organizationId, userId: user._id })).toMatchObject({ experience: "personal" });
+    await expect(f.t.mutation(orgApi.leave, { organizationId: other.organizationId, userId: other.admin._id })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
+  });
+
   test("cursor directory paginates scoped membership without offset or secret fields", async () => {
     const f = fixture();
     const a = await f.collaborative("directory-a@example.test", "directory-org-a");
@@ -279,7 +292,11 @@ describe("canonical organization component boundary", () => {
     expect(first.isDone).toBe(false);
     const second = await f.t.query(orgApi.directory, { organizationId: a.organizationId, actorId: a.admin._id, paginationOpts: { cursor: first.continueCursor, numItems: 1 } });
     expect(second.page).toHaveLength(1);
-    expect(second.isDone).toBe(true);
+    // The component paginator conservatively requires a final empty page at an exact boundary.
+    expect(second.isDone).toBe(false);
+    const final = await f.t.query(orgApi.directory, { organizationId: a.organizationId, actorId: a.admin._id, paginationOpts: { cursor: second.continueCursor, numItems: 1 } });
+    expect(final.page).toEqual([]);
+    expect(final.isDone).toBe(true);
     expect([...first.page, ...second.page].map(row => row.email).sort()).toEqual([a.admin.email, member.email].sort());
     expect([...first.page, ...second.page].some(row => row.email === b.admin.email)).toBe(false);
     expect(Object.keys(second.page[0]).sort()).toEqual(["adminPending", "email", "enrolled", "memberId", "name", "role"]);

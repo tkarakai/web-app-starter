@@ -1,4 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
+import { paginator } from "convex-helpers/server/pagination";
+import schema from "./schema";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { sha256Hex } from "../tokenHash";
@@ -153,11 +155,26 @@ export const changeMember = mutation({
   },
 });
 
+/** Members leave only this organization; global identity/credentials are never deleted. */
+export const leave = mutation({
+  args: { organizationId: v.string(), userId: v.string() },
+  handler: async (ctx, args) => {
+    await customer(ctx, args.userId);
+    const org = await organization(ctx, args.organizationId);
+    const member = await membership(ctx, org._id, args.userId);
+    await preserveAdministrator(ctx, org, member);
+    const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
+    if (enrollment) await ctx.db.delete(enrollment._id);
+    await ctx.db.delete(member._id);
+  },
+});
+
 export const directory = query({
   args: { organizationId: v.string(), actorId: v.string(), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await administrator(ctx, args.organizationId, args.actorId);
-    const result = await ctx.db.query("member").withIndex("organizationId", q => q.eq("organizationId", args.organizationId)).paginate(args.paginationOpts);
+    if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
+    const result = await paginator(ctx.db, schema).query("member").withIndex("organizationId", q => q.eq("organizationId", args.organizationId)).paginate(args.paginationOpts);
     const page = [];
     for (const member of result.page) {
       const userId = ctx.db.normalizeId("user", member.userId);

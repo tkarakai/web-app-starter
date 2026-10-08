@@ -3032,6 +3032,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      leave: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string; userId: string },
+        any,
+        Name
+      >;
       provisionPersonal: FunctionReference<
         "mutation",
         "internal",
