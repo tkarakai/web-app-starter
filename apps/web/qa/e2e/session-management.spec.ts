@@ -3,6 +3,8 @@ import { test, expect, type Page } from "@playwright/test";
 import { appCookieDomain, signIn } from "./helpers/auth";
 import { createDisposableUser } from "./helpers/fixtures";
 import { sessionCookieNames } from "@web-app-starter/auth/cookies";
+import { defaultLocale } from "@web-app-starter/i18n";
+import { sessionBackButton } from "./helpers/session-navigation";
 
 // Session cookie names for the prefix in app.config.ts.
 const [SESSION, SECURE_SESSION] = sessionCookieNames();
@@ -102,11 +104,10 @@ test.describe("Session Management Page", () => {
   }) => {
     await signInFresh(page);
 
-    await page.goto("/en/dashboard/settings/sessions");
+    await page.goto(`/${defaultLocale}/dashboard/settings/sessions`);
     await page.waitForLoadState("domcontentloaded");
 
-    // Look for the back button (contains ArrowLeft icon and text)
-    const backButton = page.locator("button").filter({ hasText: /dashboard/i });
+    const backButton = sessionBackButton(page, defaultLocale);
     await expect(backButton).toBeVisible({ timeout: 5000 });
   });
 

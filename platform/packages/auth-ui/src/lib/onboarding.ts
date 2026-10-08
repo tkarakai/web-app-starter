@@ -1,4 +1,5 @@
 /// <reference types="next" />
+import { appConfig } from "@web-app-starter/app-config";
 /** How new users get in, as the backend's `/api/waitlist/status` route reports it. */
 export type OnboardingType = "inviteOnly" | "publicWaitlist" | "publicSignup";
 
@@ -29,9 +30,15 @@ export function parseOnboardingStatus(value: unknown): OnboardingType {
   return "inviteOnly";
 }
 
+/** A backend cannot enable waitlist UI that the app has explicitly disabled. */
+export function configuredOnboardingType(mode: OnboardingType, waitlistEnabled: boolean): OnboardingType {
+  return mode === "publicWaitlist" && !waitlistEnabled ? "inviteOnly" : mode;
+}
+
 /**
- * Fetch the onboarding mode from Convex (`CONVEX_SITE_URL`, read at request time), uncached
- * so admin changes apply on the next request. Fail closed on backend errors.
+ * Fetch the effective onboarding mode from Convex (`CONVEX_SITE_URL`, read at request time),
+ * uncached so admin changes apply on the next request. Fail closed on backend errors and
+ * apply the app's waitlist switch.
  */
 export async function fetchOnboardingType(): Promise<OnboardingType> {
   const convexSiteUrl = process.env.CONVEX_SITE_URL;
@@ -43,7 +50,10 @@ export async function fetchOnboardingType(): Promise<OnboardingType> {
       cache: "no-store",
     });
     if (!res.ok) return "inviteOnly";
-    return parseOnboardingStatus((await res.json()) as WaitlistStatus);
+    return configuredOnboardingType(
+      parseOnboardingStatus((await res.json()) as WaitlistStatus),
+      appConfig.features.waitlist,
+    );
   } catch {
     return "inviteOnly";
   }
