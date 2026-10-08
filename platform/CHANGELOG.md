@@ -32,6 +32,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Prepared CI worker tools use Debian 13 libraries compatible with current Convex Linux binaries.
+  The OS base participates in image reuse identity; failed backend smoke checks retain loader
+  diagnostics. Application Node/Bun versions are unchanged. Installed managers can take the recipe
+  through the [reviewed manager-update sequence](docs/ci-workers.md#operate-and-maintain).
+
 - MCP approval and denial end the auth-origin browser login immediately. Approved access uses
   separate short-lived delegation proof; every later authorization request requires new sign-in.
 
