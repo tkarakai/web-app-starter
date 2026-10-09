@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { chmod, mkdir, rm, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assert, catalog, command, config, configuredRepos, docker, exists, hash, home, installationPool, preparedScope, readJson, repository, save, selectedRepo, validateRepo, type Config } from './core.ts';
 import { api, assertOrgAccess, routingVariables, storeToken, token } from './github.ts';
 import { prepare } from './images.ts';
@@ -11,6 +11,7 @@ import { cleanup, lock, serve, status, updateConfig } from './manager.ts';
 import { launch, runtimePolicy } from './runtime.ts';
 import { localProof, proofId, proofPath, certify, type Proof } from './proof.ts';
 import { install, removeConvenienceCommand, service } from './service.ts';
+import { sourceCheck } from './check.ts';
 
 const print = (v: unknown): void => { process.stdout.write(typeof v === 'string' ? v + '\n' : JSON.stringify(v, null, 2) + '\n'); };
 function option(args: string[], name: string): string | undefined { const i = args.indexOf(`--${name}`); if (i < 0) return; assert(args[i + 1] && !args[i + 1].startsWith('--'), `--${name} requires a value`); return args[i + 1]; }
@@ -121,8 +122,16 @@ async function localCheck(c: Config, args: string[]): Promise<void> {
     const archive = path.join(home, `source-${sha}.tar`);
     await command('git', ['-C', root, 'archive', '--format=tar', '-o', archive, sha]);
     try {
-      const script = 'tar --no-same-owner -xf /work/source.tar -C /work && rm /work/source.tar && bun install --offline --frozen-lockfile' + (args.includes('--ci') ? ' && bun run ci' : args.includes('--quick') ? ' && bun run ci:quick' : '');
-      print(await launch(c, env.image, ['exec', '/bin/bash', '-c', script], undefined, async name => { await docker(c, ['cp', archive, `${name}:/work/source.tar`]); }));
+      const checkMode = args.includes('--ci') ? 'ci' : args.includes('--quick') ? 'quick' : 'install';
+      const mode = sourceCheck(checkMode);
+      mode[mode.length - 1] = 'tar --no-same-owner -xf /work/source.tar -C /work && rm /work/source.tar && ' + mode.at(-1);
+      print(await launch(c, env.image, mode, undefined, async name => {
+        await docker(c, ['cp', archive, `${name}:/work/source.tar`]);
+        // Use installed, reviewed tooling even when --ref selects an older app archive.
+        if (checkMode !== 'install') for (const file of ['baseline.ts', 'core.ts']) {
+          await docker(c, ['cp', path.join(path.dirname(fileURLToPath(import.meta.url)), file), `${name}:/opt/starter/${file}`]);
+        }
+      }));
     } finally { await rm(archive, { force: true }); }
   }
   const proof = { sha, image: env.image, runtime: hash(JSON.stringify(runtimePolicy(c))), key: env.key, scope: env.scope, pool: c.pool, checked: new Date().toISOString() };
