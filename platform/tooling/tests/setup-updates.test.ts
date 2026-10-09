@@ -144,7 +144,7 @@ function setupGh(options: { mode?: string; id?: string; key?: boolean; allowed?:
       if(args.includes("PUT")){if(options.deny)throw Error("organisation policy denied"); const body=JSON.parse(input!);assert.equal(body.default_workflow_permissions,"read");allowed=body.can_approve_pull_request_reviews;return "";}
       return JSON.stringify({default_workflow_permissions:"read",can_approve_pull_request_reviews:allowed});
     }
-    if(args[0]==="api")return JSON.stringify(repo);
+    if(args[0]==="api")return JSON.stringify({...repo,private:true});
     throw Error("Unexpected operation "+args.join(" "));
   }; return {run,calls};
 }

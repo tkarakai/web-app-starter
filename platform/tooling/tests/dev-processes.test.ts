@@ -203,13 +203,13 @@ test("stop waits for forced termination before dropping ownership", async () => 
   assert.deepEqual(manager.readRecords(root), {});
 });
 
-async function waitFor(check: () => boolean): Promise<void> {
-  const deadline = Date.now() + 12_000;
+async function waitFor(check: () => boolean, timeout = 12_000, diagnostics?: () => string): Promise<void> {
+  const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     if (check()) return;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  assert.fail("Timed out waiting for disposable process");
+  assert.fail(`Timed out waiting for disposable process${diagnostics ? `\n${diagnostics()}` : ""}`);
 }
 
 test("default startup skips stripped apps and explicit missing apps fail before side effects", async () => {
@@ -608,7 +608,7 @@ test("predev fixture refuses icon symlinks outside the source checkout", () => {
 for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run", "dev:landing"]]) {
   const app = args.at(-1)?.includes("landing") ? "landing" : "storybook";
   const appDir = app === "storybook" ? "platform/apps/storybook" : "apps/landing";
-  test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 30_000 }, async () => {
+  test(`bun ${args.join(" ")} reaches the launcher through the real package scripts`, { timeout: 60_000 }, async () => {
     // Keep the public package scripts and predev helpers real. Only the external
     // server is substituted; this tests command wiring, not Next.js compilation.
     installPredev(root);
@@ -663,11 +663,13 @@ const {createServer} = await import('node:http'); const server = createServer((r
     processes.push(launcher);
     fs.closeSync(output);
     try {
+      // Exercise the full predev/backend/Next wiring, not a 12-second startup
+      // SLA. Keep a bounded readiness wait and room for verified cleanup.
       await waitFor(() => {
         const logs = fs.readFileSync(log, "utf8");
         assert.ok(!exited(launcher), logs);
         return logs.includes("[CI MODE] Staying in foreground");
-      });
+      }, 30_000, () => fs.readFileSync(log, "utf8"));
       assert.ok(fs.existsSync(path.join(root, appDir, "public/icon.svg")));
       if (args[0] === "dev") {
         assert.match(fs.readFileSync(path.join(root, appDir, ".env.local"), "utf8"), /SMOKE_TEST_DEFAULT=seeded/);

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useConvex, useQuery } from "convex/react";
 import { api } from "@repo/backend";
@@ -9,12 +9,16 @@ import { registerWebMcp, type ModelContextProvider } from "@web-app-starter/agen
 /** Only the protected normal admin layout mounts this browser-safe binding. */
 export function AgentBrowserBridge() {
   const client = useConvex(); const router = useRouter();
+  // Next can replace the router object as route cache identity changes. Keep
+  // navigation current without revoking tools or in-flight gateway requests.
+  const currentRouter = useRef(router);
+  useEffect(() => { currentRouter.current = router; }, [router]);
   const configuration = useQuery(api.platform.agentSurfaces.configuration, {});
   const enabled = configuration?.surfaces.webmcp?.enabled ?? false;
   useEffect(() => {
     const provider = (document as typeof document & { modelContext?: ModelContextProvider }).modelContext;
     if (!enabled || !provider) return;
-    const controller = new globalThis.AbortController(); const page = browserActions(document, path => router.push(path));
+    const controller = new globalThis.AbortController(); const page = browserActions(document, path => currentRouter.current.push(path));
     void registerWebMcp(provider, async (name, input, signal) => {
       const operation = name === "capabilities_search" ? "search" : name === "capabilities_describe" ? "describe" : "prepare";
       const response = await client.query(api.platform.agentCapabilities.browserGateway, { operation, input, requestId: crypto.randomUUID() });
@@ -30,6 +34,6 @@ export function AgentBrowserBridge() {
       return output;
     }, controller.signal).catch(() => controller.abort());
     return () => controller.abort();
-  }, [client, enabled, router]);
+  }, [client, enabled]);
   return null;
 }

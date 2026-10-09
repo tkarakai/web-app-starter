@@ -11,6 +11,7 @@ import { proofId } from '../ci-workers/proof.ts';
 import { argumentsFor, main } from '../setup-updates.ts';
 import { readRecord, saveRecord, summary, updateStatus } from '../setup-updates/state.ts';
 import type { Gh } from '../setup-updates/github.ts';
+import { evaluator, localSignals, parseWorkflow } from './workflow-runners.ts';
 
 const sha = 'a'.repeat(40), repo = 'owner/app';
 function temporaryRoot(t: test.TestContext): string {
@@ -327,6 +328,86 @@ test('read-only worker status distinguishes hosted, mixed, unknown and untested 
   f.variables.set(WORKER_VARIABLES.deliver, 'manual-d'); assert.equal(workerStatus(repo, undefined, f.run).readiness, 'unknown');
   assert.equal(workerStatus(repo, undefined, () => { throw Error('Offline'); }).choice, 'unknown');
   assert(f.calls.every(c => c.args[0] === 'variable' && c.args[1] === 'list' || c.args[0] === 'api' && c.args[1] === 'repos/' + repo));
+});
+test('hosted updater intent does not hide uncovered or auxiliary local execution', async () => {
+  for (const auxiliary of ['', 'trusted-auxiliary']) {
+    const f = fixture();
+    f.variables.set('PLATFORM_CI_WORKER_POOL', 'ci-pool');
+    if (auxiliary) f.variables.set('PLATFORM_CI_AUX_RUNNER', auxiliary);
+    const records: WorkerRecord[] = [];
+    await configureWorkers({ choice: 'hosted', root: '/app', repo }, f.run, r => records.push(r), f.host);
+    const status = workerStatus(repo, records.at(-1), f.run);
+    assert.notEqual(status.choice, 'hosted');
+    assert.equal(status.readiness, auxiliary ? 'unknown' : 'blocked');
+    assert(status.ownerActions.some(action => /auxiliary|unconfigured/i.test(action)));
+    assert.equal(f.variables.get('PLATFORM_CI_WORKER_POOL'), 'ci-pool');
+  }
+});
+test('effective worker status matches every real updater selector combination and visibility', () => {
+  const workflow = parseWorkflow(fs.readFileSync(new URL('../../../.github/workflows/platform-update.yml', import.meta.url), 'utf8'));
+  for (const privacy of [false, true]) for (let mask = 0; mask < 64; mask++) {
+    const vars = Object.fromEntries(Object.entries(localSignals).filter((_, index) => mask & (1 << index)));
+    const f = fixture();
+    for (const [name, value] of Object.entries(vars)) f.variables.set(name, value);
+    const run: Gh = (args, input) => args[0] === 'api' && args[1] === 'repos/' + repo ? JSON.stringify({ private: privacy }) : f.run(args, input);
+    const status = workerStatus(repo, undefined, run), evaluate = evaluator(privacy, vars, 'schedule', 'Update platform');
+    assert.equal(status.visibility, privacy ? 'private' : 'public');
+    assert.equal(status.availability, 'unknown');
+    assert.equal(status.routingScope, 'repository-only');
+    assert(status.limitations.some(value => /Organization\/environment.*not inspected/.test(value)));
+    for (const id of ['check', 'verify', 'deliver']) {
+      const route = status.routes[id === 'deliver' ? 'deliver' : 'verify'];
+      const labels = evaluate.runners(workflow.jobs[id]['runs-on']!);
+      assert.equal(route.label, labels[0] === 'self-hosted' ? labels[1] : labels[0], `${privacy}/${mask}/${id}`);
+      assert.equal(route.kind === 'hosted', labels[0] === 'ubuntu-latest');
+    }
+    const routes = Object.values(status.routes);
+    if (routes.some(route => route.kind === 'unconfigured')) assert.equal(status.readiness, 'blocked');
+    else if (privacy && routes.some(route => route.kind === 'auxiliary' || route.kind === 'prepared')) assert.equal(status.readiness, 'unknown');
+    else assert.equal(status.readiness, mask ? 'blocked' : 'ready');
+    assert(f.calls.every(call => call.args[0] === 'variable' && call.args[1] === 'list'));
+  }
+});
+test('unknown visibility never certifies routes and uppercase local guard matches Actions semantics', () => {
+  for (const fail of [false, true]) {
+    const f = fixture();
+    const run: Gh = (args, input) => {
+      if (args[0] === 'api' && args[1] === 'repos/' + repo) { if (fail) throw Error('Unavailable'); return '{}'; }
+      return f.run(args, input);
+    };
+    const status = workerStatus(repo, undefined, run);
+    assert.equal(status.choice, 'unknown'); assert.equal(status.visibility, 'unknown'); assert.equal(status.readiness, 'unknown');
+  }
+  const f = fixture(); f.variables.set('PLATFORM_CI_LOCAL_ONLY', 'TRUE');
+  assert.equal(workerStatus(repo, undefined, f.run).readiness, 'blocked');
+});
+test('clearing updater pools preserves all leftover selectors and exposes auxiliary or blocked routes', async () => {
+  for (let mask = 0; mask < 16; mask++) {
+    const f = fixture(), records: WorkerRecord[] = [];
+    const leftovers = Object.entries(localSignals).slice(0, 4).filter((_, index) => mask & (1 << index));
+    for (const [name, value] of leftovers) f.variables.set(name, value);
+    f.variables.set(WORKER_VARIABLES.verify, f.p.verify.pool); f.variables.set(WORKER_VARIABLES.deliver, f.p.deliver.pool);
+    await configureWorkers({ choice: 'hosted', root: '/app', repo }, f.run, r => records.push(r), f.host);
+    assert.deepEqual([...f.variables], leftovers);
+    assert.equal(records.at(-1)?.choice, 'hosted');
+    const status = workerStatus(repo, records.at(-1), f.run);
+    assert.equal(status.readiness, !mask ? 'ready' : mask & 12 ? 'unknown' : 'blocked');
+    assert.equal(status.choice, !mask ? 'hosted' : mask & 12 ? 'auxiliary' : 'unconfigured');
+  }
+});
+test('auxiliary status preserves historical evidence without certifying it or hiding actual labels', t => {
+  const root = temporaryRoot(t), f = fixture();
+  f.variables.set('PLATFORM_CI_AUX_RUNNER', 'trusted-auxiliary');
+  const historical = { runId: 42, sha, proof: f.proof, checkedAt: '2026-10-04T12:00:00Z' };
+  saveRecord(root, 'deferred', repo, 'deferred', [], { workers: { choice: 'hosted', status: 'configured', pools: { verify: '', deliver: '' }, test: historical, ownerActions: [] } });
+  const status = updateStatus(root, repo, f.run), text = summary(status);
+  assert.equal(status.workers.choice, 'auxiliary'); assert.equal(status.workers.readiness, 'unknown');
+  assert.deepEqual(status.workers.lastTest, historical);
+  assert(!f.calls.some(call => call.args[1]?.endsWith('/runs/42')));
+  assert.match(text, /Update workers: auxiliary; readiness: unknown; recorded choice: hosted/);
+  assert.match(text, /verify=auxiliary \(trusted-auxiliary\); deliver=auxiliary \(trusted-auxiliary\)/);
+  assert.match(text, /repository-level variables only/);
+  assert.doesNotMatch(text, /GitHub-hosted \/ unknown/);
 });
 test('public status cannot reuse historical local certification or mutate routing', () => {
   const f = fixture();

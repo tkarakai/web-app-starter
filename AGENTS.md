@@ -54,13 +54,15 @@ decides the merge; opening a PR does not grant standing merge authority.
 
 Before diagnosing or changing update delivery, inspect the app-owned `.github/update-delivery.json`
 and run `bun run platform:setup-updates --check --json`. Intent and live readiness are separate;
+missing credentials do not select fallback.
+
 Public repositories always use standard GitHub-hosted runners; local Actions workers/diagnostics
 are private-only. Local CLI/container checks without registration remain available. Preserve
 private owners' hosted/all-local choice, including auxiliary coverage and complete hosted recovery.
 For updater job machines, preserve existing routing or explicitly choose `--workers hosted|local`;
 local setup tests both Docker installations before enabling them. Read the worker section in
 `platform/docs/setup-updates.md`. Never substitute ordinary CI routing or infer live readiness from a saved choice.
-missing credentials do not select fallback. See `platform/docs/setup-updates.md`. Preserve
+Preserve
 credentials, caller customisations and auto-merge intent. Obtain explicit owner consent before
 switching identities or enabling repository-wide permissions. An existing update branch must
 be resumed from its saved report with `--relocate`; do not merge report-only drafts.

@@ -213,9 +213,22 @@ command: the convenience command in `~/.local/bin` points to only the most recen
 
 ### Check readiness or return to GitHub-hosted workers
 
-`--check` and `--check --json` show the recorded choice, observed routing/pools, worker readiness,
-unknown host availability, last successful GitHub worker test (run, source, proof and check time)
-and remaining actions, separately from credentials. The record retains the last successful test
+`--check` and `--check --json` show the recorded choice separately from each role's effective route:
+hosted, prepared pool, auxiliary runner, unconfigured local route, or unknown. They inspect all
+six repository-level runner selectors and repository visibility. A missing auxiliary route under
+the all-local policy blocks readiness; a configured auxiliary runner has unknown readiness and
+availability until you inspect its tools and actual updater execution. Prepared-pool tests do not
+certify an auxiliary runner. Clearing the updater pools can therefore leave recorded choice
+`hosted` alongside an effective auxiliary or blocked local route.
+
+The report labels its scope as repository-only: organization/environment overrides and custom
+workflow routing are not inspected. Verify those settings and actual job labels before relying on
+the result, especially when returning to hosted execution. With known visibility and no local
+repository selectors, the stock hosted default remains ready within that stated scope; unknown
+visibility leaves readiness unknown. The check changes no variables or services.
+
+Status also shows unknown host availability, last successful GitHub worker test (run, source,
+proof and check time) and remaining actions, separately from credentials. The record retains the last successful test
 through pending setup, offline retries, reconfiguration and a return to hosted routing. This is
 historical evidence; it does not prove that your host is awake now. Inspect both service statuses.
 Existing manually configured routing is preserved and reported unvalidated until tested.

@@ -60,6 +60,18 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Updater status reports effective hosted, prepared, auxiliary or unconfigured routes across all
+  six local selectors, separately from recorded intent. Clearing updater pools no longer implies
+  fully hosted readiness; inherited settings and live host availability remain explicitly unverified.
+- Runner migration preserves customized diagnostic jobs for owner review rather than duplicating
+  conditions or replacing custom selectors; `--check` reports those unresolved jobs.
+- Authentication broadcasts notify other tabs without racing the originating sign-in tab's own
+  navigation. The existing cross-tab message protocol and subscription cleanup remain compatible.
+- WebMCP registrations survive router identity changes while navigating; disabling the surface,
+  changing the authenticated client or unmounting still revokes pending calls.
+- Launcher wiring tests allow bounded startup headroom and retain fixture logs on timeout, without
+  changing application startup limits or readiness assertions.
+
 - Landing adoption fixtures exclude transient local CI state and worker-test directories, avoiding
   concurrent cleanup races and keeping those artifacts out of adopted test apps.
 

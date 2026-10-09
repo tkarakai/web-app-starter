@@ -9,6 +9,55 @@ import { evaluator, localSignals, parseWorkflow, source, verifiedSource } from "
 const route = "vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest')";
 const stock = `name: Example\njobs:\n  example:\n    runs-on: \${{ ${route} }}\n    steps: []\n`;
 const diagnostic = `format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', inputs.worker_pool, github.sha, github.run_id)`;
+const diagnosticCaller = `name: Diagnostic\non:\n  workflow_dispatch:\n    inputs:\n      worker_check:\n        type: boolean\n      worker_pool:\n        type: string\njobs:\n  worker-first:\n    name: Worker isolation 1\n    if: inputs.worker_check && inputs.worker_pool != ''\n    runs-on: \${{ fromJSON(${diagnostic}) }}\n    steps:\n      - run: echo first\n  worker-second:\n    name: Worker isolation 2\n    needs: worker-first\n    runs-on: \${{ fromJSON(${diagnostic}) }}\n    steps:\n      - run: echo second\n`;
+
+test("custom diagnostic conditions and selectors are preserved without duplicate YAML keys", () => {
+  for (const original of [
+    diagnosticCaller.replace("    needs: worker-first\n", "    needs: worker-first\n    if: ${{ !cancelled() }}\n"),
+    diagnosticCaller.replace("if: inputs.worker_check && inputs.worker_pool != ''", "if: inputs.worker_check"),
+    diagnosticCaller.replace(`runs-on: \${{ fromJSON(${diagnostic}) }}`, "runs-on: windows-latest"),
+    diagnosticCaller.replace('    needs: worker-first\n', '    needs: worker-first\n  # Owner condition\n    if: ${{ !cancelled() }}\n'),
+    diagnosticCaller.replace('  worker-second:', '  worker-second: # Custom job'),
+  ]) {
+    const review: string[] = [];
+    assert.equal(migrateContent(original, review), original);
+    assert.match(review.join('\n'), /Customized.*owner review/);
+    const jobs = parseWorkflow(migrateContent(original)).jobs;
+    assert.equal(jobs["worker-second"].if, parseWorkflow(original).jobs["worker-second"].if);
+  }
+});
+
+test('diagnostic migration passes a duplicate-key-rejecting Actions consumer when available', t => {
+  const probe = spawnSync('actionlint', ['-version'], { encoding: 'utf8' });
+  if ((probe.error as { code?: string } | undefined)?.code === 'ENOENT') { t.skip('actionlint is not installed; byte-preservation regression remains mandatory'); return; }
+  assert.equal(probe.status, 0, probe.stderr);
+  const custom = diagnosticCaller.replace('    needs: worker-first\n', '    needs: worker-first\n    if: ${{ !cancelled() }}\n');
+  for (const original of [diagnosticCaller, custom]) {
+    const checked = spawnSync('actionlint', ['-shellcheck=', '-pyflakes=', '-'], { input: migrateContent(original), encoding: 'utf8' });
+    assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+  }
+  const duplicate = custom.replace('    needs: worker-first\n', '    needs: worker-first\n    if: true\n');
+  const rejected = spawnSync('actionlint', ['-shellcheck=', '-pyflakes=', '-'], { input: duplicate, encoding: 'utf8' });
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stdout + rejected.stderr, /key "if" is duplicated/);
+});
+
+test('CLI identifies customized diagnostic files for owner review without changing them', t => {
+  const root = mkdtempSync(path.join(process.cwd(), '.public-runner-migration-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
+  const file = path.join(root, '.github/workflows/ci-verify.yml');
+  const original = diagnosticCaller.replace('    needs: worker-first\n', '    needs: worker-first\n    if: ${{ !cancelled() }}\n');
+  writeFileSync(file, original);
+  const cli = new URL('../codemods/v5-public-hosted-runners.ts', import.meta.url).pathname;
+  for (const args of [[], ['--check']]) {
+    const result = spawnSync(process.execPath, [cli, ...args, root], { encoding: 'utf8' });
+    assert.equal(result.status, args.length ? 1 : 0, result.stderr);
+    assert.match(result.stdout, /Owner review required: .github\/workflows\/ci-verify.yml: Customized/);
+    assert.match(result.stdout, /0 file\(s\)/);
+    assert.equal(readFileSync(file, 'utf8'), original);
+  }
+});
 
 test("migration forces public hosted while preserving private meaning for every routing combination", () => {
   for (const original of [

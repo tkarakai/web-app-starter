@@ -17,7 +17,7 @@ jobs:
   rerun:
     name: Re-run E2E Required
     if: github.event.label.name == 'run-e2e' && vars.PLATFORM_CI_PR_E2E == 'on-demand'
-    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]')) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     timeout-minutes: 5
     steps:
       - name: Re-run the waiting checks

@@ -354,7 +354,11 @@ After the upgrade, migrate stock app-owned CI caller/Renovate selectors:
 ./platform/tooling/node-ts.sh platform/tooling/codemods/v5-public-hosted-runners.ts --check
 ```
 
-The codemod preserves private routing and leaves custom selectors for owner review; it does not
+The codemod preserves private routing and leaves custom selectors for owner review. If either
+CI diagnostic job has a customized condition, selector or unsupported job structure, it preserves
+the pair and prints the workflow path for owner review; `--check` exits nonzero while that review
+is needed. Apply the public-hosted policy to those jobs explicitly without losing the owner's
+conditions, then retire or replace the customized diagnostic pair. The codemod does not
 manage live resources or queued jobs. Audit every custom workflow and verify actual public job
 runner identities are GitHub-hosted. Cancel/restart already queued local jobs. Before changing a
 private repository to public, perform this same drain/retirement first: workflow visibility is
