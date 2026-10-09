@@ -2,15 +2,23 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
 import { performance } from "node:perf_hooks";
 import { fillOtp, generateTotp, awaitStableTotpWindow, markConvexLogPosition, waitForAuthEmail } from "./customer-auth.ts";
 import type { OrganizationObservation } from "./secret-safe-report.ts";
+import { observeOrganizationContact } from "./organization-contact-diagnostics.ts";
 
 const diagnosticStarts = new WeakMap<TestInfo, number>();
+const contactProbes = new WeakMap<Page, ReturnType<typeof observeOrganizationContact>>();
 /** Start before page setup and the test body, using only public fixture APIs. */
-export const organizationTest = test.extend<{ organizationDiagnosticClock: void }>({
+export const organizationTest = test.extend<{ organizationDiagnosticClock: void; organizationContactEvidence: void }>({
   // Playwright requires destructuring even when a fixture has no dependencies.
   // eslint-disable-next-line no-empty-pattern
   organizationDiagnosticClock: [async ({}, useFixture, info) => {
     diagnosticStarts.set(info, performance.now());
     try { await useFixture(); } finally { diagnosticStarts.delete(info); }
+  }, { auto: true, box: true }],
+  // Keep the diagnostic clock before page setup, then attach before owner navigation.
+  organizationContactEvidence: [async ({ organizationDiagnosticClock, page }, useFixture) => {
+    void organizationDiagnosticClock;
+    const probe = observeOrganizationContact(page); contactProbes.set(page, probe);
+    try { await useFixture(); } finally { contactProbes.delete(page); probe.dispose(); }
   }, { auto: true, box: true }],
 });
 
@@ -71,7 +79,8 @@ export async function expectOrganizationTransition(page: Page, organizationId: s
       const observations = await Promise.race([capture, new Promise<OrganizationObservation[]>(resolve => {
         timer = setTimeout(() => resolve(["org-read-failed"]), budget);
       })]);
-      for (const observation of observations) await test.step(observation, async () => {});
+      const contact = memberRow ? contactProbes.get(page)?.observations() ?? ["org-contact-observer-unavailable" as const] : [];
+      for (const observation of [...observations, ...contact]) await test.step(observation, async () => {});
     } catch {
       try { await test.step("org-read-failed", async () => {}); } catch { /* The original assertion remains authoritative. */ }
     } finally {

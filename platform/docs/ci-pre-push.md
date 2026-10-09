@@ -49,11 +49,18 @@ need to retain before starting another run.
 Web/admin browser reports contain only outcomes, source locations, timings and diagnostic
 categories; their credential-bearing raw browser output is not retained by the test wrapper.
 Development server logs in the local artifact directory can contain auth email links and must
-stay private. Hosted web/admin jobs upload only the safe report files.
+stay private. Hosted web/admin jobs upload only the safe report files. Bounded, validated progress
+is also emitted to stderr and an explicitly incomplete journal; see
+[credential-safe browser reports](testing.md#credential-safe-browser-reports) for interrupted runs.
 Failed organization-transition assertions also record a closed set of state categories (such as
 missing context, mismatched selection or a hidden document). They never record actual URLs,
 organization IDs, member text or arbitrary custom step titles; the original assertion still fails.
-Collection is limited to two seconds within the remaining test budget and skipped near its deadline.
+Failure-only DOM comparison is limited to two seconds within the remaining test budget and
+skipped near its deadline.
+Contact failures can additionally distinguish a passively observed request outcome from a matching
+directory update. These closed categories contain no request bodies or identity values; ambiguous
+directory coverage remains unknown. A known request outcome can coexist with incomplete directory
+coverage; neither proves a DOM update or establishes why a mutation failed.
 
 Before standalone E2E on changed source with a populated local database, stop this checkout's
 managed services and run `bun run dev --prepare-only --app=web` (select an installed `web`,

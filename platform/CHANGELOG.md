@@ -65,7 +65,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
   observations and current assurance; account conflicts and settled signout discard private state.
 - Credential-bearing web/admin browser tests publish value-free reports instead of raw
   Playwright actions, captures or authentication server logs. Results retain source locations,
-  durations, retries and diagnostic categories. Interactive capture modes are refused.
+  durations, retries and diagnostic categories. Bounded, explicitly incomplete progress survives
+  interrupted runs when already emitted; failure-only contact observations distinguish request
+  outcomes from directory updates without publishing identity values. Interactive capture modes
+  are refused.
 - Clarified app-operator, organization-user/org-admin and organization membership-management
   terminology throughout code, UI, help and guidance. Deprecated helper aliases, registered API/tool
   identifiers and legacy stored mode/enrollment values preserve compatibility without rewriting data.

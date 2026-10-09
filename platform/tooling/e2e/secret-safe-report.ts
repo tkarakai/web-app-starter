@@ -3,8 +3,16 @@ export const statuses = ["passed", "failed", "timedOut", "skipped", "interrupted
 export type Status = typeof statuses[number];
 export const categories = ["assertion", "timeout", "navigation", "runtime", "capture-policy"] as const;
 export type Diagnostic = typeof categories[number];
+/** Transport evidence only; all correlation identifiers remain in memory. */
+export const contactObservations = [
+  "org-contact-observer-unavailable", "org-contact-observer-complete", "org-contact-observer-incomplete",
+  "org-contact-rpc-not-observed", "org-contact-rpc-unresolved", "org-contact-rpc-succeeded", "org-contact-rpc-rejected", "org-contact-rpc-ambiguous",
+  "org-contact-directory-unobserved", "org-contact-directory-current", "org-contact-directory-not-current", "org-contact-directory-target-absent", "org-contact-directory-error",
+] as const;
+export type ContactObservation = typeof contactObservations[number];
 /** Closed observations only: never copy a custom step title or a DOM value. */
 export const organizationObservations = [
+  ...contactObservations,
   "org-url-expected", "org-url-other", "org-context-match", "org-context-mismatch", "org-context-absent",
   "org-option-present", "org-option-absent", "org-visible", "org-hidden", "org-document-loading",
   "org-app-loading", "org-app-unavailable", "org-invitation-page", "org-dashboard-page",

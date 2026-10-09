@@ -122,8 +122,17 @@ Run web/admin browser tests through `bun run test:e2e`. Their runner publishes o
 source locations, timing and diagnostic categories in `qa/safe-e2e-report/report.json` and
 `index.html`. Passwords, recovery codes, bearer links, raw action titles, console output and
 attachments are excluded. Automatic screenshots, video, traces and AI error snapshots are off.
-The wrapper captures child output and removes its own temporary raw artifacts after execution;
-its exit code still reports test failure. Each failed hosted web shard publishes its own safe report.
+The wrapper consumes and discards raw child output, and removes its own temporary artifacts
+after normal completion. Its exit code still reports test failure. Each failed hosted web shard
+publishes `report.json` and `index.html`; hosted artifacts currently exclude the progress files.
+
+Validated progress appears on stderr and in `progress.ndjson` as tests start and attempts finish.
+`progress.json` contains initial and final progress snapshots. All progress is explicitly incomplete;
+use the final `report.json` and process exit status for the suite result. If execution is interrupted,
+only complete newline-terminated journal records are usable observations; a started test has no
+assumed outcome. Cancellation may prevent artifact upload, but already emitted safe progress can
+remain in the job log. With `--reporter=json`, stdout contains one final report document if the
+wrapper reaches final publication; killing the wrapper can leave no final document.
 
 `--reporter=list`, `github`, `json` and `html` select safe output formats. Direct Playwright
 execution and custom/blob reporters are refused by the shipped authenticated-app configs;
