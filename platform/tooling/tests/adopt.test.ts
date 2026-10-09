@@ -240,5 +240,5 @@ test("sample removal leaves the retained backend suite runnable", (t) => {
   for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts"]) {
     assert.equal(existsSync(path.join(backend, "convex", file)), false);
   }
-  execFileSync("bun", ["run", "test:convex"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
+  execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
 });
