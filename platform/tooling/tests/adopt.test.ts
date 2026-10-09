@@ -215,3 +215,30 @@ test("sample removal replaces domain UI and retains account messages and platfor
   assert.equal(readFileSync(path.join(root, `${dashboard}dashboard-client.tsx`), "utf8"), read("platform/templates/adopt/dashboard-client.tsx.txt"));
   assert.equal(existsSync(path.join(root, "apps/web/src/components/app-sidebar.tsx")), true);
 });
+
+test("sample removal leaves the retained backend suite runnable", (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), "adopt-backend-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const backend = path.join(root, "packages/backend");
+  cpSync(path.join(REPO, "packages/backend"), backend, {
+    recursive: true,
+    filter: file => !["node_modules", ".turbo", "coverage"].includes(path.basename(file)),
+  });
+  // Reuse installed dependencies; the backend modules and schema are fixture-local.
+  symlinkSync(path.join(REPO, "packages/backend/node_modules"), path.join(backend, "node_modules"), "dir");
+  symlinkSync(path.join(REPO, "node_modules"), path.join(root, "node_modules"), "dir");
+  cpSync(path.join(REPO, "platform/config"), path.join(root, "platform/config"), { recursive: true });
+  cpSync(path.join(REPO, "platform/templates/adopt"), path.join(root, "platform/templates/adopt"), { recursive: true });
+  for (const file of [
+    "apps/web/src/components/settings/account-client.tsx",
+    "apps/web/src/app/[locale]/(dashboard)/dashboard/settings/sessions/sessions-client.tsx",
+  ]) write(root, file, 'import { AppSidebar } from "@/components/projects/app-sidebar";\n');
+  mkdirSync(path.join(root, "apps/web/qa/tests"), { recursive: true });
+  write(root, "packages/messages/en.json", JSON.stringify({ dashboard: { account: "Settings" } }));
+
+  removeSample(root);
+  for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts"]) {
+    assert.equal(existsSync(path.join(backend, "convex", file)), false);
+  }
+  execFileSync("bun", ["run", "test:convex"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
+});

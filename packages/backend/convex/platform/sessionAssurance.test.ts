@@ -8,7 +8,8 @@ import * as assuranceHooks from "./authAssurance";
 import { authComponent, createAuthOptions } from "./auth";
 import { authRoutePolicy } from "./authAssurance";
 import { api, components, internal } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { assuranceApi, createSessionAssuranceTestEnv } from "./sessionAssurance.test-helpers";
+import { modules } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
 
@@ -46,7 +47,7 @@ function totp(uri: string): string {
 }
 
 async function fixture(role = "user") {
-  const t = createTestEnv();
+  const t = createSessionAssuranceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, authModules);
   const now = Date.now();
   const email = `${randomUUID()}@example.test`;
@@ -181,9 +182,9 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(session).toMatchObject({ authMethod: "password", assuranceVersion: 1, strongVerifiedAt: 0, strongFactorId: "" });
     const jwt = await f.request("/convex/token", undefined, body.token);
     expect(jwt.status, await jwt.clone().text()).toBe(200);
-    await expect(client.mutation(api.projects.create, { name: "Allowed", description: "" })).resolves.toBeTypeOf("string");
+    await expect(client.mutation(assuranceApi.write, {})).resolves.toBeTypeOf("string");
     await f.setting("userMfaRequired", true);
-    await expect(client.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow("NOT_AUTHENTICATED");
+    await expect(client.mutation(assuranceApi.write, {})).rejects.toThrow("NOT_AUTHENTICATED");
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "mfa_enrollment", allowed: false });
   });
 
@@ -192,13 +193,13 @@ describe("backend session assurance through authentication endpoints", () => {
     await f.setting("userMfaRequired", true);
     const { body } = await f.signIn();
     const old = await f.caller(body.token);
-    await expect(old.client.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow();
+    await expect(old.client.mutation(assuranceApi.write, {})).rejects.toThrow();
     const wrong = await f.request("/two-factor/verify-totp", { code: "000000" }, body.token);
     expect(wrong.status).toBeGreaterThanOrEqual(400);
     const enrolled = await f.enroll(body.token);
     const fresh = await f.caller(enrolled.token);
     expect(await fresh.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "ready", strong: true, recent: true });
-    await expect(fresh.client.mutation(api.projects.create, { name: "Allowed", description: "" })).resolves.toBeTypeOf("string");
+    await expect(fresh.client.mutation(assuranceApi.write, {})).resolves.toBeTypeOf("string");
     expect(await old.client.query(api.platform.auth.getCurrentUser, {})).toBeNull();
   });
 
@@ -243,7 +244,7 @@ describe("backend session assurance through authentication endpoints", () => {
     const bannedToken = (await banned.signIn()).body.token;
     const bannedCaller = await banned.caller(bannedToken);
     await banned.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: banned.user._id }], update: { banned: true } } });
-    expect(await bannedCaller.client.query(api.projects.list, {})).toBeNull();
+    expect(await bannedCaller.client.query(assuranceApi.read, {})).toBeNull();
     expect((await banned.request("/admin/list-users", undefined, bannedToken)).status).toBe(403);
   });
 
@@ -255,7 +256,7 @@ describe("backend session assurance through authentication endpoints", () => {
     const other = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Other", email: "other@example.test", emailVerified: true, createdAt: now, updatedAt: now } } });
     const forged = f.t.withIdentity({ subject: other._id, sessionId: session._id });
     expect(await forged.query(api.platform.auth.getCurrentUser, {})).toBeNull();
-    await expect(forged.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow("NOT_AUTHENTICATED");
+    await expect(forged.mutation(assuranceApi.write, {})).rejects.toThrow("NOT_AUTHENTICATED");
   });
 
   test("an email-only session cannot bypass an enrolled factor or replace it", async () => {
@@ -272,7 +273,7 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(response.status, JSON.stringify(body)).toBe(200);
     const mail = await f.caller(body.token);
     expect(mail.session).toMatchObject({ authMethod: "magic-link", strongVerifiedAt: 0 });
-    await expect(mail.client.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow();
+    await expect(mail.client.mutation(assuranceApi.write, {})).rejects.toThrow();
     expect((await f.request("/two-factor/enable", { password }, body.token)).status).toBe(403);
     expect((await f.request("/passkey/generate-register-options", undefined, body.token)).status).toBe(403);
     expect((await f.request("/list-sessions", undefined, body.token)).status).toBe(403);
@@ -280,9 +281,9 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(sessions.status).toBe(403);
     expect(await sessions.text()).not.toContain(enrolled.token);
     expect((await f.request("/two-factor/verify-totp", { code: totp(enrolled.uri) }, body.token)).status).toBe(200);
-    await expect(mail.client.mutation(api.projects.create, { name: "Allowed", description: "" })).resolves.toBeTypeOf("string");
+    await expect(mail.client.mutation(assuranceApi.write, {})).resolves.toBeTypeOf("string");
     await f.setting("userMagicLinkEnabled", false);
-    expect(await mail.client.query(api.projects.list, {})).toBeNull();
+    expect(await mail.client.query(assuranceApi.read, {})).toBeNull();
   });
 
   test("password reauthentication cannot substitute for a required factor and wrong proofs spend a persistent budget", async () => {
@@ -310,7 +311,7 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(result.status, JSON.stringify(body)).toBe(200);
     const recovery = await f.caller(body.token);
     expect(await recovery.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "recovery", allowed: false });
-    await expect(recovery.client.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow();
+    await expect(recovery.client.mutation(assuranceApi.write, {})).rejects.toThrow();
     expect((await f.request("/passkey/generate-register-options", undefined, body.token)).status).toBe(403);
     expect((await f.request("/list-sessions", undefined, body.token)).status).toBe(403);
     const sessions = await f.t.fetch("/api/sessions", { headers: { authorization: `Bearer ${body.token}` } });
@@ -320,9 +321,9 @@ describe("backend session assurance through authentication endpoints", () => {
     const replacement = await f.enroll(body.token);
     const recovered = await f.caller(replacement.token);
     expect(await recovered.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "ready", strong: true });
-    await expect(recovered.client.mutation(api.projects.create, { name: "Recovered", description: "" })).resolves.toBeTypeOf("string");
+    await expect(recovered.client.mutation(assuranceApi.write, {})).resolves.toBeTypeOf("string");
     const former = await f.caller(enrolled.token);
-    expect(await former.client.query(api.projects.list, {})).toBeNull();
+    expect(await former.client.query(assuranceApi.read, {})).toBeNull();
   });
 
   test("only a cryptographically verified UV passkey assertion satisfies MFA", async () => {
@@ -341,9 +342,9 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(forged.status).toBe(400);
     expect((await f.caller(result.session.token)).session).toEqual(session);
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ allowed: true, strong: true, hasTotp: false });
-    await expect(client.mutation(api.projects.create, { name: "Passkey access", description: "" })).resolves.toBeTypeOf("string");
+    await expect(client.mutation(assuranceApi.write, {})).resolves.toBeTypeOf("string");
     await f.setting("userPasskeyPolicy", "disabled");
-    expect(await client.query(api.projects.list, {})).toBeNull();
+    expect(await client.query(assuranceApi.read, {})).toBeNull();
   });
 
   test("removing a passkey invalidates sessions authenticated with that credential", async () => {
@@ -354,7 +355,7 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(response.status, JSON.stringify(result)).toBe(200);
     const { client } = await f.caller(result.session.token);
     await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "passkey", where: [{ field: "_id", value: passkey.key._id }] } });
-    expect(await client.query(api.projects.list, {})).toBeNull();
+    expect(await client.query(assuranceApi.read, {})).toBeNull();
   });
 
   test("unverified and compound-role administrators cannot select a weaker user policy", async () => {
@@ -384,8 +385,8 @@ describe("backend session assurance through authentication endpoints", () => {
     const result = await response.json();
     expect(response.status).toBe(200);
     const proved = await f.caller(result.session.token);
-    expect(await proved.client.query(api.projects.list, {})).toEqual([]);
-    expect(await passwordSession.client.query(api.projects.list, {})).toBeNull();
+    expect(await proved.client.query(assuranceApi.read, {})).toBe(f.user._id);
+    expect(await passwordSession.client.query(assuranceApi.read, {})).toBeNull();
   });
 
   test("legacy sessions must reauthenticate and password proof cannot clear recovery", async () => {
@@ -393,11 +394,11 @@ describe("backend session assurance through authentication endpoints", () => {
     const token = (await f.signIn()).body.token;
     const { session, client } = await f.caller(token);
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: session._id }], update: { assuranceVersion: 0, primaryVerifiedAt: 0 } } });
-    expect(await client.query(api.projects.list, {})).toBeNull();
+    expect(await client.query(assuranceApi.read, {})).toBeNull();
     expect((await f.request("/verify-password", { password: "wrong" }, token)).status).toBe(400);
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "reauthenticate" });
     expect((await f.request("/verify-password", { password }, token)).status).toBe(200);
-    expect(await client.query(api.projects.list, {})).toEqual([]);
+    expect(await client.query(assuranceApi.read, {})).toBe(f.user._id);
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: session._id }], update: { recoveryOnly: true } } });
     expect((await f.request("/verify-password", { password }, token)).status).toBe(200);
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "recovery", allowed: false });
@@ -456,9 +457,9 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(result.twoFactorRedirect).not.toBe(true);
     const limited = await f.caller(result.token);
     expect(await limited.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "mfa_verification", strong: false });
-    expect(await limited.client.query(api.projects.list, {})).toBeNull();
+    expect(await limited.client.query(assuranceApi.read, {})).toBeNull();
     expect((await f.request("/two-factor/verify-totp", { code: totp(enrolled.uri) }, result.token)).status).toBe(200);
-    expect(await limited.client.query(api.projects.list, {})).toEqual([]);
+    expect(await limited.client.query(assuranceApi.read, {})).toBe(f.user._id);
   });
 
   test("email OTP in a password challenge never supplies strong authentication", async () => {
@@ -473,7 +474,7 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(response.status, JSON.stringify(result)).toBe(200);
     const limited = await f.caller(result.token);
     expect(await limited.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "mfa_verification", strong: false });
-    expect(await limited.client.query(api.projects.list, {})).toBeNull();
+    expect(await limited.client.query(assuranceApi.read, {})).toBeNull();
     expect((await f.request("/list-sessions", undefined, result.token)).status).toBe(403);
   });
 
@@ -541,7 +542,7 @@ test("an original TOTP, another factor and password reauthentication cannot clea
   await expect(f.t.mutation(internal.platform.sessionAssurance.recordProof, { userId: f.user._id, sessionId: f.recoveryCaller.session._id, kind: "passkey", factorId: "another-factor" })).rejects.toThrow("RECOVERY_REQUIRED");
   expect((await f.request("/update-session", { recoveryOnly: false, recoveryFactorId: factor!._id }, f.recovery.token)).status).toBe(403);
   expect(await f.recoveryCaller.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "recovery", allowed: false });
-  await expect(f.recoveryCaller.client.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow();
+  await expect(f.recoveryCaller.client.mutation(assuranceApi.write, {})).rejects.toThrow();
 });
 
 test.each([false, true])("password-authorized replacement resumes and preserves its binding through native rotation (rotate=%s)", async rotate => {
@@ -558,7 +559,7 @@ test.each([false, true])("password-authorized replacement resumes and preserves 
   const pending = await f.caller(f.recovery.token);
   const factor = await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] });
   expect(pending.session).toMatchObject({ recoveryOnly: true, recoveryFactorId: factor!._id });
-  expect(await pending.client.query(api.projects.list, {})).toBeNull();
+  expect(await pending.client.query(assuranceApi.read, {})).toBeNull();
   vi.setSystemTime(Date.now() + 6 * 60_000);
   const verified = await f.request("/two-factor/verify-totp", { code: totp(replacement.totpURI) }, f.recovery.token);
   expect(verified.status, await verified.clone().text()).toBe(200);
@@ -566,7 +567,7 @@ test.each([false, true])("password-authorized replacement resumes and preserves 
   const fresh = sessions.page.find(row => row.strongFactorId === factor!._id)!;
   expect(fresh).toMatchObject({ recoveryOnly: false, recoveryFactorId: "", authenticatedAt: pending.session.authenticatedAt, authMethod: pending.session.authMethod, primaryVerifiedAt: pending.session.primaryVerifiedAt });
   const caller = await f.caller(fresh.token);
-  expect(await caller.client.query(api.projects.list, {})).toEqual([]);
+  expect(await caller.client.query(assuranceApi.read, {})).toBe(f.user._id);
   await expect(caller.client.action(api.platform.auth.viewBackupCodes, { password })).resolves.toEqual(replacement.backupCodes);
   if (rotate) expect(fresh.token).not.toBe(f.recovery.token);
 });
@@ -585,7 +586,7 @@ test.each(["password", "secret", "factor", "session", "user"])("replacement bind
   if (change === "user") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { userId: "another-user" } } });
   await expect(f.t.mutation(internal.platform.sessionAssurance.bindRecoveryReplacement, args)).rejects.toThrow();
   await expect(f.t.mutation(internal.platform.sessionAssurance.recordProof, { userId: f.user._id, sessionId: f.recoveryCaller.session._id, kind: "totp", factorId: factor._id, factorSecret: factor.secret })).rejects.toThrow();
-  expect(await f.recoveryCaller.client.query(api.projects.list, {})).toBeNull();
+  expect(await f.recoveryCaller.client.query(assuranceApi.read, {})).toBeNull();
 });
 
 test("a second replacement in another session cannot satisfy the recovery binding", async () => {
@@ -598,7 +599,7 @@ test("a second replacement in another session cannot satisfy the recovery bindin
   expect(second.status).toBe(200);
   const replacement = await second.json();
   expect((await f.request("/two-factor/verify-totp", { code: totp(replacement.totpURI) }, f.recovery.token)).status).toBe(403);
-  expect(await f.recoveryCaller.client.query(api.projects.list, {})).toBeNull();
+  expect(await f.recoveryCaller.client.query(assuranceApi.read, {})).toBeNull();
 });
 
 test("administrator active-session OTP enrollment and TOTP preserve the four-hour deadline", async () => {
@@ -647,7 +648,7 @@ test.each(["password", "factor", "session"])("HTTP replacement cannot complete a
     const response = await f.request("/two-factor/enable", { password }, f.recovery.token);
     expect(raced).toBe(true);
     expect(response.status).toBeGreaterThanOrEqual(400);
-    expect(await f.recoveryCaller.client.query(api.projects.list, {})).toBeNull();
+    expect(await f.recoveryCaller.client.query(assuranceApi.read, {})).toBeNull();
     const session = await f.t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "_id", value: f.recoveryCaller.session._id }] });
     expect(session?.recoveryFactorId).toBeFalsy();
   } finally { spy.mockRestore(); }
