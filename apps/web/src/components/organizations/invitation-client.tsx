@@ -11,6 +11,7 @@ import { EMAIL_VERIFICATION_CALLBACK_URL } from "@web-app-starter/auth-ui";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from "@web-app-starter/design-system";
 import { PasswordInput } from "@/components/ui/localized-controls";
 import { selectOrganization } from "@/hooks/organization-selection";
+import { useSafeQuery } from "@/hooks/use-safe-query";
 import { OrganizationFeedback } from "./organization-feedback";
 import { clearOrganizationInvitation, parseOrganizationInvitation, readOrganizationInvitation, saveOrganizationInvitation, type SavedOrganizationInvitation } from "./invitation-state";
 
@@ -24,7 +25,13 @@ export function InvitationClient() {
 
 function ActorInvitationClient() {
   const t = useTranslations("organizations"); const router = useRouter();
-  const session = authClient.useSession(); const { isAuthenticated } = useConvexAuth();
+  const session = authClient.useSession(); const { isAuthenticated, isLoading } = useConvexAuth();
+  const user = session.data?.user;
+  const settled = isAuthenticated && !isLoading && !session.isPending && Boolean(user);
+  const backendUser = useSafeQuery(api.platform.auth.getCurrentUser, settled ? {} : "skip");
+  // A valid Convex token can still belong to the account just switched away from.
+  // Wait for the session-validated backend actor before dispatching admission.
+  const sameAccount = settled && backendUser.data?._id === user?.id;
   const preview = useAction(api.platform.memberInvitations.preview); const claim = useAction(api.platform.memberInvitations.claim);
   const register = useAction(api.platform.memberInvitations.register); const requestVerification = useAction(api.platform.memberInvitations.requestVerification);
   const requestRegistrationVerification = useAction(api.platform.memberInvitations.requestRegistrationVerification);
@@ -71,10 +78,9 @@ function ActorInvitationClient() {
     setBusy(true); setError(null);
     try { await call(assertCurrent); } catch (failure) { if (current()) setError(failure); } finally { if (current()) setBusy(false); }
   };
-  const user = session.data?.user;
   const wrongAccount = user && details && user.email.toLowerCase() !== details.email.toLowerCase();
   const acceptInvitation = async (assertCurrent: () => void) => {
-    if (!invitation || !user || !isAuthenticated) return;
+    if (!invitation || !user || !sameAccount || !user.emailVerified) return;
     const actor = user.id;
     const result = await accept({ organizationId: invitation.organizationId, token: invitation.token });
     const live = await authClient.getSession();
@@ -91,7 +97,7 @@ function ActorInvitationClient() {
       {wrongAccount ? <div className="space-y-3"><p role="alert">{t("wrongAccount")}</p><Button disabled={busy} onClick={() => void run(async assertCurrent => { await authClient.signOut(); assertCurrent(); setMode("signin"); })}>{t("switchAccount")}</Button></div>
         : user ? <div className="space-y-3">
           {!user.emailVerified && <><p>{t("verifyEmail")}</p><Button disabled={busy || !isAuthenticated || !invitation} onClick={() => void run(async assertCurrent => { if (invitation) { await requestVerification({ organizationId: invitation.organizationId, token: invitation.token }); assertCurrent(); setSent(true); } })}>{t("sendVerification")}</Button></>}
-          <Button disabled={busy || !isAuthenticated || !user.emailVerified || !invitation} onClick={() => void run(acceptInvitation)}>{t("acceptInvitation")}</Button>
+          <Button disabled={busy || !sameAccount || !user.emailVerified || !invitation} onClick={() => void run(acceptInvitation)}>{t("acceptInvitation")}</Button>
           <Button variant="outline" disabled={busy} onClick={() => void run(async assertCurrent => { await authClient.getSession({ query: { disableCookieCache: true } }); assertCurrent(); window.location.reload(); })}>{t("refreshVerification")}</Button>
           <Button variant="ghost" disabled={busy} onClick={() => void run(async () => { await authClient.signOut(); })}>{t("switchAccount")}</Button>
         </div>

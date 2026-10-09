@@ -14,12 +14,15 @@ const mocks = vi.hoisted(() => ({
   authenticated: false, push: vi.fn(), signOut: vi.fn(), signIn: vi.fn(), getSession: vi.fn(), sendVerification: vi.fn(),
 }));
 vi.mock("convex/react", () => ({
-  useConvexAuth: () => ({ isAuthenticated: mocks.authenticated }),
-  useQueries: (queries: Record<string, { query: string; args: unknown }>) => Object.fromEntries(Object.entries(queries).map(([key, { query, args }]) => { mocks.query(query, args); return [key, mocks.data[query]]; })),
+  useConvexAuth: () => ({ isAuthenticated: mocks.authenticated, isLoading: false }),
+  // These flow fixtures use settled matching actors; organization-transitions
+  // separately exercises mismatched, pending, revoked and rejected identities.
+  useQueries: (queries: Record<string, { query: string; args: unknown }>) => Object.fromEntries(Object.entries(queries).map(([key, { query, args }]) => { mocks.query(query, args); return [key, query === "currentUser" ? mocks.session.data ? { _id: mocks.session.data.user.id } : null : mocks.data[query]]; })),
   useAction: (name: string) => mocks.calls[name] ??= vi.fn().mockResolvedValue(undefined),
   useMutation: (name: string) => mocks.calls[name] ??= vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@repo/backend", () => ({ api: { platform: {
+  auth: { getCurrentUser: "currentUser" },
   tenantContext: { get: "contextDetail" },
   organizationEnrollment: { begin: "begin", status: "status", verifyCredential: "credential", acknowledgeRecovery: "recovery", complete: "complete" },
   memberManagement: { leave: "leave", directory: "directory", audit: "audit", change: "change", setContact: "contact" },

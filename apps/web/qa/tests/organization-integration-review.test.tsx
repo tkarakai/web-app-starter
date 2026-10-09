@@ -18,6 +18,7 @@ vi.mock("@repo/backend", () => ({ api: { platform: {
 } } }));
 vi.mock("convex/react", () => ({
   useQuery: (query: string) => query === "assurance" ? mocks.status : mocks.user,
+  useQueries: (queries: Record<string, unknown>) => Object.fromEntries(Object.keys(queries).map(key => [key, mocks.user])),
   useConvexAuth: () => ({ isAuthenticated: mocks.authenticated, isLoading: false }),
   useAction: (name: string) => mocks.calls[name] ??= vi.fn().mockResolvedValue(undefined),
   useMutation: (name: string) => mocks.calls[name] ??= vi.fn().mockResolvedValue(undefined),
