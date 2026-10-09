@@ -3289,6 +3289,23 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      controlList: FunctionReference<
+        "query",
+        "internal",
+        {
+          operatorId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        any,
+        Name
+      >;
       directory: FunctionReference<
         "query",
         "internal",
@@ -3318,6 +3335,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         { organizationId: string; userId: string },
+        any,
+        Name
+      >;
+      legacyPrivateAccess: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        any,
+        Name
+      >;
+      mine: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
         any,
         Name
       >;

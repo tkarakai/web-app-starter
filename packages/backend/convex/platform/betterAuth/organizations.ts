@@ -53,12 +53,50 @@ export const resumeCustomerProvisioning = mutation({
   },
 });
 
+/** Identity-owned context discovery, never an active-session preference or member directory. */
+export const mine = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    await customer(ctx, userId);
+    const members = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).take(101);
+    if (members.length > 100) throw new Error("ORGANIZATION_CONTEXT_LIMIT");
+    const contexts = [];
+    for (const member of members) {
+      const id = ctx.db.normalizeId("organization", member.organizationId);
+      const org = id ? await ctx.db.get(id) : null;
+      if (!org || ![ROLE_ADMIN, ROLE_MEMBER].includes(member.role) || !["personal", "collaborative"].includes(org.experience ?? "")) throw new Error("ORGANIZATION_CONTEXT_UNCLASSIFIED");
+      contexts.push({ organizationId: org._id, name: org.name, experience: org.experience,
+        lifecycle: org.lifecycle, role: member.role, personal: org.personalOwnerId === userId });
+    }
+    return contexts;
+  },
+});
+
+/** Transitional owner-only APIs are not tenant APIs; never resolve ambiguous context implicitly. */
+export const legacyPrivateAccess = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const user = await customer(ctx, userId);
+    const members = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).take(2);
+    if (!members.length) {
+      if (user.customerAdmission) throw new Error("CUSTOMER_PROVISIONING_REQUIRED");
+      if (await ctx.db.query("organizationInvitationClaims").withIndex("userId", q => q.eq("userId", user._id)).first()) throw new Error("INVITATION_ACCEPTANCE_REQUIRED");
+      return null; // Unmarked historical private identity only; no guessed tenant is created.
+    }
+    if (members.length !== 1) throw new Error("EXPLICIT_ORGANIZATION_CONTEXT_REQUIRED");
+    const org = await organization(ctx, members[0].organizationId);
+    if (org.experience !== "personal" || org.personalOwnerId !== userId || members[0].role !== ROLE_ADMIN) throw new Error("EXPLICIT_ORGANIZATION_CONTEXT_REQUIRED");
+    return org._id;
+  },
+});
+
 export const context = query({
   args: { organizationId: v.string(), userId: v.string() },
   handler: async (ctx, { organizationId, userId }) => {
     await customer(ctx, userId);
     const org = await organization(ctx, organizationId);
     const member = await membership(ctx, organizationId, userId);
+    if (![ROLE_ADMIN, ROLE_MEMBER].includes(member.role)) throw new Error("INVALID_MEMBER_ROLE");
     return { organizationId: org._id, name: org.name, slug: org.slug, experience: org.experience,
       memberId: member._id, role: member.role, canManageMembers: org.experience === "collaborative" && await enrolledAdmin(ctx, member) };
   },
@@ -238,6 +276,20 @@ export const directory = query({
         adminPending: Boolean(enrollment && !enrollment.completedAt), enrolled: await enrolledAdmin(ctx, member) });
     }
     return { ...result, page };
+  },
+});
+
+/** Allowlisted control metadata, no ordinary member count or auth joins. */
+export const controlList = query({
+  args: { operatorId: v.string(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("user", args.operatorId);
+    const operator = id ? await ctx.db.get(id) : null;
+    if (!operator || operator.banned || !isOperator(operator.role)) throw new Error("NOT_PLATFORM_ADMIN");
+    if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
+    const result = await ctx.db.query("organization").paginate(args.paginationOpts);
+    return { ...result, page: result.page.map(org => ({ organizationId: org._id, name: org.name,
+      experience: org.experience, lifecycle: org.lifecycle, createdAt: org.createdAt })) };
   },
 });
 

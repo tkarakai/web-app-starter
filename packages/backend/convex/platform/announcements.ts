@@ -5,7 +5,7 @@ import type { authorizedSession } from "./sessionPolicy";
 type AnnouncementIdentity = Pick<NonNullable<Awaited<ReturnType<typeof authorizedSession>>>, "user" | "ownerId">;
 import { components } from "../_generated/api";
 import { internalMutation, internalQuery, query } from "../_generated/server";
-import { adminMutation, authedQuery } from "./functions";
+import { adminMutation, adminQuery } from "./functions";
 
 // Shared native handlers used by the UI and authenticated capability adapters.
 export const announcementListArgs = {
@@ -134,7 +134,7 @@ export const handleScheduledEnd = internalMutation({
   },
 });
 
-export const list = authedQuery({
+export const list = adminQuery({
   args: announcementListArgs,
   handler: listAnnouncement,
 });

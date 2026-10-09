@@ -88,55 +88,29 @@ const multiOriginPlugin = (siteUrls: string[]): BetterAuthPlugin => ({
   },
 });
 
-// Admin mutation paths that should be guarded for protected admins
-const PROTECTED_ADMIN_PATHS = [
-  "/admin/ban-user",
-  "/admin/remove-user",
-  "/admin/set-role",
-];
+// Generic Better Auth administration has multi-transaction target checks and customer-wide
+// semantics. Keep it unavailable; supported operator APIs check actor/target at commit instead.
+function privacyBoundaryCode(path: string): string | null {
+  if (path.startsWith("/admin/")) return "OPERATOR_API_REQUIRED";
+  // Identity deletion can orphan legacy private ownership or violate customer membership invariants.
+  if (path === "/delete-user" || path === "/delete-user/callback") return "IDENTITY_DELETION_REQUIRES_REVIEWED_MAPPING";
+  return null;
+}
 
-// Plugin that prevents banning, deleting, or demoting users whose emails
-// appear in the adminEmails table.
-const protectedAdminPlugin = (
-  convexCtx: GenericCtx<DataModel>,
-): BetterAuthPlugin => ({
-  id: "protected-admin",
-  async onRequest(request, ctx) {
+const operatorAdminBoundaryPlugin = (): BetterAuthPlugin => ({
+  id: "operator-admin-boundary",
+  async onRequest(request) {
     const url = new URL(request.url);
     // Strip the base path prefix (e.g. /api/auth) to get the route path
     const path = url.pathname.replace(/^\/api\/auth/, "");
 
-    if (!PROTECTED_ADMIN_PATHS.some((p) => path.endsWith(p))) return;
-
-    let body: Record<string, unknown>;
-    try {
-      body = (await request.clone().json()) as Record<string, unknown>;
-    } catch {
-      return;
-    }
-
-    const userId = body.userId as string | undefined;
-    if (!userId) return;
-
-    const targetUser = await ctx.internalAdapter.findUserById(userId);
-    if (!targetUser) return;
-
-    const actionCtx = requireActionCtx(convexCtx);
-    const adminEmailRows = await actionCtx.runQuery(internal.platform.adminEmails.list);
-    if (
-      adminEmailRows.some(
-        (row: { email: string }) => row.email === targetUser.email,
-      )
-    ) {
-      return {
-        response: new Response(
-          JSON.stringify({
-            error: { message: "Cannot modify a protected admin" },
-          }),
-          { status: 403, headers: { "Content-Type": "application/json" } },
-        ),
-      };
-    }
+    const code = privacyBoundaryCode(path);
+    if (!code) return;
+    return {
+      response: new Response(JSON.stringify({ code, message: code }), {
+        status: 403, headers: { "Content-Type": "application/json" },
+      }),
+    };
   },
 });
 
@@ -547,6 +521,9 @@ export const createAuthOptions = (
     },
     hooks: {
       before: createAuthMiddleware(async endpoint => {
+        // onRequest is not run by direct Better Auth API calls. Apply the same boundary there.
+        const code = privacyBoundaryCode(endpoint.path ?? "");
+        if (code) throw new APIError("FORBIDDEN", { code, message: code });
         if (endpoint.path !== "/revoke-other-sessions") return;
         // Better Auth deletes these in parallel and silently skips a deletion
         // when its lookup hits Convex's query concurrency limit. Keep the full
@@ -738,7 +715,7 @@ export const createAuthOptions = (
       convexRateLimitPlugin(ctx),
       emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
       multiOriginPlugin(siteUrls),
-      protectedAdminPlugin(ctx),
+      operatorAdminBoundaryPlugin(),
       passwordStrengthPlugin(ctx),
       admin(),
       // Organization endpoints remain denied by authRoutePolicy until explicitly integrated.

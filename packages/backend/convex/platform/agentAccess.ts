@@ -12,6 +12,8 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { captureDelegation, readDelegation, deleteAuthorizationSession } from "./agentProof";
 import { surfaceConfiguration, surfaceForResource } from "./agentSurfaces";
 import { rateLimit } from "./rateLimits";
+import { AGENT_CONTRACT_EPOCH, currentAgentContract } from "./agentContract";
+import { isOperatorIdentity, requireOperator } from "./operatorAccess";
 
 export const AGENT_CLIENT_ID = "pi-announcements";
 export const AGENT_SCOPE = "admin:manage";
@@ -36,7 +38,7 @@ const consentMutation = customMutation(mutation, customCtx(async ctx => {
   const auth = await authorizedSession(ctx, false, true);
   if (!auth) throw new Error("NOT_AUTHENTICATED");
   if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  if (auth.user.role !== "admin") throw new Error("NOT_ADMIN");
+  if (!await isOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
   if (auth.session.authPurpose !== "mcp-authorization" || !process.env.AGENT_MCP_AUTH_ORIGIN) throw new Error("MCP_AUTHORIZATION_ONLY");
   await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
   return auth;
@@ -51,7 +53,7 @@ export const authorize = consentMutation({
     const delegationId = await captureDelegation(ctx, { user: ctx.user, session: ctx.session });
     const code = secret();
     const codeId = await ctx.db.insert("agentAuthorizationCodes", {
-      generation: config.generation, codeHash: await credentialHash(code), userId: ctx.user._id, delegationId,
+      contractEpoch: AGENT_CONTRACT_EPOCH, generation: config.generation, codeHash: await credentialHash(code), userId: ctx.user._id, delegationId,
       ...args, expiresAt: Date.now() + 60_000,
     });
     await ctx.scheduler.runAfter(60_000, internal.platform.agentAccess.expireCode, { codeId });
@@ -79,18 +81,18 @@ export async function requireGrant(ctx: QueryCtx, token: string, resource: strin
   if (!config.enabled) throw new Error("INVALID_AGENT_TOKEN");
   const tokenHash = await credentialHash(token);
   const grant = await ctx.db.query("agentGrants").withIndex("by_token_hash", q => q.eq("tokenHash", tokenHash)).unique();
-  if (!grant || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE)
+  if (!grant || !currentAgentContract(grant) || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE)
     throw new Error("INVALID_AGENT_TOKEN");
   return validateGrant(ctx, grant, recent);
 }
 
 async function validateGrant(ctx: QueryCtx, grant: import("../_generated/dataModel").Doc<"agentGrants">, recent: boolean) {
   const pair = await readDelegation(ctx, grant.delegationId, grant.userId);
-  if (!pair || pair.user.role !== "admin") throw new Error("INVALID_AGENT_TOKEN");
+  if (!currentAgentContract(grant) || !pair || !await isOperatorIdentity(ctx, pair.user)) throw new Error("INVALID_AGENT_TOKEN");
   const assurance = await evaluateSession(ctx, pair);
   if (!assurance.allowed) throw new Error("INVALID_AGENT_TOKEN");
   if (recent && !assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  return { ...pair, assurance, grantId: grant._id, generation: grant.generation, ownerId: (pair.user.userId ?? pair.user._id).toString() };
+  return { ...pair, assurance, grantId: grant._id, resource: grant.resource, contractEpoch: AGENT_CONTRACT_EPOCH, generation: grant.generation, ownerId: (pair.user.userId ?? pair.user._id).toString() };
 }
 
 /** Only server-owned durable tasks use a stored grant ID; it is never a public credential. */
@@ -98,7 +100,7 @@ export async function requireGrantById(ctx: QueryCtx, grantId: import("../_gener
   const grant = await ctx.db.get(grantId);
   const surface = surfaceForResource(resource);
   const config = surface ? await surfaceConfiguration(ctx, surface) : null;
-  if (!grant || !config?.enabled || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE) throw new Error("INVALID_AGENT_TOKEN");
+  if (!grant || !currentAgentContract(grant) || !config?.enabled || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE) throw new Error("INVALID_AGENT_TOKEN");
   return validateGrant(ctx, grant, recent);
 }
 
@@ -109,20 +111,20 @@ export const exchange = mutation({
     const config = await surfaceConfiguration(ctx, surfaceForResource(args.resource) ?? "mcp");
     const hash = await credentialHash(args.code);
     const row = await ctx.db.query("agentAuthorizationCodes").withIndex("by_code_hash", q => q.eq("codeHash", hash)).unique();
-    if (!config.enabled || !row || row.generation !== config.generation || row.expiresAt <= Date.now() || !resourceEnabled(args.resource) || row.resource !== args.resource
+    if (!config.enabled || !row || !currentAgentContract(row) || row.generation !== config.generation || row.expiresAt <= Date.now() || !resourceEnabled(args.resource) || row.resource !== args.resource
       || row.clientId !== args.clientId || row.redirectUri !== args.redirectUri || !/^[A-Za-z0-9._~-]{43,128}$/.test(args.verifier)) throw new Error("INVALID_GRANT");
     const challengeBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new globalThis.TextEncoder().encode(args.verifier)));
     const challenge = btoa(String.fromCharCode(...challengeBytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
     if (challenge !== row.challenge) throw new Error("INVALID_GRANT");
     const pair = await readDelegation(ctx, row.delegationId, row.userId);
-    if (!pair || pair.user.role !== "admin") throw new Error("INVALID_GRANT");
+    if (!pair || !await isOperatorIdentity(ctx, pair.user)) throw new Error("INVALID_GRANT");
     const assurance = await evaluateSession(ctx, pair);
     if (!assurance.allowed || !assurance.recent) throw new Error("INVALID_GRANT");
     // A mutation atomically consumes the code. Racing or repeated exchanges cannot mint two tokens.
     await ctx.db.delete(row._id);
     const token = secret();
     const expiresAt = Math.min(Date.now() + 15 * 60_000, assurance.expiresAt);
-    const grantId = await ctx.db.insert("agentGrants", { generation: config.generation, tokenHash: await credentialHash(token), userId: row.userId, delegationId: row.delegationId,
+    const grantId = await ctx.db.insert("agentGrants", { contractEpoch: AGENT_CONTRACT_EPOCH, generation: config.generation, tokenHash: await credentialHash(token), userId: row.userId, delegationId: row.delegationId,
       resource: row.resource, scope: row.scope, clientId: row.clientId, expiresAt, createdAt: Date.now() });
     await ctx.scheduler.runAfter(expiresAt - Date.now(), internal.platform.agentAccess.expireGrant, { grantId });
     return { access_token: token, token_type: "Bearer", expires_in: Math.floor((expiresAt - Date.now()) / 1000), scope: row.scope };
@@ -137,19 +139,20 @@ export const inspect = query({
 });
 async function listGrants(ctx: QueryCtx, userId: string) {
   const grants = await ctx.db.query("agentGrants").withIndex("by_user", q => q.eq("userId", userId)).collect();
-  return await Promise.all(grants.map(async ({ _id, createdAt, expiresAt, revokedAt, clientId, generation, resource, scope }) => {
+  return await Promise.all(grants.map(async ({ _id, createdAt, expiresAt, revokedAt, clientId, generation, resource, scope, contractEpoch }) => {
     const surface = surfaceForResource(resource);
     const config = surface ? await surfaceConfiguration(ctx, surface) : null;
-    return { _id, createdAt, expiresAt, revokedAt, clientId, surface, active: Boolean(scope === AGENT_SCOPE && config?.enabled && generation === config.generation && !revokedAt && expiresAt > Date.now()) };
+    return { _id, createdAt, expiresAt, revokedAt, clientId, surface, active: Boolean(currentAgentContract({ contractEpoch }) && scope === AGENT_SCOPE && config?.enabled && generation === config.generation && !revokedAt && expiresAt > Date.now()) };
   }));
 }
 export const listMine = rememberNative(query({ args: {}, handler: async ctx => {
-  const auth = await authorizedSession(ctx); return !auth || auth.user.role !== "admin" ? [] : listGrants(ctx, auth.user._id);
+  const auth = await authorizedSession(ctx); return !auth || !await isOperatorIdentity(ctx, auth.user) ? [] : listGrants(ctx, auth.user._id);
 } }), { args: {}, handler: (ctx: QueryCtx & { user: { _id: string } }) => listGrants(ctx, ctx.user._id) }, "query");
 
 export const revoke = adminMutation({
   args: { grantId: v.id("agentGrants") },
   handler: async (ctx, args) => {
+    await requireOperator(ctx, { write: true });
     const grant = await ctx.db.get(args.grantId);
     if (!grant || grant.userId !== ctx.user._id) throw new Error("GRANT_NOT_FOUND");
     await ctx.db.patch(grant._id, { revokedAt: Date.now() });

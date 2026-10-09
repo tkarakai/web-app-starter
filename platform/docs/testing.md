@@ -179,6 +179,21 @@ describe("projects", () => {
 
 > **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails. The glob must be taken from the `convex/` root: a test in a subdirectory (such as the platform's own tests in `convex/platform/`) imports `modules` from `convex/test.modules.ts` instead, because a glob taken there keys its own directory's files as `./x.ts` and convex-test cannot find them.
 
+### Organization and operator acceptance
+
+Exercise registered APIs with real canonical Better Auth users, sessions and memberships. Include
+independent owners in two organizations and a shared identity with differing membership roles;
+check explicit/missing/forged context, cross-owner/parent children, suspension/removal/reactivation,
+async transfer reauthorization and captured-context writes. Prove that strict tenant getters return
+no untagged/foreign data and that the separate legacy-private bridge neither guesses a mapping nor
+accepts a wrong personal ID. Preserve rows and bytes in negative tests.
+
+Operator tests must distinguish canonical global operators from customer org-admins, reserved
+emails and mixed identities. Execute both direct and native interfaces, including persisted proof,
+unknown captured-operation denial and safe DTO/cursor/artifact projections. A supplied owner/user
+snapshot or source-code assertion is not evidence of authorization. Pure ownership helper unit
+tests do not replace this registered-interface coverage. See [organization context](organization-context.md).
+
 ### Scheduled Functions and Fake Timers
 
 When a Convex mutation calls `ctx.scheduler.runAfter()`, convex-test auto-executes the scheduled function via `setTimeout`. If the scheduled function is an `internalAction` that can't run in the test environment (e.g. it calls external APIs or uses features unavailable in tests), this causes unhandled rejection errors.

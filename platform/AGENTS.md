@@ -147,6 +147,9 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 For administrator onboarding, use the platform admin wizard and its bound enrollment actions.
 Never grant roles or email verification from an email allowlist, or implement claim-then-public-signup.
 See [administrator onboarding](docs/authentication-and-onboarding.md#6-admin-onboarding-flow).
+For organization-owned customer data, use explicit context and tenant builders, not a global admin
+role or owner-only fallback; see [organization context](docs/organization-context.md).
+`adminQuery`/`adminMutation` mean canonical platform operator, never customer org-admin.
 
 For account security, compose `SecuritySection` (or `ChangePasswordForm`, `TwoFactorSection`,
 `PasskeySection` and `SessionsList`) from `@web-app-starter/auth-ui` under the protected layout.

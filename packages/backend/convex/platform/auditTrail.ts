@@ -17,6 +17,8 @@ import { getAuth } from "./functions";
 import { rateLimit } from "./rateLimits";
 import { components } from "../_generated/api";
 import { internalMutation, mutation, query } from "../_generated/server";
+import { requireOperator } from "./operatorAccess";
+import { classifiedAuditSource, OPERATOR_AUDIT_SOURCE, projectOperatorAudit, type OperatorAuditEvent } from "./auditPrivacy";
 
 // ---------------------------------------------------------------------------
 // insertEvent — server-side write path (scheduled by scheduleAuditEvent, run by
@@ -42,7 +44,7 @@ export const insertEvent = internalMutation({
   handler: async (ctx, { sourceDetail, ...rest }) => {
     await ctx.runMutation(components.platform.auditTrail.insertEvent, {
       ...rest,
-      source: `server:${sourceDetail}`,
+      source: await classifiedAuditSource(ctx, { ...rest, sourceDetail }),
     });
   },
 });
@@ -83,7 +85,8 @@ export const postEvent = mutation({
     await ctx.runMutation(components.platform.auditTrail.insertEvent, {
       authenticatedUserId: ownerId,
       actor: email,
-      source: `web:${args.sourceDetail ?? ""}`,
+      // Client action/source text cannot create an operator classification, even for an operator.
+      source: `web:private-audit:v1:${args.sourceDetail ?? ""}`,
       action: args.action,
       resource: args.resource,
       status: args.status ?? "succeeded",
@@ -108,15 +111,36 @@ const listNativeArgs = {
     filterStatus: v.optional(v.string()),
     filterAuthenticatedUserId: v.optional(v.string()),
   };
-export const list = rememberNative(query({
-  args: listNativeArgs,
-  handler: async (ctx, args) => {
-    // Return an empty page while auth resolves or for non-admins; the query
-    // re-runs reactively once auth resolves.
-    const user = (await getAuth(ctx))?.user;
-    if (!user || (user as Record<string, unknown>).role !== "admin") {
-      return { page: [], isDone: true, continueCursor: "" };
-    }
-    return await ctx.runQuery(components.platform.auditTrail.list, args);
-  },
-}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.auditTrail.list, args); } }, "query");
+async function listOperatorAudit(ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) {
+  const empty = { page: [] as OperatorAuditEvent[], isDone: true, continueCursor: "" };
+  try {
+    await requireOperator(ctx);
+  } catch (error) {
+    // Preserve reactive query behavior; direct and captured handlers apply the same boundary.
+    if (error instanceof Error && ["NOT_AUTHENTICATED", "NOT_ADMIN"].includes(error.message)) return empty;
+    throw error;
+  }
+  if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) {
+    throw new Error("INVALID_PAGE_SIZE");
+  }
+  // Never run caller-selected indexes over private rows. Their cursors can contain raw identities.
+  if (args.filterSource !== undefined && args.filterSource !== OPERATOR_AUDIT_SOURCE) return empty;
+  const result = await ctx.runQuery(components.platform.auditTrail.list, {
+    paginationOpts: args.paginationOpts, filterSource: OPERATOR_AUDIT_SOURCE,
+  });
+  const page: OperatorAuditEvent[] = [];
+  for (const event of result.page) {
+    const projection = await projectOperatorAudit(ctx, event);
+    if (!projection) continue;
+    if (args.filterAction !== undefined && projection.action !== args.filterAction
+      || args.filterActor !== undefined && projection.actor !== args.filterActor
+      || args.filterStatus !== undefined && projection.status !== args.filterStatus
+      || args.filterAuthenticatedUserId !== undefined && projection.authenticatedUserId !== args.filterAuthenticatedUserId) continue;
+    page.push(projection);
+  }
+  return { page, isDone: result.isDone, continueCursor: result.continueCursor };
+}
+
+export const list = rememberNative(query({ args: listNativeArgs, handler: listOperatorAudit }), {
+  args: listNativeArgs, handler: listOperatorAudit,
+}, "query");

@@ -18,6 +18,9 @@ import type * as platform_adminInvitationActions from "../platform/adminInvitati
 import type * as platform_adminInvitations from "../platform/adminInvitations.js";
 import type * as platform_agentAccess from "../platform/agentAccess.js";
 import type * as platform_agentCapabilities from "../platform/agentCapabilities.js";
+import type * as platform_agentContract from "../platform/agentContract.js";
+import type * as platform_agentExposure from "../platform/agentExposure.js";
+import type * as platform_agentNativePolicy from "../platform/agentNativePolicy.js";
 import type * as platform_agentProof from "../platform/agentProof.js";
 import type * as platform_agentRegistry from "../platform/agentRegistry.js";
 import type * as platform_agentSurfaces from "../platform/agentSurfaces.js";
@@ -27,6 +30,7 @@ import type * as platform_agentTasks from "../platform/agentTasks.js";
 import type * as platform_agentUsers from "../platform/agentUsers.js";
 import type * as platform_announcements from "../platform/announcements.js";
 import type * as platform_appSettings from "../platform/appSettings.js";
+import type * as platform_auditPrivacy from "../platform/auditPrivacy.js";
 import type * as platform_auditTrail from "../platform/auditTrail.js";
 import type * as platform_auditTrailConstants from "../platform/auditTrailConstants.js";
 import type * as platform_auditTrailHelpers from "../platform/auditTrailHelpers.js";
@@ -50,7 +54,10 @@ import type * as platform_memberInvitations from "../platform/memberInvitations.
 import type * as platform_meta from "../platform/meta.js";
 import type * as platform_nativeCapabilities from "../platform/nativeCapabilities.js";
 import type * as platform_onboardingType from "../platform/onboardingType.js";
+import type * as platform_operatorAccess from "../platform/operatorAccess.js";
+import type * as platform_operatorIdentity from "../platform/operatorIdentity.js";
 import type * as platform_organizationEnrollment from "../platform/organizationEnrollment.js";
+import type * as platform_organizations from "../platform/organizations.js";
 import type * as platform_parseUserAgent from "../platform/parseUserAgent.js";
 import type * as platform_passwordStrength from "../platform/passwordStrength.js";
 import type * as platform_rateLimits from "../platform/rateLimits.js";
@@ -62,6 +69,8 @@ import type * as platform_sessionFields from "../platform/sessionFields.js";
 import type * as platform_sessionPolicy from "../platform/sessionPolicy.js";
 import type * as platform_sessions from "../platform/sessions.js";
 import type * as platform_tables from "../platform/tables.js";
+import type * as platform_tenantContext from "../platform/tenantContext.js";
+import type * as platform_tenantFunctions from "../platform/tenantFunctions.js";
 import type * as platform_tokenHash from "../platform/tokenHash.js";
 import type * as platform_userProfiles from "../platform/userProfiles.js";
 import type * as platform_waitlist from "../platform/waitlist.js";
@@ -71,6 +80,10 @@ import type * as projectAccess from "../projectAccess.js";
 import type * as projects from "../projects.js";
 import type * as sampleTables from "../sampleTables.js";
 import type * as tasks from "../tasks.js";
+import type * as tenantAccess from "../tenantAccess.js";
+import type * as tenantFiles from "../tenantFiles.js";
+import type * as tenantProjects from "../tenantProjects.js";
+import type * as tenantTasks from "../tenantTasks.js";
 
 import type {
   ApiFromModules,
@@ -89,6 +102,9 @@ declare const fullApi: ApiFromModules<{
   "platform/adminInvitations": typeof platform_adminInvitations;
   "platform/agentAccess": typeof platform_agentAccess;
   "platform/agentCapabilities": typeof platform_agentCapabilities;
+  "platform/agentContract": typeof platform_agentContract;
+  "platform/agentExposure": typeof platform_agentExposure;
+  "platform/agentNativePolicy": typeof platform_agentNativePolicy;
   "platform/agentProof": typeof platform_agentProof;
   "platform/agentRegistry": typeof platform_agentRegistry;
   "platform/agentSurfaces": typeof platform_agentSurfaces;
@@ -98,6 +114,7 @@ declare const fullApi: ApiFromModules<{
   "platform/agentUsers": typeof platform_agentUsers;
   "platform/announcements": typeof platform_announcements;
   "platform/appSettings": typeof platform_appSettings;
+  "platform/auditPrivacy": typeof platform_auditPrivacy;
   "platform/auditTrail": typeof platform_auditTrail;
   "platform/auditTrailConstants": typeof platform_auditTrailConstants;
   "platform/auditTrailHelpers": typeof platform_auditTrailHelpers;
@@ -121,7 +138,10 @@ declare const fullApi: ApiFromModules<{
   "platform/meta": typeof platform_meta;
   "platform/nativeCapabilities": typeof platform_nativeCapabilities;
   "platform/onboardingType": typeof platform_onboardingType;
+  "platform/operatorAccess": typeof platform_operatorAccess;
+  "platform/operatorIdentity": typeof platform_operatorIdentity;
   "platform/organizationEnrollment": typeof platform_organizationEnrollment;
+  "platform/organizations": typeof platform_organizations;
   "platform/parseUserAgent": typeof platform_parseUserAgent;
   "platform/passwordStrength": typeof platform_passwordStrength;
   "platform/rateLimits": typeof platform_rateLimits;
@@ -133,6 +153,8 @@ declare const fullApi: ApiFromModules<{
   "platform/sessionPolicy": typeof platform_sessionPolicy;
   "platform/sessions": typeof platform_sessions;
   "platform/tables": typeof platform_tables;
+  "platform/tenantContext": typeof platform_tenantContext;
+  "platform/tenantFunctions": typeof platform_tenantFunctions;
   "platform/tokenHash": typeof platform_tokenHash;
   "platform/userProfiles": typeof platform_userProfiles;
   "platform/waitlist": typeof platform_waitlist;
@@ -142,6 +164,10 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   sampleTables: typeof sampleTables;
   tasks: typeof tasks;
+  tenantAccess: typeof tenantAccess;
+  tenantFiles: typeof tenantFiles;
+  tenantProjects: typeof tenantProjects;
+  tenantTasks: typeof tenantTasks;
 }>;
 
 /**

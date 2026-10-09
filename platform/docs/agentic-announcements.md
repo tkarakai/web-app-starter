@@ -56,10 +56,12 @@ Loopback refers to that container, not the Docker host. Keep the separate author
 origin; DNS setup does not change authentication or combine it with the normal admin origin.
 
 Remote clients discover protected-resource metadata, open the auth-only origin, and request
-blanket **`admin:manage`** permission. Consent describes broad administration: private data,
-users/sessions, invitations, policy/settings, publishing and deletion. It does not list every
-operation. Native role checks, validation, current security policy and recent verification still
-apply. Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
+**`admin:manage`** permission for the versioned operator control-plane contract. Consent covers
+organization lifecycle/current administrator contacts, operator accounts, customer admission,
+global policy/settings and public content. Customer identity/security records, member directories,
+private tenant data and enrollment secrets are excluded. Native dispatch independently resolves
+the current canonical operator, proof and target policy before executing captured handlers.
+Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
 contract, then authorize again.
 
 The registered public test client remains `pi-announcements` for compatibility. Redirects must
@@ -99,10 +101,17 @@ invoke the dashboard or its normal APIs, even by entering a route in the address
 `packages/backend/convex/platform/agentRegistry.ts` explicitly selects native definitions.
 Input JSON schemas derive from their existing Convex validators. Native handlers preserve
 business validation, scheduling and audit identity; the native builders and agent entry points
-resolve their respective real session/delegation before calling the shared bodies. User/session
-adapters use the existing Better Auth component, protected-admin checks and safe result DTOs:
+resolve their respective real session/delegation before calling the shared bodies. Operator identity/session
+adapters use the existing Better Auth component, canonical operator-target checks and safe result DTOs:
 opaque session IDs replace login tokens. Private factor material and token hashes are excluded.
-Only selected definitions can execute; there is no arbitrary Convex-function invocation.
+Only selected, classified definitions can execute; unknown captured definitions fail closed.
+Retained `users_*` names target platform operators only. `users_remove` and
+`users_setPassword` are absent from the catalogue; generic Better Auth `/admin/*` routes are
+denied in favor of the guarded operator APIs. Customer enrollment stays a bound human workflow.
+`platform/agentCapabilities:exposure` reports the executable operation inventory and selected
+capability policies. Strict tenant APIs and legacy private APIs are classified but denied through
+operator dispatch. Organization tools call guarded parent list/get/setLifecycle wrappers using
+the same immutable organizationId as the direct API; component primitives are never tools.
 
 `@web-app-starter/agentic/adapter` defines the common `execute(name, input, signal)` boundary.
 MCP and WebMCP advertise three stable tools, also used by the CLI/pi adapters:
@@ -121,8 +130,8 @@ untrusted data. Destructive operations require the user's explicit intent.
 Reads over 12,000 characters return JSON chunks and `nextOffset`. Pass that value as
 `resultOffset` to continue. This repeats a read and is not a snapshot; native paginated operations
 should use their own cursor. Paging a write is rejected before execution. Native pages and bulk
-inputs are capped at 100; user listings support role, status and email-verification filters
-(email search normalizes to lowercase; name search uses native case-sensitive semantics). inspect descriptions for value conventions. Existing direct
+inputs are capped at 100; operator listings exclude customers and mixed customer/operator identities. Inspect descriptions
+for supported filters and value conventions. Existing direct
 `announcements_*` MCP tool calls now use `capabilities_execute`; their capability names remain.
 
 Credential, biometric, backup-code and invitation-bound enrollment operations are explicit
@@ -206,7 +215,7 @@ It does not run a server-side LLM.
     "message": {
       "messageId": "unique-message-1",
       "role": "ROLE_USER",
-      "parts": [{"data": {"operation": "search", "input": {"query": "users"}}, "mediaType": "application/json"}]
+      "parts": [{"data": {"operation": "search", "input": {"query": "organizations"}}, "mediaType": "application/json"}]
     },
     "configuration": {"returnImmediately": true, "historyLength": 0}
   }
@@ -222,19 +231,26 @@ writes and task completion commit atomically. A watchdog retries interrupted wor
 delivery cannot repeat a committed operation. Canceling before commit prevents execution;
 completed operations cannot be canceled or undone through `CancelTask`.
 
-Task results are owned by the authorizing user and retained for 24 hours, with a maximum of 200
+Current-contract task results are owned by the authorizing operator and retained for 24 hours, with a maximum of 200
 unexpired tasks per user and 12 messages per task. Listings default to 50 entries and omit
 artifacts; artifact-inclusive pages are capped at three. Polling/continuation requires a valid
-A2A grant. `SendMessage` waits for a terminal/interrupted state unless `returnImmediately` is
+A2A grant. Contract epoch 2 invalidates older broad delegations/codes/grants and quarantines
+older tasks/message mappings, including artifacts, errors and list counts. Rows are preserved;
+a renewed narrow grant cannot disclose or resume them. Fresh consent is required after cutover.
+`SendMessage` waits for a terminal/interrupted state unless `returnImmediately` is
 true; a server timeout reports the task ID so clients can inspect it before retrying.
 
 ## Extending the catalogue
 
-Select an existing native definition in `agentRegistry.ts` and add a description/effect. Its
+Classify the operation in `agentExposure.ts`, then select its native definition in
+`agentRegistry.ts` and add a description/effect. Only operator control/identity and operator-own
+self-service operations can be selected into this operator catalogue. Its
 input schema comes from the same validators used by the native UI endpoint; the transport
 adapters need no per-operation changes. The shared builders capture the handler body, but
-only the explicit registry can execute it. Keep session/delegation resolution outside that
-body; never fabricate `ctx.auth`. Update the endpoint authorization classification and
+only the explicit registry can execute it. Keep canonical actor/target checks in the shared body as well as dispatch; never fabricate
+`ctx.auth`. Use `requireOperator(ctx, { write: true })` for operator writes and
+`requireOperatorTarget(ctx, userId)` for identity targets. Tenant builders must stay outside
+this catalogue and carry their explicit immutable organization boundary. Update the endpoint authorization classification and
 exercise meaningful granted/denied behavior. Authentication-store operations require explicit
 safe DTOs, native policy/protected-identity checks and audit events; credential ceremonies
 remain secure workflows. Browser primitives operate the existing page rather than duplicate

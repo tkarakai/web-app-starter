@@ -4,21 +4,11 @@ import { components } from "../_generated/api";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { adminMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
+import { requireOperator, requireOperatorTarget } from "./operatorAccess";
 
 // ---------------------------------------------------------------------------
-// Admin auth functions — session management, MFA policy
-// All functions verify the caller has role === "admin".
+// Operator policy and passkey enrollment status. Shared bodies verify live operator authority.
 // ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Helper: verify admin role
-// ---------------------------------------------------------------------------
-
-function requireAdmin(user: Record<string, unknown>): void {
-  if (user.role !== "admin") {
-    throw new Error("NOT_ADMIN");
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Admin query: get MFA policy setting
@@ -27,7 +17,7 @@ function requireAdmin(user: Record<string, unknown>): void {
 export const getMfaPolicy = authedQuery({
   args: {},
   handler: async (ctx) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
+    await requireOperator(ctx);
 
     const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailMfaRequired" });
 
@@ -44,15 +34,15 @@ export const getMfaPolicy = authedQuery({
 export const setMfaPolicy = adminMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
+    const actor = await requireOperator(ctx, { write: true });
 
     const key = "emailMfaRequired";
     const value = JSON.stringify(args.required);
     const { previousValue: oldValue } = await ctx.runMutation(components.platform.appSettings.putRaw, { key, value, updatedBy: ctx.ownerId });
 
     await scheduleAuditEvent(ctx, {
-      actor: ctx.ownerId,
-      authenticatedUserId: ctx.ownerId,
+      actor: actor.user.email,
+      authenticatedUserId: actor.user._id,
       sourceDetail: "admin-mutation",
       action: "admin.mfa_policy_changed",
       resource: `appSettings:${key}`,
@@ -70,7 +60,7 @@ export const setMfaPolicy = adminMutation({
 export const getEmailVerificationPolicy = authedQuery({
   args: {},
   handler: async (ctx) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
+    await requireOperator(ctx);
 
     const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailVerificationRequired" });
 
@@ -87,15 +77,15 @@ export const getEmailVerificationPolicy = authedQuery({
 export const setEmailVerificationPolicy = adminMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
+    const actor = await requireOperator(ctx, { write: true });
 
     const key = "emailVerificationRequired";
     const value = JSON.stringify(args.required);
     const { previousValue: oldValue } = await ctx.runMutation(components.platform.appSettings.putRaw, { key, value, updatedBy: ctx.ownerId });
 
     await scheduleAuditEvent(ctx, {
-      actor: ctx.ownerId,
-      authenticatedUserId: ctx.ownerId,
+      actor: actor.user.email,
+      authenticatedUserId: actor.user._id,
       sourceDetail: "admin-mutation",
       action: "admin.email_verification_policy_changed",
       resource: `appSettings:${key}`,
@@ -113,23 +103,20 @@ export const setEmailVerificationPolicy = adminMutation({
 export const listAdminPasskeyUserIds = authedQuery({
   args: { userIds: v.array(v.string()) },
   handler: async (ctx, args) => {
-    requireAdmin(ctx.user as Record<string, unknown>);
+    await requireOperator(ctx);
 
-    if (args.userIds.length === 0) return [];
+    if (args.userIds.length > 100) throw new Error("INVALID_PAGE_SIZE");
+    const operatorIds = [...new Set(args.userIds)];
+    // Check every target before reading factors. A mixed request never discloses a partial directory.
+    for (const userId of operatorIds) await requireOperatorTarget(ctx, userId);
 
-    const result = await ctx.runQuery(
-      components.betterAuth.adapter.findMany,
-      {
-        model: "passkey" as const,
-        where: [
-          { field: "userId", operator: "in" as const, value: args.userIds },
-        ],
-        paginationOpts: { cursor: null, numItems: 1000 },
-      },
-    );
-
-    const page = (result as { page?: Array<{ userId: string }> }).page ?? [];
-    const userIdsWithPasskey = [...new Set(page.map((p) => p.userId))];
+    const userIdsWithPasskey: string[] = [];
+    for (const userId of operatorIds) {
+      const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+        model: "passkey", where: [{ field: "userId", value: userId }],
+      });
+      if (passkey) userIdsWithPasskey.push(userId);
+    }
     return userIdsWithPasskey;
   },
 });

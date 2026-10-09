@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
-import { adminMutation, authedQuery } from "./functions";
+import { adminMutation, adminQuery } from "./functions";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE, type EmailTemplate } from "./emailTemplates";
 
 export const getPublic = query({
@@ -12,7 +12,7 @@ export const getPublic = query({
   },
 });
 
-export const get = authedQuery({
+export const get = adminQuery({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
@@ -43,7 +43,7 @@ export const remove = adminMutation({
   },
 });
 
-export const getEmailTemplate = authedQuery({
+export const getEmailTemplate = adminQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
@@ -52,7 +52,7 @@ export const getEmailTemplate = authedQuery({
   },
 });
 
-export const getVerificationEmailTemplate = authedQuery({
+export const getVerificationEmailTemplate = adminQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;

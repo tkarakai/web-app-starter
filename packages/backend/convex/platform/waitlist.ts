@@ -7,6 +7,7 @@ import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { internalMutation, query } from "../_generated/server";
 import { getAuth } from "./functions";
+import { isOperatorIdentity, requireOperator } from "./operatorAccess";
 import { adminMutation } from "./functions";
 import { rateLimit } from "./rateLimits";
 
@@ -47,8 +48,7 @@ export const list = rememberNative(query({
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
-    const role = user ? (user as Record<string, unknown>).role : undefined;
-    if (role !== "admin") {
+    if (!user || !await isOperatorIdentity(ctx, user)) {
       return {
         page: [],
         isDone: true,
@@ -58,7 +58,7 @@ export const list = rememberNative(query({
 
     return await ctx.runQuery(components.platform.waitlist.list, args);
   },
-}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.waitlist.list, args); } }, "query");
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { await requireOperator(ctx); return await ctx.runQuery(components.platform.waitlist.list, args); } }, "query");
 
 export const invite = adminMutation({
   args: { entryId: v.string() },

@@ -14,6 +14,7 @@ import { action, internalMutation, internalQuery, mutation, query } from "../_ge
 import { identitySession, evaluateSession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { adminMutation, getAuth } from "./functions";
+import { isOperatorIdentity, requireOperator } from "./operatorAccess";
 
 const listNativeArgs = { paginationOpts: paginationOptsValidator };
 export const list = rememberNative(query({
@@ -21,8 +22,7 @@ export const list = rememberNative(query({
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
-    const role = user ? (user as Record<string, unknown>).role : undefined;
-    if (role !== "admin") {
+    if (!user || !await isOperatorIdentity(ctx, user)) {
       return {
         page: [],
         isDone: true,
@@ -32,7 +32,7 @@ export const list = rememberNative(query({
 
     return await ctx.runQuery(components.platform.adminInvitations.list, args);
   },
-}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { await requireOperator(ctx); return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
 
 export const invite = adminMutation({
   args: { email: v.string() },

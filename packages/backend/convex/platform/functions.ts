@@ -7,6 +7,7 @@ import {
 import type { ObjectType, PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
+import { isOperatorIdentity } from "./operatorIdentity";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -88,6 +89,23 @@ export function authedQuery<
   }), func, "query");
 }
 
+/** Operator control reads retain signed-out null semantics, but require canonical operator authority. */
+export function adminQuery<ArgsValidator extends PropertyValidators, Output>(func: {
+  args: ArgsValidator;
+  handler: (ctx: QueryCtx & AuthInfo, args: ObjectType<ArgsValidator>) => Output | Promise<Output>;
+}) {
+  return rememberNative(query({
+    args: func.args,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: async (ctx: QueryCtx, args: any): Promise<Output | null> => {
+      const auth = await getAuth(ctx);
+      if (!auth) return null;
+      if (!await isOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
+      return func.handler({ ...ctx, ...auth }, args);
+    },
+  }), func, "query");
+}
+
 /**
  * Authenticated mutation builder.
  * Handlers receive `ctx.user` and `ctx.ownerId` automatically.
@@ -116,7 +134,7 @@ export const adminMutation = captureNativeBuilder(customMutation(
   customCtx(async ctx => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
-    if (getPolicyScopeFromRole(auth.user.role) !== "admin") throw new Error("NOT_ADMIN");
+    if (!await isOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
     if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth;

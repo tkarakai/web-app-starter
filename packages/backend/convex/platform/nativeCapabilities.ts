@@ -2,6 +2,7 @@
 import { v, type PropertyValidators, type ValidatorJSON } from "convex/values";
 import { validate } from "convex-helpers/validators";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { operationExposure } from "./agentExposure";
 
 export type NativeKind = "query" | "mutation";
 interface NativeDefinition {
@@ -10,6 +11,20 @@ interface NativeDefinition {
   kind: NativeKind;
 }
 const definitions = new WeakMap<object, NativeDefinition>();
+const operations = new WeakMap<object, string>();
+/** Explicit binding to a reviewed inventory entry, separate from capturing a handler. */
+export function classifyNative(registered: object, operation: string) {
+  if (!operationExposure(operation).native) throw new Error("NATIVE_OPERATION_DENIED");
+  const previous = operations.get(registered);
+  if (previous && previous !== operation) throw new Error("NATIVE_OPERATION_CONFLICT");
+  nativeDefinition(registered);
+  operations.set(registered, operation);
+}
+export function nativeOperation(registered: object) {
+  const operation = operations.get(registered);
+  if (!operation) throw new Error("NATIVE_OPERATION_DENIED");
+  return operation;
+}
 export function rememberNative<T extends object>(registered: T, definition: unknown, kind: NativeKind): T {
   const value = definition as { args?: PropertyValidators; handler?: unknown };
   if (value.args && typeof value.handler === "function") {
@@ -29,7 +44,13 @@ export function nativeDefinition(registered: object) {
 export async function invokeNative(registered: object, ctx: QueryCtx | MutationCtx, auth: unknown, input: unknown) {
   const definition = nativeDefinition(registered);
   validate(v.object(definition.args), input, { throw: true, db: ctx.db });
-  return await definition.handler({ ...ctx, ...(auth as Record<string, unknown>) }, input);
+  const operation = nativeOperation(registered);
+  // Load dispatch policy after native builders have captured definitions. The policy resolves
+  // stored grants; importing that graph while builders initialize would create an auth cycle.
+  const { authorizeNativeOperation, projectNativeResult } = await import("./agentNativePolicy");
+  const canonical = await authorizeNativeOperation(ctx, auth, operation, input, definition.kind === "mutation");
+  const bounded = operationExposure(operation).target === "operator-list" ? { ...(input as Record<string, unknown>), role: "admin" } : input;
+  return projectNativeResult(ctx, operation, await definition.handler({ ...ctx, ...canonical }, bounded));
 }
 /** JSON Schema is documentation; Convex validators above remain the execution authority. */
 export function validatorSchema(validator: ValidatorJSON): Record<string, unknown> {

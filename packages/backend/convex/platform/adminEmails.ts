@@ -4,6 +4,17 @@ import type { ObjectType } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { getAuth } from "./functions";
+import { isOperatorIdentity, requireOperator } from "./operatorAccess";
+
+async function operatorEmails(ctx: QueryCtx): Promise<string[]> {
+  const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
+  const emails: string[] = [];
+  for (const row of rows) {
+    const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: row.email }] });
+    if (user && await isOperatorIdentity(ctx, user)) emails.push(user.email);
+  }
+  return emails;
+}
 
 export const list = internalQuery({
   args: {},
@@ -33,12 +44,10 @@ export const listProtected = rememberNative(query({
     // Only admin users may see the admin email list.
     // Without this check any authenticated user could enumerate admin emails,
     // which could be combined with other attacks (e.g. phishing, account takeover).
-    const role = (user as Record<string, unknown>).role;
-    if (role !== "admin") {
+    if (!await isOperatorIdentity(ctx, user)) {
       return [];
     }
 
-    const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
-    return rows.map((r) => r.email);
+    return await operatorEmails(ctx);
   },
-}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { const rows = await ctx.runQuery(components.platform.adminEmails.list, {}); return rows.map(row => row.email); } }, "query");
+}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { await requireOperator(ctx); return await operatorEmails(ctx); } }, "query");

@@ -7,7 +7,7 @@ export async function hasExclusiveFileOwnership(
   ctx: Pick<QueryCtx, "db"> & { ownerId: string },
   upload: Doc<"uploads">,
 ): Promise<boolean> {
-  if (upload.ownershipVersion !== 1 || upload.ownerId !== ctx.ownerId) return false;
+  if (upload.organizationId !== undefined || upload.ownershipVersion !== 1 || upload.ownerId !== ctx.ownerId) return false;
   const refs = await ctx.db.query("uploads")
     .withIndex("by_storage", (q) => q.eq("storageId", upload.storageId)).take(2);
   return refs.length === 1 && refs[0]._id === upload._id;
@@ -16,7 +16,8 @@ export async function hasExclusiveFileOwnership(
 export async function requireFileAccess(
   ctx: QueryCtx & { ownerId: string },
   upload: Doc<"uploads">,
+  organizationId?: string,
 ): Promise<void> {
-  await requireProjectAccess(ctx, upload.projectId);
+  await requireProjectAccess(ctx, upload.projectId, organizationId);
   if (!await hasExclusiveFileOwnership(ctx, upload)) throw new Error("FILE_QUARANTINED");
 }

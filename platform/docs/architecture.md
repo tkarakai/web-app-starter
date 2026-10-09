@@ -257,10 +257,30 @@ Invitation issuance/cancellation live only in the server-only component
 activation is enabled yet. Future wrappers must require live enrolled-org-admin assurance, apply
 cutover gates and deliver tokens securely; do not register component primitives or password/token
 entry actions in the agent catalogue. Legacy invitations without the guarded token metadata are
-not silently accepted by ID. App-data context, preserving migration, operator/agent boundaries,
-future elevated-login enforcement and last-admin security-state guards remain prerequisites for
-full collaboration. Tests: `platform/memberInvitations.test.ts` (mock email/breach transports,
+not silently accepted by ID. Preserving migration, future elevated-login enforcement,
+last-admin security-state guards and browser integration remain prerequisites for full collaboration.
+Strict app-data context and operator/direct-native boundaries are described in
+[organization context](organization-context.md). Tests: `platform/memberInvitations.test.ts` (mock email/breach transports,
 real auth sign-in/verification and persisted admission behavior); inbox delivery is separate.
+
+### Explicit customer context and operator controls
+
+`api.platform.tenantContext.mine/get` discover and resolve canonical customer contexts without
+provisioning or trusting a session's active-organization preference. App modules use
+`tenantQuery` / `tenantMutation` from `./platform/tenantFunctions`, required immutable
+`organizationId` arguments, and organization-plus-owner indexes/checks. The sample's strict
+`tenantProjects`, `tenantTasks` and `tenantFiles` APIs are separate from the bounded legacy-private
+bridge; optional schema fields do not migrate old rows or convert the existing web UI.
+
+`adminQuery` / `adminMutation` mean canonical platform operator, never customer org-admin. Generic
+Better Auth `/admin/*` identity APIs are denied; guarded operator-target APIs and
+`api.platform.organizations.list/get/setLifecycle` expose only approved control DTOs. Private and
+unclassified audit history is retained but not projected to operators. Tenant APIs and human
+membership/password ceremonies are not operator/native agent capabilities.
+
+See [organization context](organization-context.md) for the builder pattern, transfer/parent checks,
+legacy mapping limits and unavailable-context handling, and
+[agentic integration](agentic-announcements.md) for independent native dispatch and epoch cutover.
 
 ### Server-only organization primitives
 

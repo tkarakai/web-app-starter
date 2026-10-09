@@ -47,7 +47,7 @@ export function AgentAccess({ request }: { request: AuthorizationRequest }) {
       </AlertDialogHeader>
       <div className="space-y-4 text-sm">
         <p className="font-medium">Interface: {request.resource.endsWith("/api/a2a") ? "Agent2Agent (A2A)" : request.resource.endsWith("/api/agent/cli") ? "Admin CLI" : "MCP"}</p>
-        <p>It can use all available administration capabilities as you, including reading private admin data, managing users and invitations, changing settings and security policy, and publishing or permanently deleting content. Native permissions and security requirements still apply.</p>
+        <p>It can manage organization lifecycle and current administrator contacts, platform operator accounts, customer admission, global settings and security policy, and public content as you. Customer identities, credentials, sessions, member directories and private tenant data are excluded. Current operator permissions and security requirements apply to every call.</p>
         <p>Access lasts up to 15 minutes and uses the verification completed for this request. Writes require authentication within the last five minutes.</p>
         <p className="text-muted-foreground">Only approve if you started and trust this agent yourself. Your decision returns to the agent on this computer.</p>
         {availability && !availability.enabled && <p role="alert">This agent surface is disabled. You can deny this request.</p>}

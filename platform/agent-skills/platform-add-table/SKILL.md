@@ -24,15 +24,24 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
   handlers get `ctx.ownerId`; `authedQuery` returns `null` when signed out (safe for `useQuery`),
   `authedMutation` throws `NOT_AUTHENTICATED` and applies the global mutation rate limit.
   Both enforce live session assurance and current verification/MFA/passkey/enrollment policy.
-  Use `adminMutation` for administrative writes: it adds admin-role and recent-authentication
-  checks. Do not substitute `auth.getCurrentUser`, raw Better Auth user lookup or account MFA flags
+  For **organization-owned app data**, use `tenantQuery` / `tenantMutation` from
+  `./platform/tenantFunctions` instead. They add a required explicit `organizationId` argument,
+  resolve live customer/membership/lifecycle authority, and reject unavailable contexts rather than
+  returning signed-out `null`. Persist and check organization **and** owner; see
+  [organization context](../../docs/organization-context.md) for the tenant-table pattern and
+  legacy-private bridge limits. Capture the ID before async work; never fall back to a session preference.
+  Use `adminQuery` / `adminMutation` only for **canonical platform-operator** controls; organization
+  administrators do not qualify. Operator writes additionally require recent authentication. Do not substitute `auth.getCurrentUser`, raw Better Auth user lookup or account MFA flags
   for authorization; those can represent a limited enrollment/recovery session. See
   [session assurance](../../docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
   Use plain `query`/`mutation` only for data that is deliberately public.
-- **Own your rows.** Store `ownerId: v.string()` and index it (`by_owner`). Every read filters by
-  `ctx.ownerId` through the index; every write to an existing row loads it and checks
-  `row.ownerId === ctx.ownerId` first. Rows that belong to a project go through
-  `requireProjectAccess(ctx, projectId)` from `./projectAccess` (part of the sample domain; keep it if you keep projects).
+- **Own your rows.** For tenant data store `organizationId: v.string()` and `ownerId: v.string()`
+  and index both (`by_organization_owner`). Identity-private rows use the owner index (`by_owner`). Every read filters by
+  `ctx.ownerId` and, for tenant rows, `ctx.organizationId` through the index. Existing-row writes
+  check both fields before changing data. Tenant children must also match their parent's organization
+  and owner; the scoped sample uses `requireTenantProject` from `./tenantAccess`.
+  `requireProjectAccess` from `./projectAccess` is only the sample's legacy-private bridge, not a
+  replacement for explicit tenant authorization.
 - **Validate everything.** `v` validators on every argument and field; string lengths with
   `assertMaxLength(value, MAX_NAME_LENGTH, "TITLE")`.
 - **Errors are codes**, not text: `throw new Error("BOOKMARK_NOT_FOUND")`. Give each code a
@@ -82,10 +91,16 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
    bun run lint && bun run typecheck
    ```
 
-7. **Use it** from an app with `useQuery(api.<table>.list)` and `useMutation(api.<table>.add)`
+7. **Use it** with `{ organizationId: capturedOrganizationId }` for tenant APIs; skip queries until
+   a live context is available. Identity-private APIs can use `useQuery(api.<table>.list)` and `useMutation(api.<table>.add)`
    (`import { api } from "@repo/backend"`). Handle `undefined` (loading) and `null` (signed out).
 
 ## Worked example
+
+This example illustrates identity-private ownership, **not** tenant isolation. For organization-owned
+bookmarks, use the explicit-context schema/builders/example in
+[organization context](../../docs/organization-context.md); do not deploy an owner-only domain table
+as a multi-tenant table.
 
 **Task:** signed-in users of the web app can save bookmarks: a URL and a title. They can list
 their own bookmarks, newest first, and remove one. Nobody sees another user's bookmarks.

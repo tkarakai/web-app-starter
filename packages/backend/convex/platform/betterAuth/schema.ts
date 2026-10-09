@@ -215,7 +215,8 @@ export const tables = {
     expiresAt: v.number(),
     userId: v.optional(v.id("user")),
     createdAt: v.number(),
-  }).index("capabilityHash", ["capabilityHash"]),
+  }).index("capabilityHash", ["capabilityHash"])
+    .index("userId", ["userId"]),
   // Platform state, not a duplicate editable membership/role model.
   organizationEnrollments: defineTable({
     organizationId: v.string(),

@@ -26,6 +26,7 @@ const ACCESS: Record<string, Access> = {
   "platform/agentSurfaces:configuration": "admin",
   "platform/agentSurfaces:setEnabled": "admin",
   "platform/agentCapabilities:catalogue": "agent",
+  "platform/agentCapabilities:exposure": "agent",
   "platform/agentCapabilities:read": "agent",
   "platform/agentCapabilities:write": "agent",
   "platform/agentCapabilities:browserGateway": "admin",
@@ -108,6 +109,11 @@ const ACCESS: Record<string, Access> = {
   "platform/memberInvitations:register": "public", // bound registration capability, never a session
   "platform/memberInvitations:requestVerification": "user",
   "platform/memberInvitations:accept": "user",
+  "platform/tenantContext:mine": "user",
+  "platform/tenantContext:get": "user",
+  "platform/organizations:list": "admin",
+  "platform/organizations:get": "admin",
+  "platform/organizations:setLifecycle": "admin",
   "platform/integrations:getStatus": "admin",
   "platform/meta:health": "public",
   "platform/passwordStrength:evaluate": "public",
@@ -140,12 +146,20 @@ async function seed(t: ReturnType<typeof emulator>): Promise<void> {
     await ctx.db.insert("waitlistEntries", { email: "seed@example.test", meta: "{}", status: "waiting", createdAt: now });
     await ctx.db.insert("adminInvitations", { email: "seed@example.test", status: "invited", invitedAt: now, createdAt: now });
   });
+  const controlActor = await t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
+    name: "Seed operator", email: "seed-operator@example.test", role: "admin", emailVerified: true, createdAt: now, updatedAt: now,
+  } } });
+  const customer = await t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
+    name: "Seed customer", email: "seed-customer@example.test", role: "user", emailVerified: true, createdAt: now, updatedAt: now,
+  } } });
+  await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: customer._id });
   await t.run(async (ctx) => {
-    await ctx.runMutation(components.platform.adminEmails.ensure, { email: "seed-admin@example.test" });
+    await ctx.runMutation(components.platform.adminEmails.ensure, { email: controlActor.email });
     await ctx.runMutation(components.platform.appSettings.putRaw, { key: SAMPLE_STRING, value: "\"seeded\"" });
     await ctx.runMutation(components.platform.announcements.create, { name: "seed", bannerText: "seed", identity: { userId: "seed", actor: "seed" } });
     await ctx.runMutation(components.platform.auditTrail.insertEvent, {
-      happenedAt: now, actor: "seed", source: "server:seed", action: "auth.sign_in", resource: "seed", status: "succeeded",
+      happenedAt: now, actor: controlActor.email, authenticatedUserId: controlActor._id,
+      source: "server:operator-audit:v1", action: "auth.sign_in", resource: `operator:${controlActor._id}`, status: "succeeded",
     });
   });
 }

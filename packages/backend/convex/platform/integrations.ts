@@ -1,4 +1,4 @@
-import { authedQuery } from "./functions";
+import { adminQuery } from "./functions";
 
 // ---------------------------------------------------------------------------
 // Integration status for the admin Configure → Integrations page.
@@ -116,7 +116,7 @@ export function buildIntegrationStatus() {
   };
 }
 
-export const getStatus = authedQuery({
+export const getStatus = adminQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;

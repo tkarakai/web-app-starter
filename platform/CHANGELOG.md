@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Explicit customer organization context and private-owner tenant builders/sample APIs, with
+  immutable request IDs, parent/child checks, live lifecycle/membership rechecks and reauthorized
+  file transfers. The personal sample caller resolves/captures context; historical private rows
+  remain separately authorized without a guessed backfill. See [organization context](docs/organization-context.md).
+
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
   membership and lifecycle operations. For authority boundaries and integration limits, see
   [organization authority](docs/architecture.md#organization-primitives-and-authority).
@@ -25,10 +30,31 @@ version. Release-specific compatibility and deployment steps are listed explicit
   steps are in the [deployment runbook](docs/deployment-runbook.md#optional-mcp-authorization-origin).
 
 - Bounded MCP search/schema lookup/execution over the admin capability catalogue, plus
-  independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. Blanket `admin:manage`
-  consent preserves native policy and validation. Existing announcement-only test grants
-  require new authorization and clients use the gateway tools. Reusable independent and pi
+  independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. `admin:manage` consent is
+  constrained to the approved operator catalogue and independent native target policy. Earlier
+  authorization contracts require new consent and clients use the gateway tools. Reusable independent and pi
   testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
+
+### Changed
+
+- Operator identity APIs/catalogues target canonical operators only. Generic Better Auth `/admin/*`
+  calls, customer identity administration, global role conversion and identity deletion are denied.
+  Organization controls expose metadata and current org-admin contacts, not private data/member security.
+  Operator audit views exclude retained private and unclassified history.
+- Native agent execution independently revalidates persisted actor/proof/target authority. Contract
+  epoch 2 invalidates older codes, delegations, grants and queued authority; historical task/artifact
+  rows stay quarantined instead of being deleted or reclassified by owner alone.
+
+### Action required
+
+- Replace custom `authClient.admin.*` callers with the guarded operator-target APIs. Do not use
+  global `admin` or `adminMutation` to represent a customer org-admin, and do not rely on identity
+  deletion or customer security administration through the operator plane.
+- Obtain new agent consent after updating backend and clients. Do not stamp old grants/tasks/artifacts
+  with the new epoch or continue executing old workers. See [agentic integration](docs/agentic-announcements.md).
+- Organization fields/indexes are additive, not a preserving migration. Keep unmapped data intact;
+  use explicit context for new tenant data and complete verified mappings/old-writer barriers before
+  tenant cutover or collaboration activation. See [organization context](docs/organization-context.md).
 
 ### Fixed
 
