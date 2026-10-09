@@ -2,7 +2,8 @@ import { hashPassword, symmetricEncrypt } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, components, internal } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { assuranceApi, createSessionAssuranceTestEnv } from "./sessionAssurance.test-helpers";
+import { modules } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
 
@@ -27,7 +28,7 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 async function fixture(encrypted = true) {
-  const t = createTestEnv();
+  const t = createSessionAssuranceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, authModules);
   const now = Date.now();
   const user = await t.mutation(components.betterAuth.adapter.create, { input: {
@@ -158,8 +159,8 @@ describe("password reset session containment", () => {
   test("an invalid reset leaves legitimate sessions intact", async () => {
     const f = await fixture();
     expect((await f.http("/api/auth/reset-password", { token: "invalid", newPassword })).status).toBe(400);
-    expect(await f.first.caller.query(api.projects.list, {})).toEqual([]);
-    expect(await f.second.caller.query(api.projects.list, {})).toEqual([]);
+    expect(await f.first.caller.query(assuranceApi.read, {})).toBe(f.user._id);
+    expect(await f.second.caller.query(assuranceApi.read, {})).toBe(f.user._id);
   });
   test("the installed email-OTP reset route also revokes all existing sessions", async () => {
     const f = await fixture();
@@ -168,8 +169,8 @@ describe("password reset session containment", () => {
     expect(otp).toMatch(/^\d{6}$/);
     const response = await f.http("/api/auth/email-otp/reset-password", { email: f.user.email, otp, password: newPassword });
     expect(response.status).toBe(200);
-    expect(await f.first.caller.query(api.projects.list, {})).toBeNull();
-    expect(await f.second.caller.query(api.projects.list, {})).toBeNull();
+    expect(await f.first.caller.query(assuranceApi.read, {})).toBeNull();
+    expect(await f.second.caller.query(assuranceApi.read, {})).toBeNull();
   });
   test("reset evicts every old session from HTTP and Convex, but permits a new password sign-in", async () => {
     const f = await fixture();
@@ -181,12 +182,12 @@ describe("password reset session containment", () => {
       model: "verification", data: { identifier: "reset-password:reset-fixture", value: f.user._id,
         expiresAt: Date.now() + 300000, createdAt: Date.now(), updatedAt: Date.now() },
     } });
-    expect(await f.first.caller.query(api.projects.list, {})).toEqual([]);
+    expect(await f.first.caller.query(assuranceApi.read, {})).toBe(f.user._id);
     const reset = await f.http("/api/auth/reset-password", { token: "reset-fixture", newPassword });
     expect(reset.status).toBe(200);
     await Promise.all([f.first, f.second].map(async ({ session, caller }) => {
-      expect(await caller.query(api.projects.list, {})).toBeNull();
-      await expect(caller.mutation(api.projects.create, { name: "Denied", description: "" })).rejects.toThrow("NOT_AUTHENTICATED");
+      expect(await caller.query(assuranceApi.read, {})).toBeNull();
+      await expect(caller.mutation(assuranceApi.write, {})).rejects.toThrow("NOT_AUTHENTICATED");
       await expect(caller.action(api.platform.auth.viewBackupCodes, { password: newPassword })).rejects.toThrow("NOT_AUTHENTICATED");
       expect((await f.http("/api/sessions", undefined, session.token)).status).toBe(401);
       expect(await (await f.http("/api/auth/get-session", undefined, session.token)).json()).toBeNull();
@@ -196,7 +197,7 @@ describe("password reset session containment", () => {
     const { token } = await signedIn.json();
     const session = await f.t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "token", value: token }] });
     expect(session).not.toBeNull();
-    expect(await f.t.withIdentity({ subject: f.user._id, sessionId: session!._id }).query(api.projects.list, {})).toEqual([]);
+    expect(await f.t.withIdentity({ subject: f.user._id, sessionId: session!._id }).query(assuranceApi.read, {})).toBe(f.user._id);
     expect((await f.http("/api/auth/reset-password", { token: "reset-fixture", newPassword })).status).toBe(400);
   });
 });

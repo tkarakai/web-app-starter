@@ -90,6 +90,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Backend session-assurance and recovery-code tests remain runnable after adoption with
+  `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
+
 - Prepared CI worker tools use Debian 13 libraries compatible with current Convex Linux binaries.
   The OS base participates in image reuse identity; failed backend smoke checks retain loader
   diagnostics. Application Node/Bun versions are unchanged. Installed managers can take the recipe
