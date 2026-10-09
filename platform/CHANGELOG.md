@@ -60,6 +60,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Backend session-assurance and recovery-code tests remain runnable after adoption with
+  `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
 - Resuming setup with `--local-only` never starts an existing authenticated manager service;
   container-only checks do not silently become registration-capable background work.
 - Updater status reports effective hosted, prepared, auxiliary or unconfigured routes across all

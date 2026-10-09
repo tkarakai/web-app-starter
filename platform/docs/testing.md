@@ -146,6 +146,12 @@ function that writes audit events, including scheduled writes. Register Better A
 separately when the test creates real sessions. Component storage tests live in
 `platform/packages/convex-platform/src/component/` and run with `bun run test:convex`.
 
+Platform session-assurance and recovery tests use test-only endpoints registered by
+`convex/platform/sessionAssurance.test-helpers.ts`. They exercise the real authenticated
+query and mutation wrappers without depending on sample tables or functions, so they keep
+running after `adopt --remove-sample`. The fixture endpoints are never deployed.
+The adoption tooling tests also execute the retained backend suite after sample removal.
+
 ```typescript
 // packages/backend/convex/projects.test.ts (the sample domain)
 import { createTestEnv } from "./test.modules";
