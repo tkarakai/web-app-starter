@@ -34,3 +34,7 @@ platform releases with [`platform/UPGRADING.md`](platform/UPGRADING.md).
 ## Licence
 
 See [`LICENSE`](LICENSE).
+
+## Review workflow
+
+Follow [AGENTS.md’s Change workflow](AGENTS.md#change-workflow) for app changes and PR review.

@@ -19,6 +19,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   immutable request IDs, parent/child checks, live organization-availability/membership rechecks and reauthorized
   file transfers. The personal sample caller resolves/captures context; historical private rows
   remain separately authorized without a guessed backfill. See [organization context](docs/organization-context.md).
+- Adoption refuses work on the live default branch unless explicitly overridden with
+  `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
+  require task branches, early draft PRs and the existing E2E ready/label policy.
 
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
   membership and organization-availability operations. For authority boundaries and integration limits, see
@@ -61,6 +64,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   organization-scope cutover or enabling organization membership management. See [organization context](docs/organization-context.md).
 
 ### Fixed
+
+- Prepared CI worker tools use Debian 13 libraries compatible with current Convex Linux binaries.
+  The OS base participates in image reuse identity; failed backend smoke checks retain loader
+  diagnostics. Application Node/Bun versions are unchanged. Installed managers can take the recipe
+  through the [reviewed manager-update sequence](docs/ci-workers.md#operate-and-maintain).
 
 - Managed development launchers shield termination and exit cleanup immediately, so repeated
   process-group signals cannot interrupt ownership-record cleanup on Linux. Exit status and

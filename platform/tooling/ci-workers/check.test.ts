@@ -16,7 +16,11 @@ async function fixture(t: TestContext) {
   t.after(() => rm(dir, { recursive: true, force: true }));
   const upstream = path.join(dir, 'upstream'), root = path.join(dir, 'archive');
   await mkdir(upstream); await mkdir(root);
-  const git = (cwd: string, ...args: string[]) => command('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=test', '-c', 'user.email=test@localhost', ...args], { cwd });
+  const config = path.join(dir, 'gitconfig');
+  // Disposable repositories need no maintenance process that can outlive a command and race cleanup.
+  await writeFile(config, `[maintenance]\n\tauto = false\n[url "file://${upstream}"]\n\tinsteadOf = https://github.com/${repo}.git\n`);
+  const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: config, GIT_CONFIG_NOSYSTEM: '1' };
+  const git = (cwd: string, ...args: string[]) => command('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=test', '-c', 'user.email=test@localhost', ...args], { cwd, env: gitEnv });
   const write = async (file: string, text: string) => {
     await mkdir(path.dirname(path.join(upstream, file)), { recursive: true });
     await writeFile(path.join(upstream, file), text);
@@ -39,13 +43,11 @@ async function fixture(t: TestContext) {
   const archive = path.join(dir, 'source.tar');
   await git(upstream, 'archive', '--format=tar', '-o', archive, source);
   await command('tar', ['-xf', archive, '-C', root]);
-  const config = path.join(dir, 'gitconfig');
-  await writeFile(config, `[url "file://${upstream}"]\n\tinsteadOf = https://github.com/${repo}.git\n`);
   const bin = path.join(dir, 'bin'); await mkdir(bin);
   const calls = path.join(dir, 'bun-calls.jsonl');
   // Replace the expensive application CI boundary, but execute the real zone consumer.
   await writeFile(path.join(bin, 'bun'), `#!${process.execPath}\nimport fs from 'node:fs';\nimport { checkZone } from ${JSON.stringify(new URL('../check-zone.ts', import.meta.url).href)};\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.CHECK_CALLS, JSON.stringify(args) + '\\n');\nif (args[0] === 'run') { const result = checkZone(process.cwd()); if (result.errors.length) { console.error(result.errors.join('\\n')); process.exit(1); } }\n`, { mode: 0o755 });
-  const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, CHECK_CALLS: calls, GIT_CONFIG_GLOBAL: config, GIT_CONFIG_NOSYSTEM: '1', GIT_ALLOW_PROTOCOL: 'file' };
+  const env = { ...gitEnv, PATH: `${bin}:${process.env.PATH}`, CHECK_CALLS: calls, GIT_ALLOW_PROTOCOL: 'file' };
   const run = (mode: 'ci' | 'quick' | 'install', repository = repo) => {
     const argv = sourceCheck(mode, repository, path.join(modules, 'baseline.ts'));
     return command(argv[1], argv.slice(2), { cwd: root, env });
