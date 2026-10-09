@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { inspectRepositoryWorkflow, maintenanceAllowed, setupRepositoryWorkflow } from "../repository-workflow.ts";
+import { main, inspectRepositoryWorkflow, maintenanceAllowed, setupRepositoryWorkflow } from "../repository-workflow.ts";
 import { RECORD, readRecord, saveRecord } from "../repository-workflow/state.ts";
 import { fixture } from "./repository-workflow-fixtures.ts";
 
@@ -100,16 +100,51 @@ test("owner-consented setup discovers first PR, preserves strong custom rules an
 test("maintenance permission needs exact bot, semantically constrained caller, narrow App and active installation", async t => {
   const f = fixture(); t.after(f.cleanup);
   f.record.maintenanceBots = [{ login: "app-updater[bot]", appId: 42, kind: "platform-update", policy: "patch" }]; saveRecord(f.root, f.record);
+  f.committedPolicy = JSON.stringify(f.record);
+  f.advanceBranchOnPolicyRead = true;
   f.metadata.allow_auto_merge = true;
   f.variables = [{ name: "PLATFORM_UPDATER_APP_ID", value: "42" }, { name: "PLATFORM_UPDATE_DELIVERY", value: "app" }];
   let status = await inspectRepositoryWorkflow(f.root, "owner/app", f.exec);
   assert.equal(status.readiness, "enforced"); assert.equal(maintenanceAllowed(status, "app-updater[bot]"), true); assert.equal(maintenanceAllowed(status, "other[bot]"), false);
+  f.branchSha = f.contentSha; f.advanceBranchOnPolicyRead = false;
   for (const change of [() => { f.viewer = "owner"; }, () => { f.appPermissions.administration = "write"; }, () => { f.installationRepos.push("owner/other"); }, () => { f.caller = "jobs: {update: {uses: './.github/workflows/platform-update.yml', with: {policy: major, auto-merge: true}}}"; }]) {
     change(); status = await inspectRepositoryWorkflow(f.root, "owner/app", f.exec); assert.equal(maintenanceAllowed(status, "app-updater[bot]"), false);
   }
   f.viewer = "app-updater[bot]"; f.appPermissions.administration = "read"; f.installationRepos = ["owner/app"]; f.caller = "jobs: {update: {uses: './.github/workflows/platform-update.yml', with: {policy: patch, auto-merge: true}}}";
   f.variables.push({ name: "PLATFORM_CI_PR_E2E", value: "off" });
   status = await inspectRepositoryWorkflow(f.root, "owner/app", f.exec); assert.equal(maintenanceAllowed(status, "app-updater[bot]"), false);
+});
+
+test("maintenance CLI denies local-only, unavailable and mismatched default-branch owner grants", async t => {
+  const changes = [
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, maintenanceBots: [] }); },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = undefined; },
+    (f: ReturnType<typeof fixture>) => { f.policyError = 403; },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = "{}"; },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, repository: "owner/other" }); },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, maintenanceBots: [{ ...f.record.maintenanceBots[0], login: "other[bot]" }] }); },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, maintenanceBots: [{ ...f.record.maintenanceBots[0], appId: 99 }] }); },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, maintenanceBots: [{ ...f.record.maintenanceBots[0], kind: "dependency-update" }] }); },
+    (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, maintenanceBots: [{ ...f.record.maintenanceBots[0], policy: "minor" }] }); },
+    (f: ReturnType<typeof fixture>) => { f.branchExists = false; },
+    (f: ReturnType<typeof fixture>) => { f.branchSha = "invalid"; },
+  ];
+  for (const change of changes) {
+    const f = fixture(); t.after(f.cleanup);
+    f.record.maintenanceBots = [{ login: "app-updater[bot]", appId: 42, kind: "platform-update", policy: "patch" }];
+    saveRecord(f.root, f.record); f.committedPolicy = JSON.stringify(f.record);
+    f.metadata.allow_auto_merge = true;
+    f.variables = [{ name: "PLATFORM_UPDATER_APP_ID", value: "42" }, { name: "PLATFORM_UPDATE_DELIVERY", value: "app" }];
+    change(f);
+    const output: string[] = [];
+    const code = await main(["--json", "--repo", "owner/app", "--maintenance-bot", "app-updater[bot]"],
+      { root: f.root, exec: f.exec, write: value => output.push(value) });
+    const result = JSON.parse(output.at(-1)!);
+    assert.equal(code, 2); assert.equal(result.maintenanceAllowed, false);
+    assert.equal(result.maintenanceBots[0].verified, false);
+    assert.equal(readRecord(f.root, "owner/app")!.maintenanceBots[0].appId, 42);
+    assert(f.calls.filter(c => c.file === "gh").every(c => c.args.includes("GET")));
+  }
 });
 
 test("API uncertainty and conflicting inherited merge methods stop setup before every remote mutation", async t => {

@@ -1,6 +1,6 @@
 import { run, type Run } from "../deploy-setup/io.ts";
 import { discoverChecks, pages, request, statusCode } from "./github.ts";
-import { expectedChecks, readRecord } from "./state.ts";
+import { expectedChecks, readRecord, RECORD, validateRecord } from "./state.ts";
 import type { EffectivePolicy, MaintenanceBot, Protection, RepositoryWorkflowStatus, Rule, Ruleset, WorkflowRecord } from "./types.ts";
 
 type Metadata = { full_name: string; default_branch: string; private: boolean; allow_squash_merge: boolean;
@@ -57,7 +57,15 @@ async function privateFree(metadata: Metadata, exec: Run): Promise<boolean> {
   const account = await request<{ login: string; plan?: { name: string } }>(owner.type === "Organization" ? `orgs/${owner.login}` : "user", exec);
   return account.login?.toLowerCase() === owner.login.toLowerCase() && account.plan?.name === "free";
 }
-async function verifyBot(bot: MaintenanceBot, repo: string, branch: string, exec: Run): Promise<void> {
+async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefined, exec: Run): Promise<void> {
+  if (!sha) throw Error("Default branch commit could not be verified");
+  const policy = await request<{ encoding: string; content: string }>(`repos/${repo}/contents/${RECORD}?ref=${sha}`, exec);
+  if (policy.encoding !== "base64" || typeof policy.content !== "string") throw Error("Could not inspect the committed owner policy");
+  const committed = validateRecord(JSON.parse(Buffer.from(policy.content, "base64").toString("utf8")));
+  if (committed.repository.toLowerCase() !== repo.toLowerCase() || !committed.maintenanceBots.some(grant =>
+    grant.login === bot.login && grant.appId === bot.appId && grant.kind === bot.kind && grant.policy === bot.policy)) {
+    throw Error("The committed owner policy does not grant this exact maintenance authority");
+  }
   const slug = bot.login.replace(/\[bot\]$/, "");
   const app = await request<{ id: number; slug: string; permissions: Record<string, string> }>(`apps/${slug}`, exec);
   const allowed = { contents: "write", pull_requests: "write", workflows: "write", issues: "write", metadata: "read", administration: "read", checks: "read", variables: "read" };
@@ -69,7 +77,7 @@ async function verifyBot(bot: MaintenanceBot, repo: string, branch: string, exec
   if (!Array.isArray(variables.variables) || variables.total_count > variables.variables.length) throw Error("Could not completely inspect maintenance variables");
   const variable = (name: string) => variables.variables.find(v => v.name === name)?.value;
   if (variable("PLATFORM_UPDATER_APP_ID") !== String(bot.appId) || variable("PLATFORM_UPDATE_DELIVERY") !== "app") throw Error("Named updater App delivery is not active");
-  const caller = await request<{ encoding: string; content: string }>(`repos/${repo}/contents/.github/workflows/update-platform.yml?ref=${encodeURIComponent(branch)}`, exec);
+  const caller = await request<{ encoding: string; content: string }>(`repos/${repo}/contents/.github/workflows/update-platform.yml?ref=${sha}`, exec);
   if (caller.encoding !== "base64" || typeof caller.content !== "string") throw Error("Could not inspect the committed maintenance caller");
   const source = Buffer.from(caller.content, "base64").toString("utf8");
   // Parse data on stdin; caller text is never executed, and harmless YAML formatting stays supported.
@@ -110,9 +118,11 @@ export async function inspectRepositoryWorkflow(root: string, repo: string, exec
     status.expectedChecks = expectedChecks(root, metadata.private);
   } catch { unavailable("repository", "Repository metadata is unavailable; sign in with repository access and re-check."); return status; }
   const branch = encodeURIComponent(metadata.default_branch);
+  let defaultBranchSha: string | undefined;
   try {
     const live = await request<{ name: string; commit: { sha: string } }>(`repos/${repo}/branches/${branch}`, exec);
     if (live.name !== metadata.default_branch || !/^[a-f0-9]{40}$/.test(live.commit?.sha)) throw Error("Invalid default branch response");
+    defaultBranchSha = live.commit.sha;
     status.defaultBranchExists = true; add("default-branch", true, `Default branch is ${metadata.default_branch}.`);
   } catch (error) {
     if (statusCode(error) === 404) { status.defaultBranchExists = false; add("default-branch", false, "Default branch does not exist; create only the minimal owner-authorized bootstrap commit, then open a draft adoption PR."); }
@@ -184,8 +194,8 @@ export async function inspectRepositoryWorkflow(root: string, repo: string, exec
     add("e2e-policy", valid, `PR E2E policy: ${status.e2e.mode}; ${status.e2e.mode === "off" ? "owner/reviewer must verify full local E2E before merge" : "draft skips E2E; ready/label process applies"}.`, status.e2e.enforced);
   } catch { unavailable("e2e-policy", "Live PR E2E policy is unavailable."); }
   for (const bot of record?.maintenanceBots ?? []) {
-    try { await verifyBot(bot, repo, metadata.default_branch, exec); status.maintenanceBots.push({ ...bot, verified: true, reason: "Named repository-only GitHub App credential and committed patch/minor caller verified." }); }
-    catch { status.maintenanceBots.push({ ...bot, verified: false, reason: "Bot identity, committed mechanical constraint, narrow App permissions or active installation credential could not be verified." }); }
+    try { await verifyBot(bot, repo, defaultBranchSha, exec); status.maintenanceBots.push({ ...bot, verified: true, reason: "Exact committed owner grant, patch/minor caller and repository-only GitHub App credential verified." }); }
+    catch { status.maintenanceBots.push({ ...bot, verified: false, reason: "Exact committed owner grant, bot identity, committed caller, narrow App permissions or active installation credential could not be verified." }); }
   }
   status.autoMerge = typeof metadata.allow_auto_merge === "boolean" ? metadata.allow_auto_merge : null;
   add("auto-merge-policy", status.autoMerge === false || status.autoMerge === true && status.maintenanceBots.length > 0 && status.maintenanceBots.every(b => b.verified), "Auto-merge stays off by default; feature/bootstrap authors require owner or independent-reviewer merge authority. Only verified named constrained App bots are eligible.");
