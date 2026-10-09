@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -285,8 +286,16 @@ test('command timeout terminates its descendant before returning', async t => {
   await writeFile(parent, `const { spawn } = require('node:child_process'); const fs = require('node:fs'); const child = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }); fs.writeFileSync(process.argv[2], String(child.pid)); setInterval(() => {}, 1000);`);
   await assert.rejects(command(process.execPath, [parent, pid], { timeout: 500 }));
   const child = Number(await readFile(pid, 'utf8'));
+  t.after(async () => { try { process.kill(child, 'SIGKILL'); } catch { /* already reaped */ } });
   for (let attempt = 0; attempt < 100; attempt++) {
     try { process.kill(child, 0); } catch (error) { assert.equal((error as NodeJS.ErrnoException).code, 'ESRCH'); return; }
+    // A killed orphan can remain defunct until the host reaps it; kill(pid, 0)
+    // still succeeds then, although the descendant can no longer execute.
+    const state = spawnSync('ps', ['-o', 'stat=', '-p', String(child)], { encoding: 'utf8' });
+    assert.equal(state.error, undefined);
+    assert.equal(state.signal, null);
+    assert(state.status === 0 || state.status === 1, state.stderr);
+    if (state.status === 1 || state.stdout.trim().startsWith('Z')) return;
     await new Promise(resolve => setTimeout(resolve, 10));
   }
   assert.fail('descendant survived command cancellation');
