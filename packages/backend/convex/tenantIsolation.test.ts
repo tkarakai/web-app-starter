@@ -36,16 +36,40 @@ async function fixture() {
 }
 
 describe("explicit tenant context and private resource isolation", () => {
+  test("reactive reads deny without throwing during assurance loss and resume after verified proof", async () => {
+    const f = await fixture();
+    const args = { organizationId: f.a.organizationId };
+    const task = await f.aliceClient.mutation(api.tenantTasks.create, { ...args, projectId: f.aProject, title: "Retained task", description: "Private", status: "todo" });
+    const reads = () => Promise.all([
+      f.aliceClient.query(api.platform.tenantContext.mine, {}),
+      f.aliceClient.query(api.platform.tenantContext.get, args),
+      f.aliceClient.query(api.tenantProjects.list, args),
+      f.aliceClient.query(api.tenantProjects.listWithStats, args),
+      f.aliceClient.query(api.tenantProjects.get, { ...args, id: f.aProject }),
+      f.aliceClient.query(api.tenantTasks.listByProject, { ...args, projectId: f.aProject }),
+      f.aliceClient.query(api.tenantFiles.listUploads, { ...args, projectId: f.aProject }),
+    ]);
+    const before = await reads();
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: f.aliceAuth.session._id }], update: { primaryVerifiedAt: 0 } } });
+    expect(await reads()).toEqual(Array(7).fill(null));
+    expect(await f.t.query(api.platform.tenantContext.mine, {})).toBeNull();
+    expect(await f.t.query(api.tenantProjects.list, args)).toBeNull();
+    await expect(f.aliceClient.mutation(api.tenantProjects.update, { ...args, id: f.aProject, name: "Denied" })).rejects.toThrow("NOT_AUTHENTICATED");
+    await expect(f.aliceClient.mutation(api.tenantTasks.update, { ...args, id: task, status: "done" })).rejects.toThrow("NOT_AUTHENTICATED");
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: f.aliceAuth.session._id }], update: { primaryVerifiedAt: Date.now() } } });
+    expect(await reads()).toEqual(before);
+  });
+
   test("shared identity has differing roles and only sees owned resources in the explicit organization", async () => {
     const f = await fixture();
     const contexts = await f.aliceClient.query(api.platform.tenantContext.mine, {});
-    expect(contexts.personalOrganizationId).toBe(f.a.organizationId);
-    expect(contexts.contexts).toEqual(expect.arrayContaining([
+    expect(contexts!.personalOrganizationId).toBe(f.a.organizationId);
+    expect(contexts!.contexts).toEqual(expect.arrayContaining([
       expect.objectContaining({ organizationId: f.a.organizationId, role: "org-admin" }),
       expect.objectContaining({ organizationId: f.b.organizationId, role: "member" }),
     ]));
-    expect((await f.aliceClient.query(api.tenantProjects.list, { organizationId: f.a.organizationId })).map(row => row._id)).toEqual([f.aProject]);
-    expect((await f.aliceClient.query(api.tenantProjects.list, { organizationId: f.b.organizationId })).map(row => row._id)).toEqual([f.bProject]);
+    expect((await f.aliceClient.query(api.tenantProjects.list, { organizationId: f.a.organizationId }))!.map(row => row._id)).toEqual([f.aProject]);
+    expect((await f.aliceClient.query(api.tenantProjects.list, { organizationId: f.b.organizationId }))!.map(row => row._id)).toEqual([f.bProject]);
     expect(await f.aliceClient.query(api.tenantProjects.get, { organizationId: f.b.organizationId, id: f.aProject })).toBeNull();
     expect(await f.bobClient.query(api.tenantProjects.get, { organizationId: f.b.organizationId, id: f.bProject })).toBeNull();
     await expect(f.aliceClient.mutation(api.tenantProjects.update, { organizationId: f.b.organizationId, id: f.bobProject, name: "Cannot take over" })).rejects.toThrow("PROJECT_NOT_FOUND");
@@ -88,7 +112,7 @@ describe("explicit tenant context and private resource isolation", () => {
     const operator = (await f.client(f.operator._id)).client;
     await expect(operator.query(api.tenantProjects.list, { organizationId: f.a.organizationId })).rejects.toThrow("NOT_CUSTOMER");
     const authorizationOnly = (await f.client(f.alice._id, "mcp-authorization")).client;
-    await expect(authorizationOnly.query(api.platform.tenantContext.mine, {})).rejects.toThrow("NOT_AUTHENTICATED");
+    expect(await authorizationOnly.query(api.platform.tenantContext.mine, {})).toBeNull();
   });
 
   test("task parent/context/ownership and malformed cross-tenant child references fail closed", async () => {
@@ -129,7 +153,7 @@ describe("explicit tenant context and private resource isolation", () => {
     expect((await f.t.run(ctx => ctx.db.get(id)))?.organizationId).toBeUndefined();
     const scoped = await client.mutation(api.tenantProjects.create, { organizationId: personal.organizationId, name: "New scoped", description: "Explicit" });
     expect(await client.query(api.projects.get, { organizationId: personal.organizationId, id: scoped })).toBeNull();
-    expect((await client.query(api.tenantProjects.listWithStats, { organizationId: personal.organizationId })).map(row => row._id)).toEqual([scoped]);
+    expect((await client.query(api.tenantProjects.listWithStats, { organizationId: personal.organizationId }))!.map(row => row._id)).toEqual([scoped]);
     expect(await f.aliceClient.query(api.platform.tenantContext.mine, {})).toMatchObject({ legacyPrivateAvailable: false });
   });
 

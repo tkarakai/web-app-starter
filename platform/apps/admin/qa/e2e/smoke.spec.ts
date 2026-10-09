@@ -8,7 +8,7 @@ const { productName } = appConfig.identity;
 test.describe("Admin Sign-In Page", () => {
   test("loads and displays the correct title", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(`Admin - ${productName}`);
+    await expect(page).toHaveTitle(`App admin - ${productName}`);
   });
 
   test("displays the sign-in form", async ({ page }) => {

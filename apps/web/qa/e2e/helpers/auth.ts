@@ -176,7 +176,6 @@ export async function expectSignedOut(page: Page): Promise<void> {
  */
 export async function signOut(page: Page): Promise<void> {
   await page.bringToFront();
-  await page.goto("/en/dashboard");
   const account = page.locator('[data-slot="sidebar-footer"] button').first();
   const opensMenu = await account.getAttribute("aria-haspopup") === "menu";
   await account.click();

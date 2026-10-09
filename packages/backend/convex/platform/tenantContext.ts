@@ -33,6 +33,7 @@ export async function requireLegacyPrivateAccess(ctx: QueryCtx, organizationId?:
 export const mine = query({
   args: {},
   handler: async ctx => {
+    if (!await getAuth(ctx)) return null;
     const auth = await requireOrganizationUserSession(ctx);
     const contexts: Array<{ organizationId: string; name: string; experience: OrganizationExperience;
       lifecycle: "active" | "disabled" | "provisioning"; role: typeof ORG_ADMIN_MEMBERSHIP_ROLE | typeof ORG_MEMBER_ROLE; personal: boolean }> =
@@ -51,5 +52,8 @@ export const mine = query({
 });
 export const get = query({
   args: { organizationId: v.string() },
-  handler: async (ctx, { organizationId }) => (await requireTenantContext(ctx, organizationId)).organization,
+  handler: async (ctx, { organizationId }) => {
+    if (!await getAuth(ctx)) return null;
+    return (await requireTenantContext(ctx, organizationId)).organization;
+  },
 });
