@@ -23,7 +23,7 @@ Legacy public API/tool identifiers remain compatibility aliases where documented
   organization metadata/lifecycle, role, `personalOrganizationId` and `legacyPrivateAvailable`. It does not provision or guess an organization.
   `mappingRequired` means no canonical context is available; it is not permission to invent a mapping.
 - `api.platform.tenantContext.get({ organizationId })` resolves that exact immutable ID against
-  the current customer, membership, session assurance and active organization lifecycle.
+  the current organization user, membership, session assurance and active organization lifecycle.
 - The personal experience may hide an organization picker. Resolve its canonical personal ID,
   then supply that ID with every tenant operation. A slug or conversation ID is not tenant authority.
 - Capture the selected ID before starting async work. Another tab's `activeOrganizationId` preference
@@ -42,7 +42,7 @@ They do not enable organization membership management or expose member-administr
 Use `tenantQuery` / `tenantMutation` from `./platform/tenantFunctions` for organization-owned data.
 The builders add a **required** `organizationId: v.string()` argument and give handlers
 `ctx.organizationId`, `ctx.organization`, `ctx.user` and `ctx.ownerId`. Do not redefine that argument.
-They enforce live customer/session/membership/lifecycle authorization; mutations also rate-limit.
+They enforce live organization-user/session/membership/lifecycle authorization; mutations also rate-limit.
 Unlike `authedQuery`, a tenant query throws on an unavailable context rather than returning signed-out
 `null`. Skip reactive queries until a signed-in, available context has been resolved; handle removal
 and suspension as unavailable state, not an invitation to try another ID silently.
@@ -132,8 +132,9 @@ reviewed ownership mappings can preserve dependent state.
 
 `api.platform.organizations.list/get/setLifecycle` expose operator control metadata and org-admin
 contacts only. They do not expose ordinary member directories, factors, sessions or private resources.
-Operator audit reads project reviewed new operator events; private/unclassified history is retained
-but hidden. Reserved email addresses alone do not establish operator identity.
+For audit classification, retained history and safe operator reads, see
+[audit projection](audit-trail-architecture.md#source-format).
+Reserved email addresses alone do not establish operator identity.
 
 Tenant builders are deliberately not native capabilities. Existing MCP/CLI/A2A/WebMCP tools remain
 operator-only; do not register tenant tables, member ceremonies or component primitives in that

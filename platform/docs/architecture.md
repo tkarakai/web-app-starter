@@ -166,8 +166,8 @@ export function MyComponent() {
 ## Organization primitives and authority
 
 The auth package includes Better Auth's organization client and server schema. Organization roles
-(`org-admin`, `member`) are membership roles, not the global `user.role` used for platform
-administrator access. Never set a customer's global role to `admin` to represent organization
+(`org-admin`, `member`) are membership roles, not the global `user.role` used for app-operator
+access. Never set a customer's global role to `admin` to represent organization
 management, and never treat membership as permission to read another owner's private resources.
 
 Installing the plugin does not make an existing application multi-tenant. Its native organization
@@ -266,23 +266,11 @@ real auth sign-in/verification and persisted admission behavior); inbox delivery
 
 ### Explicit customer context and operator controls
 
-`api.platform.tenantContext.mine/get` discover and resolve canonical customer contexts without
-provisioning or trusting a session's active-organization preference. App modules use
-`tenantQuery` / `tenantMutation` from `./platform/tenantFunctions`, required immutable
-`organizationId` arguments, and organization-plus-owner indexes/checks. The sample's strict
-`tenantProjects`, `tenantTasks` and `tenantFiles` APIs are separate from the bounded legacy-private
-bridge; optional schema fields do not migrate old rows or convert the existing web UI.
-
-`appOperatorQuery` / `appOperatorMutation` mean canonical app operator, never org-admin.
-The older `adminQuery` / `adminMutation` names remain compatibility aliases. Generic
-Better Auth `/admin/*` identity APIs are denied; guarded operator-target APIs and
-`api.platform.organizations.list/get/setLifecycle` expose only approved control DTOs. Private and
-unclassified audit history is retained but not projected to operators. Tenant APIs and human
-membership/password ceremonies are not operator/native agent capabilities.
-
-See [organization context](organization-context.md) for the builder pattern, transfer/parent checks,
-legacy mapping limits and unavailable-context handling, and
-[agentic integration](agentic-announcements.md) for independent native dispatch and epoch cutover.
+See [organization context](organization-context.md) for explicit context resolution, tenant builders,
+the personal web caller, the separate legacy-private bridge and app-operator control APIs.
+Optional schema fields do not migrate historical rows. See
+[audit projection](audit-trail-architecture.md#source-format) for retained history and operator reads,
+and [agentic integration](agentic-announcements.md) for independent native dispatch and epoch cutover.
 
 ### Server-only organization primitives
 

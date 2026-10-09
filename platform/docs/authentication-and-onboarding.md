@@ -440,7 +440,8 @@ content resumes with its in-memory state; no setup secrets are persisted in brow
 
 For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
 `packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
-administrative writes, use `adminMutation`, which adds the admin-role and recent-proof checks.
+app-operator writes and organization-owned data, follow the
+[builder and authority boundaries](organization-context.md).
 Actions should authorize through an internal query using the same helper and recheck before
 committing sensitive side effects. `auth.getCurrentUser` and `sessionAssurance.status` intentionally
 return limited self-service identity/status and are **not authorization helpers**. Never authorize
