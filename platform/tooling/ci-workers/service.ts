@@ -29,10 +29,12 @@ export async function install(c: Config): Promise<string> {
   if (await exists(current)) { const old = await readlink(current); await rm(path.join(home, 'previous'), { force: true }); await symlink(old, path.join(home, 'previous')); }
   const replacement = path.join(home, 'current.next'); await rm(replacement, { force: true }); await symlink(target, replacement);
   const { rename } = await import('node:fs/promises'); await rename(replacement, current);
-  const bin = path.join(os.homedir(), '.local/bin'); await mkdir(bin, { recursive: true });
   const wrapper = path.join(home, 'starter-workers');
   await writeFile(wrapper, `#!/bin/sh\nexport STARTER_WORKERS_HOME=${shell(home)}\nexec ${shell(process.execPath)} ${shell(path.join(current, 'cli.ts'))} "$@"\n`, { mode: 0o755 });
-  await cp(wrapper, path.join(bin, 'starter-workers'));
+  if (c.convenienceCommand !== false) {
+    const bin = path.join(os.homedir(), '.local/bin'); await mkdir(bin, { recursive: true });
+    await cp(wrapper, path.join(bin, 'starter-workers'));
+  }
   await mkdir(path.join(home, 'logs'), { recursive: true, mode: 0o700 });
   const environmentPath = `${path.dirname(c.docker)}:${path.dirname(process.execPath)}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`;
   if (process.platform === 'darwin') {

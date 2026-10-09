@@ -255,6 +255,32 @@ test('local setup prepares separate installations and dispatches without changin
   assert.equal(f.variables.get(WORKER_VARIABLES.verify), f.p.verify.pool); assert.equal(f.variables.get(WORKER_VARIABLES.deliver), f.p.deliver.pool);
   assert.equal(workerStatus(repo, records.at(-1), f.run).readiness, 'ready');
 });
+test('public local updater setup rejects before preparation, dispatch or routing changes', async () => {
+  const f = fixture();
+  const run: Gh = (args, input) => args[0] === 'api' && args[1] === 'repos/' + repo ? JSON.stringify({ private: false, permissions: { admin: true }, default_branch: 'main' }) : f.run(args, input);
+  await assert.rejects(configureWorkers({ choice: 'local', root: '/app', repo }, run, () => {}, f.host), /private repository/);
+  assert.deepEqual(f.prepared, []);
+  assert.equal(f.variables.size, 0);
+  assert(!f.calls.some(call => call.args[1].endsWith('/dispatches') || call.args[0] === 'variable' && call.args[1] !== 'list'));
+});
+
+test('local updater rechecks visibility before enabling and permits only a skipped public-rejection job', async () => {
+  for (const privacy of [false, true]) {
+    const f = fixture();
+    f.jobs.push({ name: 'Reject public local-worker request', conclusion: 'skipped', labels: ['ubuntu-latest'] });
+    let metadata = 0;
+    const run: Gh = (args, input) => {
+      if (args[0] === 'api' && args[1] === 'repos/' + repo && ++metadata > 1) return JSON.stringify({ private: privacy, permissions: { admin: true }, default_branch: 'main' });
+      return f.run(args, input);
+    };
+    const configuring = configureWorkers({ choice: 'local', root: '/app', repo, runId: '42' }, run, () => {}, f.host);
+    if (privacy) { await configuring; assert.equal(f.variables.size, 2); }
+    else { await assert.rejects(configuring, /private repository/); assert.equal(f.variables.size, 0); }
+    f.jobs.at(-1)!.conclusion = 'success';
+    assert.throws(() => certifyWorkers(repo, '42', sha, f.proof, { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, f.run), /three test jobs/);
+  }
+});
+
 test('failed, skipped, wrong-attempt, stale-source and unrelated test runs cannot enable workers', async () => {
   for (const alter of [
     (f: ReturnType<typeof fixture>) => { f.result.conclusion = 'failure'; },
@@ -300,8 +326,21 @@ test('read-only worker status distinguishes hosted, mixed, unknown and untested 
   f.variables.set(WORKER_VARIABLES.verify, 'manual-v'); assert.equal(workerStatus(repo, undefined, f.run).choice, 'mixed');
   f.variables.set(WORKER_VARIABLES.deliver, 'manual-d'); assert.equal(workerStatus(repo, undefined, f.run).readiness, 'unknown');
   assert.equal(workerStatus(repo, undefined, () => { throw Error('Offline'); }).choice, 'unknown');
-  assert(f.calls.every(c => c.args[1] === 'list'));
+  assert(f.calls.every(c => c.args[0] === 'variable' && c.args[1] === 'list' || c.args[0] === 'api' && c.args[1] === 'repos/' + repo));
 });
+test('public status cannot reuse historical local certification or mutate routing', () => {
+  const f = fixture();
+  f.variables.set(WORKER_VARIABLES.verify, f.p.verify.pool); f.variables.set(WORKER_VARIABLES.deliver, f.p.deliver.pool);
+  const previous = { choice: 'local' as const, status: 'configured' as const, pools: { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, test: { runId: 42, sha, proof: f.proof, checkedAt: new Date().toISOString() }, ownerActions: [] };
+  const run: Gh = (args, input) => args[0] === 'api' && args[1] === 'repos/' + repo ? JSON.stringify({ private: false }) : f.run(args, input);
+  const status = workerStatus(repo, previous, run);
+  assert.equal(status.choice, 'hosted'); assert.equal(status.readiness, 'blocked');
+  assert.deepEqual(status.lastTest, previous.test);
+  assert.deepEqual(status.pools, previous.pools);
+  assert(status.ownerActions.some(action => action.includes('Public repositories')));
+  assert(!f.calls.some(call => call.args[0] === 'variable' && call.args[1] !== 'list'));
+});
+
 test('certification refuses incomplete job lists even if the run reports success', () => {
   const f = fixture(); f.jobs.pop();
   assert.throws(() => certifyWorkers(repo, '42', sha, f.proof, { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, f.run), /three test jobs/);
@@ -314,15 +353,18 @@ test('guided setup waits for its dispatched test and enables without copying a r
   assert.deepEqual(watched, ['42']); assert.equal(records.at(-1)?.status, 'configured');
 });
 
-test('diagnostic workflow requires manual dispatch and separates verification from tools-only delivery', () => {
+test('diagnostic workflow requires manual dispatch and separates verification from tools-only delivery', async () => {
   const file = fileURLToPath(new URL('../../../.github/workflows/platform-update-workers-check.yml', import.meta.url));
   const workflow = JSON.parse(execFileSync('bun', ['-e', 'console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))', file], { encoding: 'utf8' }));
   assert.deepEqual(Object.keys(workflow.on), ['workflow_dispatch']);
-  assert.deepEqual(Object.keys(workflow.jobs), ['check', 'verify', 'deliver']);
+  assert.deepEqual(Object.keys(workflow.jobs), ['reject-public-workers', 'check', 'verify', 'deliver']);
   assert.equal(workflow.jobs.verify.needs, 'check'); assert.equal(workflow.jobs.deliver.needs, 'verify');
   assert.deepEqual(workflow.permissions, { contents: 'read' }); assert.deepEqual(workflow.jobs.deliver.permissions, {});
-  for (const [name, job] of Object.entries(workflow.jobs) as [string, { 'runs-on': string[]; steps: { uses?: string }[] }][]) {
-    assert.equal(job['runs-on'].length, 6); assert.equal(job['runs-on'][0], 'self-hosted'); assert.equal(job['runs-on'].at(-1), 'starter-update-' + name);
+  for (const [name, job] of Object.entries(workflow.jobs) as [string, { 'runs-on': string; steps: { uses?: string }[] }][]) {
+    if (name === 'reject-public-workers') continue;
+    const { evaluator } = await import('./workflow-runners.ts');
+    const labels = evaluator(true).runners(job['runs-on']);
+    assert.equal(labels.length, 6); assert.equal(labels[0], 'self-hosted'); assert.equal(labels.at(-1), 'starter-update-' + name);
     if (name !== 'verify') assert(job.steps.every(step => !step.uses));
   }
   assert.equal(workflow.jobs.verify.steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/checkout@')).with['persist-credentials'], false);

@@ -28,7 +28,7 @@ jobs:
   # ============================================================
   changes:
     name: Detect Changes
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       demo: ${{ steps.present.outputs.demo }}
       backend: ${{ inputs.git_sha != '' && 'true' || steps.act-all.outputs.backend || steps.filter.outputs.backend }}
@@ -78,7 +78,7 @@ jobs:
   lint:
     name: Lint & Typecheck
     needs: [changes]
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,7 +113,7 @@ jobs:
   # ============================================================
   test-convex:
     name: Backend Tests (Convex)
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     needs: [changes]
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.root == 'true'
     steps:
@@ -132,7 +132,7 @@ jobs:
   # ============================================================
   contracts:
     name: Contracts
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -154,7 +154,7 @@ jobs:
     name: Starter Upgrade Rehearsal
     needs: [changes]
     if: needs.changes.outputs.platform == 'true' && needs.changes.outputs.demo == 'true'
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

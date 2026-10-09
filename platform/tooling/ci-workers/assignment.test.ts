@@ -8,7 +8,7 @@ const c = { repo: 'owner/repo' } as Config;
 const head = 'a'.repeat(40), merge = 'b'.repeat(40), base = 'c'.repeat(40);
 const run: Run = { id: 123, run_attempt: 2, head_sha: head, head_branch: 'main', event: 'push', pull_requests: [] };
 const context = { GITHUB_REPOSITORY: c.repo, GITHUB_REPOSITORY_ID: '7', GITHUB_RUN_ID: '123', GITHUB_RUN_ATTEMPT: '2', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main', GITHUB_SHA: head };
-const payload: EventPayload = { repository: { id: 7, full_name: c.repo }, ref: 'refs/heads/main', after: head };
+const payload: EventPayload = { repository: { id: 7, full_name: c.repo, private: true }, ref: 'refs/heads/main', after: head };
 
 test('approved push/dispatch assignments pass and copied labels cannot authorize mismatched contexts', () => {
   const expected = assignment(c, run, head, 7);
@@ -17,7 +17,9 @@ test('approved push/dispatch assignments pass and copied labels cannot authorize
   for (const repository of [{ id: 8, full_name: c.repo }, { id: 7, full_name: 'other/repo' }]) assert.throws(() => verifyAssignment(expected, context, { ...payload, repository }));
   assert.throws(() => verifyAssignment(expected, context, { ...payload, after: merge }));
   assert.throws(() => verifyAssignment(expected, context, { ...payload, ref: 'refs/heads/other' }));
-  const manual = assignment({ ...c, publicBranch: 'main' }, { ...run, event: 'workflow_dispatch' }, head, 7);
+  for (const privateValue of [false, undefined]) assert.throws(() => verifyAssignment(expected, context, { ...payload, repository: { ...payload.repository!, private: privateValue } }));
+  assert.throws(() => assignment({ ...c, publicBranch: 'main' }, { ...run, event: 'workflow_dispatch' }, head, 7));
+  const manual = assignment(c, { ...run, event: 'workflow_dispatch' }, head, 7);
   verifyAssignment(manual, { ...context, GITHUB_EVENT_NAME: 'workflow_dispatch' }, { repository: payload.repository });
   assert.throws(() => assignment({ ...c, publicBranch: 'other' }, { ...run, event: 'workflow_dispatch' }, head, 7));
   assert.throws(() => assignment({ ...c, publicBranch: 'main' }, run, head, 7));
@@ -53,7 +55,7 @@ test('repository casing is independent in configuration, runner context and payl
     for (const actual of ['owner/repo', 'oWnEr/rEpO']) {
       for (const full_name of ['owner/repo', 'OWNER/Repo']) {
         const actualContext = { ...context, GITHUB_REPOSITORY: actual };
-        const actualPayload = { ...payload, repository: { id: 7, full_name } };
+        const actualPayload = { ...payload, repository: { id: 7, full_name, private: true } };
         verifyAssignment(expected, actualContext, actualPayload);
         assert.throws(() => verifyAssignment(expected, { ...actualContext, GITHUB_REPOSITORY_ID: '8' }, actualPayload));
         assert.throws(() => verifyAssignment(expected, actualContext, { ...actualPayload, repository: { id: 8, full_name } }));

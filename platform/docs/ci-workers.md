@@ -76,7 +76,19 @@ sequence under [Operate and maintain](#operate-and-maintain), then repeat local/
 The setup above gives one installation one repository and a unique pool ID. The
 [organization option](ci-org-runners.md) allows several selected private repositories in one
 installation. To select another state directory use `STARTER_WORKERS_HOME` consistently; the
-installed command points to the most recently installed pool. Use dedicated CI hosts when
+convenience command normally points to the most recently installed pool. For an isolated/additional
+installation that must preserve another pool's command, pass `--no-convenience-command` to setup
+and use the printed **absolute** `starter-workers` path for every operation. The opt-out persists
+through manager updates; service files remain uniquely named by pool. For example:
+
+```sh
+STARTER_WORKERS_HOME="$HOME/.local/share/my-private-ci-pool" \
+  bun run ci:workers:setup --no-convenience-command --token-expires YYYY-MM-DD
+"$HOME/.local/share/my-private-ci-pool/starter-workers" status
+```
+
+Use the actual expiry; do not change `HOME` to isolate a real login service or its Keychain.
+Use dedicated CI hosts when
 running code from people you do not trust; containers still share the Linux kernel.
 
 ## Separate starter-update installations
@@ -88,16 +100,22 @@ see [update delivery](update-delivery.md#self-hosted-linux-runners). The ordinar
 
 ## Keep every Actions job local
 
-Runner routing is an owner choice for public and private repositories. The prepared manager's
-normal admission is limited to reviewed private-repository workloads; a public repository can
-use a separately operated local runner through `PLATFORM_CI_AUX_RUNNER` or the legacy
-`PLATFORM_CI_RUNNER` selector. Public fork PRs need a separate trust decision before any local
-runner executes their code.
+**Public repositories always use standard GitHub-hosted runners for every shipped job.** Local
+routing variables and explicit diagnostic inputs cannot override that policy. Public local worker
+setup/authentication, service start, GitHub checks and enabling routing are refused; the retired
+`--public-branch` option is rejected. Local CLI/container checks with `--local-only` remain available
+without GitHub registration. See [retiring public installations](#retire-public-local-runners).
+
+**Private repository owners choose hosted or all-local execution.** The routing described below
+applies only to private repositories and never authorizes untrusted source on the host. Paid plans
+have finite hosted allowances; all-local must cover auxiliary jobs too, without hosted fallback.
 
 The prepared manager admits source-bound PR, push and manual CI jobs. It does not admit scheduled
 Security, deployment orchestration, Renovate or updater coordination as ordinary CI. To run
 those jobs locally, maintain a separate trusted Linux runner and set its **custom label** as
-`PLATFORM_CI_AUX_RUNNER`. It must have the tools and network access required by those workflows;
+`PLATFORM_CI_AUX_RUNNER`. The auxiliary runner must retain the standard `self-hosted` label;
+all-local selectors require that label too, so an accidental `ubuntu-latest` override cannot select
+a hosted provider. It must have the tools and network access required by those workflows;
 it does not receive the manager's fresh-container or prepared-image isolation. Do not use the
 manager's pool ID as the auxiliary label. The separate [update worker setup](setup-updates.md)
 can route eligible updater jobs to its own prepared pools.
@@ -111,7 +129,7 @@ gh variable set PLATFORM_CI_AUX_RUNNER --body YOUR_AUX_RUNNER_LABEL
 starter-workers enable
 ```
 
-Setting **any** local runner variable (`PLATFORM_CI_WORKER_POOL`, `PLATFORM_CI_AUX_RUNNER`,
+On a **private repository**, setting **any** local runner variable (`PLATFORM_CI_WORKER_POOL`, `PLATFORM_CI_AUX_RUNNER`,
 `PLATFORM_CI_RUNNER`, `PLATFORM_UPDATE_RUNNER` or `PLATFORM_UPDATE_DELIVERY_RUNNER`) automatically
 disables hosted fallback for **every** workflow. `PLATFORM_CI_LOCAL_ONLY=true` also does so
 before the first runner is configured. It is separate from the manager's `setup --local-only`
@@ -175,10 +193,9 @@ same image ID/runtime policy, absence of the preceding job's files, sandboxed Ch
 backend executable, and a frozen offline install at the requested source SHA. No repository
 routing variable changes.
 
-For developing the public starter itself, setup accepts `--public-branch your-branch` alongside
-`--local-only` or the token prompt. That installation accepts only manual dispatches whose GitHub
-branch matches the explicit branch; `enable` refuses public diagnostic pools. Fork PRs and automatic
-public workloads are never admitted. Do not change that branch without reviewing its code.
+Public repositories may use the local CLI checks above, but cannot register workers or dispatch
+local GitHub diagnostics. Explicit public worker requests fail on a standard hosted runner;
+diagnostic jobs themselves are skipped. The old `--public-branch` exception is no longer supported.
 
 Local checks and GitHub workers use the **same image preparation function and container launcher**.
 A local proof binds the committed source SHA, immutable image ID and canonical runtime-policy hash
@@ -311,19 +328,41 @@ The fixed `ACTIONS_RUNNER_HOOK_JOB_STARTED` shell hook uses an absolute Node
 interpreter and validates the runner's default GitHub contexts and event payload
 against that file. Job environment variables cannot supply the expected identity.
 PR validation binds the event's head/base repository IDs and commits and handles
-GitHub's merge SHA separately from the run's head SHA. Public diagnostic pools
-accept only the configured reviewed branch's manual dispatch.
+GitHub's merge SHA separately from the run's head SHA. The event repository must be private;
+legacy public-diagnostic assignments are rejected. The host checks authenticated repository
+visibility on startup, polling and immediately before registration.
 
 The runner downloads action metadata before this hook executes. A rejected hook
 prevents action/container pre and main steps, but does not prevent those metadata
-downloads. This system is intended for reviewed private-repository workflows and
-an explicit reviewed public diagnostic branch; it offers no hostile public
-multitenancy guarantee. See [GitHub's hook documentation](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/run-scripts)
+downloads. This system is intended only for reviewed private-repository workflows;
+it offers no hostile public multitenancy guarantee. See [GitHub's hook documentation](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/run-scripts)
 and [the runner's ordering](https://github.com/actions/runner/blob/v2.337.0/src/Runner.Worker/JobExtension.cs).
+
+## Retire public local runners
+
+Public repositories cannot opt into local Actions execution, including diagnostics or updater
+jobs. Before adopting this change, use the **old installation's absolute command** to pause/drain
+and stop its service. Restore/remove all six local routing selectors listed under all-local
+routing, checking repository, organization and environment scope without changing settings used
+by other repositories. Remove only this public installation's GitHub registrations, uninstall its
+manager and revoke its dedicated token. Keep unrelated pools, credentials and Docker resources.
+
+After the upgrade, migrate stock app-owned CI caller/Renovate selectors:
+
+```sh
+./platform/tooling/node-ts.sh platform/tooling/codemods/v5-public-hosted-runners.ts
+./platform/tooling/node-ts.sh platform/tooling/codemods/v5-public-hosted-runners.ts --check
+```
+
+The codemod preserves private routing and leaves custom selectors for owner review; it does not
+manage live resources or queued jobs. Audit every custom workflow and verify actual public job
+runner identities are GitHub-hosted. Cancel/restart already queued local jobs. Before changing a
+private repository to public, perform this same drain/retirement first: workflow visibility is
+captured in its event, and already queued jobs do not migrate automatically.
 
 ## Migrate from the retired Compose runner
 
-Complete setup and certification before switching routing. If hosted jobs are available, stop the
+For a private repository, complete setup and certification before switching routing. If hosted jobs are available, stop the
 old Compose project, remove its runner registrations, revoke its registration PAT, and delete
 its dedicated cache volumes after identifying them with `docker volume ls`. If you require
 [all-local routing](#keep-every-actions-job-local), first provide a reviewed auxiliary runner;

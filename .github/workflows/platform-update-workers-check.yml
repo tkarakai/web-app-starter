@@ -22,15 +22,19 @@ permissions:
   contents: read
 
 jobs:
+  reject-public-workers:
+    name: Reject public local-worker request
+    if: ${{ github.event.repository.private != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Public repositories must use GitHub-hosted runners; local updater diagnostics are not supported."
+          exit 1
+
   check:
     name: check
-    runs-on:
-      - self-hosted
-      - ${{ fromJSON(inputs.verify).pool }}
-      - starter-source-${{ github.sha }}
-      - starter-run-${{ github.run_id }}
-      - starter-attempt-${{ github.run_attempt }}
-      - starter-update-check
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-check"]', fromJSON(inputs.verify).pool, github.sha, github.run_id, github.run_attempt)) }}
     timeout-minutes: 10
     env:
       PAIR_PROOF: ${{ inputs.proof }}
@@ -53,13 +57,8 @@ jobs:
   verify:
     name: verify
     needs: check
-    runs-on:
-      - self-hosted
-      - ${{ fromJSON(inputs.verify).pool }}
-      - starter-source-${{ github.sha }}
-      - starter-run-${{ github.run_id }}
-      - starter-attempt-${{ github.run_attempt }}
-      - starter-update-verify
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-verify"]', fromJSON(inputs.verify).pool, github.sha, github.run_id, github.run_attempt)) }}
     timeout-minutes: 10
     env:
       EXPECTED_SHA: ${{ fromJSON(inputs.verify).sha }}
@@ -84,14 +83,9 @@ jobs:
   deliver:
     name: deliver
     needs: verify
+    if: ${{ github.event.repository.private == true }}
     permissions: {}
-    runs-on:
-      - self-hosted
-      - ${{ fromJSON(inputs.deliver).pool }}
-      - starter-source-${{ github.sha }}
-      - starter-run-${{ github.run_id }}
-      - starter-attempt-${{ github.run_attempt }}
-      - starter-update-deliver
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-deliver"]', fromJSON(inputs.deliver).pool, github.sha, github.run_id, github.run_attempt)) }}
     timeout-minutes: 10
     env:
       EXPECTED_SHA: ${{ fromJSON(inputs.deliver).sha }}

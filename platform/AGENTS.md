@@ -282,6 +282,11 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 
 ## Verification
 
+Public repositories always use standard GitHub-hosted runners. Local CI/updater workers and GitHub
+diagnostics are private-only; local CLI/container checks without registration remain available.
+Private owners may choose hosted or all-local execution, including auxiliary jobs. Read
+[worker routing and retirement](docs/ci-workers.md) before changing any runner settings.
+
 Before pushing, follow the [local CI guidance](docs/ci-pre-push.md#local-ci-pre-push-checks).
 Keep `lint`, `typecheck` and the test suites green.
 

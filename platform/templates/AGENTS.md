@@ -27,6 +27,9 @@ naming, review rules. Delete this section if you have none yet.>
 
 Before diagnosing or changing update delivery, inspect the app-owned `.github/update-delivery.json`
 and run `bun run platform:setup-updates --check --json`. Intent and live readiness are separate;
+Public repositories always use standard GitHub-hosted runners; local Actions workers/diagnostics
+are private-only. Local CLI/container checks without registration remain available. Preserve
+private owners' hosted/all-local choice, including auxiliary coverage and complete hosted recovery.
 For updater job machines, preserve existing routing or explicitly choose `--workers hosted|local`;
 local setup tests both Docker installations before enabling them. Read the worker section in
 `platform/docs/setup-updates.md`. Never substitute ordinary CI routing or infer live readiness from a saved choice.

@@ -28,6 +28,16 @@ export function workerStatus(repo: string | undefined, intent: WorkerRecord | un
   try {
     const pools = workerVariables(repo, run); result.pools = pools;
     result.choice = !pools.verify && !pools.deliver ? 'hosted' : pools.verify && pools.deliver ? 'local' : 'mixed';
+    if (result.choice !== 'hosted' || intent?.choice === 'local') {
+      const repository = JSON.parse(run(['api', 'repos/' + repo])) as { private?: boolean };
+      if (repository.private !== true) {
+        if (repository.private === false) {
+          result.choice = 'hosted'; result.readiness = 'blocked';
+          result.ownerActions.push('Public repositories always use GitHub-hosted runners. Retire local installations and clear their routing with ' + workerCommand(repo, 'hosted') + '; historical local tests cannot certify public workers.');
+        } else result.ownerActions.push('Cannot confirm private repository visibility; local worker readiness is unknown.');
+        return result;
+      }
+    }
     if (intent && (intent.choice !== result.choice || intent.status !== 'configured')) {
       result.readiness = 'blocked'; if (!intent.ownerActions.length) result.ownerActions.push('Finish the recorded worker choice with ' + workerCommand(repo, intent.choice, intent.homes) + '.');
     } else if (result.choice === 'hosted') result.readiness = 'ready';

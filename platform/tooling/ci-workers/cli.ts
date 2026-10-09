@@ -4,8 +4,8 @@ import { chmod, mkdir, rm, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assert, catalog, command, config, configuredRepos, docker, exists, hash, home, installationPool, preparedScope, readJson, repository, save, selectedRepo, validateRepo, type Config } from './core.ts';
-import { api, assertOrgAccess, routingVariables, storeToken, token } from './github.ts';
+import { assert, assertPrivateMode, catalog, command, config, configuredRepos, docker, exists, hash, home, installationPool, preparedScope, readJson, repository, save, selectedRepo, validateRepo, type Config } from './core.ts';
+import { api, assertOrgAccess, privateRepository, routingVariables, storeToken, token } from './github.ts';
 import { prepare } from './images.ts';
 import { cleanup, lock, serve, status, updateConfig } from './manager.ts';
 import { launch, runtimePolicy } from './runtime.ts';
@@ -35,9 +35,9 @@ async function hiddenToken(): Promise<string> {
   });
 }
 async function authenticate(c: Config, expiry?: string): Promise<Config> {
+  assertPrivateMode(c);
   const credential = await hiddenToken();
-  const repo = await api<{ private: boolean }>(`/repos/${c.repo}`, credential);
-  assert(repo.private || c.publicBranch, 'Normal local workers require a private repository. Use --public-branch only for a manually dispatched reviewed diagnostic branch.');
+  await privateRepository(c, credential);
   if (c.org) for (const name of configuredRepos(c)) await assertOrgAccess(c, credential, name);
   else await api(`/repos/${c.repo}/actions/runners?per_page=1`, credential);
   await api(`/repos/${c.repo}/actions/runs?per_page=1`, credential);
@@ -49,14 +49,22 @@ async function authenticate(c: Config, expiry?: string): Promise<Config> {
     return { localOnly: false, ...(expiry !== undefined ? { tokenExpiry: expiry } : {}) };
   });
 }
+async function privateSetupRepository(repo: string): Promise<void> {
+  const info = JSON.parse(await command('gh', ['api', `repos/${repo}`])) as { private?: boolean };
+  assert(info.private === true, 'Public repositories must use GitHub-hosted runners; use --local-only for container checks without registration');
+}
 async function setup(args: string[]): Promise<void> {
+  assert(!args.some(arg => arg === '--public-branch' || arg.startsWith('--public-branch=')), 'Public diagnostic mode is retired. Public repositories must use GitHub-hosted runners.');
   if (await exists(path.join(home, 'config.json'))) {
     let existing = await config();
+    assertPrivateMode(existing);
     const root = await command('git', ['rev-parse', '--show-toplevel']);
     const checkoutRepo = repository(await command('git', ['-C', root, 'remote', 'get-url', 'origin']));
     assert(checkoutRepo.toLowerCase() === existing.repo.toLowerCase(), 'This state directory belongs to another checkout; use a distinct STARTER_WORKERS_HOME or org add');
     assert(!await exists(path.join(home, 'daemon.lock')), 'Manager is already running; use check or update');
+    if (!args.includes('--local-only')) await privateSetupRepository(existing.repo);
     if (existing.localOnly && !args.includes('--local-only')) existing = await authenticate(existing, option(args, 'token-expires'));
+    if (args.includes('--no-convenience-command')) existing = await updateConfig(async () => ({ convenienceCommand: false }));
     await localCheck(existing, existing.updateRole === 'deliver' ? ['check'] : ['check', '--install']);
     print(await install(existing));
     if (!existing.localOnly) await service(existing, true);
@@ -73,9 +81,10 @@ async function setup(args: string[]): Promise<void> {
   const group = option(args, 'runner-group-id');
   assert(!org || /^[A-Za-z0-9][A-Za-z0-9-]*$/.test(org), 'Use --org ORGANIZATION');
   assert((org === undefined) === (group === undefined), 'Organization setup requires --org and --runner-group-id together');
-  assert(!org || (repo.toLowerCase().startsWith(org.toLowerCase() + '/') && !updateRole && !option(args, 'public-branch')), 'Organization workers require a private app in that organization, without update or public-branch mode');
+  assert(!org || (repo.toLowerCase().startsWith(org.toLowerCase() + '/') && !updateRole), 'Organization workers require a private app in that organization, without update mode');
   assert(!org || !args.includes('--local-only'), 'Organization setup requires an authenticated manager');
   assert(!group || (/^[1-9]\d*$/.test(group) && Number.isSafeInteger(Number(group))), 'Use a positive runner group ID');
+  if (!args.includes('--local-only')) await privateSetupRepository(repo);
   const dockerPath = await command('which', ['docker']);
   const context = await command(dockerPath, ['context', 'show']);
   const contexts = JSON.parse(await command(dockerPath, ['context', 'inspect', context])) as { Endpoints: { docker: { Host: string } } }[];
@@ -88,7 +97,8 @@ async function setup(args: string[]): Promise<void> {
   let c: Config = { version: 1, repo, pool: installationPool(), docker: dockerPath, context,
     ...(org ? { org, repos: [repo], runnerGroupId: Number(group), routing: {} } : {}),
     concurrency: 1, cpus: Math.min(4, info.NCPU), memoryGiB: Math.min(8, Math.floor(info.MemTotal / 1024 ** 3) - 2), diskGiB: 40,
-    updateRole: updateRole as Config['updateRole'], updateWorkflow, paused: false, localOnly: true, publicBranch: option(args, 'public-branch'), tokenExpiry: option(args, 'token-expires'), installedAt: new Date().toISOString() };
+    convenienceCommand: !args.includes('--no-convenience-command'),
+    updateRole: updateRole as Config['updateRole'], updateWorkflow, paused: false, localOnly: true, tokenExpiry: option(args, 'token-expires'), installedAt: new Date().toISOString() };
   await lock('configuration', async () => {
     assert(!await exists(path.join(home, 'config.json')), 'Another setup created this installation');
     await save(path.join(home, 'config.json'), c);
@@ -140,6 +150,8 @@ async function localCheck(c: Config, args: string[]): Promise<void> {
 async function githubCheck(c: Config, args: string[]): Promise<void> {
   assert(!c.updateRole, 'Updater acceptance uses its reviewed caller workflow; ordinary CI diagnostics are not admitted');
   assert(!c.localOnly, 'Run starter-workers auth replace and service start first');
+  assertPrivateMode(c);
+  await privateRepository(c, await token());
   if (c.org) await assertOrgAccess(c, await token());
   const proof = await localProof(c);
   const runId = option(args, 'run');
@@ -156,7 +168,7 @@ async function githubCheck(c: Config, args: string[]): Promise<void> {
     await save(proofPath(c, 'github-check'), { ...proof, certified: new Date().toISOString(), url: run.html_url, runId });
     print(`GitHub worker isolation check passed: ${run.html_url}`); return;
   }
-  const ref = option(args, 'ref') ?? c.publicBranch ?? (await api<{ default_branch: string }>(`/repos/${c.repo}`, await token())).default_branch;
+  const ref = option(args, 'ref') ?? (await api<{ default_branch: string }>(`/repos/${c.repo}`, await token())).default_branch;
   const commit = await api<{ sha: string }>(`/repos/${c.repo}/commits/${encodeURIComponent(ref)}`, await token());
   assert(commit.sha === proof.sha && preparedScope(c, `branch-${hash(ref).slice(0, 16)}`) === proof.scope, 'Dispatch branch must match the local proof');
   // ci-verify.yml already exists on the default branch, so dispatching its branch version works before merge.
@@ -166,7 +178,7 @@ async function githubCheck(c: Config, args: string[]): Promise<void> {
 export async function main(args: string[]): Promise<void> {
   const verb = args[0] ?? 'help';
   if (verb === 'help' || args.includes('--help')) {
-    print('starter-workers setup [--org ORG --runner-group-id ID] [--update-role verify|deliver --update-workflow .github/workflows/CALLER.yml] [--local-only] [--repo owner/name] [--public-branch branch] [--token-expires YYYY-MM-DD]\norg add|remove --repo ORG/APP | check [--repo ORG/APP] [--ref revision] [--install|--quick|--ci] | check --github [--repo ORG/APP] [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable [--repo ORG/APP] | hosted [--repo ORG/APP] | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nupdate --from CHECKOUT | uninstall\nOrganization mode shares one global capacity; repository mode owns one repository.'); return;
+    print('starter-workers setup [--org ORG --runner-group-id ID] [--update-role verify|deliver --update-workflow .github/workflows/CALLER.yml] [--local-only] [--no-convenience-command] [--repo owner/name] [--token-expires YYYY-MM-DD]\norg add|remove --repo ORG/APP | check [--repo ORG/APP] [--ref revision] [--install|--quick|--ci] | check --github [--repo ORG/APP] [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable [--repo ORG/APP] | hosted [--repo ORG/APP] | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nupdate --from CHECKOUT | uninstall\nOrganization mode shares one global capacity; repository mode owns one repository.'); return;
   }
   if (verb === 'setup') return setup(args);
   let c = await config();
@@ -204,7 +216,10 @@ export async function main(args: string[]): Promise<void> {
       print(`Removed ${name} from this manager. Remove its access from the GitHub runner group separately.`); return;
     }
     case 'serve': return serve();
-    case 'service': assert(['start', 'stop'].includes(args[1]), 'Use service start|stop'); return service(c, args[1] === 'start');
+    case 'service':
+      assert(['start', 'stop'].includes(args[1]), 'Use service start|stop');
+      if (args[1] === 'start') { assertPrivateMode(c); assert(!c.localOnly, 'Import a manager credential before starting the GitHub service'); await privateRepository(c, await token()); }
+      return service(c, args[1] === 'start');
     case 'auth': assert(args[1] === 'replace', 'Use auth replace'); await authenticate(c, option(args, 'token-expires')); return;
     case 'check': return args.includes('--github') ? githubCheck(c, args) : localCheck(c, args);
     case 'proof': {
@@ -249,7 +264,9 @@ export async function main(args: string[]): Promise<void> {
       await updateConfig(async current => {
         const selected = selectedRepo(current, name);
         assert(!selected.updateRole, 'Updater routing is configured separately by the operator');
-        assert(!selected.publicBranch && !selected.localOnly, 'Normal routing requires a private repository and active manager');
+        assertPrivateMode(selected);
+        assert(!selected.localOnly, 'Normal routing requires a private repository and active manager');
+        await privateRepository(selected, await token());
         if (selected.org) await assertOrgAccess(selected, await token());
         const local = await localProof(selected);
         const proof = await readJson<Proof & { certified: string }>(proofPath(selected, 'github-check'));

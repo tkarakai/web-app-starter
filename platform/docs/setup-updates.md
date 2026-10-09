@@ -153,6 +153,11 @@ omitting it preserves existing routing (GitHub-hosted in a new app with no local
 
 ### Set up local workers
 
+Public repositories always run updater jobs on standard GitHub-hosted runners, ignoring local
+routing overrides. `--workers local --yes` refuses public repositories before preparation,
+credential prompts or dispatch. Public diagnostic requests fail on hosted runners without any
+local jobs. This is independent of the updater App's delivery permissions.
+
 Use a **private** app repository. Commit and push adoption/setup files first, including the
 platform-owned `.github/workflows/platform-update-workers-check.yml`, and check out the app's
 default-branch tip. Setup tests committed source; only `.github/update-delivery.json` may be dirty.
@@ -173,7 +178,8 @@ installation uses a separate tools-only image to publish the prepared result. Ea
 a fresh disposable container. Setup reuses the existing worker manager and prepared-image system.
 It does not reuse an ordinary CI installation for privileged update delivery.
 
-Setup runs local checks, dispatches **Test platform update workers**, watches its three jobs, and
+Setup runs local checks, dispatches **Test platform update workers**, watches its three local
+jobs (the public-rejection job is skipped on private repositories), and
 confirms the exact source, images, runtime settings, pools and run attempt. Only then does it set
 `PLATFORM_UPDATE_RUNNER` and `PLATFORM_UPDATE_DELIVERY_RUNNER`. This diagnostic checks worker
 routing, isolation and prepared dependencies; it does not test App authentication, create an

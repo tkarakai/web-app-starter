@@ -112,6 +112,101 @@ async function run(directory: string, code: string, pool = 'pool'): Promise<stri
   return command(process.execPath, [script], { env: { ...process.env, HOME: directory, STARTER_WORKERS_HOME: path.join(directory, pool) } });
 }
 
+test('public manager admission rejects legacy diagnostics before Docker or registration side effects', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+Object.defineProperty(process, 'platform', { value: 'linux' });
+await fs.writeFile(path.join(core.home, 'credential'), 'dummy-existing-credential-123456789');
+const calls = [];
+globalThis.fetch = async url => {
+  calls.push(String(url));
+  assert.equal(String(url), 'https://api.github.com/repos/owner/repo');
+  return Response.json({ id: 7, private: false, default_branch: 'main' });
+};
+const { serve } = await import(path.join(base, 'manager.ts'));
+for (const publicBranch of [undefined, 'main']) {
+  await core.save(path.join(core.home, 'config.json'), { ...c, concurrency: 1, localOnly: false, publicBranch });
+  await assert.rejects(serve(), /Public repositories.*GitHub-hosted|Public diagnostic mode.*retired/);
+  assert.equal(await core.exists(path.join(core.home, 'docker.json')), false);
+  assert.equal(await core.exists(path.join(core.home, 'daemon.lock')), false);
+}
+assert.equal(calls.length, 1);
+`);
+});
+
+test('public setup is refused before prompting, state creation or Docker access', async t => {
+  const dir = await fixture(t);
+  await writeFile(path.join(dir, 'gh'), `#!${process.execPath}\nprocess.stdout.write(JSON.stringify({ private: false }));\n`, { mode: 0o755 });
+  await run(dir, `
+process.env.PATH = ${JSON.stringify(dir)} + ':' + process.env.PATH;
+const { main } = await import(path.join(base, 'cli.ts'));
+await assert.rejects(main(['setup', '--repo', 'owner/repo']), /Public repositories.*GitHub-hosted/);
+assert.equal(process.stdin.listenerCount('data'), 0);
+assert.equal(await core.exists(path.join(core.home, 'config.json')), false);
+assert.equal(await core.exists(path.join(core.home, 'docker.json')), false);
+`);
+});
+
+test('public credential replacement and removed setup mode preserve credentials and configuration', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+Object.defineProperty(process, 'platform', { value: 'linux' });
+Object.defineProperty(process.stdin, 'isTTY', { value: true });
+process.stdin.setRawMode = () => process.stdin;
+process.stdin.resume = () => process.stdin;
+process.stdin.pause = () => process.stdin;
+const original = 'dummy-existing-credential-123456789';
+await fs.writeFile(path.join(core.home, 'credential'), original);
+const calls = [];
+globalThis.fetch = async url => { calls.push(String(url)); return Response.json({ private: false }); };
+const { main } = await import(path.join(base, 'cli.ts'));
+for (const publicBranch of [undefined, 'main']) {
+  await core.save(path.join(core.home, 'config.json'), { ...c, localOnly: false, paused: true, publicBranch, tokenExpiry: 'old' });
+  const before = await core.config();
+  const authenticating = main(['auth', 'replace', '--token-expires', 'new']);
+  authenticating.catch(() => {});
+  if (!publicBranch) {
+    for (let n = 0; n < 100 && process.stdin.listenerCount('data') === 0; n++) await new Promise(resolve => setTimeout(resolve, 10));
+    process.stdin.emit('data', Buffer.from('dummy-replacement-credential-123456789\\n'));
+  }
+  await assert.rejects(authenticating, /Public repositories.*GitHub-hosted|Public diagnostic mode.*retired/);
+  assert.deepEqual(await core.config(), before);
+  assert.equal(await fs.readFile(path.join(core.home, 'credential'), 'utf8'), original);
+  await assert.rejects(main(['setup', '--local-only', '--public-branch', 'main']), /Public diagnostic mode.*retired/);
+  assert.deepEqual(await core.config(), before);
+}
+assert.equal(calls.length, 1);
+assert.equal(await core.exists(path.join(core.home, 'docker.json')), false);
+`);
+});
+
+test('manager rechecks private visibility on polling and stops admission after a repository becomes public', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+Object.defineProperty(process, 'platform', { value: 'linux' });
+await fs.writeFile(path.join(core.home, 'credential'), 'fixture');
+await core.save(path.join(core.home, 'config.json'), { ...c, concurrency: 1, paused: false, localOnly: false });
+let metadata = 0;
+globalThis.fetch = async url => {
+  const endpoint = String(url).split('https://api.github.com')[1];
+  if (endpoint === '/repos/owner/repo') {
+    metadata++;
+    if (metadata > 1) process.emit('SIGTERM');
+    return Response.json({ id: 7, private: metadata === 1, default_branch: 'main' });
+  }
+  if (endpoint.startsWith('/repos/owner/repo/actions/runners?')) return Response.json({ runners: [] });
+  assert.fail('Unexpected admission/network request: ' + endpoint);
+};
+const { serve } = await import(path.join(base, 'manager.ts'));
+await serve();
+assert.equal(metadata, 2);
+const state = await core.readJson(path.join(core.home, 'status.json'));
+assert.match(state.error, /Public repositories.*GitHub-hosted/);
+assert.deepEqual(state.active, []);
+assert.equal(await core.exists(path.join(core.home, 'source.git')), false);
+`);
+});
+
 test('teardown survives evidence and log persistence failures and uses Node proxy mode', async t => {
   const dir = await fixture(t);
   for (const blocked of ['logs', 'evidence']) {
@@ -161,6 +256,26 @@ test('separate installations keep service executables and convenience ownership 
   assert.equal(JSON.parse(await command(path.join(dir, '.local/bin/starter-workers'), ['status'])).pool, 'second');
   await run(dir, `const { removeConvenienceCommand } = await import(path.join(base, 'service.ts')); await removeConvenienceCommand();`, 'second');
   await assert.rejects(readFile(path.join(dir, '.local/bin/starter-workers')), { code: 'ENOENT' });
+});
+
+test('isolated installation preserves another pool convenience command and retains the opt-out on update', async t => {
+  const dir = await fixture(t);
+  await mkdir(path.join(dir, 'second'));
+  await run(dir, `const { install } = await import(path.join(base, 'service.ts')); await core.save(path.join(core.home, 'config.json'), c); await install(c);`);
+  const convenience = path.join(dir, '.local/bin/starter-workers');
+  const original = await readFile(convenience);
+  for (let attempt = 0; attempt < 2; attempt++) await run(dir, `
+const { install, installationComplete, removeConvenienceCommand } = await import(path.join(base, 'service.ts'));
+const isolated = { ...c, convenienceCommand: false };
+await core.save(path.join(core.home, 'config.json'), isolated);
+const wrapper = await install(await core.config());
+assert.equal(wrapper, path.join(core.home, 'starter-workers'));
+assert.equal(await installationComplete(c.pool), true);
+await removeConvenienceCommand();
+`, 'second');
+  assert.deepEqual(await readFile(convenience), original);
+  assert.equal(JSON.parse(await command(convenience, ['status'])).pool, 'pool');
+  assert.equal(JSON.parse(await command(path.join(dir, 'second/starter-workers'), ['status'])).pool, 'second');
 });
 
 test('command timeout terminates its descendant before returning', async t => {
@@ -484,6 +599,7 @@ await assert.rejects(main(['hosted']), /failed/);
 await assert.rejects(routingVariables(c), /failed/);
 Object.defineProperty(process, 'platform', { value: 'linux' });
 await fs.writeFile(path.join(core.home, 'credential'), 'dummy');
+globalThis.fetch = async url => String(url).endsWith('/repos/owner/repo') ? Response.json({ id: 7, private: true, default_branch: 'main' }) : Response.json({ content: Buffer.from('starter-source-').toString('base64') });
 const { runtimePolicy } = await import(path.join(base, 'runtime.ts'));
 const { proofId } = await import(path.join(base, 'proof.ts'));
 const local = { sha: '${'a'.repeat(40)}', image: '${image}', runtime: core.hash(JSON.stringify(runtimePolicy(c))), pool: c.pool, key: 'key', scope: 'branch-test', checked: new Date().toISOString() };
@@ -505,7 +621,6 @@ for (const variables of [[], [{ name: 'PLATFORM_CI_WORKER_POOL', value: c.pool }
 }
 await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_WORKER_POOL', value: 'other' }] });
 await assert.rejects(main(['hosted']), /Routing changed elsewhere/);
-globalThis.fetch = async () => Response.json({ content: Buffer.from('starter-source-').toString('base64') });
 await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_RUNNER', value: 'legacy' }] });
 await assert.rejects(main(['enable']), /Remove legacy/);
 await core.save(path.join(core.home, 'gh.json'), { calls: [], variables: [{ name: 'PLATFORM_CI_WORKER_POOL', value: 'previous' }] });

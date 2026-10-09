@@ -9,7 +9,7 @@ export function copyConfigurationFixture(source: string, root: string): void {
       const relative = path.relative(source, file);
       return file !== root
         && ![".platform-base.json", path.join(".github", "update-delivery.json")].includes(relative)
-        && !relative.split(path.sep).some(part => [".git", ".bun", ".next", ".vite", "out", ".turbo", ".lavish", "test-results", "playwright-report", "coverage"].includes(part))
+        && !relative.split(path.sep).some(part => [".git", ".ci-local-artifacts", ".ci-artifacts", ".bun", ".next", ".vite", "out", ".turbo", ".lavish", "test-results", "playwright-report", "coverage"].includes(part))
         && (!path.basename(file).startsWith(".env") || path.basename(file) === ".env.example");
     },
   };

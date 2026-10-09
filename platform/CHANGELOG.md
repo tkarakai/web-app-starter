@@ -15,6 +15,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Worker setup accepts `--no-convenience-command` for an additional isolated installation without
+  replacing another pool's shared command. Use its absolute command path; the opt-out persists
+  through manager updates and does not alter another service or credential.
+
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
   membership and lifecycle operations. For authority boundaries and integration limits, see
   [organization authority](docs/architecture.md#organization-primitives-and-authority).
@@ -30,7 +34,30 @@ version. Release-specific compatibility and deployment steps are listed explicit
   require new authorization and clients use the gateway tools. Reusable independent and pi
   testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
 
+### Changed
+
+- Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.
+  Public local-worker setup, registration, diagnostics and the `--public-branch` exception are
+  retired. Private owners retain hosted/all-local execution, including auxiliary job coverage.
+  Local CLI/container checks without GitHub registration are unchanged.
+
+### Action required
+
+- **Apps with local Actions routing or customized CI callers:** stop/drain and retire any public
+  local installation using its old absolute command; remove only its registrations and revoke its
+  dedicated credential. After upgrading, run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v5-public-hosted-runners.ts`, then the
+  same command with `--check`. It migrates stock platform-routing expressions in app-owned
+  callers/Renovate while preserving private routing; auxiliary runners must retain their standard
+  `self-hosted` label. Custom selectors need owner review.
+  Verify actual public jobs use GitHub-hosted runners and private all-local jobs never fall back
+  hosted. Cancel/restart already queued local jobs. Live-resource and inherited-setting retirement
+  steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
+
 ### Fixed
+
+- Landing adoption fixtures exclude transient local CI state and worker-test directories, avoiding
+  concurrent cleanup races and keeping those artifacts out of adopted test apps.
 
 - Prepared CI worker tools use Debian 13 libraries compatible with current Convex Linux binaries.
   The OS base participates in image reuse identity; failed backend smoke checks retain loader

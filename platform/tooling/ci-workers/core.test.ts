@@ -14,13 +14,13 @@ test('repository inference accepts GitHub SSH and HTTPS without executing remote
   for (const remote of ['git@github.com:owner/repo.git', 'https://github.com/owner/repo.git', 'ssh://git@github.com/owner/repo']) assert.equal(repository(remote), 'owner/repo');
   for (const remote of ['https://evil.test/owner/repo', 'https://github.com.evil.test/owner/repo', 'https://user:token@github.com/owner/repo', 'git@github.com:../repo']) assert.throws(() => repository(remote));
 });
-test('routing requires authenticated run, source and explicit public diagnostic policy', () => {
+test('routing requires authenticated run/source and rejects retired public diagnostic configuration', () => {
   assert.equal(sourceRequest(c, run, job, 10)?.sha, sha);
   assert.equal(sourceRequest(c, { ...run, id: 41 }, job, 10), undefined);
   assert.equal(sourceRequest(c, { ...run, head_sha: 'b'.repeat(40) }, job, 10), undefined);
   assert.equal(sourceRequest(c, { ...run, event: 'pull_request_target' }, job, 10), undefined);
   assert.equal(sourceRequest({ ...c, publicBranch: 'reviewed' }, run, job, 10), undefined);
-  assert(sourceRequest({ ...c, publicBranch: 'feature' }, run, job, 10));
+  assert.equal(sourceRequest({ ...c, publicBranch: 'feature' }, run, job, 10), undefined);
   assert.equal(sourceRequest(c, run, { ...job, labels: [...job.labels, `starter-source-${'b'.repeat(40)}`] }, 10), undefined);
 });
 test('fork PRs cannot enroll, and PR scope never becomes a branch scope', () => {
@@ -111,7 +111,7 @@ test('updater pools reject ordinary CI, forks, foreign workflows, stale attempts
         assert.equal(sourceRequest(config, updater, { ...queued, name: 'ordinary CI' }, 10), undefined);
         assert.equal(sourceRequest(config, updater, { ...queued, labels: queued.labels.filter(l => l !== 'starter-update-' + name) }, 10), undefined);
         assert.equal(sourceRequest({ ...config, publicBranch: 'feature' }, { ...updater, event: 'schedule' }, queued, 10), undefined);
-        assert(sourceRequest({ ...config, publicBranch: 'feature' }, { ...updater, event: 'workflow_dispatch' }, queued, 10));
+        assert.equal(sourceRequest({ ...config, publicBranch: 'feature' }, { ...updater, event: 'workflow_dispatch' }, queued, 10), undefined);
       }
     }
   }
