@@ -135,6 +135,20 @@ Checks use **committed HEAD**, or `--ref BRANCH`; uncommitted files and host dir
 mounted in the worker. Commit changes before testing. Native CI inside the container does not
 emulate GitHub orchestration or upload GitHub artifacts; the next diagnostic tests real scheduling.
 
+`--quick` and `--ci` index the extracted archive in a new Git repository inside the disposable
+worker, so zone checks compare the committed source files. The installed manager copies its
+reviewed baseline helper into that worker, including when `--ref` selects an older app archive.
+This snapshot's commit is local metadata; the check proof still identifies the original source
+SHA. Local checks and shared GitHub CI use the same baseline helper. For an adopted app, they
+make the baseline in `.platform-base.json` available before running CI. An absent baseline is
+fetched by its full 40-character SHA, with `--no-tags --depth=1` and a two-minute timeout, from
+`https://github.com/tkarakai/web-app-starter.git`. For a different platform source, set
+`PLATFORM_SOURCE_REPOSITORY=owner/repository` when invoking the check, matching the GitHub
+repository variable of that name. URLs and invalid repository names are rejected. A baseline
+already present needs no fetch; an abbreviated SHA is accepted only when it resolves locally.
+Invalid baseline data or a failed fetch stops the check without fetching tags, broader history
+or an alternate source. `--install` remains a frozen offline dependency check.
+
 On a private repository, import the dedicated token with `starter-workers auth replace`, then
 `starter-workers service start`. Push the reviewed branch and run:
 

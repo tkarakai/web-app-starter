@@ -136,4 +136,5 @@ use `starter-workers check --install` or `starter-workers check --ci` after
 [worker setup](ci-workers.md#test-a-branch-before-enabling-normal-ci). These checks use committed
 source without mounting the checkout. They therefore omit uncommitted changes, unlike native
 pre-push CI. `check --github` separately exercises actual GitHub scheduling and certifies parity.
-The [worker guide](ci-workers.md) owns those commands and their operating requirements.
+The [worker guide](ci-workers.md#test-a-branch-before-enabling-normal-ci) owns those commands,
+their baseline-fetch contract and their operating requirements.
