@@ -1,3 +1,4 @@
+import { assertOrganizationWriteAllowed } from "./organizationReadiness";
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { rateLimit } from "./rateLimits";
@@ -22,6 +23,7 @@ export function tenantMutation<Args extends PropertyValidators, Output>(definiti
 }) {
   return mutation({ args: { ...definition.args, organizationId: v.string() },
     handler: async (ctx, args) => {
+      await assertOrganizationWriteAllowed(ctx, "tenant");
       const auth = await requireTenantContext(ctx, args.organizationId);
       await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
       return definition.handler({ ...ctx, ...auth }, args);

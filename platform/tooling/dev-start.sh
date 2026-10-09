@@ -808,6 +808,10 @@ if [ "$NEED_CONVEX" = true ]; then
     else
         echo -e "  ${GREEN}✔${NC} Migrations: ${MIGRATION_OUTPUT}"
     fi
+    # Fresh and existing local installations use the same preserving verifier as deployments.
+    # A blocked mapping leaves maintenance in place and must be repaired, never reset.
+    echo -e "${GREEN}▶ Verifying organization data cutover...${NC}"
+    "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" organization
 else
     # Create PID file even if Convex isn't needed
     > "$PID_FILE"

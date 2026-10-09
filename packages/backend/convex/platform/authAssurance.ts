@@ -139,6 +139,10 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       // Lost-factor recovery may replace TOTP only; the endpoint also verifies the current password.
       if (assurance.reason === "recovery" && path === "/two-factor/enable") return;
       if (assurance.reason === "recovery") refuse("RECOVERY_REQUIRED");
+      // Adding a new key cannot substitute for proving an existing required key.
+      // First-key setup remains possible when no passkey is enrolled yet.
+      if (assurance.passkeyPolicy === "required" && assurance.hasPasskey
+        && (pair.session.strongFactorType !== "passkey" || !assurance.strong)) refuse("PASSKEY_REQUIRED");
       if (assurance.hasTotp || (assurance.hasPasskey && assurance.passkeyPolicy !== "disabled")) {
         if (!assurance.strong || !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
       } else if (!pair.session.primaryVerifiedAt || pair.session.primaryVerifiedAt + RECENT_AUTH_MS <= Date.now()) refuse("RECENT_AUTHENTICATION_REQUIRED");
@@ -182,8 +186,8 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     await actionCtx().runMutation(internal.platform.sessionAssurance.recordProof, {
       userId: pair.user.id, sessionId: pair.session.id, kind,
       ...(kind === "password" ? { passwordHash: passwordBefore } : {}),
-      ...(kind === "totp" || kind === "passkey" ? { factorId: factorBefore!.id } : {}),
-      ...(kind === "totp" ? { factorSecret: factorBefore!.secret } : {}),
+      ...(kind === "totp" || kind === "passkey" || kind === "recovery" ? { factorId: factorBefore?.id } : {}),
+      ...(kind === "totp" || kind === "recovery" ? { factorSecret: factorBefore?.secret } : {}),
     });
     if (path === "/passkey/verify-authentication") {
       const output = endpoint.context.returned as { session: typeof pair.session };
@@ -216,8 +220,8 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     data.authPurpose = authOnly ? "mcp-authorization" : "application";
     if (authOnly && user.role !== "admin") refuse("NOT_ADMIN");
     const policy = await readPolicies(convexCtx, user);
-    if (data.authMethod === "magic-link" && (policy.scope === "admin" || !await emailLoginEnabled(convexCtx))) refuse("AUTH_METHOD_DISABLED");
-    if (policy.scope === "admin") data.expiresAt = new Date(Math.min(new Date(session.expiresAt).getTime(), Number(data.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS));
+    if (data.authMethod === "magic-link" && (policy.securityScope === "admin" || !await emailLoginEnabled(convexCtx))) refuse("AUTH_METHOD_DISABLED");
+    if (policy.securityScope === "admin") data.expiresAt = new Date(Math.min(new Date(session.expiresAt).getTime(), Number(data.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS));
     return { data: { ...session, ...data } };
   };
 

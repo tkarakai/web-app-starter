@@ -1,6 +1,7 @@
 import type { QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./organizationVocabulary";
+import { sha256Hex } from "../tokenHash";
 
 export const MEMBER_LIMIT = 100;
 /** @deprecated Use the organization vocabulary role constant. */
@@ -48,7 +49,7 @@ export async function membership(ctx: QueryCtx, organizationId: string, userId: 
   return member;
 }
 
-/** Live enrollment validity: a stored grant cannot outlive its verified factor. */
+/** Durable eligibility only. Parent authorization additionally requires current session proof. */
 export async function enrolledOrgAdmin(ctx: QueryCtx, member: Doc<"member">) {
   if (member.role !== ORG_ADMIN_MEMBERSHIP_ROLE || !member.adminEnrolledAt || !member.adminFactorId) return false;
   const userId = ctx.db.normalizeId("user", member.userId);
@@ -56,11 +57,37 @@ export async function enrolledOrgAdmin(ctx: QueryCtx, member: Doc<"member">) {
   if (!user || isAppOperatorRole(user.role) || user.banned || !user.emailVerified || !user.twoFactorEnabled) return false;
   const factorId = ctx.db.normalizeId("twoFactor", member.adminFactorId);
   const factor = factorId ? await ctx.db.get(factorId) : null;
-  return Boolean(factor?.userId === member.userId && factor.verified);
+  const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
+  const account = await ctx.db.query("account").withIndex("providerId_userId", q =>
+    q.eq("providerId", "credential").eq("userId", member.userId)).unique();
+  const policy = await ctx.db.query("organizationSecurityPolicy").withIndex("key", q => q.eq("key", "admin")).unique();
+  if (policy?.passkeyPolicy === "required" && !await ctx.db.query("passkey").withIndex("userId", q => q.eq("userId", member.userId)).first()) return false;
+  return Boolean(factor?.userId === member.userId && factor.verified && account?.password
+    && enrollment?.completedAt && enrollment.organizationId === member.organizationId && enrollment.userId === member.userId
+    && enrollment.passwordProof === sha256Hex(account.password) && enrollment.passwordEmail === user.email && enrollment.backupAcknowledgedAt
+    && enrollment.backupFactorId === factor._id && enrollment.factorSecretProof === sha256Hex(factor.secret)
+    && enrollment.backupCodesProof === sha256Hex(factor.backupCodes));
 }
 
 /** @deprecated Use enrolledOrgAdmin; this checks organization-admin enrollment only. */
 export const enrolledAdmin = enrolledOrgAdmin;
+
+/** Live authority requirement, also read inside credential-change transactions. */
+export async function organizationAdminSecurity(ctx: QueryCtx, userId: string) {
+  const members = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).take(101);
+  if (members.length > 100) throw new Error("ORGANIZATION_CONTEXT_LIMIT");
+  let required = false;
+  let valid = true;
+  for (const member of members) {
+    if (member.role !== ORG_ADMIN_MEMBERSHIP_ROLE || !member.adminEnrolledAt) continue;
+    const id = ctx.db.normalizeId("organization", member.organizationId);
+    const org = id ? await ctx.db.get(id) : null;
+    if (!org || org.lifecycle !== "active" || org.experience !== MEMBERSHIP_MANAGEMENT_EXPERIENCE) continue;
+    required = true;
+    valid = valid && await enrolledOrgAdmin(ctx, member);
+  }
+  return { required, valid };
+}
 
 export async function requireOrgAdmin(ctx: QueryCtx, organizationId: string, userId: string) {
   const org = await organization(ctx, organizationId);

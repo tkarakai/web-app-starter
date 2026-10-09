@@ -17,8 +17,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Explicit organization-user context and private-owner tenant builders/sample APIs, with
   immutable request IDs, parent/child checks, live organization-availability/membership rechecks and reauthorized
-  file transfers. The personal sample caller resolves/captures context; historical private rows
-  remain separately authorized without a guessed backfill. See [organization context](docs/organization-context.md).
+  file transfers. The web app captures tab-local context through queries, prepared writes and transfers.
+  See [organization context](docs/organization-context.md).
+- Resumable organization enrollment, member invitations and acceptance, membership/contact management,
+  and operator organization availability screens. Private ownership remains separate from membership.
+- Continuing org-admin assurance and atomic last-effective-admin protection across membership,
+  credential, factor and policy changes, with staged factor replacement and native recovery support.
+  See [organization security](docs/organization-security.md).
+- Preserving, deployment-bound organization cutover with app-owned table/function/job/component
+  registration, resumable verification, legacy-authority quarantine and explicit forward recovery.
 - Adoption refuses work on the live default branch unless explicitly overridden with
   `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
   require task branches, early draft PRs and the existing E2E ready/label policy.
@@ -59,9 +66,17 @@ version. Release-specific compatibility and deployment steps are listed explicit
   do not rely on identity deletion or organization-user security administration through the app control plane.
 - Obtain new agent consent after updating backend and clients. Do not stamp old grants/tasks/artifacts
   with the new epoch or continue executing old workers. See [agentic integration](docs/agentic-announcements.md).
-- Organization fields/indexes are additive, not a preserving migration. Keep unmapped data intact;
-  use explicit context for new tenant data and complete verified mappings/old-writer barriers before
-  organization-scope cutover or enabling organization membership management. See [organization context](docs/organization-context.md).
+- Before deploying this organization contract, run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/organization-register-migration.ts`.
+  Complete the app-owned registry and executable backfills for every private table, entry point,
+  job and component; the codemod preserves existing registrations and does not infer tenant ownership.
+  Follow [the preserving cutover procedure](docs/organization-data-migration.md), including both
+  populated and custom-data rehearsals. Managed deployments verify readiness before frontend delivery;
+  custom deployment pipelines must use the same prepare/deploy/verify guards.
+- Replace app-owned legacy project/task/file callers with explicit tenant context. Strict tenant
+  APIs and membership completion require a verified readiness receipt. Cutover retires legacy
+  writers permanently; retain ambiguous data for explicit repair and use compatible forward
+  recovery instead of deploying an old binary or resetting the database.
 
 ### Fixed
 

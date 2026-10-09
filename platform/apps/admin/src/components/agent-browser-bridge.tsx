@@ -6,14 +6,17 @@ import { api } from "@repo/backend";
 import { browserActions } from "@web-app-starter/agentic/browser-actions";
 import { boundedResult } from "@web-app-starter/agentic/results";
 import { registerWebMcp, type ModelContextProvider } from "@web-app-starter/agentic/webmcp";
+import { useAuthUser } from "@/components/auth/auth-guard";
 /** Only the protected normal admin layout mounts this browser-safe binding. */
 export function AgentBrowserBridge() {
   const client = useConvex(); const router = useRouter();
+  const actorId = useAuthUser()?.id;
   const configuration = useQuery(api.platform.agentSurfaces.configuration, {});
   const enabled = configuration?.surfaces.webmcp?.enabled ?? false;
+  const generation = configuration?.surfaces.webmcp?.generation;
   useEffect(() => {
     const provider = (document as typeof document & { modelContext?: ModelContextProvider }).modelContext;
-    if (!enabled || !provider) return;
+    if (!actorId || !enabled || !generation || !provider) return;
     const controller = new globalThis.AbortController(); const page = browserActions(document, path => router.push(path));
     void registerWebMcp(provider, async (name, input, signal) => {
       const operation = name === "capabilities_search" ? "search" : name === "capabilities_describe" ? "describe" : "prepare";
@@ -25,11 +28,14 @@ export function AgentBrowserBridge() {
       if (request.effect === "browser") return boundedResult(await page(request.name, request.input));
       const args = { name: request.name, input: request.input };
       const result = request.effect === "write" ? await client.mutation(api.platform.agentCapabilities.browserWrite, args) : await client.query(api.platform.agentCapabilities.browserRead, args);
+      // A read can finish after the actor/session or surface changes. The backend
+      // guards execution; the registration lifetime also guards late disclosure.
+      if (controller.signal.aborted || signal?.aborted) throw new Error("SURFACE_DISABLED");
       const output = boundedResult(result, request.resultOffset);
       if (request.effect !== "read" && output.nextOffset !== undefined && output.nextOffset !== null) return { ...output, nextOffset: null, resultTruncated: true };
       return output;
     }, controller.signal).catch(() => controller.abort());
     return () => controller.abort();
-  }, [client, enabled, router]);
+  }, [actorId, client, enabled, generation, router]);
   return null;
 }

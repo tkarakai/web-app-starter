@@ -408,7 +408,7 @@ describe("canonical organization component boundary", () => {
     expect(final.isDone).toBe(true);
     expect([...first.page, ...second.page].map(row => row.email).sort()).toEqual([a.admin.email, member.email].sort());
     expect([...first.page, ...second.page].some(row => row.email === b.admin.email)).toBe(false);
-    expect(Object.keys(second.page[0]).sort()).toEqual(["adminPending", "email", "enrolled", "memberId", "name", "role"]);
+    expect(Object.keys(second.page[0]).sort()).toEqual(["adminPending", "email", "enrolled", "isContact", "memberId", "name", "role"]);
   });
 
   test("directory rejects foreign start and end cursors in both tenant directions", async () => {
@@ -438,12 +438,12 @@ describe("canonical organization component boundary", () => {
     }
   });
 
-  test("factor invalidation removes administrative authority and cannot satisfy last-admin replacement", async () => {
+  test("sole administrator factor invalidation rolls back and preserves effective authority", async () => {
     const f = fixture();
     const org = await f.organizationWithMembershipManagement("invalidated@example.test", "invalidated-org");
-    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: org.factor._id }], update: { verified: false } } });
-    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ canManageMembers: false });
-    await expect(f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: org.memberId, operation: "remove" })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
+    await expect(f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: org.factor._id }], update: { verified: false } } })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
+    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ canManageMembers: true });
+    await expect(f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: org.memberId, operation: "remove" })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
   });
 
   test("slug collision at organization membership enablement rolls back all grants, preserving personal state", async () => {

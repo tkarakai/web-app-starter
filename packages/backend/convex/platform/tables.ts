@@ -1,3 +1,4 @@
+import { organizationMigrationTables } from "./organizationMigrationSchema";
 import { delegationProof } from "./agentProof";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
@@ -9,6 +10,7 @@ import { rateLimitTables } from "convex-helpers/server/rateLimit";
  * (the platform hook); never define a table with one of these names yourself.
  */
 export const platformTables = {
+  ...organizationMigrationTables,
   ...rateLimitTables,
 
   // --- Migrations state (convex-helpers framework) ---

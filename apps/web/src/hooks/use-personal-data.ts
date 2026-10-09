@@ -1,37 +1,52 @@
 "use client";
 
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
 import { api, type Id } from "@repo/backend";
-import type { FunctionArgs } from "convex/server";
+import type { FunctionArgs, FunctionReference } from "convex/server";
 import { authClient } from "@web-app-starter/auth/client";
 import { useMutationWithToast } from "./use-mutation-with-toast";
 import { mergePersonalProjects, planeArguments, planeAvailable, resolvePersonalDataContext, type PersonalDataPlane } from "./personal-data-context";
 import { usePersonalDispatch } from "./use-personal-dispatch";
+import { useOrganizationSelection } from "./organization-selection";
+import { useSafeQuery } from "./use-safe-query";
 
-export function usePersonalDataContext() {
+function useRead<Query extends FunctionReference<"query">>(query: Query, args: FunctionArgs<Query> | "skip") { return useSafeQuery(query, args).data; }
+
+export function useOrganizationSnapshot() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const session = authClient.useSession();
   const browserUserId = session.data?.user.id;
   const signedIn = isAuthenticated && !isLoading && !session.isPending && Boolean(browserUserId);
-  const currentUser = useQuery(api.platform.auth.getCurrentUser, signedIn ? {} : "skip");
+  const current = useSafeQuery(api.platform.auth.getCurrentUser, signedIn ? {} : "skip");
+  const currentUser = current.data;
   const sameAccount = signedIn && currentUser?._id === browserUserId;
-  const mine = useQuery(api.platform.tenantContext.mine, sameAccount ? {} : "skip");
-  const pending = isLoading || session.isPending || (signedIn && (currentUser === undefined || currentUser?._id !== browserUserId));
+  const discovery = useSafeQuery(api.platform.tenantContext.mine, sameAccount ? {} : "skip");
+  const mine = discovery.data;
+  const pending = !current.error && !discovery.error && (isLoading || session.isPending || (signedIn && (currentUser === undefined || (currentUser !== null && currentUser._id !== browserUserId))) || (sameAccount && mine != null && mine.userId !== browserUserId));
   const ownerId = sameAccount && currentUser ? (currentUser.userId ?? currentUser._id).toString() : null;
-  return resolvePersonalDataContext(pending ? undefined : sameAccount ? mine : null, pending ? undefined : sameAccount ? currentUser!._id : null, ownerId);
+  return { mine: pending ? undefined : sameAccount ? mine : null, userId: pending ? undefined : sameAccount ? currentUser!._id : null, ownerId, error: current.error ?? discovery.error };
+}
+
+export function usePersonalDataContext() {
+  const snapshot = useOrganizationSnapshot();
+  const selected = useOrganizationSelection(snapshot.userId ?? null);
+  const sole = snapshot.mine?.contexts.length === 1 ? snapshot.mine.contexts[0]?.organizationId : undefined;
+  return resolvePersonalDataContext(snapshot.error ? null : snapshot.mine, snapshot.userId, snapshot.ownerId, selected ?? sole);
 }
 
 export function usePersonalProjects() {
   const context = usePersonalDataContext();
-  const scoped = useQuery(api.tenantProjects.list, context.tenant ? { organizationId: context.tenant.organizationId } : "skip");
-  const legacy = useQuery(api.projects.list, context.legacy ? planeArguments(context.legacy) : "skip");
-  return { context, projects: mergePersonalProjects(context, scoped, legacy) };
+  const scoped = useSafeQuery(api.tenantProjects.list, context.tenant ? { organizationId: context.tenant.organizationId } : "skip");
+  const legacy = useSafeQuery(api.projects.list, context.legacy ? planeArguments(context.legacy) : "skip");
+  const denied = scoped.error || legacy.error || (context.tenant && scoped.data === null) || (context.legacy && legacy.data === null);
+  const live = denied ? { ...context, state: "unavailable" as const, tenant: null, legacy: null } : context;
+  return { context: live, projects: mergePersonalProjects(live, scoped.data, legacy.data) };
 }
 
 export function usePersonalProjectStats() {
   const context = usePersonalDataContext();
-  const scoped = useQuery(api.tenantProjects.listWithStats, context.tenant ? { organizationId: context.tenant.organizationId } : "skip");
-  const legacy = useQuery(api.projects.listWithStats, context.legacy ? planeArguments(context.legacy) : "skip");
+  const scoped = useRead(api.tenantProjects.listWithStats, context.tenant ? { organizationId: context.tenant.organizationId } : "skip");
+  const legacy = useRead(api.projects.listWithStats, context.legacy ? planeArguments(context.legacy) : "skip");
   return mergePersonalProjects(context, scoped, legacy);
 }
 
@@ -39,8 +54,8 @@ export function usePersonalProject(id: Id<"projects"> | null) {
   const { projects } = usePersonalProjects();
   // Select the plane from an authorized list, never by retrying an ID in a different API.
   const parent = id ? projects?.find(project => project._id === id) : undefined;
-  const scoped = useQuery(api.tenantProjects.get, parent?.dataPlane.kind === "tenant" ? { id: parent._id, organizationId: parent.dataPlane.organizationId } : "skip");
-  const legacy = useQuery(api.projects.get, parent?.dataPlane.kind === "legacy" ? { id: parent._id, ...planeArguments(parent.dataPlane) } : "skip");
+  const scoped = useRead(api.tenantProjects.get, parent?.dataPlane.kind === "tenant" ? { id: parent._id, organizationId: parent.dataPlane.organizationId } : "skip");
+  const legacy = useRead(api.projects.get, parent?.dataPlane.kind === "legacy" ? { id: parent._id, ...planeArguments(parent.dataPlane) } : "skip");
   if (projects === undefined) return undefined;
   if (!parent) return null;
   const project = parent.dataPlane.kind === "tenant" ? scoped : legacy;
@@ -81,8 +96,8 @@ export function usePersonalProjectMutations(parent?: PersonalDataPlane, resource
 export function usePersonalTasks(projectId: Id<"projects">, parent: PersonalDataPlane) {
   const context = usePersonalDataContext();
   const available = planeAvailable(context, parent);
-  const scoped = useQuery(api.tenantTasks.listByProject, available && parent.kind === "tenant" ? { projectId, organizationId: parent.organizationId } : "skip");
-  const legacy = useQuery(api.tasks.listByProject, available && parent.kind === "legacy" ? { projectId, ...planeArguments(parent) } : "skip");
+  const scoped = useRead(api.tenantTasks.listByProject, available && parent.kind === "tenant" ? { projectId, organizationId: parent.organizationId } : "skip");
+  const legacy = useRead(api.tasks.listByProject, available && parent.kind === "legacy" ? { projectId, ...planeArguments(parent) } : "skip");
   const rows = available ? parent.kind === "tenant" ? scoped : legacy : undefined;
   const stale = rows?.some(row => row.ownerId !== parent.ownerId || row.projectId !== projectId
     || (parent.kind === "tenant" ? row.organizationId !== parent.organizationId : row.organizationId !== undefined));
@@ -119,8 +134,8 @@ export function usePersonalFiles(projectId: Id<"projects">, parent: PersonalData
   const context = usePersonalDataContext();
   const capture = usePersonalDispatch(context, parent, projectId);
   const available = planeAvailable(context, parent);
-  const scoped = useQuery(api.tenantFiles.listUploads, available && parent.kind === "tenant" ? { projectId, organizationId: parent.organizationId } : "skip");
-  const legacy = useQuery(api.files.listUploads, available && parent.kind === "legacy" ? { projectId, ...planeArguments(parent) } : "skip");
+  const scoped = useRead(api.tenantFiles.listUploads, available && parent.kind === "tenant" ? { projectId, organizationId: parent.organizationId } : "skip");
+  const legacy = useRead(api.files.listUploads, available && parent.kind === "legacy" ? { projectId, ...planeArguments(parent) } : "skip");
   const uploadLegacy = useAction(api.files.uploadFile);
   const uploadScoped = useAction(api.tenantFiles.uploadFile);
   const downloadLegacy = useAction(api.files.downloadFile);

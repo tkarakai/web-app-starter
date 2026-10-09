@@ -47,3 +47,11 @@ TypeScript, run with `platform/tooling/node-ts.sh` (for example
 Use only Node built-in modules unless the transform genuinely needs a TypeScript
 AST, so the codemod runs in a downstream repo that has not run `bun install` yet
 after the merge. Shell is fine for a thin wrapper; no other language.
+
+## Organization registration
+
+`organization-register-migration.ts` creates the app-owned registration seam without overwriting
+existing mappings. It supports `--check` and `--backend PATH`; its empty output deliberately fails
+the inventory check until app-owned dispositions and executable backfills are reviewed. It never
+changes database records or guesses tenant context. See the
+[organization cutover guide](../../docs/organization-data-migration.md) for deployment verification.

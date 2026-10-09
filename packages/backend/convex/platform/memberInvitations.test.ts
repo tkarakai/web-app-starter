@@ -1,4 +1,4 @@
-import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./betterAuth/organizationVocabulary";
+import { ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./betterAuth/organizationVocabulary";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
@@ -8,6 +8,8 @@ import schema from "./betterAuth/schema";
 import { sha256Hex } from "./tokenHash";
 import { sendAuthEmail } from "./sendAuthEmail";
 import { catalogueRows } from "./agentRegistry";
+import { enrollOrganizationAdminForTest } from "../../test/organizationSecurity";
+import { completeOrganizationMigration } from "../../test/organizationReadiness";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const password = "orchid quartz lantern telescope meadow violin glacier";
@@ -29,6 +31,7 @@ const invites = components.betterAuth.memberInvitations;
 async function fixture() {
   const t = createTestEnv();
   t.registerComponent("betterAuth", schema, import.meta.glob("./betterAuth/**/*.*s"));
+  await completeOrganizationMigration(t);
   async function user(email = `${randomUUID()}@example.test`, role = "user", verified = true) {
     const now = Date.now();
     const result = await t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Member fixture", email, role, emailVerified: verified, createdAt: now, updatedAt: now } } });
@@ -47,9 +50,8 @@ async function fixture() {
     const admin = await user();
     const org = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: admin._id });
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: admin._id }], update: { twoFactorEnabled: true } } });
-    const factor = await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: admin._id, verified: true, secret: "fixture-factor", backupCodes: "fixture-codes" } } });
-    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "member", where: [{ field: "_id", value: org.memberId }], update: { adminEnrolledAt: Date.now(), adminFactorId: factor._id } } });
-    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: org.organizationId }], update: { experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE } } });
+    await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: admin._id, verified: true, secret: "fixture-factor", backupCodes: "fixture-codes" } } });
+    await enrollOrganizationAdminForTest(t, { organizationId: org.organizationId, userId: admin._id });
     return { ...org, admin };
   }
   const org = await organization();
@@ -200,7 +202,19 @@ describe("canonical invitation-bound member admission", () => {
     if (state === "canceled") await f.t.mutation(invites.cancel, { organizationId: f.org.organizationId, actorId: f.org.admin._id, invitationId: invite.id });
     if (state === "expired") vi.setSystemTime(Date.now() + 86_400_001);
     if (state === "disabled") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: f.org.organizationId }], update: { lifecycle: "disabled" } } });
-    if (state === "inviter-demoted") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "member", where: [{ field: "_id", value: f.org.memberId }], update: { role: ORG_MEMBER_ROLE } } });
+    if (state === "inviter-demoted") {
+      const peer = await f.user();
+      await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: peer._id }], update: { twoFactorEnabled: true } } });
+      await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: peer._id, verified: true, secret: "peer-factor", backupCodes: "peer-codes" } } });
+      const peerMember = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
+        organizationId: f.org.organizationId, userId: peer._id, role: ORG_MEMBER_ROLE, createdAt: Date.now(),
+      } } });
+      await f.t.mutation(components.betterAuth.organizations.changeMember, { organizationId: f.org.organizationId,
+        actorId: f.org.admin._id, memberId: peerMember._id, operation: "promote" });
+      await enrollOrganizationAdminForTest(f.t, { organizationId: f.org.organizationId, userId: peer._id });
+      await f.t.mutation(components.betterAuth.organizations.changeMember, { organizationId: f.org.organizationId,
+        actorId: peer._id, memberId: f.org.memberId, operation: "demote" });
+    }
     await expect(f.t.action(api.platform.memberInvitations.register, { capability: claim.capability, email: invite.email, name: "New", password })).rejects.toThrow(/INVALID_MEMBER_INVITATION|ORGANIZATION_UNAVAILABLE|NOT_ORGANIZATION_ADMIN/);
     const user = await f.user(invite.email);
     const client = await f.client(user._id);
@@ -322,13 +336,16 @@ describe("canonical invitation-bound member admission", () => {
     const f = await fixture();
     const invite = await f.invite();
     const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
-    await f.t.action(api.platform.memberInvitations.register, { capability: claim.capability, email: invite.email, name: "New", password });
-    const user = (await f.findUser(invite.email))!;
-    const client = await f.client(user._id);
     vi.mocked(sendAuthEmail).mockRejectedValueOnce(new Error("DELIVERY_UNAVAILABLE"));
-    await expect(client.action(api.platform.memberInvitations.requestVerification, f.context(invite))).rejects.toThrow("DELIVERY_UNAVAILABLE");
+    await expect(f.t.action(api.platform.memberInvitations.register,
+      { capability: claim.capability, email: invite.email, name: "New", password })).rejects.toThrow("DELIVERY_UNAVAILABLE");
+    const user = (await f.findUser(invite.email))!;
+    expect(user).toMatchObject({ emailVerified: false });
+    expect(await f.rows("session")).toHaveLength(0);
+    await expect(f.t.action(api.platform.memberInvitations.requestRegistrationVerification,
+      { capability: claim.capability, email: "wrong@example.test" })).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    await f.t.action(api.platform.memberInvitations.requestRegistrationVerification, { capability: claim.capability, email: invite.email });
     expect(await f.findUser(invite.email)).toEqual(user);
-    await client.action(api.platform.memberInvitations.requestVerification, f.context(invite));
     expect(vi.mocked(sendAuthEmail).mock.calls).toHaveLength(2);
     expect(await f.rows("organization")).toHaveLength(1);
   });

@@ -1,3 +1,4 @@
+import { assertOrganizationWriteAllowed } from "./platform/organizationReadiness";
 import { v } from "convex/values";
 import { action, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -13,6 +14,7 @@ const context = { organizationId: v.string() };
 export const beginUpload = internalMutation({
   args: { ...context, projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "tenant");
     const auth = await requireTenantContext(ctx, args.organizationId);
     await requireTenantProject({ ...ctx, ...auth }, args.projectId);
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
@@ -22,6 +24,7 @@ export const beginUpload = internalMutation({
 export const finishUpload = internalMutation({
   args: { ...context, projectId: v.id("projects"), storageId: v.id("_storage"), name: v.string(), contentType: v.string(), size: v.number(), ownerId: v.string() },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "tenant");
     const auth = await requireTenantContext(ctx, args.organizationId);
     if (auth.ownerId !== args.ownerId) throw new Error("NOT_AUTHENTICATED");
     await requireTenantProject({ ...ctx, ...auth }, args.projectId);
@@ -49,6 +52,7 @@ export const uploadFile = action({
 export const authorizeDownload = internalQuery({
   args: { ...context, id: v.id("uploads") },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "tenant");
     const auth = await requireTenantContext(ctx, args.organizationId);
     const upload = await ctx.db.get(args.id);
     if (!upload) throw new Error("UPLOAD_NOT_FOUND");

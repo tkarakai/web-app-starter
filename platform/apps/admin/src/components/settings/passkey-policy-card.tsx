@@ -35,6 +35,7 @@ function normalizePolicy(value: unknown): PasskeyPolicy {
 
 export function PasskeyPolicyCard({ scope }: { scope: Scope }) {
   const isAdminScope = scope === "admin";
+  const audience = isAdminScope ? "app operators and organization administrators" : "regular users";
   const key = SETTINGS_KEY[scope];
   const policyRaw = useQuery(api.platform.appSettings.get, { key });
   const setSetting = useMutation(api.platform.appSettings.set);
@@ -47,9 +48,14 @@ export function PasskeyPolicyCard({ scope }: { scope: Scope }) {
     setSaving(true);
     try {
       await setSetting({ key, value: nextValue });
-      toast.success(`Passkey policy updated for ${scope}s`);
+      toast.success(`Passkey policy updated for ${audience}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update passkey policy");
+      const message = error instanceof Error ? error.message : "";
+      toast.error(message.includes("SECURITY_POLICY_ORGANIZATION_LIMIT")
+        ? "The current policy is unchanged. Requiring passkeys across more than 1,000 active membership-managed organizations needs a reviewed staged transition. Contact your deployment maintainer."
+        : message.includes("LAST_ORGANIZATION_ADMIN")
+          ? "The current policy is unchanged. Each active organization must have an eligible administrator with a passkey before passkeys can be required."
+          : "Failed to update passkey policy. Refresh your session and try again.");
     } finally {
       setSaving(false);
     }
@@ -64,11 +70,11 @@ export function PasskeyPolicyCard({ scope }: { scope: Scope }) {
           </div>
           <div>
             <CardTitle className="text-base">
-              {isAdminScope ? "App-admin Passkey Policy" : "User Passkey Policy"}
+              {isAdminScope ? "Administrator Passkey Policy" : "User Passkey Policy"}
             </CardTitle>
             <CardDescription>
               {isAdminScope
-                ? "Configure passkey requirements for app operators."
+                ? "Configure passkey requirements for app operators and organization administrators."
                 : "Configure passkey requirements for regular users."}
             </CardDescription>
           </div>
@@ -101,10 +107,10 @@ export function PasskeyPolicyCard({ scope }: { scope: Scope }) {
             </div>
             <p className="text-sm text-muted-foreground">
               {policy === "disabled"
-                ? `Passkeys are unavailable for ${scope}s.`
+                ? `Passkeys are unavailable for ${audience}.`
                 : policy === "required"
-                ? `Passkeys are mandatory for ${scope}s (bootstrap setup is allowed for users without passkeys).`
-                : `Passkeys are optional for ${scope}s.`}
+                ? `Passkeys are mandatory for ${audience} (initial setup is allowed for users without passkeys).`
+                : `Passkeys are optional for ${audience}.`}
             </p>
           </>
         )}

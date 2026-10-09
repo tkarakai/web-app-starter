@@ -1,3 +1,4 @@
+import { assertOrganizationWriteAllowed, readOrganizationReadiness } from "./organizationReadiness";
 import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { rememberNative } from "./nativeCapabilities";
@@ -155,8 +156,10 @@ export const revoke = appOperatorMutation({
   args: { grantId: v.id("agentGrants") },
   handler: async (ctx, args) => {
     await requireAppOperator(ctx, { write: true });
+    await assertOrganizationWriteAllowed(ctx, "control");
     const grant = await ctx.db.get(args.grantId);
     if (!grant || grant.userId !== ctx.user._id) throw new Error("GRANT_NOT_FOUND");
+    if (!currentAgentContract(grant)) throw new Error("INVALID_AGENT_TOKEN");
     await ctx.db.patch(grant._id, { revokedAt: Date.now() });
     await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.agentAccess, action: "admin.agent_grant_revoked", resource: `agent-grant:${grant._id}`, status: "succeeded" });
   },
@@ -166,6 +169,8 @@ export const revoke = appOperatorMutation({
 export const expireCode = internalMutation({
   args: { codeId: v.id("agentAuthorizationCodes") },
   handler: async (ctx, { codeId }) => {
+    // Migration retains old authority as evidence; expiration must not race its verification.
+    if ((await readOrganizationReadiness(ctx)).phase === "maintenance") return;
     const row = await ctx.db.get(codeId);
     if (row && row.expiresAt <= Date.now()) await ctx.db.delete(codeId);
   },
@@ -173,6 +178,8 @@ export const expireCode = internalMutation({
 export const expireGrant = internalMutation({
   args: { grantId: v.id("agentGrants") },
   handler: async (ctx, { grantId }) => {
+    // Migration retains old authority as evidence; expiration must not race its verification.
+    if ((await readOrganizationReadiness(ctx)).phase === "maintenance") return;
     const row = await ctx.db.get(grantId);
     if (row && row.expiresAt <= Date.now()) await ctx.db.delete(grantId);
   },
@@ -181,6 +188,8 @@ export const expireGrant = internalMutation({
 export const expireDelegation = internalMutation({
   args: { delegationId: v.id("agentDelegations") },
   handler: async (ctx, { delegationId }) => {
+    // Migration retains old authority as evidence; expiration must not race its verification.
+    if ((await readOrganizationReadiness(ctx)).phase === "maintenance") return;
     const row = await ctx.db.get(delegationId);
     if (row && row.expiresAt <= Date.now()) await ctx.db.delete(delegationId);
   },

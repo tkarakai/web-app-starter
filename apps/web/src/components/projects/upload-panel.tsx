@@ -115,6 +115,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
           {uploads.map((upload) => (
             <div
               key={upload._id}
+              data-upload-id={upload._id}
               className="group flex items-center justify-between rounded-md border border-border/70 bg-card px-3 py-2 text-sm"
             >
               <div>

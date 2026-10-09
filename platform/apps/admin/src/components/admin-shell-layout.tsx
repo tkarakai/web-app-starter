@@ -1,5 +1,6 @@
 "use client";
 
+import messages from "@/messages/en.json";
 import { usePathname } from "next/navigation";
 import { Toaster } from "sonner";
 
@@ -18,6 +19,7 @@ import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
 
 const segmentLabels: Record<string, string> = {
+  organizations: messages.adminOrganizations.title,
   announcements: "Announcements",
   users: "Users",
   onboarding: "Onboarding",
@@ -58,7 +60,7 @@ export function AdminShellLayout({ children }: { children: React.ReactNode }) {
 
   const detailLabels = segments
     .slice(1)
-    .map((segment) => formatSegment(segment))
+    .map((segment, index) => segments[1] === "organizations" && index > 0 ? messages.adminOrganizations.details : formatSegment(segment))
     .filter((label) => label !== sectionLabel);
 
   return (

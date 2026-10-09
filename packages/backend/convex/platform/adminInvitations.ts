@@ -1,3 +1,4 @@
+import { assertOrganizationWriteAllowed } from "./organizationReadiness";
 /** @deprecated API namespace retained for compatibility; these are app-operator operations. */
 import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { rememberNative } from "./nativeCapabilities";
@@ -14,6 +15,7 @@ import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { identitySession, evaluateSession } from "./sessionPolicy";
+import { readAdminPasskeyPolicy } from "./organizationPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { appOperatorMutation, getAuth } from "./functions";
 import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
@@ -39,6 +41,7 @@ export const list = rememberNative(query({
 export const invite = appOperatorMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") throw new Error("NOT_ADMIN");
     const email = args.email.trim().toLowerCase();
@@ -52,6 +55,7 @@ export const invite = appOperatorMutation({
 export const remove = appOperatorMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") throw new Error("NOT_ADMIN");
     return await ctx.runMutation(components.platform.adminInvitations.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
@@ -63,6 +67,7 @@ export const createForSeed = internalMutation({
     email: v.string(),
   },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
     assertLocalFixtures();
     return await ctx.runMutation(components.platform.adminInvitations.createForSeed, args);
   },
@@ -75,6 +80,7 @@ export const setToken = internalMutation({
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
     return await ctx.runMutation(components.platform.adminInvitations.setToken, args);
   },
 });
@@ -101,6 +107,7 @@ export const claimInvitation = action({
 export const advanceOnboardingStep = mutation({
   args: { step: v.number() },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
@@ -124,6 +131,7 @@ export const advanceOnboardingStep = mutation({
 export const completeOnboarding = mutation({
   args: {},
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
@@ -136,7 +144,7 @@ export const completeOnboarding = mutation({
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (bound) {
       if (!bound.completed && bound.step < 3) throw new Error("ONBOARDING_INCOMPLETE");
-      const policy = await ctx.runQuery(components.platform.appSettings.getInternal, { key: "adminPasskeyPolicy" });
+      const policy = await readAdminPasskeyPolicy(ctx);
       if (policy === "required") {
         const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "userId", value: user._id }] });
         if (!passkey) throw new Error("PASSKEY_REQUIRED");
@@ -204,6 +212,7 @@ export const registerAccount = internalMutation({
   args: { capabilityHash: v.string(), email: v.string(), name: v.string(), passwordHash: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "control");
     const enrollment = await ctx.runQuery(components.platform.adminInvitations.enrollment, { capabilityHash: args.capabilityHash, email: args.email });
     if (enrollment.userId) return;
     const existing = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: enrollment.email }] });

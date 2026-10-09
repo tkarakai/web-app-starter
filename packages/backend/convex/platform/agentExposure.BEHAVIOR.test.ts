@@ -64,6 +64,20 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
   beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
+  test("component migration and security primitives have explicit denied transport inventory", async () => {
+    const registered = new Map(exposureInventory().map(row => [row.operation, row]));
+    let count = 0;
+    for (const name of ["organizationMigration", "organizationMigrationBarrier", "organizationSecurity"]) {
+      const exported = await import(`./betterAuth/${name}`) as Record<string, { isPublic?: boolean; isMutation?: boolean; isQuery?: boolean }>;
+      for (const [operation, definition] of Object.entries(exported)) {
+        if (!definition?.isPublic || !(definition.isMutation || definition.isQuery)) continue;
+        count++;
+        expect(registered.get(`component/betterAuth/${name}:${operation}`)).toMatchObject({ classification: "internal-denied", direct: "denied", native: false });
+      }
+    }
+    expect(count).toBeGreaterThanOrEqual(14);
+  });
+
   test("classifies runtime registered public APIs and reports dispatch's same inventory", async () => {
     // Inspect real registered definitions, not source text or a test-only catalogue.
     const missing: string[] = [];

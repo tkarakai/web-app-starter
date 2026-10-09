@@ -104,11 +104,7 @@ describe("administrator enrollment", () => {
     await verifiedFactor(t, account._id);
     await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
     for (const value of ["required", JSON.stringify("required")]) {
-      if (value === "required") {
-        await t.mutation(components.platform.appSettings.set, { key: "adminPasskeyPolicy", value, userId: "existing-admin" });
-      } else {
-        await t.mutation(components.platform.appSettings.putRaw, { key: "adminPasskeyPolicy", value });
-      }
+      await t.mutation(components.betterAuth.organizationSecurity.setPolicy, { key: "adminPasskeyPolicy", value });
       expect(await owner.query(api.platform.appSettings.getPublic, { key: "adminPasskeyPolicy" })).toBe("required");
       await expect(owner.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("PASSKEY_REQUIRED");
       expect(await user(t)).toMatchObject({ role: "user" });

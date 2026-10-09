@@ -240,6 +240,22 @@ a renewed narrow grant cannot disclose or resume them. Fresh consent is required
 `SendMessage` waits for a terminal/interrupted state unless `returnImmediately` is
 true; a server timeout reports the task ID so clients can inspect it before retrying.
 
+## Preserving the authority contract during upgrade
+
+Use the [organization cutover procedure](organization-data-migration.md) to classify every
+legacy code, delegation, grant, task/message/artifact and queued job before readiness. Old broad
+authority remains retired, while private or unclassified historical artifacts remain quarantined.
+Fresh operator consent does not reauthorize old artifacts. Do not rewrite their contract epoch,
+guess tenant IDs from JSON, or replay old queued work. The deployment guard rejects source
+without the cutover contract and supports explicit compatible forward recovery.
+
+A customized app with tenant-capable agents must register those entry points/jobs and supply
+its own immutable tenant/owner validation and preserving migration. The shipped four transports
+remain operator-only. Rehearse a shared identity in two organizations, different membership
+roles, member removal, lifecycle changes, stale continuations and private-owner negatives before
+allowing that extension to execute. Classifying a component or function is review evidence, not
+a replacement for its live authorization checks.
+
 ## Extending the catalogue
 
 Classify the operation in `agentExposure.ts`, then select its native definition in

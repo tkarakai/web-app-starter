@@ -1,4 +1,4 @@
-import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./betterAuth/organizationVocabulary";
+import { ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./betterAuth/organizationVocabulary";
 import { createHmac, randomUUID } from "node:crypto";
 import * as crypto from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
@@ -6,6 +6,7 @@ import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { ADMIN_SESSION_MS, RECENT_AUTH_MS } from "./sessionFields";
+import { enrollOrganizationAdminForTest } from "../../test/organizationSecurity";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 vi.mock("better-auth/crypto", async importOriginal => {
@@ -57,7 +58,9 @@ async function fixture(role = "user") {
   const bound = { ...context, userId: user._id, sessionId: session._id };
   const begin = () => client.mutation(api.platform.organizationEnrollment.begin, { ...context, name: "Organization", slug: "organization-setup" });
   const status = () => client.query(api.platform.organizationEnrollment.status, context);
-  const setting = (key: string, value: unknown) => t.mutation(components.platform.appSettings.putRaw, { key, value: JSON.stringify(value) });
+  const setting = async (key: string, value: unknown) => key === "adminPasskeyPolicy"
+    ? t.mutation(components.betterAuth.organizationSecurity.setPolicy, { key, value: JSON.stringify(value) })
+    : t.mutation(components.platform.appSettings.putRaw, { key, value: JSON.stringify(value) });
   async function update(model: "user" | "session" | "account" | "twoFactor", id: string, data: Record<string, string | number | boolean>) {
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model, where: [{ field: "_id", value: id }], update: data } });
   }
@@ -225,8 +228,8 @@ describe("parent organization enrollment and scoped assurance", () => {
     await expect(f.status()).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: f.context.organizationId }], update: { lifecycle: "active" } } });
     const { memberId } = await f.t.query(components.betterAuth.organizations.context, { ...f.context, userId: f.user._id });
-    await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: memberId }] } });
-    await expect(f.status()).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
+    await expect(f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: memberId }] } })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
+    expect(await f.status()).toMatchObject({ setup: { completed: false } });
   });
 
   test("a pending promotion binds setup to canonical membership without granting administration", async () => {
@@ -234,10 +237,9 @@ describe("parent organization enrollment and scoped assurance", () => {
     const owner = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Owner", email: "owner@example.test", role: "user", emailVerified: true, createdAt: Date.now(), updatedAt: Date.now() } } });
     const org = await f.t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: owner._id });
     // Trusted component fixture represents an already peer enrolled for organization membership management.
-    const ownerFactor = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: owner._id, verified: true, secret: "fixture-factor", backupCodes: "fixture-codes" } } });
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: owner._id, verified: true, secret: "fixture-factor", backupCodes: "fixture-codes" } } });
     await f.update("user", owner._id, { twoFactorEnabled: true });
-    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: org.organizationId }], update: { experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE } } });
-    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "member", where: [{ field: "_id", value: org.memberId }], update: { adminEnrolledAt: Date.now(), adminFactorId: ownerFactor._id } } });
+    await enrollOrganizationAdminForTest(f.t, { organizationId: org.organizationId, userId: owner._id, name: "Peer", slug: "peer-org" });
     const member = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: { userId: f.user._id, organizationId: org.organizationId, role: ORG_MEMBER_ROLE, createdAt: Date.now() } } });
     await f.t.mutation(components.betterAuth.organizations.changeMember, { organizationId: org.organizationId, actorId: owner._id, memberId: member._id, operation: "promote" });
     const context = { organizationId: org.organizationId };

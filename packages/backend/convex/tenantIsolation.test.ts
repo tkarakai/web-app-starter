@@ -1,13 +1,15 @@
-import { MEMBERSHIP_MANAGEMENT_EXPERIENCE } from "./platform/betterAuth/organizationVocabulary";
 import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import { createTestEnv } from "./test.modules";
 import authSchema from "./platform/betterAuth/schema";
+import { enrollOrganizationAdminForTest } from "../test/organizationSecurity";
+import { completeOrganizationMigration } from "../test/organizationReadiness";
 
-async function fixture() {
+async function fixture(options: { beforeCutover?: boolean } = {}) {
   const t = createTestEnv();
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./platform/betterAuth/**/*.*s"));
+  if (!options.beforeCutover) await completeOrganizationMigration(t);
   async function user(role = "user") {
     const now = Date.now();
     return t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
@@ -16,22 +18,33 @@ async function fixture() {
   }
   async function client(userId: string, purpose = "application") {
     const now = Date.now();
+    const factor = await t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: userId }] });
     const session = await t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
       userId, token: randomUUID(), authPurpose: purpose, expiresAt: now + 86_400_000, createdAt: now, updatedAt: now,
       assuranceVersion: 1, authMethod: "password", primaryVerifiedAt: now, authenticatedAt: now,
+      ...(factor?.verified ? { strongVerifiedAt: now, strongFactorId: factor._id, strongFactorType: "totp" } : {}),
     } } });
     return { client: t.withIdentity({ subject: userId, sessionId: session._id }), session };
   }
   const alice = await user(); const bob = await user(); const outsider = await user(); const operator = await user("admin");
   const a = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: alice._id });
   const b = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: bob._id });
-  await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: b.organizationId }], update: { experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE } } });
+  await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: {
+    userId: bob._id, secret: "isolation-factor", backupCodes: "isolation-codes", verified: true,
+  } } });
+  await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: bob._id }], update: { twoFactorEnabled: true } } });
+  await enrollOrganizationAdminForTest(t, { organizationId: b.organizationId, userId: bob._id });
   await t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: { organizationId: b.organizationId, userId: alice._id, role: "member", createdAt: Date.now() } } });
   const aliceAuth = await client(alice._id); const bobAuth = await client(bob._id);
   const aliceClient = aliceAuth.client; const bobClient = bobAuth.client;
-  const aProject = await aliceClient.mutation(api.tenantProjects.create, { organizationId: a.organizationId, name: "A private", description: "Private" });
-  const bProject = await aliceClient.mutation(api.tenantProjects.create, { organizationId: b.organizationId, name: "B private", description: "Private" });
-  const bobProject = await bobClient.mutation(api.tenantProjects.create, { organizationId: b.organizationId, name: "Bob private", description: "Private" });
+  // Pre-cutover cases retain historical tagged rows; no strict public writer is
+  // usable before a verified receipt. Normal fixtures use the real public API.
+  const create = (client: typeof aliceClient, ownerId: string, organizationId: string, name: string) => options.beforeCutover
+    ? t.run(ctx => ctx.db.insert("projects", { organizationId, ownerId, name, description: "Private", createdAt: Date.now() }))
+    : client.mutation(api.tenantProjects.create, { organizationId, name, description: "Private" });
+  const aProject = await create(aliceClient, alice._id, a.organizationId, "A private");
+  const bProject = await create(aliceClient, alice._id, b.organizationId, "B private");
+  const bobProject = await create(bobClient, bob._id, b.organizationId, "Bob private");
   return { t, user, client, alice, bob, outsider, operator, a, b, aliceAuth, aliceClient, bobClient, aProject, bProject, bobProject };
 }
 
@@ -126,7 +139,7 @@ describe("explicit tenant context and private resource isolation", () => {
   });
 
   test("unmapped legacy data never becomes tenant data by fallback; legacy personal access is preserved", async () => {
-    const f = await fixture();
+    const f = await fixture({ beforeCutover: true });
     const legacyUser = await f.user(); const legacy = (await f.client(legacyUser._id)).client;
     const id = await legacy.mutation(api.projects.create, { name: "Legacy", description: "Preserve" });
     expect(await legacy.query(api.projects.get, { id })).toMatchObject({ ownerId: legacyUser._id });
@@ -134,14 +147,14 @@ describe("explicit tenant context and private resource isolation", () => {
     expect(mapping).toMatchObject({ mappingRequired: true, personalOrganizationId: null });
     await expect(f.aliceClient.query(api.projects.list, {})).rejects.toThrow("EXPLICIT_ORGANIZATION_CONTEXT_REQUIRED");
     const ownedLegacy = await f.t.run(ctx => ctx.db.insert("projects", { name: "Old Alice", description: "Preserve", ownerId: f.alice._id, createdAt: Date.now() }));
-    expect(await f.aliceClient.query(api.tenantProjects.get, { organizationId: f.a.organizationId, id: ownedLegacy })).toBeNull();
+    await expect(f.aliceClient.query(api.tenantProjects.get, { organizationId: f.a.organizationId, id: ownedLegacy })).rejects.toThrow("ORGANIZATION_MIGRATION_REQUIRED");
     const preserved = await f.t.run(ctx => ctx.db.get(ownedLegacy));
     expect(preserved).toMatchObject({ name: "Old Alice" });
     expect(preserved?.organizationId).toBeUndefined();
   });
 
   test("explicit personal legacy bridge binds the captured ID without assigning scope to historical rows", async () => {
-    const f = await fixture();
+    const f = await fixture({ beforeCutover: true });
     const user = await f.user();
     const personal = await f.t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: user._id });
     const client = (await f.client(user._id)).client;
@@ -149,16 +162,18 @@ describe("explicit tenant context and private resource isolation", () => {
     expect(await client.query(api.platform.tenantContext.mine, {})).toMatchObject({ legacyPrivateAvailable: true, personalOrganizationId: personal.organizationId });
     expect(await client.query(api.projects.get, { organizationId: personal.organizationId, id })).toMatchObject({ _id: id });
     await expect(client.query(api.projects.list, { organizationId: f.a.organizationId })).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
-    expect(await client.query(api.tenantProjects.get, { organizationId: personal.organizationId, id })).toBeNull();
+    await expect(client.query(api.tenantProjects.get, { organizationId: personal.organizationId, id })).rejects.toThrow("ORGANIZATION_MIGRATION_REQUIRED");
     expect((await f.t.run(ctx => ctx.db.get(id)))?.organizationId).toBeUndefined();
+    await expect(client.mutation(api.tenantProjects.create, { organizationId: personal.organizationId, name: "Too early", description: "Denied" })).rejects.toThrow("ORGANIZATION_MIGRATION_REQUIRED");
+    await completeOrganizationMigration(f.t);
     const scoped = await client.mutation(api.tenantProjects.create, { organizationId: personal.organizationId, name: "New scoped", description: "Explicit" });
-    expect(await client.query(api.projects.get, { organizationId: personal.organizationId, id: scoped })).toBeNull();
-    expect((await client.query(api.tenantProjects.listWithStats, { organizationId: personal.organizationId }))!.map(row => row._id)).toEqual([scoped]);
+    await expect(client.query(api.projects.get, { organizationId: personal.organizationId, id: scoped })).rejects.toThrow("ORGANIZATION_LEGACY_RETIRED");
+    expect((await client.query(api.tenantProjects.listWithStats, { organizationId: personal.organizationId }))!.map(row => row._id)).toEqual(expect.arrayContaining([scoped, id]));
     expect(await f.aliceClient.query(api.platform.tenantContext.mine, {})).toMatchObject({ legacyPrivateAvailable: false });
   });
 
   test("pending customer-admission/member-invitation signup cannot use legacy-private APIs as a provisioning bypass", async () => {
-    const f = await fixture();
+    const f = await fixture({ beforeCutover: true });
     const pending = await f.user();
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: pending._id }], update: { customerAdmission: "public-signup" } } });
     const pendingClient = (await f.client(pending._id)).client;

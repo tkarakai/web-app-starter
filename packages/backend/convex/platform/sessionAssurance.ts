@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalMutation, query } from "../_generated/server";
 import { evaluateSession, identitySession, readSession } from "./sessionPolicy";
+import { sha256Hex } from "./tokenHash";
 
 /** Self-service status only. It grants no access to application or administrator data. */
 export const status = query({
@@ -51,7 +52,12 @@ export const recordProof = internalMutation({
       if (!args.passwordHash || account?.password !== args.passwordHash) throw new Error("REAUTHENTICATION_REQUIRED");
       update = { assuranceVersion: 1, authMethod: "password", primaryVerifiedAt: now, authenticatedAt: session.authenticatedAt ?? session.createdAt };
     } else if (args.kind === "recovery") {
-      update = { recoveryOnly: true, recoveryFactorId: "", strongVerifiedAt: 0, strongFactorId: "", strongFactorType: "" };
+      const factor = args.factorId ? await ctx.runQuery(components.betterAuth.adapter.findOne, {
+        model: "twoFactor", where: [{ field: "_id", value: args.factorId }],
+      }) : null;
+      if (!factor || factor.userId !== user._id || !factor.verified || !args.factorSecret || factor.secret !== args.factorSecret) throw new Error("RECOVERY_REQUIRED");
+      update = { recoveryOnly: true, recoveryFactorId: "", recoverySourceFactorId: factor._id,
+        recoverySourceFactorProof: sha256Hex(factor.secret), strongVerifiedAt: 0, strongFactorId: "", strongFactorType: "" };
     } else {
       if (session.assuranceVersion !== 1 || !session.primaryVerifiedAt) throw new Error("REAUTHENTICATION_REQUIRED");
       if (!args.factorId) throw new Error("MFA_REQUIRED");

@@ -4,6 +4,7 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
+import { verifyPassword } from "better-auth/crypto";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { v } from "convex/values";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
@@ -26,7 +27,7 @@ import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTem
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
-import { readBackupCodes } from "./recoveryCodes";
+import { decodeBackupCodes, readBackupCodes } from "./recoveryCodes";
 import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields } from "./sessionFields";
 import { customerAdmissionFields } from "./customerAdmissionFields";
@@ -527,6 +528,38 @@ export const createAuthOptions = (
         // onRequest is not run by direct Better Auth API calls. Apply the same boundary there.
         const code = privacyBoundaryCode(endpoint.path ?? "");
         if (code) throw new APIError("FORBIDDEN", { code, message: code });
+        if (endpoint.path === "/reset-password") {
+          // Direct auth.api calls skip onRequest. Capture the native capability
+          // before Better Auth atomically consumes it, for both entry points.
+          const token = endpoint.body?.token ?? endpoint.query?.token;
+          const verification = typeof token === "string"
+            ? await endpoint.context.internalAdapter.findVerificationValue(`reset-password:${token}`) : null;
+          pendingResetUserId = verification && new Date(verification.expiresAt).getTime() > Date.now() ? verification.value : null;
+        }
+        if (endpoint.path === "/two-factor/verify-backup-code") {
+          const incrementOne = endpoint.context.adapter.incrementOne;
+          endpoint.context.adapter.incrementOne = async input => {
+            if (input.model === "twoFactor" && typeof input.set?.backupCodes === "string") {
+              const factor = await endpoint.context.adapter.findOne<{ id: string; userId: string; backupCodes: string }>({ model: "twoFactor", where: input.where });
+              if (factor && await requireActionCtx(ctx).runQuery(components.betterAuth.organizationSecurity.hasEnrollment, { userId: factor.userId })) {
+                const previous = await decodeBackupCodes(factor.backupCodes);
+                const next = await decodeBackupCodes(input.set.backupCodes);
+                const code = endpoint.body?.code;
+                if (typeof code !== "string" || !previous.includes(code) || next.length !== previous.length - 1
+                  || new Set(previous).size !== previous.length || next.some(value => value === code || !previous.includes(value))
+                  || new Set(next).size !== next.length) throw new APIError("FORBIDDEN", { code: "INVALID_RECOVERY_CODES", message: "INVALID_RECOVERY_CODES" });
+                await requireActionCtx(ctx).runMutation(components.betterAuth.organizationSecurity.consumeRecoveryCode, {
+                  userId: factor.userId, factorId: factor.id, currentCodes: factor.backupCodes, nextCodes: input.set.backupCodes,
+                });
+                // The atomic component CAS already consumed the code. Retain the
+                // adapter's result mapping with an idempotent CAS against that set.
+                return incrementOne({ ...input, where: input.where.map(condition => condition.field === "backupCodes"
+                  ? { ...condition, value: input.set!.backupCodes as string } : condition) });
+              }
+            }
+            return incrementOne(input);
+          };
+        }
         if (endpoint.path !== "/revoke-other-sessions") return;
         // Better Auth deletes these in parallel and silently skips a deletion
         // when its lookup hits Convex's query concurrency limit. Keep the full
@@ -599,6 +632,41 @@ export const createAuthOptions = (
       },
     },
     databaseHooks: {
+      account: {
+        update: {
+          before: async (account, endpoint) => {
+            if (typeof account.password !== "string") return;
+            const path = endpoint?.path;
+            const userId = path === "/reset-password" ? pendingResetUserId : endpoint?.context.session?.user.id;
+            if (!userId) return; // Unsupported/unbound raw updates still meet the mandatory adapter invariant.
+            const actionCtx = requireActionCtx(ctx);
+            if (!await actionCtx.runQuery(components.betterAuth.organizationSecurity.hasEnrollment, { userId })) return;
+            const password = endpoint?.body?.newPassword;
+            const user = await authComponent.getAnyUserById(ctx, userId);
+            if (!user || typeof password !== "string" || password.length > 128) throw new APIError("BAD_REQUEST", { code: "PASSWORD_TOO_WEAK", message: "PASSWORD_TOO_WEAK" });
+            const adminPasswordValidated = validatePasswordStrength(password, user.email, "admin").valid;
+            const authority = await actionCtx.runQuery(components.betterAuth.organizations.adminSecurity, { userId });
+            if (authority.required && !adminPasswordValidated) throw new APIError("BAD_REQUEST", { code: "PASSWORD_TOO_WEAK", message: "PASSWORD_TOO_WEAK" });
+            // Better Auth 1.6 consumes a reset token before this hook, or verifies
+            // the current password for change-password. Keep that native proof,
+            // but move hash + durable enrollment receipts together atomically.
+            if (path !== "/reset-password" && path !== "/change-password") throw new APIError("FORBIDDEN", { code: "AUTH_METHOD_DISABLED", message: "AUTH_METHOD_DISABLED" });
+            if (path === "/change-password" && !endpoint?.context.session?.session.id) throw new APIError("FORBIDDEN", { code: "NOT_AUTHENTICATED", message: "NOT_AUTHENTICATED" });
+            const current = await actionCtx.runQuery(components.betterAuth.adapter.findOne, { model: "account", where: [
+              { field: "userId", value: userId }, { field: "providerId", value: "credential" },
+            ] });
+            if (!current?.password) throw new APIError("FORBIDDEN", { code: "REAUTHENTICATION_REQUIRED", message: "REAUTHENTICATION_REQUIRED" });
+            if (path === "/change-password" && (typeof endpoint?.body?.currentPassword !== "string"
+              || !await verifyPassword({ password: endpoint.body.currentPassword, hash: current.password }))) {
+              throw new APIError("FORBIDDEN", { code: "REAUTHENTICATION_REQUIRED", message: "REAUTHENTICATION_REQUIRED" });
+            }
+            await actionCtx.runMutation(components.betterAuth.organizationSecurity.replaceCredential, {
+              userId, currentHash: current.password, newHash: account.password, adminPasswordValidated,
+              ...(path === "/change-password" ? { sessionId: endpoint?.context.session?.session.id } : {}),
+            });
+          },
+        },
+      },
       session: {
         create: {
           before: async (session, endpoint) => {

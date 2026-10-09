@@ -64,10 +64,14 @@ if [[ "$SKIP_DEPLOY" == false ]]; then
   git -C "$REPO_ROOT" archive "$SHA" | tar -x -C "$TMP_DIR"
   (cd "$TMP_DIR" && bun install --frozen-lockfile >/dev/null)
 
+  # Use current deployment tooling to reject an unsafe historical binary before changing the backend.
+  node "$REPO_ROOT/.github/actions/deploy-convex/organization-target.ts" prepare "$TMP_DIR"
+
   log "Deploying Convex functions (${ENV})"
   (cd "$TMP_DIR/packages/backend" && bunx convex deploy --cmd 'echo "skip build"')
   log "Running pending migrations (${ENV})"
   (cd "$TMP_DIR/packages/backend" && bunx convex run migrations)
+  node "$REPO_ROOT/.github/actions/deploy-convex/organization-target.ts" verify "$TMP_DIR"
 fi
 
 # `convex env` wants a project whose package.json lists convex; give it an empty one.

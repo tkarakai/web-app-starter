@@ -24,16 +24,19 @@ vi.mock("@repo/backend", async importOriginal => ({ ...await importOriginal<type
   files: { listUploads: "files.list", uploadFile: "files.upload", downloadFile: "files.download", deleteUpload: "files.remove" },
   tenantFiles: { listUploads: "tenantFiles.list", uploadFile: "tenantFiles.upload", downloadFile: "tenantFiles.download", deleteUpload: "tenantFiles.remove" },
 } }));
+vi.mock("@web-app-starter/i18n/navigation", () => ({ Link: (props: { href: string; children: React.ReactNode; className?: string }) => <a {...props} /> }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: { useSession: () => ({ data: mocks.browserUserId ? { user: { id: mocks.browserUserId } } : null, isPending: mocks.sessionPending }) } }));
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isAuthenticated: mocks.authenticated, isLoading: mocks.loading }),
   useQuery: (reference: string, args: unknown) => { mocks.query(reference, args); return args === "skip" ? undefined : mocks.data[reference]; },
+  useQueries: (queries: Record<string, { query: string; args: unknown }>) => Object.fromEntries(Object.entries(queries).map(([key, { query, args }]) => { mocks.query(query, args); return [key, mocks.data[query]]; })),
   useMutation: (reference: string) => (args: unknown) => mocks.dispatch(reference, args),
   useAction: (reference: string) => (args: unknown) => mocks.dispatch(reference, args),
 }));
 vi.mock("@/hooks/use-mutation-with-toast", () => ({ useMutationWithToast: (reference: string) => (args: unknown) => mocks.dispatch(reference, args) }));
 
 import { usePersonalDataContext, usePersonalFiles, usePersonalProject, usePersonalProjectMutations, usePersonalProjects, usePersonalProjectStats, usePersonalTaskMutations, usePersonalTasks } from "../../src/hooks/use-personal-data";
+import { readOrganizationSelection, selectOrganization } from "../../src/hooks/organization-selection";
 import { UploadPanel } from "../../src/components/projects/upload-panel";
 import { PersonalDataNotReady } from "../../src/components/projects/personal-data-not-ready";
 
@@ -53,9 +56,63 @@ function activeQueries() { return mocks.query.mock.calls.filter(([, args]) => ar
 describe("personal sample caller context and dispatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear(); window.history.replaceState({}, "", "/");
     mocks.authenticated = true; mocks.loading = false; mocks.browserUserId = "owner"; mocks.sessionPending = false;
     mocks.data = { currentUser: { _id: "owner", role: "user" }, mine: personal(), "tenantProjects.list": [], "tenantProjects.stats": [], "projects.list": [], "projects.stats": [], "tenantTasks.list": [], "tasks.list": [], "tenantFiles.list": [], "files.list": [] };
     mocks.dispatch.mockResolvedValue(projectId);
+  });
+
+  it("requires explicit selection for two memberships and honors authorized member deep links", async () => {
+    const original = personal();
+    mocks.data.mine = { ...original, contexts: [...original.contexts, { ...original.contexts[0], organizationId: "org-b", personal: false, experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE, role: ORG_MEMBER_ROLE }] };
+    const { result } = renderHook(() => ({ context: usePersonalDataContext(), commands: usePersonalProjectMutations() }));
+    expect(result.current.context.state).toBe("unavailable");
+    act(() => selectOrganization("owner", "org-b"));
+    expect(result.current.context.tenant).toEqual({ kind: "tenant", userId: "owner", ownerId: "owner", organizationId: "org-b" });
+    expect(result.current.context.legacy).toBeNull();
+    await result.current.commands.create({ name: "Mine only", description: "" });
+    expect(mocks.dispatch).toHaveBeenCalledWith("tenantProjects.create", { organizationId: "org-b", name: "Mine only", description: "" });
+    expect(window.localStorage.getItem("organization-context:owner")).toBeNull();
+    expect(window.sessionStorage.getItem("organization-context:owner")).toBe("org-b");
+    expect(readOrganizationSelection("different-account")).toBe("org-b"); // A URL is a request, never authority.
+    mocks.dispatch.mockClear();
+    act(() => selectOrganization("owner", "foreign"));
+    expect(result.current.context.state).toBe("unavailable");
+    expect(() => result.current.commands.create({ name: "Denied", description: "" })).toThrow("PERSONAL_CONTEXT_UNAVAILABLE");
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("retires prepared operations across tab-local selection ABA and ignores cross-tab storage", async () => {
+    const original = personal();
+    mocks.data.mine = { ...original, contexts: [...original.contexts, { ...original.contexts[0], organizationId: "org-b", personal: false }] };
+    selectOrganization("owner", "org-a");
+    const { result } = renderHook(() => ({ commands: usePersonalProjectMutations(), files: usePersonalFiles(projectId, tenant) }));
+    const create = result.current.commands.create; const transfer = result.current.files.capture();
+    act(() => window.dispatchEvent(new window.StorageEvent("storage", { key: "organization-context:owner", newValue: "org-b" })));
+    expect(readOrganizationSelection("owner")).toBe("org-a");
+    act(() => selectOrganization("owner", "org-b"));
+    act(() => selectOrganization("owner", "org-a"));
+    expect(() => create({ name: "Old", description: "" })).toThrow("PERSONAL_CONTEXT_CHANGED");
+    expect(() => transfer.download(uploadId)).toThrow("PERSONAL_CONTEXT_CHANGED");
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("does not fallback from an invalid explicit link, including an empty ID", () => {
+    selectOrganization("owner", "org-a");
+    window.history.replaceState({}, "", "/?organizationId=");
+    const { result } = renderHook(() => usePersonalDataContext());
+    expect(result.current).toMatchObject({ state: "unavailable", tenant: null, legacy: null });
+  });
+
+  it("contains reactive access errors and drops previously visible private rows", () => {
+    mocks.data["tenantProjects.list"] = [row(projectId, "org-a")];
+    const { result, rerender } = renderHook(() => usePersonalProjects());
+    expect(result.current.projects).toHaveLength(1);
+    mocks.data["tenantProjects.list"] = new Error("ORGANIZATION_UNAVAILABLE"); rerender();
+    expect(result.current.projects).toBeUndefined();
+    expect(result.current.context.state).toBe("unavailable");
+    mocks.data.mine = new Error("NOT_AUTHENTICATED"); rerender();
+    expect(result.current.context.state).toBe("unavailable");
   });
 
   it("holds loading, disabled, ambiguous, member-only and unmapped states without legacy guessing", () => {
@@ -335,7 +392,7 @@ describe("personal sample caller context and dispatch", () => {
   });
 
   it("renders an explicit localized not-ready status instead of an empty-data fallback", () => {
-    const wrapper = (state: "loading" | "unavailable") => <NextIntlClientProvider locale="en" messages={platformMessages}><PersonalDataNotReady state={state} /></NextIntlClientProvider>;
+    const wrapper = (state: "loading" | "unavailable") => <NextIntlClientProvider locale="en" messages={{ ...platformMessages, ...appMessages }}><PersonalDataNotReady state={state} /></NextIntlClientProvider>;
     const view = render(wrapper("unavailable"));
     expect(view.getByRole("status")).toHaveTextContent(platformMessages.common.error);
     expect(view.getByRole("status")).toHaveAttribute("data-personal-data-state", "unavailable");

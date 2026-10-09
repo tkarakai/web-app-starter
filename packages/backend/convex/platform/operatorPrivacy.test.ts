@@ -37,14 +37,20 @@ async function fixture() {
     return { user: user as Doc<"user">, session: session as Doc<"session">, account, client };
   }
   async function organization(user: Doc<"user">) {
-    const row = await t.mutation(components.betterAuth.adapter.create, { input: { model: "organization", data: {
-      name: "Private customer organization", slug: `private-${user._id}`, personalOwnerId: user._id,
-      createdAt: Date.now(), experience: "personal", lifecycle: "active", metadata: '{"private":"customer-metadata"}',
+    if (user.role === "admin") {
+      // Deliberately mixed authority: a historical operator also has a customer
+      // membership. Do not fabricate a new personal org for that operator.
+      const member = await t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
+        userId: user._id, organizationId: customerOrg.row._id, role: "member", createdAt: Date.now(),
+      } } });
+      return { row: customerOrg.row, member };
+    }
+    const personal = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: user._id });
+    const row = await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: personal.organizationId }], update: {
+      name: "Private customer organization", metadata: '{"private":"customer-metadata"}',
     } } });
-    const member = await t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
-      userId: user._id, organizationId: row._id, role: "org-admin", adminEnrolledAt: Date.now(), createdAt: Date.now(),
-    } } });
-    return { row, member };
+    const member = await t.query(components.betterAuth.adapter.findOne, { model: "member", where: [{ field: "_id", value: personal.memberId }] });
+    return { row: row!, member: member! };
   }
   const operator = await identity("operator", "admin");
   const other = await identity("other-operator", "admin");

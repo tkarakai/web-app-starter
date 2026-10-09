@@ -43,9 +43,10 @@ Use `tenantQuery` / `tenantMutation` from `./platform/tenantFunctions` for organ
 The builders add a **required** `organizationId: v.string()` argument and give handlers
 `ctx.organizationId`, `ctx.organization`, `ctx.user` and `ctx.ownerId`. Do not redefine that argument.
 They enforce live organization-user/session/membership/lifecycle authorization; mutations also rate-limit.
-Unlike `authedQuery`, a tenant query throws on an unavailable context rather than returning signed-out
-`null`. Skip reactive queries until a signed-in, available context has been resolved; handle removal
-and suspension as unavailable state, not an invitation to try another ID silently.
+Like `authedQuery`, a tenant query returns `null` when the session or its required assurance is
+missing or lost. Invalid context, removed membership and a disabled organization still reject.
+Skip reactive queries until a signed-in, available context has been resolved; handle removal
+and suspension as unavailable state, without silently selecting another organization.
 
 For the starter's private-resource policy, persist both organization and owner and check **both**:
 
@@ -110,11 +111,54 @@ The existing `api.projects`, `api.tasks` and `api.files` are a transitional **le
 - The bridge rejects organization-tagged rows. Strict tenant APIs reject untagged rows; an owner
   match never supplies a missing organization ID.
 
-The personal web sample resolves the current account's canonical context before dispatch. New
-projects use scoped APIs. Existing untagged rows remain in the separately authorized legacy-private
-plane; its calls carry the captured personal ID when one exists. Child/transfer actions retain the
-parent plane, and stale-account/scope/unmount callbacks cancel rather than retarget. Loading,
-disabled, ambiguous or unresolved contexts hold safely; no organization selector is supplied here.
+The web sample resolves the current account's canonical context before dispatch. New projects use
+scoped APIs. Existing untagged rows remain in the separately authorized legacy-private plane; its
+calls carry the captured personal ID when one exists. Child/transfer actions retain the parent
+plane, and stale-account/scope/unmount callbacks cancel rather than retarget.
+
+One membership needs no picker. With multiple memberships, the sidebar requires an explicit
+selection. The immutable `organizationId` in an authorized deep link takes precedence over this
+tab's per-account `sessionStorage` preference; an unavailable link never selects another
+organization. Navigation preserves the tab's selection, while other tabs keep their own context.
+Directory cursors, prepared mutations and file transfers belong to their captured context. A
+context switch retires prepared work, including switching away and back to the same organization.
+Reactive access denials remove protected results and offer retry or account-security navigation.
+
+## Organization web journeys
+
+Open **Organization** from the account menu at `/<locale>/dashboard/organization`. An existing
+personal user can start membership management here, resume incomplete setup, verify an
+administrator-strength password, enroll the required authenticator and passkey, and prove that
+two distinct recovery codes were saved. Completion preserves the original organization ID and
+private resources. Contact disclosure requires explicit acknowledgment. The backend checks current
+proof and policy for each operation. Authority completion and member administration additionally
+require preserving-migration readiness; preparatory enrollment remains available before cutover.
+A disabled button is not authority.
+
+Enrolled administrators can page through the member and invitation directories, invite members or
+pending administrators, cancel or resend invitations (including expired deliveries), promote,
+demote, remove, and choose an enrolled contact. Promotion grants administration only after the
+invited member completes their own security enrollment. Membership changes and leaving preserve
+the identity and private ownership, and the server prevents removal of the last effective
+administrator. A designated contact may become unavailable after a legitimate departure or
+demotion; an eligible administrator can designate a new contact. Directory authority never grants
+access to peer-private resources.
+
+Member email links open the public `/<locale>/organization-invitation` page. The organization ID
+and bearer token arrive in the **fragment**, which the client consumes before requests or rendering;
+never move the bearer into query parameters, server logs, link targets or referrers. Pending
+invitation state is stored only in the receiving tab. The page supports existing-account sign-in,
+new invitation-bound registration, mandatory email verification, wrong-account switching and
+retry. Verification does not sign the user in automatically; a return link resumes the saved
+invitation. Accepted pending administrators land in security setup. Ordinary accepted members
+land in their own private data context.
+
+Account security stays available with disabled or missing memberships. Organization administrator
+authenticator replacement stages a new secret beside the live factor and commits only after a
+valid new TOTP and two distinct new recovery codes. The same ceremony serves restricted backup-code
+recovery. Password, passkey and session management continue through the public security APIs;
+raw Better Auth organization routes remain denied. Secret-bearing enrollment and invitation
+surfaces are marked `data-agent-sensitive` and are not native agent capabilities.
 
 Optional organization fields/indexes are only the widening step for existing sample tables. They do
 not migrate historical records. Preserve identities, credentials,

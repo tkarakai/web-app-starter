@@ -23,6 +23,7 @@ import { getLocaleDirection, type Locale, locales, HreflangLinks } from "@web-ap
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ConvexErrorToast } from "@web-app-starter/auth-ui";
 import { APP_ERROR_KEYS } from "@/lib/app-error-keys";
+import { InvitationResume } from "@/components/organizations/invitation-resume";
 
 const raleway = Raleway({
   subsets: ["latin"],
@@ -147,6 +148,7 @@ export default async function LocaleLayout({
               <ConvexClientProvider initialToken={token} convexUrl={publicConfig.convexUrl}>
                 <ConvexErrorToast appErrorKeys={APP_ERROR_KEYS} />
                 <AnnouncementBannerHost hideOnDashboard fixed />
+                <InvitationResume />
                 {children}
               </ConvexClientProvider>
             </PublicConfigProvider>

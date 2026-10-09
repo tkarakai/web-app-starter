@@ -4,14 +4,26 @@ import { browserContracts } from "./browser-contract";
 const browserNames = new Set<string>(browserContracts.map(contract => contract.name));
 export function browserActions(document: Document, navigate: (path: string) => void) {
   let sequence = 0;
+  const registrationId = crypto.randomUUID();
   const controls = new Map<string, HTMLElement>(); const ids = new WeakMap<HTMLElement, string>();
   const secret = (element: Element) => Boolean(element.closest('[data-agent-sensitive], [hidden], [aria-hidden="true"], script, style, noscript'))
     || element.matches('input[type="password"], input[autocomplete="one-time-code"], input[autocomplete="current-password"], input[autocomplete="new-password"], input[name*="token" i], input[name*="secret" i]');
   const visible = (element: HTMLElement) => !secret(element) && element.getClientRects().length > 0 && (!element.checkVisibility || element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }));
+  // Every textual projection shares this boundary, including referenced labels
+  // and rows that contain a mix of public and protected descendants.
+  function visibleText(element: HTMLElement | null) {
+    if (!element || !visible(element)) return "";
+    const nodes = document.createTreeWalker(element, NodeFilter.SHOW_TEXT); const texts: string[] = [];
+    while (nodes.nextNode()) {
+      const parent = nodes.currentNode.parentElement;
+      if (parent && visible(parent) && nodes.currentNode.textContent?.trim()) texts.push(nodes.currentNode.textContent.trim());
+    }
+    return texts.join("\n");
+  }
   function nameOf(element: HTMLElement) {
-    const labelled = element.getAttribute("aria-labelledby")?.split(/\s+/).map(id => document.getElementById(id)?.textContent ?? "").join(" ");
-    const labels = "labels" in element ? Array.from((element as HTMLInputElement).labels ?? []).map(label => label.textContent).join(" ") : "";
-    return (element.getAttribute("aria-label") || labelled || labels || element.getAttribute("placeholder") || element.getAttribute("title") || element.textContent || "").trim().slice(0, 160);
+    const labelled = element.getAttribute("aria-labelledby")?.split(/\s+/).map(id => visibleText(document.getElementById(id))).join(" ");
+    const labels = "labels" in element ? Array.from((element as HTMLInputElement).labels ?? []).map(label => visibleText(label)).join(" ") : "";
+    return (element.getAttribute("aria-label") || labelled || labels || element.getAttribute("placeholder") || element.getAttribute("title") || visibleText(element)).trim().slice(0, 160);
   }
   function safeControl(id: unknown) {
     const element = typeof id === "string" ? controls.get(id) : null;
@@ -27,14 +39,12 @@ export function browserActions(document: Document, navigate: (path: string) => v
       const modal = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')).reverse().find(element => element.getClientRects().length > 0 && (!element.checkVisibility || element.checkVisibility()));
       if (modal && secret(modal)) return { status: "requires_user_action", executed: false, text: "A credential/security ceremony is open. Complete it in the secure UI; its contents are excluded." };
       const scope = modal ?? document.body;
-      const nodes = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT); const texts: string[] = [];
-      while (nodes.nextNode()) { const parent = nodes.currentNode.parentElement; if (parent && visible(parent) && nodes.currentNode.textContent?.trim()) texts.push(nodes.currentNode.textContent.trim()); }
-      const text = texts.join("\n"); const offset = args.offset as number; const controlsOffset = args.controlsOffset as number;
+      const text = visibleText(scope); const offset = args.offset as number; const controlsOffset = args.controlsOffset as number;
       const elements = Array.from(scope.querySelectorAll<HTMLElement>('button, a[href], input:not([type="hidden"]), textarea, select, [contenteditable="true"], [role="button"], [role="tab"], [role="option"], [role="menuitem"], [role="checkbox"], [role="switch"], [role="combobox"]')).filter(visible);
       const candidates = elements.slice(controlsOffset, controlsOffset + 40).map(element => {
-        let id = ids.get(element); if (!id) { id = `control-${++sequence}`; ids.set(element, id); } controls.set(id, element);
-        const row = element.closest('tr, [role="row"], [data-agent-record]');
-        return { controlId: id, row: row?.textContent?.trim().slice(0, 240), expanded: element.getAttribute("aria-expanded") ?? undefined, selected: element.getAttribute("aria-selected") ?? undefined, role: element.getAttribute("role") || element.tagName.toLowerCase(), name: nameOf(element), disabled: element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true", checked: element.getAttribute("aria-checked") ?? (element instanceof HTMLInputElement && element.type === "checkbox" ? String(element.checked) : undefined), value: element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement ? element.value.slice(0, 500) : undefined };
+        let id = ids.get(element); if (!id) { id = `control-${registrationId}-${++sequence}`; ids.set(element, id); } controls.set(id, element);
+        const row = element.closest<HTMLElement>('tr, [role="row"], [data-agent-record]');
+        return { controlId: id, row: row ? visibleText(row).slice(0, 240) : undefined, expanded: element.getAttribute("aria-expanded") ?? undefined, selected: element.getAttribute("aria-selected") ?? undefined, role: element.getAttribute("role") || element.tagName.toLowerCase(), name: nameOf(element), disabled: element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true", checked: element.getAttribute("aria-checked") ?? (element instanceof HTMLInputElement && element.type === "checkbox" ? String(element.checked) : undefined), value: element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement ? element.value.slice(0, 500) : undefined };
       });
       const page = { path: document.location.pathname, title: document.title.slice(0, 160), text: text.slice(offset, offset + 5000) };
       const rows: typeof candidates = [];

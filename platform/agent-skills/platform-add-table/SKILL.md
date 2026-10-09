@@ -29,11 +29,18 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
   resolve live customer/membership/lifecycle authority, and reject unavailable contexts rather than
   returning signed-out `null`. Persist and check organization **and** owner; see
   [organization context](../../docs/organization-context.md) for the tenant-table pattern and
-  legacy-private bridge limits. Capture the ID before async work; never fall back to a session preference.
+  legacy-private bridge limits. Strict tenant reads/writes require the verified deployment receipt;
+  missing session assurance returns `null`, while invalid context or cutover state is rejected.
+  Capture the ID before async work; never fall back to a session preference.
   Use `appOperatorQuery` / `appOperatorMutation` only for **canonical app-operator** controls; organization
   administrators do not qualify. Operator writes additionally require recent authentication. Do not substitute `auth.getCurrentUser`, raw Better Auth user lookup or account MFA flags
   for authorization; those can represent a limited enrollment/recovery session. See
   [session assurance](../../docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+  Org-admin security has `scope: user` and `securityScope: admin`; never use the latter to grant
+  operator authority. For custom member-management wrappers use `requireOrgAdminSession` with
+  the exact organization and recent proof for writes. Use the supported enrollment/replacement
+  APIs, never raw adapter writes to roles, receipts or policy; see
+  [organization security](../../docs/organization-security.md).
   Use plain `query`/`mutation` only for data that is deliberately public.
 - **Own your rows.** For tenant data store `organizationId: v.string()` and `ownerId: v.string()`
   and index both (`by_organization_owner`). Identity-private rows use the owner index (`by_owner`). Every read filters by
@@ -56,7 +63,13 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
 
 1. **Schema.** Add the table at the end of `packages/backend/convex/schema.ts`, with indexes for
    every query you will run.
-2. **Functions.** Create `packages/backend/convex/<table>.ts` with the queries and mutations.
+2. **Functions and cutover.** Create `packages/backend/convex/<table>.ts` with the queries and
+   mutations. Classify its table, exported entry points, scheduled work and any component in
+   `organizationMigrationRegistry.ts`; implement the app-owned bounded backfill and verification
+   stages. Run `./platform/tooling/node-ts.sh platform/tooling/organization-migration-check.ts`.
+   Unknown ownership/shared data must block rather than be assigned by session preference.
+   See `platform/docs/organization-data-migration.md`; populated and empty targets both require
+   source-bound prepare/deploy/verify before strict tenant access.
 3. **Generate types.** `convex/_generated/` must list the new module, or `api.<table>` won't
    typecheck. With `bun run dev` running, Convex regenerates it on save. Without it, run once
    from the backend package:

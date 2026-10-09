@@ -1,5 +1,6 @@
 "use client";
 
+import adminMessages from "@/messages/en.json";
 import messages from "@web-app-starter/i18n/messages/en.json";
 
 import * as React from "react";
@@ -8,6 +9,7 @@ import Link from "next/link";
 import { useSignOut } from "@web-app-starter/auth-ui";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Building2,
   ChevronRight,
   ListChecks,
   LogOut,
@@ -59,6 +61,7 @@ const manageItems = [
     ? [{ label: "Announcements", href: "/manage/announcements", icon: Megaphone }]
     : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
+  { label: adminMessages.adminOrganizations.title, href: "/manage/organizations", icon: Building2 },
   { label: "App operators", href: "/manage/users", icon: Users },
 ];
 

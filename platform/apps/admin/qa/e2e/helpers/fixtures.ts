@@ -125,3 +125,15 @@ export async function createDisposableUser(
 
   return user;
 }
+
+/** A browser test may use real authenticated Convex APIs only on its disposable local backend. */
+export function localConvexUrl(): string {
+  const value = getEnvValue("CONVEX_URL");
+  if (!value) throw new Error("CONVEX_URL is required for local organization acceptance.");
+  const parsed = new URL(value);
+  if (parsed.protocol !== "http:" || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/" ||
+    !(["localhost", "127.0.0.1", "[::1]", "convex.localhost.floci.io"].includes(parsed.hostname) || parsed.hostname.endsWith(".localhost"))) {
+    throw new Error("Organization acceptance only targets a disposable local backend.");
+  }
+  return parsed.origin;
+}

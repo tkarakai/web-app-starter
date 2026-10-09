@@ -1,6 +1,6 @@
 import { ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE, type OrganizationExperience } from "@repo/backend";
 
-/** Personal presentation only. Membership metadata never supplies a guessed organization. */
+/** Authorized membership snapshot. Mutable auth-session preferences never select a data plane. */
 export interface PersonalContextSnapshot {
   userId: string;
   contexts: { organizationId: string; experience: OrganizationExperience; lifecycle: "active" | "disabled" | "provisioning"; role: typeof ORG_ADMIN_MEMBERSHIP_ROLE | typeof ORG_MEMBER_ROLE; personal: boolean }[];
@@ -17,10 +17,19 @@ export interface PersonalDataContext {
   tenant: TenantDataPlane | null;
   legacy: LegacyDataPlane | null;
 }
-export function resolvePersonalDataContext(mine: PersonalContextSnapshot | null | undefined, currentUserId: string | null | undefined, ownerId = currentUserId): PersonalDataContext {
+export function resolvePersonalDataContext(mine: PersonalContextSnapshot | null | undefined, currentUserId: string | null | undefined, ownerId = currentUserId, selectedOrganizationId?: string | null): PersonalDataContext {
   if (mine === undefined || currentUserId === undefined) return { state: "loading", userId: null, ownerId: null, tenant: null, legacy: null };
   if (!mine || !currentUserId || !ownerId) return { state: "unavailable", userId: null, ownerId: null, tenant: null, legacy: null };
   if (mine.userId !== currentUserId) return { state: "loading", userId: null, ownerId: null, tenant: null, legacy: null };
+  if (selectedOrganizationId !== undefined && selectedOrganizationId !== null) {
+    const selected = mine.contexts.find(item => item.organizationId === selectedOrganizationId);
+    if (!selected || !selected.organizationId || selected.lifecycle !== "active") return { state: "unavailable", userId: currentUserId, ownerId, tenant: null, legacy: null };
+    const privateBridge = mine.contexts.length === 1 && selected.personal && selected.experience === "personal"
+      && selected.role === ORG_ADMIN_MEMBERSHIP_ROLE && selected.organizationId === mine.personalOrganizationId && mine.legacyPrivateAvailable === true;
+    return { state: "ready", userId: currentUserId, ownerId,
+      tenant: Object.freeze({ kind: "tenant", userId: currentUserId, ownerId, organizationId: selected.organizationId }),
+      legacy: privateBridge ? Object.freeze({ kind: "legacy", userId: currentUserId, ownerId, organizationId: selected.organizationId }) : null };
+  }
   const personal = mine.contexts.length === 1 ? mine.contexts[0] : undefined;
   if (personal?.personal && personal.role === ORG_ADMIN_MEMBERSHIP_ROLE && personal.experience === "personal"
     && personal.lifecycle === "active" && personal.organizationId

@@ -53,7 +53,10 @@ No magic link option for admins.
 
 ### 3.3 Admin-Controlled Security Policies for Users
 
-Admins configure these from the admin app's security settings. All policies are stored in the `appSettings` table and read at request time.
+Admins configure these from the admin app's security settings. Policies are read at request time.
+`adminPasskeyPolicy` is canonical in the auth component so policy changes and last-org-admin
+protection commit together; other settings remain in `appSettings`. Use the public settings APIs,
+including for this key; see [organization security and storage compatibility](organization-security.md).
 
 | Setting | Key | Options | Default |
 |---|---|---|---|

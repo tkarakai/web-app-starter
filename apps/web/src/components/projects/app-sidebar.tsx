@@ -3,8 +3,8 @@
 import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-controls";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
+import { useRouter } from "@web-app-starter/i18n/navigation";
+import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
@@ -47,6 +47,7 @@ import { normalizeText } from "@/lib/projects";
 import { usePersonalProjects, usePersonalProjectMutations } from "@/hooks/use-personal-data";
 import { AppLogo } from "@/components/app-logo";
 import { appConfig } from "@web-app-starter/app-config";
+import { OrganizationPicker } from "@/components/organizations/organization-picker";
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   displayName: string;
@@ -69,6 +70,7 @@ export function AppSidebar({
   const tp = useTranslations("projects");
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
+  const to = useTranslations("organizations");
 
   const { context, projects: availableProjects } = usePersonalProjects();
   const projects = availableProjects ?? [];
@@ -132,6 +134,7 @@ export function AppSidebar({
         </SidebarHeader>
 
         <SidebarContent>
+          {!isCollapsed && <OrganizationPicker />}
           <SidebarGroup>
             <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="group/projects">
               <div className="flex items-center">
@@ -220,6 +223,9 @@ export function AppSidebar({
                   <DropdownMenuItem onSelect={() => router.push("/dashboard/settings")}>
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => router.push("/dashboard/organization")}>
+                    <Building2 className="me-2 h-4 w-4" />{to("title")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">

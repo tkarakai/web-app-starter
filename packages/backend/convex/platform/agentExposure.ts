@@ -51,8 +51,11 @@ platform("auth", ["getCurrentUser"], "self-service", "self");
 platform("auth", ["viewBackupCodes"], "human-workflow", "denied");
 platform("sessionAssurance", ["status"], "self-service", "self");
 platform("adminInvitations", ["advanceOnboardingStep", "claimInvitation", "completeOnboarding", "getMyOnboardingStatus", "register", "validateToken"], "human-workflow", "denied");
-platform("organizationEnrollment", ["begin", "status", "verifyCredential", "acknowledgeRecovery"], "human-workflow", "denied");
-platform("memberInvitations", ["preview", "claim", "register", "requestVerification", "accept"], "member-management", "tenant");
+platform("organizationEnrollment", ["begin", "status", "verifyCredential", "acknowledgeRecovery", "complete"], "human-workflow", "denied");
+platform("organizationFactorReplacement", ["begin", "complete"], "human-workflow", "denied");
+platform("memberInvitations", ["preview", "claim", "register", "requestVerification", "requestRegistrationVerification", "accept", "issue", "list", "cancel", "resend"], "member-management", "tenant");
+platform("memberManagement", ["directory", "change", "leave", "setContact", "audit"], "member-management", "tenant");
+platform("organizationReadiness", ["status"], "tenant-data", "tenant");
 platform("tenantContext", ["mine", "get"], "tenant-data", "tenant");
 platform("waitlistTokens", ["beginClaim", "finalizeClaim", "releaseClaim", "validate"], "human-workflow", "denied");
 platform("announcements", ["getActivePublic"], LEGACY_APP_OPERATOR_EXPOSURE.control, "control", false, "public");
@@ -85,13 +88,20 @@ for (const [module, names] of Object.entries({
   devSeed: ["isSeeded", "markSeeded", "setupDevUser", "finalizeDevToken", "seed"], devTotp: ["getDevTotpCode"],
   e2eFixtures: ["prepareE2eInvitation", "finalizeE2eInvitation", "createE2eUser"],
   organizationEnrollment: ["snapshot", "recordCredential", "recordRecovery"],
-  memberInvitations: ["registerAccount", "recipientSnapshot"],
+  memberInvitations: ["registerAccount", "recipientSnapshot", "issueAndSchedule", "resendAndSchedule"],
+  memberInvitationDelivery: ["snapshot", "send"],
   recoveryCodes: ["snapshot"], sessionAssurance: ["bindRecoveryReplacement", "recordProof"],
   rateLimits: ["consumeAuthRateLimit", "consumeAuthRequestBudget", "reserveAuthEmail"],
   waitlist: ["join"], waitlistActions: ["generateTokenAndSendEmail"], waitlistTokens: ["create", "hasValidInvitation"],
 })) platform(module, names, "internal-denied", "denied");
 group("files", ["beginUpload", "finishUpload", "discardUnattachedUpload", "authorizeDownload", "inventoryLegacyUploads"], "internal-denied", "denied");
 group("tenantFiles", ["beginUpload", "finishUpload", "authorizeDownload"], "internal-denied", "denied");
+group("organizationMigration", ["begin", "step", "finalize", "status", "maintenance", "recoverForward"], "internal-denied", "denied");
+group("migrations", ["default", "organizationCutover"], "internal-denied", "denied");
+group("component/betterAuth/organizationMigration", ["provisionLegacyPersonal"], "internal-denied", "denied");
+group("component/betterAuth/organizationMigrationBarrier", ["set"], "internal-denied", "denied");
+group("component/betterAuth/organizationSecurity", ["setPolicy", "policy", "initializePolicy", "initializeMigrationPolicy", "verifyMigrationPolicyPage",
+  "hasEnrollment", "consumeRecoveryCode", "replaceCredential", "snapshot", "stageFactor", "stagedFactor", "replaceFactor"], "internal-denied", "denied");
 
 // Raw identity administration obeys the same app-operator target boundary; ceremonies are never tools.
 group("auth/admin", ["list-users"], LEGACY_APP_OPERATOR_EXPOSURE.identity, LEGACY_APP_OPERATOR_EXPOSURE.directory, false, "denied");

@@ -104,11 +104,25 @@ const ACCESS: Record<string, Access> = {
   "platform/organizationEnrollment:status": "user",
   "platform/organizationEnrollment:verifyCredential": "user",
   "platform/organizationEnrollment:acknowledgeRecovery": "user",
+  "platform/organizationEnrollment:complete": "user",
+  "platform/organizationFactorReplacement:begin": "user",
+  "platform/organizationFactorReplacement:complete": "user",
+  "platform/organizationReadiness:status": "user",
+  "platform/memberManagement:directory": "user",
+  "platform/memberManagement:change": "user",
+  "platform/memberManagement:leave": "user",
+  "platform/memberManagement:setContact": "user",
+  "platform/memberManagement:audit": "user",
   "platform/memberInvitations:preview": "public", // holder of an organization-bound random token
   "platform/memberInvitations:claim": "public", // token-holder registration capability exchange
   "platform/memberInvitations:register": "public", // bound registration capability, never a session
   "platform/memberInvitations:requestVerification": "user",
+  "platform/memberInvitations:requestRegistrationVerification": "public", // exact live registration capability
   "platform/memberInvitations:accept": "user",
+  "platform/memberInvitations:issue": "user",
+  "platform/memberInvitations:list": "user",
+  "platform/memberInvitations:cancel": "user",
+  "platform/memberInvitations:resend": "user",
   "platform/tenantContext:mine": "user",
   "platform/tenantContext:get": "user",
   "platform/organizations:list": "admin",
