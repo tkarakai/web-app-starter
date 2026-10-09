@@ -38,9 +38,12 @@ export function saveRecord(root: string, record: WorkflowRecord): void {
   writePublicFile(root, RECORD, JSON.stringify(clean, null, 2) + "\n");
 }
 export function expectedChecks(root: string, isPrivate: boolean): string[] {
+  return checkInventory(isPrivate, file => existsSync(path.join(root, file)));
+}
+export function checkInventory(isPrivate: boolean, hasPackage: (file: string) => boolean): string[] {
   const checks = ["CI Shared Complete"];
   for (const [dir, label] of [["platform/apps/storybook", "Storybook"], ["apps/web", "Web"], ["platform/apps/admin", "Admin"], ["apps/landing", "Landing"]]) {
-    if (existsSync(path.join(root, dir, "package.json"))) checks.push(`CI ${label} Complete`);
+    if (hasPackage(`${dir}/package.json`)) checks.push(`CI ${label} Complete`);
   }
   checks.push("Security Complete");
   if (!isPrivate) checks.push("CodeQL");

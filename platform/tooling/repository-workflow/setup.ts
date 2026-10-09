@@ -46,7 +46,8 @@ export async function setupRepositoryWorkflow(root: string, repo: string, option
   // Existing classic protection and inherited rules remain untouched. The supplement closes gaps.
   if (before.protectionAvailability === "available" && before.defaultBranchExists && discovered
     && labels.every(label => discovered.checks.some(c => c.label === label))
-    && !before.checks.filter(c => ["pull-request", "linear-history", "strict-updates", "admins-and-bypass", "approval-policy", "required-checks"].includes(c.step)).every(c => c.status === "done")) {
+    && (!before.checks.filter(c => ["pull-request", "linear-history", "strict-updates", "admins-and-bypass", "approval-policy"].includes(c.step)).every(c => c.status === "done")
+      || !discovered.checks.every(c => before.effective.requiredChecks.some(required => required.context === c.context && required.appId === c.appId)))) {
     const candidates = (await pages<{ id: number; name: string; source_type: string; source: string }>(`repos/${repo}/rulesets?includes_parents=false`, exec)).filter(r => r.name === NAME);
     if (candidates.length > 1) throw Error("Multiple repository workflow setup rulesets exist; review them before resuming.");
     let current: ManagedRuleset | undefined;

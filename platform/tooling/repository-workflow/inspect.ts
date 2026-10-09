@@ -1,6 +1,6 @@
 import { run, type Run } from "../deploy-setup/io.ts";
-import { discoverChecks, pages, request, statusCode } from "./github.ts";
-import { expectedChecks, readRecord, RECORD, validateRecord } from "./state.ts";
+import { committedChecks, discoverChecks, effectiveVariables, pages, request, statusCode } from "./github.ts";
+import { readRecord, RECORD, validateRecord } from "./state.ts";
 import type { EffectivePolicy, MaintenanceBot, Protection, RepositoryWorkflowStatus, Rule, Ruleset, WorkflowRecord } from "./types.ts";
 
 type Metadata = { full_name: string; default_branch: string; private: boolean; allow_squash_merge: boolean;
@@ -57,7 +57,7 @@ async function privateFree(metadata: Metadata, exec: Run): Promise<boolean> {
   const account = await request<{ login: string; plan?: { name: string } }>(owner.type === "Organization" ? `orgs/${owner.login}` : "user", exec);
   return account.login?.toLowerCase() === owner.login.toLowerCase() && account.plan?.name === "free";
 }
-async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefined, effective: EffectivePolicy, exec: Run): Promise<void> {
+async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefined, effective: EffectivePolicy, variables: Map<string, string> | undefined, exec: Run): Promise<void> {
   if (!sha) throw Error("Default branch commit could not be verified");
   const policy = await request<{ encoding: string; content: string }>(`repos/${repo}/contents/${RECORD}?ref=${sha}`, exec);
   if (policy.encoding !== "base64" || typeof policy.content !== "string") throw Error("Could not inspect the committed owner policy");
@@ -76,10 +76,7 @@ async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefi
     || Object.entries(app.permissions).some(([key, value]) => allowed[key as keyof typeof allowed] !== value)
     || app.permissions.contents !== "write" || app.permissions.pull_requests !== "write"
     || ["administration", "checks", "variables"].some(scope => app.permissions[scope] !== "read")) throw Error("Bot App identity or narrow read-only enforcement inspection permissions differ");
-  const variables = await request<{ total_count: number; variables: { name: string; value: string }[] }>(`repos/${repo}/actions/variables?per_page=100`, exec);
-  if (!Array.isArray(variables.variables) || variables.total_count > variables.variables.length) throw Error("Could not completely inspect maintenance variables");
-  const variable = (name: string) => variables.variables.find(v => v.name === name)?.value;
-  if (variable("PLATFORM_UPDATER_APP_ID") !== String(bot.appId) || variable("PLATFORM_UPDATE_DELIVERY") !== "app") throw Error("Named updater App delivery is not active");
+  if (!variables || variables.get("PLATFORM_UPDATER_APP_ID") !== String(bot.appId) || variables.get("PLATFORM_UPDATE_DELIVERY") !== "app") throw Error("Named updater App delivery is not active or effective variables are unavailable");
   const caller = await request<{ encoding: string; content: string }>(`repos/${repo}/contents/.github/workflows/update-platform.yml?ref=${sha}`, exec);
   if (caller.encoding !== "base64" || typeof caller.content !== "string") throw Error("Could not inspect the committed maintenance caller");
   const source = Buffer.from(caller.content, "base64").toString("utf8");
@@ -116,9 +113,8 @@ export async function inspectRepositoryWorkflow(root: string, repo: string, exec
   let metadata: Metadata;
   try {
     metadata = await request<Metadata>(`repos/${repo}`, exec);
-    if (metadata.full_name?.toLowerCase() !== repo.toLowerCase() || !metadata.default_branch || typeof metadata.private !== "boolean" || !metadata.owner?.login) throw Error("Invalid repository metadata");
+    if (metadata.full_name?.toLowerCase() !== repo.toLowerCase() || !metadata.default_branch || typeof metadata.private !== "boolean" || !metadata.owner?.login || !["User", "Organization"].includes(metadata.owner.type)) throw Error("Invalid repository metadata");
     status.defaultBranch = metadata.default_branch; status.private = metadata.private;
-    status.expectedChecks = expectedChecks(root, metadata.private);
   } catch { unavailable("repository", "Repository metadata is unavailable; sign in with repository access and re-check."); return status; }
   const branch = encodeURIComponent(metadata.default_branch);
   let defaultBranchSha: string | undefined;
@@ -130,6 +126,12 @@ export async function inspectRepositoryWorkflow(root: string, repo: string, exec
   } catch (error) {
     if (statusCode(error) === 404) { status.defaultBranchExists = false; add("default-branch", false, "Default branch does not exist; create only the minimal owner-authorized bootstrap commit, then open a draft adoption PR."); }
     else unavailable("default-branch", "Default branch could not be verified.");
+  }
+  if (defaultBranchSha) {
+    try {
+      status.expectedChecks = await committedChecks(repo, defaultBranchSha, metadata.private, exec);
+      add("committed-inventory", true, "Current app checks come from the verified default-branch commit.");
+    } catch { unavailable("committed-inventory", "The complete committed default-branch app inventory could not be verified."); }
   }
   add("merge-methods", metadata.allow_squash_merge === true && metadata.allow_merge_commit === false && metadata.allow_rebase_merge === false, "Squash must be the sole repository merge method.");
   add("delete-head-branch", metadata.delete_branch_on_merge === true, "Automatic head-branch deletion must be enabled.");
@@ -181,23 +183,23 @@ export async function inspectRepositoryWorkflow(root: string, repo: string, exec
   add("approval-policy", Boolean(record) && status.effective.approvals >= (record?.approvals ?? 0)
     && (!record?.dismissStaleReviews || status.effective.dismissStaleReviews), "Choose the owner approval and stale-review policy; preserve stronger existing requirements.");
   try {
-    status.discovery = await discoverChecks(repo, metadata.default_branch, status.expectedChecks, exec, record?.discovery?.pr) ?? null;
+    status.discovery = status.expectedChecks.length ? await discoverChecks(repo, metadata.default_branch, status.expectedChecks, exec, record?.discovery?.pr) ?? null : null;
     add("first-pr-contexts", Boolean(status.discovery) && status.expectedChecks.every(label => status.discovery!.checks.some(c => c.label === label)), "Open the bootstrap PR as draft, run non-E2E checks, then resume with --discover-pr N to discover exact completion contexts.");
   } catch { unavailable("first-pr-contexts", "Exact first-PR completion contexts and publishers could not be verified."); }
   add("required-checks", Boolean(status.discovery) && status.expectedChecks.every(label => {
     const binding = status.discovery!.checks.find(c => c.label === label);
     return binding && status.effective.requiredChecks.some(c => c.context === binding.context && c.appId === binding.appId);
   }), "Require the discovered exact app completion and Security Complete contexts with their verified app bindings (plus CodeQL on public repositories).");
+  let variables: Map<string, string> | undefined;
   try {
-    const variables = await request<{ total_count: number; variables: { name: string; value: string }[] }>(`repos/${repo}/actions/variables?per_page=100`, exec);
-    if (!Array.isArray(variables.variables) || !Number.isSafeInteger(variables.total_count) || variables.total_count > variables.variables.length) throw Error("Incomplete repository variables");
-    status.e2e.mode = variables.variables.find(v => v.name === "PLATFORM_CI_PR_E2E")?.value ?? "always";
-    const valid = ["always", "on-demand", "off"].includes(status.e2e.mode);
-    status.e2e.enforced = valid && status.e2e.mode !== "off" && status.effective.strict && status.effective.pullRequestRequired && status.checks.find(c => c.step === "required-checks")?.status === "done";
-    add("e2e-policy", valid, `PR E2E policy: ${status.e2e.mode}; ${status.e2e.mode === "off" ? "owner/reviewer must verify full local E2E before merge" : "draft skips E2E; ready/label process applies"}.`, status.e2e.enforced);
+    variables = await effectiveVariables(repo, metadata.owner.type === "Organization", exec);
+    status.e2e.mode = variables.get("PLATFORM_CI_PR_E2E") ?? "always";
+    if (!["always", "on-demand", "off"].includes(status.e2e.mode)) throw Error("Effective PR E2E policy is unknown");
+    status.e2e.enforced = status.e2e.mode !== "off" && status.effective.strict && status.effective.pullRequestRequired && status.checks.find(c => c.step === "required-checks")?.status === "done";
+    add("e2e-policy", true, `PR E2E policy: ${status.e2e.mode}; ${status.e2e.mode === "off" ? "owner/reviewer must verify full local E2E before merge" : "draft skips E2E; ready/label process applies"}.`, status.e2e.enforced);
   } catch { unavailable("e2e-policy", "Live PR E2E policy is unavailable."); }
   for (const bot of record?.maintenanceBots ?? []) {
-    try { await verifyBot(bot, repo, defaultBranchSha, status.effective, exec); status.maintenanceBots.push({ ...bot, verified: true, reason: "Committed owner grant and review requirements, patch/minor caller and repository-only GitHub App credential verified." }); }
+    try { await verifyBot(bot, repo, defaultBranchSha, status.effective, variables, exec); status.maintenanceBots.push({ ...bot, verified: true, reason: "Committed owner grant and review requirements, patch/minor caller and repository-only GitHub App credential verified." }); }
     catch { status.maintenanceBots.push({ ...bot, verified: false, reason: "Committed owner grant and review requirements, bot identity, committed caller, narrow App permissions or active installation credential could not be verified." }); }
   }
   status.autoMerge = typeof metadata.allow_auto_merge === "boolean" ? metadata.allow_auto_merge : null;
