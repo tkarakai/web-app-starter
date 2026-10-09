@@ -8,7 +8,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { appOperatorMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { isAppOperatorIdentity, requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
+import { requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
 
 const userArgs = { userId: v.string() };
 function userResult(user: Doc<"user">) {
@@ -34,43 +34,16 @@ async function deleteSessions(ctx: MutationCtx, userId: string) {
 export const list = authedQuery({
   args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), searchField: v.optional(v.union(v.literal("email"), v.literal("name"))), sortBy: v.optional(v.union(v.literal("email"), v.literal("name"), v.literal("createdAt"))), sortDirection: v.optional(v.union(v.literal("asc"), v.literal("desc"))), role: v.optional(v.union(v.literal("user"), v.literal("admin"))), status: v.optional(v.union(v.literal("active"), v.literal("banned"))), emailVerified: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
-    await requireAppOperator(ctx);
+    const actor = await requireAppOperator(ctx);
     if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
     if (args.role === "user") return { page: [], isDone: true, continueCursor: "" };
     // Name/email index cursors can contain identities excluded by the canonical check below.
     if (args.sortBy && args.sortBy !== "createdAt") throw new Error("UNSUPPORTED_OPERATOR_SORT");
-    const where: { field: "email" | "name" | "role" | "banned" | "emailVerified"; operator: "contains" | "eq" | "ne"; value: string | boolean }[] = [{ field: "role", operator: "eq", value: "admin" }];
-    if (args.search) where.push({ field: args.searchField ?? "email", operator: "contains", value: args.searchField === "name" ? args.search : args.search.toLowerCase() });
-    if (args.status) where.push({ field: "banned", operator: args.status === "banned" ? "eq" : "ne", value: true });
-    if (args.emailVerified !== undefined) where.push({ field: "emailVerified", operator: "eq", value: args.emailVerified });
-    const result = await ctx.runQuery(components.betterAuth.adapter.findMany, { model: "user", paginationOpts: args.paginationOpts, where, sortBy: { field: "createdAt", direction: args.sortDirection ?? "desc" } });
-    if (result.pageStatus === "SplitRequired") throw new Error("OPERATOR_DIRECTORY_SCAN_LIMIT");
-    const page = [];
-    let lastIsOperator = false;
-    for (const user of result.page) {
-      lastIsOperator = await isAppOperatorIdentity(ctx, user as Doc<"user">);
-      if (lastIsOperator) page.push(userResult(user as Doc<"user">));
-    }
-    let isDone = result.isDone;
-    let cursor = result.continueCursor;
-    // Mixed legacy app-admin/organization-user rows remain private, including IDs in pagination cursors.
-    // Advance past a hidden boundary internally until the cursor belongs to an emitted app operator.
-    for (let scanned = 0; !isDone && !lastIsOperator; scanned++) {
-      if (scanned >= 100) throw new Error("OPERATOR_DIRECTORY_SCAN_LIMIT");
-      const next = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-        model: "user", paginationOpts: { cursor, numItems: 1 }, where,
-        sortBy: { field: "createdAt", direction: args.sortDirection ?? "desc" },
-      });
-      if (next.pageStatus === "SplitRequired") throw new Error("OPERATOR_DIRECTORY_SCAN_LIMIT");
-      isDone = next.isDone;
-      cursor = next.continueCursor;
-      for (const user of next.page) {
-        lastIsOperator = await isAppOperatorIdentity(ctx, user as Doc<"user">);
-        if (lastIsOperator) page.push(userResult(user as Doc<"user">));
-      }
-    }
-    // Adapter split cursors may identify filtered organization-user rows; never forward them.
-    return { page, isDone, continueCursor: isDone ? "" : cursor };
+    return ctx.runQuery(components.betterAuth.appOperators.listDirectory, {
+      operatorId: actor.user._id, paginationOpts: args.paginationOpts,
+      search: args.search, searchField: args.searchField, sortDirection: args.sortDirection,
+      status: args.status, emailVerified: args.emailVerified,
+    });
   },
 });
 export const get = authedQuery({ args: userArgs, handler: async (ctx, { userId }) => { await requireAppOperator(ctx); return userResult(await target(ctx, userId)); } });

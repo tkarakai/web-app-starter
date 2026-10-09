@@ -7,7 +7,8 @@ import { components } from "../_generated/api";
 import { requireGrantById } from "./agentAccess";
 import { authorizedSession } from "./sessionPolicy";
 import { operationExposure, LEGACY_APP_OPERATOR_EXPOSURE } from "./agentExposure";
-import { isAppOperatorIdentity, requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
+import { requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
+import { filterAppOperatorEmails } from "./appOperatorDirectory";
 import { ownedTask } from "./agentTaskModel";
 
 /** Resolve current persisted authority, never an injected user/assurance/ownerId snapshot. */
@@ -63,13 +64,7 @@ export async function authorizeNativeOperation(ctx: QueryCtx, supplied: unknown,
 export async function projectNativeResult(ctx: QueryCtx, operation: string, result: unknown) {
   if (operationExposure(operation).target === LEGACY_APP_OPERATOR_EXPOSURE.emailDirectory) {
     if (!Array.isArray(result)) throw new Error("NATIVE_RESULT_DENIED");
-    const emails: string[] = [];
-    for (const email of result) {
-      if (typeof email !== "string") continue;
-      const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email.toLowerCase() }] });
-      if (user && await isAppOperatorIdentity(ctx, user)) emails.push(email);
-    }
-    return emails;
+    return filterAppOperatorEmails(ctx, result.filter((email): email is string => typeof email === "string"), true);
   }
   if (operation === "platform/waitlistTokens:listByEntry" && Array.isArray(result)) {
     return result.map(row => Object.fromEntries(Object.entries(row as Record<string, unknown>).filter(([key]) => key !== "tokenHash")));

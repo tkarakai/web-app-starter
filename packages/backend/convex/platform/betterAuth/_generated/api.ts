@@ -9,6 +9,7 @@
  */
 
 import type * as adapter from "../adapter.js";
+import type * as appOperators from "../appOperators.js";
 import type * as auth from "../auth.js";
 import type * as memberInvitationModel from "../memberInvitationModel.js";
 import type * as memberInvitations from "../memberInvitations.js";
@@ -30,6 +31,7 @@ import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
   adapter: typeof adapter;
+  appOperators: typeof appOperators;
   auth: typeof auth;
   memberInvitationModel: typeof memberInvitationModel;
   memberInvitations: typeof memberInvitations;

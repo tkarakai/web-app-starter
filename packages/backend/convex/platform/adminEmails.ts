@@ -6,15 +6,11 @@ import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { getAuth } from "./functions";
 import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
+import { filterAppOperatorEmails } from "./appOperatorDirectory";
 
 async function appOperatorEmails(ctx: QueryCtx): Promise<string[]> {
   const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
-  const emails: string[] = [];
-  for (const row of rows) {
-    const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: row.email }] });
-    if (user && await isAppOperatorIdentity(ctx, user)) emails.push(user.email);
-  }
-  return emails;
+  return filterAppOperatorEmails(ctx, rows.map(row => row.email));
 }
 
 export const list = internalQuery({

@@ -43,7 +43,8 @@ export const tables = {
     .index("name", ["name"])
     .index("userId", ["userId"])
     .index("username", ["username"])
-    .index("phoneNumber", ["phoneNumber"]),
+    .index("phoneNumber", ["phoneNumber"])
+    .index("role_createdAt", ["role", "createdAt"]),
   session: defineTable({
     expiresAt: v.number(),
     token: v.string(),

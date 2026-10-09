@@ -67,7 +67,7 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
   test("component migration and security primitives have explicit denied transport inventory", async () => {
     const registered = new Map(exposureInventory().map(row => [row.operation, row]));
     let count = 0;
-    for (const name of ["organizationMigration", "organizationMigrationBarrier", "organizationSecurity"]) {
+    for (const name of ["organizationMigration", "organizationMigrationBarrier", "organizationSecurity", "appOperators"]) {
       const exported = await import(`./betterAuth/${name}`) as Record<string, { isPublic?: boolean; isMutation?: boolean; isQuery?: boolean }>;
       for (const [operation, definition] of Object.entries(exported)) {
         if (!definition?.isPublic || !(definition.isMutation || definition.isQuery)) continue;
@@ -75,7 +75,7 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
         expect(registered.get(`component/betterAuth/${name}:${operation}`)).toMatchObject({ classification: "internal-denied", direct: "denied", native: false });
       }
     }
-    expect(count).toBeGreaterThanOrEqual(14);
+    expect(count).toBeGreaterThanOrEqual(16);
   });
 
   test("classifies runtime registered public APIs and reports dispatch's same inventory", async () => {

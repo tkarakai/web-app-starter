@@ -3819,6 +3819,54 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    appOperators: {
+      filterEmails: FunctionReference<
+        "query",
+        "internal",
+        { emails: Array<string> },
+        Array<string | null>,
+        Name
+      >;
+      listDirectory: FunctionReference<
+        "query",
+        "internal",
+        {
+          emailVerified?: boolean;
+          operatorId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          search?: string;
+          searchField?: "email" | "name";
+          sortDirection?: "asc" | "desc";
+          status?: "active" | "banned";
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            banExpires?: number | null;
+            banReason?: string | null;
+            banned: boolean;
+            createdAt: number;
+            email: string;
+            emailVerified: boolean;
+            id: string;
+            image?: string | null;
+            name: string;
+            role: string;
+            twoFactorEnabled: boolean;
+            updatedAt: number;
+          }>;
+        },
+        Name
+      >;
+    };
     memberInvitations: {
       accept: FunctionReference<
         "mutation",

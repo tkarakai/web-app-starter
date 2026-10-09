@@ -47,6 +47,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Operator-directory pages use an indexed stored `createdAt` order and query-bound cursors;
+  ordinary customer rows no longer consume the operator scan budget. Protected-email reads use
+  bounded component-local identity batches while retaining both privacy checks and complete results.
 - Credential-bearing web/admin browser tests publish value-free reports instead of raw
   Playwright actions, captures or authentication server logs. Results retain source locations,
   durations, retries and diagnostic categories. Interactive capture modes are refused.
@@ -63,6 +66,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- Restart operator-directory pagination from the first page after this upgrade. Earlier raw
+  cursors are refused; new cursors are bound to the acting operator, filters and sort direction.
+  Directory order now follows the stored `createdAt` value, including imported accounts whose
+  creation timestamp differs from their insertion order. See [admin agentic surfaces](docs/agentic-announcements.md).
 - Run `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-secret-safe-e2e.ts`
   to migrate the app-owned web test commands and literal Playwright configuration, then
   `bun install` and use `bun run test:e2e`. Use `--app PATH` for another app location.

@@ -64,6 +64,21 @@ the current canonical operator, proof and target policy before executing capture
 Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
 contract, then authorize again.
 
+The operator directory sorts by the stored `createdAt` value and uses a role index so ordinary
+customer accounts do not consume its page scan budget. Ordinary pages accept `numItems` from
+1 to 100. Reactive range replay with `endCursor` can return more than `numItems`; every call
+still examines at most 200 role-matching candidates. A page that cannot establish a safe
+boundary within that budget fails with `OPERATOR_DIRECTORY_SCAN_LIMIT`. Treat that as an
+incomplete read; do not accept partial results or substitute a different cursor. Continuation
+cursors belong to the acting operator and exact query;
+restart from the first page when changing filters, sort direction or account, or after upgrading
+from the earlier raw-cursor format. Do not parse or persist cursors across those changes.
+
+Protected-email reads preserve their complete result and ordering. Canonical identity checks run
+in component-local batches of 100 inputs, including a separate check of native output. Total work
+still grows with the protected-address population; batching reduces cross-component calls without
+caching authority or admitting pending addresses, organization members or personal-organization owners.
+
 The registered public test client remains `pi-announcements` for compatibility. Redirects must
 be `http://127.0.0.1:<port>/callback`. Authorization uses S256 PKCE and state; one-minute codes
 are single-use, and grants last at most fifteen minutes. Writes require verification within five

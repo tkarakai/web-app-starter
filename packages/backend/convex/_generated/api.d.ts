@@ -33,6 +33,7 @@ import type * as platform_agentUsers from "../platform/agentUsers.js";
 import type * as platform_announcements from "../platform/announcements.js";
 import type * as platform_appOperatorAccess from "../platform/appOperatorAccess.js";
 import type * as platform_appOperatorAuditCompatibility from "../platform/appOperatorAuditCompatibility.js";
+import type * as platform_appOperatorDirectory from "../platform/appOperatorDirectory.js";
 import type * as platform_appOperatorIdentity from "../platform/appOperatorIdentity.js";
 import type * as platform_appSettings from "../platform/appSettings.js";
 import type * as platform_auditPrivacy from "../platform/auditPrivacy.js";
@@ -131,6 +132,7 @@ declare const fullApi: ApiFromModules<{
   "platform/announcements": typeof platform_announcements;
   "platform/appOperatorAccess": typeof platform_appOperatorAccess;
   "platform/appOperatorAuditCompatibility": typeof platform_appOperatorAuditCompatibility;
+  "platform/appOperatorDirectory": typeof platform_appOperatorDirectory;
   "platform/appOperatorIdentity": typeof platform_appOperatorIdentity;
   "platform/appSettings": typeof platform_appSettings;
   "platform/auditPrivacy": typeof platform_auditPrivacy;
