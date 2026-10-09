@@ -246,26 +246,22 @@ jobs:
           # Convex backend downloads from hitting GitHub's unauthenticated limit
           # at the same instant.
           sleep $(( (${{ matrix.shard }} - 1) * 20 ))
-          cd apps/web && bunx playwright test --project=chromium --test-list "$RUNNER_TEMP/e2e-shard.txt" --pass-with-no-tests
+          cd apps/web && bun run test:e2e --project=chromium --test-list "$RUNNER_TEMP/e2e-shard.txt" --pass-with-no-tests
         env:
           CI: true
 
-      - name: Show dev logs on failure
-        if: failure()
-        run: |
-          echo "=== Convex Dev Log ==="
-          cat .convex-dev.log 2>/dev/null || echo "No Convex log found"
-          echo ""
-          echo "=== Next.js Dev Log (web) ==="
-          cat .next-web.log 2>/dev/null || echo "No Next.js log found"
+      # Auth email links and ceremony material can appear in server logs.
+      # Publish only the value-free acceptance report below.
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() && !env.ACT }}
         continue-on-error: true
         with:
-          name: blob-report-web-${{ matrix.shard }}
-          path: apps/web/blob-report/
+          name: playwright-report-web-${{ matrix.shard }}
+          path: |
+            apps/web/qa/safe-e2e-report/report.json
+            apps/web/qa/safe-e2e-report/index.html
           retention-days: ${{ vars.PLATFORM_CI_ARTIFACT_RETENTION_DAYS || 7 }}
 
       - name: Upload visual snapshots
@@ -283,44 +279,7 @@ jobs:
         run: |
           JOB_DIR="/act-artifacts/web/e2e/shard-${{ matrix.shard }}"
           mkdir -p "$JOB_DIR/artifacts"
-          [ -d "apps/web/qa/playwright-report" ] && cp -r "apps/web/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-web" 2>/dev/null || true
+          [ -d "apps/web/qa/safe-e2e-report" ] && cp -r "apps/web/qa/safe-e2e-report" "$JOB_DIR/artifacts/playwright-report-web" 2>/dev/null || true
           [ -d "apps/web/qa/e2e/__screenshots__" ] && cp -r "apps/web/qa/e2e/__screenshots__" "$JOB_DIR/artifacts/visual-snapshots-web" 2>/dev/null || true
 
-  # ============================================================
-  # MERGE SHARDED E2E REPORTS
-  # ============================================================
-  e2e-report:
-    name: Merge E2E Reports
-    runs-on: ${{ fromJSON(startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
-    needs: [changes, e2e]
-    # Only a failed run needs the report: shards upload their blob reports on
-    # failure, and a green run would merge nothing (and spend a billed job).
-    # NOTE: the `env` context is not available in a job-level `if` — using it
-    # here makes GitHub reject the entire workflow file at parse time.
-    if: ${{ always() && needs.e2e.result == 'failure' }}
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.git_sha || github.sha }}
-      - uses: ./.github/actions/setup-bun
-
-      - name: Download blob reports
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          path: apps/web/all-blob-reports
-          pattern: blob-report-web-*
-          merge-multiple: true
-
-      - name: Merge into HTML report
-        run: cd apps/web && bunx playwright merge-reports --reporter=html ./all-blob-reports
-        env:
-          PLAYWRIGHT_HTML_OUTPUT_DIR: qa/playwright-report
-
-      - name: Upload merged report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        continue-on-error: true
-        with:
-          name: playwright-report-web
-          path: apps/web/qa/playwright-report/
-          retention-days: ${{ vars.PLATFORM_CI_ARTIFACT_RETENTION_DAYS || 7 }}
+  # Each failed shard publishes its own value-free HTML/JSON report.

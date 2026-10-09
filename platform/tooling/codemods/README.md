@@ -55,3 +55,12 @@ existing mappings. It supports `--check` and `--backend PATH`; its empty output 
 the inventory check until app-owned dispositions and executable backfills are reviewed. It never
 changes database records or guesses tenant context. See the
 [organization cutover guide](../../docs/organization-data-migration.md) for deployment verification.
+
+## Credential-safe browser evidence
+
+`v2-secret-safe-e2e.ts [--check] [--app PATH] [ROOT]` migrates the app-owned web E2E
+commands, literal Playwright reporter/capture settings, and a missing root Playwright declaration
+using the app's existing version. It preserves other config values and scripts, refuses dynamic
+configurations/custom commands and symlinked targets, and performs no install or browser run.
+Run `bun install` afterward. Interactive capture modes are intentionally unsupported by the safe
+runner. See [testing](../../docs/testing.md#credential-safe-browser-reports).

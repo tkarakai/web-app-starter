@@ -286,12 +286,19 @@ AGENT_LLM_SMOKE=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e agentic-testers.spec.ts
 CI=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e agentic-mcp.spec.ts agentic-surfaces.spec.ts agentic-webmcp-native.spec.ts
+# Cross-app organization privacy/onboarding acceptance (requires apps/web):
+CI=true E2E_ORGANIZATION_AGENTS=true AGENT_MCP_ENABLED=true \
+  bun run --cwd platform/apps/admin test:e2e organization-agent-surfaces.spec.ts
 bun run --cwd packages/backend test:convex agentAccess endpoint-authorization
 bun run --cwd platform/packages/agentic test
 ```
 
 The simulator checks every discoverable schema, representative reads, disposable draft CRUD,
 bootstrap size and request latency. Its report contains no application data or credentials.
+`E2E_ORGANIZATION_AGENTS=true` starts both customer and admin apps for the cross-app tests.
+Operator-only tests remain usable when the optional customer app is removed. For an already
+running target, set `E2E_BASE_URL` to the admin origin and `E2E_WEB_BASE_URL` to the customer
+origin; local managed tests read the launcher-written customer origin and configured port.
 Browser tests cover actual OAuth/one-use consent/PKCE, audience/disable controls, native CRUD,
 A2A lifecycle and WebMCP registration/page bindings. Unit/backend tests cover policy changes,
 expiry, replay, schema bounds, protected identities, safe results and durable task behavior.

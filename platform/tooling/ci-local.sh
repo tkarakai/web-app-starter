@@ -287,8 +287,12 @@ save_e2e_artifacts() {
 
   mkdir -p "$ARTIFACTS_DIR/$APP_NAME"
 
-  # Playwright report
-  if [ -d "$APP_DIR/qa/playwright-report" ]; then
+  # Authenticated apps publish only value-free reports, never stale raw assets.
+  if [[ "$APP_NAME" == "web" || "$APP_NAME" == "admin" ]]; then
+    if [ -d "$APP_DIR/qa/safe-e2e-report" ]; then
+      cp -r "$APP_DIR/qa/safe-e2e-report" "$ARTIFACTS_DIR/$APP_NAME/playwright-report"
+    fi
+  elif [ -d "$APP_DIR/qa/playwright-report" ]; then
     cp -r "$APP_DIR/qa/playwright-report" "$ARTIFACTS_DIR/$APP_NAME/playwright-report"
   fi
 
@@ -520,7 +524,11 @@ else
     echo -e "  ${BOLD}Running E2E tests ($APP)...${NC}"
     E2E_EXIT=0
     pushd "$(app_dir "$APP")" > /dev/null
-    PLAYWRIGHT_HTML_OPEN=never bunx playwright test --reporter=list || E2E_EXIT=$?
+    if [[ "$APP" == "web" || "$APP" == "admin" ]]; then
+      bun run test:e2e --reporter=list || E2E_EXIT=$?
+    else
+      PLAYWRIGHT_HTML_OPEN=never bunx playwright test --reporter=list || E2E_EXIT=$?
+    fi
     popd > /dev/null
     if [ $E2E_EXIT -eq 0 ]; then
       print_success "E2E tests passed ($APP)"
@@ -539,7 +547,11 @@ else
     print_warning "Failed E2E reports:"
     for FAILED_APP in "${E2E_FAILED_APPS[@]}"; do
       echo -e "  ${YELLOW}$FAILED_APP${NC}"
-      echo -e "    npx playwright show-report $(app_dir "$FAILED_APP")/qa/playwright-report"
+      if [[ "$FAILED_APP" == "web" || "$FAILED_APP" == "admin" ]]; then
+        echo -e "    $(app_dir "$FAILED_APP")/qa/safe-e2e-report/index.html"
+      else
+        echo -e "    npx playwright show-report $(app_dir "$FAILED_APP")/qa/playwright-report"
+      fi
       echo -e "    .ci-local-artifacts/$FAILED_APP/playwright-report/index.html"
     done
     exit 1

@@ -47,6 +47,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Credential-bearing web/admin browser tests publish value-free reports instead of raw
+  Playwright actions, captures or authentication server logs. Results retain source locations,
+  durations, retries and diagnostic categories. Interactive capture modes are refused.
 - Clarified app-operator, organization-user/org-admin and organization membership-management
   terminology throughout code, UI, help and guidance. Deprecated helper aliases, registered API/tool
   identifiers and legacy stored mode/enrollment values preserve compatibility without rewriting data.
@@ -60,6 +63,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- Run `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-secret-safe-e2e.ts`
+  to migrate the app-owned web test commands and literal Playwright configuration, then
+  `bun install` and use `bun run test:e2e`. Use `--app PATH` for another app location.
+  The codemod preserves unrelated settings and refuses custom command/config expressions
+  for explicit review. Raw reporter/capture overrides and `test:e2e:ui` are no longer supported
+  for credential-bearing suites; use focused headless runs and the safe source diagnostics.
+  See [credential-safe browser reports](docs/testing.md#credential-safe-browser-reports).
 - Replace custom `authClient.admin.*` callers with the guarded app-operator-target APIs. Prefer
   `appOperatorQuery` / `appOperatorMutation`; their older `adminQuery` / `adminMutation` aliases
   remain compatible. Do not use global `admin` or these builders to represent an org-admin, and

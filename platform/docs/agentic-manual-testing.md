@@ -204,7 +204,7 @@ Expected with a supported browser and valid model credentials: **11 tests passed
 
 The real pi tests default to **`openai-codex / gpt-6.1-sol`**. Set `AGENT_TEST_PROVIDER` and `AGENT_TEST_MODEL` to use another configured provider/model. Set `AGENT_LLM_SMOKE=false` to skip model-backed tests while retaining deterministic acceptance.
 
-Sanitized client reports go into `/tmp/admin-agent-evidence`; the browser report is under `platform/apps/admin/qa/playwright-report`.
+Sanitized client reports go into `/tmp/admin-agent-evidence`; the value-free browser report is under `platform/apps/admin/qa/safe-e2e-report`.
 
 When finished:
 

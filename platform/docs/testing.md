@@ -108,13 +108,30 @@ takes much longer than the others, refresh the durations from a full run:
 
 ```bash
 cd apps/web
-CI=true PLAYWRIGHT_JSON_OUTPUT_FILE=/tmp/web-e2e.json bunx playwright test --project=chromium --reporter=json
+CI=true bun run test:e2e --project=chromium --reporter=json
 cd ../..
 ./platform/tooling/node-ts.sh platform/tooling/e2e-shard-plan.ts record \
-  --report /tmp/web-e2e.json --out apps/web/qa/e2e/shard-durations.json
+  --report apps/web/qa/safe-e2e-report/report.json --out apps/web/qa/e2e/shard-durations.json
 ```
 
 Only the proportions matter, so a local run works as well as a CI one. Commit the file.
+
+### Credential-safe browser reports
+
+Run web/admin browser tests through `bun run test:e2e`. Their runner publishes only outcomes,
+source locations, timing and diagnostic categories in `qa/safe-e2e-report/report.json` and
+`index.html`. Passwords, recovery codes, bearer links, raw action titles, console output and
+attachments are excluded. Automatic screenshots, video, traces and AI error snapshots are off.
+The wrapper captures child output and removes its own temporary raw artifacts after execution;
+its exit code still reports test failure. Each failed hosted web shard publishes its own safe report.
+
+`--reporter=list`, `github`, `json` and `html` select safe output formats. Direct Playwright
+execution and custom/blob reporters are refused by the shipped authenticated-app configs;
+`playwright test --list --reporter=json` is allowed for discovery without running ceremonies.
+Interactive `--ui`/`--debug` and capture overrides are unsupported for these credential-bearing
+suites; use a focused headless run and the failing source location to diagnose a failure.
+Server logs retained by the development launcher can contain auth email links. Keep them private
+and do not upload them with browser reports.
 
 ## Playwright E2E Test Pattern
 

@@ -24,12 +24,21 @@ async function main() {
     const bootstrap = JSON.stringify(await client.listTools());
     const matches: { name: string; effect: string }[] = []; let offset: number | null = 0;
     do { const page = await call("capabilities_search", { offset, limit: 15 }); matches.push(...page.matches); offset = page.nextOffset; } while (offset !== null);
+    if (!matches.length) throw new Error("Discovery returned no capabilities");
     if (new Set(matches.map(row => row.name)).size !== matches.length) throw new Error("Duplicate discovery entries");
-    let schemaCharacters = 0;
-    for (let i = 0; i < matches.length; i += 3) {
-      const rows = await call("capabilities_describe", { names: matches.slice(i, i + 3).map(row => row.name) });
-      for (const row of rows) { if (row.inputSchema.type !== "object") throw new Error("Invalid input schema"); schemaCharacters += JSON.stringify(row.inputSchema).length; }
+    let schemaCharacters = 0; let describedCount = 0;
+    // Schema descriptions are independent reads. Bound concurrency to three;
+    // discovery pagination, representative reads and draft mutations stay serial.
+    for (let i = 0; i < matches.length; i += 9) {
+      const batches = [0, 3, 6].map(offset => matches.slice(i + offset, i + offset + 3).map(row => row.name)).filter(names => names.length);
+      const described = await Promise.all(batches.map(async names => {
+        const rows = await call("capabilities_describe", { names });
+        if (!Array.isArray(rows) || rows.length !== names.length || rows.some((row: { name: string }, index: number) => row?.name !== names[index])) throw new Error("Describe did not return every requested capability");
+        return rows;
+      }));
+      for (const rows of described) for (const row of rows) { if (!row.inputSchema || Array.isArray(row.inputSchema) || row.inputSchema.type !== "object") throw new Error("Invalid input schema"); schemaCharacters += JSON.stringify(row.inputSchema).length; describedCount++; }
     }
+    if (describedCount !== matches.length) throw new Error("Describe coverage does not match discovery");
     const reads = ["account_currentUser", "account_assurance", "account_onboardingStatus", "account_ownPasskeys", "announcements_list", "announcements_active", "settings_keys", "settings_getEmailTemplate", "settings_getVerificationEmailTemplate", "security_getMfaPolicy", "security_getEmailVerificationPolicy", "admins_listProtected", "integrations_getStatus", "profile_get", "profile_getLocale", "surfaces_configuration"];
     for (const name of reads) await execute(name);
     for (const name of ["users_list", "invitations_list", "waitlist_list", "audit_list"]) await execute(name, { paginationOpts: { numItems: 5, cursor: null } });

@@ -45,6 +45,10 @@ starter upgrade checks use the root scripts):
 Artifacts (coverage reports, Playwright reports, visual snapshots and dev logs) are saved to
 `.ci-local-artifacts/`. Each run replaces the preceding run's local artifacts; copy evidence you
 need to retain before starting another run.
+Web/admin browser reports contain only outcomes, source locations, timings and diagnostic
+categories; their credential-bearing raw browser output is not retained by the test wrapper.
+Development server logs in the local artifact directory can contain auth email links and must
+stay private. Hosted web/admin jobs upload only the safe report files.
 
 Use `CI=true` for full local CI and standalone E2E (`CI=true bun run test:e2e`).
 Web's Playwright configuration then uses one worker and retries instead of local parallel

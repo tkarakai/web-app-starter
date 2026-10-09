@@ -204,18 +204,12 @@ jobs:
           working-directory: platform/apps/admin
 
       - name: Run Playwright tests
-        run: cd platform/apps/admin && bunx playwright test --project=chromium
+        run: cd platform/apps/admin && bun run test:e2e --project=chromium
         env:
           CI: true
 
-      - name: Show dev logs on failure
-        if: failure()
-        run: |
-          echo "=== Convex Dev Log ==="
-          cat .convex-dev.log 2>/dev/null || echo "No Convex log found"
-          echo ""
-          echo "=== Next.js Dev Log (admin) ==="
-          cat .next-admin.log 2>/dev/null || echo "No Next.js log found"
+      # Auth email links and ceremony material can appear in server logs.
+      # Publish only the value-free acceptance report below.
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -223,7 +217,9 @@ jobs:
         continue-on-error: true
         with:
           name: playwright-report-admin
-          path: platform/apps/admin/qa/playwright-report/
+          path: |
+            platform/apps/admin/qa/safe-e2e-report/report.json
+            platform/apps/admin/qa/safe-e2e-report/index.html
           retention-days: ${{ vars.PLATFORM_CI_ARTIFACT_RETENTION_DAYS || 7 }}
 
       - name: Upload visual snapshots
@@ -241,5 +237,5 @@ jobs:
         run: |
           JOB_DIR="/act-artifacts/admin/e2e"
           mkdir -p "$JOB_DIR/artifacts"
-          [ -d "platform/apps/admin/qa/playwright-report" ] && cp -r "platform/apps/admin/qa/playwright-report" "$JOB_DIR/artifacts/playwright-report-admin" 2>/dev/null || true
+          [ -d "platform/apps/admin/qa/safe-e2e-report" ] && cp -r "platform/apps/admin/qa/safe-e2e-report" "$JOB_DIR/artifacts/playwright-report-admin" 2>/dev/null || true
           [ -d "platform/apps/admin/qa/e2e/__screenshots__" ] && cp -r "platform/apps/admin/qa/e2e/__screenshots__" "$JOB_DIR/artifacts/visual-snapshots-admin" 2>/dev/null || true

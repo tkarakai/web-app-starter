@@ -4,9 +4,13 @@ import { spawn } from "node:child_process";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect, type Page } from "@playwright/test";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@repo/backend";
 import { fillStable, signInAsAdmin } from "./helpers/auth";
+import { localConvexUrl } from "./helpers/fixtures";
+test.use({ trace: "off", screenshot: "off" });
 const productRoot = resolve(__dirname, "../../../../..");
-async function runTester(page: Page, origin: string, user: { email: string; password: string }, script: string, args: string[]) {
+async function runTester(page: Page, origin: string, user: { email: string; password: string }, script: string, args: string[], completionTimeoutMs = 120_000) {
   const child = spawn("bun", [script, "--origin", origin, ...args], { cwd: productRoot, env: { ...process.env, AGENT_NO_OPEN: "true" }, stdio: ["ignore", "pipe", "pipe"] });
   let output = ""; let errors = ""; let accept!: (value: string) => void;
   const urlPromise = new Promise<string>((resolve, reject) => { accept = resolve; child.once("error", reject); });
@@ -15,13 +19,14 @@ async function runTester(page: Page, origin: string, user: { email: string; pass
   const completion = new Promise<number | null>(resolve => child.once("exit", resolve));
   try {
     const url = await Promise.race([urlPromise, completion.then(() => { throw new Error("Tester exited before authorization"); }), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Tester authorization timeout")), 20_000))]);
-    await page.goto(url); await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
+    try { await page.goto(url); } catch { throw new Error("Private authorization navigation failed"); }
+    await expect.poll(() => /sign-in\?.*agent_return=/.test(page.url()), { message: "Authorization reaches sign-in" }).toBe(true);
     await fillStable(page, "#email", user.email); await page.locator('form:has(#email) button[type="submit"]').click();
     await fillStable(page, "#password", user.password); await page.locator('form:has(#password) button[type="submit"]').click();
     await page.getByRole("button", { name: "Authorize app-operator agent" }).click();
     await expect(page.getByRole("heading", { name: "Authenticated", exact: true })).toBeVisible();
     await expect(page.getByText("Return to the admin agent terminal. You can close this tab.", { exact: true })).toBeVisible();
-    const exit = await Promise.race([completion, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Tester completion timeout")), 120_000))]);
+    const exit = await Promise.race([completion, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Tester completion timeout")), completionTimeoutMs))]);
     // Remove the initial OAuth URL before attaching/logging a report.
     const safe = output.replace(/https?:\/\/[^\s]+\/api\/agent\/authorize\?[^\s]+/g, "[authorization URL omitted]");
     if (exit !== 0) throw new Error(`Tester failed (${exit}): ${errors}\n${safe}`);
@@ -29,21 +34,33 @@ async function runTester(page: Page, origin: string, user: { email: string; pass
   } finally { if (child.exitCode === null) child.kill("SIGTERM"); }
 }
 for (const surface of ["mcp", "cli", "a2a"] as const) test(`independent ${surface} simulator validates the full catalogue and measures performance`, async ({ page, baseURL }, testInfo) => {
-  test.skip(process.env.AGENT_SIMULATORS !== "true", "Explicit all-capability simulator run"); test.setTimeout(150_000);
+  test.skip(process.env.AGENT_SIMULATORS !== "true", "Explicit all-capability simulator run");
+  // Full-catalogue A2A uses a durable task for each request. This total journey
+  // budget does not change the client's 30s per-task/network or security limits.
+  test.setTimeout(surface === "a2a" ? 210_000 : 150_000);
   const user = await signInAsAdmin(page); const origin = new URL(baseURL!).origin;
+  const tokenResponse = await page.request.get(origin + "/api/auth/convex/token"); expect(tokenResponse.status()).toBe(200);
+  const client = new ConvexHttpClient(localConvexUrl()); client.setAuth((await tokenResponse.json()).token);
+  const original = await client.query(api.platform.agentSurfaces.configuration, {}); expect(original).toBeTruthy();
+  try {
   await page.goto("/configure/features");
   const title = surface === "mcp" ? "MCP server" : surface === "cli" ? "App-operator CLI" : "A2A";
   const toggle = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(toggle).toBeEnabled(); if (!await toggle.isChecked()) await toggle.click(); await expect(toggle).toBeChecked();
-  const output = await runTester(page, origin, user, "platform/packages/announcement-agent/src/simulator.ts", ["--surface", surface]);
+  const output = await runTester(page, origin, user, "platform/packages/announcement-agent/src/simulator.ts", ["--surface", surface], surface === "a2a" ? 180_000 : 120_000);
   const summary = output.slice(output.indexOf("{\n"));
   process.stdout.write(summary);
   if (process.env.AGENT_EVIDENCE_DIR) { await mkdir(process.env.AGENT_EVIDENCE_DIR, { recursive: true }); await writeFile(resolve(process.env.AGENT_EVIDENCE_DIR, `${surface}-simulator.json`), summary); }
   expect(output).toContain('"disposableDraftCleaned": true'); expect(output).toContain('"capabilities":');
   await testInfo.attach(`${surface}-measurements`, { body: output, contentType: "application/json" });
+  } finally { await client.mutation(api.platform.agentSurfaces.setEnabled, { surface, enabled: original!.surfaces[surface].enabled }); }
 });
 for (const surface of ["mcp", "cli", "a2a"] as const) test(`pi conversation discovers and manages a draft through ${surface}`, async ({ page, baseURL }, testInfo) => {
   test.skip(process.env.AGENT_LLM_SMOKE !== "true", "Explicit provider-backed pi acceptance"); test.setTimeout(150_000);
   const user = await signInAsAdmin(page); const origin = new URL(baseURL!).origin;
+  const tokenResponse = await page.request.get(origin + "/api/auth/convex/token"); expect(tokenResponse.status()).toBe(200);
+  const client = new ConvexHttpClient(localConvexUrl()); client.setAuth((await tokenResponse.json()).token);
+  const original = await client.query(api.platform.agentSurfaces.configuration, {}); expect(original).toBeTruthy();
+  try {
   await page.goto("/configure/features"); const title = surface === "mcp" ? "MCP server" : surface === "cli" ? "App-operator CLI" : "A2A";
   const toggle = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(toggle).toBeEnabled(); if (!await toggle.isChecked()) await toggle.click(); await expect(toggle).toBeChecked();
   const name = `Pi full-surface ${surface} ${Date.now()}`;
@@ -61,4 +78,5 @@ for (const surface of ["mcp", "cli", "a2a"] as const) test(`pi conversation disc
   if (process.env.AGENT_EVIDENCE_DIR) { await mkdir(process.env.AGENT_EVIDENCE_DIR, { recursive: true }); await writeFile(resolve(process.env.AGENT_EVIDENCE_DIR, `${surface}-pi.json`), JSON.stringify(report, null, 2) + "\n"); }
   await page.goto(origin + "/manage/announcements"); await expect(page.getByText(name, { exact: true })).toHaveCount(0);
   await testInfo.attach(`${surface}-pi-conversation`, { body: output, contentType: "text/plain" });
+  } finally { await client.mutation(api.platform.agentSurfaces.setEnabled, { surface, enabled: original!.surfaces[surface].enabled }); }
 });
