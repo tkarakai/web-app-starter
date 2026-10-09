@@ -71,6 +71,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
   conditions or replacing custom selectors; `--check` reports those unresolved jobs.
 - Authentication broadcasts notify other tabs without racing the originating sign-in tab's own
   navigation. The existing cross-tab message protocol and subscription cleanup remain compatible.
+  Ordinary admin password sign-in no longer starts a competing router navigation when Better Auth
+  already redirects to the callback URL; callback targets, MFA policy and authorization-only flows
+  remain intact.
 - WebMCP waits for client-session hydration and the backend-authentication commit before
   advertising tools, avoiding premature registration and cancellation during page loading.
   Registrations survive benign router changes; surface disablement, session/client changes,
