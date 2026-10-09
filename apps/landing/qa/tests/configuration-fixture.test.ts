@@ -16,10 +16,27 @@ function git(root: string, ...args: string[]): string {
 }
 
 function release(root: string): string {
-  git(root, "init", "--quiet");
+  git(root, "init", "--quiet", "--initial-branch=main");
   git(root, "add", "-A");
   git(root, "commit", "--quiet", "-m", "Fixture release");
-  return git(root, "rev-parse", "HEAD");
+  const commit = git(root, "rev-parse", "HEAD");
+  git(root, "switch", "--quiet", "-c", "adopt/landing");
+  return commit;
+}
+
+function adoptionServices(root: string, repository: string, commit: string) {
+  return {
+    release: () => ({ commit, version: readFileSync(path.join(root, "platform/VERSION"), "utf8").trim() }),
+    command: (file: string, args: string[]): string => {
+      if (file === "gh" && args[0] === "api" && args[1] === `repos/${repository}`) {
+        return JSON.stringify({ full_name: repository, default_branch: "main" });
+      }
+      if (file === "gh" && args.join(" ") === `repo set-default ${repository}`) return "";
+      if (file === "git" && args[0] === "ls-remote" && args[2] === `https://github.com/${repository}.git`) return `${commit}\trefs/heads/main`;
+      assert.equal(file, "git", "Unexpected provider command");
+      return git(root, ...args);
+    },
+  };
 }
 
 for (const downstream of [false, true]) {
@@ -38,16 +55,17 @@ for (const downstream of [false, true]) {
       cpSync(path.join(repository, "platform/templates"), path.join(source, "platform/templates"), { recursive: true });
       const commit = release(source);
       const options = { name: "Landing Acceptance", repo: "fixture/landing", install: false, build: false, upstream: false, updates: "deferred" as const };
-      const services = { release: () => ({ commit, version: readFileSync(path.join(source, "platform/VERSION"), "utf8").trim() }), command: () => "" };
       if (downstream) {
-        assert.equal(adopt(source, { ...options, repo: "fixture/downstream" }, () => {}, services), 0);
+        assert.equal(adopt(source, { ...options, repo: "fixture/downstream" }, () => {}, adoptionServices(source, "fixture/downstream", commit)), 0);
+        assert.equal(git(source, "branch", "--show-current"), "adopt/landing");
       }
       const previousRecord = downstream ? readFileSync(path.join(source, ".github/update-delivery.json"), "utf8") : undefined;
       copyConfigurationFixture(source, destination);
       assert.equal(existsSync(path.join(destination, ".platform-base.json")), false);
       assert.equal(existsSync(path.join(destination, ".github/update-delivery.json")), false);
       const freshCommit = release(destination);
-      assert.equal(adopt(destination, options, () => {}, { ...services, release: () => ({ ...services.release(), commit: freshCommit }) }), 0);
+      assert.equal(adopt(destination, options, () => {}, adoptionServices(destination, options.repo, freshCommit)), 0);
+      assert.equal(git(destination, "branch", "--show-current"), "adopt/landing");
       assert.equal(JSON.parse(readFileSync(path.join(destination, ".platform-base.json"), "utf8")).commit, freshCommit);
       assert.equal(JSON.parse(readFileSync(path.join(destination, ".github/update-delivery.json"), "utf8")).repository, "fixture/landing");
       if (downstream) assert.equal(readFileSync(path.join(source, ".github/update-delivery.json"), "utf8"), previousRecord);
