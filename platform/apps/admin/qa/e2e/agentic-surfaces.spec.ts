@@ -78,7 +78,8 @@ test("WebMCP provider simulator uses a real admin session, native CRUD, live con
   await expect(execute("browser_navigate", { path: "/manage/../sign-in" })).rejects.toThrow("INVALID_ADMIN_PATH");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.goto("/settings?tab=security"); await expect.poll(async () => (await webMcpTools(page)).length).toBe(3);
-  const secure = await execute("browser_readPage"); expect(JSON.stringify(secure)).not.toContain("Current Password");
+  await expect(page.getByLabel("Current password", { exact: true })).toBeVisible();
+  const secure = await execute("browser_readPage"); expect(JSON.stringify(secure)).not.toMatch(/current password/i);
   await page.goto("/configure/features"); await page.getByRole("switch", { name: "Enable WebMCP", exact: true }).click();
   await expect.poll(async () => (await webMcpTools(page)).length).toBe(0);
 });

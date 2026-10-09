@@ -71,8 +71,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   conditions or replacing custom selectors; `--check` reports those unresolved jobs.
 - Authentication broadcasts notify other tabs without racing the originating sign-in tab's own
   navigation. The existing cross-tab message protocol and subscription cleanup remain compatible.
-- WebMCP registrations survive router identity changes while navigating; disabling the surface,
-  changing the authenticated client or unmounting still revokes pending calls.
+- WebMCP waits for client-session hydration and the backend-authentication commit before
+  advertising tools, avoiding premature registration and cancellation during page loading.
+  Registrations survive benign router changes; surface disablement, session/client changes,
+  hidden auth gates and unmounting still revoke pending calls. Security-page redaction tests
+  require the real sensitive field to be visible before checking that it stays excluded.
 - Launcher wiring tests allow bounded startup headroom and retain fixture logs on timeout, without
   changing application startup limits or readiness assertions.
 
