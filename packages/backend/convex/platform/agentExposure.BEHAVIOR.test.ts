@@ -1,3 +1,4 @@
+import { invokeNative } from "./agentNativePolicy";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
@@ -8,7 +9,7 @@ import authSchema from "./betterAuth/schema";
 import { AGENT_CONTRACT_EPOCH } from "./agentContract";
 import { authOperationExposure, exposureInventory, httpOperationExposure, operationExposure } from "./agentExposure";
 import { catalogueRows, registeredExposures } from "./agentRegistry";
-import { classifyNative, invokeNative, rememberNative } from "./nativeCapabilities";
+import { classifyNative, rememberNative } from "./nativeCapabilities";
 import * as announcements from "./announcements";
 import * as users from "./agentUsers";
 import * as organizations from "./organizations";

@@ -1,8 +1,6 @@
 /** Explicit opt-in to native definitions, without impersonating ctx.auth or running wrappers twice. */
 import { v, type PropertyValidators, type ValidatorJSON } from "convex/values";
-import { validate } from "convex-helpers/validators";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { operationExposure, LEGACY_APP_OPERATOR_EXPOSURE } from "./agentExposure";
+import { operationExposure } from "./agentExposure";
 
 export type NativeKind = "query" | "mutation";
 interface NativeDefinition {
@@ -40,17 +38,6 @@ export function nativeDefinition(registered: object) {
   const definition = definitions.get(registered);
   if (!definition) throw new Error("NATIVE_CAPABILITY_NOT_REGISTERED");
   return definition;
-}
-export async function invokeNative(registered: object, ctx: QueryCtx | MutationCtx, auth: unknown, input: unknown) {
-  const definition = nativeDefinition(registered);
-  validate(v.object(definition.args), input, { throw: true, db: ctx.db });
-  const operation = nativeOperation(registered);
-  // Load dispatch policy after native builders have captured definitions. The policy resolves
-  // stored grants; importing that graph while builders initialize would create an auth cycle.
-  const { authorizeNativeOperation, projectNativeResult } = await import("./agentNativePolicy");
-  const canonical = await authorizeNativeOperation(ctx, auth, operation, input, definition.kind === "mutation");
-  const bounded = operationExposure(operation).target === LEGACY_APP_OPERATOR_EXPOSURE.directory ? { ...(input as Record<string, unknown>), role: "admin" } : input;
-  return projectNativeResult(ctx, operation, await definition.handler({ ...ctx, ...canonical }, bounded));
 }
 /** JSON Schema is documentation; Convex validators above remain the execution authority. */
 export function validatorSchema(validator: ValidatorJSON): Record<string, unknown> {

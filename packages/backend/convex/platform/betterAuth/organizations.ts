@@ -291,7 +291,7 @@ export const controlList = query({
     const appOperator = id ? await ctx.db.get(id) : null;
     if (!appOperator || appOperator.banned || !isAppOperatorRole(appOperator.role)) throw new Error(LEGACY_APP_OPERATOR_REQUIRED_ERROR);
     if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
-    const result = await ctx.db.query("organization").paginate(args.paginationOpts);
+    const result = await paginator(ctx.db, schema).query("organization").paginate(args.paginationOpts);
     return { ...result, page: result.page.map(org => ({ organizationId: org._id, name: org.name,
       experience: org.experience, lifecycle: org.lifecycle, createdAt: org.createdAt })) };
   },

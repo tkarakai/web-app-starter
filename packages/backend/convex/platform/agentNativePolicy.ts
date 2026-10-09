@@ -1,5 +1,8 @@
+import { v } from "convex/values";
+import { validate } from "convex-helpers/validators";
+import { nativeDefinition, nativeOperation } from "./nativeCapabilities";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { components } from "../_generated/api";
 import { requireGrantById } from "./agentAccess";
 import { authorizedSession } from "./sessionPolicy";
@@ -76,3 +79,13 @@ export async function projectNativeResult(ctx: QueryCtx, operation: string, resu
 
 /** @deprecated Use canonicalAppOperatorAuth. */
 export const canonicalOperatorAuth = canonicalAppOperatorAuth;
+
+/** Keep policy execution separate from builder capture to avoid initialization cycles. */
+export async function invokeNative(registered: object, ctx: QueryCtx | MutationCtx, auth: unknown, input: unknown) {
+  const definition = nativeDefinition(registered);
+  validate(v.object(definition.args), input, { throw: true, db: ctx.db });
+  const operation = nativeOperation(registered);
+  const canonical = await authorizeNativeOperation(ctx, auth, operation, input, definition.kind === "mutation");
+  const bounded = operationExposure(operation).target === LEGACY_APP_OPERATOR_EXPOSURE.directory ? { ...(input as Record<string, unknown>), role: "admin" } : input;
+  return projectNativeResult(ctx, operation, await definition.handler({ ...ctx, ...canonical }, bounded));
+}

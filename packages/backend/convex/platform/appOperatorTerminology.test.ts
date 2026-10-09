@@ -1,3 +1,4 @@
+import { invokeNative } from "./agentNativePolicy";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
@@ -10,7 +11,7 @@ import { appOperatorIdentity } from "./appOperatorIdentity";
 import { operatorIdentity } from "./operatorIdentity";
 import { APP_OPERATOR_AUDIT_SOURCE, LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { OPERATOR_AUDIT_SOURCE } from "./auditPrivacy";
-import { classifyNative, invokeNative, nativeOperation } from "./nativeCapabilities";
+import { classifyNative, nativeOperation } from "./nativeCapabilities";
 import { catalogueRows } from "./agentRegistry";
 
 beforeEach(() => vi.useFakeTimers());

@@ -1,3 +1,4 @@
+import { invokeNative } from "./agentNativePolicy";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
@@ -6,7 +7,7 @@ import authSchema from "./betterAuth/schema";
 import * as users from "./agentUsers";
 import * as adminAuth from "./adminAuth";
 import * as audit from "./auditTrail";
-import { classifyNative, invokeNative, nativeDefinition } from "./nativeCapabilities";
+import { classifyNative, nativeDefinition } from "./nativeCapabilities";
 import { captureDelegation } from "./agentProof";
 import { AGENT_CONTRACT_EPOCH } from "./agentContract";
 import { APP_OPERATOR_AUDIT_SOURCE } from "./auditPrivacy";
