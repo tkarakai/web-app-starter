@@ -31,6 +31,19 @@ waitlist form and links to web for authentication. Web checks onboarding on each
 request and accepts waitlist submissions inline using the same form as landing. Their name, ports,
 auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
+## Change workflow
+
+Before editing, inspect the current branch and the live GitHub default branch. Create and
+switch to a task branch for adoption and app changes, then open a draft PR early. Never
+commit or push app work directly to the default branch without explicit owner authorization.
+Adoption refuses the default branch unless the owner explicitly authorizes
+`--allow-default-branch`; `--yes` alone is not an override.
+
+Follow the existing `PLATFORM_CI_PR_E2E` ready/label policy in
+[platform/AGENTS.md](platform/AGENTS.md): run full local CI with E2E before readying a private PR
+or adding `run-e2e`, and before merge in every mode. An owner or independent reviewer
+decides the merge; opening a PR does not grant standing merge authority.
+
 ## Our conventions
 
 - Build features through the platform skills and `platform/docs/`. Never edit `platform/` for an

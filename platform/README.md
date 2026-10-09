@@ -317,14 +317,21 @@ and intent record; installing a schedule alone does not configure working update
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
 `--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--updates app|fallback|deferred`, `--update-workers hosted|local`, `--yes`).
-Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
+Adoption on its default branch stops unless the owner explicitly authorizes
+`--allow-default-branch`; `--yes` never supplies that exception.
+
+Install and authenticate the GitHub CLI (`gh auth login`). The target repository must exist
+and be accessible: adoption reads its live default-branch name before changing files and
+stops if that metadata cannot be verified. Start from a clean checkout on a task branch;
+adoption refuses detached HEAD and uncommitted work.
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
 By default, the checkout must be at that release commit, with no intervening app commits or
 merge commits; for an existing-repository merge, use [the procedure below](#existing-repositories).
 For example, clone with
 `git clone --branch v2.0.0 https://github.com/tkarakai/web-app-starter.git my-app`, then
-`cd my-app` and `git switch -c main`. Select an actually published version. Adoption verifies the published GitHub release and its remote tag before changing files; a version string on `main` alone is not a released baseline. Existing apps adopted from unpublished source need the
+`cd my-app` and `git switch -c adopt/my-app`. Inspect the live target default branch
+before adoption, and open a draft PR early. Select an actually published version. Adoption verifies the published GitHub release and its remote tag before changing files; a version string on `main` alone is not a released baseline. Existing apps adopted from unpublished source need the
 [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release).
 
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.

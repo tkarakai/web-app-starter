@@ -15,6 +15,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Adoption refuses work on the live default branch unless explicitly overridden with
+  `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
+  require task branches, early draft PRs and the existing E2E ready/label policy.
+
 - Worker setup accepts `--no-convenience-command` for an additional isolated installation without
   replacing another pool's shared command. Use its absolute command path; the opt-out persists
   through manager updates and does not alter another service or credential.
