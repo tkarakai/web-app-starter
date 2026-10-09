@@ -57,9 +57,12 @@ test("adoption rejects a rename out of the platform zone before changing app fil
     if (args[0] === "ls-remote") return `${commit}\trefs/tags/v2.0.1`;
     return commandAt(root)(command, args);
   };
+  git("switch", "-c", "adopt/acme");
+  const preflight: Command = (command, args) => command === "gh"
+    ? JSON.stringify({ full_name: "acme/app", default_branch: "main" }) : commandAt(root)(command, args);
   const lines: string[] = [];
   assert.throws(() => adopt(root, { name: "Acme", repo: "acme/app", fromRelease: "v2.0.1", install: false, build: false },
-    line => lines.push(line), { release: (directory, from) => adoptionRelease(directory, from, run) }),
+    line => lines.push(line), { release: (directory, from) => adoptionRelease(directory, from, run), command: preflight }),
   /Platform source differs from v2\.0\.1: platform\/owned\.ts/);
   assert.deepEqual(lines, []);
   assert.equal(readFileSync(path.join(root, "app.config.ts"), "utf8"), config);

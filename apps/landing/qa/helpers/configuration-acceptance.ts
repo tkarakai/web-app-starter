@@ -46,17 +46,19 @@ try {
       recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE,
     });
   } else symlinkSync(path.join(source, "node_modules/.bun"), path.join(root, "node_modules/.bun"), "dir");
-  for (const args of [["init", "--quiet"], ["add", "-A"], ["commit", "--quiet", "-m", "Fixture release"]]) {
+  for (const args of [["init", "--quiet", "--initial-branch=main"], ["add", "-A"], ["commit", "--quiet", "-m", "Fixture release"]]) {
     execFileSync("git", ["-c", "user.name=Landing fixture", "-c", "user.email=landing@example.test", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: root });
   }
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  execFileSync("git", ["switch", "--quiet", "-c", "adopt/landing"], { cwd: root });
   const lines: string[] = [];
   assert.equal(adopt(root, {
     name: "Landing Acceptance", supportEmail: "help@landing.example.test", repo: "fixture/landing",
     install: false, build: false, upstream: false, updates: "deferred",
   }, line => lines.push(line), {
     release: () => ({ commit, version: readFileSync(path.join(root, "platform/VERSION"), "utf8").trim() }),
-    command: () => "",
+    command: (file, args) => file === "gh" ? JSON.stringify({ full_name: "fixture/landing", default_branch: "main" })
+      : execFileSync(file, args, { cwd: root, encoding: "utf8" }).trim(),
   }), 0, lines.join("\n"));
   const adopted = validateAppConfig((await import(pathToFileURL(path.join(root, "app.config.ts")).href)).default);
   assert(existsSync(path.join(root, ".platform-base.json")));

@@ -17,9 +17,10 @@ Start from a [published release](https://github.com/tkarakai/web-app-starter/rel
 
 1. Install the Node and Bun versions named in `package.json` (`engines`, `packageManager`), then
    run `bun install`.
-2. Run `bun run adopt` once. It sets your product name, ports and auth cookie prefix in
+2. Follow [Adopting the starter](platform/README.md#adopting-the-starter) to prepare a task
+   branch, then run `bun run adopt` once. It sets your product name, ports and auth cookie prefix in
    `app.config.ts`, replaces this README and the licence with your own, optionally removes the
-   sample domain and the landing sites, and records the platform version you started from.
+   sample domain and the demo app, and records the platform version you started from.
 3. Run `bun run dev` to start Convex and the apps locally.
 
 Then read:

@@ -69,6 +69,8 @@ test("rewriteRenovate points the preset at the app's repo and drops product-only
 });
 
 test("helpers: slug, repoFromUrl, parseArgs", () => {
+  assert.equal(parseArgs(["--allow-default-branch", "--yes"]).allowDefaultBranch, true);
+  assert.throws(() => parseArgs(["--bootstrap"]), /unknown option --bootstrap/);
   assert.equal(parseArgs(["--updates", "app", "--yes"]).updates, "app");
   assert.throws(() => parseArgs(["--updates", "unattended"]), /app, fallback or deferred/);
   assert.equal(slug("Acme Tasks!"), "acme-tasks");
@@ -108,10 +110,31 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   write(root, "apps/landing/package.json", "{}");
   write(root, "apps/demo/package.json", "{}");
   write(root, "apps/web/package.json", "{}");
-  git(root, "init", "-q");
+  git(root, "init", "-q", "-b", "main");
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "release");
   const commit = git(root, "rev-parse", "HEAD");
+  const provider = (directory: string) => (file: string, args: string[]) => file === "gh"
+    ? JSON.stringify({ full_name: "acme/acme-app", default_branch: "main" }) : git(directory, ...args);
+  const services = { release: () => ({ version: read("platform/VERSION").trim(), commit }), command: provider(root) };
+  const before = readFileSync(path.join(root, "app.config.ts"), "utf8");
+  const refused = parseArgs(["--name", "Acme", "--repo", "acme/acme-app", "--yes"]);
+  assert.equal(refused.allowDefaultBranch, undefined);
+  assert.throws(() => adopt(root, { ...refused, name: "Acme", repo: "acme/acme-app" }, () => {}, { ...services, release: () => { assert.fail("Default refusal must precede release fetch or other mutations"); } }), /bypasses review/);
+  assert.equal(readFileSync(path.join(root, "app.config.ts"), "utf8"), before);
+  assert.equal(existsSync(path.join(root, ".platform-base.json")), false);
+  assert.equal(git(root, "status", "--porcelain"), "");
+  assert.equal(git(root, "remote"), "");
+  assert.equal(git(root, "rev-parse", "HEAD"), commit);
+  const overrideRoot = mkdtempSync(path.join(tmpdir(), "adopt-override-"));
+  t.after(() => rmSync(overrideRoot, { recursive: true, force: true }));
+  execFileSync("git", ["clone", "--quiet", root, overrideRoot]);
+  const overrideLines: string[] = [];
+  assert.equal(adopt(overrideRoot, { name: "Acme", repo: "acme/acme-app", allowDefaultBranch: true, build: false, upstream: false }, line => overrideLines.push(line), { ...services, command: provider(overrideRoot) }), 0);
+  assert(overrideLines.some(line => line.includes("Owner-authorized --allow-default-branch") && line.includes("bypasses PR review")));
+  assert.equal(git(overrideRoot, "branch", "--show-current"), "main");
+  assert.equal(git(overrideRoot, "rev-parse", "HEAD"), commit);
+  git(root, "switch", "-c", "adopt/acme");
   // Existing-repository adoption preserves recorded intent and caller customisations.
   const repaired=mkdtempSync(path.join(tmpdir(), "adopt-existing-updates-"));
   t.after(()=>rmSync(repaired,{recursive:true,force:true}));
@@ -121,7 +144,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   const custom=read("platform/templates/update-platform.yml").replace("23 5 * * 1-5","0 9 * * 2").replace("policy: minor","policy: patch");
   write(repaired,".github/workflows/update-platform.yml",custom);
   git(repaired,"add","-A");git(repaired,"commit","-qm","existing app intent");
-  assert.equal(adopt(repaired,{name:"Acme",repo:"acme/acme-app",build:false},()=>{}, {release:()=>({version:read("platform/VERSION").trim(),commit}),command:()=>""}),0);
+  assert.equal(adopt(repaired,{name:"Acme",repo:"acme/acme-app",build:false},()=>{}, {release:()=>({version:read("platform/VERSION").trim(),commit}),command: provider(repaired)}),0);
   assert.equal(readFileSync(path.join(repaired,".github/workflows/update-platform.yml"),"utf8"),custom);
   assert.deepEqual(JSON.parse(readFileSync(path.join(repaired,".github/update-delivery.json"),"utf8")),record);
 
@@ -133,7 +156,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
 
   const lines: string[] = [];
   const errors = adopt(root, { name: "Acme $& Co", repo: "acme/acme-app", remove: ["demo"], install: false, build: false },
-    (line) => lines.push(line), { release: () => ({ version: read("platform/VERSION").trim(), commit }), command: () => "" });
+    (line) => lines.push(line), services);
 
   assert.equal(errors, 0, lines.join("\n"));
   const at = (file: string): string => readFileSync(path.join(root, file), "utf8");

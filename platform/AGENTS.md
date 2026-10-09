@@ -72,6 +72,13 @@ credentials, caller customisations and auto-merge intent. Obtain explicit owner 
 switching identities or enabling repository-wide permissions. An existing update branch must
 be resumed from its saved report with `--relocate`; do not merge report-only drafts.
 
+## PR-first app work
+
+Follow your root guide’s Change workflow: inspect the current and live default branches,
+switch to a task branch before adoption or app edits, and open a draft PR early. Do not
+commit or push app work to the default branch without explicit owner authorization.
+Follow the existing E2E ready/label policy below.
+
 ## App configuration
 
 The root `app.config.ts` holds every value an app is expected to change: `identity` (product

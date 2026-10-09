@@ -15,6 +15,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Adoption refuses work on the live default branch unless explicitly overridden with
+  `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
+  require task branches, early draft PRs and the existing E2E ready/label policy.
+
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
   membership and lifecycle operations. For authority boundaries and integration limits, see
   [organization authority](docs/architecture.md#organization-primitives-and-authority).

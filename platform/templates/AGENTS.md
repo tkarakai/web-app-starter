@@ -18,6 +18,19 @@ copy them here.
 |---|---|---|
 | <app> | `apps/<app>` | <what it is for> |
 
+## Change workflow
+
+Before editing, inspect the current branch and the live GitHub default branch. Create and
+switch to a task branch for adoption and app changes, then open a draft PR early. Never
+commit or push app work directly to the default branch without explicit owner authorization.
+Adoption refuses the default branch unless the owner explicitly authorizes
+`--allow-default-branch`; `--yes` alone is not an override.
+
+Follow the existing `PLATFORM_CI_PR_E2E` ready/label policy in
+[platform/AGENTS.md](platform/AGENTS.md): run full local CI with E2E before readying a private PR
+or adding `run-e2e`, and before merge in every mode. An owner or independent reviewer
+decides the merge; opening a PR does not grant standing merge authority.
+
 ## Our conventions
 
 <Conventions your team adds on top of the platform's: domain vocabulary, where features live,
