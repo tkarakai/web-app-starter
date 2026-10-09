@@ -2,11 +2,206 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { backendSourceDigest, inspectOrganizationSource, prepareOrganizationDeployment, recoverOrganizationDeployment, verifyOrganizationDeployment } from "../../../.github/actions/deploy-convex/organization-target.ts";
 import type { ConvexCommand } from "../../../.github/actions/deploy-convex/fixture-target.ts";
 
 const source = { deploymentVersion: "b".repeat(64), registryHash: "c".repeat(64) };
+
+function digestFixture(t: { after: (fn: () => void) => void }) {
+  const root = mkdtempSync(join(tmpdir(), "organization-runtime-digest-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const write = (file: string, contents: string) => {
+    const destination = join(root, file); mkdirSync(dirname(destination), { recursive: true }); writeFileSync(destination, contents);
+  };
+  write("bun.lock", "locked fixture dependencies"); write("app.config.ts", "export default {};");
+  write("packages/backend/package.json", '{"type":"module"}');
+  return { root, write, digest: () => backendSourceDigest(root) };
+}
+
+for (const [runtime, types] of [["js", "ts"], ["mjs", "mts"], ["cjs", "cts"]]) {
+  test(`generated ${runtime} implementation is bound while declaration refresh is stable`, t => {
+    const f = digestFixture(t);
+    f.write("packages/backend/convex/main.ts", `import { policy } from "./_generated/api.${runtime}"; export const allowed = policy;`);
+    const implementation = `packages/backend/convex/_generated/api.${runtime}`;
+    const declaration = `packages/backend/convex/_generated/api.d.${types}`;
+    f.write(implementation, "export const policy = false;");
+    f.write(declaration, 'import type * as removedSample from "../removedSample.js"; export declare const policy: boolean;');
+    const before = f.digest();
+    f.write(declaration, "export declare const policy: false;");
+    assert.equal(f.digest(), before, "legitimate declaration refresh must not change a prepared source binding");
+    f.write(implementation, "export const policy = true;");
+    assert.notEqual(f.digest(), before, "the paired executable module must never be hidden by its declaration");
+    rmSync(join(f.root, implementation));
+    assert.throws(f.digest, /Cannot bind imported organization source/);
+  });
+}
+
+test("unambiguously erased type imports do not traverse generated declarations or missing type modules", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", `
+    import type { Doc } from "./_generated/dataModel";
+    import type Legacy = require("./missingLegacyTypes");
+    export type { Missing } from "./missingTypes";
+    type Result = typeof import("./missingImportType");
+    export const allowed = false;
+  `);
+  const before = f.digest();
+  f.write("packages/backend/convex/_generated/dataModel.d.ts", 'import schema from "../removedSchema.js"; export type Doc = typeof schema;');
+  assert.equal(f.digest(), before);
+  f.write("packages/backend/convex/main.ts", 'import "./missingTypes"; export const allowed = false;');
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+test("asset declaration substitution cannot hide executable JSON policy bytes", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'import policy from "./_generated/policy.json"; export const allowed = policy.allowed;');
+  f.write("packages/backend/convex/_generated/policy.d.json.ts", "declare const policy: { allowed: boolean }; export default policy;");
+  f.write("packages/backend/convex/_generated/policy.json", '{"allowed":false}');
+  const before = f.digest();
+  f.write("packages/backend/convex/_generated/policy.d.json.ts", "declare const policy: { allowed: false }; export default policy;");
+  assert.equal(f.digest(), before);
+  f.write("packages/backend/convex/_generated/policy.json", '{"allowed":true}');
+  assert.notEqual(f.digest(), before);
+  rmSync(join(f.root, "packages/backend/convex/_generated/policy.json"));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+test("named type imports retain their possible runtime side effects", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/tsconfig.json", '{"compilerOptions":{"verbatimModuleSyntax":true}}');
+  f.write("packages/backend/convex/main.ts", 'import { type Marker } from "./_generated/policy.js"; export { type Marker } from "./_generated/policy.js";');
+  f.write("packages/backend/convex/_generated/policy.d.ts", "export interface Marker {};");
+  f.write("packages/backend/convex/_generated/policy.js", "globalThis.policy = false;");
+  const before = f.digest();
+  f.write("packages/backend/convex/_generated/policy.js", "globalThis.policy = true;");
+  assert.notEqual(f.digest(), before);
+  rmSync(join(f.root, "packages/backend/convex/_generated/policy.js"));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+for (const edge of ['import("../../business/.policy/authority.js")', 'require("../../business/.policy/authority.js")']) {
+  test(`${edge} remains bound through a generated wrapper`, t => {
+    const f = digestFixture(t);
+    f.write("packages/backend/convex/main.ts", 'export { load } from "./_generated/runtime.js";');
+    f.write("packages/backend/convex/_generated/runtime.js", `export const load = () => ${edge.replace("../../business", "../../../business")};`);
+    f.write("packages/business/.policy/authority.d.ts", "export declare const allowed: boolean;");
+    f.write("packages/business/.policy/authority.js", "export const allowed = false;");
+    const before = f.digest();
+    f.write("packages/business/.policy/authority.js", "export const allowed = true;");
+    assert.notEqual(f.digest(), before);
+    rmSync(join(f.root, "packages/business/.policy/authority.js"));
+    assert.throws(f.digest, /Cannot bind imported organization source/);
+  });
+}
+
+test("workspace paths resolve runtime implementations and reject declaration-only value imports", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/tsconfig.json", '{"compilerOptions":{"baseUrl":".","paths":{"@buyer/*":["../../business/tests/*"]}}}');
+  f.write("packages/backend/convex/main.ts", 'import { allowed } from "@buyer/policy"; export const result = allowed;');
+  f.write("packages/business/tests/policy.d.ts", "export declare const allowed: boolean;");
+  f.write("packages/business/tests/policy.js", "export const allowed = false;");
+  const before = f.digest();
+  f.write("packages/business/tests/policy.js", "export const allowed = true;");
+  assert.notEqual(f.digest(), before);
+  rmSync(join(f.root, "packages/business/tests/policy.js"));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+for (const [runtime, types] of [["js", "ts"], ["mjs", "mts"], ["cjs", "cts"]]) test(`explicit generated ${runtime} remains bound beside a ${types} implementation`, t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", `export { allowed } from "./_generated/api.${runtime}";`);
+  f.write(`packages/backend/convex/_generated/api.${types}`, "export const allowed = false;");
+  f.write(`packages/backend/convex/_generated/api.${runtime}`, "export const allowed = false;");
+  const before = f.digest();
+  f.write(`packages/backend/convex/_generated/api.${runtime}`, "export const allowed = true;");
+  const changedJs = f.digest(); assert.notEqual(changedJs, before);
+  f.write(`packages/backend/convex/_generated/api.${types}`, "export const allowed = true;");
+  assert.notEqual(f.digest(), changedJs, "the conservative binding also retains the TS alternative");
+  f.write(`packages/backend/convex/_generated/api.${runtime}`, 'export { allowed } from "./missingRuntime.js";');
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+for (const directory of ["services/functions", ".service/functions", "services/.functions", "services/tests/functions"]) {
+  test(`configured ${directory} binds hidden executable imports and refuses missing/external sources`, t => {
+    const f = digestFixture(t);
+    f.write("packages/backend/convex.json", JSON.stringify({ functions: `../../${directory}` }));
+    f.write(`${directory}/entry.ts`, 'export { allowed } from "./_generated/runtime.js";');
+    f.write(`${directory}/_generated/runtime.js`, 'export { allowed } from "../.private/policy.js";');
+    const policy = `${directory}/.private/policy.js`;
+    f.write(policy, "export const allowed = false;");
+    const before = f.digest();
+    f.write(policy, "export const allowed = true;");
+    const changedPolicy = f.digest(); assert.notEqual(changedPolicy, before);
+    f.write(`${directory}/entry.ts`, 'export { allowed } from "./_generated/runtime.js"; export const changed = true;');
+    assert.notEqual(f.digest(), changedPolicy, "a root omitted by the broad walk must bind its entry point too");
+    rmSync(join(f.root, policy));
+    assert.throws(f.digest, /Cannot bind imported organization source/);
+    const external = mkdtempSync(join(tmpdir(), "organization-external-policy-"));
+    t.after(() => rmSync(external, { recursive: true, force: true }));
+    writeFileSync(join(external, "policy.js"), "export const allowed = true;");
+    f.write(`${directory}/_generated/runtime.js`, `export { allowed } from ${JSON.stringify(join(external, "policy.js"))};`);
+    assert.throws(f.digest, /outside the checkout/);
+  });
+}
+
+test("a configured function root cannot escape through an initially excluded symlink", t => {
+  const f = digestFixture(t);
+  const external = mkdtempSync(join(tmpdir(), "organization-external-functions-"));
+  t.after(() => rmSync(external, { recursive: true, force: true }));
+  writeFileSync(join(external, "entry.ts"), "export const allowed = true;");
+  symlinkSync(external, join(f.root, ".functions"));
+  f.write("packages/backend/convex.json", '{"functions":"../../.functions"}');
+  assert.throws(f.digest, /symbolic links/);
+});
+
+for (const edge of ["paths", "workspace-exports"]) test(`${edge} cannot hide JS behind a TS sibling`, t => {
+  const f = digestFixture(t);
+  const policy = "packages/business/dist/policy";
+  if (edge === "paths") {
+    f.write("packages/backend/convex/tsconfig.json", '{"compilerOptions":{"baseUrl":".","paths":{"@buyer/*":["../../business/dist/*"]}}}');
+    f.write("packages/backend/convex/main.ts", 'export { allowed } from "@buyer/policy.js";');
+  } else {
+    f.write("packages/business/package.json", '{"name":"@buyer/policy","type":"module","exports":{"import":"./dist/policy.js"}}');
+    mkdirSync(join(f.root, "packages/backend/node_modules/@buyer"), { recursive: true });
+    symlinkSync(join(f.root, "packages/business"), join(f.root, "packages/backend/node_modules/@buyer/policy"));
+    f.write("packages/backend/convex/main.ts", 'export { allowed } from "@buyer/policy";');
+  }
+  f.write(`${policy}.ts`, "export const allowed = false;");
+  f.write(`${policy}.js`, "export const allowed = false;");
+  const before = f.digest();
+  f.write(`${policy}.js`, "export const allowed = true;");
+  assert.notEqual(f.digest(), before);
+  f.write(`${policy}.js`, 'export { allowed } from "./missing.js";');
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+for (const [pattern, specifier] of [["@buyer/*", "@buyer/missing"], ["@buyer/fixed", "@buyer/fixed"], ["@buyer/*/policy", "@buyer/missing/policy"]]) {
+  test(`missing local alias ${specifier} is not treated as a published dependency`, t => {
+    const f = digestFixture(t);
+    f.write("packages/backend/convex/tsconfig.json", JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { [pattern]: ["../../business/missing/*"] } } }));
+    f.write("packages/backend/convex/main.ts", `export { allowed } from ${JSON.stringify(specifier)};`);
+    assert.throws(f.digest, /Cannot bind imported organization source/);
+  });
+}
+
+for (const scope of ["inside", "outside"]) test(`absolute ${scope}-checkout runtime imports cannot disappear from source binding`, t => {
+  const f = digestFixture(t);
+  const directory = scope === "inside" ? join(f.root, ".policy") : mkdtempSync(join(tmpdir(), "organization-absolute-policy-"));
+  if (scope === "outside") t.after(() => rmSync(directory, { recursive: true, force: true }));
+  mkdirSync(directory, { recursive: true });
+  const policy = join(directory, "policy.js");
+  f.write("packages/backend/convex/main.ts", `export { allowed } from ${JSON.stringify(policy)};`);
+  assert.throws(f.digest, /Cannot bind imported organization source/, "a missing absolute local import is never a published dependency");
+  writeFileSync(policy, "export const allowed = false;");
+  if (scope === "outside") {
+    assert.throws(f.digest, /outside the checkout/);
+  } else {
+    const before = f.digest();
+    writeFileSync(policy, "export const allowed = true;");
+    assert.notEqual(f.digest(), before, "an existing absolute local implementation remains bound");
+  }
+});
 
 test("a source without the cutover contract is refused before running its tooling", t => {
   const root = mkdtempSync(join(tmpdir(), "organization-source-"));

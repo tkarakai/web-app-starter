@@ -86,6 +86,7 @@ test("source binding includes deployment function-root configuration", t => {
   f.write("bun.lock", "fixture"); f.write("app.config.ts", "export default {};");
   const beforeConfig = backendSourceDigest(f.root);
   f.write("packages/backend/convex.json", '{"functions":"other/"}');
+  mkdirSync(join(f.root, "packages/backend/other"));
   assert.notEqual(backendSourceDigest(f.root), beforeConfig);
 });
 

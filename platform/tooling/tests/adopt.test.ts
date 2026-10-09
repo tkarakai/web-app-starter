@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { constants, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { adopt, parseArgs, removeSample, removeWorkflowJob, repoFromUrl, rewriteRenovate, setAppConfig, slug } from "../adopt.ts";
 import { checkZone } from "../check-zone.ts";
 import { checkOrganizationMigration } from "../organization-migration-check.ts";
+import { inspectOrganizationSource } from "../../../.github/actions/deploy-convex/organization-target.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const read = (file: string): string => {
@@ -27,13 +28,16 @@ function write(root: string, file: string, text: string): void {
 }
 
 /** Reuse third-party installs, but resolve every workspace import to the adopted source. */
-function copyAdoptionSources(root: string): void {
+function copyAdoptionSources(root: string, materializeDependencies = false): void {
   const filter = (file: string) => !["node_modules", ".turbo", ".next", ".convex", "coverage", "test-results", "playwright-report"].includes(path.basename(file))
     && !path.basename(file).startsWith(".env") && !/\.(?:log|tsbuildinfo)$/.test(file);
   for (const directory of ["packages", "platform/packages", "apps/web", "platform/config", "platform/templates/adopt", "platform/tooling/e2e"]) {
     cpSync(path.join(REPO, directory), path.join(root, directory), { recursive: true, filter });
   }
-  for (const file of ["app.config.ts", "package.json"]) cpSync(path.join(REPO, file), path.join(root, file));
+  for (const file of ["app.config.ts", "package.json", "bun.lock", "platform/tooling/organization-migration-check.ts", ".github/actions/deploy-convex/organization-source.ts"]) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    cpSync(path.join(REPO, file), path.join(root, file));
+  }
   const workspaces = ["", "apps/web", ...["packages", "platform/packages"].flatMap(directory =>
     readdirSync(path.join(REPO, directory), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => `${directory}/${entry.name}`))];
   for (const workspace of workspaces) {
@@ -43,18 +47,43 @@ function copyAdoptionSources(root: string): void {
     const link = (name: string) => {
       const source = realpathSync(path.join(from, name));
       const relative = path.relative(REPO, source);
-      const target = !relative.startsWith("..") && !relative.split(path.sep).includes("node_modules") ? path.join(root, relative) : source;
+      let target = !relative.startsWith("..") && !relative.split(path.sep).includes("node_modules") ? path.join(root, relative) : source;
+      // The deployment digest deliberately rejects workspace source escaping its
+      // checkout. Materialize published packages for the preflight regression,
+      // preserving that check instead of teaching it to trust external symlinks.
+      if (materializeDependencies && target === source && name !== ".bin") {
+        assert(!relative.startsWith("..") && !path.isAbsolute(relative), "preflight fixture requires checkout-local installed dependencies");
+        target = path.join(root, relative);
+        if (!existsSync(target)) cpSync(source, target, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+      }
       mkdirSync(path.dirname(path.join(to, name)), { recursive: true });
-      symlinkSync(target, path.join(to, name));
+      if (target !== path.join(to, name)) symlinkSync(target, path.join(to, name));
     };
     mkdirSync(to, { recursive: true });
     for (const entry of readdirSync(from)) {
-      if ([".vite", ".cache"].includes(entry)) continue;
+      if ([".vite", ".cache"].includes(entry) || materializeDependencies && entry === ".bun") continue;
       if (entry.startsWith("@")) for (const child of readdirSync(path.join(from, entry))) link(`${entry}/${child}`);
       else link(entry);
     }
   }
 }
+
+test("sample removal source preflight works before generated declaration refresh", t => {
+  const root = mkdtempSync(path.join(tmpdir(), "adopt-preflight-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  copyAdoptionSources(root, true);
+  const declarations = path.join(root, "packages/backend/convex/_generated/api.d.ts");
+  const before = readFileSync(declarations, "utf8");
+  assert.match(before, /import type .*from "\.\.\/fileAccess\.js"/);
+  removeSample(root);
+  assert.equal(existsSync(path.join(root, "packages/backend/convex/fileAccess.ts")), false);
+  const source = inspectOrganizationSource(root);
+  assert.match(source.deploymentVersion, /^[a-f0-9]{64}$/);
+  assert.match(source.registryHash, /^[a-f0-9]{64}$/);
+  assert.equal(readFileSync(declarations, "utf8"), before, "preflight must not rewrite generated bindings");
+  write(root, "packages/backend/convex/unclassified.ts", "export const surprise = 1;\n");
+  assert.throws(() => inspectOrganizationSource(root), /inventory is incomplete/);
+});
 
 test("setAppConfig sets name, email, cookie prefix and ports in the starter configuration fixture", () => {
   const out = setAppConfig(read("app.config.ts"), {
