@@ -19,23 +19,38 @@ const local = "vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_
 const auxiliary = "vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER";
 const scalar = `${auxiliary} || ((${local}) && 'starter-local-only-unconfigured' || 'ubuntu-latest')`;
 const localJSON = `((${local}) && format('["self-hosted",{0}]', toJSON(${auxiliary} || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]')`;
+const ciTuple = `'["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]'`;
+const stockPrefixes = [
+  `vars.PLATFORM_CI_WORKER_POOL != '' && format(${ciTuple}, vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id)`,
+  `vars.PLATFORM_CI_WORKER_POOL != '' && github.event_name != 'schedule' && format(${ciTuple}, vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id)`,
+  `startsWith(github.workflow, 'CI ') && vars.PLATFORM_CI_WORKER_POOL != '' && format(${ciTuple}, vars.PLATFORM_CI_WORKER_POOL, inputs.git_sha || github.sha, github.run_id)`,
+  `vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-check"]', vars.PLATFORM_UPDATE_RUNNER, github.sha, github.run_id, github.run_attempt)`,
+  `vars.PLATFORM_UPDATE_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-verify"]', vars.PLATFORM_UPDATE_RUNNER, needs.check.outputs.head, github.run_id, github.run_attempt)`,
+  `vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}","starter-attempt-{3}","starter-update-deliver"]', vars.PLATFORM_UPDATE_DELIVERY_RUNNER, needs.check.outputs.head || github.sha, github.run_id, github.run_attempt)`,
+];
+const stockJSON = new Map<string, string>();
+for (const fallback of [`format('["{0}"]', ${scalar})`, localJSON]) {
+  stockJSON.set(fallback, localJSON);
+  for (const prefix of stockPrefixes) stockJSON.set(`${prefix} || ${fallback}`, `${prefix} || ${localJSON}`);
+}
+const diagnostic = `format(${ciTuple}, inputs.worker_pool, github.sha, github.run_id)`;
+stockJSON.set(diagnostic, diagnostic);
 export function migrateContent(content: string): string {
   let updated = content.split("\n").map(line => {
     const match = line.match(/^ {4}runs-on: \$\{\{ (.+) \}\}$/);
     if (!match) return line;
     const expression = match[1]!;
     if (expression === scalar || expression === `github.event.repository.private != true && 'ubuntu-latest' || (${scalar})`) {
-      return `    runs-on: \${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || ${localJSON}) }}`;
+      return `    runs-on: \${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (${localJSON})) }}`;
     }
-    const guarded = expression.startsWith("github.event.repository.private != true &&") || expression.startsWith("fromJSON(github.event.repository.private != true &&");
-    if (expression.startsWith("fromJSON(") && expression.endsWith(")")) {
-      const inner = expression.slice(9, -1).replace(`format('["{0}"]', ${scalar})`, localJSON);
-      if (guarded) return `    runs-on: \${{ fromJSON(${inner}) }}`;
-      if (!/vars\.PLATFORM_(?:CI_|UPDATE_)|inputs\.worker_pool\b/.test(expression)) return line;
-      return `    runs-on: \${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (${inner})) }}`;
+    for (const [before, after] of stockJSON) {
+      if (expression === `fromJSON(${before})`
+        || expression === `fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (${before}))`
+        || expression === `fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || ${before})`) {
+        return `    runs-on: \${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (${after})) }}`;
+      }
     }
-    if (guarded || !/vars\.PLATFORM_(?:CI_|UPDATE_)/.test(expression)) return line;
-    return `    runs-on: \${{ github.event.repository.private != true && 'ubuntu-latest' || (${expression}) }}`;
+    return line;
   }).join("\n");
   const first = "  worker-first:\n    name: Worker isolation 1\n    if: inputs.worker_check && inputs.worker_pool != ''";
   const second = "  worker-second:\n    name: Worker isolation 2\n    needs: worker-first\n";
