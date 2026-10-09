@@ -53,6 +53,26 @@ it.each(["password", "passkey"] as const)("normal %s layout retains password rec
   expect(mocks.push).toHaveBeenCalledWith("/forgot-password");
   expect(window.sessionStorage.getItem("forgot-password-email")).toBe("admin@example.test");
 });
+it.each([false, true])("does not start a router navigation when password sign-in already redirects (authorizationOnly=%s)", async authorizationOnly => {
+  // The installed Better Auth redirect plugin starts a document navigation
+  // before signIn.email resolves when callbackURL produces redirect: true.
+  mocks.email.mockResolvedValue({ data: { redirect: true, url: "/settings/agent-access?request=fixture" } });
+  await passwordStep(authorizationOnly, "password");
+  await submitPassword("password");
+  expect(mocks.email).toHaveBeenCalledWith(expect.objectContaining({ callbackURL: "/settings/agent-access?request=fixture" }));
+  expect(mocks.session).toHaveBeenCalledOnce();
+  expect(mocks.broadcast).toHaveBeenCalledOnce();
+  expect(mocks.push).not.toHaveBeenCalled();
+});
+it("still enforces required MFA when password sign-in reports a redirect", async () => {
+  mocks.email.mockResolvedValue({ data: { redirect: true, url: "/settings/agent-access?request=fixture" } });
+  mocks.policies.adminMfaRequired = true;
+  mocks.session.mockResolvedValue({ data: { user: { role: "admin", twoFactorEnabled: false } } });
+  await passwordStep(false, "password");
+  await submitPassword("password");
+  expect(mocks.push).toHaveBeenCalledExactlyOnceWith("/dashboard/security?tab=2fa");
+  expect(mocks.broadcast).not.toHaveBeenCalled();
+});
 it.each([false, true])("TOTP challenge preserves verification and restricts backup-code controls (authorizationOnly=%s)", async authorizationOnly => {
   mocks.email.mockResolvedValue({ data: { twoFactorRedirect: true } });
   await passwordStep(authorizationOnly, "password");

@@ -1,6 +1,6 @@
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { assert, command, exists, home, type Config } from './core.ts';
+import { assert, assertPrivateMode, command, exists, home, type Config } from './core.ts';
 
 export async function token(): Promise<string> {
   if (process.platform === 'darwin') return command('/usr/bin/security', ['find-generic-password', '-a', 'starter-workers', '-s', home, '-w']);
@@ -35,6 +35,12 @@ export async function api<T>(endpoint: string, credential?: string, body?: unkno
   if (!body && !method && etag) responses.set(cacheKey, { etag, data });
   return data as T;
 }
+export async function privateRepository(c: Config, credential: string): Promise<{ id: number; private: boolean; default_branch: string }> {
+  assertPrivateMode(c);
+  const info = await api<{ id: number; private: boolean; default_branch: string }>(`/repos/${c.repo}`, credential);
+  assert(info.private === true, 'Public repositories must use GitHub-hosted runners; local Actions workers require a private repository');
+  return info;
+}
 export async function remoteSource(c: Config, sha: string, credential: string): Promise<string> {
   assert(/^[a-f0-9]{40}$/.test(sha), 'Invalid source revision');
   const mirror = path.join(home, 'source.git');
@@ -55,9 +61,10 @@ export async function routingVariables(c: Pick<Config, 'repo'>): Promise<Map<str
 }
 
 export async function assertOrgAccess(c: Config, credential: string, repository = c.repo): Promise<number> {
+  assertPrivateMode(c);
   assert(c.org && c.runnerGroupId && repository.toLowerCase().startsWith(c.org.toLowerCase() + '/'), 'Repository must belong to the configured organization');
   const info = await api<{ id: number; private: boolean }>(`/repos/${repository}`, credential);
-  assert(info.private, 'Organization workers require private repositories');
+  assert(info.private === true, 'Organization workers require private repositories');
   const group = await api<{ id: number; visibility: string; allows_public_repositories: boolean }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}`, credential);
   assert(group.id === c.runnerGroupId && group.visibility === 'selected' && !group.allows_public_repositories, 'Use a private, selected-repository runner group');
   for (let page = 1; page <= 10; page++) {

@@ -12,8 +12,12 @@ checks or mark a migration complete without deployment-specific evidence.
 
 Before diagnosing or reconfiguring delivery, read `.github/update-delivery.json` and run
 `bun run platform:setup-updates --check --json`; see `platform/docs/setup-updates.md`.
-Separate intent from live capability. Never silently replace credentials, enable repository
-permissions or switch to fallback. Git author metadata is not the App identity. A green
+Separate intent from live capability. Public repositories always use standard GitHub-hosted
+runners; local CI/updater setup and diagnostics are private-only. Never use `--public-branch`
+or override public jobs onto local runners. Preserve a private owner's hosted/all-local choice,
+including auxiliary coverage; clearing updater selectors alone does not restore every job hosted.
+Read `platform/docs/ci-workers.md` before retiring public/legacy installations or changing routing.
+Never silently replace credentials, enable repository permissions or switch to fallback. Git author metadata is not the App identity. A green
 preparation job may only have produced a plan; inspect report outcome/stage/checks.
 
 ## Start from the right state

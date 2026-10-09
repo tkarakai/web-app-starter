@@ -46,10 +46,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  reject-public-workers:
+    name: Reject public local-worker request
+    if: ${{ github.event.repository.private != true && inputs.worker_check }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Public repositories must use GitHub-hosted runners; local worker diagnostics are not supported."
+          exit 1
+
   resolve:
     name: Resolve commit
     if: ${{ !inputs.worker_check }}
-    runs-on: ${{ fromJSON(vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
@@ -96,7 +105,7 @@ jobs:
   verified:
     name: Verified
     needs: [resolve, shared, web, admin, landing, storybook]
-    runs-on: ${{ fromJSON(vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || format('["{0}"]', vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest'))) }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (vars.PLATFORM_CI_WORKER_POOL != '' && format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', vars.PLATFORM_CI_WORKER_POOL, github.sha, github.run_id) || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     steps:
       - name: Report the verified commit
         env:
@@ -105,8 +114,8 @@ jobs:
 
   worker-first:
     name: Worker isolation 1
-    if: inputs.worker_check && inputs.worker_pool != ''
-    runs-on: ${{ fromJSON(format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', inputs.worker_pool, github.sha, github.run_id)) }}
+    if: ${{ github.event.repository.private == true && inputs.worker_check && inputs.worker_pool != '' }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', inputs.worker_pool, github.sha, github.run_id))) }}
     timeout-minutes: 15
     steps:
       - name: Verify prepared environment and poison private state
@@ -125,7 +134,8 @@ jobs:
   worker-second:
     name: Worker isolation 2
     needs: worker-first
-    runs-on: ${{ fromJSON(format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', inputs.worker_pool, github.sha, github.run_id)) }}
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (format('["self-hosted","{0}","starter-source-{1}","starter-run-{2}"]', inputs.worker_pool, github.sha, github.run_id))) }}
     timeout-minutes: 15
     steps:
       - name: Check image and runtime identity; first job data must be gone

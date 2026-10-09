@@ -164,8 +164,9 @@ through the chosen independent transport. `AGENT_NO_OPEN=true` prints the browse
 ## WebMCP
 
 WebMCP is `document.modelContext`, not an HTTP MCP server. A compatible browser registers the
-three gateway tools only within the protected normal admin layout. Each call checks current
-session/policy/recent proof with a fresh backend request. Discovery and schema validation run
+three gateway tools only within the protected normal admin layout, once browser-session hydration
+and backend authentication are ready. Session changes revoke the old tools; ordinary navigation
+within the layout does not. Each call checks current session/policy/recent proof with a fresh backend request. Discovery and schema validation run
 in Convex; the browser loads generated JSON contracts and page bindings, without the schema
 parser. `bun run --cwd platform/packages/agentic generate:contracts` refreshes those contracts
 after changing the server gateway/browser schemas. CI checks their semantic equivalence. Disablement, sign-out or leaving the

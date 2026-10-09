@@ -11,6 +11,7 @@ import { proofId } from '../ci-workers/proof.ts';
 import { argumentsFor, main } from '../setup-updates.ts';
 import { readRecord, saveRecord, summary, updateStatus } from '../setup-updates/state.ts';
 import type { Gh } from '../setup-updates/github.ts';
+import { evaluator, localSignals, parseWorkflow } from './workflow-runners.ts';
 
 const sha = 'a'.repeat(40), repo = 'owner/app';
 function temporaryRoot(t: test.TestContext): string {
@@ -255,6 +256,32 @@ test('local setup prepares separate installations and dispatches without changin
   assert.equal(f.variables.get(WORKER_VARIABLES.verify), f.p.verify.pool); assert.equal(f.variables.get(WORKER_VARIABLES.deliver), f.p.deliver.pool);
   assert.equal(workerStatus(repo, records.at(-1), f.run).readiness, 'ready');
 });
+test('public local updater setup rejects before preparation, dispatch or routing changes', async () => {
+  const f = fixture();
+  const run: Gh = (args, input) => args[0] === 'api' && args[1] === 'repos/' + repo ? JSON.stringify({ private: false, permissions: { admin: true }, default_branch: 'main' }) : f.run(args, input);
+  await assert.rejects(configureWorkers({ choice: 'local', root: '/app', repo }, run, () => {}, f.host), /private repository/);
+  assert.deepEqual(f.prepared, []);
+  assert.equal(f.variables.size, 0);
+  assert(!f.calls.some(call => call.args[1].endsWith('/dispatches') || call.args[0] === 'variable' && call.args[1] !== 'list'));
+});
+
+test('local updater rechecks visibility before enabling and permits only a skipped public-rejection job', async () => {
+  for (const privacy of [false, true]) {
+    const f = fixture();
+    f.jobs.push({ name: 'Reject public local-worker request', conclusion: 'skipped', labels: ['ubuntu-latest'] });
+    let metadata = 0;
+    const run: Gh = (args, input) => {
+      if (args[0] === 'api' && args[1] === 'repos/' + repo && ++metadata > 1) return JSON.stringify({ private: privacy, permissions: { admin: true }, default_branch: 'main' });
+      return f.run(args, input);
+    };
+    const configuring = configureWorkers({ choice: 'local', root: '/app', repo, runId: '42' }, run, () => {}, f.host);
+    if (privacy) { await configuring; assert.equal(f.variables.size, 2); }
+    else { await assert.rejects(configuring, /private repository/); assert.equal(f.variables.size, 0); }
+    f.jobs.at(-1)!.conclusion = 'success';
+    assert.throws(() => certifyWorkers(repo, '42', sha, f.proof, { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, f.run), /three test jobs/);
+  }
+});
+
 test('failed, skipped, wrong-attempt, stale-source and unrelated test runs cannot enable workers', async () => {
   for (const alter of [
     (f: ReturnType<typeof fixture>) => { f.result.conclusion = 'failure'; },
@@ -300,8 +327,101 @@ test('read-only worker status distinguishes hosted, mixed, unknown and untested 
   f.variables.set(WORKER_VARIABLES.verify, 'manual-v'); assert.equal(workerStatus(repo, undefined, f.run).choice, 'mixed');
   f.variables.set(WORKER_VARIABLES.deliver, 'manual-d'); assert.equal(workerStatus(repo, undefined, f.run).readiness, 'unknown');
   assert.equal(workerStatus(repo, undefined, () => { throw Error('Offline'); }).choice, 'unknown');
-  assert(f.calls.every(c => c.args[1] === 'list'));
+  assert(f.calls.every(c => c.args[0] === 'variable' && c.args[1] === 'list' || c.args[0] === 'api' && c.args[1] === 'repos/' + repo));
 });
+test('hosted updater intent does not hide uncovered or auxiliary local execution', async () => {
+  for (const auxiliary of ['', 'trusted-auxiliary']) {
+    const f = fixture();
+    f.variables.set('PLATFORM_CI_WORKER_POOL', 'ci-pool');
+    if (auxiliary) f.variables.set('PLATFORM_CI_AUX_RUNNER', auxiliary);
+    const records: WorkerRecord[] = [];
+    await configureWorkers({ choice: 'hosted', root: '/app', repo }, f.run, r => records.push(r), f.host);
+    const status = workerStatus(repo, records.at(-1), f.run);
+    assert.notEqual(status.choice, 'hosted');
+    assert.equal(status.readiness, auxiliary ? 'unknown' : 'blocked');
+    assert(status.ownerActions.some(action => /auxiliary|unconfigured/i.test(action)));
+    assert.equal(f.variables.get('PLATFORM_CI_WORKER_POOL'), 'ci-pool');
+  }
+});
+test('effective worker status matches every real updater selector combination and visibility', () => {
+  const workflow = parseWorkflow(fs.readFileSync(new URL('../../../.github/workflows/platform-update.yml', import.meta.url), 'utf8'));
+  for (const privacy of [false, true]) for (let mask = 0; mask < 64; mask++) {
+    const vars = Object.fromEntries(Object.entries(localSignals).filter((_, index) => mask & (1 << index)));
+    const f = fixture();
+    for (const [name, value] of Object.entries(vars)) f.variables.set(name, value);
+    const run: Gh = (args, input) => args[0] === 'api' && args[1] === 'repos/' + repo ? JSON.stringify({ private: privacy }) : f.run(args, input);
+    const status = workerStatus(repo, undefined, run), evaluate = evaluator(privacy, vars, 'schedule', 'Update platform');
+    assert.equal(status.visibility, privacy ? 'private' : 'public');
+    assert.equal(status.availability, 'unknown');
+    assert.equal(status.routingScope, 'repository-only');
+    assert(status.limitations.some(value => /Organization\/environment.*not inspected/.test(value)));
+    for (const id of ['check', 'verify', 'deliver']) {
+      const route = status.routes[id === 'deliver' ? 'deliver' : 'verify'];
+      const labels = evaluate.runners(workflow.jobs[id]['runs-on']!);
+      assert.equal(route.label, labels[0] === 'self-hosted' ? labels[1] : labels[0], `${privacy}/${mask}/${id}`);
+      assert.equal(route.kind === 'hosted', labels[0] === 'ubuntu-latest');
+    }
+    const routes = Object.values(status.routes);
+    if (routes.some(route => route.kind === 'unconfigured')) assert.equal(status.readiness, 'blocked');
+    else if (privacy && routes.some(route => route.kind === 'auxiliary' || route.kind === 'prepared')) assert.equal(status.readiness, 'unknown');
+    else assert.equal(status.readiness, mask ? 'blocked' : 'ready');
+    assert(f.calls.every(call => call.args[0] === 'variable' && call.args[1] === 'list'));
+  }
+});
+test('unknown visibility never certifies routes and uppercase local guard matches Actions semantics', () => {
+  for (const fail of [false, true]) {
+    const f = fixture();
+    const run: Gh = (args, input) => {
+      if (args[0] === 'api' && args[1] === 'repos/' + repo) { if (fail) throw Error('Unavailable'); return '{}'; }
+      return f.run(args, input);
+    };
+    const status = workerStatus(repo, undefined, run);
+    assert.equal(status.choice, 'unknown'); assert.equal(status.visibility, 'unknown'); assert.equal(status.readiness, 'unknown');
+  }
+  const f = fixture(); f.variables.set('PLATFORM_CI_LOCAL_ONLY', 'TRUE');
+  assert.equal(workerStatus(repo, undefined, f.run).readiness, 'blocked');
+});
+test('clearing updater pools preserves all leftover selectors and exposes auxiliary or blocked routes', async () => {
+  for (let mask = 0; mask < 16; mask++) {
+    const f = fixture(), records: WorkerRecord[] = [];
+    const leftovers = Object.entries(localSignals).slice(0, 4).filter((_, index) => mask & (1 << index));
+    for (const [name, value] of leftovers) f.variables.set(name, value);
+    f.variables.set(WORKER_VARIABLES.verify, f.p.verify.pool); f.variables.set(WORKER_VARIABLES.deliver, f.p.deliver.pool);
+    await configureWorkers({ choice: 'hosted', root: '/app', repo }, f.run, r => records.push(r), f.host);
+    assert.deepEqual([...f.variables], leftovers);
+    assert.equal(records.at(-1)?.choice, 'hosted');
+    const status = workerStatus(repo, records.at(-1), f.run);
+    assert.equal(status.readiness, !mask ? 'ready' : mask & 12 ? 'unknown' : 'blocked');
+    assert.equal(status.choice, !mask ? 'hosted' : mask & 12 ? 'auxiliary' : 'unconfigured');
+  }
+});
+test('auxiliary status preserves historical evidence without certifying it or hiding actual labels', t => {
+  const root = temporaryRoot(t), f = fixture();
+  f.variables.set('PLATFORM_CI_AUX_RUNNER', 'trusted-auxiliary');
+  const historical = { runId: 42, sha, proof: f.proof, checkedAt: '2026-10-04T12:00:00Z' };
+  saveRecord(root, 'deferred', repo, 'deferred', [], { workers: { choice: 'hosted', status: 'configured', pools: { verify: '', deliver: '' }, test: historical, ownerActions: [] } });
+  const status = updateStatus(root, repo, f.run), text = summary(status);
+  assert.equal(status.workers.choice, 'auxiliary'); assert.equal(status.workers.readiness, 'unknown');
+  assert.deepEqual(status.workers.lastTest, historical);
+  assert(!f.calls.some(call => call.args[1]?.endsWith('/runs/42')));
+  assert.match(text, /Update workers: auxiliary; readiness: unknown; recorded choice: hosted/);
+  assert.match(text, /verify=auxiliary \(trusted-auxiliary\); deliver=auxiliary \(trusted-auxiliary\)/);
+  assert.match(text, /repository-level variables only/);
+  assert.doesNotMatch(text, /GitHub-hosted \/ unknown/);
+});
+test('public status cannot reuse historical local certification or mutate routing', () => {
+  const f = fixture();
+  f.variables.set(WORKER_VARIABLES.verify, f.p.verify.pool); f.variables.set(WORKER_VARIABLES.deliver, f.p.deliver.pool);
+  const previous = { choice: 'local' as const, status: 'configured' as const, pools: { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, test: { runId: 42, sha, proof: f.proof, checkedAt: new Date().toISOString() }, ownerActions: [] };
+  const run: Gh = (args, input) => args[0] === 'api' && args[1] === 'repos/' + repo ? JSON.stringify({ private: false }) : f.run(args, input);
+  const status = workerStatus(repo, previous, run);
+  assert.equal(status.choice, 'hosted'); assert.equal(status.readiness, 'blocked');
+  assert.deepEqual(status.lastTest, previous.test);
+  assert.deepEqual(status.pools, previous.pools);
+  assert(status.ownerActions.some(action => action.includes('Public repositories')));
+  assert(!f.calls.some(call => call.args[0] === 'variable' && call.args[1] !== 'list'));
+});
+
 test('certification refuses incomplete job lists even if the run reports success', () => {
   const f = fixture(); f.jobs.pop();
   assert.throws(() => certifyWorkers(repo, '42', sha, f.proof, { verify: f.p.verify.pool, deliver: f.p.deliver.pool }, f.run), /three test jobs/);
@@ -314,15 +434,18 @@ test('guided setup waits for its dispatched test and enables without copying a r
   assert.deepEqual(watched, ['42']); assert.equal(records.at(-1)?.status, 'configured');
 });
 
-test('diagnostic workflow requires manual dispatch and separates verification from tools-only delivery', () => {
+test('diagnostic workflow requires manual dispatch and separates verification from tools-only delivery', async () => {
   const file = fileURLToPath(new URL('../../../.github/workflows/platform-update-workers-check.yml', import.meta.url));
   const workflow = JSON.parse(execFileSync('bun', ['-e', 'console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))', file], { encoding: 'utf8' }));
   assert.deepEqual(Object.keys(workflow.on), ['workflow_dispatch']);
-  assert.deepEqual(Object.keys(workflow.jobs), ['check', 'verify', 'deliver']);
+  assert.deepEqual(Object.keys(workflow.jobs), ['reject-public-workers', 'check', 'verify', 'deliver']);
   assert.equal(workflow.jobs.verify.needs, 'check'); assert.equal(workflow.jobs.deliver.needs, 'verify');
   assert.deepEqual(workflow.permissions, { contents: 'read' }); assert.deepEqual(workflow.jobs.deliver.permissions, {});
-  for (const [name, job] of Object.entries(workflow.jobs) as [string, { 'runs-on': string[]; steps: { uses?: string }[] }][]) {
-    assert.equal(job['runs-on'].length, 6); assert.equal(job['runs-on'][0], 'self-hosted'); assert.equal(job['runs-on'].at(-1), 'starter-update-' + name);
+  for (const [name, job] of Object.entries(workflow.jobs) as [string, { 'runs-on': string; steps: { uses?: string }[] }][]) {
+    if (name === 'reject-public-workers') continue;
+    const { evaluator } = await import('./workflow-runners.ts');
+    const labels = evaluator(true).runners(job['runs-on']);
+    assert.equal(labels.length, 6); assert.equal(labels[0], 'self-hosted'); assert.equal(labels.at(-1), 'starter-update-' + name);
     if (name !== 'verify') assert(job.steps.every(step => !step.uses));
   }
   assert.equal(workflow.jobs.verify.steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/checkout@')).with['persist-credentials'], false);

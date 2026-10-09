@@ -141,8 +141,12 @@ that can run from a reviewed branch. That mode checks worker parity and isolatio
 
 ## Where jobs run
 
-Hosted `ubuntu-latest` runners are the default. The optional [worker manager](ci-workers.md)
-sets `PLATFORM_CI_WORKER_POOL`; CI workloads then request that pool, exact source SHA and run ID.
+**Public repositories use standard GitHub-hosted `ubuntu-latest` runners for every shipped job,**
+regardless of local routing variables. Explicit public local-worker diagnostic requests fail on
+hosted runners without registering workers. Local CLI/container checks remain separate.
+
+**Private owners choose hosted (the default) or all-local execution.** The optional
+[worker manager](ci-workers.md) sets `PLATFORM_CI_WORKER_POOL`; CI workloads then request that pool, exact source SHA and run ID.
 Each job receives a fresh container while reusing immutable prepared images. PR and push CI
 summaries and Security jobs use the same source-bound route. Scheduled Security, deployment,
 Renovate and updater coordination use `PLATFORM_CI_AUX_RUNNER` when configured; updater jobs can
@@ -151,12 +155,13 @@ also use their separate prepared pools.
 For several private apps, an [organization-wide prepared pool](ci-org-runners.md) shares one
 manager and Docker budget while keeping fresh job containers. The legacy `PLATFORM_CI_RUNNER`
 setting supports externally operated Linux runners, including native Security scans on amd64/arm64.
-A repository uses hosted runners only when **none** of its local runner variables are set. Any
+A private repository uses hosted runners only when **none** of its local runner variables are set. Any
 local route removes hosted fallback for all workflows; uncovered jobs request an unmatched local
 label and remain queued. The optional `PLATFORM_CI_LOCAL_ONLY=true` guard enforces the same
 policy before a local runner is set. See [all-local routing](ci-workers.md#keep-every-actions-job-local)
-for the auxiliary runner and cutover sequence. Repository owners choose this routing for public
-or private repos; visibility does not select a runner. The retired shared-cache Compose runner is
+for the auxiliary runner and cutover sequence. Missing visibility is treated as public/hosted,
+not authorization for local execution. Custom app-owned workflows need the same policy audit.
+The retired shared-cache Compose runner is
 replaced for prepared CI jobs by the manager; follow the
 [migration guide](ci-workers.md#migrate-from-the-retired-compose-runner).
 

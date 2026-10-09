@@ -1,10 +1,10 @@
 import { mkdtemp, readFile, readdir, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assignment } from './assignment.ts';
-import { api, assertOrgAccess, remoteSource, token } from './github.ts';
+import { api, assertOrgAccess, privateRepository, remoteSource, token } from './github.ts';
 import { prepare, rotateLogs } from './images.ts';
 import { launch, reconcile } from './runtime.ts';
-import { assert, catalog, config, configuredRepos, docker, exists, expiredEnvironments, hash, home, label, preparedScope, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
+import { assert, assertPrivateMode, catalog, config, configuredRepos, docker, exists, expiredEnvironments, hash, home, label, preparedScope, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
 
 export function runnerName(pool: string, jobId: number, now = Date.now()): string {
   // Keep the cleanup prefix intact; two base-36 safe integers fit the 64-character limit.
@@ -102,15 +102,16 @@ export async function serve(): Promise<void> {
   if ((await config()).org) return serveOrg();
   await lock('daemon', async () => {
     let c = await config();
+    assertPrivateMode(c);
     assert(!c.localOnly, 'Import a manager credential before starting the GitHub service');
     const active = new Map<number, Promise<void>>();
     const activeRuns = new Map<number, number>();
     let stop = false;
     for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => { stop = true; });
-    await lock('mutation', async () => { await reconcile(c); });
     let credential = await token();
-    const repo = await api<{ id: number; private: boolean; default_branch: string }>(`/repos/${c.repo}`, credential);
-    assert(repo.private || c.publicBranch, 'Public repositories require an explicit diagnostic branch; normal local routing is private-repository only');
+    await privateRepository(c, credential);
+    let repo: Awaited<ReturnType<typeof privateRepository>>;
+    await lock('mutation', async () => { await reconcile(c); });
     // Reconcile only registrations created by this installation, never somebody else's runners.
     const registrations = await api<{ runners: { id: number; name: string }[] }>(`/repos/${c.repo}/actions/runners?per_page=100`, credential);
     for (const runner of registrations.runners.filter(r => r.name.startsWith(`${c.pool}-`))) await api(`/repos/${c.repo}/actions/runners/${runner.id}`, credential, undefined, 'DELETE');
@@ -118,6 +119,7 @@ export async function serve(): Promise<void> {
     while (!stop) {
       try {
         c = await config(); credential = await token();
+        repo = await privateRepository(c, credential);
         for (const runId of new Set(activeRuns.values())) {
           const current = await api<{ status: string }>(`/repos/${c.repo}/actions/runs/${runId}`, credential);
           if (current.status === 'completed') {
@@ -149,7 +151,7 @@ export async function serve(): Promise<void> {
               if (stop || c.paused || active.size >= c.concurrency) break;
               const request = sourceRequest(c, run, job, repo.id);
               if (!request) continue;
-              if (c.updateRole && !c.publicBranch && run.head_branch !== repo.default_branch) continue;
+              if (c.updateRole && run.head_branch !== repo.default_branch) continue;
               if (run.event === 'pull_request' && request.sha !== run.head_sha) {
                 const commit = await api<{ parents: { sha: string }[] }>(`/repos/${c.repo}/git/commits/${request.sha}`, credential);
                 const pr = run.pull_requests[0];
@@ -162,6 +164,8 @@ export async function serve(): Promise<void> {
               const current = await api<Job>(`/repos/${c.repo}/actions/jobs/${job.id}`, credential);
               c = await config();
               if (stop || c.paused || current.status !== 'queued') continue;
+              const admitted = await privateRepository(c, credential);
+              assert(admitted.id === repo.id, 'Repository identity changed before registration');
               const expected = assignment(c, run, request.sha, repo.id, request.job);
               const name = runnerName(c.pool, job.id);
               const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
@@ -179,8 +183,8 @@ export async function serve(): Promise<void> {
           await lock('mutation', async () => { await cleanup(c, false);
             const state = await catalog();
             if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > 86400_000) {
-              const repository = await api<{ default_branch: string }>(`/repos/${c.repo}`, credential);
-              const branch = c.publicBranch ?? repository.default_branch;
+              const repository = await privateRepository(c, credential);
+              const branch = repository.default_branch;
               const commit = await api<{ sha: string }>(`/repos/${c.repo}/commits/${encodeURIComponent(branch)}`, credential);
               const git = await remoteSource(c, commit.sha, credential);
               await prepare(c, git, commit.sha, `branch-${hash(branch).slice(0, 16)}`, true);
@@ -203,15 +207,16 @@ export async function serve(): Promise<void> {
 async function serveOrg(): Promise<void> {
   await lock('daemon', async () => {
     let c = await config();
-    assert(c.org && c.runnerGroupId && configuredRepos(c).length && !c.localOnly && !c.updateRole && !c.publicBranch, 'Invalid organization worker configuration');
+    assertPrivateMode(c);
+    assert(c.org && c.runnerGroupId && configuredRepos(c).length && !c.localOnly && !c.updateRole, 'Invalid organization worker configuration');
     const org = c.org;
     const active = new Map<number, { repo: string; runId: number; task: Promise<void> }>();
     let cursor = 0;
     let stop = false;
     for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => { stop = true; });
-    await lock('mutation', () => reconcile(c));
     let credential = await token();
     for (const repo of configuredRepos(c)) await assertOrgAccess(c, credential, repo);
+    await lock('mutation', () => reconcile(c));
     const stale: number[] = [];
     let listedAll = false;
     for (let page = 1; page <= 10; page++) {

@@ -116,13 +116,19 @@ export function updateStatus(root: string, repo: string | undefined, run: Gh): S
 }
 export function summary(status: Status): string {
   const schedule = status.observed.scheduleUTC.join(", ") || "none / inspect caller";
+  const route = (role: 'verify' | 'deliver') => {
+    const selected = status.workers.routes[role];
+    return selected.kind + (selected.label ? ' (' + selected.label + ')' : '');
+  };
   return ["Update delivery: " + (status.intent?.mode ?? "not chosen") + "; readiness: " + status.readiness,
     "Recorded setup: " + (status.intent?.status ?? "none") + "; last setup attempt: " + (status.intent?.lastCheck ?? "none") + "; recorded validation: " + (status.intent?.validation ?? "none") + "; live mode: " + status.observed.mode,
     "Repository scope: " + (status.repository ?? "unknown") + "; API identity: " + (status.observed.appId ? "App ID " + status.observed.appId : status.observed.mode === "fallback" ? "github-actions[bot]" : "unknown / inactive"),
     "Schedule (UTC): " + schedule + "; policy: " + (status.observed.policy ?? "inspect caller") + "; auto-merge: " + (status.observed.autoMerge ?? "inspect caller"),
     "Update workers: " + status.workers.choice + "; readiness: " + status.workers.readiness + "; recorded choice: " + (status.intent?.workers?.choice ?? "none"),
-    "Worker pools: verify=" + (status.workers.pools?.verify || "GitHub-hosted / unknown") + "; deliver=" + (status.workers.pools?.deliver || "GitHub-hosted / unknown"),
+    "Worker routes: verify=" + route('verify') + "; deliver=" + route('deliver') + "; visibility=" + status.workers.visibility,
+    "Prepared pool overrides: verify=" + (status.workers.pools?.verify || "unset") + "; deliver=" + (status.workers.pools?.deliver || "unset"),
     "Worker host availability: " + status.workers.availability,
+    ...status.workers.limitations.map(limitation => "Worker routing scope: " + limitation),
     "Last worker test: " + (status.workers.lastTest ? "run=" + status.workers.lastTest.runId + "; source=" + status.workers.lastTest.sha + "; proof=" + status.workers.lastTest.proof + "; checked=" + status.workers.lastTest.checkedAt : "none"),
     ...status.workers.ownerActions.map(action => "Worker action: " + action),
     ...status.ownerActions.map(action => "Owner action: " + action),

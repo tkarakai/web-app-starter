@@ -1,43 +1,24 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { join } from "node:path";
 import test from "node:test";
-import { runInNewContext } from "node:vm";
+import { evaluator, localSignals, parseWorkflow } from "./workflow-runners.ts";
 import { migrate, migrateContent } from "../codemods/v4-renovate-runner.ts";
 
 const stock = `name: Renovate\n\njobs:\n  renovate:\n    runs-on: ubuntu-latest\n    steps: []\n`;
 
 function assertRouting(content: string): void {
-  const workflow = JSON.parse(execFileSync("bun", ["-e", "console.log(JSON.stringify(Bun.YAML.parse(await new Response(Bun.stdin.stream()).text())))"], {
-    input: content, encoding: "utf8",
-  })) as { jobs: { renovate: { "runs-on": string } } };
-  const selector = workflow.jobs.renovate["runs-on"];
-  const select = (vars: Record<string, string>): unknown => {
-    if (!selector.startsWith("${{")) return selector;
-    assert(selector.endsWith("}}"));
-    return runInNewContext(selector.slice(3, -2), {
-      vars: new Proxy(vars, { get: (values, name: string) => values[name] ?? "" }),
-    });
-  };
-  const signals = {
-    PLATFORM_CI_LOCAL_ONLY: "true",
-    PLATFORM_CI_WORKER_POOL: "starter-pool",
-    PLATFORM_CI_AUX_RUNNER: "starter-aux",
-    PLATFORM_CI_RUNNER: "starter-legacy",
-    PLATFORM_UPDATE_RUNNER: "starter-update",
-    PLATFORM_UPDATE_DELIVERY_RUNNER: "starter-delivery",
-  };
-  const entries = Object.entries(signals);
-  for (let mask = 0; mask < 2 ** entries.length; mask++) {
+  const selector = parseWorkflow(content).jobs.renovate["runs-on"]!;
+  const entries = Object.entries(localSignals);
+  for (let mask = 0; mask < 64; mask++) {
     const vars = Object.fromEntries(entries.filter((_, index) => mask & (1 << index)));
-    const expected = vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER ||
-      (mask ? "starter-local-only-unconfigured" : "ubuntu-latest");
-    assert.equal(select(vars), expected, JSON.stringify(vars));
+    const expected = mask ? ["self-hosted", vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || "starter-local-only-unconfigured"] : ["ubuntu-latest"];
+    assert.deepEqual(evaluator(true, vars).runners(selector), expected, JSON.stringify(vars));
+    assert.deepEqual(evaluator(false, vars).runners(selector), ["ubuntu-latest"], JSON.stringify(vars));
   }
-  assert.equal(select({ PLATFORM_CI_LOCAL_ONLY: "false" }), "ubuntu-latest");
+  assert.deepEqual(evaluator(true, { PLATFORM_CI_LOCAL_ONLY: "false" }).runners(selector), ["ubuntu-latest"]);
 }
 
 test("stock Renovate runner gains the fail-closed auxiliary route", () => {

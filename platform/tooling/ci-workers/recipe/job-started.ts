@@ -3,7 +3,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { Assignment } from '../assignment.ts';
 export interface EventPayload {
-  repository?: { id: number; full_name: string }; number?: number; after?: string; ref?: string;
+  repository?: { id: number; full_name: string; private?: boolean }; number?: number; after?: string; ref?: string;
   pull_request?: { number: number; merge_commit_sha?: string; head?: { sha: string; repo?: { id: number } }; base?: { sha: string; repo?: { id: number } } };
 }
 export function verifyAssignment(expected: Assignment, context: Record<string, string | undefined>, payload: EventPayload): void {
@@ -17,10 +17,8 @@ export function verifyAssignment(expected: Assignment, context: Record<string, s
   assert.equal(context.GITHUB_REF, expected.ref);
   assert.equal(payload.repository?.id, expected.repositoryId);
   assert.equal(payload.repository?.full_name?.toLowerCase(), expected.repository.toLowerCase());
-  if (expected.publicBranch !== undefined) {
-    assert.equal(expected.event, 'workflow_dispatch');
-    assert.equal(expected.ref, `refs/heads/${expected.publicBranch}`);
-  }
+  assert.equal(expected.publicBranch, undefined, 'Public diagnostic assignments are retired');
+  assert.equal(payload.repository?.private, true, 'Public repositories must use GitHub-hosted runners');
   if (expected.job) {
     assert(['check', 'verify', 'deliver'].includes(expected.job));
     assert.equal(context.GITHUB_JOB, expected.job);

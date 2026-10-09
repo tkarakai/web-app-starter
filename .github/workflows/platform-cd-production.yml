@@ -37,7 +37,7 @@ jobs:
   # PLATFORM_ATTESTATIONS is "true", otherwise skip with a notice (platform/docs/ci-github.md).
   paid-features:
     name: Paid Features
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       attestations: ${{ steps.attest.outputs.enabled }}
     steps:
@@ -61,7 +61,7 @@ jobs:
   # ─── Validate inputs and staging deployment ──────────────────────
   validate:
     name: Validate Deployment
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       landing: ${{ steps.present.outputs.landing }}
     steps:
@@ -153,7 +153,7 @@ jobs:
   build-web:
     name: Resolve Web Artifact (Production)
     needs: validate
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -188,7 +188,7 @@ jobs:
   build-admin:
     name: Resolve Admin Artifact (Production)
     needs: validate
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -224,7 +224,7 @@ jobs:
     name: Resolve Landing Artifact (Production)
     needs: validate
     if: needs.validate.outputs.landing == 'true'
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
       tarball: ${{ steps.build.outputs.tarball }}
@@ -269,7 +269,7 @@ jobs:
        needs.build-landing.outputs.reused == 'false')
     # A failed attestation never fails a deploy.
     continue-on-error: true
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     steps:
       - name: Download web artifact
         if: needs.build-web.outputs.reused == 'false'
@@ -317,7 +317,7 @@ jobs:
       needs.build-admin.result == 'success' &&
       (needs.build-landing.result == 'success' ||
        (needs.validate.outputs.landing == 'false' && needs.build-landing.result == 'skipped'))
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -343,7 +343,7 @@ jobs:
       !cancelled() &&
       needs.build-web.result == 'success' &&
       needs.deploy-convex.result == 'success'
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -388,7 +388,7 @@ jobs:
       !cancelled() &&
       needs.build-admin.result == 'success' &&
       needs.deploy-convex.result == 'success'
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -433,7 +433,7 @@ jobs:
       !cancelled() &&
       needs.build-landing.result == 'success' &&
       needs.deploy-convex.result == 'success'
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
       built-sha: ${{ steps.deploy.outputs.built-sha }}
@@ -484,7 +484,7 @@ jobs:
       needs.deploy-admin.result == 'success' &&
       (needs.deploy-landing.result == 'success' ||
        (needs.validate.outputs.landing == 'false' && needs.deploy-landing.result == 'skipped'))
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -556,7 +556,7 @@ jobs:
     name: Record Ops Outcomes
     if: always()
     needs: [build-web, build-admin, build-landing, deploy-web, deploy-admin, deploy-landing, deploy-convex, validate, post-deploy]
-    runs-on: ${{ vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || ((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && 'starter-local-only-unconfigured' || 'ubuntu-latest') }}
+    runs-on: ${{ fromJSON(github.event.repository.private != true && '["ubuntu-latest"]' || (((vars.PLATFORM_CI_LOCAL_ONLY == 'true' || vars.PLATFORM_CI_WORKER_POOL != '' || vars.PLATFORM_CI_AUX_RUNNER != '' || vars.PLATFORM_CI_RUNNER != '' || vars.PLATFORM_UPDATE_RUNNER != '' || vars.PLATFORM_UPDATE_DELIVERY_RUNNER != '') && format('["self-hosted",{0}]', toJSON(vars.PLATFORM_CI_AUX_RUNNER || vars.PLATFORM_CI_RUNNER || 'starter-local-only-unconfigured')) || '["ubuntu-latest"]'))) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
