@@ -171,3 +171,86 @@ test("bounded role scan fails closed over 200 mixed records; actor removal denie
   await expect(f.client.query(api.platform.agentUsers.list, args)).rejects.toThrow("NOT_ADMIN");
   await expect(f.client.run(ctx => runCapability(ctx, { user: f.actor }, "admins_listProtected", {}, false))).rejects.toThrow("NOT_ADMIN");
 });
+
+test("100 distinct passkey targets keep complete ordered results and both native privacy passes bounded", async () => {
+  const f = await fixture();
+  const userIds: string[] = [], expected: string[] = [];
+  for (let i = 0; i < 100; i++) {
+    const user = await f.user(`passkey-target-${i}`, { banned: i === 0 });
+    userIds.push(user._id);
+    if (i % 3 === 0) {
+      expected.push(user._id);
+      await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
+        userId: user._id, publicKey: "must-not-leave-component", credentialID: `private-${i}`,
+        name: "Private factor", counter: 0, deviceType: "singleDevice", backedUp: false,
+      } } });
+    }
+  }
+  const args = { userIds };
+  expect(await f.client.query(api.platform.adminAuth.listAdminPasskeyUserIds, args)).toEqual(expected);
+  const native = await f.client.run(async ctx => {
+    const runQuery = vi.fn(ctx.runQuery);
+    const result = await runCapability({ ...ctx, runQuery }, { user: f.actor }, "security_listAdminPasskeyUserIds", args, false);
+    const targetCalls = runQuery.mock.calls.filter(([, input]) => Array.isArray((input as { userIds?: unknown }).userIds));
+    expect(targetCalls).toHaveLength(2); // Independent native policy and guarded body.
+    expect(runQuery.mock.calls.length).toBeLessThan(60);
+    return result;
+  });
+  expect(native).toEqual(expected);
+  expect(JSON.stringify(native)).not.toContain("private-");
+});
+
+test("passkey batches preserve first-occurrence order, empty results and original input-size bounds", async () => {
+  const f = await fixture();
+  const target = await f.user("passkey-duplicate");
+  await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
+    userId: target._id, publicKey: "private", credentialID: "private-duplicate", counter: 0,
+    deviceType: "singleDevice", backedUp: false,
+  } } });
+  for (const userIds of [[], Array<string>(100).fill(target._id), [f.actor._id, target._id, f.actor._id, target._id]]) {
+    const expected = userIds.length ? [target._id] : [];
+    expect(await f.client.query(api.platform.adminAuth.listAdminPasskeyUserIds, { userIds })).toEqual(expected);
+    expect(await f.client.run(ctx => runCapability(ctx, { user: f.actor }, "security_listAdminPasskeyUserIds", { userIds }, false))).toEqual(expected);
+  }
+  const userIds = Array<string>(101).fill(target._id);
+  await expect(f.client.query(api.platform.adminAuth.listAdminPasskeyUserIds, { userIds })).rejects.toThrow("INVALID_PAGE_SIZE");
+  await expect(f.client.run(ctx => runCapability(ctx, { user: f.actor }, "security_listAdminPasskeyUserIds", { userIds }, false))).rejects.toThrow("BATCH_TOO_LARGE");
+  await expect(f.t.query(components.betterAuth.appOperators.validateTargets, { userIds })).rejects.toThrow("INVALID_PAGE_SIZE");
+  await expect(f.t.query(components.betterAuth.appOperators.listPasskeyUserIds, { operatorId: f.actor._id, userIds })).rejects.toThrow("INVALID_PAGE_SIZE");
+});
+
+test("passkey status denies every mixed or missing target even at the end of a full request", async () => {
+  const f = await fixture();
+  const customer = await f.user("passkey-customer", { role: "user" });
+  const admitted = await f.user("passkey-admitted", { customerAdmission: "historical" });
+  const member = await f.user("passkey-member");
+  await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
+    userId: member._id, organizationId: "historical-orphan", role: "member", createdAt: 1,
+  } } });
+  const owner = await f.user("passkey-owner");
+  await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "organization", data: {
+    name: "Historical owner", slug: "passkey-owner", createdAt: 1, personalOwnerId: owner._id,
+  } } });
+  const removed = await f.user("passkey-deleted");
+  await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "user", where: [{ field: "_id", value: removed._id }] } });
+  for (const target of [customer._id, admitted._id, member._id, owner._id, removed._id, "not-a-user-id"]) {
+    const userIds = [...Array<string>(99).fill(f.actor._id), target];
+    await expect(f.client.query(api.platform.adminAuth.listAdminPasskeyUserIds, { userIds })).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
+    await expect(f.client.run(ctx => runCapability(ctx, { user: f.actor }, "security_listAdminPasskeyUserIds", { userIds }, false))).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
+  }
+});
+
+test("passkey presence component rechecks actor identity and native execution rejects revoked authority", async () => {
+  const f = await fixture();
+  const target = await f.user("passkey-actor-target");
+  const banned = await f.user("passkey-banned-actor", { banned: true });
+  const customer = await f.user("passkey-customer-actor", { role: "user" });
+  for (const operatorId of [banned._id, customer._id, "missing-actor"]) {
+    await expect(f.t.query(components.betterAuth.appOperators.listPasskeyUserIds, { operatorId, userIds: [target._id] })).rejects.toThrow("NOT_ADMIN");
+  }
+  await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
+    userId: f.actor._id, organizationId: "orphan", role: "admin", createdAt: 1,
+  } } });
+  await expect(f.client.query(api.platform.adminAuth.listAdminPasskeyUserIds, { userIds: [target._id] })).rejects.toThrow("NOT_ADMIN");
+  await expect(f.client.run(ctx => runCapability(ctx, { user: f.actor }, "security_listAdminPasskeyUserIds", { userIds: [target._id] }, false))).rejects.toThrow("NOT_ADMIN");
+});

@@ -35,7 +35,7 @@ async function shutdown() {
 function launch(args: string[], timeout = "30000", env: Record<string, string | undefined> = {}) {
   logs = "";
   childClosed = false;
-  child = spawn("bun", args, { cwd: fixture, detached: true, env: { ...process.env, LANDING_URL: undefined, AGENT_MCP_ENABLED: undefined, AGENT_MCP_ORIGIN: undefined, AGENT_MCP_AUTH_ORIGIN: undefined, ...env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
+  child = spawn("bun", args, { cwd: fixture, detached: true, env: { ...process.env, LANDING_URL: undefined, AGENT_MCP_ENABLED: undefined, AGENT_MCP_ORIGIN: undefined, AGENT_MCP_AUTH_ORIGIN: undefined, ORGANIZATION_MIGRATION_BATCH_SIZE: undefined, ...env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
   child.once("close", () => { childClosed = true; });
   child.stdout!.on("data", data => { logs += String(data); }); child.stderr!.on("data", data => { logs += String(data); });
 }
@@ -95,7 +95,7 @@ if(args[0]==='run') {
     assert.match(input.deploymentVersion,/^[a-f0-9]{64}$/);assert.equal(state.env.ORGANIZATION_REGISTRY_HASH,expectedRegistryHash);
     state.ready=false;state.begun=true;state.stepped=false;
   } else if(name==='organizationMigration:step') {
-    assert.equal(state.begun,true);assert.equal(input.batchSize,100);
+    assert.equal(state.begun,true);assert.equal(input.batchSize,10);
     if(process.env.STARTUP_SMOKE_BLOCK_ORGANIZATION==='1') { save();console.error('Uncaught Error: ORGANIZATION_STARTUP_FIXTURE_BLOCKED');process.exit(1); }
     state.stepped=true;result={complete:true};
   } else if(name==='organizationMigration:finalize') {

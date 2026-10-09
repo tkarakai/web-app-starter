@@ -79,6 +79,13 @@ in component-local batches of 100 inputs, including a separate check of native o
 still grows with the protected-address population; batching reduces cross-component calls without
 caching authority or admitting pending addresses, organization members or personal-organization owners.
 
+`security_listAdminPasskeyUserIds` accepts at most 100 input IDs, counting duplicates. It returns
+only operator IDs with an enrolled passkey, deduplicated in first-occurrence order. Every target
+must be a canonical app operator; any ordinary, mixed, deleted or unknown identity rejects the
+whole request before factor reads. Component-local validation keeps the native policy and the
+operation body independently guarded without one cross-component call per identity lookup.
+Passkey names, credential IDs and key material are never returned by this operation.
+
 The registered public test client remains `pi-announcements` for compatibility. Redirects must
 be `http://127.0.0.1:<port>/callback`. Authorization uses S256 PKCE and state; one-minute codes
 are single-use, and grants last at most fifteen minutes. Writes require verification within five

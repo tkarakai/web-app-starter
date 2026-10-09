@@ -13,26 +13,36 @@ import { PasskeySection } from "../settings/passkey-section";
 import { OrganizationFactorReplacement } from "../settings/organization-factor-replacement";
 
 type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean };
+type GateUser = { _id: string; email?: string } | null | undefined;
 
 /** Presentation of the server's decision; every API enforces that decision independently. */
 export function SessionAccessGate(props: Props) {
   const session = authClient.useSession();
+  const user = useQuery(api.platform.auth.getCurrentUser, {});
   const [lastActor, setLastActor] = React.useState<string | null>(null);
-  const actor = session.data?.user.id ?? (session.isPending ? lastActor : null);
-  React.useEffect(() => { if (!session.isPending || session.data) setLastActor(session.data?.user.id ?? null); }, [session.data, session.isPending]);
-  // A new identity gets a fresh subtree, including hidden Activity children and
-  // security forms. Same-actor token refresh can retain its in-progress ceremony.
-  return <ActorSessionAccessGate key={actor ?? "signed-out"} {...props} actorId={actor} />;
+  const clientActor = session.data?.user.id ?? null;
+  const backendActor = user?._id ?? null;
+  const conflict = Boolean(clientActor && backendActor && clientActor !== backendActor);
+  const observedActor = clientActor ?? backendActor;
+  const actor = observedActor ?? (session.isPending ? lastActor : null);
+  React.useEffect(() => {
+    if (conflict) setLastActor(null);
+    else if (observedActor || !session.isPending) setLastActor(observedActor);
+  }, [conflict, observedActor, session.isPending]);
+  // Better Auth can report settled null during rotation while Convex still
+  // identifies the actor. Preserve only the mount, never authorization. A
+  // conflicting identity or settled loss of both identities discards all state.
+  const identityKey = JSON.stringify(conflict ? [clientActor, backendActor] : [actor]);
+  return <ActorSessionAccessGate key={identityKey} {...props} user={user} actorId={session.isPending ? null : clientActor} />;
 }
 
-function ActorSessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, authorizationOnly = false, actorId }: Props & { actorId: string | null }) {
+function ActorSessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, authorizationOnly = false, actorId, user }: Props & { actorId: string | null; user: GateUser }) {
   const currentStatus = useQuery(api.platform.sessionAssurance.status, {});
   const [lastStatus, setLastStatus] = React.useState(currentStatus);
   React.useEffect(() => {
     if (currentStatus) setLastStatus(currentStatus);
   }, [currentStatus]);
   const status = currentStatus ?? lastStatus;
-  const user = useQuery(api.platform.auth.getCurrentUser, {});
   const te = useTranslations("auth.verifyEmail");
   const [emailSent, setEmailSent] = React.useState(false);
   const t = useTranslations("accountSecurity.session");
@@ -49,6 +59,7 @@ function ActorSessionAccessGate({ children, requireRecent = false, enrollment = 
   const [backup, setBackup] = React.useState(false);
   const usingBackup = !authorizationOnly && backup;
   const [busy, setBusy] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
   const [error, setError] = React.useState(false);
   React.useEffect(() => {
     setNow(Date.now());
@@ -57,7 +68,7 @@ function ActorSessionAccessGate({ children, requireRecent = false, enrollment = 
   }, []);
   const mounted = React.useRef(true);
   React.useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const live = Boolean(actorId && user?._id === actorId) && currentStatus != null && status && status.expiresAt > now;
+  const live = !signingOut && Boolean(actorId && user?._id === actorId) && currentStatus != null && status && status.expiresAt > now;
   const hasPasskey = Boolean(status?.hasPasskey && status.passkeyPolicy !== "disabled");
   const hasFactor = Boolean(status?.hasTotp || hasPasskey);
   const enrolling = !authorizationOnly && enrollment && status?.reason === "enrollment";
@@ -76,6 +87,9 @@ function ActorSessionAccessGate({ children, requireRecent = false, enrollment = 
     } catch { if (mounted.current) setError(true); } finally { if (mounted.current) setBusy(false); }
   };
   const signOut = async () => {
+    // Discard credentials and hidden ceremony content before the request settles.
+    setSigningOut(true); setAdmitted(false); setPanel(null);
+    setPassword(""); setCode(""); setBackup(false);
     await authClient.signOut();
     if (mounted.current) window.location.assign(admin ? "/sign-in" : `/${locale}/sign-in`);
   };

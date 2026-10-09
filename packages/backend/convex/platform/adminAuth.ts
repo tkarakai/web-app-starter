@@ -6,7 +6,7 @@ import { components } from "../_generated/api";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { appOperatorMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
-import { requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
+import { requireAppOperator } from "./appOperatorAccess";
 
 // ---------------------------------------------------------------------------
 // Operator policy and passkey enrollment status. Shared bodies verify live app-operator authority.
@@ -106,21 +106,11 @@ export const setEmailVerificationPolicy = appOperatorMutation({
 export const listAdminPasskeyUserIds = authedQuery({
   args: { userIds: v.array(v.string()) },
   handler: async (ctx, args) => {
-    await requireAppOperator(ctx);
-
+    const actor = await requireAppOperator(ctx);
     if (args.userIds.length > 100) throw new Error("INVALID_PAGE_SIZE");
-    const appOperatorIds = [...new Set(args.userIds)];
-    // Check every target before reading factors. A mixed request never discloses a partial directory.
-    for (const userId of appOperatorIds) await requireAppOperatorTarget(ctx, userId);
-
-    const userIdsWithPasskey: string[] = [];
-    for (const userId of appOperatorIds) {
-      const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, {
-        model: "passkey", where: [{ field: "userId", value: userId }],
-      });
-      if (passkey) userIdsWithPasskey.push(userId);
-    }
-    return userIdsWithPasskey;
+    return ctx.runQuery(components.betterAuth.appOperators.listPasskeyUserIds, {
+      operatorId: actor.user._id, userIds: args.userIds,
+    });
   },
 });
 

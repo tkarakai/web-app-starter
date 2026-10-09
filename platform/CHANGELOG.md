@@ -53,6 +53,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Operator-directory pages use an indexed stored `createdAt` order and query-bound cursors;
   ordinary customer rows no longer consume the operator scan budget. Protected-email reads use
   bounded component-local identity batches while retaining both privacy checks and complete results.
+- Operator passkey-status reads validate at most 100 input IDs within the auth component,
+  retaining independent native target validation and rejecting a mixed request before reading
+  factors. Results contain only deduplicated operator IDs with an enrolled passkey.
+- Security forms retain hidden same-actor ceremony state during a temporary client session loss
+  while the backend still identifies that actor. Content requires agreement from both identity
+  observations and current assurance; account conflicts and settled signout discard private state.
 - Credential-bearing web/admin browser tests publish value-free reports instead of raw
   Playwright actions, captures or authentication server logs. Results retain source locations,
   durations, retries and diagnostic categories. Interactive capture modes are refused.

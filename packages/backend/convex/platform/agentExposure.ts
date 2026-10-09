@@ -100,7 +100,7 @@ group("organizationMigration", ["begin", "step", "finalize", "status", "maintena
 group("migrations", ["default", "organizationCutover"], "internal-denied", "denied");
 group("component/betterAuth/organizationMigration", ["provisionLegacyPersonal"], "internal-denied", "denied");
 group("component/betterAuth/organizationMigrationBarrier", ["set"], "internal-denied", "denied");
-group("component/betterAuth/appOperators", ["filterEmails", "listDirectory"], "internal-denied", "denied");
+group("component/betterAuth/appOperators", ["filterEmails", "listDirectory", "validateTargets", "listPasskeyUserIds"], "internal-denied", "denied");
 group("component/betterAuth/organizationSecurity", ["setPolicy", "policy", "initializePolicy", "initializeMigrationPolicy", "verifyMigrationPolicyPage",
   "hasEnrollment", "consumeRecoveryCode", "replaceCredential", "snapshot", "stageFactor", "stagedFactor", "replaceFactor"], "internal-denied", "denied");
 

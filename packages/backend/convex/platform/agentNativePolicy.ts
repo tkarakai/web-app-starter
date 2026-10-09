@@ -52,10 +52,9 @@ export async function authorizeNativeOperation(ctx: QueryCtx, supplied: unknown,
   }
   if (operation === "platform/adminAuth:listAdminPasskeyUserIds") {
     if (!Array.isArray(args.userIds)) throw new Error("OPERATOR_TARGET_REQUIRED");
-    for (const userId of args.userIds) {
-      if (typeof userId !== "string") throw new Error("OPERATOR_TARGET_REQUIRED");
-      await requireAppOperatorTarget(ctx, userId);
-    }
+    if (args.userIds.length > 100) throw new Error("INVALID_PAGE_SIZE");
+    if (!args.userIds.every((userId): userId is string => typeof userId === "string")) throw new Error("OPERATOR_TARGET_REQUIRED");
+    await ctx.runQuery(components.betterAuth.appOperators.validateTargets, { userIds: args.userIds });
   }
   return auth;
 }

@@ -29,6 +29,43 @@ export const filterEmails = query({
   },
 });
 
+/** Validate the entire bounded request before any factor lookup. Banned targets remain operators. */
+async function operatorTargets(ctx: QueryCtx, userIds: string[]) {
+  if (userIds.length > 100) throw new Error("INVALID_PAGE_SIZE");
+  const unique = [...new Set(userIds)];
+  for (const userId of unique) {
+    const id = ctx.db.normalizeId("user", userId);
+    const user = id ? await ctx.db.get(id) : null;
+    if (!user || !await canonicalOperator(ctx, user)) throw new Error("OPERATOR_TARGET_REQUIRED");
+  }
+  return unique;
+}
+
+/** Native input policy uses this independently of the guarded operation body. */
+export const validateTargets = query({
+  args: { userIds: v.array(v.string()) }, returns: v.null(),
+  handler: async (ctx, { userIds }) => {
+    await operatorTargets(ctx, userIds);
+    return null;
+  },
+});
+
+/** Internal Boolean-presence projection; no credential IDs, names or key material leave the component. */
+export const listPasskeyUserIds = query({
+  args: { operatorId: v.string(), userIds: v.array(v.string()) }, returns: v.array(v.string()),
+  handler: async (ctx, { operatorId, userIds }) => {
+    const actorId = ctx.db.normalizeId("user", operatorId);
+    const actor = actorId ? await ctx.db.get(actorId) : null;
+    if (!actor || actor.banned || !await canonicalOperator(ctx, actor)) throw new Error("NOT_ADMIN");
+    const targets = await operatorTargets(ctx, userIds);
+    const result: string[] = [];
+    for (const userId of targets) {
+      if (await ctx.db.query("passkey").withIndex("userId", q => q.eq("userId", userId)).first()) result.push(userId);
+    }
+    return result;
+  },
+});
+
 async function decodeCursor(ctx: QueryCtx, value: string | null | undefined, binding: string,
   visible: (user: Doc<"user">) => Promise<boolean>): Promise<string | null | undefined> {
   if (value === null || value === undefined) return value;

@@ -3866,6 +3866,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         },
         Name
       >;
+      listPasskeyUserIds: FunctionReference<
+        "query",
+        "internal",
+        { operatorId: string; userIds: Array<string> },
+        Array<string>,
+        Name
+      >;
+      validateTargets: FunctionReference<
+        "query",
+        "internal",
+        { userIds: Array<string> },
+        null,
+        Name
+      >;
     };
     memberInvitations: {
       accept: FunctionReference<
