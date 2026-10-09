@@ -320,7 +320,10 @@ needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cook
 Adoption on its default branch stops unless the owner explicitly authorizes
 `--allow-default-branch`; `--yes` never supplies that exception.
 
-Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
+Install and authenticate the GitHub CLI (`gh auth login`). The target repository must exist
+and be accessible: adoption reads its live default-branch name before changing files and
+stops if that metadata cannot be verified. Start from a clean checkout on a task branch;
+adoption refuses detached HEAD and uncommitted work.
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
 By default, the checkout must be at that release commit, with no intervening app commits or

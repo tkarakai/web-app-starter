@@ -37,6 +37,4 @@ See [`LICENSE`](LICENSE).
 
 ## Review workflow
 
-Inspect the current and live default branches, switch to a task branch before app edits,
-and open a draft PR early. Follow AGENTS.md and the existing E2E ready/label policy.
-Do not commit or push app work to the default branch without explicit owner authorization.
+Follow [AGENTS.md’s Change workflow](AGENTS.md#change-workflow) for app changes and PR review.
