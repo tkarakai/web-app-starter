@@ -64,10 +64,12 @@ for scoped, age-eligible lockfile repair and resume.
 
 Before diagnosing or changing update delivery, inspect the app-owned `.github/update-delivery.json`
 and run `bun run platform:setup-updates --check --json`. Intent and live readiness are separate;
+missing credentials do not select fallback.
+
 For updater job machines, preserve existing routing or explicitly choose `--workers hosted|local`;
 local setup tests both Docker installations before enabling them. Read the worker section in
 `platform/docs/setup-updates.md`. Never substitute ordinary CI routing or infer live readiness from a saved choice.
-missing credentials do not select fallback. See `platform/docs/setup-updates.md`. Preserve
+Preserve
 credentials, caller customisations and auto-merge intent. Obtain explicit owner consent before
 switching identities or enabling repository-wide permissions. An existing update branch must
 be resumed from its saved report with `--relocate`; do not merge report-only drafts.
@@ -295,6 +297,11 @@ Platform skills live in [`agent-skills/`](agent-skills/) and are linked into `.c
 | `platform-pr-respond` | Address review comments on a pull request |
 
 ## Verification
+
+Public repositories always use standard GitHub-hosted runners. Local CI/updater workers and GitHub
+diagnostics are private-only; local CLI/container checks without registration remain available.
+Private owners may choose hosted or all-local execution, including auxiliary jobs. Read
+[worker routing and retirement](docs/ci-workers.md) before changing any runner settings.
 
 Before pushing, follow the [local CI guidance](docs/ci-pre-push.md#local-ci-pre-push-checks).
 Keep `lint`, `typecheck` and the test suites green.

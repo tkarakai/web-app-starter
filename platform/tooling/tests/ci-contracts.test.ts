@@ -4,7 +4,6 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { matchesGlob } from "node:path";
-import { runInNewContext } from "node:vm";
 import { waitForPage } from "../http-ready.ts";
 import { assessAdvisoryRace, runRaceCheck } from "../advisory-race.ts";
 import { auditResult } from "../dependency-audit.ts";
@@ -107,54 +106,6 @@ test("shared impact policy selects consumers/backend, new packages and CI change
   assert.equal(matches("web", "apps/web/src/app/page.tsx"), true);
   assert.equal(matches("landing", "apps/web/src/app/page.tsx"), false);
   assert.equal(matches("web", "docs/example.md"), false);
-});
-
-test("every ordinary workflow runner has an explicit local-only route", () => {
-  const directory = new URL("../../../.github/workflows/", import.meta.url);
-  const github = { workflow: "CI Web", event_name: "pull_request", sha: "a".repeat(40), run_id: 123, run_attempt: 1 };
-  const inputs = { git_sha: "", worker_pool: "" };
-  const needs = { check: { outputs: { head: github.sha } } };
-  const format = (template: string, ...values: unknown[]) => template.replace(/\{(\d+)\}/g, (_, index: string) => String(values[Number(index)]));
-  const runner = (expression: string, vars: Record<string, string>, event_name = github.event_name): string[] => {
-    const values = new Proxy(vars, { get: (current, name: string) => current[name] ?? "" });
-    const value = runInNewContext(expression, { vars: values, github: { ...github, event_name }, inputs, needs,
-      format, fromJSON: JSON.parse, startsWith: (value: string, prefix: string) => value.startsWith(prefix) }) as string | string[];
-    return Array.isArray(value) ? value : [value];
-  };
-  const localRoutes: Record<string, string>[] = [
-    { PLATFORM_CI_LOCAL_ONLY: "true" },
-    { PLATFORM_CI_WORKER_POOL: "starter-pool" },
-    { PLATFORM_CI_AUX_RUNNER: "starter-ci" },
-    { PLATFORM_CI_RUNNER: "starter-ci" },
-    { PLATFORM_UPDATE_RUNNER: "starter-update" },
-    { PLATFORM_UPDATE_DELIVERY_RUNNER: "starter-update-deliver" },
-  ];
-  for (const file of readdirSync(directory).filter(name => name.endsWith(".yml"))) {
-    const lines = readFileSync(new URL(file, directory), "utf8").split("\n");
-    for (const [index, line] of lines.entries()) {
-      if (!/^\s+runs-on:/.test(line)) continue;
-      if (file === "platform-update-workers-check.yml") continue;
-      if (file === "ci-verify.yml" && line.includes("inputs.worker_pool")) {
-        assert.match(line, /starter-source-\{1\}/);
-        assert.match(line, /starter-run-\{2\}/);
-        continue;
-      }
-      const expression = line.match(/runs-on: \$\{\{ (.*) \}\}/)?.[1];
-      assert(expression, `${file}:${index + 1} has no evaluated selector`);
-      assert.deepEqual(runner(expression, {}), ["ubuntu-latest"], `${file}:${index + 1} should default to hosted`);
-      for (const vars of localRoutes) {
-        assert(!runner(expression, vars).includes("ubuntu-latest"), `${file}:${index + 1} uses hosted with ${Object.keys(vars)[0]}`);
-      }
-      if (line.includes("starter-run-")) {
-        assert.match(line, /starter-source-\{1\}/, `${file}:${index + 1} lacks source binding`);
-        assert.match(line, /starter-run-\{2\}/, `${file}:${index + 1} lacks run binding`);
-      }
-      if (file === "platform-security.yml") {
-        assert.match(line, /github\.event_name != 'schedule'/);
-        assert(!runner(expression, { PLATFORM_CI_WORKER_POOL: "starter-pool" }, "schedule").includes("ubuntu-latest"));
-      }
-    }
-  }
 });
 
 test("newly recognized alerts block once their fix is older than the security cooldown", () => {

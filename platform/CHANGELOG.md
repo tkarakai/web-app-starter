@@ -30,6 +30,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
   require task branches, early draft PRs and the existing E2E ready/label policy.
 
+- Worker setup accepts `--no-convenience-command` for an additional isolated installation without
+  replacing another pool's shared command. Use its absolute command path; the opt-out persists
+  through manager updates and does not alter another service or credential.
+
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
   membership and organization-availability operations. For authority boundaries and integration limits, see
   [organization authority](docs/architecture.md#organization-primitives-and-authority).
@@ -73,6 +77,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   epoch 2 invalidates older codes, delegations, grants and queued authority; historical task/artifact
   rows stay quarantined instead of being deleted or reclassified by owner alone.
 
+- Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.
+  Public local-worker setup, registration, diagnostics and the `--public-branch` exception are
+  retired. Private owners retain hosted/all-local execution, including auxiliary job coverage.
+  Local CLI/container checks without GitHub registration are unchanged.
+
 ### Action required
 
 - Restart operator-directory pagination from the first page after this upgrade. Earlier raw
@@ -104,6 +113,18 @@ version. Release-specific compatibility and deployment steps are listed explicit
   writers permanently; retain ambiguous data for explicit repair and use compatible forward
   recovery instead of deploying an old binary or resetting the database.
 
+- **Apps with local Actions routing or customized CI callers:** stop/drain and retire any public
+  local installation using its old absolute command; remove only its registrations and revoke its
+  dedicated credential. After upgrading, run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v5-public-hosted-runners.ts`, then the
+  same command with `--check`. It migrates stock platform-routing expressions in app-owned
+  callers/Renovate while preserving private routing; auxiliary runners must retain their standard
+  `self-hosted` label. Custom selectors need owner review.
+  Verify actual public jobs use GitHub-hosted runners and private all-local jobs never fall back
+  hosted. Cancel/restart already queued local jobs. Live-resource and inherited-setting retirement
+  steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
+
+
 ### Fixed
 
 - Fresh `adopt --remove-sample` removes both legacy and tenant sample APIs and installs
@@ -112,6 +133,28 @@ version. Release-specific compatibility and deployment steps are listed explicit
   resources, and adopted backend/web checks no longer require removed sample modules.
 - Backend session-assurance and recovery-code tests remain runnable after adoption with
   `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
+- Resuming setup with `--local-only` never starts an existing authenticated manager service;
+  container-only checks do not silently become registration-capable background work.
+- Updater status reports effective hosted, prepared, auxiliary or unconfigured routes across all
+  six local selectors, separately from recorded intent. Clearing updater pools no longer implies
+  fully hosted readiness; inherited settings and live host availability remain explicitly unverified.
+- Runner migration preserves customized diagnostic jobs for owner review rather than duplicating
+  conditions or replacing custom selectors; `--check` reports those unresolved jobs.
+- Authentication broadcasts notify other tabs without racing the originating sign-in tab's own
+  navigation. The existing cross-tab message protocol and subscription cleanup remain compatible.
+  Ordinary admin password sign-in no longer starts a competing router navigation when Better Auth
+  already redirects to the callback URL; callback targets, MFA policy and authorization-only flows
+  remain intact.
+- WebMCP waits for client-session hydration and the backend-authentication commit before
+  advertising tools, avoiding premature registration and cancellation during page loading.
+  Registrations survive benign router changes; surface disablement, session/client changes,
+  hidden auth gates and unmounting still revoke pending calls. Security-page redaction tests
+  require the real sensitive field to be visible before checking that it stays excluded.
+- Launcher wiring tests allow bounded startup headroom and retain fixture logs on timeout, without
+  changing application startup limits or readiness assertions.
+
+- Landing adoption fixtures exclude transient local CI state and worker-test directories, avoiding
+  concurrent cleanup races and keeping those artifacts out of adopted test apps.
 
 - Prepared CI worker tools use Debian 13 libraries compatible with current Convex Linux binaries.
   The OS base participates in image reuse identity; failed backend smoke checks retain loader

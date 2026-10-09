@@ -13,9 +13,10 @@ export interface Config {
   org?: string; repos?: string[]; runnerGroupId?: number;
   routing?: Record<string, { enabled: boolean; previous: string }>;
   concurrency: number; memoryGiB: number; diskGiB: number; cpus: number;
-  paused: boolean; pauseRequest?: string; localOnly: boolean; publicBranch?: string; tokenExpiry?: string;
+  paused: boolean; pauseRequest?: string; localOnly: boolean; tokenExpiry?: string;
+  publicBranch?: string; // Legacy marker retained only to reject retired diagnostic installations.
   updateRole?: 'verify' | 'deliver'; updateWorkflow?: string;
-  previousRouting?: string; enabled?: boolean; installedAt: string;
+  previousRouting?: string; enabled?: boolean; convenienceCommand?: boolean; installedAt: string;
 }
 export interface Environment {
   key: string; image: string; tools: string; scope: string; source: string;
@@ -30,6 +31,9 @@ export interface Job { id: number; status: string; name?: string; labels: string
 export function installationPool(): string { return `starter-${randomUUID().replaceAll('-', '')}`; }
 export function hash(value: string | Buffer): string { return createHash('sha256').update(value).digest('hex'); }
 export function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
+export function assertPrivateMode(c: Config): void {
+  assert(c.publicBranch === undefined, 'Public diagnostic mode is retired. Public repositories must use GitHub-hosted runners; retire this installation before configuring private workers.');
+}
 export function repository(remote: string): string {
   const match = remote.trim().match(/^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/);
   assert(match, 'origin must be a github.com HTTPS or SSH repository (or supply --repo owner/name)');
@@ -52,7 +56,7 @@ export function sourceRequest(config: Config, run: Run, job: Job, repoId: number
   const sources = job.labels.filter(l => l.startsWith('starter-source-'));
   if (sources.length !== 1 || !/^starter-source-[a-f0-9]{40}$/.test(sources[0])) return;
   const sha = sources[0].slice(15);
-  if (config.publicBranch && (run.event !== 'workflow_dispatch' || run.head_branch !== config.publicBranch)) return;
+  if (config.publicBranch !== undefined) return;
   if (config.updateRole) {
     const jobs = config.updateRole === 'verify' ? ['check', 'verify'] : ['deliver'];
     const jobId = jobs.find(id => job.name === id || job.name?.endsWith(' / ' + id));

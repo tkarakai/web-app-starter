@@ -1,8 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useConvex, useQuery } from "convex/react";
+import { useConvex, useConvexAuth, useQuery } from "convex/react";
 import { api } from "@repo/backend";
+import { authClient } from "@web-app-starter/auth/client";
 import { browserActions } from "@web-app-starter/agentic/browser-actions";
 import { boundedResult } from "@web-app-starter/agentic/results";
 import { registerWebMcp, type ModelContextProvider } from "@web-app-starter/agentic/webmcp";
@@ -11,13 +12,29 @@ import { useAuthUser } from "@/components/auth/auth-guard";
 export function AgentBrowserBridge() {
   const client = useConvex(); const router = useRouter();
   const actorId = useAuthUser()?.id;
+  const { isAuthenticated } = useConvexAuth();
+  const session = authClient.useSession();
+  // The server token can populate policy before client session hydration.
+  // Hydration restarts Convex authentication and can hide the auth gate's
+  // Activity, which correctly revokes its effects. Advertise only after both
+  // auth layers are ready, and revoke old tools when session identity changes.
+  const sessionId = !session.isPending && isAuthenticated ? session.data?.session.id : undefined;
+  // Convex clears the previous auth state in its effects. Do not publish from
+  // the same render that first observes a hydrated session and still sees that
+  // previous state; wait for the resulting commit, without a timer or retry.
+  const [committedSessionId, setCommittedSessionId] = useState<string>();
+  useEffect(() => { setCommittedSessionId(sessionId); }, [sessionId]);
+  // Next can replace the router object as route cache identity changes. Keep
+  // navigation current without revoking tools or in-flight gateway requests.
+  const currentRouter = useRef(router);
+  useEffect(() => { currentRouter.current = router; }, [router]);
   const configuration = useQuery(api.platform.agentSurfaces.configuration, {});
-  const enabled = configuration?.surfaces.webmcp?.enabled ?? false;
+  const enabled = Boolean(sessionId) && sessionId === committedSessionId && (configuration?.surfaces.webmcp?.enabled ?? false);
   const generation = configuration?.surfaces.webmcp?.generation;
   useEffect(() => {
     const provider = (document as typeof document & { modelContext?: ModelContextProvider }).modelContext;
     if (!actorId || !enabled || !generation || !provider) return;
-    const controller = new globalThis.AbortController(); const page = browserActions(document, path => router.push(path));
+    const controller = new globalThis.AbortController(); const page = browserActions(document, path => currentRouter.current.push(path));
     void registerWebMcp(provider, async (name, input, signal) => {
       const operation = name === "capabilities_search" ? "search" : name === "capabilities_describe" ? "describe" : "prepare";
       const response = await client.query(api.platform.agentCapabilities.browserGateway, { operation, input, requestId: crypto.randomUUID() });
@@ -36,6 +53,6 @@ export function AgentBrowserBridge() {
       return output;
     }, controller.signal).catch(() => controller.abort());
     return () => controller.abort();
-  }, [actorId, client, enabled, generation, router]);
+  }, [actorId, client, enabled, generation, sessionId]);
   return null;
 }

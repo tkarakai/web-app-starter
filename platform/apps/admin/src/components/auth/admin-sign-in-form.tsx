@@ -198,7 +198,10 @@ export function AdminSignInForm({ authorizationOnly = false }: { authorizationOn
         if (await enforcePostSignInPolicies({ usedPasskey: false })) return;
         setStoredPreferredMethod(email, "password");
         broadcastAuth();
-        router.push(postSignInPath());
+        // Better Auth has already started the callbackURL document navigation
+        // when redirect is true. A competing router push can change the URL
+        // before that document arrives, leaving the next navigation racing it.
+        if (!result.data?.redirect) router.push(postSignInPath());
       }
     } catch (err) {
       setError(isConvexRateLimited(err) ? AUTH_RATE_LIMIT_MESSAGE : "Something went wrong. Please try again.");

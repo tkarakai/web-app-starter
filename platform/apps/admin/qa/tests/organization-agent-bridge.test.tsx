@@ -5,10 +5,12 @@ import { WebMcpSimulator, type BrowserTool } from "@web-app-starter/agentic/webm
 
 const mocks = vi.hoisted(() => ({
   actor: "operator-a" as string | null,
+  sessionId: "session-a",
   configuration: { surfaces: { webmcp: { enabled: true, generation: "generation-a" } } },
   client: { query: vi.fn(), mutation: vi.fn() }, router: { push: vi.fn() },
 }));
-vi.mock("convex/react", () => ({ useConvex: () => mocks.client, useQuery: () => mocks.configuration }));
+vi.mock("@web-app-starter/auth/client", () => ({ authClient: { useSession: () => ({ isPending: false, data: { session: { id: mocks.sessionId } } }) } }));
+vi.mock("convex/react", () => ({ useConvexAuth: () => ({ isAuthenticated: true }), useConvex: () => mocks.client, useQuery: () => mocks.configuration }));
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
 vi.mock("@/components/auth/auth-guard", () => ({ useAuthUser: () => mocks.actor ? { id: mocks.actor } : null }));
 vi.mock("@repo/backend", () => ({ api: { platform: { agentSurfaces: { configuration: "configuration" }, agentCapabilities: { browserGateway: "gateway", browserRead: "read", browserWrite: "write" } } } }));
@@ -17,7 +19,7 @@ import { AgentBrowserBridge } from "../../src/components/agent-browser-bridge";
 
 let provider: WebMcpSimulator;
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.actor = "operator-a";
+  vi.clearAllMocks(); mocks.actor = "operator-a"; mocks.sessionId = "session-a";
   mocks.configuration = { surfaces: { webmcp: { enabled: true, generation: "generation-a" } } };
   provider = new WebMcpSimulator();
   Object.defineProperty(document, "modelContext", { configurable: true, value: provider });
@@ -57,14 +59,17 @@ test("sign-out aborts a held browser command even while configuration is cached"
   expect(mocks.router.push).not.toHaveBeenCalled();
 });
 
-test("native result arriving after actor withdrawal is not disclosed by a held tool", async () => {
+test.each(["actor", "session", "generation"])("native result arriving after %s withdrawal is not disclosed by a held tool", async boundary => {
   const view = render(<AgentBrowserBridge />); const held = await registered();
   let resolve!: (value: unknown) => void;
   mocks.client.query.mockResolvedValueOnce(JSON.stringify({ name: "organizations_get", input: { organizationId: "org-a" }, effect: "read", resultOffset: 0 }))
     .mockReturnValueOnce(new Promise(done => { resolve = done; }));
   const pending = call(held, "organizations_get", { organizationId: "org-a" });
   await waitFor(() => expect(mocks.client.query).toHaveBeenCalledTimes(2));
-  mocks.actor = null; view.rerender(<AgentBrowserBridge />);
+  if (boundary === "actor") mocks.actor = null;
+  else if (boundary === "session") mocks.sessionId = "session-b";
+  else mocks.configuration = { surfaces: { webmcp: { enabled: true, generation: "generation-b" } } };
+  view.rerender(<AgentBrowserBridge />);
   await act(async () => resolve({ contacts: [{ email: "WITHDRAWN_CONTACT" }] }));
   const response = await pending;
   expect(response.isError).toBe(true);

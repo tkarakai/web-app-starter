@@ -5,8 +5,11 @@ class MockBroadcastChannel {
   static instances: MockBroadcastChannel[] = [];
   name: string;
   onmessage: ((event: { data: unknown }) => void) | null = null;
-  listeners = new Set<(event: { data: unknown }) => void>();
   closed = false;
+  listeners = new Set<(event: { data: unknown }) => void>();
+  errors: unknown[] = [];
+  addEventListener(_type: string, listener: (event: { data: unknown }) => void) { this.listeners.add(listener); }
+  removeEventListener(_type: string, listener: (event: { data: unknown }) => void) { this.listeners.delete(listener); }
 
   constructor(name: string) {
     this.name = name;
@@ -14,21 +17,15 @@ class MockBroadcastChannel {
   }
 
   postMessage(data: unknown) {
-    // Deliver to other instances with the same channel name (cross-tab simulation)
+    // BroadcastChannel excludes the sender object, not other objects in its tab.
     for (const instance of MockBroadcastChannel.instances) {
       if (instance !== this && instance.name === this.name && !instance.closed) {
-        instance.onmessage?.({ data });
-        for (const listener of instance.listeners) listener({ data });
+        // Native EventTarget reports each listener error without stopping other listeners.
+        for (const listener of [instance.onmessage, ...instance.listeners]) {
+          if (listener) { try { listener({ data }); } catch (error) { instance.errors.push(error); } }
+        }
       }
     }
-  }
-
-  addEventListener(_type: string, listener: (event: { data: unknown }) => void) {
-    this.listeners.add(listener);
-  }
-
-  removeEventListener(_type: string, listener: (event: { data: unknown }) => void) {
-    this.listeners.delete(listener);
   }
 
   close() {
@@ -41,45 +38,35 @@ class MockBroadcastChannel {
   }
 }
 
-// Install mock before importing the module
 const originalBC = globalThis.BroadcastChannel;
-// @ts-expect-error -- mock
-globalThis.BroadcastChannel = MockBroadcastChannel;
-
-// Dynamic import so the module picks up the mock
 const { broadcastAuth, onAuthBroadcast } = await import("../../src/lib/auth-broadcast");
-const cleanups: Array<() => void> = [];
-function subscribe(callback: () => void) {
-  const cleanup = onAuthBroadcast(callback);
-  cleanups.push(cleanup);
-  return () => {
-    cleanups.splice(cleanups.indexOf(cleanup), 1);
-    cleanup();
-  };
-}
+const subscriptions: (() => void)[] = [];
+
 beforeEach(() => {
   // @ts-expect-error -- mock
   globalThis.BroadcastChannel = MockBroadcastChannel;
 });
+
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) cleanup();
+  for (const cleanup of subscriptions.splice(0)) cleanup();
+  MockBroadcastChannel.reset();
   globalThis.BroadcastChannel = originalBC;
 });
 
+function subscribe(callback: () => void) {
+  const cleanup = onAuthBroadcast(callback);
+  subscriptions.push(cleanup);
+  return cleanup;
+}
+
 describe("broadcastAuth", () => {
-  beforeEach(() => {
-    MockBroadcastChannel.reset();
-  });
-
-  afterEach(() => {
-    MockBroadcastChannel.reset();
-  });
-
   it("creates a channel, posts 'authenticated', and closes it", () => {
+    const receiver = new MockBroadcastChannel("auth");
+    receiver.onmessage = mock(() => {});
     broadcastAuth();
 
-    // Channel was created and closed (fire-and-forget)
-    expect(MockBroadcastChannel.instances).toHaveLength(0); // closed = removed
+    expect(receiver.onmessage).toHaveBeenCalledWith({ data: "authenticated" });
+    expect(MockBroadcastChannel.instances).toEqual([receiver]);
   });
 
   it("does not throw when BroadcastChannel is unavailable", () => {
@@ -94,14 +81,6 @@ describe("broadcastAuth", () => {
 });
 
 describe("onAuthBroadcast", () => {
-  beforeEach(() => {
-    MockBroadcastChannel.reset();
-  });
-
-  afterEach(() => {
-    MockBroadcastChannel.reset();
-  });
-
   it("calls callback when 'authenticated' message is received", () => {
     const callback = mock(() => {});
     subscribe(callback);
@@ -112,6 +91,71 @@ describe("onAuthBroadcast", () => {
     sender.close();
 
     expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies other tabs without triggering its own sign-in redirect", () => {
+    const callback = mock(() => {});
+    subscribe(callback);
+    const receiver = new MockBroadcastChannel("auth");
+    receiver.onmessage = mock(() => {});
+
+    broadcastAuth();
+
+    expect(callback).not.toHaveBeenCalled();
+    expect(receiver.onmessage).toHaveBeenCalledWith({ data: "authenticated" });
+  });
+
+  it("keeps remaining subscriptions active and closes after the last cleanup", () => {
+    const first = mock(() => {}), second = mock(() => {});
+    const cleanupFirst = subscribe(first), cleanupSecond = subscribe(second);
+    const sender = new MockBroadcastChannel("auth");
+    sender.postMessage("authenticated");
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1);
+
+    cleanupFirst();
+    cleanupFirst();
+    sender.postMessage("authenticated");
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(2);
+    broadcastAuth();
+    expect(second).toHaveBeenCalledTimes(2);
+
+    cleanupSecond();
+    expect(MockBroadcastChannel.instances).toEqual([sender]);
+    const third = mock(() => {});
+    subscribe(third);
+    sender.postMessage("authenticated");
+    expect(third).toHaveBeenCalledTimes(1);
+  });
+
+  it("isolates a throwing subscription without hiding its error or dropping other subscribers", () => {
+    const failure = new Error("fixture listener failure");
+    const cleanup = subscribe(() => { throw failure; });
+    const second = mock(() => {});
+    subscribe(second);
+    const receiver = MockBroadcastChannel.instances[0];
+    const sender = new MockBroadcastChannel("auth");
+    sender.postMessage("authenticated");
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(receiver.errors).toEqual([failure]);
+    cleanup(); cleanup();
+    sender.postMessage("authenticated");
+    expect(second).toHaveBeenCalledTimes(2);
+    expect(receiver.errors).toEqual([failure]);
+  });
+
+  it("cleans up duplicate callbacks as independent subscriptions", () => {
+    const callback = mock(() => {});
+    const first = subscribe(callback), second = subscribe(callback);
+    const sender = new MockBroadcastChannel("auth");
+    sender.postMessage("authenticated");
+    expect(callback).toHaveBeenCalledTimes(2);
+    first();
+    sender.postMessage("authenticated");
+    expect(callback).toHaveBeenCalledTimes(3);
+    second();
+    expect(MockBroadcastChannel.instances).toEqual([sender]);
   });
 
   it("ignores messages that are not 'authenticated'", () => {
@@ -153,7 +197,6 @@ describe("onAuthBroadcast", () => {
     // @ts-expect-error -- restore
     globalThis.BroadcastChannel = MockBroadcastChannel;
   });
-
   it("does not deliver its own sign-in broadcast to this document", () => {
     const callback = mock(() => {});
     subscribe(callback);

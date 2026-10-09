@@ -1,14 +1,18 @@
 const CHANNEL_NAME = "auth";
-let receivingChannel: BroadcastChannel | undefined;
-let subscribers = 0;
+let channel: BroadcastChannel | undefined;
+const listeners = new Set<(event: MessageEvent) => void>();
 
 /** Notify other tabs that the user just authenticated. */
 export function broadcastAuth(): void {
   try {
-    // Sending on the receiving channel excludes this document from delivery.
-    const ch = receivingChannel ?? new BroadcastChannel(CHANNEL_NAME);
-    ch.postMessage("authenticated");
-    if (ch !== receivingChannel) ch.close();
+    // Reuse this tab's listening channel: BroadcastChannel excludes only the
+    // sending object, so a second channel would notify our own GuestGuard too.
+    const ch = channel ?? new BroadcastChannel(CHANNEL_NAME);
+    try {
+      ch.postMessage("authenticated");
+    } finally {
+      if (ch !== channel) ch.close();
+    }
   } catch {
     // BroadcastChannel unavailable (e.g. SSR or unsupported browser).
   }
@@ -17,20 +21,21 @@ export function broadcastAuth(): void {
 /** Subscribe to auth broadcasts from other tabs. Returns a cleanup function. */
 export function onAuthBroadcast(callback: () => void): () => void {
   try {
-    const ch = receivingChannel ?? new BroadcastChannel(CHANNEL_NAME);
-    receivingChannel = ch;
-    subscribers++;
-    const handler = (event: MessageEvent) => {
-      if (event.data === "authenticated") {
-        callback();
-      }
+    const ch = channel ?? new BroadcastChannel(CHANNEL_NAME);
+    channel = ch;
+    // Native listeners isolate callback errors: one subscriber cannot prevent
+    // another tab-local subscriber from receiving a legitimate broadcast.
+    const listener = (event: MessageEvent) => {
+      if (event.data === "authenticated") callback();
     };
-    ch.addEventListener("message", handler);
+    ch.addEventListener("message", listener);
+    listeners.add(listener);
     return () => {
-      ch.removeEventListener("message", handler);
-      if (--subscribers === 0) {
-        ch.close();
-        receivingChannel = undefined;
+      if (!listeners.delete(listener)) return;
+      ch.removeEventListener("message", listener);
+      if (listeners.size === 0) {
+        channel?.close();
+        channel = undefined;
       }
     };
   } catch {

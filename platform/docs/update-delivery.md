@@ -144,15 +144,15 @@ the installed manager checks the configured caller or the manual
 `platform-update-workers-check.yml` diagnostic, event, job and source against authenticated
 GitHub metadata; the root-owned start hook checks repository ID/name, source, run, attempt,
 event, ref and job again. Private updater pools accept only default-branch schedules or manual
-runs. Public pools require an explicitly reviewed manual branch and never accept schedules or
-fork jobs. Ordinary CI pools cannot accept updater jobs, and neither ordinary CI setting opts
+runs. Public repositories always use standard GitHub-hosted runners; public local pools and
+manual diagnostic exceptions are not supported. Ordinary CI pools cannot accept updater jobs, and neither ordinary CI setting opts
 workers into updater credentials. Keep reviewed caller and reusable workflows in the trusted
 repository; updating their source requires normal review.
 
 Publication launches only its independently prepared immutable tools image. It never builds an
 app dependency seed, runs app scripts or shares writable caches with verification/ordinary CI.
 The job still uses only pinned actions, inline publisher code and Git with hooks disabled.
-Removing or clearing either selector uses `PLATFORM_CI_AUX_RUNNER` or legacy
+On private repositories, removing or clearing either selector uses `PLATFORM_CI_AUX_RUNNER` or legacy
 `PLATFORM_CI_RUNNER` when set. With neither, it uses `ubuntu-latest` only when no other local
 runner variable or explicit `PLATFORM_CI_LOCAL_ONLY=true` guard remains. Otherwise it requests
 an unmatched local label. Cancel and restart

@@ -21,7 +21,7 @@ export function validateProofs(proofs: Proofs, repo: string, sha: string): strin
   for (const role of ['verify', 'deliver'] as const) {
     const p = proofs[role], age = Date.now() - Date.parse(p.checked);
     demand(p.repository.toLowerCase() === repo.toLowerCase() && p.role === role && p.workflow === '.github/workflows/update-platform.yml', 'Worker installation belongs to another repository or role');
-    demand(!p.localOnly && !p.publicBranch && p.managerHealthy, 'Both worker services must be authenticated, running and unpaused');
+    demand(!p.localOnly && p.publicBranch === undefined && p.managerHealthy, 'Both worker services must be authenticated, running and unpaused');
     demand(p.sha === sha && /^[a-f0-9]{40}$/.test(p.sha) && /^sha256:[a-f0-9]{64}$/.test(p.image) && /^[a-f0-9]{64}$/.test(p.runtime) && /^starter-[a-f0-9]{32}$/.test(p.pool), 'Worker proof does not match this committed app revision');
     demand(age >= 0 && age < 86400_000 && p.id === proofId(p), 'Worker proof expired or changed; repeat the local checks');
   }
@@ -34,7 +34,8 @@ export function certifyWorkers(repo: string, runId: string, sha: string, proof: 
   demand(result.event === 'workflow_dispatch' && result.path === updaterCheckWorkflow && result.head_sha === sha && result.display_title === 'Updater worker check ' + proof, 'GitHub test does not match these local proofs');
   demand(result.status === 'completed' && result.conclusion === 'success', 'GitHub worker test has not passed. Watch it with gh run watch ' + runId + ' --repo ' + repo + ' --exit-status, then resume setup with --worker-run ' + runId);
   const jobs = JSON.parse(run(['api', 'repos/' + repo + '/actions/runs/' + runId + '/attempts/' + result.run_attempt + '/jobs?per_page=100'])).jobs as { name: string; conclusion: string; labels: string[] }[];
-  demand(jobs.length === 3 && ['check', 'verify', 'deliver'].every(name => jobs.some(j => j.name === name && j.conclusion === 'success' && ['self-hosted', pools[name === 'deliver' ? 'deliver' : 'verify'], 'starter-source-' + sha, 'starter-run-' + runId, 'starter-attempt-' + result.run_attempt, 'starter-update-' + name].every(label => j.labels.includes(label)))), 'All three test jobs must succeed in the selected pools and attempt; skipped jobs do not pass');
+  const rejection = jobs.filter(job => job.name === 'Reject public local-worker request');
+  demand(rejection.length <= 1 && rejection.every(job => job.conclusion === 'skipped') && jobs.length - rejection.length === 3 && ['check', 'verify', 'deliver'].every(name => jobs.some(j => j.name === name && j.conclusion === 'success' && ['self-hosted', pools[name === 'deliver' ? 'deliver' : 'verify'], 'starter-source-' + sha, 'starter-run-' + runId, 'starter-attempt-' + result.run_attempt, 'starter-update-' + name].every(label => j.labels.includes(label)))), 'All three test jobs must succeed in the selected pools and attempt; skipped jobs do not pass');
   return { runId: Number(runId), sha, proof, checkedAt: new Date().toISOString() };
 }
 /** Change the pair together as far as the GitHub API allows, restoring on a partial failure. */
@@ -88,7 +89,7 @@ export function workerHost(options: WorkerOptions, command?: (home: string, args
       const file = path.join(home, 'config.json');
       if (fs.existsSync(file)) {
         const c = JSON.parse(fs.readFileSync(file, 'utf8')) as Config;
-        demand(c.repo.toLowerCase() === options.repo.toLowerCase() && c.updateRole === role && c.updateWorkflow === '.github/workflows/update-platform.yml' && !c.publicBranch, 'Selected installation is for another repository, role or diagnostic branch');
+        demand(c.repo.toLowerCase() === options.repo.toLowerCase() && c.updateRole === role && c.updateWorkflow === '.github/workflows/update-platform.yml' && c.publicBranch === undefined, 'Selected installation is for another repository, role or diagnostic branch');
         demand(!c.paused, 'Selected worker installation is paused. Resume it explicitly before setup.');
         const stopped = !fs.existsSync(path.join(home, 'daemon.lock'));
         if (stopped && (c.localOnly || !await installationComplete(c.pool, home))) await invoke(home, ['setup']);
@@ -118,7 +119,7 @@ export async function configureWorkers(options: WorkerOptions, run: Gh, persist:
   if (options.choice === 'hosted') {
     setWorkerRouting(options.repo, before, { verify: '', deliver: '' }, run);
     persist({ choice: 'hosted', status: 'configured', ownerActions: [] });
-    process.stdout.write('Updates now use GitHub-hosted workers. Existing jobs can finish. When drained, stop unused local services with each installation’s absolute starter-workers path: service stop.\n'); return;
+    process.stdout.write('Updater pool overrides cleared. Private repositories still use any configured auxiliary/local-only route; remove all local selectors for fully hosted execution. Already queued jobs retain their labels: cancel and start fresh runs if needed. When drained, stop unused services with each installation’s absolute starter-workers path: service stop.\n'); return;
   }
   const repo = JSON.parse(run(['api', 'repos/' + options.repo]));
   demand(repo.private === true && repo.permissions?.admin === true, 'Scheduled local update workers require a private repository and repository administration access');
@@ -155,6 +156,8 @@ export async function configureWorkers(options: WorkerOptions, run: Gh, persist:
   const test = certifyWorkers(options.repo, options.runId!, sha, proof, pools, run);
   const latest = JSON.parse(run(['api', 'repos/' + options.repo + '/commits/' + encodeURIComponent(repo.default_branch)]));
   demand(latest.sha === sha, 'Default branch changed during the test; repeat local worker setup');
+  const admitted = JSON.parse(run(['api', 'repos/' + options.repo]));
+  demand(admitted.private === true && admitted.permissions?.admin === true, 'Local update workers still require a private repository and repository administration access');
   setWorkerRouting(options.repo, before, pools, run);
   persist({ choice: 'local', status: 'configured', homes: options.homes, pools, test, ownerActions: [] });
   process.stdout.write('Both local installations passed the GitHub test. Scheduled update jobs now use these pools.\n');
