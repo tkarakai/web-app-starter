@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { getEndpoints } from "better-auth/api";
 import { components } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { modules } from "../test.modules";
+import { createPrivateResourceTestEnv } from "./privateResources.test-helpers";
 import { createAuth, createAuthOptions } from "./auth";
 import authSchema from "./betterAuth/schema";
 
@@ -16,7 +17,7 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 async function fixture() {
-  const t = createTestEnv();
+  const t = createPrivateResourceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, authModules);
   async function identity(name: string, role: string) {
     const now = Date.now();
@@ -85,7 +86,7 @@ describe("raw Better Auth app-operator boundary", () => {
 
   test("raw identity self-deletion remains unavailable until ownership and membership mappings are reviewed", async () => {
     const f = await fixture();
-    const project = await f.t.run(ctx => ctx.db.insert("projects", {
+    const project = await f.t.run(ctx => ctx.db.insert("securityTestPrivateResources", {
       name: "Legacy operator-owned record", description: "Preserve", ownerId: f.operator.user._id, createdAt: Date.now(),
     }));
     for (const identity of [f.operator, f.customer]) {

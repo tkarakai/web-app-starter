@@ -90,6 +90,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Fresh `adopt --remove-sample` removes both legacy and tenant sample APIs and installs
+  matching empty-domain migration registration. Organization navigation, enrollment and
+  membership management remain available; retained security tests use independent private
+  resources, and adopted backend/web checks no longer require removed sample modules.
 - Backend session-assurance and recovery-code tests remain runnable after adoption with
   `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
 

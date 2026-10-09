@@ -1,0 +1,31 @@
+"use client";
+
+import { useConvexAuth } from "convex/react";
+import { api } from "@repo/backend";
+import { authClient } from "@web-app-starter/auth/client";
+import { resolvePersonalDataContext } from "./personal-data-context";
+import { useOrganizationSelection } from "./organization-selection";
+import { useSafeQuery } from "./use-safe-query";
+
+
+export function useOrganizationSnapshot() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const session = authClient.useSession();
+  const browserUserId = session.data?.user.id;
+  const signedIn = isAuthenticated && !isLoading && !session.isPending && Boolean(browserUserId);
+  const current = useSafeQuery(api.platform.auth.getCurrentUser, signedIn ? {} : "skip");
+  const currentUser = current.data;
+  const sameAccount = signedIn && currentUser?._id === browserUserId;
+  const discovery = useSafeQuery(api.platform.tenantContext.mine, sameAccount ? {} : "skip");
+  const mine = discovery.data;
+  const pending = !current.error && !discovery.error && (isLoading || session.isPending || (signedIn && (currentUser === undefined || (currentUser !== null && currentUser._id !== browserUserId))) || (sameAccount && mine != null && mine.userId !== browserUserId));
+  const ownerId = sameAccount && currentUser ? (currentUser.userId ?? currentUser._id).toString() : null;
+  return { mine: pending ? undefined : sameAccount ? mine : null, userId: pending ? undefined : sameAccount ? currentUser!._id : null, ownerId, error: current.error ?? discovery.error };
+}
+
+export function usePersonalDataContext() {
+  const snapshot = useOrganizationSnapshot();
+  const selected = useOrganizationSelection(snapshot.userId ?? null);
+  const sole = snapshot.mine?.contexts.length === 1 ? snapshot.mine.contexts[0]?.organizationId : undefined;
+  return resolvePersonalDataContext(snapshot.error ? null : snapshot.mine, snapshot.userId, snapshot.ownerId, selected ?? sole);
+}

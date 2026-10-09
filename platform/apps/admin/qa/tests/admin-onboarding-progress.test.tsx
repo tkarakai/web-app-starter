@@ -8,19 +8,22 @@ const mocks = vi.hoisted(() => ({
   advance: vi.fn(),
   status: { completed: false, step: 1 },
   assurance: {} as Record<string, unknown>,
+  user: { id: "fixture-onboarding-operator", email: "owner@example.test" },
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: {
-  getSession: vi.fn(async () => ({ data: { session: { id: "fresh-session" }, user: { email: "owner@example.test" } } })),
+  getSession: vi.fn(async () => ({ data: { session: { id: "fresh-session", userId: mocks.user.id }, user: mocks.user } })),
+  useSession: () => ({ data: { session: { id: "fresh-session", userId: mocks.user.id }, user: mocks.user }, isPending: false }),
 } }));
 vi.mock("convex/react", () => ({
   useAction: () => vi.fn(),
   useMutation: (ref: Parameters<typeof getFunctionName>[0]) => getFunctionName(ref).endsWith(":advanceOnboardingStep") ? mocks.advance : vi.fn(async () => null),
   useQuery: (ref: Parameters<typeof getFunctionName>[0]) => getFunctionName(ref).endsWith(":getMyOnboardingStatus") ? mocks.status
-    : getFunctionName(ref).endsWith("sessionAssurance:status") ? mocks.assurance : undefined,
+    : getFunctionName(ref).endsWith("sessionAssurance:status") ? mocks.assurance
+    : getFunctionName(ref).endsWith("auth:getCurrentUser") ? { _id: mocks.user.id, email: mocks.user.email } : undefined,
 }));
 vi.mock("@/components/onboarding/steps/totp-setup-step", () => ({
   TotpSetupStep: ({ onComplete }: { onComplete: (codes: string[]) => Promise<void> }) =>

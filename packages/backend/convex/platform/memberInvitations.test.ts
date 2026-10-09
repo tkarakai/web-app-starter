@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { modules } from "../test.modules";
+import { createPrivateResourceTestEnv } from "./privateResources.test-helpers";
 import schema from "./betterAuth/schema";
 import { sha256Hex } from "./tokenHash";
 import { sendAuthEmail } from "./sendAuthEmail";
@@ -29,7 +30,7 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals();
 const invites = components.betterAuth.memberInvitations;
 
 async function fixture() {
-  const t = createTestEnv();
+  const t = createPrivateResourceTestEnv(modules);
   t.registerComponent("betterAuth", schema, import.meta.glob("./betterAuth/**/*.*s"));
   await completeOrganizationMigration(t);
   async function user(email = `${randomUUID()}@example.test`, role = "user", verified = true) {
@@ -121,7 +122,7 @@ describe("canonical invitation-bound member admission", () => {
     const f = await fixture();
     const user = await f.user();
     const personal = await f.t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: user._id });
-    const projectId = await f.t.run(ctx => ctx.db.insert("projects", { name: "Private", description: "Unchanged", ownerId: user._id, createdAt: Date.now() }));
+    const projectId = await f.t.run(ctx => ctx.db.insert("securityTestPrivateResources", { name: "Private", description: "Unchanged", ownerId: user._id, createdAt: Date.now() }));
     const project = await f.t.run(ctx => ctx.db.get(projectId));
     const credential = (await f.rows("account")).find(row => row.userId === user._id);
     const other = await f.organization();

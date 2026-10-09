@@ -1,17 +1,27 @@
 import { act, fireEvent, isInaccessible, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { getFunctionName } from "convex/server";
 import english from "@web-app-starter/i18n/messages/en.json";
 import { AuthGuard } from "../../src/components/auth-guard";
 import { AuthGuard as AdminAuthGuard } from "../../../../apps/admin/src/components/auth/auth-guard";
 import { SecuritySection } from "../../src/settings/security-section";
 
-const mocks = vi.hoisted(() => ({ status: undefined as Record<string, unknown> | undefined, enable: vi.fn(), totp: vi.fn(), verify: vi.fn(), search: new URLSearchParams() }));
-vi.mock("convex/react", () => ({ useQuery: () => mocks.status, useAction: () => vi.fn(), useMutation: () => vi.fn() }));
-vi.mock("@convex-dev/better-auth/nextjs/client", () => ({ usePreloadedAuthQuery: () => ({ name: "Test", email: "test@example.test" }) }));
+const mocks = vi.hoisted(() => ({
+  status: undefined as Record<string, unknown> | undefined,
+  user: { id: "fixture-operator", name: "Test", email: "test@example.test" }, sessionPending: false, sessionId: "fixture-browser-session",
+  enable: vi.fn(), totp: vi.fn(), verify: vi.fn(), search: new URLSearchParams(),
+}));
+vi.mock("convex/react", () => ({
+  useQuery: (ref: Parameters<typeof getFunctionName>[0]) => getFunctionName(ref).endsWith("sessionAssurance:status") ? mocks.status
+    : getFunctionName(ref).endsWith("auth:getCurrentUser") ? { _id: mocks.user.id, name: mocks.user.name, email: mocks.user.email } : undefined,
+  useAction: () => vi.fn(), useMutation: () => vi.fn(),
+}));
+vi.mock("@convex-dev/better-auth/nextjs/client", () => ({ usePreloadedAuthQuery: () => ({ _id: mocks.user.id, name: mocks.user.name, email: mocks.user.email }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => mocks.search }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: {
-  useSession: () => ({ data: { user: {} } }), getSession: async () => ({ data: { user: { twoFactorEnabled: false } } }),
+  useSession: () => ({ data: mocks.sessionPending ? null : { user: mocks.user, session: { id: mocks.sessionId, userId: mocks.user.id } }, isPending: mocks.sessionPending }),
+  getSession: async () => ({ data: { user: { ...mocks.user, twoFactorEnabled: false }, session: { id: mocks.sessionId, userId: mocks.user.id } } }),
   $fetch: mocks.verify, twoFactor: { enable: mocks.enable, verifyTotp: mocks.totp }, signOut: vi.fn(),
 } }));
 vi.mock("../../src/components/localized-controls", () => ({
@@ -22,7 +32,7 @@ vi.mock("../../src/components/localized-controls", () => ({
 }));
 function ready() { return { allowed: true, reason: "ready", hasTotp: false, hasPasskey: false, strongForChanges: false, recent: true, recentUntil: Date.now() + 300000, primaryRecentUntil: Date.now() + 300000, expiresAt: Date.now() + 3600000, passkeyPolicy: "optional" }; }
 beforeEach(() => {
-  vi.useFakeTimers(); mocks.status = ready(); mocks.search = new URLSearchParams();
+  vi.useFakeTimers(); mocks.status = ready(); mocks.search = new URLSearchParams(); mocks.sessionPending = false; mocks.sessionId = "fixture-browser-session";
   mocks.enable.mockResolvedValue({ data: { totpURI: "otpauth://totp/Test?secret=AAAA", backupCodes: ["same-first-code", "same-second-code"] } });
   mocks.totp.mockResolvedValue({ data: {} }); mocks.verify.mockResolvedValue({ data: { status: true } });
 });
@@ -46,10 +56,10 @@ it.each([false, true])("continues with the same backup codes through nested time
   const password = screen.getAllByLabelText(english.accountSecurity.changePassword.currentPassword).find(field => !isInaccessible(field))!;
   fireEvent.change(password, { target: { value: "secret" } });
   await act(async () => fireEvent.submit(password.closest("form")!));
-  mocks.status = undefined; result.rerender(view());
+  mocks.status = undefined; mocks.sessionPending = true; result.rerender(view());
   await act(async () => vi.advanceTimersByTime(4000));
   expect(codes).not.toBeVisible();
-  mocks.status = ready(); result.rerender(view());
+  mocks.status = ready(); mocks.sessionPending = false; mocks.sessionId = "rotated-browser-session"; result.rerender(view());
   expect(screen.getByLabelText("Issued backup codes")).toBe(codes);
   expect(codes).toBeVisible(); expect(codes).toHaveValue("same-first-code\nsame-second-code");
   fireEvent.click(screen.getByRole("button", { name: english.common.save }));

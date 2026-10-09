@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@web-app-starter/i18n/navigation";
 import { appConfig } from "@web-app-starter/app-config";
 import { useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationPicker } from "@/components/organizations/organization-picker";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -16,13 +17,18 @@ export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
 }) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
+  const to = useTranslations("organizations");
   const router = useRouter();
   const signOut = useSignOut("/");
   return (
     <Sidebar>
       <SidebarHeader className="p-4 font-semibold">{appConfig.identity.productName}</SidebarHeader>
       <SidebarContent>
+        <OrganizationPicker />
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild><Link href="/dashboard/organization">{to("title")}</Link></SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={onNavigateHome ?? (() => router.push("/dashboard"))}>
               {tc("backToHome")}

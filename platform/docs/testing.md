@@ -167,7 +167,21 @@ Platform session-assurance and recovery tests use test-only endpoints registered
 `convex/platform/sessionAssurance.test-helpers.ts`. They exercise the real authenticated
 query and mutation wrappers without depending on sample tables or functions, so they keep
 running after `adopt --remove-sample`. The fixture endpoints are never deployed.
-The adoption tooling tests also execute the retained backend suite after sample removal.
+Organization membership, enrollment and operator-boundary tests use
+`privateResources.test-helpers.ts`: a test-only schema with real tenant wrappers, explicit
+organization context and private ownership checks. It imports no sample API and adds no
+deployed endpoint. Pass the test's `modules` map into the helper, keeping test discovery out
+of the production TypeScript graph.
+
+The adoption tooling tests execute the retained backend suite, the organization/context web
+tests, typechecks and browser-test discovery after actual sample removal. Workspace imports
+resolve to that copied app, not the original starter. Fresh `adopt --remove-sample` installs
+empty-domain migration registration and acceptance templates; these retain identity, authority
+retirement, audit privacy, readiness, interrupted migration and forward-recovery checks, plus
+a test-only custom business migration. The source inventory must still reject unclassified
+tables and exports. Sample graph/file tests remain with the optional sample implementation.
+After changing backend modules in a real app, run Convex code generation against your own
+development deployment before treating an app typecheck as final generated-API evidence.
 
 ```typescript
 // packages/backend/convex/projects.test.ts (the sample domain)

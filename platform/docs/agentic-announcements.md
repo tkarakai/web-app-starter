@@ -286,7 +286,7 @@ AGENT_LLM_SMOKE=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e agentic-testers.spec.ts
 CI=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e agentic-mcp.spec.ts agentic-surfaces.spec.ts agentic-webmcp-native.spec.ts
-# Cross-app organization privacy/onboarding acceptance (requires apps/web):
+# Cross-app reference acceptance (requires apps/web with the shipped project/task/file sample):
 CI=true E2E_ORGANIZATION_AGENTS=true AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e organization-agent-surfaces.spec.ts
 bun run --cwd packages/backend test:convex agentAccess endpoint-authorization
@@ -295,7 +295,12 @@ bun run --cwd platform/packages/agentic test
 
 The simulator checks every discoverable schema, representative reads, disposable draft CRUD,
 bootstrap size and request latency. Its report contains no application data or credentials.
-`E2E_ORGANIZATION_AGENTS=true` starts both customer and admin apps for the cross-app tests.
+`E2E_ORGANIZATION_AGENTS=true` explicitly opts into the shipped reference-app cross-surface
+acceptance and starts both customer and admin apps. These cases require the retained sample
+tenant APIs and project/task/file UI; an app adopted with `--remove-sample` must not opt in
+unchanged. Adopted or customized apps retain the default operator/admin and native-policy
+coverage and should supply their own app-domain cross-surface privacy and authority cases.
+The opt-in fails when its required sample is absent; it does not silently skip those checks.
 Operator-only tests remain usable when the optional customer app is removed. For an already
 running target, set `E2E_BASE_URL` to the admin origin and `E2E_WEB_BASE_URL` to the customer
 origin; local managed tests read the launcher-written customer origin and configured port.

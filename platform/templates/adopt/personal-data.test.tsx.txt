@@ -1,0 +1,110 @@
+/** Sample-free organization context and captured-command acceptance. */
+import { beforeEach, expect, it, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "@repo/backend";
+import type { PersonalContextSnapshot } from "../../src/hooks/personal-data-context";
+import { usePersonalDataContext } from "../../src/hooks/use-personal-data";
+import { usePersonalDispatch } from "../../src/hooks/use-personal-dispatch";
+import { selectOrganization } from "../../src/hooks/organization-selection";
+
+const mocks = vi.hoisted(() => ({ authenticated: true, loading: false, browserUserId: "owner", sessionPending: false,
+  data: {} as Record<string, unknown>, query: vi.fn(), dispatch: vi.fn() }));
+vi.mock("@repo/backend", async importOriginal => ({ ...await importOriginal<typeof import("@repo/backend")>(), api: {
+  platform: { tenantContext: { mine: "mine" }, auth: { getCurrentUser: "currentUser" } },
+} }));
+vi.mock("@web-app-starter/auth/client", () => ({ authClient: { useSession: () => ({ data: mocks.browserUserId ? { user: { id: mocks.browserUserId } } : null, isPending: mocks.sessionPending }) } }));
+vi.mock("convex/react", () => ({
+  useConvexAuth: () => ({ isAuthenticated: mocks.authenticated, isLoading: mocks.loading }),
+  useQueries: (queries: Record<string, { query: string; args: unknown }>) => Object.fromEntries(Object.entries(queries).map(([key, { query, args }]) => { mocks.query(query, args); return [key, mocks.data[query]]; })),
+}));
+const personal: PersonalContextSnapshot["contexts"][number] = { organizationId: "org-a", experience: "personal", lifecycle: "active", personal: true, role: ORG_ADMIN_MEMBERSHIP_ROLE };
+const member: PersonalContextSnapshot["contexts"][number] = { organizationId: "org-b", experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE, lifecycle: "active", personal: false, role: ORG_MEMBER_ROLE };
+const mine = (contexts: PersonalContextSnapshot["contexts"] = [personal]) => ({ userId: "owner", contexts, personalOrganizationId: "org-a", legacyPrivateAvailable: false });
+function useCommand() {
+  const context = usePersonalDataContext();
+  const capture = usePersonalDispatch(context);
+  return { context, capture };
+}
+beforeEach(() => {
+  vi.clearAllMocks(); window.sessionStorage.clear(); window.history.replaceState({}, "", "/");
+  mocks.authenticated = true; mocks.loading = false; mocks.browserUserId = "owner"; mocks.sessionPending = false;
+  mocks.data = { currentUser: { _id: "owner", role: "user" }, mine: mine() };
+  mocks.dispatch.mockResolvedValue("completed");
+});
+
+it("requires explicit selection across different membership roles and refuses foreign/empty selection", async () => {
+  mocks.data.mine = mine([personal, member]);
+  const { result } = renderHook(useCommand);
+  expect(result.current.context.state).toBe("unavailable");
+  expect(() => result.current.capture()).toThrow("PERSONAL_CONTEXT_UNAVAILABLE");
+  act(() => selectOrganization("owner", "org-b"));
+  const captured = result.current.capture();
+  expect(captured.plane).toEqual({ kind: "tenant", userId: "owner", ownerId: "owner", organizationId: "org-b" });
+  expect(result.current.context.legacy).toBeNull();
+  await expect(captured.dispatch(mocks.dispatch)).resolves.toBe("completed");
+  for (const requested of ["foreign", ""]) {
+    act(() => { window.history.replaceState({}, "", `/?organizationId=${requested}`); window.dispatchEvent(new Event("popstate")); });
+    expect(result.current.context.state).toBe("unavailable");
+    expect(() => result.current.capture()).toThrow("PERSONAL_CONTEXT_UNAVAILABLE");
+  }
+  expect(mocks.dispatch).toHaveBeenCalledTimes(1);
+});
+
+it("revokes held commands across tab-local selection ABA without accepting cross-tab storage authority", () => {
+  mocks.data.mine = mine([personal, member]);
+  act(() => selectOrganization("owner", "org-a"));
+  const { result } = renderHook(useCommand); const held = result.current.capture();
+  act(() => window.dispatchEvent(new window.StorageEvent("storage", { key: "organization-context:owner", newValue: "org-b" })));
+  expect(result.current.context.tenant?.organizationId).toBe("org-a");
+  act(() => selectOrganization("owner", "org-b")); act(() => selectOrganization("owner", "org-a"));
+  expect(() => held.dispatch(mocks.dispatch)).toThrow("PERSONAL_CONTEXT_CHANGED");
+  expect(mocks.dispatch).not.toHaveBeenCalled();
+});
+
+it.each(["disabled", "provisioning", "revoked", "error"] as const)("%s context never falls back to personal or legacy authority", state => {
+  act(() => selectOrganization("owner", "org-a"));
+  const { result, rerender } = renderHook(useCommand); const held = result.current.capture();
+  mocks.data.mine = state === "error" ? new Error("ORGANIZATION_UNAVAILABLE") : state === "revoked" ? mine([]) : mine([{ ...personal, lifecycle: state }]);
+  rerender();
+  expect(result.current.context).toMatchObject({ state: "unavailable", tenant: null, legacy: null });
+  expect(() => held.dispatch(mocks.dispatch)).toThrow("PERSONAL_CONTEXT_CHANGED");
+  expect(() => result.current.capture()).toThrow("PERSONAL_CONTEXT_UNAVAILABLE");
+  expect(mocks.dispatch).not.toHaveBeenCalled();
+});
+
+it("holds loading and signed-out discovery without executing a command", () => {
+  mocks.loading = true;
+  const { result, rerender } = renderHook(useCommand);
+  expect(result.current.context.state).toBe("loading"); expect(mocks.query).not.toHaveBeenCalled();
+  expect(() => result.current.capture()).toThrow("PERSONAL_CONTEXT_UNAVAILABLE");
+  mocks.loading = false; mocks.authenticated = false; mocks.browserUserId = ""; rerender();
+  expect(result.current.context.state).toBe("unavailable"); expect(mocks.query).not.toHaveBeenCalled();
+});
+
+it("stale current-user and membership responses never grant the next browser account authority", () => {
+  const { result, rerender } = renderHook(useCommand); const held = result.current.capture();
+  mocks.browserUserId = "next"; rerender();
+  expect(result.current.context).toMatchObject({ state: "loading", tenant: null, legacy: null });
+  expect(() => held.dispatch(mocks.dispatch)).toThrow("PERSONAL_CONTEXT_CHANGED");
+  mocks.data.currentUser = { _id: "next", role: "user" }; rerender();
+  expect(result.current.context).toMatchObject({ state: "loading", tenant: null, legacy: null });
+  expect(() => result.current.capture()).toThrow("PERSONAL_CONTEXT_UNAVAILABLE");
+  expect(mocks.dispatch).not.toHaveBeenCalled();
+});
+
+it("captures the canonical linked owner without treating a browser preference as authority", () => {
+  mocks.data.currentUser = { _id: "owner", userId: "legacy-linked-owner", role: "user" };
+  const { result } = renderHook(useCommand);
+  expect(result.current.capture().plane).toEqual({ kind: "tenant", userId: "owner", ownerId: "legacy-linked-owner", organizationId: "org-a" });
+  expect(mocks.query.mock.calls.every(([, args]) => Object.keys(args).length === 0)).toBe(true);
+});
+
+it("unmount retires held commands and rejects late results without replay", async () => {
+  const { result, unmount } = renderHook(useCommand); const held = result.current.capture();
+  let finish!: (value: string) => void;
+  const pending = held.dispatch(() => new Promise<string>(resolve => { finish = resolve; }));
+  unmount(); finish("late-private-result");
+  await expect(pending).rejects.toThrow("PERSONAL_CONTEXT_CHANGED");
+  expect(() => held.dispatch(mocks.dispatch)).toThrow("PERSONAL_CONTEXT_CHANGED");
+  expect(mocks.dispatch).not.toHaveBeenCalled();
+});

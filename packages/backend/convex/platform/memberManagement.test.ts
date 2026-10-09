@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { modules } from "../test.modules";
+import { createPrivateResourceTestEnv, privateResourceApi } from "./privateResources.test-helpers";
 import authSchema from "./betterAuth/schema";
 import { enrollOrganizationAdminForTest } from "../../test/organizationSecurity";
 import { sendAuthEmail } from "./sendAuthEmail";
@@ -19,7 +20,7 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 async function fixture() {
-  const t = createTestEnv();
+  const t = createPrivateResourceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./betterAuth/**/*.*s"));
   // This suite tests management authorization against an explicit readiness fixture.
   // The separate migration suite proves producing this receipt through preserving backfill.
@@ -74,11 +75,15 @@ describe("guarded public organization member management", () => {
     const directory = await f.admin.client.query(api.platform.memberManagement.directory, { ...context, paginationOpts: { cursor: null, numItems: 20 } });
     expect(directory.page.find(row => row.memberId === f.memberId)).toMatchObject({ role: "member", adminPending: true, enrolled: false });
     await expect(f.admin.client.mutation(api.platform.memberManagement.leave, context)).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
-    const project = await f.pending.client.mutation(api.tenantProjects.create, { ...context, name: "Private", description: "Preserved" });
+    const project = await f.pending.client.mutation(privateResourceApi.create, { ...context, name: "Private", description: "Preserved" });
+    const before = await f.pending.client.query(privateResourceApi.get, { ...context, id: project });
+    expect(before).toMatchObject({ ownerId: f.pending.identity._id, organizationId: context.organizationId, name: "Private", description: "Preserved" });
+    expect(await f.admin.client.query(privateResourceApi.get, { ...context, id: project })).toBeNull();
     await f.pending.client.mutation(api.platform.memberManagement.leave, context);
     expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: f.pending.identity._id }] })).not.toBeNull();
     expect(await f.t.run(ctx => ctx.db.get(project))).toMatchObject({ ownerId: f.pending.identity._id, organizationId: context.organizationId });
-    await expect(f.pending.client.query(api.tenantProjects.get, { ...context, id: project })).rejects.toThrow();
+    expect(await f.t.run(ctx => ctx.db.get(project))).toEqual(before);
+    await expect(f.pending.client.query(privateResourceApi.get, { ...context, id: project })).rejects.toThrow();
   });
 
   test("only the designated current administrator is an operator contact and tenant audit never contains invitation tokens", async () => {

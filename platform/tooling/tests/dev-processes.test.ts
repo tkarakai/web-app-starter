@@ -20,7 +20,7 @@ const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const ROOT = path.resolve(SCRIPTS, "../..");
 const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts", "local-dev-deps.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
-const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts", ".github/actions/deploy-convex/organization-target.ts"];
+const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts", ".github/actions/deploy-convex/organization-target.ts", ".github/actions/deploy-convex/organization-source.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 

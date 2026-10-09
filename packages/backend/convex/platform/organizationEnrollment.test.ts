@@ -3,7 +3,8 @@ import { createHmac, randomUUID } from "node:crypto";
 import * as crypto from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components, internal } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { modules } from "../test.modules";
+import { createPrivateResourceTestEnv } from "./privateResources.test-helpers";
 import authSchema from "./betterAuth/schema";
 import { ADMIN_SESSION_MS, RECENT_AUTH_MS } from "./sessionFields";
 import { enrollOrganizationAdminForTest } from "../../test/organizationSecurity";
@@ -38,7 +39,7 @@ function totp(uri: string): string {
 }
 
 async function fixture(role = "user") {
-  const t = createTestEnv();
+  const t = createPrivateResourceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./betterAuth/**/*.*s"));
   const now = Date.now();
   const email = `${randomUUID()}@example.test`;
@@ -79,7 +80,7 @@ async function fixture(role = "user") {
 describe("parent organization enrollment and scoped assurance", () => {
   test("pending setup preserves personal organization, ordinary access and global user role", async () => {
     const f = await fixture();
-    const projectId = await f.t.run(ctx => ctx.db.insert("projects", { name: "Existing personal data", description: "Preserve this row unchanged", ownerId: f.user._id, createdAt: Date.now() }));
+    const projectId = await f.t.run(ctx => ctx.db.insert("securityTestPrivateResources", { name: "Existing personal data", description: "Preserve this row unchanged", ownerId: f.user._id, createdAt: Date.now() }));
     const before = await f.t.run(ctx => ctx.db.get(projectId));
     expect(await f.begin()).toBe(await f.begin());
     expect(await f.status()).toMatchObject({ scope: "user", securityScope: "admin", emailRequired: true,

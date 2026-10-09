@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { act, fireEvent, isInaccessible, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { getFunctionName } from "convex/server";
 import english from "@web-app-starter/i18n/messages/en.json";
 import { AuthGuard as WebAuthGuard, SessionAccessGate } from "@web-app-starter/auth-ui";
 import { AuthGuard as AdminAuthGuard } from "../../src/components/auth/auth-guard";
@@ -11,11 +12,23 @@ import { EventDetails } from "../../src/components/audit-trail/event-details";
 import type { AppOperatorUser } from "../../src/lib/admin-api";
 import type { AuditTrailEvent } from "@repo/backend";
 
-const mocks = vi.hoisted(() => ({ client: {}, status: undefined as Record<string, unknown> | undefined, verify: vi.fn(), sessions: vi.fn(), getSession: vi.fn() }));
-vi.mock("convex/react", () => ({ useConvex: () => mocks.client, useQuery: () => mocks.status, useMutation: () => vi.fn(), useAction: () => vi.fn() }));
-vi.mock("@convex-dev/better-auth/nextjs/client", () => ({ usePreloadedAuthQuery: () => ({ name: "Operator", email: "operator@example.test" }) }));
+const mocks = vi.hoisted(() => ({
+  client: {}, status: undefined as Record<string, unknown> | undefined,
+  actorId: "fixture-operator" as string | null, backendActorId: "fixture-operator", sessionPending: false, sessionId: "fixture-browser-session",
+  verify: vi.fn(), sessions: vi.fn(), getSession: vi.fn(),
+}));
+vi.mock("convex/react", () => ({
+  useConvex: () => mocks.client,
+  useQuery: (ref: Parameters<typeof getFunctionName>[0]) => getFunctionName(ref).endsWith("sessionAssurance:status") ? mocks.status
+    : getFunctionName(ref).endsWith("auth:getCurrentUser") ? { _id: mocks.backendActorId, name: "Operator", email: "operator@example.test" } : undefined,
+  useMutation: () => vi.fn(), useAction: () => vi.fn(),
+}));
+vi.mock("@convex-dev/better-auth/nextjs/client", () => ({ usePreloadedAuthQuery: () => ({ _id: mocks.backendActorId, name: "Operator", email: "operator@example.test" }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock("@web-app-starter/auth/client", () => ({ authClient: { useSession: () => ({ data: { user: {} } }), $fetch: mocks.verify, getSession: mocks.getSession, signOut: vi.fn() } }));
+vi.mock("@web-app-starter/auth/client", () => ({ authClient: {
+  useSession: () => ({ data: mocks.actorId ? { user: { id: mocks.actorId }, session: { id: mocks.sessionId, userId: mocks.actorId } } : null, isPending: mocks.sessionPending }),
+  $fetch: mocks.verify, getSession: mocks.getSession, signOut: vi.fn(),
+} }));
 vi.mock("@/lib/admin-api", () => ({ listAppOperatorSessions: mocks.sessions, revokeAppOperatorSession: vi.fn(), revokeAllAppOperatorSessions: vi.fn() }));
 const user: AppOperatorUser = { id: "fixture-user", name: "Protected user", email: "protected@example.test", role: "admin", banned: false, banReason: null, banExpires: null, image: null, createdAt: new Date(0), updatedAt: new Date(0), emailVerified: true, twoFactorEnabled: false };
 const event = { _id: "fixture-event", _creationTime: 1, happenedAt: 1, source: "server", action: "fixture", resource: "fixture", reason: "Protected audit reason", meta: '{"detail":"Protected audit metadata"}' } as AuditTrailEvent;
@@ -26,7 +39,8 @@ function Workspace() {
   return <><input aria-label="Protected draft" defaultValue="Original draft" /><button onClick={() => setOpen(true)}>Open sessions</button><UserSessionsDialog open={open} onOpenChange={setOpen} user={user} /><EventDetails event={event} />{createPortal(<p>Protected direct portal</p>, document.body)}</>;
 }
 beforeEach(() => {
-  vi.useFakeTimers(); mocks.status = ready(); mocks.getSession.mockResolvedValue({ data: { user: { twoFactorEnabled: true } } }); mocks.verify.mockReset().mockResolvedValue({ data: { status: true } });
+  vi.useFakeTimers(); mocks.actorId = mocks.backendActorId = "fixture-operator"; mocks.sessionPending = false; mocks.sessionId = "fixture-browser-session";
+  mocks.status = ready(); mocks.getSession.mockResolvedValue({ data: { user: { id: mocks.actorId, twoFactorEnabled: true }, session: { id: mocks.sessionId, userId: mocks.actorId } } }); mocks.verify.mockReset().mockResolvedValue({ data: { status: true } });
   mocks.sessions.mockResolvedValue([{ id: "fixture-session", userId: user.id, ipAddress: "192.0.2.17", userAgent: "Fixture browser", createdAt: new Date(), expiresAt: new Date(Date.now() + 3600000) }]);
 });
 afterEach(() => vi.useRealTimers());
@@ -62,14 +76,61 @@ it.each(["web", "admin"] as const)("suspends the real open session dialog and it
   expect(screen.getByRole("dialog", { name: "Sessions" })).toBeVisible();
   expect(directPortal).toBeVisible();
   expect(screen.getByLabelText("Protected draft")).toBe(draft); expect(draft).toHaveValue("Keep this draft");
-  mocks.status = undefined; await act(async () => result.rerender(view()));
+  mocks.status = undefined; mocks.actorId = null; mocks.sessionPending = true;
+  await act(async () => result.rerender(view()));
   await act(async () => vi.advanceTimersByTimeAsync(4000));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(document.body.style.pointerEvents).not.toBe("none");
   expect(document.body.hasAttribute("data-scroll-locked")).toBe(false);
-  mocks.status = ready(); await act(async () => result.rerender(view()));
+  mocks.status = ready(); mocks.actorId = mocks.backendActorId; mocks.sessionPending = false; mocks.sessionId = "rotated-browser-session";
+  await act(async () => result.rerender(view()));
   expect(screen.getByRole("dialog", { name: "Sessions" })).toBeVisible();
   expect(draft).toHaveValue("Keep this draft");
+});
+
+it.each(["web", "admin"] as const)("discards retained private portals and drafts when the actor changes across nested %s gates", async surface => {
+  const Guard = surface === "web" ? WebAuthGuard : AdminAuthGuard;
+  const view = () => <NextIntlClientProvider locale="en" messages={english}><Guard preloadedUser={{} as never}><SessionAccessGate requireRecent><Workspace /></SessionAccessGate></Guard>{createPortal(<p>Unrelated public portal</p>, document.body)}</NextIntlClientProvider>;
+  const result = render(view());
+  const draft = screen.getByLabelText("Protected draft");
+  const directPortal = screen.getByText("Protected direct portal");
+  fireEvent.change(draft, { target: { value: "Previous actor private draft" } });
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Open sessions" })));
+  await act(async () => vi.advanceTimersByTimeAsync(20));
+  const dialog = screen.getByRole("dialog", { name: "Sessions" });
+  expect(dialog).toBeVisible();
+  await act(async () => vi.advanceTimersByTimeAsync(300001));
+  expect(dialog).not.toBeVisible();
+  expect(draft).toBeInTheDocument(); // same actor's suspended state was retained
+
+  // Better Auth rotates to B while the Convex identity/status still describe A.
+  mocks.actorId = "other-operator"; mocks.sessionId = "other-browser-session"; mocks.status = ready();
+  await act(async () => result.rerender(view()));
+  expect(draft).not.toBeInTheDocument();
+  expect(dialog).not.toBeInTheDocument();
+  expect(directPortal).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Protected draft")).not.toBeInTheDocument();
+  expect(document.body.style.pointerEvents).not.toBe("none");
+  expect(document.body.hasAttribute("data-scroll-locked")).toBe(false);
+  expect(screen.getByText("Unrelated public portal")).toBeVisible();
+
+  mocks.backendActorId = "other-operator";
+  await act(async () => result.rerender(view()));
+  const nextDraft = screen.getByLabelText("Protected draft");
+  expect(nextDraft).not.toBe(draft);
+  expect(nextDraft).toHaveValue("Original draft");
+  expect(screen.queryByRole("dialog", { name: "Sessions" })).not.toBeInTheDocument();
+  expect(screen.getByText("Protected direct portal")).toBeVisible();
+});
+
+it("never mounts protected content for a ready status belonging to another actor", () => {
+  mocks.backendActorId = "other-operator";
+  const mounted = vi.fn();
+  function ProtectedConsumer() { mounted(); return <p>Privileged content</p>; }
+  render(<NextIntlClientProvider locale="en" messages={english}><SessionAccessGate><ProtectedConsumer /></SessionAccessGate></NextIntlClientProvider>);
+  expect(mounted).not.toHaveBeenCalled();
+  expect(screen.queryByText("Privileged content")).not.toBeInTheDocument();
+  expect(screen.getByText(english.accountSecurity.session.expired)).toBeVisible();
 });
 
 it("suspends the real audit popover while preserving its open state", async () => {

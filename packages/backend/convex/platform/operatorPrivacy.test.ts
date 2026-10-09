@@ -1,7 +1,8 @@
 import { invokeNative } from "./agentNativePolicy";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components, internal } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { modules } from "../test.modules";
+import { createPrivateResourceTestEnv } from "./privateResources.test-helpers";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import authSchema from "./betterAuth/schema";
 import * as users from "./agentUsers";
@@ -18,7 +19,7 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 async function fixture() {
-  const t = createTestEnv();
+  const t = createPrivateResourceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, authModules);
   async function identity(name: string, role = "user", customerAdmission?: string) {
     const now = Date.now();
@@ -185,7 +186,7 @@ describe("app-operator identity and organization-user privacy in direct and capt
 
   test("deletion preserves legacy private ownership, credentials, factors and sessions pending a reviewed mapping", async () => {
     const f = await fixture();
-    const project = await f.t.run(ctx => ctx.db.insert("projects", {
+    const project = await f.t.run(ctx => ctx.db.insert("securityTestPrivateResources", {
       name: "Legacy operator private data", description: "Preserve", ownerId: f.other.user._id, createdAt: Date.now(),
     }));
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: f.other.user._id, secret: "private-secret", backupCodes: "private-recovery", verified: true } } });
