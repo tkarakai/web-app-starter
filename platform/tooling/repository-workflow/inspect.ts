@@ -57,7 +57,7 @@ async function privateFree(metadata: Metadata, exec: Run): Promise<boolean> {
   const account = await request<{ login: string; plan?: { name: string } }>(owner.type === "Organization" ? `orgs/${owner.login}` : "user", exec);
   return account.login?.toLowerCase() === owner.login.toLowerCase() && account.plan?.name === "free";
 }
-async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefined, exec: Run): Promise<void> {
+async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefined, effective: EffectivePolicy, exec: Run): Promise<void> {
   if (!sha) throw Error("Default branch commit could not be verified");
   const policy = await request<{ encoding: string; content: string }>(`repos/${repo}/contents/${RECORD}?ref=${sha}`, exec);
   if (policy.encoding !== "base64" || typeof policy.content !== "string") throw Error("Could not inspect the committed owner policy");
@@ -65,6 +65,9 @@ async function verifyBot(bot: MaintenanceBot, repo: string, sha: string | undefi
   if (committed.repository.toLowerCase() !== repo.toLowerCase() || !committed.maintenanceBots.some(grant =>
     grant.login === bot.login && grant.appId === bot.appId && grant.kind === bot.kind && grant.policy === bot.policy)) {
     throw Error("The committed owner policy does not grant this exact maintenance authority");
+  }
+  if (effective.approvals < committed.approvals || committed.dismissStaleReviews && !effective.dismissStaleReviews) {
+    throw Error("Live review enforcement does not meet the committed maintenance policy");
   }
   const slug = bot.login.replace(/\[bot\]$/, "");
   const app = await request<{ id: number; slug: string; permissions: Record<string, string> }>(`apps/${slug}`, exec);
@@ -194,8 +197,8 @@ export async function inspectRepositoryWorkflow(root: string, repo: string, exec
     add("e2e-policy", valid, `PR E2E policy: ${status.e2e.mode}; ${status.e2e.mode === "off" ? "owner/reviewer must verify full local E2E before merge" : "draft skips E2E; ready/label process applies"}.`, status.e2e.enforced);
   } catch { unavailable("e2e-policy", "Live PR E2E policy is unavailable."); }
   for (const bot of record?.maintenanceBots ?? []) {
-    try { await verifyBot(bot, repo, defaultBranchSha, exec); status.maintenanceBots.push({ ...bot, verified: true, reason: "Exact committed owner grant, patch/minor caller and repository-only GitHub App credential verified." }); }
-    catch { status.maintenanceBots.push({ ...bot, verified: false, reason: "Exact committed owner grant, bot identity, committed caller, narrow App permissions or active installation credential could not be verified." }); }
+    try { await verifyBot(bot, repo, defaultBranchSha, status.effective, exec); status.maintenanceBots.push({ ...bot, verified: true, reason: "Committed owner grant and review requirements, patch/minor caller and repository-only GitHub App credential verified." }); }
+    catch { status.maintenanceBots.push({ ...bot, verified: false, reason: "Committed owner grant and review requirements, bot identity, committed caller, narrow App permissions or active installation credential could not be verified." }); }
   }
   status.autoMerge = typeof metadata.allow_auto_merge === "boolean" ? metadata.allow_auto_merge : null;
   add("auto-merge-policy", status.autoMerge === false || status.autoMerge === true && status.maintenanceBots.length > 0 && status.maintenanceBots.every(b => b.verified), "Auto-merge stays off by default; feature/bootstrap authors require owner or independent-reviewer merge authority. Only verified named constrained App bots are eligible.");

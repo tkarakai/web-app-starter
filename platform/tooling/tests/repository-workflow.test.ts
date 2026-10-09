@@ -115,6 +115,48 @@ test("maintenance permission needs exact bot, semantically constrained caller, n
   status = await inspectRepositoryWorkflow(f.root, "owner/app", f.exec); assert.equal(maintenanceAllowed(status, "app-updater[bot]"), false);
 });
 
+test("maintenance eligibility honors committed approval and stale policy across classic and ruleset enforcement", async t => {
+  for (const ruleset of [false, true]) {
+    for (const stale of [false, true]) {
+      const f = fixture(); t.after(f.cleanup);
+      f.record.maintenanceBots = [{ login: "app-updater[bot]", appId: 42, kind: "platform-update", policy: "patch" }];
+      f.committedPolicy = JSON.stringify({ ...f.record, approvals: 2, dismissStaleReviews: true });
+      f.record.dismissStaleReviews = !stale; saveRecord(f.root, f.record);
+      f.metadata.allow_auto_merge = true;
+      f.variables = [{ name: "PLATFORM_UPDATER_APP_ID", value: "42" }, { name: "PLATFORM_UPDATE_DELIVERY", value: "app" }];
+      if (ruleset) {
+        f.protectionError = 404;
+        f.rules = [
+          { type: "pull_request", ruleset_id: 7, ruleset_source: "owner/app", ruleset_source_type: "Repository", parameters: { required_approving_review_count: stale ? 2 : 1, dismiss_stale_reviews_on_push: !stale } },
+          { type: "required_linear_history", ruleset_id: 7, ruleset_source: "owner/app", ruleset_source_type: "Repository" },
+          { type: "required_status_checks", ruleset_id: 7, ruleset_source: "owner/app", ruleset_source_type: "Repository", parameters: { strict_required_status_checks_policy: true, required_status_checks: f.bindings.map(c => ({ context: c.context, integration_id: c.appId })) } },
+        ];
+        f.details = [{ id: 7, enforcement: "active", bypass_actors: [] }];
+      } else {
+        f.protection.required_pull_request_reviews!.required_approving_review_count = stale ? 2 : 1;
+        f.protection.required_pull_request_reviews!.dismiss_stale_reviews = !stale;
+      }
+      const output: string[] = [];
+      const deps = { root: f.root, exec: f.exec, write: (value: string) => output.push(value) };
+      const args = ["--json", "--repo", "owner/app", "--maintenance-bot", "app-updater[bot]"];
+      assert.equal(await main(args, deps), 2);
+      const denied = JSON.parse(output.at(-1)!);
+      assert.equal(denied.maintenanceAllowed, false); assert.equal(denied.maintenanceBots[0].verified, false);
+      assert.equal(denied.checks.find((c: { step: string }) => c.step === "approval-policy").status, "done");
+      if (ruleset) {
+        f.rules[0].parameters!.required_approving_review_count = 2;
+        f.rules[0].parameters!.dismiss_stale_reviews_on_push = true;
+      } else {
+        f.protection.required_pull_request_reviews!.required_approving_review_count = 2;
+        f.protection.required_pull_request_reviews!.dismiss_stale_reviews = true;
+      }
+      assert.equal(await main(args, deps), 0);
+      assert.equal(JSON.parse(output.at(-1)!).maintenanceAllowed, true);
+      assert(f.calls.filter(c => c.file === "gh" && c.args[1] !== "graphql").every(c => c.args.includes("GET")));
+    }
+  }
+});
+
 test("maintenance CLI denies local-only, unavailable and mismatched default-branch owner grants", async t => {
   const changes = [
     (f: ReturnType<typeof fixture>) => { f.committedPolicy = JSON.stringify({ ...f.record, maintenanceBots: [] }); },

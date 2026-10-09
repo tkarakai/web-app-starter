@@ -3,6 +3,8 @@ import { pathToFileURL } from "node:url";
 import { ask, run, type Run } from "./deploy-setup/io.ts";
 import { inspectRepositoryWorkflow, maintenanceAllowed } from "./repository-workflow/inspect.ts";
 import { setupRepositoryWorkflow, type SetupOptions } from "./repository-workflow/setup.ts";
+import { readRecord } from "./repository-workflow/state.ts";
+import { readRecord as readUpdateIntent } from "./setup-updates/state.ts";
 export { inspectRepositoryWorkflow, maintenanceAllowed, setupRepositoryWorkflow };
 export { RECORD, readRecord, saveRecord } from "./repository-workflow/state.ts";
 export type { RepositoryWorkflowStatus, WorkflowRecord, MaintenanceBot, RequiredCheck } from "./repository-workflow/types.ts";
@@ -43,11 +45,14 @@ export async function main(argv: string[], dependencies: Dependencies = {}): Pro
   }
   if (options.discoverPr !== undefined && (!Number.isSafeInteger(options.discoverPr) || options.discoverPr < 1)) throw Error("--discover-pr must be a positive PR number");
   if (check && (options.consent || options.approvals !== undefined || options.dismissStaleReviews !== undefined || options.e2e || options.disableAutoMerge || options.discoverPr)) throw Error("--check and --maintenance-bot are read-only; run setup separately to save policy/discovery.");
-  if (!repo) {
-    const origin = await exec("git", ["remote", "get-url", "origin"], undefined, undefined, root);
-    repo = /github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/.exec(origin.trim())?.[1];
-  }
-  if (!repo) throw Error("Set a GitHub origin or pass --repo owner/repo");
+  const updateIntent = readUpdateIntent(root), workflowIntent = readRecord(root);
+  const identities = [repo, updateIntent?.repository, workflowIntent?.repository].filter((value): value is string => value !== undefined);
+  const origin = await exec("git", ["remote", "get-url", "origin"], undefined, undefined, root).catch(() => undefined);
+  const originRepo = /^(?:(?:https?|git|ssh):\/\/(?:git@)?github\.com\/|git@github\.com:)([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(origin?.trim() ?? "")?.[1];
+  if (originRepo && originRepo.toLowerCase() !== "tkarakai/web-app-starter") identities.push(originRepo);
+  if (new Set(identities.map(value => value.toLowerCase())).size > 1) throw Error("Conflicting downstream repository identity; inspect app-owned intent and origin before setup.");
+  repo = identities[0];
+  if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error("Repository identity cannot be verified; pass --repo owner/repo explicitly.");
   if (!check && !options.consent) {
     if (!dependencies.prompt && (!process.stdin.isTTY || !process.stdout.isTTY)) throw Error("Setup requires explicit owner consent with --yes; use --check --json for read-only inspection.");
     const prompt = dependencies.prompt ?? ask;

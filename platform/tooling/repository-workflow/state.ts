@@ -24,12 +24,12 @@ export function validateRecord(value: unknown): WorkflowRecord {
     maintenanceBots: r.maintenanceBots.map(b => ({ login: b.login, appId: b.appId, kind: b.kind, policy: b.policy })),
     ...(r.discovery ? { discovery: { pr: r.discovery.pr, sha: r.discovery.sha, checks: r.discovery.checks.map(c => ({ label: c.label, context: c.context, appId: c.appId })) } } : {}) };
 }
-export function readRecord(root: string, repo: string): WorkflowRecord | undefined {
+export function readRecord(root: string, repo?: string): WorkflowRecord | undefined {
   safePath(root, RECORD);
   const text = readPublicFile(root, RECORD);
   if (text === undefined) return undefined;
   const record = validateRecord(JSON.parse(text));
-  if (record.repository.toLowerCase() !== repo.toLowerCase()) throw Error("Repository workflow policy belongs to another repository");
+  if (repo !== undefined && record.repository.toLowerCase() !== repo.toLowerCase()) throw Error("Repository workflow policy belongs to another repository");
   return record;
 }
 export function saveRecord(root: string, record: WorkflowRecord): void {
