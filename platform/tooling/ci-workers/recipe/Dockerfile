@@ -6,7 +6,7 @@ ARG PLAYWRIGHT_VERSION
 ARG BACKEND_VERSION
 ARG TOOL_KEY
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates curl git jq unzip libicu72 libssl3 libkrb5-3 zlib1g iptables squid tini procps lsof \
+RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates curl git jq unzip libicu76 libssl3t64 libkrb5-3 zlib1g iptables squid tini procps lsof \
  && rm -rf /var/lib/apt/lists/*
 COPY downloads/ /tmp/downloads/
 RUN mkdir -p /opt/runner /opt/bun /opt/playwright /opt/backend \

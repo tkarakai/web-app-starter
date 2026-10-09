@@ -48,7 +48,9 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   const arm = ['aarch64', 'arm64'].includes(engine.Architecture);
   assert(arm || ['x86_64', 'amd64'].includes(engine.Architecture), 'Unsupported Docker architecture');
   const recipeHash = hash((await Promise.all((await readdir(recipe)).filter(f => f !== 'seccomp.json').sort().map(async f => await readFile(path.join(recipe, f), 'utf8')))).join('\0'));
-  const family = hash(JSON.stringify([input.node, input.nodeFloor, input.bun, input.playwright, arm, recipeHash]));
+  // Include the OS base in reuse identity as well as the installed recipe and runtime versions.
+  const nodeTag = `node:${input.node}-trixie-slim`;
+  const family = hash(JSON.stringify([nodeTag, input.nodeFloor, input.bun, input.playwright, arm, recipeHash]));
   const cached = state.toolchains?.[family];
   if (!refresh && cached && await exists(toolLayout(cached.image))) {
     try { await docker(c, ['image', 'inspect', cached.image]); return { tools: cached, family, layout: toolLayout(cached.image) }; }
@@ -57,8 +59,8 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   const context = path.join(directory, 'tools');
   await mkdir(path.join(context, 'downloads'), { recursive: true, mode: 0o700 });
   for (const file of await readdir(recipe)) await cp(path.join(recipe, file), path.join(context, file));
-  await docker(c, ['pull', `node:${input.node}-bookworm-slim`], { stream: true, timeout: 300_000 });
-  const nodeImage = await docker(c, ['image', 'inspect', '--format', '{{index .RepoDigests 0}}', `node:${input.node}-bookworm-slim`]);
+  await docker(c, ['pull', nodeTag], { stream: true, timeout: 300_000 });
+  const nodeImage = await docker(c, ['image', 'inspect', '--format', '{{index .RepoDigests 0}}', nodeTag]);
   const download = (file: string): string => path.join(context, 'downloads', file);
   const runner = await asset('actions/runner', 'latest', `actions-runner-linux-${arm ? 'arm64' : 'x64'}-{version}.tar.gz`, download('runner.tar.gz'));
   await asset('oven-sh/bun', `tags/bun-v${input.bun}`, `bun-linux-${arm ? 'aarch64' : 'x64'}.zip`, download('bun.zip'));
