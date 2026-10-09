@@ -51,8 +51,8 @@ const dashboardSections = [
         icon: ListChecks,
       },
       {
-        title: "Users",
-        description: "Manage user accounts, session access, and role permissions.",
+        title: "Operators",
+        description: "Manage platform operator accounts and session access.",
         href: "/manage/users",
         icon: Users,
       },

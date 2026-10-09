@@ -6,8 +6,8 @@ Do not grant the global `admin` role to represent an organization administrator.
 
 ## Resolve, then capture an explicit context
 
-- `api.platform.tenantContext.mine({})` returns the caller's canonical memberships, organization
-  metadata/lifecycle, role and `personalOrganizationId`. It does not provision or guess an organization.
+- `api.platform.tenantContext.mine({})` returns the canonical caller `userId`, memberships,
+  organization metadata/lifecycle, role, `personalOrganizationId` and `legacyPrivateAvailable`. It does not provision or guess an organization.
   `mappingRequired` means no canonical context is available; it is not permission to invent a mapping.
 - `api.platform.tenantContext.get({ organizationId })` resolves that exact immutable ID against
   the current customer, membership, session assurance and active organization lifecycle.
@@ -97,8 +97,14 @@ The existing `api.projects`, `api.tasks` and `api.files` are a transitional **le
 - The bridge rejects organization-tagged rows. Strict tenant APIs reject untagged rows; an owner
   match never supplies a missing organization ID.
 
+The personal web sample resolves the current account's canonical context before dispatch. New
+projects use scoped APIs. Existing untagged rows remain in the separately authorized legacy-private
+plane; its calls carry the captured personal ID when one exists. Child/transfer actions retain the
+parent plane, and stale-account/scope/unmount callbacks cancel rather than retarget. Loading,
+disabled, ambiguous or unresolved contexts hold safely; no collaboration picker is supplied here.
+
 Optional organization fields/indexes are only the widening step for existing sample tables. They do
-not migrate historical records or convert the existing app UI. Preserve identities, credentials,
+not migrate historical records. Preserve identities, credentials,
 rows and bytes; explicitly classify mappings and apply
 [widen–migrate–narrow](convex-migrations.md) with an old-writer barrier before cutover. Do not reset data,
 backfill by guesswork or activate collaboration while preserving migration/security gates are open.

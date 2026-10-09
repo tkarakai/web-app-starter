@@ -43,7 +43,7 @@ export function UnbanDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={pending}>
-            {pending ? "Processing..." : "Unban user"}
+            {pending ? "Processing..." : "Unban operator"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

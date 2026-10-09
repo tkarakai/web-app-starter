@@ -17,13 +17,11 @@ const COLUMN_LABELS: Record<string, string> = {
   image: "Avatar",
   name: "Name",
   email: "Email",
-  role: "Role",
+  role: "Account",
   status: "Status",
   createdAt: "Created",
   updatedAt: "Updated",
   emailVerified: "Email Verified",
-  phoneNumber: "Phone",
-  phoneNumberVerified: "Phone Verified",
   twoFactorEnabled: "2FA",
 };
 

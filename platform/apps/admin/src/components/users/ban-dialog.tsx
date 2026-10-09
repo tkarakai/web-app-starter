@@ -47,7 +47,7 @@ export function BanDialog({
   const isSingle = users.length === 1;
   const title = isSingle
     ? `Ban ${users[0].email}`
-    : `Ban ${users.length} users`;
+    : `Ban ${users.length} operators`;
 
   const canConfirm = reason.trim().length > 0 && !pending;
 
@@ -94,8 +94,8 @@ export function BanDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {isSingle
-              ? "This user will be unable to sign in while banned."
-              : `These ${users.length} users will be unable to sign in while banned.`}
+              ? "This operator will be unable to sign in while banned."
+              : `These ${users.length} operators will be unable to sign in while banned.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -106,7 +106,7 @@ export function BanDialog({
             </Label>
             <Textarea
               id="ban-reason"
-              placeholder="Explain why this user is being banned..."
+              placeholder="Explain why this operator is being banned..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
@@ -157,7 +157,7 @@ export function BanDialog({
             onClick={handleConfirm}
             disabled={!canConfirm}
           >
-            {pending ? "Banning..." : isSingle ? "Ban user" : `Ban ${users.length} users`}
+            {pending ? "Banning..." : isSingle ? "Ban operator" : `Ban ${users.length} operators`}
           </Button>
         </div>
       </DialogContent>

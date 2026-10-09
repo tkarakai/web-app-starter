@@ -5,7 +5,7 @@ import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-c
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
@@ -44,17 +44,9 @@ import {
   useSidebar,
 } from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
+import { usePersonalProjects, usePersonalProjectMutations } from "@/hooks/use-personal-data";
 import { AppLogo } from "@/components/app-logo";
 import { appConfig } from "@web-app-starter/app-config";
-
-type Project = {
-  _id: Id<"projects">;
-  _creationTime: number;
-  name: string;
-  description: string;
-  ownerId: string;
-  createdAt: number;
-};
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   displayName: string;
@@ -78,9 +70,10 @@ export function AppSidebar({
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
 
-  const projects: Project[] = useQuery(api.projects.list) ?? [];
+  const { context, projects: availableProjects } = usePersonalProjects();
+  const projects = availableProjects ?? [];
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
-  const createProject = useMutation(api.projects.create);
+  const { create: createProject, available: canCreate } = usePersonalProjectMutations();
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -105,7 +98,7 @@ export function AppSidebar({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = normalizeText(name);
-    if (!trimmedName) return;
+    if (!trimmedName || !canCreate) return;
 
     setSubmitting(true);
     try {
@@ -148,16 +141,17 @@ export function AppSidebar({
                     {td("projects")}
                   </SidebarGroupLabel>
                 </CollapsibleTrigger>
-                <SidebarGroupAction onClick={() => setDialogOpen(true)} title={tp("newProject")}>
+                <SidebarGroupAction disabled={!canCreate} onClick={() => setDialogOpen(true)} title={tp("newProject")}>
                   <Plus className="h-4 w-4" />
                 </SidebarGroupAction>
               </div>
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {projects.length === 0 ? (
+                    {availableProjects === undefined ? <SidebarMenuItem><span role="status" data-personal-data-state={context.state === "unavailable" ? "unavailable" : "loading"} className="px-2 text-sm text-muted-foreground">{tc(context.state === "unavailable" ? "error" : "loading")}</span></SidebarMenuItem> : projects.length === 0 ? (
                       <SidebarMenuItem>
                         <SidebarMenuButton
+                          disabled={!canCreate}
                           className="text-muted-foreground italic"
                           onClick={() => setDialogOpen(true)}
                           tooltip={tp("createFirst")}
@@ -266,7 +260,7 @@ export function AppSidebar({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting || !canCreate}>
               {submitting ? tc("creating") : tp("createProject")}
             </Button>
           </form>

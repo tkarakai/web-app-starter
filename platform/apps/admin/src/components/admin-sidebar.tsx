@@ -59,7 +59,7 @@ const manageItems = [
     ? [{ label: "Announcements", href: "/manage/announcements", icon: Megaphone }]
     : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
-  { label: "Users", href: "/manage/users", icon: Users },
+  { label: "Operators", href: "/manage/users", icon: Users },
 ];
 
 const observabilityItems = [

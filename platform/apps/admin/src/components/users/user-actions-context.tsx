@@ -6,9 +6,6 @@ import type { AdminUser } from "@/lib/admin-api";
 type UserAction =
   | "ban"
   | "unban"
-  | "delete"
-  | "makeAdmin"
-  | "removeAdmin"
   | "sessions";
 
 type UserActionsContextValue = {

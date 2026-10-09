@@ -32,10 +32,12 @@ import {
   TabsTrigger,
   Textarea,
 } from "@web-app-starter/design-system";
-import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
+import { usePersonalTasks, usePersonalTaskMutations } from "@/hooks/use-personal-data";
+import type { PersonalDataPlane } from "@/hooks/personal-data-context";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
 import { DeadlineInput } from "./deadline-input";
 import { TaskRow } from "./task-row";
+import { PersonalDataNotReady } from "./personal-data-not-ready";
 
 type Task = {
   _id: Id<"tasks">;
@@ -51,12 +53,14 @@ type Task = {
 
 type TaskListProps = {
   projectId: Id<"projects">;
+  dataPlane: PersonalDataPlane;
 };
 
-export function TaskList({ projectId }: TaskListProps) {
-  const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
+export function TaskList({ projectId, dataPlane }: TaskListProps) {
+  const { tasks: availableTasks, state } = usePersonalTasks(projectId, dataPlane);
+  const tasks: Task[] = availableTasks ?? [];
   const profile = useQuery(api.platform.userProfiles.get);
-  const createTask = useMutationWithToast(api.tasks.create);
+  const { create: createTask, available } = usePersonalTaskMutations(dataPlane, projectId);
   const t = useTranslations("tasks");
   const tc = useTranslations("common");
   const locale = useLocale();
@@ -78,7 +82,7 @@ export function TaskList({ projectId }: TaskListProps) {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedTitle = normalizeText(title);
-    if (!trimmedTitle) return;
+    if (!trimmedTitle || !available) return;
 
     setSubmitting(true);
     try {
@@ -108,7 +112,7 @@ export function TaskList({ projectId }: TaskListProps) {
           </CardTitle>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" disabled={!available}>
                 <Plus className="h-4 w-4" />
                 {t("addTask")}
               </Button>
@@ -151,7 +155,7 @@ export function TaskList({ projectId }: TaskListProps) {
                   </Select>
                 </div>
                 <DeadlineInput value={deadline} onChange={setDeadline} timeZone={timeZone} />
-                <Button type="submit" className="w-full" disabled={submitting}>
+                <Button type="submit" className="w-full" disabled={submitting || !available}>
                   {submitting ? tc("creating") : t("createTask")}
                 </Button>
               </form>
@@ -182,14 +186,14 @@ export function TaskList({ projectId }: TaskListProps) {
           </div>
         )}
 
-        {filteredTasks.length === 0 ? (
+        {availableTasks === undefined ? <PersonalDataNotReady state={available || state === "loading" ? "loading" : "unavailable"} /> : filteredTasks.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
             {t("noTasks")}
           </div>
         ) : (
           <div className="space-y-2">
             {filteredTasks.map((task) => (
-              <TaskRow key={task._id} task={task} locale={locale} timeZone={timeZone} />
+              <TaskRow key={task._id} task={task} dataPlane={dataPlane} locale={locale} timeZone={timeZone} />
             ))}
           </div>
         )}

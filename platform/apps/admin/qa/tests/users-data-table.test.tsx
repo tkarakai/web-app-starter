@@ -21,16 +21,18 @@ vi.mock("@repo/backend", () => ({
   api: new Proxy({}, { get: () => new Proxy({}, { get: () => new Proxy({}, { get: (_target, key) => String(key) }) }) }),
 }));
 vi.mock("convex/react", () => ({
+  useConvex: () => ({ query: vi.fn(), mutation: vi.fn() }),
   useMutation: () => vi.fn(),
   useQuery: () => ["protected@example.test"],
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/lib/admin-api", () => ({ banUser: vi.fn(), unbanUser: vi.fn(), removeUser: vi.fn(), setUserRole: vi.fn() }));
+vi.mock("@/lib/admin-api", () => ({ banUser: vi.fn(), unbanUser: vi.fn() }));
 vi.mock("@/components/auth/auth-guard", () => ({ useAuthUser: () => ({ id: "u-self" }) }));
 vi.mock("@/hooks/use-users", () => ({
   useUsers: (params: Params) => {
     mocks.calls.push(params);
-    return { users: mocks.users, total: mocks.total, loading: mocks.loading, loadingMore: false, hasMore: mocks.hasMore, loadMore: mocks.loadMore, refresh: mocks.refresh };
+    const rows = params.status ? mocks.users.filter(row => params.status === "banned" ? row.banned : !row.banned) : mocks.users;
+    return { users: rows, total: rows.length, loading: mocks.loading, loadingMore: false, hasMore: mocks.hasMore, loadMore: mocks.loadMore, refresh: mocks.refresh, error: null };
   },
 }));
 vi.mock("../../src/components/users/user-sessions-dialog", () => ({ UserSessionsDialog: () => null }));
@@ -38,7 +40,7 @@ vi.mock("../../src/components/users/user-sessions-dialog", () => ({ UserSessions
 import { UsersDataTable } from "../../src/components/users/users-data-table";
 
 const user = (id: string, name: string, email: string, banned = false) => ({
-  id, name, email, role: "user", banned, banReason: null, banExpires: null, image: null,
+  id, name, email, role: "admin", banned, banReason: null, banExpires: null, image: null,
   createdAt: new Date("2026-01-01T00:00:00Z"), updatedAt: new Date("2026-01-02T00:00:00Z"),
   emailVerified: true, phoneNumber: null, phoneNumberVerified: false, twoFactorEnabled: false,
 });
@@ -74,10 +76,9 @@ describe("users table", () => {
   test("lists the users with the default columns; optional columns start hidden", () => {
     renderTable();
     expect(emails()).toEqual(["self@example.test", "protected@example.test", "ann@example.test", "ben@example.test", "cy@example.test"]);
-    expect(screen.getByText("5 users")).toBeInTheDocument();
-    for (const header of [/^Name/, /^Email/, /^Role/, /^Status/, /^Created/]) {
-      expect(screen.getByRole("button", { name: header })).toBeInTheDocument();
-    }
+    expect(screen.getByText("5 operators loaded")).toBeInTheDocument();
+    for (const label of ["Name", "Email", "Account"]) expect(screen.getByRole("columnheader", { name: label })).toBeInTheDocument();
+    for (const label of [/^Status/, /^Created/]) expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     for (const hidden of ["Email Verified", "Phone", "Phone Verified", "2FA"]) {
       expect(screen.queryByRole("columnheader", { name: hidden })).not.toBeInTheDocument();
     }
@@ -96,15 +97,15 @@ describe("users table", () => {
     expect(screen.queryByRole("columnheader", { name: "2FA", ...visible })).not.toBeInTheDocument();
   });
 
-  test("sorting asks the server: ascending, descending, then another column", () => {
+  test("only creation-time sorting is offered to the server", () => {
     renderTable();
     expect(lastParams()).toEqual({});
-    fireEvent.click(header(/^Name/));
-    expect(lastParams()).toEqual({ sortBy: "name", sortDirection: "asc" });
-    fireEvent.click(header(/^Name/));
-    expect(lastParams()).toEqual({ sortBy: "name", sortDirection: "desc" });
-    fireEvent.click(header(/^Email/));
-    expect(lastParams()).toEqual({ sortBy: "email", sortDirection: "asc" });
+    expect(screen.queryByRole("button", { name: /^Name/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Email/ })).not.toBeInTheDocument();
+    fireEvent.click(header(/^Created/));
+    expect(lastParams()).toEqual({ sortBy: "createdAt", sortDirection: "asc" });
+    fireEvent.click(header(/^Created/));
+    expect(lastParams()).toEqual({ sortBy: "createdAt", sortDirection: "desc" });
     // The server owns the order: the rows stay as returned.
     expect(emails()[0]).toBe("self@example.test");
   });
@@ -120,16 +121,17 @@ describe("users table", () => {
 
   test("searching asks the server after a short pause", async () => {
     renderTable();
-    fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "an" } });
+    fireEvent.change(screen.getByPlaceholderText("Search operators by name or email..."), { target: { value: "an" } });
     await waitFor(() => expect(lastParams()).toEqual({ searchValue: "an" }));
   });
 
-  test("filters by status in the browser", async () => {
+  test("requests status filtering from the server", async () => {
     renderTable();
     openMenu(screen.getByRole("combobox"));
     fireEvent.click(await screen.findByRole("option", { name: "Banned" }));
     await waitFor(() => expect(emails()).toEqual(["ben@example.test"]));
-    expect(screen.getByText("1 users")).toBeInTheDocument();
+    expect(lastParams()).toEqual({ status: "banned" });
+    expect(screen.getByText("1 operator loaded")).toBeInTheDocument();
   });
 
   test("selects every selectable row, never yourself or a protected admin", () => {
@@ -139,7 +141,8 @@ describe("users table", () => {
     expect(within(rows()[1]).getByRole("checkbox", { name: "Select row" })).toBeDisabled(); // protected
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
     expect(screen.getByText("3 selected")).toBeInTheDocument();
-    for (const name of ["Ban", "Unban", "Delete"]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    for (const name of ["Ban", "Unban"]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
     // Self and protected rows are not selected.
     expect(within(rows()[0]).getByRole("checkbox", { name: "Select row" })).toHaveAttribute("aria-checked", "false");
     expect(within(rows()[1]).getByRole("checkbox", { name: "Select row" })).toHaveAttribute("aria-checked", "false");
@@ -162,7 +165,7 @@ describe("users table", () => {
     renderTable();
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all" }));
     expect(screen.getByText("3 selected")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Name/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Created/ }));
     expect(screen.queryByText(/ selected$/)).not.toBeInTheDocument();
   });
 
@@ -174,11 +177,20 @@ describe("users table", () => {
 
   test("shows an empty state, and a loading state", () => {
     const { unmount } = renderTable([]);
-    expect(screen.getByText("No users found.")).toBeInTheDocument();
+    expect(screen.getByText("No operators found.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
     unmount();
     renderTable([], { loading: true });
     expect(screen.getByText("Loading...")).toBeInTheDocument();
-    expect(screen.queryByText("No users found.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No operators found.")).not.toBeInTheDocument();
+  });
+
+  test("operator menus retain sessions and ban/unban without deletion or role conversion", () => {
+    renderTable();
+    const row = screen.getAllByRole("row")[3];
+    openMenu(within(row).getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("menuitem", { name: "Sessions" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Ban operator" })).toBeInTheDocument();
+    for (const label of [/Delete/, /Make admin/, /Remove admin/]) expect(screen.queryByRole("menuitem", { name: label })).not.toBeInTheDocument();
   });
 });

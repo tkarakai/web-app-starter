@@ -1,380 +1,103 @@
-import type { AuditAction, AuditStatus } from "@repo/backend";
-import { authClient } from "@web-app-starter/auth/client";
+import { api } from "@repo/backend";
+import type { FunctionReturnType } from "convex/server";
+import type { ConvexReactClient } from "convex/react";
 
-// ---------------------------------------------------------------------------
-// Audit event callback type — callers pass useMutation(api.platform.auditTrail.postEvent)
-// ---------------------------------------------------------------------------
-
-export type PostAuditEventFn = (args: {
-  happenedAt: number;
-  sourceDetail?: string;
-  action: AuditAction;
-  resource: string;
-  status?: AuditStatus;
-  oldValue?: string;
-  newValue?: string;
-  reason?: string;
-  meta?: string;
-}) => Promise<unknown>;
-
-type AuthErrorLike = {
-  status?: number;
-  message?: string;
-};
-
-function mapAuthErrorToAuditStatus(error: AuthErrorLike | undefined): AuditStatus {
-  if (!error) return "failed.internal_error";
-
-  switch (error.status) {
-    case 400:
-    case 422:
-      return "failed.validation_error";
-    case 401:
-      return "failed.unauthorized";
-    case 403:
-      return "failed.blocked";
-    case 404:
-      return "failed.not_found";
-    case 429:
-      return "failed.rate_limited";
-    default:
-      break;
-  }
-
-  if (typeof error.status === "number" && error.status >= 500) {
-    return "failed.internal_error";
-  }
-
-  const message = (error.message ?? "").toLowerCase();
-  if (message.includes("not found")) return "failed.not_found";
-  if (message.includes("unauthorized") || message.includes("forbidden")) {
-    return "failed.unauthorized";
-  }
-  if (message.includes("blocked") || message.includes("banned")) {
-    return "failed.blocked";
-  }
-  if (message.includes("rate")) return "failed.rate_limited";
-  if (message.includes("invalid")) return "failed.validation_error";
-
-  return "failed.internal_error";
-}
+/** The authenticated provider client, never a new unauthenticated/global client. */
+export type OperatorClient = Pick<ConvexReactClient, "query" | "mutation">;
 
 export type AdminUser = {
   id: string;
   name: string;
   email: string;
-  role: string | null;
-  banned: boolean | null;
+  role: "admin";
+  banned: boolean;
   banReason: string | null;
   banExpires: number | null;
   image: string | null;
   createdAt: Date;
   updatedAt: Date;
   emailVerified: boolean;
-  phoneNumber: string | null;
-  phoneNumberVerified: boolean;
   twoFactorEnabled: boolean;
 };
 
 export type FetchUsersParams = {
   searchValue?: string;
   searchField?: "email" | "name";
-  searchOperator?: "contains" | "starts_with" | "ends_with";
-  filterField?: string;
-  filterValue?: string | string[];
-  filterOperator?: "eq" | "ne" | "lt" | "lte" | "gt" | "gte" | "contains";
-  sortBy?: string;
+  status?: "active" | "banned";
+  sortBy?: "createdAt";
   sortDirection?: "asc" | "desc";
   limit?: number;
-  offset?: number;
+  cursor?: string | null;
 };
 
 export type FetchUsersResult = {
   users: AdminUser[];
-  total: number;
+  isDone: boolean;
+  continueCursor: string;
 };
 
-export async function fetchUsers(params: FetchUsersParams): Promise<FetchUsersResult> {
-  const query: Record<string, string> = {};
-
-  if (params.searchValue) {
-    query.searchValue = params.searchValue;
-    query.searchField = params.searchField ?? "name";
-    query.searchOperator = params.searchOperator ?? "contains";
-  }
-
-  if (params.filterField) {
-    query.filterField = params.filterField;
-    query.filterValue = Array.isArray(params.filterValue)
-      ? params.filterValue.join(",")
-      : params.filterValue ?? "";
-    query.filterOperator = params.filterOperator ?? "eq";
-  }
-
-  if (params.sortBy) {
-    query.sortBy = params.sortBy;
-    query.sortDirection = params.sortDirection ?? "asc";
-  }
-
-  if (params.limit != null) {
-    query.limit = String(params.limit);
-  }
-
-  if (params.offset != null) {
-    query.offset = String(params.offset);
-  }
-
-  const result = await authClient.admin.listUsers({ query });
-
-  const rawUsers = result.data?.users ?? [];
-  const total = (result.data?.total as number) ?? 0;
-
+type OperatorRow = NonNullable<FunctionReturnType<typeof api.platform.agentUsers.list>>["page"][number];
+function operatorDto(user: OperatorRow): AdminUser {
+  if (user.role !== "admin") throw new Error("OPERATOR_TARGET_REQUIRED");
   return {
-    users: rawUsers.map((u) => {
-      const raw = u as unknown as Record<string, unknown>;
-      return {
-        id: u.id,
-        name: u.name ?? "",
-        email: u.email,
-        role: (raw.role as string | null) ?? null,
-        banned: u.banned ?? null,
-        banReason: u.banReason ?? null,
-        banExpires: u.banExpires != null ? new Date(u.banExpires).getTime() : null,
-        image: (raw.image as string | null) ?? null,
-        createdAt: new Date(u.createdAt),
-        updatedAt: new Date((raw.updatedAt as string | number) ?? u.createdAt),
-        emailVerified: u.emailVerified ?? false,
-        phoneNumber: (raw.phoneNumber as string | null) ?? null,
-        phoneNumberVerified: !!(raw.phoneNumberVerified),
-        twoFactorEnabled: !!(raw.twoFactorEnabled),
-      };
-    }),
-    total,
+    id: user.id, name: user.name, email: user.email, role: "admin",
+    banned: user.banned, banReason: user.banReason ?? null, banExpires: user.banExpires ?? null,
+    image: user.image ?? null, createdAt: new Date(user.createdAt), updatedAt: new Date(user.updatedAt),
+    emailVerified: user.emailVerified, twoFactorEnabled: user.twoFactorEnabled,
   };
 }
 
-export async function banUser(
-  userId: string,
-  banReason: string,
-  banExpiresIn?: number,
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.banUser({
-      userId,
-      banReason,
-      ...(banExpiresIn != null ? { banExpiresIn } : {}),
-    });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to ban user");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.user.banned",
-      resource: `user:${userId}`,
-      status,
-      reason: banReason,
-      meta: banExpiresIn != null ? JSON.stringify({ banExpiresIn }) : undefined,
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
+export async function fetchUsers(client: OperatorClient, params: FetchUsersParams): Promise<FetchUsersResult> {
+  const result = await client.query(api.platform.agentUsers.list, {
+    paginationOpts: { numItems: params.limit ?? 50, cursor: params.cursor ?? null },
+    role: "admin", sortBy: "createdAt", sortDirection: params.sortDirection ?? "desc",
+    ...(params.searchValue ? { search: params.searchValue, searchField: params.searchField ?? "name" } : {}),
+    ...(params.status ? { status: params.status } : {}),
+  });
+  if (!result) throw new Error("NOT_AUTHENTICATED");
+  return { users: result.page.map(operatorDto), isDone: result.isDone, continueCursor: result.continueCursor };
 }
 
-export async function unbanUser(
-  userId: string,
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.unbanUser({ userId });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to unban user");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.user.unbanned",
-      resource: `user:${userId}`,
-      status,
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
+// The backend performs authorization and canonical audit writes in the executing mutation.
+export async function banUser(client: OperatorClient, userId: string, reason: string, expiresInSeconds?: number): Promise<void> {
+  await client.mutation(api.platform.agentUsers.ban, { userId, reason, ...(expiresInSeconds !== undefined ? { expiresInSeconds } : {}) });
 }
 
-export async function removeUser(
-  userId: string,
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.removeUser({ userId });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to remove user");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.user.deleted",
-      resource: `user:${userId}`,
-      status,
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
+export async function unbanUser(client: OperatorClient, userId: string): Promise<void> {
+  await client.mutation(api.platform.agentUsers.unban, { userId });
 }
-
-export async function setUserRole(
-  userId: string,
-  role: "user" | "admin",
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.setRole({ userId, role });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to set user role");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.role_changed",
-      resource: `user:${userId}`,
-      status,
-      newValue: JSON.stringify({ role }),
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
-}
-
-// ---------------------------------------------------------------------------
-// Session management
-// ---------------------------------------------------------------------------
 
 export type AdminSession = {
   id: string;
   userId: string;
-  token: string;
   ipAddress: string | null;
   userAgent: string | null;
   expiresAt: Date;
   createdAt: Date;
-  updatedAt: Date;
 };
 
-export async function listUserSessions(userId: string): Promise<AdminSession[]> {
-  const result = await authClient.admin.listUserSessions({ userId });
-  if (result.error) {
-    throw new Error(result.error.message ?? "Failed to list user sessions");
+export async function listUserSessions(client: OperatorClient, userId: string): Promise<AdminSession[]> {
+  const sessions: AdminSession[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 100; page++) {
+    const result: FunctionReturnType<typeof api.platform.agentUsers.sessions> = await client.query(api.platform.agentUsers.sessions, { userId, paginationOpts: { numItems: 100, cursor } });
+    if (!result) throw new Error("NOT_AUTHENTICATED");
+    for (const session of result.page) {
+      if (session.userId !== userId) throw new Error("OPERATOR_TARGET_REQUIRED");
+      sessions.push({ id: session.id, userId: session.userId, ipAddress: session.ipAddress ?? null,
+        userAgent: session.userAgent ?? null, expiresAt: new Date(session.expiresAt), createdAt: new Date(session.createdAt) });
+    }
+    if (result.isDone) return sessions;
+    if (!result.continueCursor || result.continueCursor === cursor) throw new Error("INVALID_SESSION_CURSOR");
+    cursor = result.continueCursor;
   }
-  const sessions = result.data?.sessions ?? [];
-  return sessions.map((s) => {
-    const raw = s as unknown as Record<string, unknown>;
-    return {
-      id: raw.id as string,
-      userId: raw.userId as string,
-      token: raw.token as string,
-      ipAddress: (raw.ipAddress as string | null) ?? null,
-      userAgent: (raw.userAgent as string | null) ?? null,
-      expiresAt: new Date(raw.expiresAt as string | number),
-      createdAt: new Date(raw.createdAt as string | number),
-      updatedAt: new Date(raw.updatedAt as string | number),
-    };
-  });
+  throw new Error("OPERATOR_SESSION_SCAN_LIMIT");
 }
 
-export async function revokeSession(
-  sessionToken: string,
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.revokeUserSession({ sessionToken });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to revoke session");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.session.revoked",
-      resource: `session:…${sessionToken.slice(-8)}`,
-      status,
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
+export async function revokeSession(client: OperatorClient, userId: string, sessionId: string): Promise<void> {
+  await client.mutation(api.platform.agentUsers.revokeSession, { userId, sessionId });
 }
 
-export async function revokeAllSessions(
-  userId: string,
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.revokeUserSessions({ userId });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to revoke sessions");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.session.revoked_all",
-      resource: `user:${userId}`,
-      status,
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
+export async function revokeAllSessions(client: OperatorClient, userId: string): Promise<void> {
+  await client.mutation(api.platform.agentUsers.revokeSessions, { userId });
 }
