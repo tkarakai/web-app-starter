@@ -31,7 +31,7 @@ function renderTable(results: unknown[] = [CAROL, ALICE, BOB], status = "Exhaust
   return render(<AdminsDataTable />);
 }
 
-describe("admin invitations table", () => {
+describe("app-operator invitations table", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -64,7 +64,7 @@ describe("admin invitations table", () => {
 
   test("shows an empty state", () => {
     renderTable([]);
-    expect(screen.getByText("No admin invitations found.")).toBeInTheDocument();
+    expect(screen.getByText("No app-operator invitations found.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 });

@@ -59,7 +59,7 @@ const manageItems = [
     ? [{ label: "Announcements", href: "/manage/announcements", icon: Megaphone }]
     : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
-  { label: "Operators", href: "/manage/users", icon: Users },
+  { label: "App operators", href: "/manage/users", icon: Users },
 ];
 
 const observabilityItems = [
@@ -112,12 +112,12 @@ export function AdminSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip={`${appConfig.identity.productName} Admin`}
+              tooltip={`${appConfig.identity.productName} App admin`}
               className="font-semibold"
             >
               <Link href="/dashboard">
                 <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
-                <span>{appConfig.identity.productName} Admin</span>
+                <span>{appConfig.identity.productName} App admin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 
 type UserAction =
   | "ban"
@@ -9,7 +9,7 @@ type UserAction =
   | "sessions";
 
 type UserActionsContextValue = {
-  onAction: (action: UserAction, users: AdminUser[]) => void;
+  onAction: (action: UserAction, users: AppOperatorUser[]) => void;
 };
 
 const UserActionsContext = React.createContext<UserActionsContextValue | null>(null);
@@ -24,7 +24,7 @@ export function UserActionsProvider({
   onAction,
   children,
 }: {
-  onAction: (action: UserAction, users: AdminUser[]) => void;
+  onAction: (action: UserAction, users: AppOperatorUser[]) => void;
   children: React.ReactNode;
 }) {
   const value = React.useMemo(() => ({ onAction }), [onAction]);

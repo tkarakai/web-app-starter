@@ -23,9 +23,9 @@ import {
   TableRow,
   TooltipProvider,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
-import { banUser, unbanUser } from "@/lib/admin-api";
-import { useUsers, type OperatorFilters } from "@/hooks/use-users";
+import type { AppOperatorUser } from "@/lib/admin-api";
+import { banAppOperator, unbanAppOperator } from "@/lib/admin-api";
+import { useAppOperators, type AppOperatorFilters } from "@/hooks/use-users";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { createColumns } from "./columns";
 import { usersTableFeatures } from "./table-features";
@@ -43,7 +43,7 @@ type UserAction =
 
 type PendingAction = {
   action: UserAction;
-  users: AdminUser[];
+  users: AppOperatorUser[];
 };
 
 /** Default column visibility — optional columns hidden by default. */
@@ -57,12 +57,12 @@ const DEFAULT_COLUMN_VISIBILITY: ColumnVisibilityState = {
 /** Debounce delay for name search (ms). */
 const SEARCH_DEBOUNCE = 300;
 
-export function UsersDataTable() {
+export function AppOperatorsDataTable() {
   const authUser = useAuthUser();
   const currentUserId = authUser?.id;
   const client = useConvex();
 
-  // Bootstrap operator protection is additional to the backend's canonical identity boundary.
+  // Bootstrap app-operator protection is additional to the backend's canonical identity boundary.
   const protectedEmailsList = useQuery(api.platform.adminEmails.listProtected);
   const protectedEmails = React.useMemo(
     () => new Set(protectedEmailsList ?? []),
@@ -88,7 +88,7 @@ export function UsersDataTable() {
 
   // The server owns status/search filtering and the supported creation-time order.
   const filterParams = React.useMemo(() => {
-    const params: OperatorFilters = {};
+    const params: AppOperatorFilters = {};
 
     if (debouncedSearch) {
       params.searchValue = debouncedSearch;
@@ -104,7 +104,7 @@ export function UsersDataTable() {
   }, [debouncedSearch, statusFilter, sorting]);
 
   const { users: allUsers, total, loading, loadingMore, hasMore, loadMore, refresh, error } =
-    useUsers(filterParams);
+    useAppOperators(filterParams);
 
   // Client-side sorting for columns that can't be sorted server-side (e.g. boolean fields).
   const sortedUsers = React.useMemo(() => {
@@ -144,16 +144,16 @@ export function UsersDataTable() {
   // ----- Dialog state -----
 
   // Ban dialog (single + batch)
-  const [banTarget, setBanTarget] = React.useState<AdminUser[] | null>(null);
+  const [banTarget, setBanTarget] = React.useState<AppOperatorUser[] | null>(null);
   const [banPending, setBanPending] = React.useState(false);
 
   // Unban dialog (single only)
-  const [unbanTarget, setUnbanTarget] = React.useState<AdminUser | null>(null);
+  const [unbanTarget, setUnbanTarget] = React.useState<AppOperatorUser | null>(null);
   const [unbanPending, setUnbanPending] = React.useState(false);
 
   // Batch action dialog (ban/unban only)
   const [batchAction, setBatchAction] = React.useState<PendingAction | null>(null);
-  const [sessionsTarget, setSessionsTarget] = React.useState<AdminUser | null>(null);
+  const [sessionsTarget, setSessionsTarget] = React.useState<AppOperatorUser | null>(null);
 
   // Ban params ref for batch ban execution
   const batchBanParamsRef = React.useRef<{
@@ -172,7 +172,7 @@ export function UsersDataTable() {
   // ----- Action routing -----
 
   const handleAction = React.useCallback(
-    (action: UserAction, actionUsers: AdminUser[]) => {
+    (action: UserAction, actionUsers: AppOperatorUser[]) => {
       if (action === "sessions") {
         if (actionUsers.length === 1) {
           setSessionsTarget(actionUsers[0]);
@@ -196,13 +196,13 @@ export function UsersDataTable() {
     if (banTarget.length === 1) {
       setBanPending(true);
       try {
-        await banUser(client, banTarget[0].id, banReason, banExpiresIn);
+        await banAppOperator(client, banTarget[0].id, banReason, banExpiresIn);
         toast.success(`${banTarget[0].email} has been banned`);
         setBanTarget(null);
         setRowSelection({});
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to ban operator");
+        toast.error(err instanceof Error ? err.message : "Failed to ban app operator");
       } finally {
         setBanPending(false);
       }
@@ -221,13 +221,13 @@ export function UsersDataTable() {
     if (!unbanTarget) return;
     setUnbanPending(true);
     try {
-      await unbanUser(client, unbanTarget.id);
+      await unbanAppOperator(client, unbanTarget.id);
       toast.success(`${unbanTarget.email} has been unbanned`);
       setUnbanTarget(null);
       setRowSelection({});
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to unban operator");
+      toast.error(err instanceof Error ? err.message : "Failed to unban app operator");
     } finally {
       setUnbanPending(false);
     }
@@ -248,15 +248,15 @@ export function UsersDataTable() {
   };
 
   const batchExecutor = React.useCallback(
-    async (user: AdminUser) => {
+    async (user: AppOperatorUser) => {
       if (!batchAction) return;
       if (batchAction.action === "ban") {
         if (user.banned === true) return; // Already banned — skip (defense-in-depth)
         const params = batchBanParamsRef.current;
-        await banUser(client, user.id, params?.banReason ?? "", params?.banExpiresIn);
+        await banAppOperator(client, user.id, params?.banReason ?? "", params?.banExpiresIn);
       } else if (batchAction.action === "unban") {
         if (user.banned !== true) return; // Not banned — skip (defense-in-depth)
-        await unbanUser(client, user.id);
+        await unbanAppOperator(client, user.id);
       }
     },
     [batchAction, client],
@@ -275,24 +275,24 @@ export function UsersDataTable() {
 
   // Batch description with applicable count info.
   const batchDescriptionText = React.useCallback(
-    (action: UserAction, actionUsers: AdminUser[]): string => {
+    (action: UserAction, actionUsers: AppOperatorUser[]): string => {
       const totalCount = actionUsers.length;
 
       if (action === "ban") {
         const applicable = actionUsers.filter((u) => u.banned !== true).length;
-        if (applicable === 0) return "None of the selected operators can be banned (all are already banned).";
+        if (applicable === 0) return "None of the selected app operators can be banned (all are already banned).";
         if (applicable < totalCount)
-          return `${applicable} of ${totalCount} selected operators will be banned (${totalCount - applicable} already banned).`;
-        return `Are you sure you want to ban ${totalCount} selected operators?`;
+          return `${applicable} of ${totalCount} selected app operators will be banned (${totalCount - applicable} already banned).`;
+        return `Are you sure you want to ban ${totalCount} selected app operators?`;
       }
       if (action === "unban") {
         const applicable = actionUsers.filter((u) => u.banned === true).length;
-        if (applicable === 0) return "None of the selected operators can be unbanned (none are banned).";
+        if (applicable === 0) return "None of the selected app operators can be unbanned (none are banned).";
         if (applicable < totalCount)
-          return `${applicable} of ${totalCount} selected operators will be unbanned (${totalCount - applicable} not banned).`;
-        return `Are you sure you want to unban ${totalCount} selected operators?`;
+          return `${applicable} of ${totalCount} selected app operators will be unbanned (${totalCount - applicable} not banned).`;
+        return `Are you sure you want to unban ${totalCount} selected app operators?`;
       }
-      return `Are you sure you want to ${action} ${totalCount} selected operators?`;
+      return `Are you sure you want to ${action} ${totalCount} selected app operators?`;
     },
     [],
   );
@@ -358,7 +358,7 @@ export function UsersDataTable() {
                       colSpan={table.getVisibleFlatColumns().length}
                       className="h-24 text-center"
                     >
-                      No operators found.
+                      No app operators found.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -426,7 +426,7 @@ export function UsersDataTable() {
           open
           onClose={handleBatchClose}
           onCancel={handleBatchCancel}
-          title={`${actionLabel(batchAction.action)} ${batchAction.users.length} operators`}
+          title={`${actionLabel(batchAction.action)} ${batchAction.users.length} app operators`}
           description={batchDescriptionText(batchAction.action, batchAction.users)}
           confirmLabel={`${actionLabel(batchAction.action)} all`}
           users={batchApplicableUsers}
@@ -445,3 +445,6 @@ export function UsersDataTable() {
     </UserActionsProvider>
   );
 }
+
+/** @deprecated Use AppOperatorsDataTable. */
+export const UsersDataTable = AppOperatorsDataTable;

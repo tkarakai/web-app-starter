@@ -1,3 +1,4 @@
+import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { rememberNative } from "./nativeCapabilities";
 /** One-use browser authorization and scoped delegations. Raw credentials are never stored. */
@@ -5,7 +6,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { query, mutation, internalMutation, type QueryCtx } from "../_generated/server";
 import { customMutation, customCtx } from "convex-helpers/server/customFunctions";
-import { adminMutation } from "./functions";
+import { appOperatorMutation } from "./functions";
 import { authorizedSession, evaluateSession } from "./sessionPolicy";
 import { components } from "../_generated/api";
 import type { Doc } from "./betterAuth/_generated/dataModel";
@@ -13,9 +14,10 @@ import { captureDelegation, readDelegation, deleteAuthorizationSession } from ".
 import { surfaceConfiguration, surfaceForResource } from "./agentSurfaces";
 import { rateLimit } from "./rateLimits";
 import { AGENT_CONTRACT_EPOCH, currentAgentContract } from "./agentContract";
-import { isOperatorIdentity, requireOperator } from "./operatorAccess";
+import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
 
 export const AGENT_CLIENT_ID = "pi-announcements";
+/** Deprecated scope wire identifier for app-operator grants; preserve consent/exchange compatibility. */
 export const AGENT_SCOPE = "admin:manage";
 
 export async function credentialHash(value: string): Promise<string> {
@@ -38,7 +40,7 @@ const consentMutation = customMutation(mutation, customCtx(async ctx => {
   const auth = await authorizedSession(ctx, false, true);
   if (!auth) throw new Error("NOT_AUTHENTICATED");
   if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  if (!await isOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
+  if (!await isAppOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
   if (auth.session.authPurpose !== "mcp-authorization" || !process.env.AGENT_MCP_AUTH_ORIGIN) throw new Error("MCP_AUTHORIZATION_ONLY");
   await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
   return auth;
@@ -88,7 +90,7 @@ export async function requireGrant(ctx: QueryCtx, token: string, resource: strin
 
 async function validateGrant(ctx: QueryCtx, grant: import("../_generated/dataModel").Doc<"agentGrants">, recent: boolean) {
   const pair = await readDelegation(ctx, grant.delegationId, grant.userId);
-  if (!currentAgentContract(grant) || !pair || !await isOperatorIdentity(ctx, pair.user)) throw new Error("INVALID_AGENT_TOKEN");
+  if (!currentAgentContract(grant) || !pair || !await isAppOperatorIdentity(ctx, pair.user)) throw new Error("INVALID_AGENT_TOKEN");
   const assurance = await evaluateSession(ctx, pair);
   if (!assurance.allowed) throw new Error("INVALID_AGENT_TOKEN");
   if (recent && !assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
@@ -117,7 +119,7 @@ export const exchange = mutation({
     const challenge = btoa(String.fromCharCode(...challengeBytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
     if (challenge !== row.challenge) throw new Error("INVALID_GRANT");
     const pair = await readDelegation(ctx, row.delegationId, row.userId);
-    if (!pair || !await isOperatorIdentity(ctx, pair.user)) throw new Error("INVALID_GRANT");
+    if (!pair || !await isAppOperatorIdentity(ctx, pair.user)) throw new Error("INVALID_GRANT");
     const assurance = await evaluateSession(ctx, pair);
     if (!assurance.allowed || !assurance.recent) throw new Error("INVALID_GRANT");
     // A mutation atomically consumes the code. Racing or repeated exchanges cannot mint two tokens.
@@ -146,17 +148,17 @@ async function listGrants(ctx: QueryCtx, userId: string) {
   }));
 }
 export const listMine = rememberNative(query({ args: {}, handler: async ctx => {
-  const auth = await authorizedSession(ctx); return !auth || !await isOperatorIdentity(ctx, auth.user) ? [] : listGrants(ctx, auth.user._id);
+  const auth = await authorizedSession(ctx); return !auth || !await isAppOperatorIdentity(ctx, auth.user) ? [] : listGrants(ctx, auth.user._id);
 } }), { args: {}, handler: (ctx: QueryCtx & { user: { _id: string } }) => listGrants(ctx, ctx.user._id) }, "query");
 
-export const revoke = adminMutation({
+export const revoke = appOperatorMutation({
   args: { grantId: v.id("agentGrants") },
   handler: async (ctx, args) => {
-    await requireOperator(ctx, { write: true });
+    await requireAppOperator(ctx, { write: true });
     const grant = await ctx.db.get(args.grantId);
     if (!grant || grant.userId !== ctx.user._id) throw new Error("GRANT_NOT_FOUND");
     await ctx.db.patch(grant._id, { revokedAt: Date.now() });
-    await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-access", action: "admin.agent_grant_revoked", resource: `agent-grant:${grant._id}`, status: "succeeded" });
+    await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.agentAccess, action: "admin.agent_grant_revoked", resource: `agent-grant:${grant._id}`, status: "succeeded" });
   },
 });
 

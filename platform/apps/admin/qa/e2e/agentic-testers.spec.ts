@@ -18,7 +18,7 @@ async function runTester(page: Page, origin: string, user: { email: string; pass
     await page.goto(url); await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
     await fillStable(page, "#email", user.email); await page.locator('form:has(#email) button[type="submit"]').click();
     await fillStable(page, "#password", user.password); await page.locator('form:has(#password) button[type="submit"]').click();
-    await page.getByRole("button", { name: "Authorize admin agent" }).click();
+    await page.getByRole("button", { name: "Authorize app-operator agent" }).click();
     await expect(page.getByRole("heading", { name: "Authenticated", exact: true })).toBeVisible();
     await expect(page.getByText("Return to the admin agent terminal. You can close this tab.", { exact: true })).toBeVisible();
     const exit = await Promise.race([completion, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Tester completion timeout")), 120_000))]);
@@ -32,7 +32,7 @@ for (const surface of ["mcp", "cli", "a2a"] as const) test(`independent ${surfac
   test.skip(process.env.AGENT_SIMULATORS !== "true", "Explicit all-capability simulator run"); test.setTimeout(150_000);
   const user = await signInAsAdmin(page); const origin = new URL(baseURL!).origin;
   await page.goto("/configure/features");
-  const title = surface === "mcp" ? "MCP server" : surface === "cli" ? "Admin CLI" : "A2A";
+  const title = surface === "mcp" ? "MCP server" : surface === "cli" ? "App-operator CLI" : "A2A";
   const toggle = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(toggle).toBeEnabled(); if (!await toggle.isChecked()) await toggle.click(); await expect(toggle).toBeChecked();
   const output = await runTester(page, origin, user, "platform/packages/announcement-agent/src/simulator.ts", ["--surface", surface]);
   const summary = output.slice(output.indexOf("{\n"));
@@ -44,7 +44,7 @@ for (const surface of ["mcp", "cli", "a2a"] as const) test(`independent ${surfac
 for (const surface of ["mcp", "cli", "a2a"] as const) test(`pi conversation discovers and manages a draft through ${surface}`, async ({ page, baseURL }, testInfo) => {
   test.skip(process.env.AGENT_LLM_SMOKE !== "true", "Explicit provider-backed pi acceptance"); test.setTimeout(150_000);
   const user = await signInAsAdmin(page); const origin = new URL(baseURL!).origin;
-  await page.goto("/configure/features"); const title = surface === "mcp" ? "MCP server" : surface === "cli" ? "Admin CLI" : "A2A";
+  await page.goto("/configure/features"); const title = surface === "mcp" ? "MCP server" : surface === "cli" ? "App-operator CLI" : "A2A";
   const toggle = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(toggle).toBeEnabled(); if (!await toggle.isChecked()) await toggle.click(); await expect(toggle).toBeChecked();
   const name = `Pi full-surface ${surface} ${Date.now()}`;
   const reportPath = testInfo.outputPath(`${surface}-pi-evidence.json`);

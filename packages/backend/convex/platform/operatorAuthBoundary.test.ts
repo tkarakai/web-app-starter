@@ -38,8 +38,8 @@ async function fixture() {
   return { t, operator, customer, request };
 }
 
-describe("raw Better Auth operator boundary", () => {
-  test("every installed generic admin endpoint denies HTTP for operators, customers and anonymous callers", async () => {
+describe("raw Better Auth app-operator boundary", () => {
+  test("every installed generic admin endpoint denies HTTP for app operators, organization users and anonymous callers", async () => {
     const f = await fixture();
     const routes = await f.t.run(async ctx => Object.values(getEndpoints({} as never, createAuthOptions(ctx)).api)
       .filter(endpoint => endpoint.path?.startsWith("/admin/"))
@@ -99,7 +99,7 @@ describe("raw Better Auth operator boundary", () => {
     expect(await f.t.run(ctx => ctx.db.get(project))).toMatchObject({ ownerId: f.operator.user._id });
   });
 
-  test("customer identity self-service still reads its session/passkeys and updates only its own profile", async () => {
+  test("organization-user identity self-service still reads its session/passkeys and updates only its own profile", async () => {
     const f = await fixture();
     const key = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
       userId: f.customer.user._id, name: "My security key", publicKey: "private-key-material", credentialID: "customer-credential-id",

@@ -37,7 +37,7 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await fillStable(page, "#password", user.password);
   await page.locator('form:has(#password) button[type="submit"]').click();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/, { timeout: 20_000 });
-  const dialog = page.getByRole("alertdialog", { name: "Authorize admin agent" });
+  const dialog = page.getByRole("alertdialog", { name: "Authorize app-operator agent" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(appConfig.identity.productName, { exact: true })).toBeVisible();
   await expect(dialog.locator('img[src="/icon.svg"]')).toBeVisible();
@@ -63,7 +63,7 @@ test("browser login, consent and PKCE grant support announcement CRUD and revoca
   await page.mouse.click(4, 4);
   await expect(dialog).toBeVisible();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/);
-  await dialog.getByRole("button", { name: "Authorize admin agent" }).click();
+  await dialog.getByRole("button", { name: "Authorize app-operator agent" }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:45999\/callback\?.*code=/);
   const callback = new URL(page.url());
   expect(callback.searchParams.get("state")).toBe(state);
@@ -128,7 +128,7 @@ test("denying modal consent returns to pi without granting access", async ({ pag
   await fillStable(page, "#password", user.password);
   await page.locator('form:has(#password) button[type="submit"]').click();
   await expect(page).toHaveURL(/\/settings\/agent-access\?/, { timeout: 20_000 });
-  const dialog = page.getByRole("alertdialog", { name: "Authorize admin agent" });
+  const dialog = page.getByRole("alertdialog", { name: "Authorize app-operator agent" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Deny access", exact: true }).click();
   await expect(page).toHaveURL(/callback\?.*error=access_denied/);

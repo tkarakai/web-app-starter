@@ -14,13 +14,13 @@ import {
   Label,
   Textarea,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 import { useEscapeConfirm } from "@/hooks/use-escape-confirm";
 
 type BanDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  users: AdminUser[];
+  users: AppOperatorUser[];
   pending?: boolean;
   onConfirm: (banReason: string, banExpiresIn?: number) => void;
 };
@@ -47,7 +47,7 @@ export function BanDialog({
   const isSingle = users.length === 1;
   const title = isSingle
     ? `Ban ${users[0].email}`
-    : `Ban ${users.length} operators`;
+    : `Ban ${users.length} app operators`;
 
   const canConfirm = reason.trim().length > 0 && !pending;
 
@@ -94,8 +94,8 @@ export function BanDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {isSingle
-              ? "This operator will be unable to sign in while banned."
-              : `These ${users.length} operators will be unable to sign in while banned.`}
+              ? "This app operator will be unable to sign in while banned."
+              : `These ${users.length} app operators will be unable to sign in while banned.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -106,7 +106,7 @@ export function BanDialog({
             </Label>
             <Textarea
               id="ban-reason"
-              placeholder="Explain why this operator is being banned..."
+              placeholder="Explain why this app operator is being banned..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
@@ -157,7 +157,7 @@ export function BanDialog({
             onClick={handleConfirm}
             disabled={!canConfirm}
           >
-            {pending ? "Banning..." : isSingle ? "Ban operator" : `Ban ${users.length} operators`}
+            {pending ? "Banning..." : isSingle ? "Ban app operator" : `Ban ${users.length} app operators`}
           </Button>
         </div>
       </DialogContent>

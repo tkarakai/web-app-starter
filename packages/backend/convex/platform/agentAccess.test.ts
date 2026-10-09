@@ -183,7 +183,7 @@ describe("full native capability adapter and independent surfaces", () => {
     await expect(write("profile_setLocale", { locale: "en" })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
     expect(await read("account_currentUser")).not.toBeNull();
   });
-  test("operator administration uses safe IDs, protects operators and revokes sessions while preserving identity records", async () => {
+  test("app-operator administration uses safe IDs, protects app operators and revokes sessions while preserving identity records", async () => {
     const f = await fixture(); const auth = await f.mint();
     const now = Date.now();
     const other = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { email: "other@example.test", name: "Other", emailVerified: true, role: "admin", createdAt: now, updatedAt: now } } });
@@ -415,7 +415,7 @@ describe("A2A ownership, rollback and interruption guarantees", () => {
 describe("semantic user filtering and private helper policy", () => {
   beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
-  test("server-side operator filters exclude customers and combine verified/role/search predicates", async () => {
+  test("server-side app-operator filters exclude organization users and combine verified/role/search predicates", async () => {
     const f = await fixture(); const auth = await f.mint(); const now = Date.now();
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Filter Target", email: "target@example.test", emailVerified: true, role: "admin", createdAt: now, updatedAt: now } } });
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Banned", email: "banned@example.test", emailVerified: false, role: "admin", banned: true, createdAt: now, updatedAt: now } } });

@@ -14,6 +14,7 @@
  */
 
 import { defineSchema, defineTable } from "convex/server";
+import { MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE } from "./organizationVocabulary";
 import { v } from "convex/values";
 
 export const tables = {
@@ -222,7 +223,7 @@ export const tables = {
     organizationId: v.string(),
     userId: v.string(),
     memberId: v.id("member"),
-    purpose: v.union(v.literal("collaboration"), v.literal("promotion"), v.literal("invitation")),
+    purpose: v.union(v.literal(MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE), v.literal("promotion"), v.literal("invitation")),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     passwordProof: v.optional(v.string()),

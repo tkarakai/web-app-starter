@@ -64,11 +64,11 @@ export function PasskeyPolicyCard({ scope }: { scope: Scope }) {
           </div>
           <div>
             <CardTitle className="text-base">
-              {isAdminScope ? "Admin Passkey Policy" : "User Passkey Policy"}
+              {isAdminScope ? "App-admin Passkey Policy" : "User Passkey Policy"}
             </CardTitle>
             <CardDescription>
               {isAdminScope
-                ? "Configure passkey requirements for admins."
+                ? "Configure passkey requirements for app operators."
                 : "Configure passkey requirements for regular users."}
             </CardDescription>
           </div>

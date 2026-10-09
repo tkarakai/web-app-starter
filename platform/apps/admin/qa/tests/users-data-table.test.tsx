@@ -26,10 +26,10 @@ vi.mock("convex/react", () => ({
   useQuery: () => ["protected@example.test"],
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/lib/admin-api", () => ({ banUser: vi.fn(), unbanUser: vi.fn() }));
+vi.mock("@/lib/admin-api", () => ({ banAppOperator: vi.fn(), unbanAppOperator: vi.fn() }));
 vi.mock("@/components/auth/auth-guard", () => ({ useAuthUser: () => ({ id: "u-self" }) }));
 vi.mock("@/hooks/use-users", () => ({
-  useUsers: (params: Params) => {
+  useAppOperators: (params: Params) => {
     mocks.calls.push(params);
     const rows = params.status ? mocks.users.filter(row => params.status === "banned" ? row.banned : !row.banned) : mocks.users;
     return { users: rows, total: rows.length, loading: mocks.loading, loadingMore: false, hasMore: mocks.hasMore, loadMore: mocks.loadMore, refresh: mocks.refresh, error: null };
@@ -37,7 +37,7 @@ vi.mock("@/hooks/use-users", () => ({
 }));
 vi.mock("../../src/components/users/user-sessions-dialog", () => ({ UserSessionsDialog: () => null }));
 
-import { UsersDataTable } from "../../src/components/users/users-data-table";
+import { AppOperatorsDataTable } from "../../src/components/users/users-data-table";
 
 const user = (id: string, name: string, email: string, banned = false) => ({
   id, name, email, role: "admin", banned, banReason: null, banExpires: null, image: null,
@@ -62,7 +62,7 @@ function renderTable(users: Array<Record<string, unknown>> = [SELF, PROTECTED, A
   mocks.total = users.length;
   mocks.loading = options.loading ?? false;
   mocks.hasMore = options.hasMore ?? false;
-  return render(<UsersDataTable />);
+  return render(<AppOperatorsDataTable />);
 }
 
 const openMenu = (trigger: HTMLElement) => fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
@@ -76,7 +76,7 @@ describe("users table", () => {
   test("lists the users with the default columns; optional columns start hidden", () => {
     renderTable();
     expect(emails()).toEqual(["self@example.test", "protected@example.test", "ann@example.test", "ben@example.test", "cy@example.test"]);
-    expect(screen.getByText("5 operators loaded")).toBeInTheDocument();
+    expect(screen.getByText("5 app operators loaded")).toBeInTheDocument();
     for (const label of ["Name", "Email", "Account"]) expect(screen.getByRole("columnheader", { name: label })).toBeInTheDocument();
     for (const label of [/^Status/, /^Created/]) expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     for (const hidden of ["Email Verified", "Phone", "Phone Verified", "2FA"]) {
@@ -121,7 +121,7 @@ describe("users table", () => {
 
   test("searching asks the server after a short pause", async () => {
     renderTable();
-    fireEvent.change(screen.getByPlaceholderText("Search operators by name or email..."), { target: { value: "an" } });
+    fireEvent.change(screen.getByPlaceholderText("Search app operators by name or email..."), { target: { value: "an" } });
     await waitFor(() => expect(lastParams()).toEqual({ searchValue: "an" }));
   });
 
@@ -131,7 +131,7 @@ describe("users table", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Banned" }));
     await waitFor(() => expect(emails()).toEqual(["ben@example.test"]));
     expect(lastParams()).toEqual({ status: "banned" });
-    expect(screen.getByText("1 operator loaded")).toBeInTheDocument();
+    expect(screen.getByText("1 app operator loaded")).toBeInTheDocument();
   });
 
   test("selects every selectable row, never yourself or a protected admin", () => {
@@ -177,12 +177,12 @@ describe("users table", () => {
 
   test("shows an empty state, and a loading state", () => {
     const { unmount } = renderTable([]);
-    expect(screen.getByText("No operators found.")).toBeInTheDocument();
+    expect(screen.getByText("No app operators found.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
     unmount();
     renderTable([], { loading: true });
     expect(screen.getByText("Loading...")).toBeInTheDocument();
-    expect(screen.queryByText("No operators found.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No app operators found.")).not.toBeInTheDocument();
   });
 
   test("operator menus retain sessions and ban/unban without deletion or role conversion", () => {
@@ -190,7 +190,7 @@ describe("users table", () => {
     const row = screen.getAllByRole("row")[3];
     openMenu(within(row).getByRole("button", { name: "Open menu" }));
     expect(screen.getByRole("menuitem", { name: "Sessions" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Ban operator" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Ban app operator" })).toBeInTheDocument();
     for (const label of [/Delete/, /Make admin/, /Remove admin/]) expect(screen.queryByRole("menuitem", { name: label })).not.toBeInTheDocument();
   });
 });

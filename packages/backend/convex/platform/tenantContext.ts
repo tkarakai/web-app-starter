@@ -2,18 +2,21 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { query, type QueryCtx } from "../_generated/server";
 import { getAuth } from "./functions";
+import { ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE, type OrganizationExperience } from "./betterAuth/organizationVocabulary";
 
-export async function requireCustomerSession(ctx: QueryCtx) {
+export async function requireOrganizationUserSession(ctx: QueryCtx) {
   const auth = await getAuth(ctx);
   if (!auth) throw new Error("NOT_AUTHENTICATED");
   if (auth.assurance.scope !== "user" || (auth.user.role ?? "user") !== "user") throw new Error("NOT_CUSTOMER");
   return auth;
 }
+/** @deprecated Use requireOrganizationUserSession; retained source/error compatibility. */
+export const requireCustomerSession = requireOrganizationUserSession;
 
 /** Resolve only the caller-supplied immutable ID; session activeOrganizationId is never authority. */
 export async function requireTenantContext(ctx: QueryCtx, organizationId: string) {
   if (!organizationId) throw new Error("EXPLICIT_ORGANIZATION_CONTEXT_REQUIRED");
-  const auth = await requireCustomerSession(ctx);
+  const auth = await requireOrganizationUserSession(ctx);
   const organization = await ctx.runQuery(components.betterAuth.organizations.context, { organizationId, userId: auth.user._id });
   return { ...auth, organizationId: organization.organizationId, organization };
 }
@@ -21,7 +24,7 @@ export type TenantAuth = Awaited<ReturnType<typeof requireTenantContext>>;
 
 /** Transitional legacy-private entry points preserve old personal access, not multi-tenant authority. */
 export async function requireLegacyPrivateAccess(ctx: QueryCtx, organizationId?: string) {
-  const auth = await requireCustomerSession(ctx);
+  const auth = await requireOrganizationUserSession(ctx);
   const personalId = await ctx.runQuery(components.betterAuth.organizations.legacyPrivateAccess, { userId: auth.user._id });
   if (organizationId !== undefined && (!organizationId || organizationId !== personalId)) throw new Error("ORGANIZATION_UNAVAILABLE");
   return auth;
@@ -30,9 +33,9 @@ export async function requireLegacyPrivateAccess(ctx: QueryCtx, organizationId?:
 export const mine = query({
   args: {},
   handler: async ctx => {
-    const auth = await requireCustomerSession(ctx);
-    const contexts: Array<{ organizationId: string; name: string; experience: "personal" | "collaborative";
-      lifecycle: "active" | "disabled" | "provisioning"; role: "org-admin" | "member"; personal: boolean }> =
+    const auth = await requireOrganizationUserSession(ctx);
+    const contexts: Array<{ organizationId: string; name: string; experience: OrganizationExperience;
+      lifecycle: "active" | "disabled" | "provisioning"; role: typeof ORG_ADMIN_MEMBERSHIP_ROLE | typeof ORG_MEMBER_ROLE; personal: boolean }> =
       await ctx.runQuery(components.betterAuth.organizations.mine, { userId: auth.user._id });
     let legacyPrivateAvailable = false;
     try {

@@ -1,3 +1,4 @@
+import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS, LEGACY_AUTH_ENDPOINT_AUDIT_SOURCE_DETAIL } from "./appOperatorAuditCompatibility";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
@@ -88,16 +89,17 @@ const multiOriginPlugin = (siteUrls: string[]): BetterAuthPlugin => ({
   },
 });
 
-// Generic Better Auth administration has multi-transaction target checks and customer-wide
+// Generic Better Auth administration has multi-transaction target checks and organization-user-wide
 // semantics. Keep it unavailable; supported operator APIs check actor/target at commit instead.
 function privacyBoundaryCode(path: string): string | null {
   if (path.startsWith("/admin/")) return "OPERATOR_API_REQUIRED";
-  // Identity deletion can orphan legacy private ownership or violate customer membership invariants.
+  // Identity deletion can orphan legacy private ownership or violate organization membership invariants.
   if (path === "/delete-user" || path === "/delete-user/callback") return "IDENTITY_DELETION_REQUIRES_REVIEWED_MAPPING";
   return null;
 }
 
-const operatorAdminBoundaryPlugin = (): BetterAuthPlugin => ({
+const appOperatorAdminBoundaryPlugin = (): BetterAuthPlugin => ({
+  // Deprecated plugin identifier retained for compatibility; this is the app-operator boundary.
   id: "operator-admin-boundary",
   async onRequest(request) {
     const url = new URL(request.url);
@@ -415,6 +417,7 @@ const emailVerifiedOnResetPlugin = (
 
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
+  // localOperatorSignup is a deprecated fixture-option spelling for local app-operator signup.
   options: { localOperatorSignup?: boolean; requireMemberVerification?: boolean } = {},
 ) => {
   if (options.localOperatorSignup) assertLocalFixtures();
@@ -481,7 +484,7 @@ export const createAuthOptions = (
           { key: USER_EMAIL_VERIFICATION_REQUIRED_KEY }
         );
         // Member acceptance always requires verified email, even if ordinary
-        // customer verification is optional. Only a bound server flow selects this.
+        // ordinary user verification is optional. Only a bound server flow selects this.
         if (emailVerifRequired === false && !options.requireMemberVerification) return;
 
         const verificationTemplateSetting = await actionCtx.runQuery(
@@ -570,7 +573,7 @@ export const createAuthOptions = (
         await runAuditEvent(actionCtx, {
           happenedAt: Date.now(),
           actor,
-          sourceDetail: "auth-endpoint-hook",
+          sourceDetail: LEGACY_AUTH_ENDPOINT_AUDIT_SOURCE_DETAIL,
           action: config.action,
           resource: config.resource(actor),
           status,
@@ -600,7 +603,7 @@ export const createAuthOptions = (
         create: {
           before: async (session, endpoint) => {
             // The persisted admission survives a failed signup after-hook. Retry only
-            // explicitly admitted customers, never every identity that signs in.
+            // explicitly customer-admitted users, never every identity that signs in.
             await requireActionCtx(ctx).runMutation(components.betterAuth.organizations.resumeCustomerProvisioning, { userId: session.userId });
             return assurance.beforeCreate?.(session, endpoint);
           },
@@ -624,7 +627,7 @@ export const createAuthOptions = (
               happenedAt: Date.now(),
               actor: email,
               authenticatedUserId: userId,
-              sourceDetail: "auth-hook",
+              sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.authentication,
               action: "auth.sign_in",
               resource: `session:${sessionId}`,
               status: "succeeded",
@@ -652,7 +655,7 @@ export const createAuthOptions = (
               happenedAt: Date.now(),
               actor: email,
               authenticatedUserId: userId,
-              sourceDetail: "auth-hook",
+              sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.authentication,
               action: "auth.sign_out",
               resource: `session:${sessionId}`,
               status: "succeeded",
@@ -701,7 +704,7 @@ export const createAuthOptions = (
               happenedAt: Date.now(),
               actor: user.email,
               authenticatedUserId: userId || undefined,
-              sourceDetail: "auth-hook",
+              sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.authentication,
               action: "auth.sign_up",
               resource: `user:${userId}`,
               status: "succeeded",
@@ -715,7 +718,7 @@ export const createAuthOptions = (
       convexRateLimitPlugin(ctx),
       emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
       multiOriginPlugin(siteUrls),
-      operatorAdminBoundaryPlugin(),
+      appOperatorAdminBoundaryPlugin(),
       passwordStrengthPlugin(ctx),
       admin(),
       // Organization endpoints remain denied by authRoutePolicy until explicitly integrated.
@@ -782,6 +785,7 @@ export const createAuthOptions = (
   } satisfies BetterAuthOptions;
 };
 
+// Retain the deprecated localOperatorSignup option name for existing fixture callers.
 export const createAuth = (ctx: GenericCtx<DataModel>, options: { localOperatorSignup?: boolean; requireMemberVerification?: boolean } = {}) => {
   return betterAuth(createAuthOptions(ctx, options));
 };

@@ -137,7 +137,7 @@ export function AdminSignInForm({ authorizationOnly = false }: { authorizationOn
     }
 
     if (!usedPasskey && policies.mfaRequired && sessionUser.twoFactorEnabled !== true) {
-      if (authorizationOnly) { setError("Complete account security setup in the admin app, then restart authorization."); return true; }
+      if (authorizationOnly) { setError("Complete account security setup in the app-admin interface, then restart authorization."); return true; }
       router.push("/dashboard/security?tab=2fa");
       return true;
     }
@@ -157,7 +157,7 @@ export function AdminSignInForm({ authorizationOnly = false }: { authorizationOn
 
       const passkeys = passkeyResult.data ?? [];
       if (passkeys.length === 0) {
-        if (authorizationOnly) { setError("Complete account security setup in the admin app, then restart authorization."); return true; }
+        if (authorizationOnly) { setError("Complete account security setup in the app-admin interface, then restart authorization."); return true; }
         router.push("/dashboard/security?tab=passkeys");
         return true;
       }
@@ -307,7 +307,7 @@ export function AdminSignInForm({ authorizationOnly = false }: { authorizationOn
   ][step];
 
   const stepDescription = [
-    "Admin access only. Enter your email to continue.",
+    "App-operator access only. Enter your email to continue.",
     `Signing in as ${email}`,
     usingBackupCode
       ? "Enter one of your backup codes to sign in."
@@ -319,7 +319,7 @@ export function AdminSignInForm({ authorizationOnly = false }: { authorizationOn
       <CardHeader>
         <CardTitle className="text-xl font-semibold">{stepTitle}</CardTitle>
         <CardDescription>{stepDescription}</CardDescription>
-        {authorizationOnly && <p className="text-sm text-muted-foreground">For account recovery or security setup, use the normal admin app, then restart authorization.</p>}
+        {authorizationOnly && <p className="text-sm text-muted-foreground">For account recovery or security setup, use the normal app-admin interface, then restart authorization.</p>}
       </CardHeader>
       <CardContent>
         <SlideTransition stepIndex={step}>

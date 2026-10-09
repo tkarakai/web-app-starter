@@ -6,7 +6,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, type AuthSession } from "./sessionPolicy";
 import { AGENT_CONTRACT_EPOCH, currentAgentContract } from "./agentContract";
-import { isOperatorIdentity } from "./operatorIdentity";
+import { isAppOperatorIdentity } from "./appOperatorIdentity";
 
 const optionalNumber = v.optional(v.union(v.number(), v.null()));
 const optionalString = v.optional(v.union(v.string(), v.null()));
@@ -32,7 +32,7 @@ export async function credentialFingerprint(ctx: Pick<QueryCtx, "runQuery">, use
 }
 export async function captureDelegation(ctx: MutationCtx, pair: AuthSession) {
   const assurance = await evaluateSession(ctx, pair);
-  if (!await isOperatorIdentity(ctx, pair.user) || !assurance.allowed || !assurance.recent) throw new Error("NOT_ADMIN");
+  if (!await isAppOperatorIdentity(ctx, pair.user) || !assurance.allowed || !assurance.recent) throw new Error("NOT_ADMIN");
   const expiresAt = Math.min(Date.now() + 16 * 60_000, assurance.expiresAt);
   const { createdAt, assuranceVersion, authMethod, authenticatedAt, primaryVerifiedAt, strongVerifiedAt,
     strongFactorId, strongFactorType, recoveryOnly } = pair.session;
@@ -52,7 +52,7 @@ export async function readDelegation(ctx: QueryCtx, id: Id<"agentDelegations"> |
   const delegation = await ctx.db.get(id);
   if (!delegation || !currentAgentContract(delegation) || delegation.userId !== userId || delegation.expiresAt <= Date.now()) return null;
   const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: userId }] }) as Doc<"user"> | null;
-  if (!user || !await isOperatorIdentity(ctx, user) || user.banned || delegation.credentialFingerprint !== await credentialFingerprint(ctx, userId, delegation.proof)) return null;
+  if (!user || !await isAppOperatorIdentity(ctx, user) || user.banned || delegation.credentialFingerprint !== await credentialFingerprint(ctx, userId, delegation.proof)) return null;
   return { user, session: delegation.proof };
 }
 export async function deleteAuthorizationSession(ctx: MutationCtx, sessionId: string) {

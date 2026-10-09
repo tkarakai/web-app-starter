@@ -1,13 +1,15 @@
+/** @deprecated API namespace retained for compatibility; these are app-operator operations. */
+import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { adminMutation, authedQuery } from "./functions";
+import { appOperatorMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
-import { requireOperator, requireOperatorTarget } from "./operatorAccess";
+import { requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
 
 // ---------------------------------------------------------------------------
-// Operator policy and passkey enrollment status. Shared bodies verify live operator authority.
+// Operator policy and passkey enrollment status. Shared bodies verify live app-operator authority.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -17,7 +19,7 @@ import { requireOperator, requireOperatorTarget } from "./operatorAccess";
 export const getMfaPolicy = authedQuery({
   args: {},
   handler: async (ctx) => {
-    await requireOperator(ctx);
+    await requireAppOperator(ctx);
 
     const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailMfaRequired" });
 
@@ -31,10 +33,10 @@ export const getMfaPolicy = authedQuery({
 // Admin mutation: toggle MFA policy
 // ---------------------------------------------------------------------------
 
-export const setMfaPolicy = adminMutation({
+export const setMfaPolicy = appOperatorMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
-    const actor = await requireOperator(ctx, { write: true });
+    const actor = await requireAppOperator(ctx, { write: true });
 
     const key = "emailMfaRequired";
     const value = JSON.stringify(args.required);
@@ -43,7 +45,7 @@ export const setMfaPolicy = adminMutation({
     await scheduleAuditEvent(ctx, {
       actor: actor.user.email,
       authenticatedUserId: actor.user._id,
-      sourceDetail: "admin-mutation",
+      sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.administrativeMutation,
       action: "admin.mfa_policy_changed",
       resource: `appSettings:${key}`,
       status: "succeeded",
@@ -60,7 +62,7 @@ export const setMfaPolicy = adminMutation({
 export const getEmailVerificationPolicy = authedQuery({
   args: {},
   handler: async (ctx) => {
-    await requireOperator(ctx);
+    await requireAppOperator(ctx);
 
     const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailVerificationRequired" });
 
@@ -74,10 +76,10 @@ export const getEmailVerificationPolicy = authedQuery({
 // Admin mutation: toggle email verification policy
 // ---------------------------------------------------------------------------
 
-export const setEmailVerificationPolicy = adminMutation({
+export const setEmailVerificationPolicy = appOperatorMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
-    const actor = await requireOperator(ctx, { write: true });
+    const actor = await requireAppOperator(ctx, { write: true });
 
     const key = "emailVerificationRequired";
     const value = JSON.stringify(args.required);
@@ -86,7 +88,7 @@ export const setEmailVerificationPolicy = adminMutation({
     await scheduleAuditEvent(ctx, {
       actor: actor.user.email,
       authenticatedUserId: actor.user._id,
-      sourceDetail: "admin-mutation",
+      sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.administrativeMutation,
       action: "admin.email_verification_policy_changed",
       resource: `appSettings:${key}`,
       status: "succeeded",
@@ -100,18 +102,19 @@ export const setEmailVerificationPolicy = adminMutation({
 // Admin query: passkey status for a set of user IDs
 // ---------------------------------------------------------------------------
 
+/** @deprecated Wire name retained for app-operator passkey-status compatibility. */
 export const listAdminPasskeyUserIds = authedQuery({
   args: { userIds: v.array(v.string()) },
   handler: async (ctx, args) => {
-    await requireOperator(ctx);
+    await requireAppOperator(ctx);
 
     if (args.userIds.length > 100) throw new Error("INVALID_PAGE_SIZE");
-    const operatorIds = [...new Set(args.userIds)];
+    const appOperatorIds = [...new Set(args.userIds)];
     // Check every target before reading factors. A mixed request never discloses a partial directory.
-    for (const userId of operatorIds) await requireOperatorTarget(ctx, userId);
+    for (const userId of appOperatorIds) await requireAppOperatorTarget(ctx, userId);
 
     const userIdsWithPasskey: string[] = [];
-    for (const userId of operatorIds) {
+    for (const userId of appOperatorIds) {
       const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, {
         model: "passkey", where: [{ field: "userId", value: userId }],
       });

@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as memberInvitationModel from "../memberInvitationModel.js";
 import type * as memberInvitations from "../memberInvitations.js";
 import type * as organizationModel from "../organizationModel.js";
+import type * as organizationVocabulary from "../organizationVocabulary.js";
 import type * as organizations from "../organizations.js";
 
 import type {
@@ -28,6 +29,7 @@ const fullApi: ApiFromModules<{
   memberInvitationModel: typeof memberInvitationModel;
   memberInvitations: typeof memberInvitations;
   organizationModel: typeof organizationModel;
+  organizationVocabulary: typeof organizationVocabulary;
   organizations: typeof organizations;
 }> = anyApi as any;
 

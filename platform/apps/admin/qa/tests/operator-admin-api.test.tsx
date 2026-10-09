@@ -1,20 +1,20 @@
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { banUser, fetchUsers, listUserSessions, revokeAllSessions, revokeSession, unbanUser, type AdminUser, type OperatorClient } from "../../src/lib/admin-api";
-import { useUsers } from "../../src/hooks/use-users";
+import { banAppOperator, fetchAppOperators, listAppOperatorSessions, revokeAllAppOperatorSessions, revokeAppOperatorSession, unbanAppOperator, type AppOperatorUser, type AppOperatorClient } from "../../src/lib/admin-api";
+import { useAppOperators } from "../../src/hooks/use-users";
 import { UserSessionsDialog } from "../../src/components/users/user-sessions-dialog";
 
 const mocks = vi.hoisted(() => ({ client: { query: vi.fn(), mutation: vi.fn() } }));
 vi.mock("convex/react", () => ({ useConvex: () => mocks.client }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
-const client = mocks.client as unknown as OperatorClient;
+const client = mocks.client as unknown as AppOperatorClient;
 
 const row = (id: string, createdAt = 1) => ({
   id, name: id, email: `${id}@example.test`, role: "admin", banned: false, emailVerified: true,
   twoFactorEnabled: false, createdAt, updatedAt: createdAt,
 });
-const operator = (id: string): AdminUser => ({ ...row(id), role: "admin", createdAt: new Date(1), updatedAt: new Date(1), image: null, banReason: null, banExpires: null });
+const operator = (id: string): AppOperatorUser => ({ ...row(id), role: "admin", createdAt: new Date(1), updatedAt: new Date(1), image: null, banReason: null, banExpires: null });
 const page = (ids: string[], isDone = true, continueCursor = "") => ({ page: ids.map((id, i) => row(id, 20 - i)), isDone, continueCursor });
 const sessionRow = (userId: string, id: string, ipAddress = "192.0.2.23") => ({
   id, userId, ipAddress, userAgent: "Fixture browser", createdAt: 1, expiresAt: Date.now() + 60_000,
@@ -25,7 +25,7 @@ beforeEach(() => { mocks.client.query.mockReset(); mocks.client.mutation.mockRes
 describe("authenticated Convex operator adapters", () => {
   test("directory forwards safe cursor/search/status options and returns allowlisted operator DTOs", async () => {
     mocks.client.query.mockResolvedValue({ ...page(["operator"]), page: [{ ...row("operator"), credentials: "secret", metadata: "private" }] });
-    const result = await fetchUsers(client, { cursor: "operator-cursor", limit: 20, searchValue: "Op", searchField: "email", status: "banned", sortDirection: "asc" });
+    const result = await fetchAppOperators(client, { cursor: "operator-cursor", limit: 20, searchValue: "Op", searchField: "email", status: "banned", sortDirection: "asc" });
     const [ref, args] = mocks.client.query.mock.calls[0];
     expect(getFunctionName(ref)).toBe("platform/agentUsers:list");
     expect(args).toEqual({ paginationOpts: { numItems: 20, cursor: "operator-cursor" }, role: "admin", sortBy: "createdAt", sortDirection: "asc", search: "Op", searchField: "email", status: "banned" });
@@ -34,18 +34,18 @@ describe("authenticated Convex operator adapters", () => {
     expect(JSON.stringify(result)).not.toContain("private");
   });
 
-  test("an unauthenticated response or a customer row is denied rather than rendered as an operator", async () => {
+  test("an unauthenticated response or a organization-user row is denied rather than rendered as an operator", async () => {
     mocks.client.query.mockResolvedValueOnce(null);
-    await expect(fetchUsers(client, {})).rejects.toThrow("NOT_AUTHENTICATED");
+    await expect(fetchAppOperators(client, {})).rejects.toThrow("NOT_AUTHENTICATED");
     mocks.client.query.mockResolvedValueOnce({ ...page([]), page: [{ ...row("customer"), role: "user" }] });
-    await expect(fetchUsers(client, {})).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
+    await expect(fetchAppOperators(client, {})).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
   });
 
   test("ban/unban and session mutations use native operator fields and opaque IDs", async () => {
-    await banUser(client, "operator", "Containment", 3600);
-    await unbanUser(client, "operator");
-    await revokeSession(client, "operator", "opaque-session-id");
-    await revokeAllSessions(client, "operator");
+    await banAppOperator(client, "operator", "Containment", 3600);
+    await unbanAppOperator(client, "operator");
+    await revokeAppOperatorSession(client, "operator", "opaque-session-id");
+    await revokeAllAppOperatorSessions(client, "operator");
     expect(mocks.client.mutation.mock.calls.map(([ref, args]) => [getFunctionName(ref), args])).toEqual([
       ["platform/agentUsers:ban", { userId: "operator", reason: "Containment", expiresInSeconds: 3600 }],
       ["platform/agentUsers:unban", { userId: "operator" }],
@@ -57,7 +57,7 @@ describe("authenticated Convex operator adapters", () => {
   test("session listing completes every cursor page, binds the target and strips tokens/unsupported fields", async () => {
     mocks.client.query.mockResolvedValueOnce({ page: [sessionRow("operator", "session-one")], isDone: false, continueCursor: "next-session-page" })
       .mockResolvedValueOnce({ page: [sessionRow("operator", "session-two")], isDone: true, continueCursor: "" });
-    const result = await listUserSessions(client, "operator");
+    const result = await listAppOperatorSessions(client, "operator");
     expect(result.map(session => session.id)).toEqual(["session-one", "session-two"]);
     expect(mocks.client.query.mock.calls.map(([ref, args]) => [getFunctionName(ref), args])).toEqual([
       ["platform/agentUsers:sessions", { userId: "operator", paginationOpts: { numItems: 100, cursor: null } }],
@@ -66,7 +66,7 @@ describe("authenticated Convex operator adapters", () => {
     expect(JSON.stringify(result)).not.toContain("token");
     expect(result[0]).not.toHaveProperty("updatedAt");
     mocks.client.query.mockResolvedValueOnce({ page: [sessionRow("customer", "wrong-target")], isDone: true, continueCursor: "" });
-    await expect(listUserSessions(client, "operator")).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
+    await expect(listAppOperatorSessions(client, "operator")).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
   });
 });
 
@@ -78,7 +78,7 @@ describe("operator cursor paging and request isolation", () => {
       if (args.paginationOpts.cursor === "email-one") return page(["two", "four"], false, "email-two");
       return page(["shared", "five"]);
     });
-    const hook = renderHook(() => useUsers({ searchValue: "op", status: "active" }));
+    const hook = renderHook(() => useAppOperators({ searchValue: "op", status: "active" }));
     await waitFor(() => expect(hook.result.current.users).toHaveLength(3));
     expect(hook.result.current.hasMore).toBe(true);
     act(() => hook.result.current.loadMore());
@@ -97,7 +97,7 @@ describe("operator cursor paging and request isolation", () => {
     const oldRequests: Array<(value: ReturnType<typeof page>) => void> = [];
     mocks.client.query.mockImplementation(async (_ref, args) => args.search === "old"
       ? new Promise(resolve => oldRequests.push(resolve)) : page(["new-operator"]));
-    const hook = renderHook(({ search }) => useUsers({ searchValue: search }), { initialProps: { search: "old" } });
+    const hook = renderHook(({ search }) => useAppOperators({ searchValue: search }), { initialProps: { search: "old" } });
     await waitFor(() => expect(oldRequests).toHaveLength(2));
     hook.rerender({ search: "new" });
     await waitFor(() => expect(hook.result.current.users.map(user => user.id)).toEqual(["new-operator"]));
@@ -108,7 +108,7 @@ describe("operator cursor paging and request isolation", () => {
 
   test("duplicate Load more requests do not skip pages and retry resets a failed initial request", async () => {
     mocks.client.query.mockRejectedValueOnce(new Error("NOT_AUTHENTICATED"));
-    const hook = renderHook(() => useUsers({}));
+    const hook = renderHook(() => useAppOperators({}));
     await waitFor(() => expect(hook.result.current.error).not.toBeNull());
     expect(hook.result.current.users).toEqual([]);
     mocks.client.query.mockResolvedValueOnce(page(["one"], false, "next"));

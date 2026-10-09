@@ -1,7 +1,8 @@
+import { LEGACY_APP_OPERATOR_AGENT_SURFACE_AUDIT_SOURCE } from "./appOperatorAuditCompatibility";
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { query, type QueryCtx, type MutationCtx } from "../_generated/server";
-import { adminMutation, authedQuery } from "./functions";
+import { appOperatorMutation, authedQuery } from "./functions";
 export const surfaceValidator = v.union(v.literal("mcp"), v.literal("cli"), v.literal("webmcp"), v.literal("a2a"));
 export type AgentSurface = "mcp" | "cli" | "webmcp" | "a2a";
 const keys: Record<AgentSurface, string> = { mcp: "agentMcpConfiguration", cli: "agentCliConfiguration", webmcp: "agentWebMcpConfiguration", a2a: "agentA2aConfiguration" };
@@ -38,8 +39,8 @@ export async function changeSurface(ctx: MutationCtx & { user: { email: string }
   await ctx.runMutation(components.platform.appSettings.putRaw, { key: keys[surface], value: JSON.stringify({ enabled, generation: crypto.randomUUID() }) });
   await ctx.runMutation(components.platform.auditTrail.insertEvent, {
     happenedAt: Date.now(), actor: ctx.user.email, authenticatedUserId: ctx.ownerId,
-    source: "server:agent-surface", action: surface === "mcp" ? enabled ? "admin.mcp_enabled" : "admin.mcp_disabled" : enabled ? "admin.agent_surface_enabled" : "admin.agent_surface_disabled",
+    source: LEGACY_APP_OPERATOR_AGENT_SURFACE_AUDIT_SOURCE, action: surface === "mcp" ? enabled ? "admin.mcp_enabled" : "admin.mcp_disabled" : enabled ? "admin.agent_surface_enabled" : "admin.agent_surface_disabled",
     resource: `agent-${surface}`, status: "succeeded",
   });
 }
-export const setEnabled = adminMutation({ args: { surface: surfaceValidator, enabled: v.boolean() }, handler: async (ctx, { surface, enabled }) => changeSurface(ctx, surface, enabled) });
+export const setEnabled = appOperatorMutation({ args: { surface: surfaceValidator, enabled: v.boolean() }, handler: async (ctx, { surface, enabled }) => changeSurface(ctx, surface, enabled) });

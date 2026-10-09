@@ -9,7 +9,7 @@ import * as audit from "./auditTrail";
 import { classifyNative, invokeNative, nativeDefinition } from "./nativeCapabilities";
 import { captureDelegation } from "./agentProof";
 import { AGENT_CONTRACT_EPOCH } from "./agentContract";
-import { OPERATOR_AUDIT_SOURCE } from "./auditPrivacy";
+import { APP_OPERATOR_AUDIT_SOURCE } from "./auditPrivacy";
 
 const authModules = import.meta.glob("./betterAuth/**/*.*s");
 const paginationOpts = { numItems: 100, cursor: null };
@@ -73,7 +73,7 @@ async function storedIdentity(f: Fixture, identity: Identity) {
   return rows;
 }
 
-describe("operator identity and customer privacy in direct and captured handlers", () => {
+describe("app-operator identity and organization-user privacy in direct and captured handlers", () => {
   test("directory returns canonical operators only; reserved email and mixed identities confer no authority", async () => {
     const f = await fixture();
     await f.t.mutation(components.platform.adminEmails.ensure, { email: f.customer.user.email });
@@ -94,7 +94,7 @@ describe("operator identity and customer privacy in direct and captured handlers
     await expect(f.operator.client.query(api.platform.agentUsers.list, { ...args, sortBy: "email" })).rejects.toThrow("UNSUPPORTED_OPERATOR_SORT");
   });
 
-  test.each(["direct", "captured"] as const)("%s cannot read or mutate any customer identity/session target", async mode => {
+  test.each(["direct", "captured"] as const)("%s cannot read or mutate any organization-user identity/session target", async mode => {
     const f = await fixture();
     await f.t.mutation(components.platform.adminEmails.ensure, { email: f.customer.user.email });
     const before = await storedIdentity(f, f.customer);
@@ -119,7 +119,7 @@ describe("operator identity and customer privacy in direct and captured handlers
     expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "member", where: [{ field: "_id", value: f.customerOrg.member._id }] })).toEqual(f.customerOrg.member);
   });
 
-  test("operator-directory pagination hides mixed customer IDs in rows, continuation and split cursors", async () => {
+  test("operator-directory pagination hides mixed organization-user IDs in rows, continuation and split cursors", async () => {
     const f = await fixture();
     const mixed = await f.identity("mixed-directory", "admin", "public-signup");
     const seen: string[] = [];
@@ -253,7 +253,7 @@ describe("operator identity and customer privacy in direct and captured handlers
   });
 });
 
-describe("operator security directory and audit projection", () => {
+describe("app-operator security directory and audit projection", () => {
   test("passkey status validates all targets and exposes only operator enrollment, without factor material", async () => {
     const f = await fixture();
     for (const subject of [f.other, f.customer]) await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "passkey", data: {
@@ -270,7 +270,7 @@ describe("operator security directory and audit projection", () => {
     await expect(captured(f, adminAuth.listAdminPasskeyUserIds, f.customer, args)).rejects.toThrow("NOT_ADMIN");
   });
 
-  test("new customer auth, unclassified historical rows and client-forged classifications remain stored and private", async () => {
+  test("new organization-user auth, unclassified historical rows and client-forged classifications remain stored and private", async () => {
     const f = await fixture();
     const blob = JSON.stringify({ customer: f.customer.user.email, secret: "private-history" });
     const original = { authenticatedUserId: f.customer.user._id, actor: f.customer.user.email, action: "auth.sign_in", resource: `session:${f.customer.session._id}`, status: "succeeded", meta: blob, oldValue: blob, newValue: blob, reason: blob };
@@ -293,7 +293,7 @@ describe("operator security directory and audit projection", () => {
     const native = await captured(f, audit.list, f.operator, args);
     expect(native).toEqual(direct);
     expect(direct.page).toHaveLength(1);
-    expect(direct.page[0]).toMatchObject({ actor: f.operator.user.email, resource: `operator:${f.operator.user._id}`, source: OPERATOR_AUDIT_SOURCE });
+    expect(direct.page[0]).toMatchObject({ actor: f.operator.user.email, resource: `operator:${f.operator.user._id}`, source: APP_OPERATOR_AUDIT_SOURCE });
     expect(direct.page[0].meta).toBeUndefined();
     expect(direct.page[0].reason).toBeUndefined();
     expect(direct.page[0].oldValue).toBeUndefined();
@@ -305,7 +305,7 @@ describe("operator security directory and audit projection", () => {
     expect(await captured(f, audit.list, f.customer, args, { user: { ...f.customer.user, role: "admin" } })).toMatchObject({ page: [] });
   });
 
-  test("audit filters and pagination never select customer indexes or recover a historical event", async () => {
+  test("audit filters and pagination never select organization-user indexes or recover a historical event", async () => {
     const f = await fixture();
     for (let i = 0; i < 3; i++) {
       await f.t.mutation(internal.platform.auditTrail.insertEvent, {
@@ -346,7 +346,7 @@ describe("operator security directory and audit projection", () => {
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     const result = await f.operator.client.query(api.platform.auditTrail.list, { paginationOpts });
     expect(result.page).toHaveLength(1);
-    expect(result.page[0]).toMatchObject({ action: "admin.organization.lifecycle_changed", source: OPERATOR_AUDIT_SOURCE,
+    expect(result.page[0]).toMatchObject({ action: "admin.organization.lifecycle_changed", source: APP_OPERATOR_AUDIT_SOURCE,
       resource: `organization:${f.customerOrg.row._id}`, newValue: "disabled", actor: f.operator.user.email });
     expect(result.page[0].meta).toBeUndefined();
     expect(JSON.stringify(result)).not.toContain(f.customer.user._id);

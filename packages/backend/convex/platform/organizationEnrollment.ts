@@ -10,14 +10,14 @@ import { validatePasswordStrength } from "./passwordStrength";
 const contextArgs = { organizationId: v.string() };
 const boundArgs = { ...contextArgs, userId: v.string(), sessionId: v.string() };
 
-/** Setup only. No collaboration activation or member-management API is exposed before cutover. */
+/** Setup only. No organization membership enablement/completion or member-management API is exposed before cutover. */
 export const begin = mutation({
   args: { ...contextArgs, name: v.string(), slug: v.string() },
   handler: async (ctx, args) => {
     const pair = await authorizedSession(ctx, true);
     if (!pair) throw new Error("NOT_AUTHENTICATED");
     if (pair.assurance.scope !== "user") throw new Error("NOT_CUSTOMER");
-    return ctx.runMutation(components.betterAuth.organizations.beginCollaboration, { ...args, userId: pair.user._id });
+    return ctx.runMutation(components.betterAuth.organizations.beginMembershipManagement, { ...args, userId: pair.user._id });
   },
 });
 

@@ -17,8 +17,8 @@ import { getAuth } from "./functions";
 import { rateLimit } from "./rateLimits";
 import { components } from "../_generated/api";
 import { internalMutation, mutation, query } from "../_generated/server";
-import { requireOperator } from "./operatorAccess";
-import { classifiedAuditSource, OPERATOR_AUDIT_SOURCE, projectOperatorAudit, type OperatorAuditEvent } from "./auditPrivacy";
+import { requireAppOperator } from "./appOperatorAccess";
+import { classifiedAuditSource, APP_OPERATOR_AUDIT_SOURCE, projectAppOperatorAudit, type AppOperatorAuditEvent } from "./auditPrivacy";
 
 // ---------------------------------------------------------------------------
 // insertEvent — server-side write path (scheduled by scheduleAuditEvent, run by
@@ -111,10 +111,10 @@ const listNativeArgs = {
     filterStatus: v.optional(v.string()),
     filterAuthenticatedUserId: v.optional(v.string()),
   };
-async function listOperatorAudit(ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) {
-  const empty = { page: [] as OperatorAuditEvent[], isDone: true, continueCursor: "" };
+async function listAppOperatorAudit(ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) {
+  const empty = { page: [] as AppOperatorAuditEvent[], isDone: true, continueCursor: "" };
   try {
-    await requireOperator(ctx);
+    await requireAppOperator(ctx);
   } catch (error) {
     // Preserve reactive query behavior; direct and captured handlers apply the same boundary.
     if (error instanceof Error && ["NOT_AUTHENTICATED", "NOT_ADMIN"].includes(error.message)) return empty;
@@ -124,13 +124,13 @@ async function listOperatorAudit(ctx: QueryCtx, args: ObjectType<typeof listNati
     throw new Error("INVALID_PAGE_SIZE");
   }
   // Never run caller-selected indexes over private rows. Their cursors can contain raw identities.
-  if (args.filterSource !== undefined && args.filterSource !== OPERATOR_AUDIT_SOURCE) return empty;
+  if (args.filterSource !== undefined && args.filterSource !== APP_OPERATOR_AUDIT_SOURCE) return empty;
   const result = await ctx.runQuery(components.platform.auditTrail.list, {
-    paginationOpts: args.paginationOpts, filterSource: OPERATOR_AUDIT_SOURCE,
+    paginationOpts: args.paginationOpts, filterSource: APP_OPERATOR_AUDIT_SOURCE,
   });
-  const page: OperatorAuditEvent[] = [];
+  const page: AppOperatorAuditEvent[] = [];
   for (const event of result.page) {
-    const projection = await projectOperatorAudit(ctx, event);
+    const projection = await projectAppOperatorAudit(ctx, event);
     if (!projection) continue;
     if (args.filterAction !== undefined && projection.action !== args.filterAction
       || args.filterActor !== undefined && projection.actor !== args.filterActor
@@ -141,6 +141,6 @@ async function listOperatorAudit(ctx: QueryCtx, args: ObjectType<typeof listNati
   return { page, isDone: result.isDone, continueCursor: result.continueCursor };
 }
 
-export const list = rememberNative(query({ args: listNativeArgs, handler: listOperatorAudit }), {
-  args: listNativeArgs, handler: listOperatorAudit,
+export const list = rememberNative(query({ args: listNativeArgs, handler: listAppOperatorAudit }), {
+  args: listNativeArgs, handler: listAppOperatorAudit,
 }, "query");

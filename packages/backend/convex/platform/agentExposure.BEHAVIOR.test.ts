@@ -44,10 +44,10 @@ async function fixture() {
     const grant = await t.mutation(api.platform.agentAccess.exchange, exchange);
     return { token: grant.access_token, resource: target };
   }
-  async function collaborative() {
+  async function membershipManagedOrganization() {
     const organization = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: customer.user._id });
     const bound = { organizationId: organization.organizationId, userId: customer.user._id };
-    await t.mutation(components.betterAuth.organizations.beginCollaboration, { ...bound, name: "Customer organization", slug: "customer-organization" });
+    await t.mutation(components.betterAuth.organizations.beginMembershipManagement, { ...bound, name: "Customer organization", slug: "customer-organization" });
     const factor = await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: customer.user._id, secret: "SECRET_CUSTOMER_FACTOR", backupCodes: "SECRET_CUSTOMER_RECOVERY", verified: true } } });
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: customer.user._id }], update: { twoFactorEnabled: true } } });
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: customer.session._id }], update: { strongVerifiedAt: now, strongFactorId: factor._id, strongFactorType: "totp" } } });
@@ -56,7 +56,7 @@ async function fixture() {
     await t.mutation(components.betterAuth.organizations.completeEnrollment, { ...bound, requirePasskey: false });
     return organization;
   }
-  return { t, operator, customer, otherOperator, mint, identity, collaborative };
+  return { t, operator, customer, otherOperator, mint, identity, membershipManagedOrganization };
 }
 
 describe("Stage 1 executable exposure and independent native policy BEHAVIOR", () => {
@@ -113,7 +113,7 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
     await expect(f.t.run(ctx => invokeNative(announcements.list, ctx, snapshot, {}))).rejects.toThrow("INVALID_AGENT_TOKEN");
   });
 
-  test("operator identity targets obey direct/native parity, including known customer IDs", async () => {
+  test("app-operator identity targets obey direct/native parity, including known organization-user IDs", async () => {
     const f = await fixture(); const auth = await f.mint();
     const input = { userId: f.customer.user._id };
     await expect(f.operator.client.query(api.platform.agentUsers.get, input)).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
@@ -140,7 +140,7 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
     expect(body).toHaveBeenCalledOnce();
   });
 
-  test("organization wrappers capture one immutable ID and reject customer dispatch", async () => {
+  test("organization wrappers capture one immutable ID and reject organization-user dispatch", async () => {
     const f = await fixture(); const auth = await f.mint();
     const input = { organizationId: "unknown-org" };
     // Direct and captured paths use the same guarded canonical projection and errors.
@@ -154,8 +154,8 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
     await expect(f.t.query(api.platform.agentCapabilities.read, { ...auth, name: "organizations_get", input: { organizationId: "unknown-org", activeOrganizationId: "redirect" } })).rejects.toThrow();
   });
 
-  test("an enrolled org-admin with real recent strong proof remains a customer; organization dispatch preserves target and DTO parity", async () => {
-    const f = await fixture(); const auth = await f.mint(); const org = await f.collaborative();
+  test("an enrolled org-admin with real recent strong proof remains an organization user; organization dispatch preserves target and DTO parity", async () => {
+    const f = await fixture(); const auth = await f.mint(); const org = await f.membershipManagedOrganization();
     const member = await f.identity("private-member", "user");
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: { organizationId: org.organizationId, userId: member.user._id, role: "member", createdAt: Date.now() } } });
     const other = await f.identity("other-customer", "user");
@@ -181,7 +181,7 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
     expect(await f.t.query(api.platform.agentCapabilities.read, { ...auth, name: "organizations_get", input })).toEqual(direct);
   });
 
-  test("mixed customer/operator records cannot retain operator execution or target disclosure", async () => {
+  test("mixed organization-user/app-operator records cannot retain app-operator execution or target disclosure", async () => {
     const f = await fixture(); const auth = await f.mint();
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: f.otherOperator.user._id }], update: { customerAdmission: "public-signup" } } });
     await expect(f.t.query(api.platform.agentCapabilities.read, { ...auth, name: "users_get", input: { userId: f.otherOperator.user._id } })).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
@@ -210,7 +210,7 @@ describe("Stage 1 executable exposure and independent native policy BEHAVIOR", (
     expect(await f.t.run(ctx => ctx.db.get(code))).not.toBeNull();
   });
 
-  test("fresh narrow grants cannot recover, count, replay, cancel or execute historical customer artifacts", async () => {
+  test("fresh narrow grants cannot recover, count, replay, cancel or execute historical organization-user artifacts", async () => {
     const f = await fixture(); const a2a = resource.replace("/api/mcp", "/api/a2a"); const auth = await f.mint(a2a);
     const current = await f.t.run(ctx => requireGrant(ctx, auth.token, auth.resource));
     const legacy = await f.t.run(async ctx => {

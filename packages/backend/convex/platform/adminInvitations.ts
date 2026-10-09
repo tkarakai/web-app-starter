@@ -1,3 +1,5 @@
+/** @deprecated API namespace retained for compatibility; these are app-operator operations. */
+import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
@@ -13,8 +15,8 @@ import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { identitySession, evaluateSession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { adminMutation, getAuth } from "./functions";
-import { isOperatorIdentity, requireOperator } from "./operatorAccess";
+import { appOperatorMutation, getAuth } from "./functions";
+import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
 
 const listNativeArgs = { paginationOpts: paginationOptsValidator };
 export const list = rememberNative(query({
@@ -22,7 +24,7 @@ export const list = rememberNative(query({
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
-    if (!user || !await isOperatorIdentity(ctx, user)) {
+    if (!user || !await isAppOperatorIdentity(ctx, user)) {
       return {
         page: [],
         isDone: true,
@@ -32,9 +34,9 @@ export const list = rememberNative(query({
 
     return await ctx.runQuery(components.platform.adminInvitations.list, args);
   },
-}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { await requireOperator(ctx); return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { await requireAppOperator(ctx); return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
 
-export const invite = adminMutation({
+export const invite = appOperatorMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -47,7 +49,7 @@ export const invite = adminMutation({
   },
 });
 
-export const remove = adminMutation({
+export const remove = appOperatorMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -141,7 +143,7 @@ export const completeOnboarding = mutation({
       }
       await ctx.runMutation(components.platform.adminInvitations.finishBoundOnboarding, { email: user.email, userId: user._id });
       await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: user._id }], update: { role: "admin", updatedAt: Date.now() } } });
-      await scheduleAuditEvent(ctx, { actor: user.email, authenticatedUserId: user._id, sourceDetail: "admin-enrollment", action: "admin.onboarding.completed", resource: `user:${user._id}`, status: "succeeded" });
+      await scheduleAuditEvent(ctx, { actor: user.email, authenticatedUserId: user._id, sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.enrollment, action: "admin.onboarding.completed", resource: `user:${user._id}`, status: "succeeded" });
     } else {
       // Already-established legacy administrators retain their existing identity.
       if (user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
@@ -214,7 +216,7 @@ export const registerAccount = internalMutation({
       userId: user._id, accountId: user._id, providerId: "credential", password: args.passwordHash, createdAt: now, updatedAt: now,
     } } });
     await ctx.runMutation(components.platform.adminInvitations.consumeEnrollment, { capabilityHash: args.capabilityHash, email: enrollment.email, userId: user._id });
-    await scheduleAuditEvent(ctx, { actor: enrollment.email, authenticatedUserId: user._id, sourceDetail: "admin-enrollment", action: "auth.sign_up", resource: `user:${user._id}`, status: "succeeded" });
+    await scheduleAuditEvent(ctx, { actor: enrollment.email, authenticatedUserId: user._id, sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.enrollment, action: "auth.sign_up", resource: `user:${user._id}`, status: "succeeded" });
   },
 });
 

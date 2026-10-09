@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
-import { adminMutation, adminQuery } from "./functions";
+import { appOperatorMutation, appOperatorQuery } from "./functions";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE, type EmailTemplate } from "./emailTemplates";
 
 export const getPublic = query({
@@ -12,7 +12,7 @@ export const getPublic = query({
   },
 });
 
-export const get = adminQuery({
+export const get = appOperatorQuery({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
@@ -27,7 +27,7 @@ export const getInternal = internalQuery({
   },
 });
 
-export const set = adminMutation({
+export const set = appOperatorMutation({
   args: { key: v.string(), value: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
@@ -35,7 +35,7 @@ export const set = adminMutation({
   },
 });
 
-export const remove = adminMutation({
+export const remove = appOperatorMutation({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
@@ -43,7 +43,7 @@ export const remove = adminMutation({
   },
 });
 
-export const getEmailTemplate = adminQuery({
+export const getEmailTemplate = appOperatorQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
@@ -52,7 +52,7 @@ export const getEmailTemplate = adminQuery({
   },
 });
 
-export const getVerificationEmailTemplate = adminQuery({
+export const getVerificationEmailTemplate = appOperatorQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;

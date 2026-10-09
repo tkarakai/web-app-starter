@@ -30,7 +30,7 @@ it spreads the platform's tables (`...platformTables`, the platform hook) and th
   returning signed-out `null`. Persist and check organization **and** owner; see
   [organization context](../../docs/organization-context.md) for the tenant-table pattern and
   legacy-private bridge limits. Capture the ID before async work; never fall back to a session preference.
-  Use `adminQuery` / `adminMutation` only for **canonical platform-operator** controls; organization
+  Use `appOperatorQuery` / `appOperatorMutation` only for **canonical app-operator** controls; organization
   administrators do not qualify. Operator writes additionally require recent authentication. Do not substitute `auth.getCurrentUser`, raw Better Auth user lookup or account MFA flags
   for authorization; those can represent a limited enrollment/recovery session. See
   [session assurance](../../docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).

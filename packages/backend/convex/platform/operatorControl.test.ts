@@ -24,8 +24,8 @@ async function fixture() {
   return { t, actor, operator, customer, organization };
 }
 
-describe("canonical operator authority across shared control builders", () => {
-  test("personal organization administrator cannot read or mutate global operator controls", async () => {
+describe("canonical app-operator authority across shared control builders", () => {
+  test("personal organization administrator cannot read or mutate global app-operator controls", async () => {
     const f = await fixture();
     expect(await f.operator.client.query(api.platform.appSettings.get, { key: "controlTest" })).toBe("private control");
     await expect(f.customer.client.query(api.platform.appSettings.get, { key: "controlTest" })).rejects.toThrow("NOT_ADMIN");
@@ -34,7 +34,7 @@ describe("canonical operator authority across shared control builders", () => {
     expect(await f.operator.client.query(api.platform.appSettings.get, { key: "controlTest" })).toBe("private control");
   });
 
-  test("mixed global roles and durable customer intent are not canonical operator authority", async () => {
+  test("mixed global roles and durable customer intent are not canonical app-operator authority", async () => {
     const f = await fixture();
     for (const actor of [await f.actor("admin,user"), await f.actor("admin", "public-signup")]) {
       await expect(actor.client.query(api.platform.appSettings.get, { key: "controlTest" })).rejects.toThrow("NOT_ADMIN");
@@ -44,7 +44,7 @@ describe("canonical operator authority across shared control builders", () => {
     }
   });
 
-  test("protected-email projection does not turn reservation into an operator identity directory", async () => {
+  test("protected-email projection does not turn reservation into an app-operator identity directory", async () => {
     const f = await fixture();
     const addresses = [f.operator.user.email, f.customer.user.email, "pending-operator@example.test"];
     for (const email of addresses) await f.t.mutation(components.platform.adminEmails.ensure, { email });

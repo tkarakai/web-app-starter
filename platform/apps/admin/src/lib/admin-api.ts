@@ -3,9 +3,9 @@ import type { FunctionReturnType } from "convex/server";
 import type { ConvexReactClient } from "convex/react";
 
 /** The authenticated provider client, never a new unauthenticated/global client. */
-export type OperatorClient = Pick<ConvexReactClient, "query" | "mutation">;
+export type AppOperatorClient = Pick<ConvexReactClient, "query" | "mutation">;
 
-export type AdminUser = {
+export type AppOperatorUser = {
   id: string;
   name: string;
   email: string;
@@ -20,7 +20,7 @@ export type AdminUser = {
   twoFactorEnabled: boolean;
 };
 
-export type FetchUsersParams = {
+export type FetchAppOperatorsParams = {
   searchValue?: string;
   searchField?: "email" | "name";
   status?: "active" | "banned";
@@ -30,14 +30,14 @@ export type FetchUsersParams = {
   cursor?: string | null;
 };
 
-export type FetchUsersResult = {
-  users: AdminUser[];
+export type FetchAppOperatorsResult = {
+  users: AppOperatorUser[];
   isDone: boolean;
   continueCursor: string;
 };
 
-type OperatorRow = NonNullable<FunctionReturnType<typeof api.platform.agentUsers.list>>["page"][number];
-function operatorDto(user: OperatorRow): AdminUser {
+type AppOperatorRow = NonNullable<FunctionReturnType<typeof api.platform.agentUsers.list>>["page"][number];
+function appOperatorDto(user: AppOperatorRow): AppOperatorUser {
   if (user.role !== "admin") throw new Error("OPERATOR_TARGET_REQUIRED");
   return {
     id: user.id, name: user.name, email: user.email, role: "admin",
@@ -47,7 +47,7 @@ function operatorDto(user: OperatorRow): AdminUser {
   };
 }
 
-export async function fetchUsers(client: OperatorClient, params: FetchUsersParams): Promise<FetchUsersResult> {
+export async function fetchAppOperators(client: AppOperatorClient, params: FetchAppOperatorsParams): Promise<FetchAppOperatorsResult> {
   const result = await client.query(api.platform.agentUsers.list, {
     paginationOpts: { numItems: params.limit ?? 50, cursor: params.cursor ?? null },
     role: "admin", sortBy: "createdAt", sortDirection: params.sortDirection ?? "desc",
@@ -55,19 +55,19 @@ export async function fetchUsers(client: OperatorClient, params: FetchUsersParam
     ...(params.status ? { status: params.status } : {}),
   });
   if (!result) throw new Error("NOT_AUTHENTICATED");
-  return { users: result.page.map(operatorDto), isDone: result.isDone, continueCursor: result.continueCursor };
+  return { users: result.page.map(appOperatorDto), isDone: result.isDone, continueCursor: result.continueCursor };
 }
 
 // The backend performs authorization and canonical audit writes in the executing mutation.
-export async function banUser(client: OperatorClient, userId: string, reason: string, expiresInSeconds?: number): Promise<void> {
+export async function banAppOperator(client: AppOperatorClient, userId: string, reason: string, expiresInSeconds?: number): Promise<void> {
   await client.mutation(api.platform.agentUsers.ban, { userId, reason, ...(expiresInSeconds !== undefined ? { expiresInSeconds } : {}) });
 }
 
-export async function unbanUser(client: OperatorClient, userId: string): Promise<void> {
+export async function unbanAppOperator(client: AppOperatorClient, userId: string): Promise<void> {
   await client.mutation(api.platform.agentUsers.unban, { userId });
 }
 
-export type AdminSession = {
+export type AppOperatorSession = {
   id: string;
   userId: string;
   ipAddress: string | null;
@@ -76,8 +76,8 @@ export type AdminSession = {
   createdAt: Date;
 };
 
-export async function listUserSessions(client: OperatorClient, userId: string): Promise<AdminSession[]> {
-  const sessions: AdminSession[] = [];
+export async function listAppOperatorSessions(client: AppOperatorClient, userId: string): Promise<AppOperatorSession[]> {
+  const sessions: AppOperatorSession[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < 100; page++) {
     const result: FunctionReturnType<typeof api.platform.agentUsers.sessions> = await client.query(api.platform.agentUsers.sessions, { userId, paginationOpts: { numItems: 100, cursor } });
@@ -94,10 +94,34 @@ export async function listUserSessions(client: OperatorClient, userId: string): 
   throw new Error("OPERATOR_SESSION_SCAN_LIMIT");
 }
 
-export async function revokeSession(client: OperatorClient, userId: string, sessionId: string): Promise<void> {
+export async function revokeAppOperatorSession(client: AppOperatorClient, userId: string, sessionId: string): Promise<void> {
   await client.mutation(api.platform.agentUsers.revokeSession, { userId, sessionId });
 }
 
-export async function revokeAllSessions(client: OperatorClient, userId: string): Promise<void> {
+export async function revokeAllAppOperatorSessions(client: AppOperatorClient, userId: string): Promise<void> {
   await client.mutation(api.platform.agentUsers.revokeSessions, { userId });
 }
+
+// Deprecated compatibility exports retain the same adapter functions and DTO shapes.
+/** @deprecated Use AppOperatorUser. */
+export type AdminUser = AppOperatorUser;
+/** @deprecated Use AppOperatorSession. */
+export type AdminSession = AppOperatorSession;
+/** @deprecated Use AppOperatorClient. */
+export type OperatorClient = AppOperatorClient;
+/** @deprecated Use FetchAppOperatorsParams. */
+export type FetchUsersParams = FetchAppOperatorsParams;
+/** @deprecated Use FetchAppOperatorsResult. */
+export type FetchUsersResult = FetchAppOperatorsResult;
+/** @deprecated Use fetchAppOperators. */
+export const fetchUsers = fetchAppOperators;
+/** @deprecated Use banAppOperator. */
+export const banUser = banAppOperator;
+/** @deprecated Use unbanAppOperator. */
+export const unbanUser = unbanAppOperator;
+/** @deprecated Use listAppOperatorSessions. */
+export const listUserSessions = listAppOperatorSessions;
+/** @deprecated Use revokeAppOperatorSession. */
+export const revokeSession = revokeAppOperatorSession;
+/** @deprecated Use revokeAllAppOperatorSessions. */
+export const revokeAllSessions = revokeAllAppOperatorSessions;

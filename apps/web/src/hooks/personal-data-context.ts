@@ -1,7 +1,9 @@
+import { ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE, type OrganizationExperience } from "@repo/backend";
+
 /** Personal presentation only. Membership metadata never supplies a guessed organization. */
 export interface PersonalContextSnapshot {
   userId: string;
-  contexts: { organizationId: string; experience: "personal" | "collaborative"; lifecycle: "active" | "disabled" | "provisioning"; role: "org-admin" | "member"; personal: boolean }[];
+  contexts: { organizationId: string; experience: OrganizationExperience; lifecycle: "active" | "disabled" | "provisioning"; role: typeof ORG_ADMIN_MEMBERSHIP_ROLE | typeof ORG_MEMBER_ROLE; personal: boolean }[];
   personalOrganizationId: string | null;
   legacyPrivateAvailable?: boolean;
 }
@@ -20,7 +22,7 @@ export function resolvePersonalDataContext(mine: PersonalContextSnapshot | null 
   if (!mine || !currentUserId || !ownerId) return { state: "unavailable", userId: null, ownerId: null, tenant: null, legacy: null };
   if (mine.userId !== currentUserId) return { state: "loading", userId: null, ownerId: null, tenant: null, legacy: null };
   const personal = mine.contexts.length === 1 ? mine.contexts[0] : undefined;
-  if (personal?.personal && personal.role === "org-admin" && personal.experience === "personal"
+  if (personal?.personal && personal.role === ORG_ADMIN_MEMBERSHIP_ROLE && personal.experience === "personal"
     && personal.lifecycle === "active" && personal.organizationId
     && personal.organizationId === mine.personalOrganizationId) {
     return {

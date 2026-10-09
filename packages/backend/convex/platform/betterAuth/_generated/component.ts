@@ -3256,6 +3256,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      beginMembershipManagement: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; organizationId: string; slug: string; userId: string },
+        any,
+        Name
+      >;
       changeMember: FunctionReference<
         "mutation",
         "internal",

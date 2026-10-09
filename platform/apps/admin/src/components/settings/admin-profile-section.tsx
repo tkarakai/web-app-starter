@@ -46,7 +46,7 @@ export function AdminProfileSection() {
     <Card>
       <CardHeader>
         <CardTitle>Profile</CardTitle>
-        <CardDescription>Manage your admin profile information.</CardDescription>
+        <CardDescription>Manage your app-operator profile information.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 max-w-md">
         <div className="space-y-2">
@@ -60,7 +60,7 @@ export function AdminProfileSection() {
             id="admin-display-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Admin User"
+            placeholder="App operator name"
           />
         </div>
 

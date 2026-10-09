@@ -15,13 +15,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
-- Explicit customer organization context and private-owner tenant builders/sample APIs, with
-  immutable request IDs, parent/child checks, live lifecycle/membership rechecks and reauthorized
+- Explicit organization-user context and private-owner tenant builders/sample APIs, with
+  immutable request IDs, parent/child checks, live organization-availability/membership rechecks and reauthorized
   file transfers. The personal sample caller resolves/captures context; historical private rows
   remain separately authorized without a guessed backfill. See [organization context](docs/organization-context.md).
 
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
-  membership and lifecycle operations. For authority boundaries and integration limits, see
+  membership and organization-availability operations. For authority boundaries and integration limits, see
   [organization authority](docs/architecture.md#organization-primitives-and-authority).
 
 - MCP authorization uses a separate auth-only hostname on the existing admin deployment, with
@@ -31,30 +31,34 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Bounded MCP search/schema lookup/execution over the admin capability catalogue, plus
   independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. `admin:manage` consent is
-  constrained to the approved operator catalogue and independent native target policy. Earlier
+  constrained to the approved app-operator catalogue and independent native target policy. Earlier
   authorization contracts require new consent and clients use the gateway tools. Reusable independent and pi
   testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
 
 ### Changed
 
-- Operator identity APIs/catalogues target canonical operators only. Generic Better Auth `/admin/*`
-  calls, customer identity administration, global role conversion and identity deletion are denied.
+- Clarified app-operator, organization-user/org-admin and organization membership-management
+  terminology throughout code, UI, help and guidance. Deprecated helper aliases, registered API/tool
+  identifiers and legacy stored mode/enrollment values preserve compatibility without rewriting data.
+- App-operator identity APIs/catalogues target canonical app operators only. Generic Better Auth `/admin/*`
+  calls, organization-user identity administration, global role conversion and identity deletion are denied.
   Organization controls expose metadata and current org-admin contacts, not private data/member security.
-  Operator audit views exclude retained private and unclassified history.
+  App-operator audit views exclude retained private and unclassified history.
 - Native agent execution independently revalidates persisted actor/proof/target authority. Contract
   epoch 2 invalidates older codes, delegations, grants and queued authority; historical task/artifact
   rows stay quarantined instead of being deleted or reclassified by owner alone.
 
 ### Action required
 
-- Replace custom `authClient.admin.*` callers with the guarded operator-target APIs. Do not use
-  global `admin` or `adminMutation` to represent a customer org-admin, and do not rely on identity
-  deletion or customer security administration through the operator plane.
+- Replace custom `authClient.admin.*` callers with the guarded app-operator-target APIs. Prefer
+  `appOperatorQuery` / `appOperatorMutation`; their older `adminQuery` / `adminMutation` aliases
+  remain compatible. Do not use global `admin` or these builders to represent an org-admin, and
+  do not rely on identity deletion or organization-user security administration through the app control plane.
 - Obtain new agent consent after updating backend and clients. Do not stamp old grants/tasks/artifacts
   with the new epoch or continue executing old workers. See [agentic integration](docs/agentic-announcements.md).
 - Organization fields/indexes are additive, not a preserving migration. Keep unmapped data intact;
   use explicit context for new tenant data and complete verified mappings/old-writer barriers before
-  tenant cutover or collaboration activation. See [organization context](docs/organization-context.md).
+  organization-scope cutover or enabling organization membership management. See [organization context](docs/organization-context.md).
 
 ### Fixed
 
@@ -278,7 +282,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   [private file storage](docs/private-file-storage.md).
 
 - **Who is affected:** apps with custom administrator signup code, or pending administrator
-  invitations. **What to do:** deploy the backend and platform admin UI together. Custom clients
+  invitations. **What to do:** deploy the backend and app admin UI together. Custom clients
   must call the action `api.platform.adminInvitations.claimInvitation({ token })`, then
   `register({ capability, email, name, password })`, and sign in normally; ordinary email signup
   cannot create reserved administrator accounts. `claimInvitation` is now an action returning a

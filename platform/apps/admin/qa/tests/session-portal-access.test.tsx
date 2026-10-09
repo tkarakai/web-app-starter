@@ -8,7 +8,7 @@ import { AuthGuard as WebAuthGuard, SessionAccessGate } from "@web-app-starter/a
 import { AuthGuard as AdminAuthGuard } from "../../src/components/auth/auth-guard";
 import { UserSessionsDialog } from "../../src/components/users/user-sessions-dialog";
 import { EventDetails } from "../../src/components/audit-trail/event-details";
-import type { AdminUser } from "../../src/lib/admin-api";
+import type { AppOperatorUser } from "../../src/lib/admin-api";
 import type { AuditTrailEvent } from "@repo/backend";
 
 const mocks = vi.hoisted(() => ({ client: {}, status: undefined as Record<string, unknown> | undefined, verify: vi.fn(), sessions: vi.fn(), getSession: vi.fn() }));
@@ -16,8 +16,8 @@ vi.mock("convex/react", () => ({ useConvex: () => mocks.client, useQuery: () => 
 vi.mock("@convex-dev/better-auth/nextjs/client", () => ({ usePreloadedAuthQuery: () => ({ name: "Operator", email: "operator@example.test" }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: { useSession: () => ({ data: { user: {} } }), $fetch: mocks.verify, getSession: mocks.getSession, signOut: vi.fn() } }));
-vi.mock("@/lib/admin-api", () => ({ listUserSessions: mocks.sessions, revokeSession: vi.fn(), revokeAllSessions: vi.fn() }));
-const user: AdminUser = { id: "fixture-user", name: "Protected user", email: "protected@example.test", role: "admin", banned: false, banReason: null, banExpires: null, image: null, createdAt: new Date(0), updatedAt: new Date(0), emailVerified: true, twoFactorEnabled: false };
+vi.mock("@/lib/admin-api", () => ({ listAppOperatorSessions: mocks.sessions, revokeAppOperatorSession: vi.fn(), revokeAllAppOperatorSessions: vi.fn() }));
+const user: AppOperatorUser = { id: "fixture-user", name: "Protected user", email: "protected@example.test", role: "admin", banned: false, banReason: null, banExpires: null, image: null, createdAt: new Date(0), updatedAt: new Date(0), emailVerified: true, twoFactorEnabled: false };
 const event = { _id: "fixture-event", _creationTime: 1, happenedAt: 1, source: "server", action: "fixture", resource: "fixture", reason: "Protected audit reason", meta: '{"detail":"Protected audit metadata"}' } as AuditTrailEvent;
 function ready() { return { allowed: true, reason: "ready", hasTotp: false, hasPasskey: false, strongForChanges: false, recent: true, recentUntil: Date.now() + 300000, primaryRecentUntil: Date.now() + 300000, expiresAt: Date.now() + 3600000, passkeyPolicy: "optional" }; }
 function visiblePassword() { return screen.getAllByLabelText(english.accountSecurity.changePassword.currentPassword).find(field => !isInaccessible(field))!; }

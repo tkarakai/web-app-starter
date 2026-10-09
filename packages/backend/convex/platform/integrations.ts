@@ -1,4 +1,4 @@
-import { adminQuery } from "./functions";
+import { appOperatorQuery } from "./functions";
 
 // ---------------------------------------------------------------------------
 // Integration status for the admin Configure → Integrations page.
@@ -116,7 +116,7 @@ export function buildIntegrationStatus() {
   };
 }
 
-export const getStatus = adminQuery({
+export const getStatus = appOperatorQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;

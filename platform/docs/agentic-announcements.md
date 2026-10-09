@@ -58,7 +58,7 @@ origin; DNS setup does not change authentication or combine it with the normal a
 Remote clients discover protected-resource metadata, open the auth-only origin, and request
 **`admin:manage`** permission for the versioned operator control-plane contract. Consent covers
 organization lifecycle/current administrator contacts, operator accounts, customer admission,
-global policy/settings and public content. Customer identity/security records, member directories,
+global policy/settings and public content. Organization users' identity/security records, ordinary org-member directories,
 private tenant data and enrollment secrets are excluded. Native dispatch independently resolves
 the current canonical operator, proof and target policy before executing captured handlers.
 Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
@@ -105,7 +105,7 @@ resolve their respective real session/delegation before calling the shared bodie
 adapters use the existing Better Auth component, canonical operator-target checks and safe result DTOs:
 opaque session IDs replace login tokens. Private factor material and token hashes are excluded.
 Only selected, classified definitions can execute; unknown captured definitions fail closed.
-Retained `users_*` names target platform operators only. `users_remove` and
+Retained `users_*` wire names target app operators only; these compatibility names do not denote organization users. `users_remove` and
 `users_setPassword` are absent from the catalogue; generic Better Auth `/admin/*` routes are
 denied in favor of the guarded operator APIs. Customer enrollment stays a bound human workflow.
 `platform/agentCapabilities:exposure` reports the executable operation inventory and selected

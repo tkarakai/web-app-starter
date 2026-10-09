@@ -1,17 +1,18 @@
+/** @deprecated API namespace retained for compatibility; these are app-operator operations. */
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { getAuth } from "./functions";
-import { isOperatorIdentity, requireOperator } from "./operatorAccess";
+import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
 
-async function operatorEmails(ctx: QueryCtx): Promise<string[]> {
+async function appOperatorEmails(ctx: QueryCtx): Promise<string[]> {
   const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
   const emails: string[] = [];
   for (const row of rows) {
     const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: row.email }] });
-    if (user && await isOperatorIdentity(ctx, user)) emails.push(user.email);
+    if (user && await isAppOperatorIdentity(ctx, user)) emails.push(user.email);
   }
   return emails;
 }
@@ -44,10 +45,10 @@ export const listProtected = rememberNative(query({
     // Only admin users may see the admin email list.
     // Without this check any authenticated user could enumerate admin emails,
     // which could be combined with other attacks (e.g. phishing, account takeover).
-    if (!await isOperatorIdentity(ctx, user)) {
+    if (!await isAppOperatorIdentity(ctx, user)) {
       return [];
     }
 
-    return await operatorEmails(ctx);
+    return await appOperatorEmails(ctx);
   },
-}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { await requireOperator(ctx); return await operatorEmails(ctx); } }, "query");
+}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { await requireAppOperator(ctx); return await appOperatorEmails(ctx); } }, "query");

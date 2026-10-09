@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 import { useTimeAgo, useTimeUntil } from "@/hooks/use-relative-time";
 
 function formatDateTime(date: Date): string {
@@ -31,7 +31,7 @@ function BanDateRow({ label, date, relative }: {
 }
 
 type BanDetailsCardProps = {
-  user: AdminUser;
+  user: AppOperatorUser;
   className?: string;
 };
 

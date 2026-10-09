@@ -2,29 +2,29 @@
 
 import * as React from "react";
 import { useConvex } from "convex/react";
-import { fetchUsers, type AdminUser, type FetchUsersParams } from "@/lib/admin-api";
+import { fetchAppOperators, type AppOperatorUser, type FetchAppOperatorsParams } from "@/lib/admin-api";
 
 const PAGE_SIZE = 50;
-export type OperatorFilters = Pick<FetchUsersParams, "searchValue" | "status" | "sortBy" | "sortDirection">;
+export type AppOperatorFilters = Pick<FetchAppOperatorsParams, "searchValue" | "status" | "sortBy" | "sortDirection">;
 type SearchStream = { searchField: "name" | "email"; cursor: string | null; done: boolean };
 
-export function useUsers(filters: OperatorFilters) {
+export function useAppOperators(filters: AppOperatorFilters) {
   const client = useConvex();
   const { searchValue, status, sortDirection = "desc" } = filters;
-  const [users, setUsers] = React.useState<AdminUser[]>([]);
+  const [users, setUsers] = React.useState<AppOperatorUser[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [hasMore, setHasMore] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const generation = React.useRef(0);
-  const state = React.useRef<{ streams: SearchStream[]; users: AdminUser[]; pending: boolean }>({ streams: [], users: [], pending: false });
+  const state = React.useRef<{ streams: SearchStream[]; users: AppOperatorUser[]; pending: boolean }>({ streams: [], users: [], pending: false });
 
   const fetchPage = React.useCallback(async (requestGeneration: number, append: boolean) => {
     if (state.current.pending) return;
     state.current.pending = true;
     const pendingStreams = state.current.streams.filter(stream => !stream.done);
     try {
-      const results = await Promise.all(pendingStreams.map(stream => fetchUsers(client, {
+      const results = await Promise.all(pendingStreams.map(stream => fetchAppOperators(client, {
         limit: PAGE_SIZE, cursor: stream.cursor, searchField: stream.searchField,
         searchValue, status, sortBy: "createdAt", sortDirection,
       })));
@@ -50,7 +50,7 @@ export function useUsers(filters: OperatorFilters) {
       setHasMore(state.current.streams.some(stream => !stream.done));
       setError(null);
     } catch {
-      if (requestGeneration === generation.current) setError("Could not load operators. Try again.");
+      if (requestGeneration === generation.current) setError("Could not load app operators. Try again.");
     } finally {
       if (requestGeneration === generation.current) {
         state.current.pending = false;
@@ -87,3 +87,8 @@ export function useUsers(filters: OperatorFilters) {
 
   return { users, total: users.length, loading, loadingMore, hasMore, loadMore, refresh, error };
 }
+
+/** @deprecated Use useAppOperators. */
+export const useUsers = useAppOperators;
+/** @deprecated Use AppOperatorFilters. */
+export type OperatorFilters = AppOperatorFilters;

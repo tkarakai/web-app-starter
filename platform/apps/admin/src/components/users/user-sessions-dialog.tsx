@@ -41,13 +41,13 @@ import {
   TooltipTrigger,
   parseUserAgent,
 } from "@web-app-starter/design-system";
-import type { AdminSession, AdminUser } from "@/lib/admin-api";
-import { listUserSessions, revokeAllSessions, revokeSession } from "@/lib/admin-api";
+import type { AppOperatorSession, AppOperatorUser } from "@/lib/admin-api";
+import { listAppOperatorSessions, revokeAllAppOperatorSessions, revokeAppOperatorSession } from "@/lib/admin-api";
 
 type UserSessionsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: AdminUser | null;
+  user: AppOperatorUser | null;
 };
 
 function formatDate(date: Date): string {
@@ -86,9 +86,9 @@ export function UserSessionsDialog({
   user,
 }: UserSessionsDialogProps) {
   const client = useConvex();
-  const [sessions, setSessions] = React.useState<AdminSession[]>([]);
+  const [sessions, setSessions] = React.useState<AppOperatorSession[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [revokeTarget, setRevokeTarget] = React.useState<AdminSession | null>(null);
+  const [revokeTarget, setRevokeTarget] = React.useState<AppOperatorSession | null>(null);
   const [revokePending, setRevokePending] = React.useState(false);
   const [revokeAllOpen, setRevokeAllOpen] = React.useState(false);
   const [revokeAllPending, setRevokeAllPending] = React.useState(false);
@@ -99,7 +99,7 @@ export function UserSessionsDialog({
     const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
-      const result = await listUserSessions(client, user.id);
+      const result = await listAppOperatorSessions(client, user.id);
       if (requestId !== requestIdRef.current) return;
       setSessions(result);
     } catch (err) {
@@ -129,7 +129,7 @@ export function UserSessionsDialog({
     const requestId = requestIdRef.current;
     setRevokePending(true);
     try {
-      await revokeSession(client, user.id, revokeTarget.id);
+      await revokeAppOperatorSession(client, user.id, revokeTarget.id);
       if (requestId !== requestIdRef.current) return;
       toast.success("Session revoked");
       setRevokeTarget(null);
@@ -146,7 +146,7 @@ export function UserSessionsDialog({
     const requestId = requestIdRef.current;
     setRevokeAllPending(true);
     try {
-      await revokeAllSessions(client, user.id);
+      await revokeAllAppOperatorSessions(client, user.id);
       if (requestId !== requestIdRef.current) return;
       toast.success(`All sessions revoked for ${user.email}`);
       setRevokeAllOpen(false);
@@ -158,7 +158,7 @@ export function UserSessionsDialog({
     }
   };
 
-  const isExpired = (session: AdminSession): boolean =>
+  const isExpired = (session: AppOperatorSession): boolean =>
     session.expiresAt.getTime() < Date.now();
 
   if (!user) return null;
@@ -338,7 +338,7 @@ export function UserSessionsDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke all sessions?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will sign out this operator from all devices immediately.
+              This will sign out this app operator from all devices immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

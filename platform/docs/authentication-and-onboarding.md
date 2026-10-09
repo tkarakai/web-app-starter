@@ -209,7 +209,7 @@ User enters their email and creates a password that meets the shared policy in Â
 On submit, Better Auth's `signUp.email()` creates the credential account and sends a verification email (if email verification is enabled by admin policy).
 
 Server-authorized new-customer signup also provisions one
-invisible personal organization with the customer as `org-admin`, without granting platform-admin
+invisible personal organization with the initial user as `org-admin`, without granting app-operator
 role or requiring administrator factor enrollment. Customer onboarding invitations remain new-customer
 admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
 for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
@@ -403,7 +403,7 @@ seven-day lifetime. Expired, revoked or banned sessions fail live backend checks
 using an earlier Convex JWT. An already delivered response cannot be withdrawn from a client;
 subsequent requests and reactive queries that rerun check the live policy again.
 
-Administrative HTTP operations and platform administrative mutations, password/profile/factor
+App-operator HTTP/control mutations and password/profile/factor
 changes and recovery-code export require authentication within **five minutes**. When an enrolled
 or required factor exists, that must be recent strong proof; a password alone cannot substitute.
 Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the

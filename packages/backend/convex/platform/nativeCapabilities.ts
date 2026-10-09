@@ -2,7 +2,7 @@
 import { v, type PropertyValidators, type ValidatorJSON } from "convex/values";
 import { validate } from "convex-helpers/validators";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { operationExposure } from "./agentExposure";
+import { operationExposure, LEGACY_APP_OPERATOR_EXPOSURE } from "./agentExposure";
 
 export type NativeKind = "query" | "mutation";
 interface NativeDefinition {
@@ -49,7 +49,7 @@ export async function invokeNative(registered: object, ctx: QueryCtx | MutationC
   // stored grants; importing that graph while builders initialize would create an auth cycle.
   const { authorizeNativeOperation, projectNativeResult } = await import("./agentNativePolicy");
   const canonical = await authorizeNativeOperation(ctx, auth, operation, input, definition.kind === "mutation");
-  const bounded = operationExposure(operation).target === "operator-list" ? { ...(input as Record<string, unknown>), role: "admin" } : input;
+  const bounded = operationExposure(operation).target === LEGACY_APP_OPERATOR_EXPOSURE.directory ? { ...(input as Record<string, unknown>), role: "admin" } : input;
   return projectNativeResult(ctx, operation, await definition.handler({ ...ctx, ...canonical }, bounded));
 }
 /** JSON Schema is documentation; Convex validators above remain the execution authority. */

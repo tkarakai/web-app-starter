@@ -7,7 +7,7 @@ import {
 import type { ObjectType, PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
-import { isOperatorIdentity } from "./operatorIdentity";
+import { isAppOperatorIdentity } from "./appOperatorIdentity";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -89,8 +89,8 @@ export function authedQuery<
   }), func, "query");
 }
 
-/** Operator control reads retain signed-out null semantics, but require canonical operator authority. */
-export function adminQuery<ArgsValidator extends PropertyValidators, Output>(func: {
+/** App-operator control reads retain signed-out null semantics, but require canonical app-operator authority. */
+export function appOperatorQuery<ArgsValidator extends PropertyValidators, Output>(func: {
   args: ArgsValidator;
   handler: (ctx: QueryCtx & AuthInfo, args: ObjectType<ArgsValidator>) => Output | Promise<Output>;
 }) {
@@ -100,7 +100,7 @@ export function adminQuery<ArgsValidator extends PropertyValidators, Output>(fun
     handler: async (ctx: QueryCtx, args: any): Promise<Output | null> => {
       const auth = await getAuth(ctx);
       if (!auth) return null;
-      if (!await isOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
+      if (!await isAppOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
       return func.handler({ ...ctx, ...auth }, args);
     },
   }), func, "query");
@@ -128,13 +128,13 @@ export const authedMutation = captureNativeBuilder(customMutation(
   }),
 ), "mutation");
 
-/** Administrative writes additionally require recent authentication under current policy. */
-export const adminMutation = captureNativeBuilder(customMutation(
+/** App-operator writes additionally require recent authentication under current policy. */
+export const appOperatorMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async ctx => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
-    if (!await isOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
+    if (!await isAppOperatorIdentity(ctx, auth.user)) throw new Error("NOT_ADMIN");
     if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth;
@@ -142,3 +142,8 @@ export const adminMutation = captureNativeBuilder(customMutation(
 ), "mutation");
 
 export { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, assertMaxLength } from "@web-app-starter/convex-platform/validation";
+
+/** @deprecated Use appOperatorQuery for app-control-plane reads. */
+export const adminQuery = appOperatorQuery;
+/** @deprecated Use appOperatorMutation for app-control-plane writes. */
+export const adminMutation = appOperatorMutation;

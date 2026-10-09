@@ -64,7 +64,7 @@ export function AdminShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AdminSidebar
-        displayName={user?.name ?? "Admin"}
+        displayName={user?.name ?? "App operator"}
         displayEmail={user?.email}
       />
       <SidebarInset className="flex flex-col h-dvh min-w-0">

@@ -1,3 +1,4 @@
+import { ORG_ADMIN_MEMBERSHIP_ROLE } from "./betterAuth/organizationVocabulary";
 import { hashPassword } from "better-auth/crypto";
 import { appConfig } from "@web-app-starter/app-config";
 import { v } from "convex/values";
@@ -52,7 +53,7 @@ export const register = action({
     if (enrollment.userId) return null;
     if (await ctx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email })) throw new Error("ADMIN_ENROLLMENT_REQUIRED");
     if (!args.name.trim() || args.name.length > 200 || args.password.length > 128) throw new Error("INVALID_ACCOUNT_DETAILS");
-    const strength = validatePasswordStrength(args.password, email, enrollment.role === "org-admin" ? "admin" : "user");
+    const strength = validatePasswordStrength(args.password, email, enrollment.role === ORG_ADMIN_MEMBERSHIP_ROLE ? "admin" : "user");
     if (!strength.valid) throw new Error(strength.reason);
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-1", new globalThis.TextEncoder().encode(args.password)));
     const sha1 = Array.from(digest, b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
@@ -64,7 +65,7 @@ export const register = action({
   },
 });
 
-/** Operator reservation and invitation state rechecked in the same account-creation transaction. */
+/** App-operator reservation and invitation state rechecked in the same account-creation transaction. */
 export const registerAccount = internalMutation({
   args: { capabilityHash: v.string(), email: v.string(), name: v.string(), passwordHash: v.string() },
   returns: v.null(),
@@ -87,7 +88,7 @@ export const recipientSnapshot = internalQuery({
   },
 });
 
-/** Mandatory recipient verification still works when ordinary customer email verification is optional. */
+/** Mandatory recipient verification still works when ordinary user email verification is optional. */
 export const requestVerification = action({
   args: inviteArgs,
   returns: v.null(),
@@ -101,7 +102,7 @@ export const requestVerification = action({
   },
 });
 
-/** Exact verified recipient, ordinary applicable assurance, active lifecycle and atomic admission. */
+/** Exact verified recipient, ordinary applicable assurance, active organization availability and atomic membership admission. */
 export const accept = mutation({
   args: inviteArgs,
   handler: async (ctx, args) => {

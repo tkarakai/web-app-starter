@@ -3,7 +3,7 @@ import { act, fireEvent, render, renderHook, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import platformMessages from "@web-app-starter/i18n/messages/en.json";
 import appMessages from "@repo/messages/en.json";
-import type { Id } from "@repo/backend";
+import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE, type Id } from "@repo/backend";
 import { capturePersonalDataPlane, resolvePersonalDataContext, type PersonalContextSnapshot, type PersonalDataPlane } from "../../src/hooks/personal-data-context";
 
 const mocks = vi.hoisted(() => ({
@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   dispatch: vi.fn(),
 }));
-vi.mock("@repo/backend", () => ({ api: {
+vi.mock("@repo/backend", async importOriginal => ({ ...await importOriginal<typeof import("@repo/backend")>(), api: {
   platform: { tenantContext: { mine: "mine" }, auth: { getCurrentUser: "currentUser" } },
   projects: { list: "projects.list", get: "projects.get", listWithStats: "projects.stats", create: "projects.create", update: "projects.update", remove: "projects.remove" },
   tenantProjects: { list: "tenantProjects.list", get: "tenantProjects.get", listWithStats: "tenantProjects.stats", create: "tenantProjects.create", update: "tenantProjects.update", remove: "tenantProjects.remove" },
@@ -43,7 +43,7 @@ const uploadId = "upload-a" as Id<"uploads">;
 const tenant: PersonalDataPlane = { kind: "tenant", userId: "owner", ownerId: "owner", organizationId: "org-a" };
 const legacy: PersonalDataPlane = { kind: "legacy", userId: "owner", ownerId: "owner", organizationId: "org-a" };
 function personal(organizationId = "org-a", legacyPrivateAvailable = false): PersonalContextSnapshot {
-  return { userId: "owner", contexts: [{ organizationId, experience: "personal", lifecycle: "active", personal: true, role: "org-admin" }], personalOrganizationId: organizationId, legacyPrivateAvailable };
+  return { userId: "owner", contexts: [{ organizationId, experience: "personal", lifecycle: "active", personal: true, role: ORG_ADMIN_MEMBERSHIP_ROLE }], personalOrganizationId: organizationId, legacyPrivateAvailable };
 }
 function row(id: string, organizationId?: string, time = 1) {
   return { _id: id, _creationTime: time, organizationId, ownerId: "owner", name: id, description: "", createdAt: time };
@@ -66,8 +66,8 @@ describe("personal sample caller context and dispatch", () => {
       { ...canonical, legacyPrivateAvailable: true, contexts: [{ ...context, lifecycle: "disabled" as const }] },
       { ...canonical, legacyPrivateAvailable: true, contexts: [{ ...context, lifecycle: "provisioning" as const }] },
       { ...canonical, contexts: [context, { ...context, organizationId: "other" }] },
-      { ...canonical, contexts: [{ ...context, personal: false, role: "member" as const }] },
-      { ...canonical, contexts: [{ ...context, experience: "collaborative" as const }] }]) {
+      { ...canonical, contexts: [{ ...context, personal: false, role: ORG_MEMBER_ROLE }] },
+      { ...canonical, contexts: [{ ...context, experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE }] }]) {
       expect(resolvePersonalDataContext(mine, "owner")).toMatchObject({ state: "unavailable", tenant: null, legacy: null });
     }
     mocks.data.mine = { ...canonical, contexts: [{ ...context, lifecycle: "disabled" }] };

@@ -10,7 +10,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 import type { usersTableFeatures } from "./table-features";
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -26,7 +26,7 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 
 type ColumnSelectorProps = {
-  table: Table<typeof usersTableFeatures, AdminUser>;
+  table: Table<typeof usersTableFeatures, AppOperatorUser>;
 };
 
 export function ColumnSelector({ table }: ColumnSelectorProps) {

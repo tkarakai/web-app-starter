@@ -9,10 +9,10 @@ import { surfaceConfiguration } from "./agentSurfaces";
 import { rateLimit } from "./rateLimits";
 import { catalogueRows, capabilityRegistry, registeredExposures, workflowResult, sanitizeNativeResult } from "./agentRegistry";
 import { invokeNative, nativeDefinition } from "./nativeCapabilities";
-import { canonicalOperatorAuth } from "./agentNativePolicy";
+import { canonicalAppOperatorAuth } from "./agentNativePolicy";
 import { exposureInventory, operationExposure } from "./agentExposure";
 import { AGENT_CONTRACT_EPOCH } from "./agentContract";
-import { requireOperator } from "./operatorAccess";
+import { requireAppOperator } from "./appOperatorAccess";
 const args = { name: v.string(), input: v.any() };
 const credentialArgs = { token: v.string(), resource: v.string() };
 const rowsValidator = v.array(v.object({ name: v.string(), title: v.string(), description: v.string(), effect: v.union(v.literal("read"), v.literal("write"), v.literal("browser"), v.literal("human")), inputSchema: v.any() }));
@@ -29,7 +29,7 @@ export async function runCapability(ctx: QueryCtx | MutationCtx, auth: unknown, 
   const value = entry(name); boundInputs(input);
   if (!value.registered) {
     if (operationExposure(value.operation ?? name).classification !== "human-workflow") throw new Error("NATIVE_OPERATION_DENIED");
-    await canonicalOperatorAuth(ctx, auth);
+    await canonicalAppOperatorAuth(ctx, auth);
     if (write || Object.keys(input as object).length) throw new Error("INVALID_INPUT");
     return workflowResult(value);
   }
@@ -54,7 +54,7 @@ async function browserAuth(ctx: QueryCtx, recent = false) {
   const auth = await authorizedSession(ctx);
   if (!auth || auth.user.role !== "admin") throw new Error("NOT_ADMIN");
   if (recent && !auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  return { ...auth, ...await requireOperator({ ...ctx, ...auth }, { write: recent }) };
+  return { ...auth, ...await requireAppOperator({ ...ctx, ...auth }, { write: recent }) };
 }
 export const browserRead = query({ args, returns: v.any(), handler: async (ctx, { name, input }) => runCapability(ctx, await browserAuth(ctx), name, input, false) });
 export const browserWrite = mutation({ args, returns: v.any(), handler: async (ctx, { name, input }) => {

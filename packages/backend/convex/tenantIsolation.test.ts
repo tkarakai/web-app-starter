@@ -1,3 +1,4 @@
+import { MEMBERSHIP_MANAGEMENT_EXPERIENCE } from "./platform/betterAuth/organizationVocabulary";
 import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import { api, components, internal } from "./_generated/api";
@@ -24,7 +25,7 @@ async function fixture() {
   const alice = await user(); const bob = await user(); const outsider = await user(); const operator = await user("admin");
   const a = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: alice._id });
   const b = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: bob._id });
-  await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: b.organizationId }], update: { experience: "collaborative" } } });
+  await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: b.organizationId }], update: { experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE } } });
   await t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: { organizationId: b.organizationId, userId: alice._id, role: "member", createdAt: Date.now() } } });
   const aliceAuth = await client(alice._id); const bobAuth = await client(bob._id);
   const aliceClient = aliceAuth.client; const bobClient = bobAuth.client;
@@ -132,7 +133,7 @@ describe("explicit tenant context and private resource isolation", () => {
     expect(await f.aliceClient.query(api.platform.tenantContext.mine, {})).toMatchObject({ legacyPrivateAvailable: false });
   });
 
-  test("pending customer/member signup cannot use legacy-private APIs as a provisioning bypass", async () => {
+  test("pending customer-admission/member-invitation signup cannot use legacy-private APIs as a provisioning bypass", async () => {
     const f = await fixture();
     const pending = await f.user();
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: pending._id }], update: { customerAdmission: "public-signup" } } });

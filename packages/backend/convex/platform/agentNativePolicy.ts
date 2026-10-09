@@ -3,37 +3,37 @@ import type { QueryCtx } from "../_generated/server";
 import { components } from "../_generated/api";
 import { requireGrantById } from "./agentAccess";
 import { authorizedSession } from "./sessionPolicy";
-import { operationExposure } from "./agentExposure";
-import { isOperatorIdentity, requireOperator, requireOperatorTarget } from "./operatorAccess";
+import { operationExposure, LEGACY_APP_OPERATOR_EXPOSURE } from "./agentExposure";
+import { isAppOperatorIdentity, requireAppOperator, requireAppOperatorTarget } from "./appOperatorAccess";
 import { ownedTask } from "./agentTaskModel";
 
 /** Resolve current persisted authority, never an injected user/assurance/ownerId snapshot. */
-export async function canonicalOperatorAuth(ctx: QueryCtx, supplied: unknown, recent = false) {
+export async function canonicalAppOperatorAuth(ctx: QueryCtx, supplied: unknown, recent = false) {
   const source = supplied as { user?: { _id?: string }; grantId?: Id<"agentGrants">; resource?: string } | null;
   const auth = source?.grantId && typeof source.resource === "string"
     ? await requireGrantById(ctx, source.grantId, source.resource, recent)
     : await authorizedSession(ctx);
   if (!auth || auth.user.role !== "admin" || auth.user._id !== source?.user?._id) throw new Error("NOT_ADMIN");
-  return { ...auth, ...await requireOperator({ ...ctx, ...auth }, { write: recent }) };
+  return { ...auth, ...await requireAppOperator({ ...ctx, ...auth }, { write: recent }) };
 }
 
 /** Independent of Convex builders: invokeNative executes their captured bodies. */
 export async function authorizeNativeOperation(ctx: QueryCtx, supplied: unknown, operation: string, input: unknown, write: boolean) {
   const policy = operationExposure(operation);
-  if (!policy.native || !["operator-control", "operator-identity", "self-service"].includes(policy.classification)) throw new Error("NATIVE_OPERATION_DENIED");
-  const auth = await canonicalOperatorAuth(ctx, supplied, write);
+  if (!policy.native || ![LEGACY_APP_OPERATOR_EXPOSURE.control, LEGACY_APP_OPERATOR_EXPOSURE.identity, "self-service"].includes(policy.classification)) throw new Error("NATIVE_OPERATION_DENIED");
+  const auth = await canonicalAppOperatorAuth(ctx, supplied, write);
   const args = input as Record<string, unknown>;
-  if (policy.target === "operator-list" && args.role !== undefined && args.role !== "admin") throw new Error("OPERATOR_TARGET_REQUIRED");
-  if (policy.target === "operator") {
+  if (policy.target === LEGACY_APP_OPERATOR_EXPOSURE.directory && args.role !== undefined && args.role !== "admin") throw new Error("OPERATOR_TARGET_REQUIRED");
+  if (policy.target === LEGACY_APP_OPERATOR_EXPOSURE.principal) {
     if (typeof args.userId !== "string") throw new Error("OPERATOR_TARGET_REQUIRED");
-    await requireOperatorTarget(ctx, args.userId);
+    await requireAppOperatorTarget(ctx, args.userId);
     if (operation === "platform/agentUsers:setRole" && args.role !== "admin") throw new Error("OPERATOR_ROLE_TRANSITION_UNSUPPORTED");
   }
   if (policy.target === "organization" && operation !== "platform/organizations:list") {
     if (typeof args.organizationId !== "string" || !args.organizationId) throw new Error("ORGANIZATION_UNAVAILABLE");
     await ctx.runQuery(components.betterAuth.organizations.contacts, { organizationId: args.organizationId, operatorId: auth.user._id });
     // The exact validated immutable ID is passed unchanged to the parent wrapper. Its body
-    // resolves the same projection/lifecycle; component primitives are not native capabilities.
+    // resolves the same projection/organization availability; component primitives are not native capabilities.
   }
   if (policy.target === "self") {
     if (operation === "platform/agentAccess:revoke") {
@@ -50,7 +50,7 @@ export async function authorizeNativeOperation(ctx: QueryCtx, supplied: unknown,
     if (!Array.isArray(args.userIds)) throw new Error("OPERATOR_TARGET_REQUIRED");
     for (const userId of args.userIds) {
       if (typeof userId !== "string") throw new Error("OPERATOR_TARGET_REQUIRED");
-      await requireOperatorTarget(ctx, userId);
+      await requireAppOperatorTarget(ctx, userId);
     }
   }
   return auth;
@@ -58,13 +58,13 @@ export async function authorizeNativeOperation(ctx: QueryCtx, supplied: unknown,
 
 /** Output projection is also enforced inside invokeNative, not only by transport adapters. */
 export async function projectNativeResult(ctx: QueryCtx, operation: string, result: unknown) {
-  if (operationExposure(operation).target === "operator-email-list") {
+  if (operationExposure(operation).target === LEGACY_APP_OPERATOR_EXPOSURE.emailDirectory) {
     if (!Array.isArray(result)) throw new Error("NATIVE_RESULT_DENIED");
     const emails: string[] = [];
     for (const email of result) {
       if (typeof email !== "string") continue;
       const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email.toLowerCase() }] });
-      if (user && await isOperatorIdentity(ctx, user)) emails.push(email);
+      if (user && await isAppOperatorIdentity(ctx, user)) emails.push(email);
     }
     return emails;
   }
@@ -73,3 +73,6 @@ export async function projectNativeResult(ctx: QueryCtx, operation: string, resu
   }
   return result;
 }
+
+/** @deprecated Use canonicalAppOperatorAuth. */
+export const canonicalOperatorAuth = canonicalAppOperatorAuth;

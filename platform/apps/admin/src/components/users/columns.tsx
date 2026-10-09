@@ -33,7 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 import { useUserActions } from "./user-actions-context";
 import { BanDetailsCard } from "./ban-details-card";
 
@@ -99,7 +99,7 @@ function ActionsCell({
   currentUserId,
   protectedEmails,
 }: {
-  user: AdminUser;
+  user: AppOperatorUser;
   currentUserId?: string;
   protectedEmails: Set<string>;
 }) {
@@ -128,7 +128,7 @@ function ActionsCell({
             onSelect={() => onAction("unban", [user])}
           >
             <Unlock className="mr-2 h-4 w-4" />
-            Unban operator
+            Unban app operator
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem
@@ -136,7 +136,7 @@ function ActionsCell({
             onSelect={() => onAction("ban", [user])}
           >
             <Ban className="mr-2 h-4 w-4" />
-            Ban operator
+            Ban app operator
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -164,7 +164,7 @@ type ColumnsConfig = {
   searchTerm?: string;
 };
 
-export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTableFeatures, AdminUser>[] {
+export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTableFeatures, AppOperatorUser>[] {
   const { currentUserId, protectedEmails, searchTerm } = config;
 
   return [
@@ -260,7 +260,7 @@ export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTabl
       accessorKey: "role",
       header: "Account",
       enableSorting: false,
-      cell: () => <Badge>Operator</Badge>,
+      cell: () => <Badge>App operator</Badge>,
     },
     {
       id: "status",
