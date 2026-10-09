@@ -218,7 +218,7 @@ test("local AWS command provisions its dedicated target and refuses deploy keys 
   }
 });
 
-test("trusted deploy action checks historical source before deployment using a compatible isolated CLI", t => {
+test("trusted sparse-checkout action checks fixtures with compatible CLI and refuses pre-cutover historical source", t => {
   const directory = fs.mkdtempSync(path.join(process.cwd(), ".fixture-rollback-test-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const selected = path.join(directory, "selected");
@@ -287,8 +287,10 @@ if (args[0] === 'convex@1.46.0') {
       output += result.stdout + result.stderr;
       if (status !== 0) break;
     }
-    assert.equal(status, scenario.denied ? 1 : 0, output);
-    assert.deepEqual(fs.readFileSync(events, "utf8").trim().split("\n"), scenario.denied ? ["fixture-check"] : ["fixture-check", "migration-check", "deploy", "migrate"]);
+    assert.equal(status, 1, output);
+    if (!scenario.denied) assert.match(output, /target source has no organization cutover contract/);
+    assert.doesNotMatch(output, /ERR_MODULE_NOT_FOUND/);
+    assert.deepEqual(fs.readFileSync(events, "utf8").trim().split("\n"), scenario.denied ? ["fixture-check"] : ["fixture-check", "migration-check"]);
     assert.doesNotMatch(output, /exact-target-key|sensitive|parse-error|does not support/);
   }
 });

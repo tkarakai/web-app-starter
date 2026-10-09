@@ -38,7 +38,7 @@ Keep the separate authorization hostname served by the same admin process.
 Open **http://localhost:3002**, sign in as an admin, and enable all four switches under **Configure → Features**:
 
 - MCP server
-- Admin CLI
+- App-operator CLI
 - WebMCP
 - A2A
 
@@ -50,7 +50,7 @@ Use the actual port printed by the launcher if it differs from `3002`. Run the f
 bun run agent:admin -- --surface mcp --origin http://localhost:3002
 ```
 
-The browser opens the authorization hostname. Sign in, complete any verification, and approve **Authorize admin agent**.
+The browser opens the authorization hostname. Sign in, complete any verification, and approve **Authorize app-operator agent**.
 
 Give pi these requests separately, checking the **Announcements** page after each:
 
@@ -204,7 +204,7 @@ Expected with a supported browser and valid model credentials: **11 tests passed
 
 The real pi tests default to **`openai-codex / gpt-6.1-sol`**. Set `AGENT_TEST_PROVIDER` and `AGENT_TEST_MODEL` to use another configured provider/model. Set `AGENT_LLM_SMOKE=false` to skip model-backed tests while retaining deterministic acceptance.
 
-Sanitized client reports go into `/tmp/admin-agent-evidence`; the browser report is under `platform/apps/admin/qa/playwright-report`.
+Sanitized client reports go into `/tmp/admin-agent-evidence`; the value-free browser report is under `platform/apps/admin/qa/safe-e2e-report`.
 
 When finished:
 
@@ -214,3 +214,29 @@ bun run dev:status
 ```
 
 The maintained reference is [the agentic surfaces guide](agentic-announcements.md).
+
+## Organization authority and preserving-cutover acceptance
+
+Run these checks against the same verified deployment and record the source/registry receipt.
+Use disposable identities and private records; keep raw credentials, tokens and inbox logs private.
+
+- Over MCP, CLI and A2A, discover/describe/execute organization metadata controls and verify
+  that current designated contact is the only customer contact projection. Known ordinary user
+  IDs, private project/file IDs and member directory operations must be refused. A2A lists and
+  artifacts must exclude retained old-epoch results, even after fresh consent.
+- Attempt consent and direct/operator native calls as a personal user, pending admin, completed
+  org-admin and invited member. Strong org-admin assurance must never grant operator authority.
+- Exercise the actual WebMCP page and its provider simulator: secret inputs, dialogs, portals,
+  ordinary identity rows and private records must be absent from snapshots. Capture controls,
+  then revoke authority or change route/lifecycle and verify stale execution fails. Reuse a
+  structural-cache entry from another session within its TTL and verify fresh authorization.
+- Disable/re-enable each surface, reject the old grant, obtain new consent, and test replay and
+  wrong-audience tokens. Repeat A2A continuation/cancel/queued execution after revocation.
+- Rehearse populated starter and custom tenant/agent data with the
+  [preserving migration](organization-data-migration.md): retain IDs, parent links and original
+  file bytes; interrupt/resume; refuse old writers and unknown or ambiguous rows. A fresh empty
+  installation is a separate positive control, not populated-upgrade evidence.
+
+Native Chromium WebMCP availability depends on the installed browser build. Record an unsupported
+engine as unexecuted; keep the real-session provider-simulator acceptance and server-side native
+authorization tests distinct from native-engine evidence.

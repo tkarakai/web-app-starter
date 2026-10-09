@@ -4,10 +4,8 @@ import { DialogContent } from "@/components/ui/localized-controls";
 
 import * as React from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 
-import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
 import {
   AlertDialog,
@@ -29,6 +27,8 @@ import {
   Textarea,
 } from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
+import { usePersonalProjectMutations } from "@/hooks/use-personal-data";
+import type { PersonalDataPlane } from "@/hooks/personal-data-context";
 
 type ProjectHeaderProps = {
   project: {
@@ -36,12 +36,12 @@ type ProjectHeaderProps = {
     name: string;
     description: string;
   };
+  dataPlane: PersonalDataPlane;
   onDeleted: () => void;
 };
 
-export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
-  const updateProject = useMutation(api.projects.update);
-  const removeProject = useMutation(api.projects.remove);
+export function ProjectHeader({ project, dataPlane, onDeleted }: ProjectHeaderProps) {
+  const { update: updateProject, remove: removeProject, available } = usePersonalProjectMutations(dataPlane, project._id);
   const tp = useTranslations("projects");
   const tc = useTranslations("common");
 
@@ -58,7 +58,7 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = normalizeText(name);
-    if (!trimmedName) return;
+    if (!trimmedName || !available) return;
 
     setSubmitting(true);
     try {
@@ -74,12 +74,13 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
   };
 
   const handleDelete = async () => {
+    if (!available) return;
     await removeProject({ id: project._id });
     onDeleted();
   };
 
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div data-project-id={project._id} className="flex items-start justify-between gap-4">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
         {project.description && (
@@ -89,7 +90,7 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
       <div className="flex items-center gap-1">
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button disabled={!available} variant="ghost" size="sm" className="h-8 w-8 p-0">
               <Pencil className="h-4 w-4" />
               <span className="sr-only">{tp("editProject")}</span>
             </Button>
@@ -118,7 +119,7 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={submitting}>
+              <Button type="submit" className="w-full" disabled={submitting || !available}>
                 {submitting ? tc("saving") : tc("save")}
               </Button>
             </form>
@@ -127,7 +128,7 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
+            <Button disabled={!available} variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
               <Trash2 className="h-4 w-4" />
               <span className="sr-only">{tp("deleteProject")}</span>
             </Button>
@@ -142,6 +143,7 @@ export function ProjectHeader({ project, onDeleted }: ProjectHeaderProps) {
             <AlertDialogFooter>
               <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
               <AlertDialogAction
+                disabled={!available}
                 onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >

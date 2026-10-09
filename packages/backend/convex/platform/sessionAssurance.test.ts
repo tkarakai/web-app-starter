@@ -483,7 +483,6 @@ describe("backend session assurance through authentication endpoints", () => {
 const passwordRoutes = [
   ["/verify-password", { password: "wrong" }],
   ["/change-password", { currentPassword: "wrong", newPassword: "orchid quartz lantern telescope meadow violin glacier" }],
-  ["/delete-user", { password: "wrong" }],
   ["/two-factor/enable", { password: "wrong" }],
   ["/two-factor/disable", { password: "wrong" }],
   ["/two-factor/get-totp-uri", { password: "wrong" }],
@@ -500,7 +499,7 @@ test.each(passwordRoutes)("%s spends exactly one durable account attempt per req
   vi.setSystemTime(Date.now() + 60_000);
   for (let i = 0; i < 5; i++) {
     const response = i % 2 ? await f.request(path, body, undefined, cookie) : await f.request(path, body, enrolled.token);
-    expect(response.status, await response.clone().text()).toBe(path === "/delete-user" ? 404 : 400);
+    expect(response.status, await response.clone().text()).toBe(400);
   }
   expect((await f.request("/verify-password", { password }, enrolled.token)).status).toBe(429);
   expect((await f.request(path, body, undefined, cookie)).status).toBe(429);
@@ -667,7 +666,7 @@ test("auth-only-origin login creates a restricted session and cannot access gene
   await expect(client.mutation(api.platform.announcements.create, { name: "Forbidden", bannerText: "Forbidden" })).rejects.toThrow("NOT_AUTHENTICATED");
   const administrative = await f.request("/admin/list-users", undefined, token);
   expect(administrative.status).toBe(403);
-  expect(await administrative.text()).toContain("MCP_AUTHORIZATION_ONLY");
+  expect(await administrative.text()).toContain("OPERATOR_API_REQUIRED");
   const verify = await f.request("/verify-password", { password }, token);
   expect(verify.status).toBe(200);
   expect((await f.caller(token)).session.authPurpose).toBe("mcp-authorization");

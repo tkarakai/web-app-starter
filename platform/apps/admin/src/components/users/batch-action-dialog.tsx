@@ -12,10 +12,10 @@ import {
   DialogTitle,
   Progress,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 
 type BatchResult = {
-  user: AdminUser;
+  user: AppOperatorUser;
   success: boolean;
   error?: string;
 };
@@ -28,8 +28,8 @@ type BatchActionDialogProps = {
   description: string;
   confirmLabel: string;
   destructive?: boolean;
-  users: AdminUser[];
-  action: (user: AdminUser) => Promise<void>;
+  users: AppOperatorUser[];
+  action: (user: AppOperatorUser) => Promise<void>;
   /** When true, disable the confirm button (e.g. no applicable users). */
   confirmDisabled?: boolean;
 };

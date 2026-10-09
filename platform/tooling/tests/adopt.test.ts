@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { constants, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -8,6 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { adopt, parseArgs, removeSample, removeWorkflowJob, repoFromUrl, rewriteRenovate, setAppConfig, slug } from "../adopt.ts";
 import { checkZone } from "../check-zone.ts";
+import { checkOrganizationMigration } from "../organization-migration-check.ts";
+import { inspectOrganizationSource } from "../../../.github/actions/deploy-convex/organization-target.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const read = (file: string): string => {
@@ -24,6 +26,64 @@ function write(root: string, file: string, text: string): void {
   mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   writeFileSync(path.join(root, file), text);
 }
+
+/** Reuse third-party installs, but resolve every workspace import to the adopted source. */
+function copyAdoptionSources(root: string, materializeDependencies = false): void {
+  const filter = (file: string) => !["node_modules", ".turbo", ".next", ".convex", "coverage", "test-results", "playwright-report"].includes(path.basename(file))
+    && !path.basename(file).startsWith(".env") && !/\.(?:log|tsbuildinfo)$/.test(file);
+  for (const directory of ["packages", "platform/packages", "apps/web", "platform/config", "platform/templates/adopt", "platform/tooling/e2e"]) {
+    cpSync(path.join(REPO, directory), path.join(root, directory), { recursive: true, filter });
+  }
+  for (const file of ["app.config.ts", "package.json", "bun.lock", "platform/tooling/organization-migration-check.ts", ".github/actions/deploy-convex/organization-source.ts"]) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    cpSync(path.join(REPO, file), path.join(root, file));
+  }
+  const workspaces = ["", "apps/web", ...["packages", "platform/packages"].flatMap(directory =>
+    readdirSync(path.join(REPO, directory), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => `${directory}/${entry.name}`))];
+  for (const workspace of workspaces) {
+    const from = path.join(REPO, workspace, "node_modules");
+    if (!existsSync(from)) continue;
+    const to = path.join(root, workspace, "node_modules");
+    const link = (name: string) => {
+      const source = realpathSync(path.join(from, name));
+      const relative = path.relative(REPO, source);
+      let target = !relative.startsWith("..") && !relative.split(path.sep).includes("node_modules") ? path.join(root, relative) : source;
+      // The deployment digest deliberately rejects workspace source escaping its
+      // checkout. Materialize published packages for the preflight regression,
+      // preserving that check instead of teaching it to trust external symlinks.
+      if (materializeDependencies && target === source && name !== ".bin") {
+        assert(!relative.startsWith("..") && !path.isAbsolute(relative), "preflight fixture requires checkout-local installed dependencies");
+        target = path.join(root, relative);
+        if (!existsSync(target)) cpSync(source, target, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+      }
+      mkdirSync(path.dirname(path.join(to, name)), { recursive: true });
+      if (target !== path.join(to, name)) symlinkSync(target, path.join(to, name));
+    };
+    mkdirSync(to, { recursive: true });
+    for (const entry of readdirSync(from)) {
+      if ([".vite", ".cache"].includes(entry) || materializeDependencies && entry === ".bun") continue;
+      if (entry.startsWith("@")) for (const child of readdirSync(path.join(from, entry))) link(`${entry}/${child}`);
+      else link(entry);
+    }
+  }
+}
+
+test("sample removal source preflight works before generated declaration refresh", t => {
+  const root = mkdtempSync(path.join(tmpdir(), "adopt-preflight-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  copyAdoptionSources(root, true);
+  const declarations = path.join(root, "packages/backend/convex/_generated/api.d.ts");
+  const before = readFileSync(declarations, "utf8");
+  assert.match(before, /import type .*from "\.\.\/fileAccess\.js"/);
+  removeSample(root);
+  assert.equal(existsSync(path.join(root, "packages/backend/convex/fileAccess.ts")), false);
+  const source = inspectOrganizationSource(root);
+  assert.match(source.deploymentVersion, /^[a-f0-9]{64}$/);
+  assert.match(source.registryHash, /^[a-f0-9]{64}$/);
+  assert.equal(readFileSync(declarations, "utf8"), before, "preflight must not rewrite generated bindings");
+  write(root, "packages/backend/convex/unclassified.ts", "export const surprise = 1;\n");
+  assert.throws(() => inspectOrganizationSource(root), /inventory is incomplete/);
+});
 
 test("setAppConfig sets name, email, cookie prefix and ports in the starter configuration fixture", () => {
   const out = setAppConfig(read("app.config.ts"), {
@@ -197,7 +257,8 @@ test("sample removal replaces domain UI and retains account messages and platfor
   write(root, "apps/web/qa/e2e/private-files.spec.ts", "sample browser test");
   write(root, "apps/web/qa/e2e/shard-durations.json", JSON.stringify({ "private-files.spec.ts": 20, "auth-flow.spec.ts": 13 }));
   write(root, `${dashboard}dashboard-client.tsx`, "sample");
-  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`]) {
+  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`,
+    "apps/web/src/components/organizations/organization-client.tsx"]) {
     write(root, file, 'import { AppSidebar } from "@/components/projects/app-sidebar";\n');
   }
   mkdirSync(path.join(root, "apps/web/qa/tests"), { recursive: true });
@@ -216,29 +277,51 @@ test("sample removal replaces domain UI and retains account messages and platfor
   assert.equal(existsSync(path.join(root, "apps/web/src/components/app-sidebar.tsx")), true);
 });
 
-test("sample removal leaves the retained backend suite runnable", (t) => {
+test("sample removal leaves the retained backend suite runnable", async (t) => {
   const root = mkdtempSync(path.join(tmpdir(), "adopt-backend-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const backend = path.join(root, "packages/backend");
-  cpSync(path.join(REPO, "packages/backend"), backend, {
-    recursive: true,
-    filter: file => !["node_modules", ".turbo", "coverage"].includes(path.basename(file)),
-  });
-  // Reuse installed dependencies; the backend modules and schema are fixture-local.
-  symlinkSync(path.join(REPO, "packages/backend/node_modules"), path.join(backend, "node_modules"), "dir");
-  symlinkSync(path.join(REPO, "node_modules"), path.join(root, "node_modules"), "dir");
-  cpSync(path.join(REPO, "platform/config"), path.join(root, "platform/config"), { recursive: true });
-  cpSync(path.join(REPO, "platform/templates/adopt"), path.join(root, "platform/templates/adopt"), { recursive: true });
-  for (const file of [
-    "apps/web/src/components/settings/account-client.tsx",
-    "apps/web/src/app/[locale]/(dashboard)/dashboard/settings/sessions/sessions-client.tsx",
-  ]) write(root, file, 'import { AppSidebar } from "@/components/projects/app-sidebar";\n');
-  mkdirSync(path.join(root, "apps/web/qa/tests"), { recursive: true });
-  write(root, "packages/messages/en.json", JSON.stringify({ dashboard: { account: "Settings" } }));
+  copyAdoptionSources(root);
 
   removeSample(root);
-  for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts"]) {
+  for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts", "tenantProjects.ts", "tenantTasks.ts", "tenantFiles.ts", "tenantAccess.ts"]) {
     assert.equal(existsSync(path.join(backend, "convex", file)), false);
   }
-  execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
+  // Keep every recovery boundary; only the explicitly removed domain stages differ.
+  const migration = readFileSync(path.join(backend, "convex/organizationMigration.ts"), "utf8");
+  const originalMigration = read("packages/backend/convex/organizationMigration.ts");
+  assert.equal(migration.slice(migration.indexOf("function checkTables()")), originalMigration.slice(originalMigration.indexOf("function checkTables()")));
+  assert.equal(migration.match(/^export const organizationMigrationStages = .*$/m)?.[0],
+    originalMigration.match(/^export const organizationMigrationStages = .*$/m)?.[0].replace("...domainStages, ", ""));
+  const originalRegistry = (await import(pathToFileURL(path.join(REPO, "packages/backend/convex/organizationMigrationRegistry.ts")).href)).organizationMigrationRegistry;
+  const adoptedRegistry = (await import(pathToFileURL(path.join(backend, "convex/organizationMigrationRegistry.ts")).href)).organizationMigrationRegistry;
+  assert.deepEqual(adoptedRegistry.tables, Object.fromEntries(Object.entries(originalRegistry.tables).filter(([name]) => !["projects", "tasks", "uploads"].includes(name))));
+  assert.deepEqual(adoptedRegistry.functions, Object.fromEntries(Object.entries(originalRegistry.functions).filter(([name]) => !/^(sampleTables|tenantProjects|tenantTasks|tenantFiles|projects|tasks|files):/.test(name))));
+  assert.deepEqual(adoptedRegistry.jobs, originalRegistry.jobs);
+  assert.deepEqual(adoptedRegistry.components, originalRegistry.components);
+  const inventory = await checkOrganizationMigration(root);
+  assert(inventory.functions.includes("organizationMigration:recoverForward"));
+  assert(!inventory.functions.some(name => /^(tenantProjects|tenantTasks|tenantFiles|projects|tasks|files):/.test(name)));
+  write(root, "packages/backend/convex/unclassified.ts", "export const surprise = 1;\n");
+  await assert.rejects(checkOrganizationMigration(root), /ORGANIZATION_INVENTORY_INCOMPLETE/);
+  rmSync(path.join(backend, "convex/unclassified.ts"));
+  const schemaPath = path.join(backend, "convex/schema.ts");
+  const schema = readFileSync(schemaPath, "utf8");
+  writeFileSync(schemaPath, schema.replace('import { defineSchema }', 'import { defineSchema, defineTable }')
+    .replace("...platformTables,", "...platformTables, unclassifiedPrivateRows: defineTable({}),"));
+  await assert.rejects(checkOrganizationMigration(root), /missingTables.*unclassifiedPrivateRows/);
+  writeFileSync(schemaPath, schema);
+  execFileSync("bun", ["run", "typecheck"], { cwd: backend, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
+  const web = path.join(root, "apps/web");
+  execFileSync("bun", ["run", "typecheck"], { cwd: web, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
+  const webTests = execFileSync("bun", ["run", "test:unit", "qa/tests/personal-data.test.tsx", "qa/tests/organization-flows.test.tsx", "qa/tests/organization-picker.test.tsx", "qa/tests/safe-query.test.tsx", "--maxWorkers", "2"], { cwd: web, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
+  t.diagnostic(`Adopted web: ${webTests.match(/Tests\s+[^\n]+/)?.[0]}`);
+  // --list loads every retained spec without a browser, server or auth ceremony.
+  const discovery = execFileSync(path.join(web, "node_modules/.bin/playwright"), ["test", "--list", "--reporter=list"], { cwd: web, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
+  assert.match(discovery, /organization-journeys.spec.ts/);
+  assert.match(discovery, /organization-security.spec.ts/);
+  assert.doesNotMatch(discovery, /private-files.spec.ts/);
+  t.diagnostic(`Adopted E2E discovery: ${discovery.match(/Total: [^\n]+/)?.[0]}`);
+  const backendTests = execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2"], { cwd: backend, encoding: "utf8", stdio: "pipe", timeout: 120_000 });
+  t.diagnostic(`Adopted backend: ${backendTests.match(/Tests\s+[^\n]+/)?.[0]}`);
 });

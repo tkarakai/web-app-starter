@@ -8,6 +8,7 @@ import { parseEnv } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import { checkHostedFixtures, DEPLOY_KEYS, TARGET_KEYS, withTarget, type ConvexCommand } from "../../.github/actions/deploy-convex/fixture-target.ts";
+import { inspectOrganizationSource, prepareOrganizationDeployment, verifyOrganizationDeployment } from "../../.github/actions/deploy-convex/organization-target.ts";
 export { assertHostedEnvironment, type ConvexCommand } from "../../.github/actions/deploy-convex/fixture-target.ts";
 
 type Env = Record<string, string | undefined>;
@@ -48,7 +49,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const sources = [process.env, readEnv(path.join(root, ".env.local")), fileEnv, readEnv(path.join(root, "packages/backend/.env"))];
     if (mode === "check-launch") {
       assertAnonymousLaunch(...sources);
-    } else if (mode === "anonymous") {
+    } else if (mode === "anonymous" || mode === "organization") {
       assertAnonymousLaunch(...sources);
       const name = fileEnv.CONVEX_DEPLOYMENT?.replace(/^anonymous:/, "");
       if (!name) throw new Error("No anonymous backend is configured.");
@@ -57,7 +58,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       const config = JSON.parse(fs.readFileSync(projectLocal ? projectConfig : path.join(homedir(), ".convex/anonymous-convex-backend-state", name, "config.json"), "utf8"));
       if (!projectLocal && config.deploymentName === undefined) config.deploymentName = name;
       const target = anonymousTarget(fileEnv, config);
-      withTarget(root, target, command => provisionFixtures(command, "anonymous", path.join(root, ".env.e2e.local"), fileEnv.CONVEX_SITE_URL!));
+      if (mode === "anonymous") {
+        withTarget(root, target, command => provisionFixtures(command, "anonymous", path.join(root, ".env.e2e.local"), fileEnv.CONVEX_SITE_URL!));
+      } else {
+        const source = inspectOrganizationSource(root);
+        withTarget(root, target, command => {
+          prepareOrganizationDeployment(command, source);
+          verifyOrganizationDeployment(command, source);
+        });
+      }
     } else if (mode === "local-aws") {
       // The local compose target publishes precisely these loopback-bound ports.
       if (sources.some(source => DEPLOY_KEYS.some(key => source[key])) || process.env.CONVEX_SELF_HOSTED_URL !== "http://convex.localhost.floci.io:3310") throw new Error("Local AWS fixtures require the dedicated local compose backend.");
@@ -69,6 +78,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     } else if (mode === "check-hosted") {
       checkHostedFixtures(root);
       console.log("Hosted fixture preflight passed.");
-    } else throw new Error("Usage: local-fixtures.ts check-launch|anonymous|local-aws|check-hosted");
+    } else throw new Error("Usage: local-fixtures.ts check-launch|anonymous|organization|local-aws|check-hosted");
   } catch (error) { console.error(error instanceof Error ? error.message : "Local fixture configuration failed."); process.exitCode = 1; }
 }

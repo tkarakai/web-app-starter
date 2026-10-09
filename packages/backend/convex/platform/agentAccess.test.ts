@@ -183,10 +183,10 @@ describe("full native capability adapter and independent surfaces", () => {
     await expect(write("profile_setLocale", { locale: "en" })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
     expect(await read("account_currentUser")).not.toBeNull();
   });
-  test("user administration uses safe IDs, protects admins, revokes sessions and cleans authentication records", async () => {
+  test("app-operator administration uses safe IDs, protects app operators and revokes sessions while preserving identity records", async () => {
     const f = await fixture(); const auth = await f.mint();
     const now = Date.now();
-    const other = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { email: "other@example.test", name: "Other", emailVerified: true, role: "user", createdAt: now, updatedAt: now } } });
+    const other = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { email: "other@example.test", name: "Other", emailVerified: true, role: "admin", createdAt: now, updatedAt: now } } });
     const session = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: { userId: other._id, token: "NEVER_EXPOSE_THIS_TOKEN", createdAt: now, updatedAt: now, expiresAt: now + 3600_000 } } });
     const read = (name: string, input = {}) => f.t.query(api.platform.agentCapabilities.read, { token: auth.token, resource, name, input });
     const write = (name: string, input = {}) => f.t.mutation(api.platform.agentCapabilities.write, { token: auth.token, resource, name, input });
@@ -201,12 +201,13 @@ describe("full native capability adapter and independent surfaces", () => {
     expect(await read("users_sessions", { userId: other._id, paginationOpts: { numItems: 10, cursor: null } })).toMatchObject({ page: [] });
     await write("users_unban", { userId: other._id });
     const protectedId = await f.t.mutation(components.platform.adminEmails.ensure, { email: other.email });
-    for (const name of ["users_ban", "users_remove", "users_setRole"]) await expect(write(name, { userId: other._id, ...(name === "users_setRole" ? { role: "user" } : {}) })).rejects.toThrow("PROTECTED_ADMIN");
+    await expect(write("users_ban", { userId: other._id })).rejects.toThrow("PROTECTED_ADMIN");
+    await expect(write("users_setRole", { userId: other._id, role: "user" })).rejects.toThrow("OPERATOR_ROLE_TRANSITION_UNSUPPORTED");
     await f.t.mutation(components.platform.adminEmails.replace, { id: protectedId, email: "different.test" });
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "account", data: { userId: other._id, accountId: other._id, providerId: "credential", password: "SECRET_HASH", createdAt: now, updatedAt: now } } });
-    await write("users_remove", { userId: other._id });
-    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: other._id }] })).toBeNull();
-    await expect(read("users_get", { userId: other._id })).rejects.toThrow("USER_NOT_FOUND");
+    await expect(write("users_remove", { userId: other._id })).rejects.toThrow("UNKNOWN_CAPABILITY");
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: other._id }] })).not.toBeNull();
+    expect(await read("users_get", { userId: other._id })).toMatchObject({ role: "admin" });
   });
   test("CLI grants are audience-bound and independently revoked; WebMCP uses the normal human session", async () => {
     const f = await fixture(); const mcp = await f.mint();
@@ -242,7 +243,9 @@ describe("full native capability adapter and independent surfaces", () => {
       names.push(...page.matches.map(row => row.name));
       offset = page.nextOffset;
     }
-    expect(new Set(names).size).toBe(80);
+    const { catalogueRows } = await import("./agentRegistry");
+    const { browserCatalogue } = await import("@web-app-starter/agentic/browser-catalogue");
+    expect(new Set(names).size).toBe(catalogueRows().length + Object.keys(browserCatalogue).length);
     expect(names).toEqual(expect.arrayContaining(["announcements_create", "browser_readPage", "surfaces_setEnabled"]));
     const descriptions = JSON.parse(await gateway("describe", { names: ["announcements_create"] }));
     expect(descriptions).toMatchObject([{ inputSchema: { required: expect.arrayContaining(["name", "bannerText"]) } }]);
@@ -386,10 +389,11 @@ describe("A2A ownership, rollback and interruption guarantees", () => {
   test("a failed worker rolls back native writes; a restarted working task commits only once", async () => {
     const f = await setup();
     const { mutation } = await import("../_generated/server");
-    const { rememberNative } = await import("./nativeCapabilities");
+    const { rememberNative, classifyNative } = await import("./nativeCapabilities");
     const { capabilityRegistry } = await import("./agentRegistry");
     const definition = { args: {}, handler: async (ctx: import("../_generated/server").MutationCtx) => { await ctx.db.insert("userProfiles", { ownerId: "must-roll-back", createdAt: Date.now(), updatedAt: Date.now() }); throw new Error("NATIVE_OPERATION_FAILED"); } };
     const registry = capabilityRegistry(); registry.test_rollback = { title: "Rollback test", description: "Trusted test-only native operation", effect: "write", registered: rememberNative(mutation(definition), definition, "mutation") };
+    classifyNative(registry.test_rollback.registered!, "platform/userProfiles:upsert");
     try {
       const task = await f.send("test_rollback"); const { internal } = await import("../_generated/api");
       const taskId = task.id as import("../_generated/dataModel").Id<"agentTasks">;
@@ -411,13 +415,14 @@ describe("A2A ownership, rollback and interruption guarantees", () => {
 describe("semantic user filtering and private helper policy", () => {
   beforeEach(() => { vi.useFakeTimers(); vi.stubEnv("AGENT_MCP_RESOURCE", resource); vi.stubEnv("AGENT_MCP_AUTH_ORIGIN", "http://mcp-auth.localhost:3001"); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
-  test("server-side user filters include active legacy rows and combine verified/role/search predicates", async () => {
+  test("server-side app-operator filters exclude organization users and combine verified/role/search predicates", async () => {
     const f = await fixture(); const auth = await f.mint(); const now = Date.now();
-    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Filter Target", email: "target@example.test", emailVerified: true, role: "user", createdAt: now, updatedAt: now } } });
-    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Banned", email: "banned@example.test", emailVerified: false, role: "user", banned: true, createdAt: now, updatedAt: now } } });
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Filter Target", email: "target@example.test", emailVerified: true, role: "admin", createdAt: now, updatedAt: now } } });
+    await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Banned", email: "banned@example.test", emailVerified: false, role: "admin", banned: true, createdAt: now, updatedAt: now } } });
     const list = (input = {}) => f.t.query(api.platform.agentCapabilities.read, { token: auth.token, resource, name: "users_list", input: { paginationOpts: { numItems: 10, cursor: null }, ...input } });
     expect(await list({ status: "active" })).toMatchObject({ page: expect.arrayContaining([expect.objectContaining({ email: "target@example.test" })]) });
-    const filtered = await list({ role: "user", emailVerified: true, status: "active", search: "Target", searchField: "name" });
+    await expect(list({ role: "user" })).rejects.toThrow("OPERATOR_TARGET_REQUIRED");
+    const filtered = await list({ role: "admin", emailVerified: true, status: "active", search: "Target", searchField: "name" });
     expect(filtered).toMatchObject({ page: [expect.objectContaining({ name: "Filter Target" })] });
     expect(await list({ search: "TARGET", searchField: "email" })).toMatchObject({ page: [expect.objectContaining({ email: "target@example.test" })] });
     expect(await list({ status: "banned" })).toMatchObject({ page: [expect.objectContaining({ email: "banned@example.test" })] });

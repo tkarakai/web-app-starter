@@ -1,5 +1,6 @@
 "use client";
 
+import adminMessages from "@/messages/en.json";
 import messages from "@web-app-starter/i18n/messages/en.json";
 
 import * as React from "react";
@@ -8,6 +9,7 @@ import Link from "next/link";
 import { useSignOut } from "@web-app-starter/auth-ui";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Building2,
   ChevronRight,
   ListChecks,
   LogOut,
@@ -59,7 +61,8 @@ const manageItems = [
     ? [{ label: "Announcements", href: "/manage/announcements", icon: Megaphone }]
     : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
-  { label: "Users", href: "/manage/users", icon: Users },
+  { label: adminMessages.adminOrganizations.title, href: "/manage/organizations", icon: Building2 },
+  { label: "App operators", href: "/manage/users", icon: Users },
 ];
 
 const observabilityItems = [
@@ -112,12 +115,12 @@ export function AdminSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip={`${appConfig.identity.productName} Admin`}
+              tooltip={`${appConfig.identity.productName} App admin`}
               className="font-semibold"
             >
               <Link href="/dashboard">
                 <img src="/icon.svg" alt="App Icon" className="h-5 w-5 shrink-0" />
-                <span>{appConfig.identity.productName} Admin</span>
+                <span>{appConfig.identity.productName} App admin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

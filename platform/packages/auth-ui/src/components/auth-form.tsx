@@ -236,7 +236,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       const result = await authClient.signIn.email({
         email,
         password,
-        callbackURL: "/dashboard",
         rememberMe: true,
       });
 
@@ -280,12 +279,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         signIn: {
           passkey: (args: {
             email: string;
-            callbackURL: string;
           }) => Promise<{ error?: { message?: string } }>;
         };
       }).signIn.passkey({
         email: email.trim(),
-        callbackURL: "/dashboard",
       });
 
       if (result.error) {

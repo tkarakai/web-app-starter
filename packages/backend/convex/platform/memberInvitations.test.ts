@@ -1,12 +1,16 @@
+import { ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./betterAuth/organizationVocabulary";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { modules } from "../test.modules";
+import { createPrivateResourceTestEnv } from "./privateResources.test-helpers";
 import schema from "./betterAuth/schema";
 import { sha256Hex } from "./tokenHash";
 import { sendAuthEmail } from "./sendAuthEmail";
 import { catalogueRows } from "./agentRegistry";
+import { enrollOrganizationAdminForTest } from "../../test/organizationSecurity";
+import { completeOrganizationMigration } from "../../test/organizationReadiness";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const password = "orchid quartz lantern telescope meadow violin glacier";
@@ -26,8 +30,9 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals();
 const invites = components.betterAuth.memberInvitations;
 
 async function fixture() {
-  const t = createTestEnv();
+  const t = createPrivateResourceTestEnv(modules);
   t.registerComponent("betterAuth", schema, import.meta.glob("./betterAuth/**/*.*s"));
+  await completeOrganizationMigration(t);
   async function user(email = `${randomUUID()}@example.test`, role = "user", verified = true) {
     const now = Date.now();
     const result = await t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Member fixture", email, role, emailVerified: verified, createdAt: now, updatedAt: now } } });
@@ -46,13 +51,12 @@ async function fixture() {
     const admin = await user();
     const org = await t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: admin._id });
     await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: admin._id }], update: { twoFactorEnabled: true } } });
-    const factor = await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: admin._id, verified: true, secret: "fixture-factor", backupCodes: "fixture-codes" } } });
-    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "member", where: [{ field: "_id", value: org.memberId }], update: { adminEnrolledAt: Date.now(), adminFactorId: factor._id } } });
-    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: org.organizationId }], update: { experience: "collaborative" } } });
+    await t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: admin._id, verified: true, secret: "fixture-factor", backupCodes: "fixture-codes" } } });
+    await enrollOrganizationAdminForTest(t, { organizationId: org.organizationId, userId: admin._id });
     return { ...org, admin };
   }
   const org = await organization();
-  async function invite(email = `${randomUUID()}@example.test`, role: "member" | "org-admin" = "member", target = org) {
+  async function invite(email = `${randomUUID()}@example.test`, role: typeof ORG_MEMBER_ROLE | typeof ORG_ADMIN_MEMBERSHIP_ROLE = ORG_MEMBER_ROLE, target = org) {
     const token = randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
     const id = await t.mutation(invites.issue, { organizationId: target.organizationId, actorId: target.admin._id, email, role, tokenHash: sha256Hex(token), expiresAt: Date.now() + 86_400_000 });
     return { id, email: email.trim().toLowerCase(), role, token, organizationId: target.organizationId };
@@ -69,7 +73,7 @@ describe("canonical invitation-bound member admission", () => {
     const f = await fixture();
     await f.setting("onboardingType", "inviteOnly");
     const invite = await f.invite(" New.Member@Example.Test ");
-    expect(await f.t.action(api.platform.memberInvitations.preview, f.context(invite))).toMatchObject({ organizationId: f.org.organizationId, email: invite.email, role: "member" });
+    expect(await f.t.action(api.platform.memberInvitations.preview, f.context(invite))).toMatchObject({ organizationId: f.org.organizationId, email: invite.email, role: ORG_MEMBER_ROLE });
     const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
     const args = { capability: claim.capability, email: invite.email, name: "New member", password };
     await f.t.action(api.platform.memberInvitations.register, args);
@@ -109,7 +113,7 @@ describe("canonical invitation-bound member admission", () => {
     expect(await f.rows("session")).toEqual(sessions);
     const result = await client.mutation(api.platform.memberInvitations.accept, f.context(invite));
     expect(result).toMatchObject({ organizationId: f.org.organizationId, adminPending: false });
-    expect(await f.t.query(components.betterAuth.organizations.context, { organizationId: f.org.organizationId, userId: user._id })).toMatchObject({ role: "member", canManageMembers: false });
+    expect(await f.t.query(components.betterAuth.organizations.context, { organizationId: f.org.organizationId, userId: user._id })).toMatchObject({ role: ORG_MEMBER_ROLE, canManageMembers: false });
     expect(await f.rows("organization")).toHaveLength(1);
     expect(await f.t.mutation(components.betterAuth.organizations.resumeCustomerProvisioning, { userId: user._id })).toBeNull();
   });
@@ -118,19 +122,19 @@ describe("canonical invitation-bound member admission", () => {
     const f = await fixture();
     const user = await f.user();
     const personal = await f.t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: user._id });
-    const projectId = await f.t.run(ctx => ctx.db.insert("projects", { name: "Private", description: "Unchanged", ownerId: user._id, createdAt: Date.now() }));
+    const projectId = await f.t.run(ctx => ctx.db.insert("securityTestPrivateResources", { name: "Private", description: "Unchanged", ownerId: user._id, createdAt: Date.now() }));
     const project = await f.t.run(ctx => ctx.db.get(projectId));
     const credential = (await f.rows("account")).find(row => row.userId === user._id);
     const other = await f.organization();
     const first = await f.invite(user.email);
-    const second = await f.invite(user.email, "org-admin", other);
+    const second = await f.invite(user.email, ORG_ADMIN_MEMBERSHIP_ROLE, other);
     const client = await f.client(user._id);
     await client.mutation(api.platform.memberInvitations.accept, f.context(first));
     const admin = await client.mutation(api.platform.memberInvitations.accept, f.context(second));
     expect(admin.adminPending).toBe(true);
-    expect(await f.t.query(components.betterAuth.organizations.context, { organizationId: other.organizationId, userId: user._id })).toMatchObject({ role: "member", canManageMembers: false });
+    expect(await f.t.query(components.betterAuth.organizations.context, { organizationId: other.organizationId, userId: user._id })).toMatchObject({ role: ORG_MEMBER_ROLE, canManageMembers: false });
     expect(await client.query(api.platform.organizationEnrollment.status, { organizationId: other.organizationId })).toMatchObject({ scope: "user", setup: { purpose: "invitation", completed: false } });
-    expect(await f.t.query(components.betterAuth.organizations.context, { organizationId: personal.organizationId, userId: user._id })).toMatchObject({ role: "org-admin", experience: "personal" });
+    expect(await f.t.query(components.betterAuth.organizations.context, { organizationId: personal.organizationId, userId: user._id })).toMatchObject({ role: ORG_ADMIN_MEMBERSHIP_ROLE, experience: "personal" });
     expect((await f.rows("account")).find(row => row.userId === user._id)).toEqual(credential);
     expect(await f.t.run(ctx => ctx.db.get(projectId))).toEqual(project);
   });
@@ -150,8 +154,8 @@ describe("canonical invitation-bound member admission", () => {
   });
 
   test.each([
-    ["empty", "member"], ["foreign", "member"],
-    ["empty", "org-admin"], ["foreign", "org-admin"],
+    ["empty", ORG_MEMBER_ROLE], ["foreign", ORG_MEMBER_ROLE],
+    ["empty", ORG_ADMIN_MEMBERSHIP_ROLE], ["foreign", ORG_ADMIN_MEMBERSHIP_ROLE],
   ] as const)("%s context rejects every public invitation operation for %s", async (context, role) => {
     const f = await fixture();
     const user = await f.user();
@@ -173,7 +177,7 @@ describe("canonical invitation-bound member admission", () => {
     const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
     expect(claim).toMatchObject({ organizationId: invite.organizationId, email: user.email, role });
     const accepted = await client.mutation(api.platform.memberInvitations.accept, f.context(invite));
-    expect(accepted).toMatchObject({ organizationId: invite.organizationId, adminPending: role === "org-admin" });
+    expect(accepted).toMatchObject({ organizationId: invite.organizationId, adminPending: role === ORG_ADMIN_MEMBERSHIP_ROLE });
     const after = await snapshot();
     await expect(client.mutation(api.platform.memberInvitations.accept, args)).rejects.toThrow("INVALID_MEMBER_INVITATION");
     expect(await snapshot()).toEqual(after);
@@ -199,7 +203,19 @@ describe("canonical invitation-bound member admission", () => {
     if (state === "canceled") await f.t.mutation(invites.cancel, { organizationId: f.org.organizationId, actorId: f.org.admin._id, invitationId: invite.id });
     if (state === "expired") vi.setSystemTime(Date.now() + 86_400_001);
     if (state === "disabled") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "organization", where: [{ field: "_id", value: f.org.organizationId }], update: { lifecycle: "disabled" } } });
-    if (state === "inviter-demoted") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "member", where: [{ field: "_id", value: f.org.memberId }], update: { role: "member" } } });
+    if (state === "inviter-demoted") {
+      const peer = await f.user();
+      await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: peer._id }], update: { twoFactorEnabled: true } } });
+      await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "twoFactor", data: { userId: peer._id, verified: true, secret: "peer-factor", backupCodes: "peer-codes" } } });
+      const peerMember = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
+        organizationId: f.org.organizationId, userId: peer._id, role: ORG_MEMBER_ROLE, createdAt: Date.now(),
+      } } });
+      await f.t.mutation(components.betterAuth.organizations.changeMember, { organizationId: f.org.organizationId,
+        actorId: f.org.admin._id, memberId: peerMember._id, operation: "promote" });
+      await enrollOrganizationAdminForTest(f.t, { organizationId: f.org.organizationId, userId: peer._id });
+      await f.t.mutation(components.betterAuth.organizations.changeMember, { organizationId: f.org.organizationId,
+        actorId: peer._id, memberId: f.org.memberId, operation: "demote" });
+    }
     await expect(f.t.action(api.platform.memberInvitations.register, { capability: claim.capability, email: invite.email, name: "New", password })).rejects.toThrow(/INVALID_MEMBER_INVITATION|ORGANIZATION_UNAVAILABLE|NOT_ORGANIZATION_ADMIN/);
     const user = await f.user(invite.email);
     const client = await f.client(user._id);
@@ -233,7 +249,7 @@ describe("canonical invitation-bound member admission", () => {
     expect(await f.findUser(invite.email)).toEqual(user);
   });
 
-  test("operator reservations and auth-only/operator sessions cannot become customer members", async () => {
+  test("operator reservations and auth-only/operator sessions cannot become organization members", async () => {
     const f = await fixture();
     const invite = await f.invite("reserved@example.test");
     const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
@@ -283,16 +299,16 @@ describe("canonical invitation-bound member admission", () => {
     expect(await f.rows("organization")).toHaveLength(1);
   });
 
-  test("pending invited administrator does not count as the last enrolled admin or issue invitations", async () => {
+  test("pending invited org-admin does not count as the last enrolled org-admin or issue invitations", async () => {
     const f = await fixture();
     const user = await f.user();
-    const invite = await f.invite(user.email, "org-admin");
+    const invite = await f.invite(user.email, ORG_ADMIN_MEMBERSHIP_ROLE);
     await (await f.client(user._id)).mutation(api.platform.memberInvitations.accept, f.context(invite));
     await expect(f.t.mutation(components.betterAuth.organizations.changeMember, { organizationId: f.org.organizationId, actorId: f.org.admin._id, memberId: f.org.memberId, operation: "demote" })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
-    await expect(f.t.mutation(invites.issue, { organizationId: f.org.organizationId, actorId: user._id, email: "other@example.test", role: "member", tokenHash: "a".repeat(64), expiresAt: Date.now() + 60_000 })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
+    await expect(f.t.mutation(invites.issue, { organizationId: f.org.organizationId, actorId: user._id, email: "other@example.test", role: ORG_MEMBER_ROLE, tokenHash: "a".repeat(64), expiresAt: Date.now() + 60_000 })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
     const personalUser = await f.user();
     const personal = await f.t.mutation(components.betterAuth.organizations.provisionPersonal, { userId: personalUser._id });
-    await expect(f.t.mutation(invites.issue, { organizationId: personal.organizationId, actorId: personalUser._id, email: "other@example.test", role: "member", tokenHash: "b".repeat(64), expiresAt: Date.now() + 60_000 })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
+    await expect(f.t.mutation(invites.issue, { organizationId: personal.organizationId, actorId: personalUser._id, email: "other@example.test", role: ORG_MEMBER_ROLE, tokenHash: "b".repeat(64), expiresAt: Date.now() + 60_000 })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
   });
 
   test("rotated token invalidates old registration capabilities and previews", async () => {
@@ -321,13 +337,16 @@ describe("canonical invitation-bound member admission", () => {
     const f = await fixture();
     const invite = await f.invite();
     const claim = await f.t.action(api.platform.memberInvitations.claim, f.context(invite));
-    await f.t.action(api.platform.memberInvitations.register, { capability: claim.capability, email: invite.email, name: "New", password });
-    const user = (await f.findUser(invite.email))!;
-    const client = await f.client(user._id);
     vi.mocked(sendAuthEmail).mockRejectedValueOnce(new Error("DELIVERY_UNAVAILABLE"));
-    await expect(client.action(api.platform.memberInvitations.requestVerification, f.context(invite))).rejects.toThrow("DELIVERY_UNAVAILABLE");
+    await expect(f.t.action(api.platform.memberInvitations.register,
+      { capability: claim.capability, email: invite.email, name: "New", password })).rejects.toThrow("DELIVERY_UNAVAILABLE");
+    const user = (await f.findUser(invite.email))!;
+    expect(user).toMatchObject({ emailVerified: false });
+    expect(await f.rows("session")).toHaveLength(0);
+    await expect(f.t.action(api.platform.memberInvitations.requestRegistrationVerification,
+      { capability: claim.capability, email: "wrong@example.test" })).rejects.toThrow("INVALID_MEMBER_INVITATION");
+    await f.t.action(api.platform.memberInvitations.requestRegistrationVerification, { capability: claim.capability, email: invite.email });
     expect(await f.findUser(invite.email)).toEqual(user);
-    await client.action(api.platform.memberInvitations.requestVerification, f.context(invite));
     expect(vi.mocked(sendAuthEmail).mock.calls).toHaveLength(2);
     expect(await f.rows("organization")).toHaveLength(1);
   });

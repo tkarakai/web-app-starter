@@ -12,6 +12,7 @@ import { rateLimit } from "./platform/rateLimits";
 import { requireProjectAccess } from "./projectAccess";
 
 const MAX_FILE_SIZE = 1_048_576;
+const legacyContext = { organizationId: v.optional(v.string()) };
 
 /** Allowed content types for uploads. Reject executables, HTML, SVG, etc. */
 export const ALLOWED_CONTENT_TYPES = new Set([
@@ -41,11 +42,11 @@ export const saveUpload = authedMutation({
 });
 
 export const beginUpload = internalMutation({
-  args: { projectId: v.id("projects") },
+  args: { ...legacyContext, projectId: v.id("projects") },
   handler: async (ctx, args): Promise<string> => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
-    await requireProjectAccess({ ...ctx, ...auth }, args.projectId);
+    await requireProjectAccess({ ...ctx, ...auth }, args.projectId, args.organizationId);
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth.ownerId;
   },
@@ -53,17 +54,20 @@ export const beginUpload = internalMutation({
 
 export const finishUpload = internalMutation({
   args: {
+    ...legacyContext,
     projectId: v.id("projects"), storageId: v.id("_storage"), name: v.string(),
     contentType: v.string(), size: v.number(), ownerId: v.string(),
   },
   handler: async (ctx, args): Promise<Id<"uploads">> => {
     const auth = await getAuth(ctx);
     if (!auth || auth.ownerId !== args.ownerId) throw new Error("NOT_AUTHENTICATED");
-    await requireProjectAccess({ ...ctx, ...auth }, args.projectId);
+    await requireProjectAccess({ ...ctx, ...auth }, args.projectId, args.organizationId);
     const existing = await ctx.db.query("uploads")
       .withIndex("by_storage", (q) => q.eq("storageId", args.storageId)).first();
     if (existing) throw new Error("FILE_ALREADY_REGISTERED");
-    return ctx.db.insert("uploads", { ...args, ownershipVersion: 1, createdAt: Date.now() });
+    // Captured personal context authorizes the legacy bridge; it does not migrate this row.
+    return ctx.db.insert("uploads", { projectId: args.projectId, storageId: args.storageId, name: args.name,
+      contentType: args.contentType, size: args.size, ownerId: args.ownerId, ownershipVersion: 1, createdAt: Date.now() });
   },
 });
 
@@ -79,16 +83,16 @@ export const discardUnattachedUpload = internalMutation({
 
 /** Accept bytes, never a caller-selected storage ID or owner. */
 export const uploadFile = action({
-  args: { projectId: v.id("projects"), name: v.string(), contentType: v.string(), bytes: v.bytes() },
+  args: { ...legacyContext, projectId: v.id("projects"), name: v.string(), contentType: v.string(), bytes: v.bytes() },
   handler: async (ctx, args): Promise<Id<"uploads">> => {
     assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
     if (args.bytes.byteLength > MAX_FILE_SIZE) throw new Error("FILE_TOO_LARGE");
     if (!ALLOWED_CONTENT_TYPES.has(args.contentType)) throw new Error("FILE_TYPE_NOT_ALLOWED");
-    const ownerId = await ctx.runMutation(internal.files.beginUpload, { projectId: args.projectId });
+    const ownerId = await ctx.runMutation(internal.files.beginUpload, { projectId: args.projectId, organizationId: args.organizationId });
     const storageId = await ctx.storage.store(new Blob([args.bytes], { type: args.contentType }));
     try {
       return await ctx.runMutation(internal.files.finishUpload, {
-        projectId: args.projectId, name: args.name, contentType: args.contentType,
+        projectId: args.projectId, organizationId: args.organizationId, name: args.name, contentType: args.contentType,
         size: args.bytes.byteLength, storageId, ownerId,
       });
     } catch (error) {
@@ -100,37 +104,39 @@ export const uploadFile = action({
 });
 
 export const authorizeDownload = internalQuery({
-  args: { id: v.id("uploads") },
+  args: { ...legacyContext, id: v.id("uploads") },
   handler: async (ctx, args) => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
     const upload = await ctx.db.get(args.id);
     if (!upload) throw new Error("UPLOAD_NOT_FOUND");
-    await requireFileAccess({ ...ctx, ...auth }, upload);
+    await requireFileAccess({ ...ctx, ...auth }, upload, args.organizationId);
     return upload;
   },
 });
 
 /** Reauthorize each read; no transferable storage URL is returned. */
 export const downloadFile = action({
-  args: { id: v.id("uploads") },
+  args: { ...legacyContext, id: v.id("uploads") },
   handler: async (ctx, args): Promise<{ bytes: ArrayBuffer; name: string; contentType: string }> => {
     const upload = await ctx.runQuery(internal.files.authorizeDownload, args);
     const blob = await ctx.storage.get(upload.storageId);
     if (!blob) throw new Error("FILE_NOT_FOUND");
     const bytes = await blob.arrayBuffer();
     // Permissions can change while the storage read is in flight.
-    await ctx.runQuery(internal.files.authorizeDownload, args);
+    const current = await ctx.runQuery(internal.files.authorizeDownload, args);
+    if (current.storageId !== upload.storageId) throw new Error("FILE_CHANGED");
     return { bytes, name: upload.name, contentType: upload.contentType };
   },
 });
 
 export const listUploads = authedQuery({
-  args: { projectId: v.id("projects") },
+  args: { ...legacyContext, projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    await requireProjectAccess(ctx, args.projectId);
+    await requireProjectAccess(ctx, args.projectId, args.organizationId);
     const uploads = await ctx.db.query("uploads")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId)).order("desc").collect();
+    if (uploads.some(upload => upload.organizationId !== undefined || upload.ownerId !== ctx.ownerId)) throw new Error("LEGACY_RESOURCE_REQUIRES_MIGRATION");
     return Promise.all(uploads.map(async (upload) => ({
       _id: upload._id, name: upload.name, size: upload.size, contentType: upload.contentType,
       available: await hasExclusiveFileOwnership(ctx, upload),
@@ -139,11 +145,11 @@ export const listUploads = authedQuery({
 });
 
 export const deleteUpload = authedMutation({
-  args: { id: v.id("uploads") },
+  args: { ...legacyContext, id: v.id("uploads") },
   handler: async (ctx, args) => {
     const upload = await ctx.db.get(args.id);
     if (!upload) throw new Error("UPLOAD_NOT_FOUND");
-    await requireFileAccess(ctx, upload);
+    await requireFileAccess(ctx, upload, args.organizationId);
     await ctx.storage.delete(upload.storageId);
     await ctx.db.delete(args.id);
   },

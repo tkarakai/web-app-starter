@@ -12,13 +12,16 @@ const mocks = vi.hoisted(() => ({
   enabled: true as boolean | undefined,
   session: { isPending: false, data: { session: { id: "session-first" } } as { session: { id: string } } | null },
   authenticated: true,
+  actor: "operator-first" as string | null,
+  generation: "generation-first",
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: { useSession: () => mocks.session } }));
+vi.mock("@/components/auth/auth-guard", () => ({ useAuthUser: () => mocks.actor ? { id: mocks.actor } : null }));
 vi.mock("convex/react", () => ({
   useConvex: () => mocks.client,
   useConvexAuth: () => ({ isAuthenticated: useContext(Authentication) ?? mocks.authenticated }),
-  useQuery: () => mocks.enabled === undefined ? undefined : { surfaces: { webmcp: { enabled: mocks.enabled } } },
+  useQuery: () => mocks.enabled === undefined ? undefined : { surfaces: { webmcp: { enabled: mocks.enabled, generation: mocks.generation } } },
 }));
 
 let provider: WebMcpSimulator;
@@ -28,6 +31,7 @@ beforeEach(() => {
   mocks.enabled = true;
   mocks.session = { isPending: false, data: { session: { id: "session-first" } } };
   mocks.authenticated = true;
+  mocks.actor = "operator-first"; mocks.generation = "generation-first";
   provider = new WebMcpSimulator();
   Object.defineProperty(document, "modelContext", { configurable: true, value: provider });
 });

@@ -8,7 +8,7 @@ export default function Setup2faPage() {
           Set up two-factor authentication
         </h1>
         <p className="text-sm text-muted-foreground">
-          Add an extra layer of security to your admin account.
+          Add an extra layer of security to your app-operator account.
         </p>
       </div>
       <div className="max-w-md">

@@ -4,9 +4,15 @@ import { announcementCatalogue } from "./fixtures/catalogue";
 test("A2A released wire binding, card and part contracts match the v1 types", () => {
   expect(A2A_VERSION).toBe("1.0");
   const card = a2aAgentCard("http://localhost:3002", "http://mcp-auth.localhost:3002", "Example");
+  expect(card.name).toBe("Example app-operator capability worker");
   expect(card.supportedInterfaces).toEqual([{ url: "http://localhost:3002/api/a2a", protocolBinding: "JSONRPC", protocolVersion: "1.0" }]);
   expect(card.securityRequirements[0]?.schemes.adminOAuth.list).toEqual(["admin:manage"]);
   expect(card.capabilities.streaming).toBe(false);
+  expect(card.description).toContain("app control-plane");
+  expect(card.description).toContain("Organization-user identity/security records");
+  expect(card.skills[0]?.tags).toContain("organizations");
+  expect(card.skills[0]?.tags).toContain("app-operator");
+  expect(card.skills[0]?.tags).not.toContain("users");
   const base = { message: { messageId: "test", role: "ROLE_USER", parts: [{ text: "Help" }] } };
   expect(messageRequest.parse(base).configuration).toBeUndefined();
   expect(() => messageRequest.parse({ message: { ...base.message, parts: [{ text: "Help", data: {} }] } })).toThrow();

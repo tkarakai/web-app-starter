@@ -166,22 +166,23 @@ export function MyComponent() {
 ## Organization primitives and authority
 
 The auth package includes Better Auth's organization client and server schema. Organization roles
-(`org-admin`, `member`) are membership roles, not the global `user.role` used for platform
-administrator access. Never set a customer's global role to `admin` to represent organization
+(`org-admin`, `member`) are membership roles, not the global `user.role` used for app-operator
+access. Never set a customer's global role to `admin` to represent organization
 management, and never treat membership as permission to read another owner's private resources.
 
 Installing the plugin does not make an existing application multi-tenant. Its native organization
 HTTP endpoints are denied by the platform's auth endpoint policy; the client namespace is not
 permission to use them. Do not call low-level auth-component organization operations from app
 clients or bypass the platform policy. See [customer onboarding](authentication-and-onboarding.md#71-step-1--create-account-email--password)
-for signup behavior. Application-data scope and a preserving migration must be implemented
-before enabling collaborative customer access.
+for signup behavior. The sample app includes private-data scope and a
+[preserving cutover](organization-data-migration.md). Customized apps must register and verify
+their own data and execution paths before readiness permits membership management.
 
 ### Parent enrollment setup API
 
-`api.platform.organizationEnrollment` exposes **setup only**, with an explicit `organizationId`:
+`api.platform.organizationEnrollment` binds every operation to an explicit `organizationId`:
 
-- `begin({ organizationId, name, slug })`: starts/resumes collaboration setup for the personal
+- `begin({ organizationId, name, slug })`: starts/resumes org-admin security setup for enabling membership management in the personal
   owner with a recent ordinary application session. It preserves the organization ID and data.
 - `status({ organizationId })`: returns live scoped assurance plus non-secret setup progress.
   This is self-service state, not authorization to access tenant data or manage members.
@@ -190,6 +191,10 @@ before enabling collaborative customer access.
 - `acknowledgeRecovery({ organizationId, password, codes })`: requires recent strong proof,
   a verified TOTP factor, the current password and two distinct codes from the current set.
   The parent decrypts/validates one captured set and records its exact encrypted fingerprint.
+- `complete({ organizationId })`: requires verified deployment readiness and current scoped
+  admin assurance, then atomically completes enrollment. First completion enables membership
+  management in the same personal organization; invited/promoted administrators gain their
+  membership role only after this ceremony.
 
 These operations derive identity and session from authentication, require live membership and an
 active organization, reject operator and auth-only sessions, and recheck action snapshots in the
@@ -205,16 +210,18 @@ that clock. Pending setup does **not** elevate the identity's ordinary user poli
 setup preserves personal access. Promotion candidates likewise keep their current member role.
 An ordinary status with `allowed: true` does not satisfy the scoped setup requirements.
 
-No public completion or member-management endpoint is exposed here: successful setup still leaves
-collaboration/promotion pending. Activation, elevated future-login enforcement, factor-change
-last-admin protection, preserving tenant cutover and the enrollment/invitation browser
-flows must be integrated before collaborative customer access can be enabled. Do not activate it
-by directly calling the component's completion primitive.
+Completed administrators retain ordinary-user authority while subsequent sign-ins enforce
+admin security requirements. The Better Auth component applies last-effective-admin checks in
+the same transaction as membership, credential, factor and policy changes. Use the supported
+[security and replacement flows](organization-security.md); never call component completion
+from a client or manufacture an enrollment receipt. The web app provides a resumable ceremony
+and [membership management](organization-context.md).
 
 ### Invitation-bound member admission API
 
-`api.platform.memberInvitations` handles entry to an **existing** collaborative organization,
-separately from customer waitlist/signup and platform-operator invitations.
+`api.platform.memberInvitations` handles entry to an **existing** organization with membership management enabled,
+separately from new-customer admission and app-operator invitations. An invited org-member is a user,
+not thereby a customer/payer.
 
 Every token-based operation requires the invitation's exact immutable `organizationId`;
 empty or foreign context is rejected. Registration instead uses the exchanged capability,
@@ -228,6 +235,8 @@ which already binds the invitation and its organization.
   with unverified email. Member passwords use user policy; invited-admin passwords use admin
   policy. Strength and breach checks run server-side. It does not create a session, personal
   organization or membership, and does not require new-customer admission to be enabled.
+  It sends verification; `requestRegistrationVerification({ capability, email })` retries for
+  that exact live registration claim without requiring an unverified account to sign in.
 - After normal sign-in, `requestVerification({ organizationId, token })` sends the existing
   email-verification ceremony to the exact signed-in recipient. It remains available when
   ordinary user email verification is optional; invitation acceptance always requires it.
@@ -246,21 +255,39 @@ changed inviter eligibility, wrong recipient/context or disabled lifecycle fail 
 left behind by interrupted or failed acceptance stays an identity; sign-in never guesses a personal
 organization for it.
 
-Tokens/capabilities/passwords must not be logged, persisted in browser storage or passed through
-agent tools. Wrong-email clients should offer switch-account, never reinterpret the recipient.
+Never log invitation tokens, registration capabilities or passwords, or pass them through agent
+tools. The invitation continuation stores only its pending bearer/capability in per-tab
+`sessionStorage`, clears it on acceptance or replacement, and never uses `localStorage`, URL query
+parameters, DOM attributes or referrers. Passwords and recovery secrets stay in the current human
+ceremony's memory and are discarded on account change. Wrong-email clients should offer
+switch-account, never reinterpret the recipient.
 Verification delivery failure does not roll back registration; retry delivery without recreating
 or changing the account. Operator/reserved enrollment addresses and auth-only sessions cannot
 use these APIs to gain customer membership.
 
-Invitation issuance/cancellation live only in the server-only component
-`betterAuth/memberInvitations.ts`. No public invitation management, delivery UI or collaboration
-activation is enabled yet. Future wrappers must require live enrolled-org-admin assurance, apply
-cutover gates and deliver tokens securely; do not register component primitives or password/token
-entry actions in the agent catalogue. Legacy invitations without the guarded token metadata are
-not silently accepted by ID. App-data context, preserving migration, operator/agent boundaries,
-future elevated-login enforcement and last-admin security-state guards remain prerequisites for
-full collaboration. Tests: `platform/memberInvitations.test.ts` (mock email/breach transports,
-real auth sign-in/verification and persisted admission behavior); inbox delivery is separate.
+Guarded public `issue`, `list`, `cancel` and `resend` operations require an eligible administrator,
+live organization and appropriate recent assurance. Delivery is scheduled atomically with issuance;
+retries check the current inviter, invitation generation, organization availability and readiness.
+A created invitation is not proof of delivery: the member-management UI exposes delivery status.
+Links carry the random token in a fragment, and the recipient view handles signup, verification,
+wrong-account switching and acceptance. Legacy invitations without guarded token metadata remain
+unusable through this workflow.
+
+`api.platform.memberManagement` exposes scoped directory, role/removal, leave, designated-contact
+and membership-audit operations. Pending administrators do not count toward the last-admin invariant.
+Operators use only the [organization control UI](organization-operators.md), which exposes approved
+metadata and current designated contact rather than private records or an ordinary member directory.
+Component primitives, credential ceremonies and member-management operations are excluded from
+app-operator agent dispatch. See [organization context](organization-context.md) for captured context
+and private-data rules.
+
+### Explicit customer context and operator controls
+
+See [organization context](organization-context.md) for explicit context resolution, tenant builders,
+the personal web caller, the separate legacy-private bridge and app-operator control APIs.
+Optional schema fields do not migrate historical rows. See
+[audit projection](audit-trail-architecture.md#source-format) for retained history and operator reads,
+and [agentic integration](agentic-announcements.md) for independent native dispatch and epoch cutover.
 
 ### Server-only organization primitives
 
@@ -289,19 +316,20 @@ sign-in ignores stale customer intent and never provisions a tenant. Development
 use a server-only signup option guarded by the full local fixture authorization; ordinary HTTP
 signup cannot select it. This option does not exist for hosted operator onboarding.
 
-`beginCollaboration` keeps the organization personal while enrollment is pending; promotion likewise
+`beginMembershipManagement` keeps the organization personal while org-admin enrollment is pending;
+`beginCollaboration` is its legacy API alias. Promotion likewise
 keeps a peer's role as `member`.
 Initial completion requires verified email, a recent proof matching the current credential hash,
 a verified enabled two-factor row and recorded acknowledgment matching its current backup-code
 material. Enrollment stores hashes, not plaintext credentials or recovery codes. A passkey is
 required when the trusted caller sets `requirePasskey`, including completed-enrollment retries.
-Completion atomically grants membership authority and, for collaboration, renames and activates
-the same organization ID. Management authority is rechecked against the live user and verified
+Completion atomically enables the enrolled org-admin's membership-administration authority and,
+for membership-management setup, renames and enables membership management in the same organization ID. Management authority is rechecked against the live user and verified
 factor; a stored `org-admin` role alone is insufficient.
 
 Member removal, demotion and leaving protect the last enrolled administrator in the same mutation
 and preserve global identity and other memberships. The org-admin directory scopes both pagination
-cursors and returned rows to the requested organization. Platform operators instead receive only
+cursors and returned rows to the requested organization. App operators instead receive only
 organization metadata and org-admin names/emails through `contacts`; `setLifecycle` disables or
 reactivates customer access through these component operations without deleting memberships. They have component
 regression coverage in `packages/backend/convex/platform/organizations.test.ts`; signup/provisioning
@@ -338,7 +366,7 @@ from `@repo/backend`. Do not query these tables through the app database.
 Wrappers resolve Better Auth sessions, enforce roles and rate limits, and schedule the
 app's email transport. The component owns token hashes, claim/revoke transitions and
 onboarding state. See [administrator enrollment](authentication-and-onboarding.md#6-admin-onboarding-flow)
-for the account-binding and activation contract. Bootstrap, local seeds and E2E fixtures
+for the account-binding and app-operator privilege-enablement contract. Bootstrap, local seeds and E2E fixtures
 use the same component storage.
 
 For paginated waitlist and admin-invitation queries, import `usePaginatedQuery` from

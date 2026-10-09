@@ -30,7 +30,7 @@ export function IntegrationsDashboard() {
     return (
       <Card className="max-w-2xl">
         <CardContent className="p-6 text-sm text-muted-foreground">
-          Integration status is only available to admin users.
+          Integration status is only available to app operators.
         </CardContent>
       </Card>
     );

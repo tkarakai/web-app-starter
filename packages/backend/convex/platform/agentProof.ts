@@ -5,6 +5,8 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, type AuthSession } from "./sessionPolicy";
+import { AGENT_CONTRACT_EPOCH, currentAgentContract } from "./agentContract";
+import { isAppOperatorIdentity } from "./appOperatorIdentity";
 
 const optionalNumber = v.optional(v.union(v.number(), v.null()));
 const optionalString = v.optional(v.union(v.string(), v.null()));
@@ -30,6 +32,7 @@ export async function credentialFingerprint(ctx: Pick<QueryCtx, "runQuery">, use
 }
 export async function captureDelegation(ctx: MutationCtx, pair: AuthSession) {
   const assurance = await evaluateSession(ctx, pair);
+  if (!await isAppOperatorIdentity(ctx, pair.user) || !assurance.allowed || !assurance.recent) throw new Error("NOT_ADMIN");
   const expiresAt = Math.min(Date.now() + 16 * 60_000, assurance.expiresAt);
   const { createdAt, assuranceVersion, authMethod, authenticatedAt, primaryVerifiedAt, strongVerifiedAt,
     strongFactorId, strongFactorType, recoveryOnly } = pair.session;
@@ -37,7 +40,7 @@ export async function captureDelegation(ctx: MutationCtx, pair: AuthSession) {
     strongVerifiedAt: assurance.strong ? strongVerifiedAt : undefined,
     strongFactorId: assurance.strong ? strongFactorId : undefined,
     strongFactorType: assurance.strong ? strongFactorType : undefined, recoveryOnly };
-  const id = await ctx.db.insert("agentDelegations", { userId: pair.user._id, expiresAt,
+  const id = await ctx.db.insert("agentDelegations", { contractEpoch: AGENT_CONTRACT_EPOCH, userId: pair.user._id, expiresAt,
     credentialFingerprint: await credentialFingerprint(ctx, pair.user._id, proof),
     proof,
   });
@@ -47,9 +50,9 @@ export async function captureDelegation(ctx: MutationCtx, pair: AuthSession) {
 export async function readDelegation(ctx: QueryCtx, id: Id<"agentDelegations"> | undefined, userId: string) {
   if (!id) return null;
   const delegation = await ctx.db.get(id);
-  if (!delegation || delegation.userId !== userId || delegation.expiresAt <= Date.now()) return null;
+  if (!delegation || !currentAgentContract(delegation) || delegation.userId !== userId || delegation.expiresAt <= Date.now()) return null;
   const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: userId }] }) as Doc<"user"> | null;
-  if (!user || user.role !== "admin" || user.banned || delegation.credentialFingerprint !== await credentialFingerprint(ctx, userId, delegation.proof)) return null;
+  if (!user || !await isAppOperatorIdentity(ctx, user) || user.banned || delegation.credentialFingerprint !== await credentialFingerprint(ctx, userId, delegation.proof)) return null;
   return { user, session: delegation.proof };
 }
 export async function deleteAuthorizationSession(ctx: MutationCtx, sessionId: string) {

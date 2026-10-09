@@ -76,6 +76,12 @@ The resolution command only records that item; run `--resume` again to continue.
   and continue independent source work. Follow the migration's expand/copy/verify/contract
   procedure; pass its read-only completion status with `--migration-evidence`. The updater
   itself never performs data migration or deploys the app.
+- **Organization cutover:** follow `platform/docs/organization-data-migration.md` for the
+  registration codemod, explicit custom-data dispositions, bounded backfill and deployment-bound
+  readiness. Preserve original owner/auth IDs and storage; classify legacy agent authority and
+  queued jobs. A generic migration result or source upgrade is not cutover evidence. Both fresh
+  and populated targets run prepare/deploy/verify; recover forward without resetting data or
+  restoring retired writers. Rehearse customized tenant/agent paths as well as the sample model.
 - **Advisories:** review the actual affected range and fixed version. A recorded decision cannot
   bypass contracts; a target still affected by a high/critical advisory cannot be certified.
 - **Lockfile audit:** the final adopted-app `bun.lock` is audited online after install. If high or

@@ -74,7 +74,9 @@ describe("mock email", () => {
     });
   });
 
-  async function prepareSender(kind: "auth" | "admin" | "waitlist"): Promise<() => Promise<unknown>> {
+  async function prepareSender(kind: "auth" | "admin" | "waitlist" | "organization"): Promise<() => Promise<unknown>> {
+    if (kind === "organization") return () => sendAuthEmail({ to: recipient, type: "custom", subject: "Organization invitation",
+      html: "<p>Invitation</p>", text: "Invitation", previewUrl: "http://localhost/organization-invitation#token=local-test-secret" });
     if (kind === "auth") {
       return () =>
         sendAuthEmail({ to: recipient, type: "magic-link", urlOrCode: "https://web.example.test/?token=secret" });
@@ -95,7 +97,7 @@ describe("mock email", () => {
     return () => t.action(internal.platform.waitlistActions.generateTokenAndSendEmail, { entryId, email: recipient });
   }
 
-  for (const kind of ["auth", "admin", "waitlist"] as const) {
+  for (const kind of ["auth", "admin", "waitlist", "organization"] as const) {
     test(`${kind} email refuses to fall back to the console outside local development`, async () => {
       vi.stubEnv("SITE_URL", "https://app.example.com");
       const send = await prepareSender(kind);
@@ -110,6 +112,7 @@ describe("mock email", () => {
 
       await send();
       expect(logged.join("\n")).toContain(recipient);
+      if (kind === "organization") expect(logged.join("\n")).toContain("#token=local-test-secret");
     });
   }
 });

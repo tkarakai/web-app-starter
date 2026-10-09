@@ -5,19 +5,24 @@ import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { sha256Hex } from "../tokenHash";
 import { RECENT_AUTH_MS } from "../sessionFields";
+import { appendOrganizationAudit } from "./organizationAudit";
+import { assertEffectiveAdministrator } from "./organizationSecurityGuard";
+import { requireIdentityMappingWritable } from "./organizationMigrationBarrier";
+import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE, LEGACY_APP_OPERATOR_REQUIRED_ERROR } from "./organizationVocabulary";
 import {
-  administrator, customer, enrolledAdmin, isOperator, membership, organization,
-  preserveAdministrator, ROLE_ADMIN, ROLE_MEMBER, validateOrganizationDetails,
+  requireOrgAdmin, organizationUser, enrolledOrgAdmin, isAppOperatorRole, membership, organization,
+  preserveOrgAdmin, validateOrganizationDetails, organizationAdminSecurity,
 } from "./organizationModel";
 
 /** Component APIs are server-only. Parent wrappers must bind live session/assurance and actor. */
 async function provision(ctx: MutationCtx, userId: string) {
-  await customer(ctx, userId);
+  await organizationUser(ctx, userId);
   const existing = await ctx.db.query("organization").withIndex("personalOwnerId", q => q.eq("personalOwnerId", userId)).unique();
   if (existing) {
     const member = await membership(ctx, existing._id, userId);
     return { organizationId: existing._id, memberId: member._id };
   }
+  await requireIdentityMappingWritable(ctx);
   // Invocation expresses new-customer intent; member-only signup must not call this function.
   const existingMembership = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).first();
   if (existingMembership) throw new Error("CUSTOMER_ALREADY_HAS_MEMBERSHIP");
@@ -26,7 +31,7 @@ async function provision(ctx: MutationCtx, userId: string) {
     name: "Personal", slug: `personal-${crypto.randomUUID()}`,
     personalOwnerId: userId, experience: "personal", lifecycle: "active", createdAt: now,
   });
-  const memberId = await ctx.db.insert("member", { organizationId, userId, role: ROLE_ADMIN, createdAt: now });
+  const memberId = await ctx.db.insert("member", { organizationId, userId, role: ORG_ADMIN_MEMBERSHIP_ROLE, createdAt: now });
   return { organizationId, memberId };
 }
 
@@ -45,7 +50,7 @@ export const resumeCustomerProvisioning = mutation({
     if (!user) throw new Error("NOT_AUTHENTICATED");
     // Identity login remains available to operators; stale customer intent never
     // provisions or confers tenant access after a trusted role transition.
-    if (isOperator(user.role) || !user.customerAdmission) return null;
+    if (isAppOperatorRole(user.role) || !user.customerAdmission) return null;
     if (!["public-signup", "customer-invitation"].includes(user.customerAdmission)) throw new Error("INVALID_CUSTOMER_ADMISSION");
     // Operator enrollment is separate even while its bound candidate has role=user.
     // Such accounts are created by the operator registration transaction without this field.
@@ -53,22 +58,71 @@ export const resumeCustomerProvisioning = mutation({
   },
 });
 
+/** Identity-owned context discovery, never an active-session preference or member directory. */
+export const mine = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    await organizationUser(ctx, userId);
+    const members = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).take(101);
+    if (members.length > 100) throw new Error("ORGANIZATION_CONTEXT_LIMIT");
+    const contexts = [];
+    for (const member of members) {
+      const id = ctx.db.normalizeId("organization", member.organizationId);
+      const org = id ? await ctx.db.get(id) : null;
+      if (!org || (member.role !== ORG_ADMIN_MEMBERSHIP_ROLE && member.role !== ORG_MEMBER_ROLE) || !["personal", MEMBERSHIP_MANAGEMENT_EXPERIENCE].includes(org.experience ?? "")) throw new Error("ORGANIZATION_CONTEXT_UNCLASSIFIED");
+      const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
+      contexts.push({ organizationId: org._id, name: org.name, experience: org.experience,
+        lifecycle: org.lifecycle, role: member.role, personal: org.personalOwnerId === userId,
+        enrollmentStarted: Boolean(enrollment), enrollmentPending: Boolean(enrollment && !enrollment.completedAt) });
+    }
+    return contexts;
+  },
+});
+
+/** Transitional owner-only APIs are not tenant APIs; never resolve ambiguous context implicitly. */
+export const legacyPrivateAccess = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const user = await organizationUser(ctx, userId);
+    const members = await ctx.db.query("member").withIndex("userId", q => q.eq("userId", userId)).take(2);
+    if (!members.length) {
+      if (user.customerAdmission) throw new Error("CUSTOMER_PROVISIONING_REQUIRED");
+      if (await ctx.db.query("organizationInvitationClaims").withIndex("userId", q => q.eq("userId", user._id)).first()) throw new Error("INVITATION_ACCEPTANCE_REQUIRED");
+      return null; // Unmarked historical private identity only; no guessed tenant is created.
+    }
+    if (members.length !== 1) throw new Error("EXPLICIT_ORGANIZATION_CONTEXT_REQUIRED");
+    const org = await organization(ctx, members[0].organizationId);
+    if (org.experience !== "personal" || org.personalOwnerId !== userId || members[0].role !== ORG_ADMIN_MEMBERSHIP_ROLE) throw new Error("EXPLICIT_ORGANIZATION_CONTEXT_REQUIRED");
+    return org._id;
+  },
+});
+
 export const context = query({
   args: { organizationId: v.string(), userId: v.string() },
   handler: async (ctx, { organizationId, userId }) => {
-    await customer(ctx, userId);
+    await organizationUser(ctx, userId);
     const org = await organization(ctx, organizationId);
     const member = await membership(ctx, organizationId, userId);
+    if (member.role !== ORG_ADMIN_MEMBERSHIP_ROLE && member.role !== ORG_MEMBER_ROLE) throw new Error("INVALID_MEMBER_ROLE");
+    const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
     return { organizationId: org._id, name: org.name, slug: org.slug, experience: org.experience,
-      memberId: member._id, role: member.role, canManageMembers: org.experience === "collaborative" && await enrolledAdmin(ctx, member) };
+      primaryContactMemberId: org.primaryContactMemberId ?? null,
+      enrollmentStarted: Boolean(enrollment), enrollmentPending: Boolean(enrollment && !enrollment.completedAt),
+      memberId: member._id, role: member.role, canManageMembers: org.experience === MEMBERSHIP_MANAGEMENT_EXPERIENCE && await enrolledOrgAdmin(ctx, member) };
   },
+});
+
+/** Completed active org-admin roles impose security requirements, never operator authority. */
+export const adminSecurity = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => organizationAdminSecurity(ctx, userId),
 });
 
 /** Enrollment progress for the exact current membership; never exports factor or credential material. */
 export const enrollmentStatus = query({
   args: { organizationId: v.string(), userId: v.string() },
   handler: async (ctx, args) => {
-    await customer(ctx, args.userId);
+    await organizationUser(ctx, args.userId);
     const org = await organization(ctx, args.organizationId);
     const member = await membership(ctx, org._id, args.userId);
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
@@ -85,13 +139,13 @@ export const enrollmentStatus = query({
   },
 });
 
-export const beginCollaboration = mutation({
+export const beginMembershipManagement = mutation({
   args: { organizationId: v.string(), userId: v.string(), name: v.string(), slug: v.string() },
   handler: async (ctx, args) => {
-    await customer(ctx, args.userId);
+    await organizationUser(ctx, args.userId);
     const org = await organization(ctx, args.organizationId);
     const member = await membership(ctx, args.organizationId, args.userId);
-    if (org.experience !== "personal" || org.personalOwnerId !== args.userId || member.role !== ROLE_ADMIN) throw new Error("NOT_PERSONAL_ORGANIZATION_ADMIN");
+    if (org.experience !== "personal" || org.personalOwnerId !== args.userId || member.role !== ORG_ADMIN_MEMBERSHIP_ROLE) throw new Error("NOT_PERSONAL_ORGANIZATION_ADMIN");
     const details = validateOrganizationDetails(args.name, args.slug);
     const conflict = await ctx.db.query("organization").withIndex("slug", q => q.eq("slug", details.slug)).unique();
     if (conflict && conflict._id !== org._id) throw new Error("ORGANIZATION_SLUG_TAKEN");
@@ -102,22 +156,26 @@ export const beginCollaboration = mutation({
       return existing._id;
     }
     return await ctx.db.insert("organizationEnrollments", { organizationId: org._id, memberId: member._id,
-      userId: args.userId, purpose: "collaboration", ...details, createdAt: Date.now() });
+      userId: args.userId, purpose: MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE, ...details, createdAt: Date.now() });
   },
 });
+
+/** @deprecated API compatibility; use beginMembershipManagement. Stored enrollment purpose is unchanged. */
+export const beginCollaboration = beginMembershipManagement;
 
 /** Parent has verified the current password against this exact credential hash. */
 export const recordPasswordProof = mutation({
   args: { organizationId: v.string(), userId: v.string(), credentialProof: v.string() },
   handler: async (ctx, args) => {
-    await customer(ctx, args.userId);
+    await organizationUser(ctx, args.userId);
     await organization(ctx, args.organizationId);
     const member = await membership(ctx, args.organizationId, args.userId);
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
-    if (!enrollment || enrollment.completedAt) throw new Error("INVALID_ENROLLMENT");
+    if (!enrollment || (enrollment.completedAt && member.role !== ORG_ADMIN_MEMBERSHIP_ROLE)) throw new Error("INVALID_ENROLLMENT");
     const account = await ctx.db.query("account").withIndex("providerId_userId", q => q.eq("providerId", "credential").eq("userId", args.userId)).unique();
     if (!account?.password || sha256Hex(account.password) !== args.credentialProof) throw new Error("CREDENTIAL_CHANGED");
-    await ctx.db.patch(enrollment._id, { passwordProof: args.credentialProof, passwordVerifiedAt: Date.now() });
+    const user = await organizationUser(ctx, args.userId);
+    await ctx.db.patch(enrollment._id, { passwordProof: args.credentialProof, passwordEmail: user.email, passwordVerifiedAt: Date.now() });
   },
 });
 
@@ -125,50 +183,56 @@ export const recordPasswordProof = mutation({
 export const acknowledgeRecovery = mutation({
   args: { organizationId: v.string(), userId: v.string(), factorId: v.string(), backupCodesProof: v.string() },
   handler: async (ctx, args) => {
-    const user = await customer(ctx, args.userId);
+    const user = await organizationUser(ctx, args.userId);
     await organization(ctx, args.organizationId);
     const member = await membership(ctx, args.organizationId, args.userId);
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
     const id = ctx.db.normalizeId("twoFactor", args.factorId);
     const factor = id ? await ctx.db.get(id) : null;
-    if (!enrollment || enrollment.completedAt || !user.twoFactorEnabled || !factor?.verified || factor.userId !== user._id) throw new Error("INVALID_ENROLLMENT");
+    if (!enrollment || (enrollment.completedAt && member.role !== ORG_ADMIN_MEMBERSHIP_ROLE) || !user.twoFactorEnabled || !factor?.verified || factor.userId !== user._id) throw new Error("INVALID_ENROLLMENT");
     if (args.backupCodesProof !== sha256Hex(factor.backupCodes)) throw new Error("RECOVERY_CODES_CHANGED");
     await ctx.db.patch(enrollment._id, { backupAcknowledgedAt: Date.now(), backupFactorId: factor._id,
-      backupCodesProof: args.backupCodesProof });
+      backupCodesProof: args.backupCodesProof, factorSecretProof: sha256Hex(factor.secret) });
   },
 });
 
-/** Atomic lifecycle activation + membership grant; the parent also verifies live session proof. */
+/** Atomically complete org-admin enrollment and, when requested, enable organization membership management. The parent verifies live session proof. */
 export const completeEnrollment = mutation({
   args: { organizationId: v.string(), userId: v.string(), requirePasskey: v.boolean() },
   handler: async (ctx, args) => {
-    const user = await customer(ctx, args.userId);
+    await requireIdentityMappingWritable(ctx);
+    const user = await organizationUser(ctx, args.userId);
     const org = await organization(ctx, args.organizationId);
     const member = await membership(ctx, args.organizationId, args.userId);
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
     if (!enrollment) throw new Error("INVALID_ENROLLMENT");
-    if (args.requirePasskey && !await ctx.db.query("passkey").withIndex("userId", q => q.eq("userId", args.userId)).first()) throw new Error("PASSKEY_REQUIRED");
-    if (enrollment.completedAt) {
-      if (!await enrolledAdmin(ctx, member)) throw new Error("ADMIN_ENROLLMENT_REQUIRED");
-      return org._id;
-    }
+    const securityPolicy = await ctx.db.query("organizationSecurityPolicy").withIndex("key", q => q.eq("key", "admin")).unique();
+    if ((args.requirePasskey || securityPolicy?.passkeyPolicy === "required") && !await ctx.db.query("passkey").withIndex("userId", q => q.eq("userId", args.userId)).first()) throw new Error("PASSKEY_REQUIRED");
+    if (enrollment.completedAt && await enrolledOrgAdmin(ctx, member)) return org._id;
     const factor = await ctx.db.query("twoFactor").withIndex("userId", q => q.eq("userId", args.userId)).unique();
     const account = await ctx.db.query("account").withIndex("providerId_userId", q => q.eq("providerId", "credential").eq("userId", args.userId)).unique();
     if (!user.emailVerified || !user.twoFactorEnabled || !factor?.verified || !account?.password
       || !enrollment.passwordVerifiedAt || enrollment.passwordVerifiedAt + RECENT_AUTH_MS <= Date.now()
       || enrollment.passwordProof !== sha256Hex(account.password)
+      || enrollment.passwordEmail !== user.email
       || !enrollment.backupAcknowledgedAt || enrollment.backupFactorId !== factor._id
+      || enrollment.factorSecretProof !== sha256Hex(factor.secret)
       || enrollment.backupCodesProof !== sha256Hex(factor.backupCodes)) throw new Error("ADMIN_ENROLLMENT_REQUIRED");
-    if (enrollment.purpose === "collaboration") {
-      if (org.experience !== "personal" || org.personalOwnerId !== user._id || member.role !== ROLE_ADMIN
+    if (enrollment.completedAt) {
+      if (org.experience !== MEMBERSHIP_MANAGEMENT_EXPERIENCE || member.role !== ORG_ADMIN_MEMBERSHIP_ROLE) throw new Error("INVALID_ENROLLMENT");
+    } else if (enrollment.purpose === MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE) {
+      if (org.experience !== "personal" || org.personalOwnerId !== user._id || member.role !== ORG_ADMIN_MEMBERSHIP_ROLE
         || !enrollment.name || !enrollment.slug) throw new Error("INVALID_ENROLLMENT");
       const conflict = await ctx.db.query("organization").withIndex("slug", q => q.eq("slug", enrollment.slug!)).unique();
       if (conflict && conflict._id !== org._id) throw new Error("ORGANIZATION_SLUG_TAKEN");
-      await ctx.db.patch(org._id, { name: enrollment.name, slug: enrollment.slug, experience: "collaborative" });
-    } else if (org.experience !== "collaborative" || member.role !== ROLE_MEMBER) throw new Error("INVALID_ENROLLMENT");
+      await ctx.db.patch(org._id, { name: enrollment.name, slug: enrollment.slug, experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE });
+    } else if (org.experience !== MEMBERSHIP_MANAGEMENT_EXPERIENCE || member.role !== ORG_MEMBER_ROLE) throw new Error("INVALID_ENROLLMENT");
     const now = Date.now();
-    await ctx.db.patch(member._id, { role: ROLE_ADMIN, adminEnrolledAt: now, adminFactorId: factor._id });
+    await ctx.db.patch(member._id, { role: ORG_ADMIN_MEMBERSHIP_ROLE, adminEnrolledAt: now, adminFactorId: factor._id });
     await ctx.db.patch(enrollment._id, { completedAt: now });
+    if (!org.primaryContactMemberId) await ctx.db.patch(org._id, { primaryContactMemberId: member._id });
+    await assertEffectiveAdministrator(ctx, org._id);
+    await appendOrganizationAudit(ctx, { organizationId: org._id, actorId: user._id, action: "admin.enrollment_completed", targetId: member._id });
     return org._id;
   },
 });
@@ -177,25 +241,28 @@ export const changeMember = mutation({
   args: { organizationId: v.string(), actorId: v.string(), memberId: v.string(),
     operation: v.union(v.literal("remove"), v.literal("demote"), v.literal("promote")) },
   handler: async (ctx, args) => {
-    const { org } = await administrator(ctx, args.organizationId, args.actorId);
+    await requireIdentityMappingWritable(ctx);
+    const { org } = await requireOrgAdmin(ctx, args.organizationId, args.actorId);
     const targetId = ctx.db.normalizeId("member", args.memberId);
     const target = targetId ? await ctx.db.get(targetId) : null;
     if (!target || target.organizationId !== org._id) throw new Error("MEMBER_NOT_FOUND");
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", target._id)).unique();
     if (args.operation === "promote") {
-      await customer(ctx, target.userId);
-      if (target.role === ROLE_ADMIN) return;
-      if (target.role !== ROLE_MEMBER) throw new Error("INVALID_MEMBER_ROLE");
+      await organizationUser(ctx, target.userId);
+      if (target.role === ORG_ADMIN_MEMBERSHIP_ROLE) return;
+      if (target.role !== ORG_MEMBER_ROLE) throw new Error("INVALID_MEMBER_ROLE");
       if (enrollment && !enrollment.completedAt) return;
       if (enrollment) await ctx.db.delete(enrollment._id);
       await ctx.db.insert("organizationEnrollments", { organizationId: org._id, userId: target.userId,
         memberId: target._id, purpose: "promotion", createdAt: Date.now() });
+      await appendOrganizationAudit(ctx, { organizationId: org._id, actorId: args.actorId, action: "member.promotion_started", targetId: target._id });
       return;
     }
-    await preserveAdministrator(ctx, org, target);
+    await preserveOrgAdmin(ctx, org, target);
     if (enrollment) await ctx.db.delete(enrollment._id);
     if (args.operation === "remove") await ctx.db.delete(target._id);
-    else await ctx.db.patch(target._id, { role: ROLE_MEMBER, adminEnrolledAt: undefined, adminFactorId: undefined });
+    else await ctx.db.patch(target._id, { role: ORG_MEMBER_ROLE, adminEnrolledAt: undefined, adminFactorId: undefined });
+    await appendOrganizationAudit(ctx, { organizationId: org._id, actorId: args.actorId, action: `member.${args.operation}`, targetId: target._id });
   },
 });
 
@@ -203,20 +270,22 @@ export const changeMember = mutation({
 export const leave = mutation({
   args: { organizationId: v.string(), userId: v.string() },
   handler: async (ctx, args) => {
-    await customer(ctx, args.userId);
+    await requireIdentityMappingWritable(ctx);
+    await organizationUser(ctx, args.userId);
     const org = await organization(ctx, args.organizationId);
     const member = await membership(ctx, org._id, args.userId);
-    await preserveAdministrator(ctx, org, member);
+    await preserveOrgAdmin(ctx, org, member);
     const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
     if (enrollment) await ctx.db.delete(enrollment._id);
     await ctx.db.delete(member._id);
+    await appendOrganizationAudit(ctx, { organizationId: org._id, actorId: args.userId, action: "member.left", targetId: member._id });
   },
 });
 
 export const directory = query({
   args: { organizationId: v.string(), actorId: v.string(), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
-    await administrator(ctx, args.organizationId, args.actorId);
+    const { org } = await requireOrgAdmin(ctx, args.organizationId, args.actorId);
     if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
     for (const cursor of [args.paginationOpts.cursor, args.paginationOpts.endCursor]) {
       if (cursor === null || cursor === undefined) continue;
@@ -232,32 +301,47 @@ export const directory = query({
       if (member.organizationId !== args.organizationId) throw new Error("INVALID_DIRECTORY_CURSOR");
       const userId = ctx.db.normalizeId("user", member.userId);
       const user = userId ? await ctx.db.get(userId) : null;
-      if (!user || isOperator(user.role)) throw new Error("INVALID_MEMBER_IDENTITY");
+      if (!user || isAppOperatorRole(user.role)) throw new Error("INVALID_MEMBER_IDENTITY");
       const enrollment = await ctx.db.query("organizationEnrollments").withIndex("memberId", q => q.eq("memberId", member._id)).unique();
       page.push({ memberId: member._id, name: user.name, email: user.email, role: member.role,
-        adminPending: Boolean(enrollment && !enrollment.completedAt), enrolled: await enrolledAdmin(ctx, member) });
+        isContact: member._id === org.primaryContactMemberId && await enrolledOrgAdmin(ctx, member),
+        adminPending: Boolean(enrollment && !enrollment.completedAt), enrolled: await enrolledOrgAdmin(ctx, member) });
     }
     return { ...result, page };
   },
 });
 
-/** Narrow operator projection. Never return auth users, ordinary members or security data. */
+/** Allowlisted app-control-plane organization metadata, no ordinary member count or auth joins. */
+export const controlList = query({
+  args: { operatorId: v.string(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("user", args.operatorId);
+    const appOperator = id ? await ctx.db.get(id) : null;
+    if (!appOperator || appOperator.banned || !isAppOperatorRole(appOperator.role)) throw new Error(LEGACY_APP_OPERATOR_REQUIRED_ERROR);
+    if (!Number.isInteger(args.paginationOpts.numItems) || args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
+    const result = await paginator(ctx.db, schema).query("organization").paginate(args.paginationOpts);
+    return { ...result, page: result.page.map(org => ({ organizationId: org._id, name: org.name,
+      experience: org.experience, lifecycle: org.lifecycle, createdAt: org.createdAt })) };
+  },
+});
+
+/** Narrow app-operator projection. Never return auth users, ordinary members or security data. */
 export const contacts = query({
   args: { organizationId: v.string(), operatorId: v.string() },
   handler: async (ctx, args) => {
-    const operatorId = ctx.db.normalizeId("user", args.operatorId);
-    const operator = operatorId ? await ctx.db.get(operatorId) : null;
-    if (!operator || operator.banned || !isOperator(operator.role)) throw new Error("NOT_PLATFORM_ADMIN");
+    const appOperatorId = ctx.db.normalizeId("user", args.operatorId);
+    const appOperator = appOperatorId ? await ctx.db.get(appOperatorId) : null;
+    if (!appOperator || appOperator.banned || !isAppOperatorRole(appOperator.role)) throw new Error(LEGACY_APP_OPERATOR_REQUIRED_ERROR);
     const orgId = ctx.db.normalizeId("organization", args.organizationId);
     const org = orgId ? await ctx.db.get(orgId) : null;
     if (!org) throw new Error("ORGANIZATION_UNAVAILABLE");
-    const admins = await ctx.db.query("member").withIndex("organizationId_role", q => q.eq("organizationId", org._id).eq("role", ROLE_ADMIN)).take(101);
-    if (admins.length > 100) throw new Error("ORGANIZATION_MEMBER_LIMIT");
+    const contactId = org.primaryContactMemberId ? ctx.db.normalizeId("member", org.primaryContactMemberId) : null;
+    const contact = contactId ? await ctx.db.get(contactId) : null;
     const contacts = [];
-    for (const admin of admins) {
-      const userId = ctx.db.normalizeId("user", admin.userId);
+    if (contact && contact.organizationId === org._id && await enrolledOrgAdmin(ctx, contact)) {
+      const userId = ctx.db.normalizeId("user", contact.userId);
       const user = userId ? await ctx.db.get(userId) : null;
-      if (user && !isOperator(user.role)) contacts.push({ name: user.name, email: user.email });
+      if (user && !isAppOperatorRole(user.role)) contacts.push({ name: user.name, email: user.email });
     }
     return { organizationId: org._id, name: org.name, lifecycle: org.lifecycle, experience: org.experience, contacts };
   },
@@ -266,12 +350,25 @@ export const contacts = query({
 export const setLifecycle = mutation({
   args: { organizationId: v.string(), operatorId: v.string(), lifecycle: v.union(v.literal("active"), v.literal("disabled")) },
   handler: async (ctx, args) => {
-    const operatorId = ctx.db.normalizeId("user", args.operatorId);
-    const operator = operatorId ? await ctx.db.get(operatorId) : null;
-    if (!operator || operator.banned || !isOperator(operator.role)) throw new Error("NOT_PLATFORM_ADMIN");
+    const appOperatorId = ctx.db.normalizeId("user", args.operatorId);
+    const appOperator = appOperatorId ? await ctx.db.get(appOperatorId) : null;
+    if (!appOperator || appOperator.banned || !isAppOperatorRole(appOperator.role)) throw new Error(LEGACY_APP_OPERATOR_REQUIRED_ERROR);
     const id = ctx.db.normalizeId("organization", args.organizationId);
     const org = id ? await ctx.db.get(id) : null;
     if (!org || !["active", "disabled"].includes(org.lifecycle ?? "")) throw new Error("ORGANIZATION_UNAVAILABLE");
     await ctx.db.patch(org._id, { lifecycle: args.lifecycle });
+    await assertEffectiveAdministrator(ctx, org._id);
+  },
+});
+
+export const setContact = mutation({
+  args: { organizationId: v.string(), actorId: v.string(), memberId: v.string() },
+  handler: async (ctx, args) => {
+    const { org } = await requireOrgAdmin(ctx, args.organizationId, args.actorId);
+    const id = ctx.db.normalizeId("member", args.memberId);
+    const member = id ? await ctx.db.get(id) : null;
+    if (!member || member.organizationId !== org._id || !await enrolledOrgAdmin(ctx, member)) throw new Error("NOT_ORGANIZATION_ADMIN");
+    await ctx.db.patch(org._id, { primaryContactMemberId: member._id });
+    await appendOrganizationAudit(ctx, { organizationId: org._id, actorId: args.actorId, action: "contact.changed", targetId: member._id });
   },
 });

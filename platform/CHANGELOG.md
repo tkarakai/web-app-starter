@@ -15,6 +15,17 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Explicit organization-user context and private-owner tenant builders/sample APIs, with
+  immutable request IDs, parent/child checks, live organization-availability/membership rechecks and reauthorized
+  file transfers. The web app captures tab-local context through queries, prepared writes and transfers.
+  See [organization context](docs/organization-context.md).
+- Resumable organization enrollment, member invitations and acceptance, membership/contact management,
+  and operator organization availability screens. Private ownership remains separate from membership.
+- Continuing org-admin assurance and atomic last-effective-admin protection across membership,
+  credential, factor and policy changes, with staged factor replacement and native recovery support.
+  See [organization security](docs/organization-security.md).
+- Preserving, deployment-bound organization cutover with app-owned table/function/job/component
+  registration, resumable verification, legacy-authority quarantine and explicit forward recovery.
 - Adoption refuses work on the live default branch unless explicitly overridden with
   `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
   require task branches, early draft PRs and the existing E2E ready/label policy.
@@ -24,7 +35,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   through manager updates and does not alter another service or credential.
 
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
-  membership and lifecycle operations. For authority boundaries and integration limits, see
+  membership and organization-availability operations. For authority boundaries and integration limits, see
   [organization authority](docs/architecture.md#organization-primitives-and-authority).
 
 - MCP authorization uses a separate auth-only hostname on the existing admin deployment, with
@@ -33,12 +44,41 @@ version. Release-specific compatibility and deployment steps are listed explicit
   steps are in the [deployment runbook](docs/deployment-runbook.md#optional-mcp-authorization-origin).
 
 - Bounded MCP search/schema lookup/execution over the admin capability catalogue, plus
-  independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. Blanket `admin:manage`
-  consent preserves native policy and validation. Existing announcement-only test grants
-  require new authorization and clients use the gateway tools. Reusable independent and pi
+  independently controlled CLI, WebMCP and durable A2A 1.0 surfaces. `admin:manage` consent is
+  constrained to the approved app-operator catalogue and independent native target policy. Earlier
+  authorization contracts require new consent and clients use the gateway tools. Reusable independent and pi
   testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
 
 ### Changed
+
+- Guarded organization deployment uses 10-row migration pages by default and accepts the
+  trusted tooling setting `ORGANIZATION_MIGRATION_BATCH_SIZE` (1–100). Resource failures retain
+  maintenance and the existing checkpoint for a smaller-page resume; no row checks are skipped.
+- Operator-directory pages use an indexed stored `createdAt` order and query-bound cursors;
+  ordinary customer rows no longer consume the operator scan budget. Protected-email reads use
+  bounded component-local identity batches while retaining both privacy checks and complete results.
+- Operator passkey-status reads validate at most 100 input IDs within the auth component,
+  retaining independent native target validation and rejecting a mixed request before reading
+  factors. Results contain only deduplicated operator IDs with an enrolled passkey.
+- Security forms retain hidden same-actor ceremony state during a temporary client session loss
+  while the backend still identifies that actor. Content requires agreement from both identity
+  observations and current assurance; account conflicts and settled signout discard private state.
+- Credential-bearing web/admin browser tests publish value-free reports instead of raw
+  Playwright actions, captures or authentication server logs. Results retain source locations,
+  durations, retries and diagnostic categories. Bounded, explicitly incomplete progress survives
+  interrupted runs when already emitted; failure-only contact observations distinguish request
+  outcomes from directory updates without publishing identity values. Interactive capture modes
+  are refused.
+- Clarified app-operator, organization-user/org-admin and organization membership-management
+  terminology throughout code, UI, help and guidance. Deprecated helper aliases, registered API/tool
+  identifiers and legacy stored mode/enrollment values preserve compatibility without rewriting data.
+- App-operator identity APIs/catalogues target canonical app operators only. Generic Better Auth `/admin/*`
+  calls, organization-user identity administration, global role conversion and identity deletion are denied.
+  Organization controls expose metadata and current org-admin contacts, not private data/member security.
+  App-operator audit views exclude retained private and unclassified history.
+- Native agent execution independently revalidates persisted actor/proof/target authority. Contract
+  epoch 2 invalidates older codes, delegations, grants and queued authority; historical task/artifact
+  rows stay quarantined instead of being deleted or reclassified by owner alone.
 
 - Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.
   Public local-worker setup, registration, diagnostics and the `--public-branch` exception are
@@ -46,6 +86,35 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Local CLI/container checks without GitHub registration are unchanged.
 
 ### Action required
+
+- Restart operator-directory pagination from the first page after this upgrade. Earlier raw
+  cursors are refused; new cursors are bound to the acting operator, filters and sort direction.
+  Directory order now follows the stored `createdAt` value, including imported accounts whose
+  creation timestamp differs from their insertion order. See [admin agentic surfaces](docs/agentic-announcements.md).
+- Run `./platform/tooling/node-ts.sh platform/tooling/codemods/v2-secret-safe-e2e.ts`
+  to migrate the app-owned web test commands and literal Playwright configuration, then
+  `bun install` and use `bun run test:e2e`. Use `--app PATH` for another app location.
+  The codemod preserves unrelated settings and refuses custom command/config expressions
+  for explicit review. Raw reporter/capture overrides and `test:e2e:ui` are no longer supported
+  for credential-bearing suites; use focused headless runs and the safe source diagnostics.
+  See [credential-safe browser reports](docs/testing.md#credential-safe-browser-reports).
+- Replace custom `authClient.admin.*` callers with the guarded app-operator-target APIs. Prefer
+  `appOperatorQuery` / `appOperatorMutation`; their older `adminQuery` / `adminMutation` aliases
+  remain compatible. Do not use global `admin` or these builders to represent an org-admin, and
+  do not rely on identity deletion or organization-user security administration through the app control plane.
+- Obtain new agent consent after updating backend and clients. Do not stamp old grants/tasks/artifacts
+  with the new epoch or continue executing old workers. See [agentic integration](docs/agentic-announcements.md).
+- Before deploying this organization contract, run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/organization-register-migration.ts`.
+  Complete the app-owned registry and executable backfills for every private table, entry point,
+  job and component; the codemod preserves existing registrations and does not infer tenant ownership.
+  Follow [the preserving cutover procedure](docs/organization-data-migration.md), including both
+  populated and custom-data rehearsals. Managed deployments verify readiness before frontend delivery;
+  custom deployment pipelines must use the same prepare/deploy/verify guards.
+- Replace app-owned legacy project/task/file callers with explicit tenant context. Strict tenant
+  APIs and membership completion require a verified readiness receipt. Cutover retires legacy
+  writers permanently; retain ambiguous data for explicit repair and use compatible forward
+  recovery instead of deploying an old binary or resetting the database.
 
 - **Apps with local Actions routing or customized CI callers:** stop/drain and retire any public
   local installation using its old absolute command; remove only its registrations and revoke its
@@ -58,8 +127,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
   hosted. Cancel/restart already queued local jobs. Live-resource and inherited-setting retirement
   steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
 
+
 ### Fixed
 
+- Fresh `adopt --remove-sample` removes both legacy and tenant sample APIs and installs
+  matching empty-domain migration registration. Organization navigation, enrollment and
+  membership management remain available; retained security tests use independent private
+  resources, and adopted backend/web checks no longer require removed sample modules.
 - Backend session-assurance and recovery-code tests remain runnable after adoption with
   `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
 - Resuming setup with `--local-only` never starts an existing authenticated manager service;
@@ -310,7 +384,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   [private file storage](docs/private-file-storage.md).
 
 - **Who is affected:** apps with custom administrator signup code, or pending administrator
-  invitations. **What to do:** deploy the backend and platform admin UI together. Custom clients
+  invitations. **What to do:** deploy the backend and app admin UI together. Custom clients
   must call the action `api.platform.adminInvitations.claimInvitation({ token })`, then
   `register({ capability, email, name, password })`, and sign in normally; ordinary email signup
   cannot create reserved administrator accounts. `claimInvitation` is now an action returning a

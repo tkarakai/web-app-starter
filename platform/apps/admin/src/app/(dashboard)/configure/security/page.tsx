@@ -21,7 +21,7 @@ export default function SecurityPage() {
           <MagicLinkPolicyCard />
         </section>
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight">Admin Policies</h2>
+          <h2 className="text-lg font-semibold tracking-tight">App-admin Policies</h2>
           <EmailVerificationPolicyCard scope="admin" />
           <MfaPolicyCard scope="admin" />
           <PasskeyPolicyCard scope="admin" />

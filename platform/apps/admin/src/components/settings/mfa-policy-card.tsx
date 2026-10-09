@@ -82,12 +82,12 @@ export function MfaPolicyCard({ scope }: { scope: Scope }) {
             <div>
               <CardTitle className="text-base">
                 {isAdminScope
-                  ? "Admin Two-Factor Authentication Policy"
+                  ? "App-admin Two-Factor Authentication Policy"
                   : "User Two-Factor Authentication Policy"}
               </CardTitle>
               <CardDescription>
                 {isAdminScope
-                  ? "Require authenticator app (TOTP) 2FA for admins"
+                  ? "Require authenticator app (TOTP) 2FA for app operators"
                   : "Require authenticator app (TOTP) 2FA for users"}
               </CardDescription>
             </div>

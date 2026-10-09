@@ -287,8 +287,12 @@ save_e2e_artifacts() {
 
   mkdir -p "$ARTIFACTS_DIR/$APP_NAME"
 
-  # Playwright report
-  if [ -d "$APP_DIR/qa/playwright-report" ]; then
+  # Authenticated apps publish only value-free reports, never stale raw assets.
+  if [[ "$APP_NAME" == "web" || "$APP_NAME" == "admin" ]]; then
+    if [ -d "$APP_DIR/qa/safe-e2e-report" ]; then
+      cp -r "$APP_DIR/qa/safe-e2e-report" "$ARTIFACTS_DIR/$APP_NAME/playwright-report"
+    fi
+  elif [ -d "$APP_DIR/qa/playwright-report" ]; then
     cp -r "$APP_DIR/qa/playwright-report" "$ARTIFACTS_DIR/$APP_NAME/playwright-report"
   fi
 
@@ -505,6 +509,28 @@ if [ "$SKIP_E2E" = true ]; then
     step_end "$APP: E2E (Playwright)" "skip"
   done
 else
+  # Complete populated-data verification outside Playwright's webServer timer.
+  # Each ordinary app startup still runs the same source/readiness checks.
+  # Remote targets and backend-free app selections must never start local Convex.
+  if [ -z "${E2E_BASE_URL:-}" ]; then
+    PREPARE_APP=""
+    for APP in web admin landing; do
+      if app_present "$APP"; then PREPARE_APP="$APP"; break; fi
+    done
+    if [ -n "$PREPARE_APP" ]; then
+      print_step "Preparing local backend for E2E"
+      echo "Retained-data verification may take several minutes; browser startup has not begun."
+      step_start
+      if ./platform/tooling/dev-start.sh --ci --prepare-only --app="$PREPARE_APP"; then
+        print_success "Local backend preparation passed"
+        step_end "backend: E2E preparation" "pass"
+      else
+        print_error "Local backend preparation failed; browser suites will not start"
+        step_end "backend: E2E preparation" "fail"
+        exit 1
+      fi
+    fi
+  fi
   print_step "Step 9/9: E2E Tests (Playwright)"
   # Each app's playwright.config.ts has a webServer + reuseExistingServer setting.
   # Locally (no CI env), Playwright reuses running dev servers automatically.
@@ -520,7 +546,11 @@ else
     echo -e "  ${BOLD}Running E2E tests ($APP)...${NC}"
     E2E_EXIT=0
     pushd "$(app_dir "$APP")" > /dev/null
-    PLAYWRIGHT_HTML_OPEN=never bunx playwright test --reporter=list || E2E_EXIT=$?
+    if [[ "$APP" == "web" || "$APP" == "admin" ]]; then
+      bun run test:e2e --reporter=list || E2E_EXIT=$?
+    else
+      PLAYWRIGHT_HTML_OPEN=never bunx playwright test --reporter=list || E2E_EXIT=$?
+    fi
     popd > /dev/null
     if [ $E2E_EXIT -eq 0 ]; then
       print_success "E2E tests passed ($APP)"
@@ -539,7 +569,11 @@ else
     print_warning "Failed E2E reports:"
     for FAILED_APP in "${E2E_FAILED_APPS[@]}"; do
       echo -e "  ${YELLOW}$FAILED_APP${NC}"
-      echo -e "    npx playwright show-report $(app_dir "$FAILED_APP")/qa/playwright-report"
+      if [[ "$FAILED_APP" == "web" || "$FAILED_APP" == "admin" ]]; then
+        echo -e "    $(app_dir "$FAILED_APP")/qa/safe-e2e-report/index.html"
+      else
+        echo -e "    npx playwright show-report $(app_dir "$FAILED_APP")/qa/playwright-report"
+      fi
       echo -e "    .ci-local-artifacts/$FAILED_APP/playwright-report/index.html"
     done
     exit 1

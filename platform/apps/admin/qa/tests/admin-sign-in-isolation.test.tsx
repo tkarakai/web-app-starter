@@ -40,7 +40,7 @@ async function submitPassword(preferred: "password" | "passkey") {
 it.each(["password", "passkey"] as const)("authorization-only %s layout omits recovery navigation and supports password sign-in", async preferred => {
   await passwordStep(true, preferred);
   expect(screen.queryByRole("button", { name: "Forgot password?" })).not.toBeInTheDocument();
-  expect(screen.getByText(/For account recovery or security setup, use the normal admin app/)).toBeVisible();
+  expect(screen.getByText(/For account recovery or security setup, use the normal app-admin interface/)).toBeVisible();
   expect(mocks.push).not.toHaveBeenCalled();
   expect(window.sessionStorage.getItem("forgot-password-email")).toBeNull();
   await submitPassword(preferred);
@@ -96,7 +96,7 @@ it.each(["adminMfaRequired", "adminPasskeyPolicy"])("authorization-only sign-in 
   mocks.policies[key] = key === "adminMfaRequired" ? true : "required";
   mocks.session.mockResolvedValue({ data: { user: { role: "admin", twoFactorEnabled: false } } });
   await passwordStep(true, "password"); await submitPassword("password");
-  expect(screen.getByText(/Complete account security setup in the admin app/)).toBeVisible();
+  expect(screen.getByText(/Complete account security setup in the app-admin interface/)).toBeVisible();
   expect(mocks.push).not.toHaveBeenCalled(); expect(mocks.broadcast).not.toHaveBeenCalled();
 });
 it("authorization-only sign-in supports passkey verification", async () => {

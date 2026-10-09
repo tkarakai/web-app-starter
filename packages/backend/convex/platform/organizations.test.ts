@@ -1,3 +1,7 @@
+import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./betterAuth/organizationVocabulary";
+import { beginCollaboration, beginMembershipManagement } from "./betterAuth/organizations";
+import { customer, organizationUser, isOperator, isAppOperatorRole, ROLE_ADMIN, ROLE_MEMBER, enrolledAdmin, enrolledOrgAdmin, administrator, requireOrgAdmin, preserveAdministrator, preserveOrgAdmin } from "./betterAuth/organizationModel";
+import { requireCustomerSession, requireOrganizationUserSession } from "./tenantContext";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { components } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
@@ -40,32 +44,54 @@ function fixture() {
     await t.mutation(orgApi.acknowledgeRecovery, { organizationId, userId, factorId, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
     return await t.mutation(orgApi.completeEnrollment, { organizationId, userId, requirePasskey: false });
   }
-  async function collaborative(email: string, slug: string) {
+  async function organizationWithMembershipManagement(email: string, slug: string) {
     const admin = await user(email);
     const org = await t.mutation(orgApi.provisionPersonal, { userId: admin._id });
-    await t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: admin._id, name: slug, slug });
+    await t.mutation(orgApi.beginMembershipManagement, { organizationId: org.organizationId, userId: admin._id, name: slug, slug });
     const factor = await security(admin._id);
     await complete(org.organizationId, admin._id, factor._id);
     return { ...org, admin, factor };
   }
   async function addMember(organizationId: string, userId: string) {
     return await t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: {
-      organizationId, userId, role: "member", createdAt: Date.now(),
+      organizationId, userId, role: ORG_MEMBER_ROLE, createdAt: Date.now(),
     } } });
   }
-  return { t, user, security, complete, collaborative, addMember };
+  return { t, user, security, complete, organizationWithMembershipManagement, addMember };
 }
 
 // These exercise component mutation/query behavior and persisted state, not source strings.
 // HTTP/session proof and full enrollment ceremonies have their separate integration suites.
 describe("canonical organization component boundary", () => {
-  test("personal provisioning is retry-safe, creates no global administrator and hides collaboration", async () => {
+  test("canonical naming preserves legacy wire values, source helpers and the registered setup API alias", async () => {
+    // These exact strings are intentional compatibility assertions, not product vocabulary.
+    expect(MEMBERSHIP_MANAGEMENT_EXPERIENCE).toBe("collaborative");
+    expect(MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE).toBe("collaboration");
+    expect(ORG_ADMIN_MEMBERSHIP_ROLE).toBe("org-admin");
+    expect(ROLE_ADMIN).toBe(ORG_ADMIN_MEMBERSHIP_ROLE);
+    expect(ORG_MEMBER_ROLE).toBe("member");
+    expect(ROLE_MEMBER).toBe(ORG_MEMBER_ROLE);
+    expect(beginCollaboration).toBe(beginMembershipManagement);
+    expect(customer).toBe(organizationUser);
+    expect(enrolledAdmin).toBe(enrolledOrgAdmin);
+    expect(administrator).toBe(requireOrgAdmin);
+    expect(preserveAdministrator).toBe(preserveOrgAdmin);
+    expect(isOperator).toBe(isAppOperatorRole);
+    expect(requireCustomerSession).toBe(requireOrganizationUserSession);
+    const f = fixture(); const user = await f.user("compatibility@example.test");
+    const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
+    const args = { organizationId: org.organizationId, userId: user._id, name: "Membership setup", slug: "membership-setup" };
+    const receipt = await f.t.mutation(orgApi.beginMembershipManagement, args);
+    expect(await f.t.mutation(orgApi.beginCollaboration, args)).toBe(receipt);
+    expect(await f.t.query(orgApi.enrollmentStatus, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ purpose: MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE });
+  });
+  test("personal provisioning is retry-safe, creates no app operator and keeps organization membership management unavailable", async () => {
     const f = fixture();
     const user = await f.user("personal@example.test");
     const first = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
     const repeated = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
     expect(repeated).toEqual(first);
-    expect(await f.t.query(orgApi.context, { organizationId: first.organizationId, userId: user._id })).toMatchObject({ experience: "personal", role: "org-admin", canManageMembers: false });
+    expect(await f.t.query(orgApi.context, { organizationId: first.organizationId, userId: user._id })).toMatchObject({ experience: "personal", role: ORG_ADMIN_MEMBERSHIP_ROLE, canManageMembers: false });
     const saved = await f.t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: user._id }] });
     expect(saved?.role).toBe("user");
     await expect(f.t.query(orgApi.directory, { organizationId: first.organizationId, actorId: user._id, paginationOpts: { numItems: 10, cursor: null } })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
@@ -75,7 +101,7 @@ describe("canonical organization component boundary", () => {
     const f = fixture();
     const operator = await f.user("operator@example.test", "admin");
     await expect(f.t.mutation(orgApi.provisionPersonal, { userId: operator._id })).rejects.toThrow("NOT_CUSTOMER");
-    const org = await f.collaborative("creator@example.test", "joined-org");
+    const org = await f.organizationWithMembershipManagement("creator@example.test", "joined-org");
     const member = await f.user("joined@example.test");
     await f.addMember(org.organizationId, member._id);
     await expect(f.t.mutation(orgApi.provisionPersonal, { userId: member._id })).rejects.toThrow("CUSTOMER_ALREADY_HAS_MEMBERSHIP");
@@ -83,32 +109,32 @@ describe("canonical organization component boundary", () => {
 
   test("unknown identity and foreign context are rejected", async () => {
     const f = fixture();
-    const a = await f.collaborative("a@example.test", "context-a");
-    const b = await f.collaborative("b@example.test", "context-b");
+    const a = await f.organizationWithMembershipManagement("a@example.test", "context-a");
+    const b = await f.organizationWithMembershipManagement("b@example.test", "context-b");
     await expect(f.t.query(orgApi.context, { organizationId: a.organizationId, userId: b.admin._id })).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
     await expect(f.t.mutation(orgApi.provisionPersonal, { userId: "not-a-user-id" })).rejects.toThrow("NOT_CUSTOMER");
   });
 
-  test("collaboration is pending until actual credential, recovery and verified-factor requirements hold", async () => {
+  test("organization membership management setup is pending until actual credential, recovery and verified-factor requirements hold", async () => {
     const f = fixture();
     const user = await f.user("upgrade@example.test");
     const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
     const args = { organizationId: org.organizationId, userId: user._id, name: "My organization", slug: "my-organization" };
-    const enrollmentId = await f.t.mutation(orgApi.beginCollaboration, args);
-    expect(await f.t.mutation(orgApi.beginCollaboration, args)).toBe(enrollmentId);
+    const enrollmentId = await f.t.mutation(orgApi.beginMembershipManagement, args);
+    expect(await f.t.mutation(orgApi.beginMembershipManagement, args)).toBe(enrollmentId);
     await expect(f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: user._id, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
     expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ experience: "personal", canManageMembers: false });
     const factor = await f.security(user._id);
     await f.complete(org.organizationId, user._id, factor._id);
-    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ organizationId: org.organizationId, name: args.name, slug: args.slug, experience: "collaborative", canManageMembers: true });
+    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ organizationId: org.organizationId, name: args.name, slug: args.slug, experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE, canManageMembers: true });
     expect(await f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: user._id, requirePasskey: false })).toBe(org.organizationId);
   });
 
-  test("required passkey blocks completion without partially activating collaboration", async () => {
+  test("required passkey blocks completion without partially enabling organization membership management", async () => {
     const f = fixture();
     const user = await f.user("passkey@example.test");
     const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
-    await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: user._id, name: "Passkey", slug: "passkey-required" });
+    await f.t.mutation(orgApi.beginMembershipManagement, { organizationId: org.organizationId, userId: user._id, name: "Passkey", slug: "passkey-required" });
     const factor = await f.security(user._id);
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId: org.organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
     await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: user._id, factorId: factor._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
@@ -120,7 +146,7 @@ describe("canonical organization component boundary", () => {
     const f = fixture();
     const user = await f.user("proof@example.test");
     const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
-    await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: user._id, name: "Proof", slug: "proof-org" });
+    await f.t.mutation(orgApi.beginMembershipManagement, { organizationId: org.organizationId, userId: user._id, name: "Proof", slug: "proof-org" });
     const factor = await f.security(user._id);
     await f.t.mutation(orgApi.recordPasswordProof, { organizationId: org.organizationId, userId: user._id, credentialProof: sha256Hex("fixture-credential-hash") });
     await f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: user._id, factorId: factor._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") });
@@ -131,16 +157,16 @@ describe("canonical organization component boundary", () => {
     await expect(f.t.mutation(orgApi.completeEnrollment, { organizationId: org.organizationId, userId: user._id, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
   });
 
-  test.each(["collaboration", "promotion"] as const)("%s requires acknowledgment of regenerated recovery codes", async purpose => {
+  test.each([MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE, "promotion"] as const)("enrollment purpose %s requires acknowledgment of regenerated recovery codes", async purpose => {
     const f = fixture();
     const user = await f.user(`recovery-${purpose}@example.test`);
     let organizationId: string;
-    if (purpose === "collaboration") {
+    if (purpose === MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE) {
       const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
       organizationId = org.organizationId;
-      await f.t.mutation(orgApi.beginCollaboration, { organizationId, userId: user._id, name: "Recovery", slug: "recovery-org" });
+      await f.t.mutation(orgApi.beginMembershipManagement, { organizationId, userId: user._id, name: "Recovery", slug: "recovery-org" });
     } else {
-      const org = await f.collaborative("recovery-owner@example.test", "recovery-org");
+      const org = await f.organizationWithMembershipManagement("recovery-owner@example.test", "recovery-org");
       organizationId = org.organizationId;
       const member = await f.addMember(organizationId, user._id);
       await f.t.mutation(orgApi.changeMember, { organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
@@ -152,22 +178,22 @@ describe("canonical organization component boundary", () => {
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }], update: { backupCodes: "regenerated-encrypted-codes" } } });
     await expect(f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).rejects.toThrow("ADMIN_ENROLLMENT_REQUIRED");
     expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: false,
-      experience: purpose === "collaboration" ? "personal" : "collaborative", role: purpose === "collaboration" ? "org-admin" : "member" });
+      experience: purpose === MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE ? "personal" : MEMBERSHIP_MANAGEMENT_EXPERIENCE, role: purpose === MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE ? ORG_ADMIN_MEMBERSHIP_ROLE : ORG_MEMBER_ROLE });
     await f.t.mutation(orgApi.acknowledgeRecovery, { ...args, factorId: factor._id, backupCodesProof: sha256Hex("regenerated-encrypted-codes") });
     expect(await f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).toBe(organizationId);
-    expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: true, role: "org-admin" });
+    expect(await f.t.query(orgApi.context, args)).toMatchObject({ canManageMembers: true, role: ORG_ADMIN_MEMBERSHIP_ROLE });
   });
 
-  test.each(["collaboration", "promotion"] as const)("%s rejects recovery regeneration between validation and recording", async purpose => {
+  test.each([MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE, "promotion"] as const)("enrollment purpose %s rejects recovery regeneration between validation and recording", async purpose => {
     const f = fixture();
     const user = await f.user(`recovery-race-${purpose}@example.test`);
     let organizationId: string;
-    if (purpose === "collaboration") {
+    if (purpose === MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE) {
       const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
       organizationId = org.organizationId;
-      await f.t.mutation(orgApi.beginCollaboration, { organizationId, userId: user._id, name: "Recovery race", slug: "recovery-race" });
+      await f.t.mutation(orgApi.beginMembershipManagement, { organizationId, userId: user._id, name: "Recovery race", slug: "recovery-race" });
     } else {
-      const org = await f.collaborative("race-owner@example.test", "recovery-race");
+      const org = await f.organizationWithMembershipManagement("race-owner@example.test", "recovery-race");
       organizationId = org.organizationId;
       const member = await f.addMember(organizationId, user._id);
       await f.t.mutation(orgApi.changeMember, { organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
@@ -186,16 +212,16 @@ describe("canonical organization component boundary", () => {
     expect(await f.t.mutation(orgApi.completeEnrollment, { ...args, requirePasskey: false })).toBe(organizationId);
   });
 
-  test.each(["collaboration", "promotion"] as const)("%s replay checks the current required passkey", async purpose => {
+  test.each([MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE, "promotion"] as const)("enrollment purpose %s replay checks the current required passkey", async purpose => {
     const f = fixture();
     const user = await f.user(`replay-${purpose}@example.test`);
     let organizationId: string;
-    if (purpose === "collaboration") {
+    if (purpose === MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE) {
       const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
       organizationId = org.organizationId;
-      await f.t.mutation(orgApi.beginCollaboration, { organizationId, userId: user._id, name: "Replay", slug: "replay-org" });
+      await f.t.mutation(orgApi.beginMembershipManagement, { organizationId, userId: user._id, name: "Replay", slug: "replay-org" });
     } else {
-      const org = await f.collaborative("replay-owner@example.test", "replay-org");
+      const org = await f.organizationWithMembershipManagement("replay-owner@example.test", "replay-org");
       organizationId = org.organizationId;
       const member = await f.addMember(organizationId, user._id);
       await f.t.mutation(orgApi.changeMember, { organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
@@ -219,7 +245,7 @@ describe("canonical organization component boundary", () => {
     const a = await f.user("factor-a@example.test");
     const b = await f.user("factor-b@example.test");
     const org = await f.t.mutation(orgApi.provisionPersonal, { userId: a._id });
-    await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: a._id, name: "Factors", slug: "factor-org" });
+    await f.t.mutation(orgApi.beginMembershipManagement, { organizationId: org.organizationId, userId: a._id, name: "Factors", slug: "factor-org" });
     const af = await f.security(a._id);
     const bf = await f.security(b._id);
     await expect(f.t.mutation(orgApi.acknowledgeRecovery, { organizationId: org.organizationId, userId: a._id, factorId: bf._id, backupCodesProof: sha256Hex("fixture-encrypted-codes") })).rejects.toThrow("INVALID_ENROLLMENT");
@@ -231,22 +257,22 @@ describe("canonical organization component boundary", () => {
 
   test("promotion creates pending enrollment, not immediate authority", async () => {
     const f = fixture();
-    const org = await f.collaborative("promoter@example.test", "promotion-org");
+    const org = await f.organizationWithMembershipManagement("promoter@example.test", "promotion-org");
     const user = await f.user("promoted@example.test");
     const member = await f.addMember(org.organizationId, user._id);
     const args = { organizationId: org.organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" as const };
     await f.t.mutation(orgApi.changeMember, args);
     await f.t.mutation(orgApi.changeMember, args);
-    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ role: "member", canManageMembers: false });
+    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ role: ORG_MEMBER_ROLE, canManageMembers: false });
     await expect(f.t.mutation(orgApi.changeMember, { ...args, actorId: user._id, memberId: org.memberId, operation: "remove" })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
     const factor = await f.security(user._id);
     await f.complete(org.organizationId, user._id, factor._id);
-    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ role: "org-admin", canManageMembers: true });
+    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: user._id })).toMatchObject({ role: ORG_ADMIN_MEMBERSHIP_ROLE, canManageMembers: true });
   });
 
   test("last enrolled admin is protected; a pending replacement does not count", async () => {
     const f = fixture();
-    const org = await f.collaborative("last@example.test", "last-admin");
+    const org = await f.organizationWithMembershipManagement("last@example.test", "last-admin");
     const user = await f.user("replacement@example.test");
     const member = await f.addMember(org.organizationId, user._id);
     await f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: member._id, operation: "promote" });
@@ -254,12 +280,12 @@ describe("canonical organization component boundary", () => {
     const factor = await f.security(user._id);
     await f.complete(org.organizationId, user._id, factor._id);
     await f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: org.memberId, operation: "demote" });
-    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ role: "member", canManageMembers: false });
+    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ role: ORG_MEMBER_ROLE, canManageMembers: false });
   });
 
   test("concurrent peer self-demotions cannot leave zero enrolled administrators", async () => {
     const f = fixture();
-    const org = await f.collaborative("concurrent-a@example.test", "concurrent-org");
+    const org = await f.organizationWithMembershipManagement("concurrent-a@example.test", "concurrent-org");
     const b = await f.user("concurrent-b@example.test");
     const bm = await f.addMember(org.organizationId, b._id);
     await f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: bm._id, operation: "promote" });
@@ -273,12 +299,12 @@ describe("canonical organization component boundary", () => {
     const denied = results.find(result => result.status === "rejected");
     expect(denied?.status === "rejected" && String(denied.reason)).toContain("LAST_ORGANIZATION_ADMIN");
     const rows = await f.t.query(components.betterAuth.adapter.findMany, { model: "member", where: [{ field: "organizationId", value: org.organizationId }], paginationOpts: { numItems: 100, cursor: null } });
-    expect(rows.page.filter(row => row.role === "org-admin")).toHaveLength(1);
+    expect(rows.page.filter(row => row.role === ORG_ADMIN_MEMBERSHIP_ROLE)).toHaveLength(1);
   });
 
-  test("installed native organization endpoints remain denied to valid customer sessions", async () => {
+  test("installed native organization endpoints remain denied to valid organization-user sessions", async () => {
     const f = fixture();
-    const org = await f.collaborative("http@example.test", "http-org");
+    const org = await f.organizationWithMembershipManagement("http@example.test", "http-org");
     const now = Date.now();
     const token = crypto.randomUUID();
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: {
@@ -290,9 +316,9 @@ describe("canonical organization component boundary", () => {
       { path: "create", body: { name: "Bypass", slug: "bypass-org" } },
       { path: "delete", body: { organizationId: org.organizationId } },
       { path: "remove-member", body: { organizationId: org.organizationId, memberIdOrEmail: org.memberId } },
-      { path: "update-member-role", body: { organizationId: org.organizationId, memberId: org.memberId, role: "member" } },
+      { path: "update-member-role", body: { organizationId: org.organizationId, memberId: org.memberId, role: ORG_MEMBER_ROLE } },
       { path: "leave", body: { organizationId: org.organizationId } },
-      { path: "invite-member", body: { organizationId: org.organizationId, email: "bypass@example.test", role: "org-admin" } },
+      { path: "invite-member", body: { organizationId: org.organizationId, email: "bypass@example.test", role: ORG_ADMIN_MEMBERSHIP_ROLE } },
     ];
     for (const operation of operations) {
       const response = await f.t.fetch(`/api/auth/organization/${operation.path}`, { method: "POST", headers: {
@@ -309,37 +335,37 @@ describe("canonical organization component boundary", () => {
 
   test("foreign member IDs cannot be managed and membership removal preserves other organizations/identity", async () => {
     const f = fixture();
-    const a = await f.collaborative("remove-a@example.test", "remove-org-a");
-    const b = await f.collaborative("remove-b@example.test", "remove-org-b");
+    const a = await f.organizationWithMembershipManagement("remove-a@example.test", "remove-org-a");
+    const b = await f.organizationWithMembershipManagement("remove-b@example.test", "remove-org-b");
     await expect(f.t.mutation(orgApi.changeMember, { organizationId: a.organizationId, actorId: a.admin._id, memberId: b.memberId, operation: "remove" })).rejects.toThrow("MEMBER_NOT_FOUND");
     const shared = await f.user("shared@example.test");
     const am = await f.addMember(a.organizationId, shared._id);
     await f.addMember(b.organizationId, shared._id);
     await f.t.mutation(orgApi.changeMember, { organizationId: a.organizationId, actorId: a.admin._id, memberId: am._id, operation: "remove" });
     await expect(f.t.query(orgApi.context, { organizationId: a.organizationId, userId: shared._id })).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
-    expect(await f.t.query(orgApi.context, { organizationId: b.organizationId, userId: shared._id })).toMatchObject({ role: "member" });
+    expect(await f.t.query(orgApi.context, { organizationId: b.organizationId, userId: shared._id })).toMatchObject({ role: ORG_MEMBER_ROLE });
     expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: shared._id }] })).not.toBeNull();
     expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: shared._id }] })).not.toBeNull();
   });
 
   test("operator contacts expose only org-admin names/emails, not ordinary or pending members or auth fields", async () => {
     const f = fixture();
-    const org = await f.collaborative("contact-admin@example.test", "contact-org");
+    const org = await f.organizationWithMembershipManagement("contact-admin@example.test", "contact-org");
     const operator = await f.user("contact-operator@example.test", "admin");
     const member = await f.user("hidden-member@example.test");
     const row = await f.addMember(org.organizationId, member._id);
     await f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: row._id, operation: "promote" });
     expect(await f.t.query(orgApi.contacts, { organizationId: org.organizationId, operatorId: operator._id })).toEqual({
-      organizationId: org.organizationId, name: "contact-org", experience: "collaborative", lifecycle: "active",
+      organizationId: org.organizationId, name: "contact-org", experience: MEMBERSHIP_MANAGEMENT_EXPERIENCE, lifecycle: "active",
       contacts: [{ name: "contact-admin", email: "contact-admin@example.test" }],
     });
     await expect(f.t.query(orgApi.contacts, { organizationId: org.organizationId, operatorId: org.admin._id })).rejects.toThrow("NOT_PLATFORM_ADMIN");
     await expect(f.t.query(orgApi.directory, { organizationId: org.organizationId, actorId: operator._id, paginationOpts: { cursor: null, numItems: 10 } })).rejects.toThrow("NOT_CUSTOMER");
   });
 
-  test("disable gates all component customer operations and reactivation preserves membership", async () => {
+  test("organization disable gates all component organization-user operations and organization reactivation preserves membership", async () => {
     const f = fixture();
-    const org = await f.collaborative("disabled@example.test", "disabled-org");
+    const org = await f.organizationWithMembershipManagement("disabled@example.test", "disabled-org");
     const operator = await f.user("lifecycle-operator@example.test", "admin");
     await expect(f.t.mutation(orgApi.setLifecycle, { organizationId: org.organizationId, operatorId: org.admin._id, lifecycle: "disabled" })).rejects.toThrow("NOT_PLATFORM_ADMIN");
     await f.t.mutation(orgApi.setLifecycle, { organizationId: org.organizationId, operatorId: operator._id, lifecycle: "disabled" });
@@ -351,12 +377,12 @@ describe("canonical organization component boundary", () => {
     expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ canManageMembers: true });
   });
 
-  test("leaving protects the personal/collaborative sole admin and affects only the selected membership", async () => {
+  test("leaving protects the sole org-admin of a personal organization or one with membership management enabled and affects only the selected membership", async () => {
     const f = fixture();
     const user = await f.user("leaving@example.test");
     const own = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
     await expect(f.t.mutation(orgApi.leave, { organizationId: own.organizationId, userId: user._id })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
-    const other = await f.collaborative("leave-other@example.test", "leave-other-org");
+    const other = await f.organizationWithMembershipManagement("leave-other@example.test", "leave-other-org");
     await f.addMember(other.organizationId, user._id);
     await f.t.mutation(orgApi.leave, { organizationId: other.organizationId, userId: user._id });
     await expect(f.t.query(orgApi.context, { organizationId: other.organizationId, userId: user._id })).rejects.toThrow("ORGANIZATION_UNAVAILABLE");
@@ -366,8 +392,8 @@ describe("canonical organization component boundary", () => {
 
   test("cursor directory paginates scoped membership without offset or secret fields", async () => {
     const f = fixture();
-    const a = await f.collaborative("directory-a@example.test", "directory-org-a");
-    const b = await f.collaborative("directory-b@example.test", "directory-org-b");
+    const a = await f.organizationWithMembershipManagement("directory-a@example.test", "directory-org-a");
+    const b = await f.organizationWithMembershipManagement("directory-b@example.test", "directory-org-b");
     const member = await f.user("directory-member@example.test");
     await f.addMember(a.organizationId, member._id);
     const first = await f.t.query(orgApi.directory, { organizationId: a.organizationId, actorId: a.admin._id, paginationOpts: { cursor: null, numItems: 1 } });
@@ -382,13 +408,13 @@ describe("canonical organization component boundary", () => {
     expect(final.isDone).toBe(true);
     expect([...first.page, ...second.page].map(row => row.email).sort()).toEqual([a.admin.email, member.email].sort());
     expect([...first.page, ...second.page].some(row => row.email === b.admin.email)).toBe(false);
-    expect(Object.keys(second.page[0]).sort()).toEqual(["adminPending", "email", "enrolled", "memberId", "name", "role"]);
+    expect(Object.keys(second.page[0]).sort()).toEqual(["adminPending", "email", "enrolled", "isContact", "memberId", "name", "role"]);
   });
 
   test("directory rejects foreign start and end cursors in both tenant directions", async () => {
     const f = fixture();
-    const a = await f.collaborative("cursor-a@example.test", "cursor-org-a");
-    const b = await f.collaborative("cursor-b@example.test", "cursor-org-b");
+    const a = await f.organizationWithMembershipManagement("cursor-a@example.test", "cursor-org-a");
+    const b = await f.organizationWithMembershipManagement("cursor-b@example.test", "cursor-org-b");
     for (const org of [a, b]) {
       for (let i = 0; i < 2; i++) {
         const user = await f.user(`cursor-${org.organizationId}-${i}@example.test`);
@@ -412,20 +438,20 @@ describe("canonical organization component boundary", () => {
     }
   });
 
-  test("factor invalidation removes administrative authority and cannot satisfy last-admin replacement", async () => {
+  test("sole administrator factor invalidation rolls back and preserves effective authority", async () => {
     const f = fixture();
-    const org = await f.collaborative("invalidated@example.test", "invalidated-org");
-    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: org.factor._id }], update: { verified: false } } });
-    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ canManageMembers: false });
-    await expect(f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: org.memberId, operation: "remove" })).rejects.toThrow("NOT_ORGANIZATION_ADMIN");
+    const org = await f.organizationWithMembershipManagement("invalidated@example.test", "invalidated-org");
+    await expect(f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "twoFactor", where: [{ field: "_id", value: org.factor._id }], update: { verified: false } } })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
+    expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: org.admin._id })).toMatchObject({ canManageMembers: true });
+    await expect(f.t.mutation(orgApi.changeMember, { organizationId: org.organizationId, actorId: org.admin._id, memberId: org.memberId, operation: "remove" })).rejects.toThrow("LAST_ORGANIZATION_ADMIN");
   });
 
-  test("slug collision at activation rolls back all grants, preserving personal state", async () => {
+  test("slug collision at organization membership enablement rolls back all grants, preserving personal state", async () => {
     const f = fixture();
     const a = await f.user("slug-a@example.test");
     const org = await f.t.mutation(orgApi.provisionPersonal, { userId: a._id });
-    await f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: a._id, name: "Original", slug: "collision-org" });
-    await f.collaborative("slug-b@example.test", "collision-org");
+    await f.t.mutation(orgApi.beginMembershipManagement, { organizationId: org.organizationId, userId: a._id, name: "Original", slug: "collision-org" });
+    await f.organizationWithMembershipManagement("slug-b@example.test", "collision-org");
     const factor = await f.security(a._id);
     await expect(f.complete(org.organizationId, a._id, factor._id)).rejects.toThrow("ORGANIZATION_SLUG_TAKEN");
     expect(await f.t.query(orgApi.context, { organizationId: org.organizationId, userId: a._id })).toMatchObject({ experience: "personal", canManageMembers: false });
@@ -435,6 +461,6 @@ describe("canonical organization component boundary", () => {
     const f = fixture();
     const user = await f.user("slug@example.test");
     const org = await f.t.mutation(orgApi.provisionPersonal, { userId: user._id });
-    await expect(f.t.mutation(orgApi.beginCollaboration, { organizationId: org.organizationId, userId: user._id, name: "Valid", slug })).rejects.toThrow("INVALID_ORGANIZATION_SLUG");
+    await expect(f.t.mutation(orgApi.beginMembershipManagement, { organizationId: org.organizationId, userId: user._id, name: "Valid", slug })).rejects.toThrow("INVALID_ORGANIZATION_SLUG");
   });
 });

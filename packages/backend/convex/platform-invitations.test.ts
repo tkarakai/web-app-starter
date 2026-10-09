@@ -58,7 +58,7 @@ describe("invitation app boundaries", () => {
     const scheduled = await t.run(ctx => ctx.db.system.query("_scheduled_functions").collect());
     expect(scheduled).toMatchObject([{ name: "platform/waitlistActions:generateTokenAndSendEmail", args: [{ entryId, email: "buyer@example.test" }] }]);
     await t.mutation(internal.platform.waitlistTokens.create, { waitlistEntryId: entryId, email: "buyer@example.test", tokenHash: sha256Hex("buyer-token"), expiresAt: Date.now() + 3600_000 });
-    expect(await member.query(api.platform.waitlistTokens.listByEntry, { waitlistEntryId: entryId })).toBeNull();
+    await expect(member.query(api.platform.waitlistTokens.listByEntry, { waitlistEntryId: entryId })).rejects.toThrow("NOT_ADMIN");
     expect(await admin.query(api.platform.waitlistTokens.listByEntry, { waitlistEntryId: entryId })).toHaveLength(1);
     expect(await t.query(api.platform.waitlistTokens.validate, { token: "buyer-token" })).toEqual({ valid: true, email: "buyer@example.test" });
     await t.mutation(api.platform.waitlistTokens.beginClaim, { token: "buyer-token" });

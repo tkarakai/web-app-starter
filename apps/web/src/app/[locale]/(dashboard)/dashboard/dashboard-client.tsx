@@ -3,11 +3,10 @@
 import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
 
 import * as React from "react";
-import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
-import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
+import { usePersonalDataContext, usePersonalProject, usePersonalProjects } from "@/hooks/use-personal-data";
 import {
   BreadcrumbItem,
   BreadcrumbLink,
@@ -31,6 +30,7 @@ import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectSummary } from "@/components/projects/project-summary";
 import { TaskList } from "@/components/projects/task-list";
 import { UploadPanel } from "@/components/projects/upload-panel";
+import { PersonalDataNotReady } from "@/components/projects/personal-data-not-ready";
 
 export function DashboardClient() {
   // Sync user profile (locale) between Convex and localStorage
@@ -40,13 +40,17 @@ export function DashboardClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
 
-  const [selectedProjectId, setSelectedProjectId] = React.useState<Id<"projects"> | null>(null);
+  const context = usePersonalDataContext();
+  const realm = JSON.stringify([context.state, context.userId, context.ownerId, context.tenant?.organizationId, Boolean(context.legacy), context.legacy?.organizationId]);
+  const [selection, setSelection] = React.useState<{ realm: string; id: Id<"projects"> } | null>(null);
+  const selectedProjectId = selection?.realm === realm ? selection.id : null;
+  const setSelectedProjectId = (id: Id<"projects"> | null) => setSelection(id ? { realm, id } : null);
 
   const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
 
   return (
-    <SidebarProvider>
+    <SidebarProvider key={realm}>
       <AppSidebar
         displayName={displayName}
         displayEmail={displayEmail ?? undefined}
@@ -68,7 +72,7 @@ export function DashboardClient() {
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
-          {selectedProjectId ? (
+          {context.state !== "ready" ? <PersonalDataNotReady state={context.state} /> : selectedProjectId ? (
             <ProjectContent
               projectId={selectedProjectId}
               onDeleted={() => setSelectedProjectId(null)}
@@ -91,10 +95,7 @@ function DashboardBreadcrumbs({
   onNavigateToProjects: () => void;
 }) {
   const td = useTranslations("dashboard");
-  const project = useQuery(
-    api.projects.get,
-    selectedProjectId ? { id: selectedProjectId } : "skip"
-  );
+  const project = usePersonalProject(selectedProjectId);
 
   return (
     <Breadcrumb>
@@ -129,16 +130,11 @@ function ProjectsOverview({
 }: {
   onSelectProject: (id: Id<"projects">) => void;
 }) {
-  const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const projects = useQuery(api.projects.list);
+  const { context, projects } = usePersonalProjects();
 
   if (projects === undefined || projects === null) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="text-sm text-muted-foreground">{tc("loading")}</div>
-      </div>
-    );
+    return <PersonalDataNotReady state={context.state === "unavailable" ? "unavailable" : "loading"} />;
   }
 
   if (projects.length === 0) {
@@ -164,16 +160,12 @@ function ProjectContent({
   projectId: Id<"projects">;
   onDeleted: () => void;
 }) {
-  const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const project = useQuery(api.projects.get, { id: projectId });
+  const context = usePersonalDataContext();
+  const project = usePersonalProject(projectId);
 
   if (project === undefined) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="text-sm text-muted-foreground">{tc("loading")}</div>
-      </div>
-    );
+    return <PersonalDataNotReady state={context.state === "unavailable" ? "unavailable" : "loading"} />;
   }
 
   if (project === null) {
@@ -187,17 +179,17 @@ function ProjectContent({
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
-      <ProjectHeader project={project} onDeleted={onDeleted} />
+      <ProjectHeader project={project} dataPlane={project.dataPlane} onDeleted={onDeleted} />
       <Tabs defaultValue="tasks">
         <TabsList>
           <TabsTrigger value="tasks">{td("tabs.tasks")}</TabsTrigger>
           <TabsTrigger value="attachments">{td("tabs.attachments")}</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-4">
-          <TaskList projectId={projectId} />
+          <TaskList projectId={projectId} dataPlane={project.dataPlane} />
         </TabsContent>
         <TabsContent value="attachments" className="mt-4">
-          <UploadPanel projectId={projectId} collapsible={false} />
+          <UploadPanel projectId={projectId} dataPlane={project.dataPlane} collapsible={false} />
         </TabsContent>
       </Tabs>
     </div>

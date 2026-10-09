@@ -3,9 +3,9 @@
 import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-controls";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "@web-app-starter/i18n/navigation";
+import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
+import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
@@ -44,17 +44,10 @@ import {
   useSidebar,
 } from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
+import { usePersonalProjects, usePersonalProjectMutations } from "@/hooks/use-personal-data";
 import { AppLogo } from "@/components/app-logo";
 import { appConfig } from "@web-app-starter/app-config";
-
-type Project = {
-  _id: Id<"projects">;
-  _creationTime: number;
-  name: string;
-  description: string;
-  ownerId: string;
-  createdAt: number;
-};
+import { OrganizationPicker } from "@/components/organizations/organization-picker";
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   displayName: string;
@@ -77,10 +70,12 @@ export function AppSidebar({
   const tp = useTranslations("projects");
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
+  const to = useTranslations("organizations");
 
-  const projects: Project[] = useQuery(api.projects.list) ?? [];
+  const { context, projects: availableProjects } = usePersonalProjects();
+  const projects = availableProjects ?? [];
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
-  const createProject = useMutation(api.projects.create);
+  const { create: createProject, available: canCreate } = usePersonalProjectMutations();
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -105,7 +100,7 @@ export function AppSidebar({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = normalizeText(name);
-    if (!trimmedName) return;
+    if (!trimmedName || !canCreate) return;
 
     setSubmitting(true);
     try {
@@ -139,6 +134,7 @@ export function AppSidebar({
         </SidebarHeader>
 
         <SidebarContent>
+          {!isCollapsed && <OrganizationPicker />}
           <SidebarGroup>
             <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="group/projects">
               <div className="flex items-center">
@@ -148,16 +144,17 @@ export function AppSidebar({
                     {td("projects")}
                   </SidebarGroupLabel>
                 </CollapsibleTrigger>
-                <SidebarGroupAction onClick={() => setDialogOpen(true)} title={tp("newProject")}>
+                <SidebarGroupAction disabled={!canCreate} onClick={() => setDialogOpen(true)} title={tp("newProject")}>
                   <Plus className="h-4 w-4" />
                 </SidebarGroupAction>
               </div>
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {projects.length === 0 ? (
+                    {availableProjects === undefined ? <SidebarMenuItem><span role="status" data-personal-data-state={context.state === "unavailable" ? "unavailable" : "loading"} className="px-2 text-sm text-muted-foreground">{tc(context.state === "unavailable" ? "error" : "loading")}</span></SidebarMenuItem> : projects.length === 0 ? (
                       <SidebarMenuItem>
                         <SidebarMenuButton
+                          disabled={!canCreate}
                           className="text-muted-foreground italic"
                           onClick={() => setDialogOpen(true)}
                           tooltip={tp("createFirst")}
@@ -227,6 +224,9 @@ export function AppSidebar({
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => router.push("/dashboard/organization")}>
+                    <Building2 className="me-2 h-4 w-4" />{to("title")}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                     <LogOut className="me-2 h-4 w-4" />
@@ -266,7 +266,7 @@ export function AppSidebar({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting || !canCreate}>
               {submitting ? tc("creating") : tp("createProject")}
             </Button>
           </form>

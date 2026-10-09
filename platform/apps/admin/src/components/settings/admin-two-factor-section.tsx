@@ -196,7 +196,7 @@ export function AdminTwoFactorSection() {
               {enabled ? "Two-factor authentication is enabled" : "Two-factor authentication is not enabled"}
             </p>
             <p className="text-xs text-muted-foreground">
-              Add an extra verification step to secure your admin account.
+              Add an extra verification step to secure your app-operator account.
             </p>
           </div>
         </div>
