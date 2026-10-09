@@ -18,16 +18,24 @@ export function backendSourceDigest(root: string): string {
   const bound = new Set<string>();
   const ts: typeof import("typescript") = createRequire(import.meta.url)("typescript");
   const declaration = (file: string) => ts.createSourceFile(file, "", ts.ScriptTarget.Latest).isDeclarationFile;
-  function visit(directory: string, functionSources = false) {
+  const packageArtifacts = new Set([".git", ".convex", ".next", ".turbo", ".cache", "coverage", "artifacts", "playwright-report", "test-results"]);
+  const testImplementation = (file: string) => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file);
+  function visit(directory: string, functionSources = false, packageSources = false, metadataSources = false) {
     for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (["node_modules", "_generated"].includes(entry.name)
-        || !functionSources && (entry.name.startsWith(".") || ["dist", "coverage", "qa", "tests", "test", "docs", "artifacts", "playwright-report", "test-results"].includes(entry.name))) continue;
+      if (entry.name === "node_modules" || entry.name === "_generated" && !packageSources
+        || packageSources && !functionSources && packageArtifacts.has(entry.name)
+        || !functionSources && !packageSources && (entry.name.startsWith(".") || ["dist", "coverage", "qa", "tests", "test", "docs", "artifacts", "playwright-report", "test-results"].includes(entry.name))) continue;
       const file = resolve(directory, entry.name);
       if (entry.isSymbolicLink()) throw new Error("Organization deployment source must not contain symbolic links.");
-      if (entry.isDirectory()) visit(file, functionSources);
+      if (entry.isDirectory()) {
+        // Static exports are build products, not workspace source. Configured
+        // function roots and runtime imports below still bind executable out/ files.
+        if (!functionSources && !packageSources && entry.name === "out") continue;
+        visit(file, functionSources, packageSources, metadataSources);
+      }
       // Next and other generators create declaration files after deployment.
       // Their nonexecutable bytes cannot change the prepared runtime binding.
-      else if (/\.(?:[cm]?[jt]sx?|json|wasm|lock)$/.test(entry.name) && !declaration(file) && !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry.name)) {
+      else if (/\.(?:[cm]?[jt]sx?|json|wasm|lock)$/.test(entry.name) && !declaration(file) && (metadataSources || !testImplementation(entry.name))) {
         bound.add(file);
       }
     }
@@ -54,10 +62,122 @@ export function backendSourceDigest(root: string): string {
     ...ts.sys, fileExists: file => !declaration(file) && ts.sys.fileExists(file),
   };
   const seen = new Set<string>();
+  const packages = new Set<string>();
+  function bindPackage(packageRoot: string) {
+    if (packages.has(packageRoot)) return;
+    if (packageRoot === root) throw new Error("Organization runtime packages require a dedicated package directory.");
+    packages.add(packageRoot);
+    // Ambient local databases, caches and reports are not source. Refuse package
+    // metadata pointing runtime alternatives into them, so an unselected export
+    // condition cannot silently lose its binding. Explicit file imports below
+    // and configured function roots still bind their actual executable targets.
+    const manifest = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+    const checkRuntimePaths = (input: unknown, entryPath = false) => {
+      if (typeof input === "string" && !declaration(input)) {
+        // main/module and string-form browser name package-relative files even
+        // without ./; only mapping values can name a different package.
+        const value = entryPath && !input.startsWith(".") && !isAbsolute(input) ? "./" + input : input;
+        if (value.split(/[\\/]/).some(part => packageArtifacts.has(part) || part === "node_modules")) {
+          throw new Error("Organization runtime package metadata references local state, dependency storage or build caches.");
+        }
+        if (value.startsWith(".") || isAbsolute(value)) {
+          const local = relative(packageRoot, resolve(packageRoot, value));
+          if (local.startsWith(`..${sep}`) || local === "..") throw new Error("Organization runtime package metadata escapes its package directory.");
+          if (value.includes("*")) {
+            const prefix = value.slice(0, value.indexOf("*"));
+            const directory = resolve(packageRoot, prefix.slice(0, prefix.lastIndexOf("/") + 1));
+            if (directory === packageRoot) {
+              // Root patterns are used by ordinary data packages (e.g. ./*.json).
+              // Retain matching files, including test-named implementations, but
+              // refuse a package whose broad pattern overlaps ambient state.
+              const pattern = new RegExp("^" + local.split("*").map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+              const visitPattern = (current: string) => {
+                for (const entry of readdirSync(current, { withFileTypes: true })) {
+                  if (entry.name === "node_modules") continue;
+                  if (packageArtifacts.has(entry.name)) throw new Error("Organization runtime package root pattern overlaps local state or build caches.");
+                  const candidate = resolve(current, entry.name);
+                  if (entry.isSymbolicLink()) throw new Error("Organization deployment source must not contain symbolic links.");
+                  if (entry.isDirectory()) visitPattern(candidate);
+                  else if (pattern.test(relative(packageRoot, candidate)) && !declaration(candidate)) bound.add(candidate);
+                }
+              };
+              visitPattern(directory);
+            }
+            // A wildcard can select nested state-like names. Its explicit source
+            // directory must therefore be retained completely, not filtered as
+            // ambient package state; the monorepo/package root is never inferred.
+            if (directory !== packageRoot && existsSync(directory)) {
+              if (realpathSync(directory) !== directory) throw new Error("Organization deployment source must not contain symbolic links.");
+              visit(directory, true, true, true);
+            }
+          } else if (testImplementation(value) || /\.(?:test|spec)$/.test(value)) {
+            // Filename conventions do not erase an explicitly routed runtime
+            // implementation. Retain siblings as for literal imports, without
+            // pulling unrelated test harnesses into the package source graph.
+            const target = resolve(packageRoot, value);
+            const stem = target.replace(/\.[cm]?[jt]sx?$/, "");
+            let found = false;
+            for (const extension of [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]) {
+              const candidate = stem + extension;
+              if (!existsSync(candidate)) continue;
+              if (realpathSync(candidate) !== candidate) throw new Error("Organization deployment source must not contain symbolic links.");
+              bound.add(candidate);
+              found = true;
+            }
+            if (!found) throw new Error("Cannot bind runtime package metadata implementation.");
+          }
+        } else {
+          // Conditional #imports and browser remaps can target another package
+          // without naming it in executable text. Retain that entire local
+          // package too, regardless of which condition TS selects. Cycles are
+          // bounded by packages above; published dependencies stay lockfile-bound.
+          const dependency = workspacePackage(value, resolve(packageRoot, "package.json"));
+          if (dependency) bindPackage(dependency);
+        }
+      }
+      if (Array.isArray(input)) input.forEach(entry => checkRuntimePaths(entry));
+      else if (input && typeof input === "object") Object.values(input).forEach(entry => checkRuntimePaths(entry));
+    };
+    for (const field of ["exports", "imports", "main", "module", "browser"]) {
+      checkRuntimePaths(manifest[field], field === "main" || field === "module" || field === "browser" && typeof manifest[field] === "string");
+    }
+    // Convex bundles node and browser code with convex/module conditions;
+    // TypeScript's single import branch is not an exhaustive runtime graph.
+    // Bind the local dependency conservatively, including output/generated
+    // implementations, self-references and package-level browser remapping.
+    visit(packageRoot, false, true);
+    for (const candidate of [...bound]) if (candidate.startsWith(packageRoot + sep)) dependencies(candidate);
+  }
+  function workspacePackage(specifier: string, importer: string): string | undefined {
+    if (specifier.startsWith(".") || isAbsolute(specifier) || specifier.startsWith("node:")) return;
+    const parts = specifier.split("/");
+    const name = parts.slice(0, specifier.startsWith("@") ? 2 : 1).join("/");
+    if (!specifier.startsWith("#") && name.includes("*")) throw new Error("Organization runtime metadata requires an explicit dependency package name.");
+    for (let directory = dirname(importer);; directory = dirname(directory)) {
+      const ownManifest = resolve(directory, "package.json");
+      const own = existsSync(ownManifest)
+        && (specifier.startsWith("#") || JSON.parse(readFileSync(ownManifest, "utf8")).name === name);
+      const candidate = own ? directory : resolve(directory, "node_modules", name);
+      if (existsSync(resolve(candidate, "package.json"))) {
+        const actual = realpathSync(candidate);
+        const local = relative(root, actual);
+        if (local.startsWith(`..${sep}`) || local === "..") throw new Error("Organization deployment imports source outside the checkout.");
+        if (local.split(sep).includes("node_modules")) return; // Published bytes are lockfile-bound.
+        return actual;
+      }
+      if (directory === root) return;
+    }
+  }
   function dependencies(file: string) {
     if (seen.has(file)) return;
     seen.add(file);
     if (!/\.[cm]?[jt]sx?$/.test(file) || declaration(file)) return;
+    // Relative imports can enter a runtime workspace without using its name.
+    // The monorepo root is not a runtime package: retaining it wholesale would
+    // also retain unrelated frontend build output.
+    for (let directory = dirname(file); directory !== root; directory = dirname(directory)) {
+      if (existsSync(resolve(directory, "package.json"))) { bindPackage(directory); break; }
+    }
     const text = readFileSync(file, "utf8");
     const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const erased: Array<{ pos: number; end: number }> = [];
@@ -74,8 +194,19 @@ export function backendSourceDigest(root: string): string {
     const source = ts.preProcessFile(text, true, true);
     for (const imported of source.importedFiles) {
       if (erased.some(node => imported.pos >= node.pos && imported.end <= node.end)) continue;
-      const resolution = ts.resolveModuleName(imported.fileName, file,
+      const packageRoot = workspacePackage(imported.fileName, file);
+      if (packageRoot) bindPackage(packageRoot);
+      let resolution = ts.resolveModuleName(imported.fileName, file,
         { ...options, moduleResolution: ts.ModuleResolutionKind.Bundler, resolveJsonModule: true, allowJs: true }, runtimeHost).resolvedModule;
+      // A local package may expose only node/require/Convex entry points. These
+      // alternatives establish existence; all package branches were bound above.
+      if (!resolution && packageRoot) {
+        for (const condition of ["node", "browser", "convex", "module"]) for (const mode of [ts.ModuleKind.ESNext, ts.ModuleKind.CommonJS] as const) {
+          resolution ??= ts.resolveModuleName(imported.fileName, file,
+            { ...options, moduleResolution: ts.ModuleResolutionKind.Bundler, resolveJsonModule: true, allowJs: true, customConditions: [condition] },
+            runtimeHost, undefined, undefined, mode).resolvedModule;
+        }
+      }
       const direct = resolve(dirname(file), imported.fileName);
       const localSpecifier = imported.fileName.startsWith(".") || isAbsolute(imported.fileName);
       const target = resolution?.resolvedFileName ?? (localSpecifier && !declaration(direct) && existsSync(direct) ? direct : undefined);
@@ -89,7 +220,7 @@ export function backendSourceDigest(root: string): string {
           return star < 0 ? imported.fileName === pattern : imported.fileName.length >= pattern.length - 1
             && imported.fileName.startsWith(pattern.slice(0, star)) && imported.fileName.endsWith(pattern.slice(star + 1));
         });
-        if (localSpecifier || localAlias || typed && !realpathSync(typed.resolvedFileName).split(sep).includes("node_modules")) {
+        if (packageRoot || localSpecifier || localAlias || typed && !realpathSync(typed.resolvedFileName).split(sep).includes("node_modules")) {
           throw new Error(`Cannot bind imported organization source: ${relative(root, file)} -> ${imported.fileName}`);
         }
         continue; // Published dependency versions are bound by the lockfile.

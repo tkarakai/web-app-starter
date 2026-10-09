@@ -7,7 +7,7 @@ import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join, dirname, delimiter } from "node:path";
 import { createRequire } from "node:module";
-import { spawn, execFileSync, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, execFileSync, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { stop, readRecords } from "./dev-processes.ts";
 import appConfig from "../../app.config.ts";
@@ -21,6 +21,7 @@ let child: ChildProcess | undefined, logs = "";
 let childClosed = false;
 let unrelated: ChildProcess | undefined;
 const unrelatedRoot = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "starter-unrelated-backend-")));
+const linkedFixture = join(unrelatedRoot, "linked-checkout");
 async function shutdown() {
   if (child && child.exitCode === null && child.signalCode === null) {
     // Bun can exit before its shell finishes the EXIT trap. Wait for inherited
@@ -32,10 +33,10 @@ async function shutdown() {
   stop(fixture);
   if (child && child.exitCode === null && child.signalCode === null) { try { process.kill(-child.pid!, "SIGKILL"); } catch { /* Already exited. */ } }
 }
-function launch(args: string[], timeout = "30000", env: Record<string, string | undefined> = {}) {
+function launch(args: string[], timeout = "30000", env: Record<string, string | undefined> = {}, executable = "bun") {
   logs = "";
   childClosed = false;
-  child = spawn("bun", args, { cwd: fixture, detached: true, env: { ...process.env, LANDING_URL: undefined, AGENT_MCP_ENABLED: undefined, AGENT_MCP_ORIGIN: undefined, AGENT_MCP_AUTH_ORIGIN: undefined, ORGANIZATION_MIGRATION_BATCH_SIZE: undefined, ...env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
+  child = spawn(executable, args, { cwd: fixture, detached: true, env: { ...process.env, LANDING_URL: undefined, AGENT_MCP_ENABLED: undefined, AGENT_MCP_ORIGIN: undefined, AGENT_MCP_AUTH_ORIGIN: undefined, ORGANIZATION_MIGRATION_BATCH_SIZE: undefined, ...env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
   child.once("close", () => { childClosed = true; });
   child.stdout!.on("data", data => { logs += String(data); }); child.stderr!.on("data", data => { logs += String(data); });
 }
@@ -120,7 +121,7 @@ console.log('Convex functions ready');setInterval(()=>{},1000);
     write(`${dir}/next.config.mjs`, `import fs from 'node:fs';
 const keys=${JSON.stringify(keys)};
 for(const key of keys) if(!process.env[key]) throw new Error('Missing startup configuration: '+key);
-fs.writeFileSync('startup.json',JSON.stringify(Object.fromEntries(keys.map(key=>[key,process.env[key]]))));
+fs.writeFileSync('.startup.json',JSON.stringify(Object.fromEntries(keys.map(key=>[key,process.env[key]]))));
 export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
     write(`${dir}/postcss.config.mjs`, 'export default {plugins:{"@tailwindcss/postcss":{}}};');
     write(`${dir}/app/layout.jsx`, 'import "./globals.css"; export default function Layout({children}) {return <html lang="en"><body>{children}</body></html>}');
@@ -155,13 +156,55 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
     assert.match(css, /workspace-proof/);
   }
   assert.equal(fs.readFileSync(join(fixture, "installs.log"), "utf8"), "install\n", "one preflight install per public command");
-  const boot = (dir: string) => JSON.parse(fs.readFileSync(join(fixture, dir, "startup.json"), "utf8")) as Record<string, string>;
+  const boot = (dir: string) => JSON.parse(fs.readFileSync(join(fixture, dir, ".startup.json"), "utf8")) as Record<string, string>;
   assert.equal(boot("apps/web").LANDING_URL, boot("apps/landing").NEXT_PUBLIC_SITE_URL);
   assert.equal(boot("apps/landing").NEXT_PUBLIC_WEB_APP_URL, boot("apps/web").APP_ORIGIN);
   const organizationState = () => JSON.parse(fs.readFileSync(join(fixture, "packages/backend/.convex/startup-smoke-state.json"), "utf8"));
   assert.equal(organizationState().ready, true, "launcher must finish the fake organization protocol before app startup");
   assert.deepEqual(organizationState().calls, ["status", "begin", "step", "status", "finalize", "status"]);
+  const existingServices = readRecords(fixture);
+  const refusedPreparation = spawnSync("bun", ["dev", "--prepare-only", "--restart", "--app=web"], {
+    cwd: fixture, encoding: "utf8", timeout: 30_000,
+    env: { ...process.env, CI: "true", PATH: join(fixture, "bin") + delimiter + process.env.PATH },
+  });
+  assert.notEqual(refusedPreparation.status, 0, "preparation must not replace running managed services");
+  assert.match(refusedPreparation.stdout + refusedPreparation.stderr, /managed services to be stopped first/);
+  assert.deepEqual(readRecords(fixture), existingServices);
+  for (const service of Object.values(existingServices)) process.kill(service.pid, 0);
+  assert.equal((await fetch(boot("apps/web").APP_ORIGIN)).status, 200);
   await shutdown();
+  const database = join(fixture, "packages/backend/.convex/local/default/database-proof");
+  fs.writeFileSync(database, "preserve local database");
+  unrelated = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd: unrelatedRoot, stdio: "ignore" });
+  fs.symlinkSync(fixture, linkedFixture, "dir");
+  const bootTimes = ["apps/web", "apps/landing"].map(dir => fs.statSync(join(fixture, dir, ".startup.json")).mtimeMs);
+  const prepare = async (env: Record<string, string | undefined> = {}) => {
+    // A logical checkout path must still execute the real verification and
+    // identity-scoped cleanup helpers, whose Node entrypoints use physical paths.
+    launch([join(linkedFixture, "platform/tooling/dev-start.sh"), "--prepare-only", "--app=web,landing"], "30000", env, "bash");
+    await until(() => childClosed || logs.includes("Starting Next.js"), 60_000);
+    assert.ok(!logs.includes("Starting Next.js"), "preparation must exit before any app/browser startup timer begins");
+    assert.deepEqual(readRecords(fixture), {});
+    assert.deepEqual(["apps/web", "apps/landing"].map(dir => fs.statSync(join(fixture, dir, ".startup.json")).mtimeMs), bootTimes);
+    assert.equal(fs.readFileSync(database, "utf8"), "preserve local database");
+    process.kill(unrelated!.pid!, 0);
+  };
+  const beforePrepare = organizationState().calls.length;
+  await prepare();
+  assert.equal(child!.exitCode, 0, logs);
+  assert.equal(organizationState().ready, true);
+  assert.equal(organizationState().env.ORGANIZATION_CUTOVER_ENFORCED, "1");
+  assert.deepEqual(organizationState().calls.slice(beforePrepare), ["status", "status", "begin", "step", "status", "finalize", "status"]);
+  await prepare({ STARTUP_SMOKE_BLOCK_ORGANIZATION: "1" });
+  assert.notEqual(child!.exitCode, 0, logs);
+  assert.match(logs, /ORGANIZATION_STARTUP_FIXTURE_BLOCKED/);
+  assert.equal(organizationState().ready, false);
+  assert.equal(organizationState().calls.at(-1), "step");
+  const beforeRefusal = organizationState().calls.length;
+  await prepare({ CONVEX_DEPLOY_KEY: "production:synthetic-refused-target" });
+  assert.notEqual(child!.exitCode, 0, logs);
+  assert.match(logs, /refuses deployment keys/);
+  assert.equal(organizationState().calls.length, beforeRefusal, "remote target refusal must precede backend mutation");
   launch(["dev", "--app=web,landing"], "30000", { STARTUP_SMOKE_BLOCK_ORGANIZATION: "1" });
   await until(() => childClosed, 60_000);
   assert.notEqual(child!.exitCode, 0, logs);
@@ -196,9 +239,6 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
   assert.deepEqual(readRecords(fixture), {});
   write("packages/onboarding/styles.css", ".workspace-proof { color: rgb(12, 34, 56); }");
   write("apps/landing/next.config.mjs", "throw new Error('FORCED_LATER_CONFIG_FAILURE');");
-  const database = join(fixture, "packages/backend/.convex/local/default/database-proof");
-  fs.writeFileSync(database, "preserve local database");
-  unrelated = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd: unrelatedRoot, stdio: "ignore" });
   launch(["dev", "--app=web,landing"], "2500");
   await until(() => childClosed, 60_000);
   assert.notEqual(child!.exitCode, 0, logs);

@@ -89,6 +89,33 @@ sets `ORGANIZATION_DEPLOYMENT_VERSION` and `ORGANIZATION_REGISTRY_HASH` on the s
 These are deployment-owned values, not caller input or readiness overrides. `CONVEX_CLOUD_URL`
 identifies the actual deployment. Missing or mismatched binding refuses readiness.
 
+The source binding excludes unreferenced static-export `out/` directories from the workspace scan,
+so building or cleaning a frontend export does not change backend readiness. Ordinary workspace
+source remains bound. A configured Convex function root inside `out/`, or a backend runtime import
+that reaches `out/` directly or transitively, still binds those executable files. Missing imported
+local files and imports outside the checkout still block deployment; generated runtime code is
+not exempt merely because it lives in a build directory.
+Backend and imported checkout-local workspace packages are bound conservatively, including their
+output and generated implementations. This covers Node/browser/Convex conditions, `require`,
+package aliases, self-references and browser remapping without assuming a single import branch.
+Metadata references to another local package retain that package and its runtime dependencies too.
+The `main`, `module`, and string-form `browser` fields are package-relative entry paths, including
+paths without a leading `./`; mapping values can instead name another workspace package.
+Changing an unused implementation inside one of those runtime packages can therefore require
+verification again; unrelated frontend export output remains excluded.
+Ambient local state and caches (including `.convex`, `.next` and coverage/report directories)
+remain excluded. Runtime package metadata that points into these directories is refused; put
+package implementations in source or output directories instead. Relative metadata targets cannot
+escape their package or route through `node_modules`; use an explicit package name for dependencies.
+Wildcard dependency package names must be explicit. Prefer wildcard targets in a dedicated source
+directory; root-relative patterns (such as `./*.json`) retain matching files but are refused when
+the package also contains local-state or cache directories.
+Explicit metadata targets and wildcard source directories retain executable `.test`/`.spec` files
+and their runtime imports; those names cannot exempt executable authorization code. Unrelated test
+harnesses outside those routes remain excluded.
+Runtime workspace packages need their own directory rather than using the monorepo root as an
+executable package.
+
 For an already verified deployment, the **currently deployed**
 `organizationMigration:maintenance({ confirmDeployment, nextDeploymentVersion })` closes its barrier
 before source or environment changes. The next version must differ and a different pending target

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { backendSourceDigest, inspectOrganizationSource, prepareOrganizationDeployment, recoverOrganizationDeployment, verifyOrganizationDeployment } from "../../../.github/actions/deploy-convex/organization-target.ts";
@@ -18,6 +20,280 @@ function digestFixture(t: { after: (fn: () => void) => void }) {
   write("packages/backend/package.json", '{"type":"module"}');
   return { root, write, digest: () => backendSourceDigest(root) };
 }
+
+for (const directory of ["apps/landing/out", "apps/custom/out", "packages/ui/out"]) {
+  test(`unimported build output lifecycle does not change binding: ${directory}`, t => {
+    const f = digestFixture(t);
+    f.write("packages/backend/convex/main.ts", "export const allowed = false;");
+    f.write("packages/business/policy.ts", "export const allowed = false;");
+    const before = f.digest();
+    f.write(`${directory}/_next/static/build-one/_buildManifest.js`, "self.__BUILD_MANIFEST = {};");
+    f.write(`${directory}/_next/static/chunks/runtime.js`, "self.runtime = 1;");
+    assert.equal(f.digest(), before, "creating frontend export artifacts cannot stale backend readiness");
+    f.write(`${directory}/_next/static/chunks/runtime.js`, "self.runtime = 2;");
+    f.write(`${directory}/_next/static/build-two/_buildManifest.js`, "self.__BUILD_MANIFEST = { rebuilt: true };");
+    assert.equal(f.digest(), before, "rebuilding with different bytes and build IDs cannot stale readiness");
+    f.write("packages/business/policy.ts", "export const allowed = true;");
+    const changedSource = f.digest();
+    assert.notEqual(changedSource, before, "ordinary unimported workspace source remains bound");
+    rmSync(join(f.root, directory), { recursive: true });
+    assert.equal(f.digest(), changedSource, "cleaning output cannot change the source binding");
+  });
+}
+
+for (const edge of [
+  'export { allowed } from "../../business/out/policy.js";',
+  'export const load = () => import("../../business/out/policy.js");',
+  'export const load = () => require("../../business/out/policy.js");',
+]) test(`output runtime dependencies stay bound: ${edge}`, t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", edge);
+  f.write("packages/business/out/policy.js", 'export { allowed } from "./nested/authority.js";');
+  const authority = "packages/business/out/nested/authority.js";
+  f.write(authority, "export const allowed = false;");
+  const before = f.digest();
+  f.write("packages/business/out/policy.js", 'export { allowed } from "./nested/authority.js"; export const direct = true;');
+  const changedDirect = f.digest();
+  assert.notEqual(changedDirect, before, "directly imported output bytes stay bound");
+  f.write(authority, "export const allowed = true;");
+  assert.notEqual(f.digest(), changedDirect, "transitive imports within output directories stay bound");
+  rmSync(join(f.root, authority));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+  f.write(authority, "export const allowed = false;");
+  rmSync(join(f.root, "packages/business/out/policy.js"));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+test("output imports retain symlink and checkout containment refusal", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "../../business/out/policy.js";');
+  const external = mkdtempSync(join(tmpdir(), "organization-output-external-"));
+  t.after(() => rmSync(external, { recursive: true, force: true }));
+  writeFileSync(join(external, "policy.js"), "export const allowed = true;");
+  f.write("packages/business/out/policy.js", `export { allowed } from ${JSON.stringify(join(external, "policy.js"))};`);
+  assert.throws(f.digest, /outside the checkout/);
+  rmSync(join(f.root, "packages/business/out/policy.js"));
+  symlinkSync(join(external, "policy.js"), join(f.root, "packages/business/out/policy.js"));
+  assert.throws(f.digest, /outside the checkout|symbolic links/);
+});
+
+test("a workspace output symlink is still refused", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", "export const allowed = false;");
+  f.write("apps/landing/source/policy.js", "export const allowed = true;");
+  symlinkSync(join(f.root, "apps/landing/source"), join(f.root, "apps/landing/out"));
+  assert.throws(f.digest, /symbolic links/);
+});
+
+for (const condition of ["node", "browser", "convex", "module", "require", "nested-node-subpath", "node-spec", "node-test", "wildcard-spec", "wildcard-test", "root-wildcard-spec"]) {
+  test(`actual Convex bundler conditions keep workspace output bound: ${condition}`, async t => {
+    const f = digestFixture(t);
+    const requireBranch = condition === "require";
+    const entry = `packages/backend/convex/main.${requireBranch ? "cjs" : "mjs"}`;
+    const suffix = condition.endsWith("-spec") ? ".spec" : condition.endsWith("-test") ? ".test" : "";
+    const wildcard = condition === "nested-node-subpath" || condition.includes("wildcard-");
+    const output = condition.startsWith("root-") ? "" : "out/";
+    const active = `packages/policy/${output}active${suffix}.${requireBranch ? "cjs" : "mjs"}`;
+    const exports = wildcard
+      ? { "./*": { node: { import: `./${output}*.mjs` }, default: "./out/fallback.mjs" } }
+      : requireBranch ? { import: "./out/fallback.mjs", require: "./out/active.cjs" }
+        : { [suffix ? "node" : condition]: `./out/active${suffix}.mjs`, default: "./out/fallback.mjs" };
+    f.write("packages/policy/package.json", JSON.stringify({ name: "@private/policy", type: "module", exports }));
+    f.write("packages/policy/out/fallback.mjs", "export const value = false;");
+    f.write(active, requireBranch ? "exports.value = false;" : "export const value = false;");
+    f.write(entry, requireBranch ? 'exports.allowed = () => require("@private/policy").value;'
+      : `import { value } from "@private/policy${wildcard ? `/active${suffix}` : ""}"; export const allowed = () => value;`);
+    mkdirSync(join(f.root, "packages/backend/node_modules/@private"), { recursive: true });
+    symlinkSync(join(f.root, "packages/policy"), join(f.root, "packages/backend/node_modules/@private/policy"));
+    // Use the exact installed bundler consumed by Convex, without deployment or
+    // output files, and execute both resulting tiny bundles as the behavior oracle.
+    const { buildSync } = createRequire(realpathSync(fileURLToPath(new URL("../../../packages/backend/node_modules/convex/package.json", import.meta.url))))("esbuild");
+    const observe = async () => {
+      const bundle = buildSync({ absWorkingDir: f.root, entryPoints: [entry], bundle: true, write: false,
+        metafile: true, format: "esm", platform: condition === "browser" ? "browser" : "node", conditions: ["convex", "module"], logLevel: "silent" });
+      assert.ok(Object.keys(bundle.metafile.inputs).includes(active));
+      const loaded = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`);
+      return (loaded.allowed ?? loaded.default.allowed)();
+    };
+    assert.equal(await observe(), false);
+    const before = f.digest();
+    f.write(active, requireBranch ? "exports.value = true;" : "export const value = true;");
+    assert.equal(await observe(), true);
+    assert.notEqual(f.digest(), before, "a condition-selected authority change must invalidate the receipt");
+    if (suffix) {
+      f.write("packages/policy/unrelated.test.ts", "throw new Error('not a runtime import');");
+      const withoutUnrelatedTests = f.digest();
+      f.write("packages/policy/unrelated.test.ts", "throw new Error('still not a runtime import');");
+      assert.equal(f.digest(), withoutUnrelatedTests, "unrelated test harnesses stay outside the runtime graph");
+      f.write(active, 'export { value } from "./policy.test.mjs";');
+      f.write(`packages/policy/${output}policy.test.mjs`, "export const value = false;");
+      const beforeTransitive = f.digest();
+      assert.equal(await observe(), false);
+      f.write(`packages/policy/${output}policy.test.mjs`, "export const value = true;");
+      assert.equal(await observe(), true);
+      assert.notEqual(f.digest(), beforeTransitive, "test-named transitive runtime imports stay bound");
+    }
+    f.write(active, requireBranch ? 'exports.value = require("./missing.cjs").value;' : 'export { value } from "./missing.mjs";');
+    assert.throws(f.digest, /Cannot bind imported organization source/);
+  });
+}
+
+for (const kind of ["package-imports", "self-reference", "module-field", "browser-field", "imports-bare", "browser-bare", "module-spec-field", "main-spec-field", "browser-spec-field", "module-extensionless-field"]) {
+  test(`runtime package alternatives remain bound: ${kind}`, async t => {
+    const f = digestFixture(t);
+    const entry = "packages/backend/convex/main.mjs";
+    let active = "packages/policy/out/active.mjs";
+    if (kind === "imports-bare" || kind === "browser-bare") {
+      active = "packages/alternate/out/active.mjs";
+      f.write("packages/policy/package.json", JSON.stringify({ name: "@private/policy", type: "module", exports: "./main.mjs",
+        ...(kind === "imports-bare" ? { imports: { "#policy": { node: "@private/alternate", default: "./fallback.mjs" } } }
+          : { browser: { "./fallback.mjs": "@private/alternate" } }) }));
+      f.write("packages/policy/main.mjs", kind === "imports-bare" ? 'export { value } from "#policy";' : 'export { value } from "./fallback.mjs";');
+      f.write("packages/policy/fallback.mjs", "export const value = false;");
+      f.write("packages/alternate/package.json", '{"name":"@private/alternate","type":"module","exports":"./out/active.mjs"}');
+      f.write(entry, 'import { value } from "@private/policy"; export const allowed = () => value;');
+      for (const [from, name, to] of [["backend", "policy", "policy"], ["policy", "alternate", "alternate"]]) {
+        mkdirSync(join(f.root, `packages/${from}/node_modules/@private`), { recursive: true });
+        symlinkSync(join(f.root, `packages/${to}`), join(f.root, `packages/${from}/node_modules/@private/${name}`));
+      }
+    } else if (kind === "package-imports") {
+      active = "packages/backend/out/active.mjs";
+      f.write("packages/backend/package.json", JSON.stringify({ type: "module", imports: { "#policy": { node: "./out/active.mjs", default: "./out/fallback.mjs" } } }));
+      f.write("packages/backend/out/fallback.mjs", "export const value = false;");
+      f.write(entry, 'import { value } from "#policy"; export const allowed = () => value;');
+    } else {
+      const manifest: Record<string, unknown> = { name: "@private/policy", type: "module" };
+      if (kind === "self-reference") {
+        manifest.exports = { "./selected": { node: "./out/active.mjs", default: "./out/fallback.mjs" } };
+        f.write("packages/policy/bridge.mjs", 'export { value } from "@private/policy/selected";');
+        f.write(entry, 'import { value } from "../../policy/bridge.mjs"; export const allowed = () => value;');
+      } else {
+        manifest.main = "./out/fallback.mjs";
+        if (kind.includes("-spec-") || kind === "module-extensionless-field") {
+          const extensionless = kind === "module-extensionless-field";
+          active = `packages/policy/out/active.spec.${extensionless ? "js" : "mjs"}`;
+          manifest[kind.split("-")[0]] = `out/active.spec${extensionless ? "" : ".mjs"}`;
+        } else if (kind === "module-field") manifest.module = "./out/active.mjs";
+        else manifest.browser = { "./out/fallback.mjs": "./out/active.mjs" };
+        f.write(entry, 'import { value } from "@private/policy"; export const allowed = () => value;');
+        mkdirSync(join(f.root, "packages/backend/node_modules/@private"), { recursive: true });
+        symlinkSync(join(f.root, "packages/policy"), join(f.root, "packages/backend/node_modules/@private/policy"));
+      }
+      f.write("packages/policy/package.json", JSON.stringify(manifest));
+      f.write("packages/policy/out/fallback.mjs", "export const value = false;");
+    }
+    f.write(active, "export const value = false;");
+    const { buildSync } = createRequire(realpathSync(fileURLToPath(new URL("../../../packages/backend/node_modules/convex/package.json", import.meta.url))))("esbuild");
+    const observe = async () => {
+      const bundle = buildSync({ absWorkingDir: f.root, entryPoints: [entry], bundle: true, write: false,
+        metafile: true, format: "esm", platform: kind.endsWith("field") || kind === "browser-bare" ? "browser" : "node", conditions: ["convex", "module"], logLevel: "silent" });
+      assert.ok(Object.keys(bundle.metafile.inputs).includes(active));
+      const loaded = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`);
+      return loaded.allowed();
+    };
+    const before = f.digest(); assert.equal(await observe(), false);
+    f.write(active, "export const value = true;");
+    assert.equal(await observe(), true); assert.notEqual(f.digest(), before);
+    f.write(active, 'export { value } from "./missing.mjs";');
+    assert.throws(f.digest, /Cannot bind imported organization source/);
+  });
+}
+
+for (const condition of ["node", "require"]) test(`workspace package without a default import branch remains supported: ${condition}`, t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "@private/policy";');
+  f.write("packages/policy/package.json", JSON.stringify({ name: "@private/policy", exports: { [condition]: "./_generated/policy.js" } }));
+  f.write("packages/policy/_generated/policy.js", "export const allowed = false;");
+  f.write("packages/policy/_generated/policy.d.ts", "export declare const allowed: boolean;");
+  mkdirSync(join(f.root, "packages/backend/node_modules/@private"), { recursive: true });
+  symlinkSync(join(f.root, "packages/policy"), join(f.root, "packages/backend/node_modules/@private/policy"));
+  const before = f.digest();
+  f.write("packages/policy/_generated/policy.d.ts", "export declare const allowed: false;");
+  assert.equal(f.digest(), before);
+  f.write("packages/policy/_generated/policy.js", "export const allowed = true;");
+  assert.notEqual(f.digest(), before);
+  rmSync(join(f.root, "packages/policy/_generated/policy.js"));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+test("runtime package binding excludes ambient local state but retains explicit imports", t => {
+  const f = digestFixture(t);
+  f.write("package.json", '{"name":"monorepo","private":true}');
+  f.write("packages/backend/convex/main.ts", "export const allowed = false;");
+  const before = f.digest();
+  for (const directory of [".convex/local/default", ".next", ".turbo", ".cache", "coverage", "artifacts", "playwright-report", "test-results"]) {
+    const file = `packages/backend/${directory}/config.json`;
+    f.write(file, '{"syntheticState":1}'); assert.equal(f.digest(), before);
+    f.write(file, '{"syntheticState":2}'); assert.equal(f.digest(), before);
+    rmSync(join(f.root, file)); assert.equal(f.digest(), before);
+  }
+  f.write("apps/landing/out/chunk.js", "self.runtime = 1;");
+  assert.equal(f.digest(), before, "a monorepo manifest must not retain unrelated frontend output");
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "../.convex/policy.js";');
+  f.write("packages/backend/.convex/policy.js", "export const allowed = false;");
+  const imported = f.digest();
+  f.write("packages/backend/.convex/policy.js", "export const allowed = true;");
+  assert.notEqual(f.digest(), imported);
+  rmSync(join(f.root, "packages/backend/.convex/policy.js"));
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
+test("an excluded-state conditional package target fails closed", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "@private/policy";');
+  f.write("packages/policy/package.json", JSON.stringify({ name: "@private/policy", exports: { node: "./.convex/policy.js", default: "./out/policy.js" } }));
+  f.write("packages/policy/.convex/policy.js", "export const allowed = true;");
+  f.write("packages/policy/out/policy.js", "export const allowed = false;");
+  mkdirSync(join(f.root, "packages/backend/node_modules/@private"), { recursive: true });
+  symlinkSync(join(f.root, "packages/policy"), join(f.root, "packages/backend/node_modules/@private/policy"));
+  assert.throws(f.digest, /metadata references local state/);
+});
+
+test("an explicit runtime package resolving to the monorepo root fails closed", t => {
+  const f = digestFixture(t);
+  f.write("package.json", '{"name":"monorepo","exports":"./root.js"}');
+  f.write("root.js", "export const allowed = true;");
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "monorepo";');
+  mkdirSync(join(f.root, "packages/backend/node_modules"), { recursive: true });
+  symlinkSync(f.root, join(f.root, "packages/backend/node_modules/monorepo"));
+  assert.throws(f.digest, /dedicated package directory/);
+});
+
+test("runtime metadata refuses relative package escapes and wildcard package names", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "#policy";');
+  for (const [target, error] of [["../alternate/out/policy.js", /escapes its package/], ["@private/*", /explicit dependency package name/]] as const) {
+    f.write("packages/backend/package.json", JSON.stringify({ imports: { "#policy": { node: target, default: "./policy.js" } } }));
+    f.write("packages/backend/policy.js", "export const allowed = false;");
+    assert.throws(f.digest, error);
+  }
+});
+
+test("root package wildcard data remains bound and refuses ambiguous ambient state", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "@private/policy";');
+  f.write("packages/policy/package.json", JSON.stringify({ name: "@private/policy", exports: { ".": "./index.js", "./*.json": "./*.json" } }));
+  f.write("packages/policy/index.js", "export const allowed = false;");
+  f.write("packages/policy/en.json", '{"allowed":false}');
+  mkdirSync(join(f.root, "packages/backend/node_modules/@private"), { recursive: true });
+  symlinkSync(join(f.root, "packages/policy"), join(f.root, "packages/backend/node_modules/@private/policy"));
+  const before = f.digest();
+  f.write("packages/policy/en.json", '{"allowed":true}');
+  assert.notEqual(f.digest(), before);
+  f.write("packages/policy/.convex/config.json", '{"privateState":true}');
+  assert.throws(f.digest, /root pattern overlaps local state/);
+});
+
+test("explicit wildcard source directories retain nested state-like implementation names", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'export { allowed } from "#policy/.convex/policy";');
+  f.write("packages/backend/package.json", JSON.stringify({ imports: { "#policy/*": { node: "./out/*.js", default: "./fallback.js" } } }));
+  f.write("packages/backend/fallback.js", "export const allowed = false;");
+  f.write("packages/backend/out/.convex/policy.js", "export const allowed = false;");
+  const before = f.digest();
+  f.write("packages/backend/out/.convex/policy.js", "export const allowed = true;");
+  assert.notEqual(f.digest(), before);
+});
 
 for (const [declaration, implementation] of [
   ["apps/web/next-env.d.ts", "apps/web/next-env.js"],
@@ -152,7 +428,7 @@ for (const [runtime, types] of [["js", "ts"], ["mjs", "mts"], ["cjs", "cts"]]) t
   assert.throws(f.digest, /Cannot bind imported organization source/);
 });
 
-for (const directory of ["services/functions", ".service/functions", "services/.functions", "services/tests/functions"]) {
+for (const directory of ["services/functions", ".service/functions", "services/.functions", "services/tests/functions", "services/out/functions", "services/out", "services/.convex/functions"]) {
   test(`configured ${directory} binds hidden executable imports and refuses missing/external sources`, t => {
     const f = digestFixture(t);
     f.write("packages/backend/convex.json", JSON.stringify({ functions: `../../${directory}` }));
@@ -185,14 +461,14 @@ test("a configured function root cannot escape through an initially excluded sym
   assert.throws(f.digest, /symbolic links/);
 });
 
-for (const edge of ["paths", "workspace-exports"]) test(`${edge} cannot hide JS behind a TS sibling`, t => {
+for (const directory of ["dist", "out"]) for (const edge of ["paths", "workspace-exports"]) test(`${edge} in ${directory} cannot hide JS behind a TS sibling`, t => {
   const f = digestFixture(t);
-  const policy = "packages/business/dist/policy";
+  const policy = `packages/business/${directory}/policy`;
   if (edge === "paths") {
-    f.write("packages/backend/convex/tsconfig.json", '{"compilerOptions":{"baseUrl":".","paths":{"@buyer/*":["../../business/dist/*"]}}}');
+    f.write("packages/backend/convex/tsconfig.json", JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@buyer/*": [`../../business/${directory}/*`] } } }));
     f.write("packages/backend/convex/main.ts", 'export { allowed } from "@buyer/policy.js";');
   } else {
-    f.write("packages/business/package.json", '{"name":"@buyer/policy","type":"module","exports":{"import":"./dist/policy.js"}}');
+    f.write("packages/business/package.json", JSON.stringify({ name: "@buyer/policy", type: "module", exports: { import: `./${directory}/policy.js` } }));
     mkdirSync(join(f.root, "packages/backend/node_modules/@buyer"), { recursive: true });
     symlinkSync(join(f.root, "packages/business"), join(f.root, "packages/backend/node_modules/@buyer/policy"));
     f.write("packages/backend/convex/main.ts", 'export { allowed } from "@buyer/policy";');
@@ -246,7 +522,8 @@ test("source receipt binds app functions, platform code and dependencies, exclud
   const root = mkdtempSync(join(tmpdir(), "organization-digest-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const dir of ["packages/backend/convex", "platform/packages/auth"]) mkdirSync(join(root, dir), { recursive: true });
-  for (const file of ["bun.lock", "app.config.ts", "packages/backend/package.json"]) writeFileSync(join(root, file), "initial");
+  for (const file of ["bun.lock", "app.config.ts"]) writeFileSync(join(root, file), "initial");
+  writeFileSync(join(root, "packages/backend/package.json"), '{"type":"module"}');
   const before = backendSourceDigest(root);
   writeFileSync(join(root, "packages/backend/convex/custom.ts"), "export const policy = 1;");
   const app = backendSourceDigest(root); assert.notEqual(app, before);

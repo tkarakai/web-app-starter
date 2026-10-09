@@ -509,6 +509,28 @@ if [ "$SKIP_E2E" = true ]; then
     step_end "$APP: E2E (Playwright)" "skip"
   done
 else
+  # Complete populated-data verification outside Playwright's webServer timer.
+  # Each ordinary app startup still runs the same source/readiness checks.
+  # Remote targets and backend-free app selections must never start local Convex.
+  if [ -z "${E2E_BASE_URL:-}" ]; then
+    PREPARE_APP=""
+    for APP in web admin landing; do
+      if app_present "$APP"; then PREPARE_APP="$APP"; break; fi
+    done
+    if [ -n "$PREPARE_APP" ]; then
+      print_step "Preparing local backend for E2E"
+      echo "Retained-data verification may take several minutes; browser startup has not begun."
+      step_start
+      if ./platform/tooling/dev-start.sh --ci --prepare-only --app="$PREPARE_APP"; then
+        print_success "Local backend preparation passed"
+        step_end "backend: E2E preparation" "pass"
+      else
+        print_error "Local backend preparation failed; browser suites will not start"
+        step_end "backend: E2E preparation" "fail"
+        exit 1
+      fi
+    fi
+  fi
   print_step "Step 9/9: E2E Tests (Playwright)"
   # Each app's playwright.config.ts has a webServer + reuseExistingServer setting.
   # Locally (no CI env), Playwright reuses running dev servers automatically.

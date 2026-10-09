@@ -10,6 +10,81 @@ import { assessAdvisoryRace, runRaceCheck } from "../advisory-race.ts";
 import { auditResult } from "../dependency-audit.ts";
 import { CHECKOUT_CHECKS, PLATFORM_CHECKS, UPGRADE_CHECKS, checksFor, runChecks } from "../ci-checks.ts";
 
+for (const scenario of [
+  { name: "all apps", apps: ["web", "admin", "landing", "storybook"], prepares: true },
+  { name: "admin only", apps: ["admin"], prepares: true },
+  { name: "landing only", apps: ["landing"], prepares: true },
+  { name: "web without sample or landing", apps: ["web", "storybook"], prepares: true },
+  { name: "storybook only", apps: ["storybook"], prepares: false },
+  { name: "no apps", apps: [], prepares: false },
+  { name: "remote target", apps: ["web", "admin", "landing"], prepares: false, remote: true },
+  { name: "skip browsers", apps: ["web", "admin", "landing"], prepares: false, skip: true },
+  { name: "failed preparation", apps: ["web", "admin", "landing", "storybook"], prepares: true, fail: true },
+]) test(`local CI backend preparation orders and gates browser commands: ${scenario.name}`, async t => {
+  const { mkdirSync, copyFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join, dirname, delimiter } = await import("node:path");
+  const { spawnSync } = await import("node:child_process");
+  const root = mkdtempSync(join(tmpdir(), "ci-preparation-fixture-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const write = (name: string, text: string) => { mkdirSync(dirname(join(root, name)), { recursive: true }); writeFileSync(join(root, name), text, { mode: 0o755 }); };
+  write("package.json", '{"private":true, "packageManager": "bun@1.3.9"}');
+  for (const app of scenario.apps) write(`${app === "admin" || app === "storybook" ? "platform/apps" : "apps"}/${app}/package.json`, "{}");
+  write("platform/tooling/node-ts.sh", `#!/bin/bash
+case "$1:$2" in
+  platform/tooling/app-config.ts:dir) case "$3" in admin|storybook) echo "platform/apps/$3";; *) echo "apps/$3";; esac;;
+  platform/tooling/app-config.ts:shell) for app in WEB ADMIN LANDING; do echo "APP_CONFIG_ORIGIN_$app=http://localhost:4000"; done;;
+  platform/tooling/ci-checks.ts:*) exit 0;;
+  *) exit 127;;
+esac
+`);
+  const recorder = `#!/usr/bin/env node
+const fs=require('node:fs');const path=require('node:path');const root=process.env.CI_FIXTURE_ROOT;
+const name=path.basename(process.argv[1]);const args=process.argv.slice(2);
+fs.appendFileSync(root+'/commands.jsonl',JSON.stringify({name,args,cwd:process.cwd()})+'\\n');
+if(args[0]==='--version') console.log('1.3.9');
+if(args.includes('test:e2e') || name==='bunx') {
+  if(process.env.CI_FIXTURE_EXPECT_PREPARED==='1' && !fs.existsSync(root+'/.prepared')) process.exit(41);
+}
+`;
+  for (const name of ["bun", "bunx", "turbo"]) write(`bin/${name}`, recorder);
+  // Only external command boundaries are stubbed. Execute the entire real CI
+  // driver in an empty disposable tree; no builds, backend or browser can run.
+  write("platform/tooling/dev-start.sh", `#!/bin/bash
+set -e
+node -e 'require("node:fs").appendFileSync(process.env.CI_FIXTURE_ROOT+"/commands.jsonl",JSON.stringify({name:"prepare",args:process.argv.slice(1),cwd:process.cwd()})+"\\n")' -- "$@"
+printf '%s\\n' 'prepare:start' >> "$CI_FIXTURE_ROOT/events"
+[[ " $* " == *' --ci '* && " $* " == *' --prepare-only '* ]] || exit 42
+[[ " $* " == *' --app='* ]] || exit 43
+if [ "$CI_FIXTURE_FAIL_PREPARE" = 1 ]; then exit 23; fi
+touch "$CI_FIXTURE_ROOT/.prepared"
+printf '%s\\n' 'prepare:done' >> "$CI_FIXTURE_ROOT/events"
+`);
+  copyFileSync(new URL("../ci-local.sh", import.meta.url), join(root, "platform/tooling/ci-local.sh"));
+  const result = spawnSync("bash", ["platform/tooling/ci-local.sh", ...(scenario.skip ? ["--skip-e2e"] : [])], {
+    cwd: root, encoding: "utf8", timeout: 15_000,
+    env: { ...process.env, CI: "true", E2E_BASE_URL: scenario.remote ? "https://disposable.example.test" : "",
+      CI_FIXTURE_ROOT: root, CI_FIXTURE_EXPECT_PREPARED: scenario.prepares ? "1" : "0", CI_FIXTURE_FAIL_PREPARE: scenario.fail ? "1" : "0",
+      PATH: join(root, "bin") + delimiter + process.env.PATH },
+  });
+  assert.equal(result.status, scenario.fail ? 1 : 0, result.stdout + result.stderr);
+  const commands = readFileSync(join(root, "commands.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line) as { name: string; args: string[]; cwd: string });
+  const browsers = commands.filter(c => c.args.includes("test:e2e") || c.name === "bunx");
+  assert.equal(browsers.length, scenario.skip || scenario.fail ? 0 : scenario.apps.length);
+  if (scenario.prepares) {
+    assert.equal(readFileSync(join(root, "events"), "utf8"), scenario.fail ? "prepare:start\n" : "prepare:start\nprepare:done\n");
+    assert.match(result.stdout, /backend: E2E preparation/);
+    const preparations = commands.filter(c => c.name === "prepare");
+    assert.equal(preparations.length, 1);
+    const app = preparations[0].args.find(arg => arg.startsWith("--app="))?.slice(6);
+    assert.ok(app && scenario.apps.includes(app) && ["web", "admin", "landing"].includes(app));
+    const prepareIndex = commands.indexOf(preparations[0]);
+    assert.ok(commands.filter(c => c.name === "turbo" && c.args[0] === "build").every(c => commands.indexOf(c) < prepareIndex));
+    assert.ok(browsers.every(c => commands.indexOf(c) > prepareIndex));
+  } else assert.equal(readdirSync(root).includes("events"), false, "remote, skipped and backend-free suites must not prepare a local target");
+  assert.equal(commands.filter(c => c.name === "turbo" && c.args[0] === "build").length, scenario.apps.length);
+});
+
 test("HTTP readiness retries compilation failures, follows redirects and rejects permanent failure", async t => {
   let status = 500, calls = 0, recoveryCalls = 0, recover = false;
   const server = createServer((req, res) => { calls++; if (recover && req.url === "/page" && ++recoveryCalls === 3) status = 200; if (req.url === "/redirect") { res.writeHead(307, { location: "/page" }); } else res.writeHead(status); res.end("page"); });

@@ -40,7 +40,8 @@ starter upgrade checks use the root scripts):
 11. **Production builds**, including Storybook (`turbo build --filter=@repo/$APP...` for web, admin, landing and storybook)
 12. **Built landing browser smoke** (`bun run test:landing-artifacts`): see [shared UI and production artifacts](testing.md#shared-ui-and-production-artifacts).
 13. **Bundle size check** (all apps with `.size-limit.json`)
-14. **Playwright E2E tests** (CI mode starts managed local services through each app's Playwright configuration and refuses to reuse an occupied local server; an explicit `E2E_BASE_URL` instead targets that disposable deployment)
+14. **Local backend preparation**: after builds, the managed launcher completes preserving organization preparation and verification, then releases its owned backend. This phase runs before browser startup deadlines and can take several minutes on populated data. A failure stops the browser suites. It skips local preparation for `E2E_BASE_URL`, `--skip-e2e`, or installations with no backend-dependent app.
+15. **Playwright E2E tests** (CI mode starts managed local services through each app's Playwright configuration and refuses to reuse an occupied local server; an explicit `E2E_BASE_URL` instead targets that disposable deployment)
 
 Artifacts (coverage reports, Playwright reports, visual snapshots and dev logs) are saved to
 `.ci-local-artifacts/`. Each run replaces the preceding run's local artifacts; copy evidence you
@@ -53,6 +54,13 @@ Failed organization-transition assertions also record a closed set of state cate
 missing context, mismatched selection or a hidden document). They never record actual URLs,
 organization IDs, member text or arbitrary custom step titles; the original assertion still fails.
 Collection is limited to two seconds within the remaining test budget and skipped near its deadline.
+
+Before standalone E2E on changed source with a populated local database, stop this checkout's
+managed services and run `bun run dev --prepare-only --app=web` (select an installed `web`,
+`admin` or `landing` app). The same preparation runs automatically in full local CI. It keeps
+existing data and uses the normal source/registry-bound migration; it provides no readiness
+bypass. If it fails, repair the reported blocker and resume the same source before testing.
+Normal app startup still verifies readiness, with its existing browser startup deadline.
 
 Use `CI=true` for full local CI and standalone E2E (`CI=true bun run test:e2e`).
 Web's Playwright configuration then uses one worker and retries instead of local parallel
