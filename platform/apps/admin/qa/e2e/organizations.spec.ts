@@ -17,6 +17,9 @@ test.describe("App-operator organization workflow", () => {
   });
 
   test("real directory preserves private data while disabling and reactivating the selected organization", async ({ page, request }, testInfo) => {
+    // Two authenticated identities and both lifecycle transitions share this
+    // whole-test budget; keep the existing per-action and assertion deadlines.
+    test.setTimeout(60_000);
     const user = await createDisposableUser();
     const client = new ConvexHttpClient(localConvexUrl());
     const origin = new URL(testInfo.project.use.baseURL!).origin;

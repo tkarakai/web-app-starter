@@ -19,6 +19,36 @@ function digestFixture(t: { after: (fn: () => void) => void }) {
   return { root, write, digest: () => backendSourceDigest(root) };
 }
 
+for (const [declaration, implementation] of [
+  ["apps/web/next-env.d.ts", "apps/web/next-env.js"],
+  ["apps/landing/next-env.d.ts", "apps/landing/next-env.ts"],
+  ["platform/apps/admin/next-env.d.ts", "platform/apps/admin/next-env.js"],
+  ["packages/backend/convex/ambient.d.mts", "packages/backend/convex/ambient.mts"],
+  ["packages/backend/convex/ambient.d.cts", "packages/backend/convex/ambient.cts"],
+  ["packages/business/policy.d.json.ts", "packages/business/policy.json"],
+]) test(`declaration lifecycle does not change binding: ${declaration}`, t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", "export const allowed = false;");
+  f.write(implementation, implementation.endsWith(".json") ? '{"allowed":false}' : "export const allowed = false;");
+  const before = f.digest();
+  f.write(declaration, '/// <reference types="next" />\nimport "./.next/dev/types/routes.d.ts";\n');
+  assert.equal(f.digest(), before, "creating a nonexecutable generated declaration cannot stale readiness");
+  f.write(declaration, '/// <reference types="next/image-types/global" />\nimport "./.next/types/routes.d.ts";\n');
+  assert.equal(f.digest(), before, "refreshing declaration contents cannot stale readiness");
+  rmSync(join(f.root, declaration));
+  assert.equal(f.digest(), before, "removing generated declarations cannot stale readiness");
+  f.write(declaration, "export declare const allowed: boolean;");
+  f.write(implementation, implementation.endsWith(".json") ? '{"allowed":true}' : "export const allowed = true;");
+  assert.notEqual(f.digest(), before, "paired executable source remains bound while its declaration exists");
+});
+
+test("an explicit runtime import of a declaration-only module still fails closed", t => {
+  const f = digestFixture(t);
+  f.write("packages/backend/convex/main.ts", 'import "./policy.d.ts";');
+  f.write("packages/backend/convex/policy.d.ts", "export declare const allowed: boolean;");
+  assert.throws(f.digest, /Cannot bind imported organization source/);
+});
+
 for (const [runtime, types] of [["js", "ts"], ["mjs", "mts"], ["cjs", "cts"]]) {
   test(`generated ${runtime} implementation is bound while declaration refresh is stable`, t => {
     const f = digestFixture(t);

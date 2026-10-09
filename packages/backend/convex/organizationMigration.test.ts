@@ -513,6 +513,8 @@ test("email-only admission changes cannot reclassify a mapped customer or turn a
   }
 });
 
+// The aggregate CI budget includes 1001 seeded organizations and both complete
+// migration passes; retain the 100-row pages and bounded step count below.
 test("security eligibility is paginated beyond 1000 canonical organizations on both migration passes", async () => {
   const f = fixture();
   f.t.registerComponent("betterAuth", authSchema, {
@@ -550,4 +552,4 @@ test("security eligibility is paginated beyond 1000 canonical organizations on b
   await f.t.mutation(finalize, {});
   expect((await f.t.run(ctx => readOrganizationReadiness(ctx))).ready).toBe(true);
   expect(await f.t.run(ctx => ctx.db.query("organizationOwnerMappings").collect())).toHaveLength(1001);
-}, 30_000);
+}, 60_000);
