@@ -26,7 +26,8 @@ const page = await browser.newPage();
 await page.setContent('<h1>prepared worker</h1>');
 assert.equal(await page.locator('h1').textContent(), 'prepared worker');
 await browser.close();
-execFileSync('/opt/backend/convex-local-backend', ['--help'], { stdio: 'ignore' });
+// Preserve loader diagnostics (for example missing GLIBC versions) when tool validation fails.
+execFileSync('/opt/backend/convex-local-backend', ['--help'], { encoding: 'utf8' });
 for (const host of ['169.254.169.254', '1.1.1.1']) {
   const connected = await new Promise(resolve => {
     const socket = net.connect({ host, port: 80 });

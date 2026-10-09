@@ -21,6 +21,14 @@ or maintain. Buildx/BuildKit 0.13 or newer is required for multiple local export
 download upstream Node images, GitHub runner/Bun/Convex releases, Playwright browsers and npm
 packages. Warm jobs reuse those bytes locally.
 
+Worker tools use a Debian 13 (Trixie) Node image, resolved to its immutable digest before building.
+This supplies the GLIBC/libstdc++ versions required by current Convex Linux binaries; it does not
+change the application's declared Node/Bun versions or require a Linux host. The base selection
+participates in tool reuse identity. Smoke validation must pass before a tool/dependency image is
+promoted; failed backend starts report their loader diagnostics and leave routing unchanged.
+For an installed manager still using the older Bookworm recipe, follow the reviewed manager-update
+sequence under [Operate and maintain](#operate-and-maintain), then repeat local/GitHub checks.
+
 ## Set up workers before enabling routing
 
 1. Use a **reviewed checkout** of your application's default branch for the setup sequence below.
