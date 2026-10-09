@@ -34,8 +34,7 @@ export const sampleTables = {
   })
     .index("by_project", ["projectId"])
     .index("by_owner", ["ownerId"])
-    .index("by_status", ["status"])
-    .index("by_organization_project", ["organizationId", "projectId"]),
+    .index("by_status", ["status"]),
 
   uploads: defineTable({
     storageId: v.id("_storage"),
@@ -51,6 +50,5 @@ export const sampleTables = {
   })
     .index("by_owner", ["ownerId"])
     .index("by_project", ["projectId"])
-    .index("by_storage", ["storageId"])
-    .index("by_organization_project", ["organizationId", "projectId"]),
+    .index("by_storage", ["storageId"]),
 };

@@ -248,8 +248,8 @@ self-service operations can be selected into this operator catalogue. Its
 input schema comes from the same validators used by the native UI endpoint; the transport
 adapters need no per-operation changes. The shared builders capture the handler body, but
 only the explicit registry can execute it. Keep canonical actor/target checks in the shared body as well as dispatch; never fabricate
-`ctx.auth`. Use `requireOperator(ctx, { write: true })` for operator writes and
-`requireOperatorTarget(ctx, userId)` for identity targets. Tenant builders must stay outside
+`ctx.auth`. Use `requireAppOperator(ctx, { write: true })` for operator writes and
+`requireAppOperatorTarget(ctx, userId)` for identity targets. Tenant builders must stay outside
 this catalogue and carry their explicit immutable organization boundary. Update the endpoint authorization classification and
 exercise meaningful granted/denied behavior. Authentication-store operations require explicit
 safe DTOs, native policy/protected-identity checks and audit events; credential ceremonies
