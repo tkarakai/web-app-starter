@@ -3,7 +3,18 @@ export const statuses = ["passed", "failed", "timedOut", "skipped", "interrupted
 export type Status = typeof statuses[number];
 export const categories = ["assertion", "timeout", "navigation", "runtime", "capture-policy"] as const;
 export type Diagnostic = typeof categories[number];
-export const activities = ["assertion", "fill", "type", "navigate", "click", "api", "fixture", "hook", "step", "attachment"] as const;
+/** Closed observations only: never copy a custom step title or a DOM value. */
+export const organizationObservations = [
+  "org-url-expected", "org-url-other", "org-context-match", "org-context-mismatch", "org-context-absent",
+  "org-option-present", "org-option-absent", "org-visible", "org-hidden", "org-document-loading",
+  "org-app-loading", "org-app-unavailable", "org-invitation-page", "org-dashboard-page",
+  "org-sign-in-page", "org-organization-page", "org-page-other", "org-feedback-present", "org-feedback-absent",
+  "org-feedback-unavailable", "org-feedback-reauthentication", "org-feedback-rate-limit",
+  "org-feedback-invitation", "org-feedback-not-ready", "org-feedback-generic", "org-expected-id-missing",
+  "org-row-pending", "org-row-not-pending", "org-row-absent", "org-read-failed",
+] as const;
+export type OrganizationObservation = typeof organizationObservations[number];
+export const activities = ["assertion", "fill", "type", "navigate", "click", "api", "fixture", "hook", "step", "attachment", ...organizationObservations] as const;
 export type Activity = typeof activities[number];
 export interface SafeAttempt {
   status: Status; expectedStatus: Status; retry: number; durationMs: number;
@@ -25,6 +36,7 @@ export function diagnostic(message = ""): Diagnostic {
   return "runtime";
 }
 export function activity(category: string, title: string): Activity {
+  if (category === "test.step" && organizationObservations.includes(title as OrganizationObservation)) return title as OrganizationObservation;
   if (category === "expect") return "assertion";
   if (category === "fixture" || category === "hook") return category;
   if (category === "test.attach") return "attachment";

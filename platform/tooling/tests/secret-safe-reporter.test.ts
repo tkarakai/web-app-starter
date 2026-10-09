@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import type { FullConfig, FullResult, Suite, TestCase, TestResult, TestStep } from "@playwright/test/reporter";
 import SecretSafeReporter from "../e2e/secret-safe-reporter.ts";
-import { counts, htmlReport, textReport, validateReport } from "../e2e/secret-safe-report.ts";
+import { activity, counts, htmlReport, textReport, validateReport } from "../e2e/secret-safe-report.ts";
 import { runSecretSafePlaywright, safeArguments } from "../e2e/secret-safe-playwright.ts";
 import { assertSecretSafeRunner } from "../e2e/secret-safe-config.ts";
 
@@ -28,6 +28,8 @@ test("reporter retains failed assertions, retries and skipped status without ser
     reporter.onTestBegin(first, failed);
     reporter.onStepEnd(first, failed, { category: "pw:api", title: `Fill ${marker}`, params: { value: marker } } as unknown as TestStep);
     reporter.onStepEnd(first, failed, { category: "expect", title: marker, error: { message: marker }, location: { file: "/tests/security.spec.ts", line: 44, column: 7 } } as TestStep);
+    reporter.onStepEnd(first, failed, { category: "test.step", title: "org-context-absent" } as TestStep);
+    reporter.onStepEnd(first, failed, { category: "test.step", title: `org-context-absent:${marker}` } as TestStep);
     reporter.onTestEnd(first, failed); reporter.onTestEnd(second, skipped);
     reporter.onError({ message: `Navigation failed https://example.invalid/?token=${marker}`, snippet: marker });
     await reporter.onEnd({ status: "failed" } as FullResult);
@@ -37,6 +39,8 @@ test("reporter retains failed assertions, retries and skipped status without ser
     assert.equal(report.tests[0].attempts[0].diagnostics[0], "assertion");
     assert.equal(report.tests[0].attempts[0].activities.fill, 1);
     assert.equal(report.tests[0].attempts[0].activities.assertion, 1);
+    assert.equal(report.tests[0].attempts[0].activities["org-context-absent"], 1);
+    assert.equal(report.tests[0].attempts[0].activities.step, 1);
     assert.deepEqual(counts(report), { tests: 2, attempts: 2, retries: 1, passed: 0, failed: 1, skipped: 1, timedOut: 0, interrupted: 0, unexpected: 1, flaky: 0 });
     assert.match(textReport(report, true), /::error file=security.spec.ts,line=44,col=7::/);
     assert.deepEqual(report.tests[0].attempts[0].failures, [{ file: "security.spec.ts", line: 44, column: 7, category: "assertion" }]);
@@ -45,6 +49,14 @@ test("reporter retains failed assertions, retries and skipped status without ser
     if (previous.result === undefined) delete process.env.E2E_SAFE_RESULT_FILE; else process.env.E2E_SAFE_RESULT_FILE = previous.result;
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("organization observations accept exact closed titles, never prefixed private data", () => {
+  assert.equal(activity("test.step", "org-url-expected"), "org-url-expected");
+  for (const title of ["org-url-expected:secret", "org-url-expected\nsecret", "org-secret-token", "org-url-expected "]) {
+    assert.equal(activity("test.step", title), "step");
+  }
+  assert.equal(activity("pw:api", "org-url-expected"), "api");
 });
 
 test("safe report validator rejects invalid categories and reconstructs unknown fields away", () => {

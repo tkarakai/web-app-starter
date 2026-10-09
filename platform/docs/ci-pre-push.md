@@ -49,6 +49,10 @@ Web/admin browser reports contain only outcomes, source locations, timings and d
 categories; their credential-bearing raw browser output is not retained by the test wrapper.
 Development server logs in the local artifact directory can contain auth email links and must
 stay private. Hosted web/admin jobs upload only the safe report files.
+Failed organization-transition assertions also record a closed set of state categories (such as
+missing context, mismatched selection or a hidden document). They never record actual URLs,
+organization IDs, member text or arbitrary custom step titles; the original assertion still fails.
+Collection is limited to two seconds within the remaining test budget and skipped near its deadline.
 
 Use `CI=true` for full local CI and standalone E2E (`CI=true bun run test:e2e`).
 Web's Playwright configuration then uses one worker and retries instead of local parallel
