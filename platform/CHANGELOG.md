@@ -60,6 +60,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Resuming setup with `--local-only` never starts an existing authenticated manager service;
+  container-only checks do not silently become registration-capable background work.
 - Updater status reports effective hosted, prepared, auxiliary or unconfigured routes across all
   six local selectors, separately from recorded intent. Clearing updater pools no longer implies
   fully hosted readiness; inherited settings and live host availability remain explicitly unverified.

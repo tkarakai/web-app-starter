@@ -327,6 +327,24 @@ await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', 
   return { dir, git, sha, prepare };
 }
 
+test('resumed local-only setup never starts an authenticated installation service', async t => {
+  const { dir, git, prepare } = await preparationFixture(t);
+  await git('remote', 'add', 'origin', 'https://github.com/owner/repo.git');
+  await writeFile(path.join(dir, 'systemctl'), `#!${process.execPath}\nrequire('node:fs').writeFileSync(require('node:path').join(process.env.STARTER_WORKERS_HOME, 'service-started'), 'yes');\n`, { mode: 0o755 });
+  await run(dir, prepare + `
+process.chdir(${JSON.stringify(dir)});
+process.env.PATH = ${JSON.stringify(dir)} + ':' + process.env.PATH;
+Object.defineProperty(process, 'platform', { value: 'linux' });
+await core.save(path.join(core.home, 'config.json'), { ...c, localOnly: false, convenienceCommand: false });
+const before = await core.config();
+const { main } = await import(path.join(base, 'cli.ts'));
+await main(['setup', '--local-only']);
+assert.deepEqual(await core.config(), before);
+assert.equal(await core.exists(path.join(core.home, 'service-started')), false, '--local-only must not start a registration-capable service');
+assert.equal(await core.exists(path.join(core.home, 'local-check.json')), true);
+`);
+});
+
 test('delivery preparation uses only tools even when app installation is poisoned', async t => {
   const { dir, prepare } = await preparationFixture(t);
   // A delivery installation must succeed even when app installation is poisoned.

@@ -104,7 +104,9 @@ see [update delivery](update-delivery.md#self-hosted-linux-runners). The ordinar
 routing variables and explicit diagnostic inputs cannot override that policy. Public local worker
 setup/authentication, service start, GitHub checks and enabling routing are refused; the retired
 `--public-branch` option is rejected. Local CLI/container checks with `--local-only` remain available
-without GitHub registration. See [retiring public installations](#retire-public-local-runners).
+without GitHub registration. Resuming setup with `--local-only` also leaves an existing
+installation's credential mode intact and never starts its service. See
+[retiring public installations](#retire-public-local-runners).
 
 **Private repository owners choose hosted or all-local execution.** The routing described below
 applies only to private repositories and never authorizes untrusted source on the host. Paid plans

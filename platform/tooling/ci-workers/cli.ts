@@ -67,7 +67,7 @@ async function setup(args: string[]): Promise<void> {
     if (args.includes('--no-convenience-command')) existing = await updateConfig(async () => ({ convenienceCommand: false }));
     await localCheck(existing, existing.updateRole === 'deliver' ? ['check'] : ['check', '--install']);
     print(await install(existing));
-    if (!existing.localOnly) await service(existing, true);
+    if (!existing.localOnly && !args.includes('--local-only')) await service(existing, true);
     print('Setup resumed successfully; GitHub routing is unchanged.'); return;
   }
   const updateRole = option(args, 'update-role');
