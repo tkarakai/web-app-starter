@@ -47,6 +47,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Guarded organization deployment uses 10-row migration pages by default and accepts the
+  trusted tooling setting `ORGANIZATION_MIGRATION_BATCH_SIZE` (1–100). Resource failures retain
+  maintenance and the existing checkpoint for a smaller-page resume; no row checks are skipped.
 - Operator-directory pages use an indexed stored `createdAt` order and query-bound cursors;
   ordinary customer rows no longer consume the operator scan budget. Protected-email reads use
   bounded component-local identity batches while retaining both privacy checks and complete results.

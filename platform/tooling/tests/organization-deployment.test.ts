@@ -321,6 +321,65 @@ test("same-source retries preserve the active receipt and resume through product
   assert.ok(!calls.some(args => args[1] === "organizationMigration:maintenance" || args[1] === "organizationMigration:finalize"));
 });
 
+test("bounded migration pages preserve every checkpoint and smaller-page resume after a budget failure", () => {
+  const rows = Array.from({ length: 25 }, (_, index) => `owner-${index}`);
+  const verified: string[] = [];
+  let cursor = 0; let ready = false; let failPage = false;
+  const calls: string[][] = [];
+  const command: ConvexCommand = args => {
+    calls.push(args);
+    if (args[1] === "organizationMigration:status") return JSON.stringify({ deployment: "https://retained.convex.cloud",
+      ...source, expectedRegistryHash: source.registryHash, ready });
+    if (args[1] === "organizationMigration:step") {
+      const { batchSize } = JSON.parse(args[2]);
+      if (batchSize > 10 || failPage) throw new Error("transaction operation budget exceeded");
+      const page = rows.slice(cursor, cursor + batchSize);
+      verified.push(...page); cursor += page.length;
+      // Simulate a failed next transaction, with all prior committed work retained.
+      if (cursor === 10) failPage = true;
+      return JSON.stringify({ complete: cursor === rows.length });
+    }
+    if (args[1] === "organizationMigration:finalize") {
+      assert.deepEqual(verified, rows); ready = true; return '{"ready":true}';
+    }
+    return "null";
+  };
+  assert.throws(() => verifyOrganizationDeployment(command, source, {}), /operation budget/);
+  assert.equal(cursor, 10);
+  assert.deepEqual(verified, rows.slice(0, 10));
+  assert.equal(ready, false);
+  assert.ok(!calls.some(args => args[1] === "organizationMigration:finalize" || args[0] === "env"));
+  failPage = false;
+  const resumeIndex = calls.length;
+  verifyOrganizationDeployment(command, source, { ORGANIZATION_MIGRATION_BATCH_SIZE: "3" });
+  assert.deepEqual(verified, rows);
+  assert.equal(ready, true);
+  assert.ok(calls.slice(resumeIndex).filter(args => args[1] === "organizationMigration:step")
+    .every(args => JSON.parse(args[2]).batchSize === 3));
+  assert.equal(calls.filter(args => args[1] === "organizationMigration:finalize").length, 1);
+  assert.deepEqual(calls.at(-1), ["env", "set", "ORGANIZATION_CUTOVER_ENFORCED", "1"]);
+});
+
+test("migration batch configuration rejects invalid values before any verification command", () => {
+  for (const value of ["", "0", "-1", "101", "1.5", "NaN", "Infinity", "1e1", "01", " 10", "10 "]) {
+    let calls = 0;
+    assert.throws(() => verifyOrganizationDeployment(() => { calls++; return "null"; }, source,
+      { ORGANIZATION_MIGRATION_BATCH_SIZE: value }), /must be an integer from 1 to 100/);
+    assert.equal(calls, 0, value);
+  }
+  for (const value of ["1", "100"]) {
+    const sizes: number[] = [];
+    const command: ConvexCommand = args => {
+      if (args[1] === "organizationMigration:status") return JSON.stringify({ deployment: "https://retained.convex.cloud",
+        ...source, expectedRegistryHash: source.registryHash, ready: true });
+      if (args[1] === "organizationMigration:step") { sizes.push(JSON.parse(args[2]).batchSize); return '{"complete":true}'; }
+      return "null";
+    };
+    verifyOrganizationDeployment(command, source, { ORGANIZATION_MIGRATION_BATCH_SIZE: value });
+    assert.deepEqual(sizes, [Number(value)]);
+  }
+});
+
 test("explicit forward recovery changes only the exact pending target and resumes an interrupted environment update", () => {
   for (const alreadyRecovered of [false, true]) {
     const calls: string[][] = [];

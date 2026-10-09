@@ -101,7 +101,7 @@ After deploying the additive implementation, use internal deployment operations:
 1. `organizationMigration:begin({ confirmDeployment, deploymentVersion })` commits the minimal
    maintenance fence and receipt. It does not inspect security eligibility in that transaction:
    malformed historical identities must not roll back the fence.
-2. Repeatedly call `organizationMigration:step({ batchSize: 50 })` until `complete` is true. Save the
+2. Repeatedly call `organizationMigration:step({ batchSize: 10 })` until `complete` is true. Save the
    exact source/registry evidence and inspect any row-specific blocker. The durable state resumes
    after interruption; do not reset it or change IDs to force completion. The first stage preserves
    canonical policy and verifies organizations in bounded pages. Ineligible historical administrators
@@ -116,6 +116,20 @@ After deploying the additive implementation, use internal deployment operations:
 4. `organizationMigration:status({})` returns the receipt and current deployment binding for trusted
    tooling. Public `platform/organizationReadiness:status` returns only `ready` and `phase` to an
    authenticated user. Completion must call `requireOrganizationReadiness(ctx)` on the backend.
+
+Managed deployment verification and local startup request **10 rows per page** by default.
+Identity and ownership verification perform several component reads per row, so the engine's
+100-row maximum can exceed a transaction's operation budget on a populated installation.
+Set `ORGANIZATION_MIGRATION_BATCH_SIZE` in the deployment-tool or local-launcher process to
+an integer from 1 to 100 when tuning a custom migration. This is a tooling setting; it does not
+change the deployed security policy, execution timeout or ownership checks. Empty, fractional,
+out-of-range and nonnumeric values fail before verification commands run.
+
+If a page fails, the transaction and its cursor roll back and maintenance remains closed.
+Inspect the error first; for an operation-budget failure, resume the **same source and receipt**
+with a smaller batch size. The driver does not retry failed pages automatically or skip records.
+It runs at most 20,000 pages per invocation; reaching that limit also requires a same-source
+resume. Finalization still requires every migration and verification stage to complete.
 
 Application mutations call `assertOrganizationWriteAllowed(ctx, "tenant")` in the **transaction that
 writes**. Legacy entry points use `"legacy"` and stay denied after cutover. Actions must guard both

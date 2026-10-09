@@ -184,7 +184,15 @@ export function recoverOrganizationDeployment(command: ConvexCommand, source: Or
   prepareOrganizationDeployment(command, source);
 }
 
-export function verifyOrganizationDeployment(command: ConvexCommand, source: OrganizationSource) {
+export function verifyOrganizationDeployment(command: ConvexCommand, source: OrganizationSource,
+  environment: Record<string, string | undefined> = process.env) {
+  // Identity/ownership stages perform several component joins per row. The
+  // engine's maximum page size is not a safe default for populated deployments.
+  const configured = environment.ORGANIZATION_MIGRATION_BATCH_SIZE;
+  if (configured !== undefined && !/^(?:[1-9][0-9]?|100)$/.test(configured)) {
+    throw new Error("ORGANIZATION_MIGRATION_BATCH_SIZE must be an integer from 1 to 100.");
+  }
+  const batchSize = configured === undefined ? 10 : Number(configured);
   const status = json(command, "organizationMigration:status");
   if (typeof status.deployment !== "string" || !status.deployment || status.expectedRegistryHash !== source.registryHash) {
     throw new Error("Deployed organization code does not match the verified source registry.");
@@ -192,7 +200,7 @@ export function verifyOrganizationDeployment(command: ConvexCommand, source: Org
   command(["run", "organizationMigration:begin", JSON.stringify({ confirmDeployment: status.deployment, deploymentVersion: source.deploymentVersion })]);
   let complete = false;
   for (let batch = 0; batch < 20_000; batch++) {
-    if (json(command, "organizationMigration:step", { batchSize: 100 }).complete === true) { complete = true; break; }
+    if (json(command, "organizationMigration:step", { batchSize }).complete === true) { complete = true; break; }
   }
   if (!complete) throw new Error("Organization migration batch limit reached; deployment remains in maintenance. Resume the same source.");
   const finalStatus = json(command, "organizationMigration:status");
