@@ -1,10 +1,5 @@
 # Guided deployment setup
 
-Start with the [PR-first repository workflow](repository-workflow.md): draft adoption PR,
-live enforcement inspection, resumable exact check discovery and owner-consented setup.
-Protection, check names and merge authority must be verified before maintenance auto-merge;
-workflow presence and deployment verification do not prevent direct pushes.
-
 Run `bun run deploy:setup --check` for read-only JSON status (exit 0 when complete, 2 when
 work remains). Run `bun run deploy:setup` in a terminal to provision and configure services,
 or resume an interrupted setup. It creates cloud resources and updates provider settings;

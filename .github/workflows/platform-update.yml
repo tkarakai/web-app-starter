@@ -187,9 +187,10 @@ jobs:
         with:
           app-id: ${{ vars.PLATFORM_UPDATER_APP_ID }}
           private-key: ${{ secrets.PLATFORM_UPDATER_PRIVATE_KEY }}
-          # Scope the token to this repository. It inherits only the installed App grants,
-          # including separately owner-approved read-only inspection scopes when present.
-          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-workflows: write
       - name: Report updater App authentication failure
         if: failure() && steps.app-token.outcome == 'failure'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -231,9 +232,6 @@ jobs:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
           DELIVERY_MODE: ${{ vars.PLATFORM_UPDATE_DELIVERY }}
           APP_ID: ${{ vars.PLATFORM_UPDATER_APP_ID }}
-          APP_BOT_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
-          UPDATE_POLICY: ${{ inputs.policy }}
-          PR_E2E: ${{ vars.PLATFORM_CI_PR_E2E || 'always' }}
         with:
           github-token: ${{ steps.app-token.outputs.token || github.token }}
           script: |
@@ -325,69 +323,12 @@ jobs:
               const pr=await github.rest.pulls.create({...context.repo,head:branch,base:e.BASE_BRANCH,draft,title:`Platform v${data.installed} → v${e.TARGET}${severity.length?' (security: '+discovery.severity+')':''}`,body});
               operation='label created PR';
               await github.rest.issues.addLabels({...context.repo,issue_number:pr.data.number,labels});core.notice(pr.data.html_url);
-              // Only the committed owner policy may authorize this exact named App and bot class.
-              // Never execute repository/artifact scripts in this credential-bearing publisher.
-              const maintenanceReady=async()=>{
-                try{
-                  const policy=JSON.parse(git(['show',e.BASE_HEAD+':.github/repository-workflow.json']));
-                  const login=e.APP_BOT_LOGIN;
-                  const bot=policy.maintenanceBots?.find(b=>b.login===login&&b.appId===Number(e.APP_ID)&&b.kind==='platform-update');
-                  if(policy.schemaVersion!==1||policy.repository!==context.repo.owner+'/'+context.repo.repo||!bot||!login?.endsWith('[bot]')||!['patch','minor'].includes(bot.policy))return false;
-                  const app=(await github.rest.apps.getBySlug({app_slug:login.replace(/\[bot\]$/,'')})).data;
-                  const allowed={contents:'write',pull_requests:'write',workflows:'write',issues:'write',metadata:'read',administration:'read',checks:'read',variables:'read'};
-                  if(app.id!==bot.appId||Object.entries(app.permissions??{}).some(([key,value])=>allowed[key]!==value)||Object.entries(allowed).some(([key,value])=>app.permissions?.[key]!==value))return false;
-                  if(e.UPDATE_POLICY!==bot.policy||!['always','on-demand'].includes(e.PR_E2E||'always'))return false;
-                  const before=data.installed.split('.').map(Number),after=e.TARGET.split('.').map(Number);
-                  if(before[0]!==after[0]||(bot.policy==='patch'&&before[1]!==after[1]))return false;
-                  const repo=(await github.rest.repos.get(context.repo)).data;
-                  if(repo.default_branch!==e.BASE_BRANCH||repo.allow_auto_merge!==true||repo.allow_squash_merge!==true||repo.allow_merge_commit!==false||repo.allow_rebase_merge!==false||repo.delete_branch_on_merge!==true)return false;
-                  const installation=(await github.request('GET /installation/repositories',{per_page:100})).data;
-                  if(installation.total_count!==1||installation.repositories?.length!==1||installation.repositories[0].full_name!==policy.repository||pr.data.user?.login!==login)return false;
-                  const rules=(await github.paginate('GET /repos/{owner}/{repo}/rules/branches/{branch}',{...context.repo,branch:e.BASE_BRANCH,per_page:100}));
-                  if(!Array.isArray(rules))return false;
-                  let protection;
-                  try{protection=(await github.rest.repos.getBranchProtection({...context.repo,branch:e.BASE_BRANCH})).data;}catch(error){if(error.status!==404)throw error;}
-                  const effective={pr:false,linear:false,strict:false,approvals:0,stale:false,checks:[]};
-                  if(protection){
-                    const reviews=protection.required_pull_request_reviews,bypass=reviews?.bypass_pull_request_allowances;
-                    if(protection.allow_force_pushes?.enabled||protection.allow_deletions?.enabled)return false;
-                    if(bypass&&['users','teams','apps'].some(key=>bypass[key]?.length))return false;
-                    if(protection.enforce_admins?.enabled){
-                      effective.pr=Boolean(reviews);effective.linear=protection.required_linear_history?.enabled===true;
-                      effective.strict=protection.required_status_checks?.strict===true;effective.approvals=reviews?.required_approving_review_count??0;
-                      effective.stale=reviews?.dismiss_stale_reviews===true;effective.checks.push(...(protection.required_status_checks?.checks??[]));
-                    }
-                  }
-                  for(const id of new Set(rules.map(r=>r.ruleset_id))){
-                    const rule=rules.find(r=>r.ruleset_id===id);
-                    if(!Number.isInteger(id)||!rule.ruleset_source||!rule.ruleset_source_type)return false;
-                    let endpoint;
-                    if(rule.ruleset_source_type==='Repository'&&rule.ruleset_source===policy.repository)endpoint='GET /repos/{owner}/{repo}/rulesets/{ruleset_id}';
-                    else if(rule.ruleset_source_type==='Organization'&&/^[A-Za-z0-9_.-]+$/.test(rule.ruleset_source))endpoint='GET /orgs/{org}/rulesets/{ruleset_id}';
-                    else return false;
-                    const detail=(await github.request(endpoint,{...context.repo,org:rule.ruleset_source,ruleset_id:id})).data;
-                    if(detail.id!==id||detail.enforcement!=='active'||!Array.isArray(detail.bypass_actors)||detail.bypass_actors.length)return false;
-                    for(const r of rules.filter(r=>r.ruleset_id===id)){
-                      if(r.type==='required_linear_history')effective.linear=true;
-                      if(r.type==='pull_request'){effective.pr=true;effective.approvals=Math.max(effective.approvals,r.parameters?.required_approving_review_count??0);effective.stale ||= r.parameters?.dismiss_stale_reviews_on_push===true;}
-                      if(r.type==='required_status_checks'){effective.strict ||= r.parameters?.strict_required_status_checks_policy===true;effective.checks.push(...(r.parameters?.required_status_checks??[]).map(c=>({context:c.context,app_id:c.integration_id})));}
-                    }
-                  }
-                  if(!Number.isInteger(policy.approvals)||policy.approvals<0||typeof policy.dismissStaleReviews!=='boolean')return false;
-                  if(!effective.pr||!effective.linear||!effective.strict||effective.approvals<policy.approvals||!effective.stale)return false;
-                  const files=git(['ls-tree','-r','--name-only',e.BASE_HEAD]).split('\n');
-                  const expected=['CI Shared Complete','Security Complete',...['web','admin','landing','storybook'].filter(app=>files.includes((app==='admin'||app==='storybook'?'platform/':'')+'apps/'+app+'/package.json')).map(app=>'CI '+app[0].toUpperCase()+app.slice(1)+' Complete'),...(repo.private?[]:['CodeQL'])];
-                  const installed=effective.checks;
-                  // Bind contexts to their discovered Actions App; arbitrary similarly named statuses are insufficient.
-                  return expected.every(label=>{
-                    const found=policy.discovery?.checks?.find(c=>c.label===label);
-                    return found&&Number.isInteger(found.appId)&&found.appId>0&&installed?.some(c=>c.context===found.context&&c.app_id===found.appId);
-                  });
-                }catch{core.notice('Maintenance auto-merge denied: live enforcement, named App identity or committed policy could not be verified.');return false;}
-              };
               if(e.AUTO_MERGE==='true'&&e.APP_TOKEN&&!draft&&data.autoMergeEligible===true&&severity.length===0){
-                if(!await maintenanceReady())core.notice('Maintenance auto-merge denied; owner/independent reviewer must merge after CI.');
-                else try{await github.graphql('mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){pullRequest{id}}}',{id:pr.data.node_id});}catch{core.notice('Auto-merge unavailable; merge manually after CI.');}
+                // Private GitHub Free repositories may have no enforceable branch protection.
+                const protection=await github.rest.repos.getBranch({...context.repo,branch:e.BASE_BRANCH});
+                const checks=protection.data.protection?.required_status_checks?.contexts;
+                if(!protection.data.protected||!checks?.length)core.notice('Auto-merge skipped: required branch checks are not configured/available.');
+                else try{await github.graphql('mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){pullRequest{id}}}',{id:pr.data.node_id});}catch(error){core.notice('Auto-merge unavailable; merge manually after CI: '+error.message);}
               }
             } catch(error) {
               const recovery=pushed

@@ -121,12 +121,7 @@ async function configure(state: State, root: string) {
       await vercel(`/v10/projects/${project.id}/env?upsert=true`, "POST", Object.entries(config.vercel[app]!).map(([key, value]) => ({ key, value, type: "encrypted", target: ["production"] })));
     }
   }
-  await confirm("Owner consent to configure squash-only merges, head-branch deletion and repository PR enforcement? Existing rules, callers and credentials are preserved");
-  const approvals = Number(await ask("Minimum approving reviewers [0..6]"));
-  const dismissStaleReviews = /^y(es)?$/i.test(await ask("Dismiss stale approvals after new commits? [y/N]"));
-  const workflow = await configureBranch(state, apps(root), run, { consent: true, approvals, dismissStaleReviews }, root);
-  console.log(`Repository workflow: ${workflow.readiness}. ${workflow.deploymentGate.detail}`);
-  if (workflow.readiness === "incomplete") console.log("Open the bootstrap PR as draft and run non-E2E checks, then resume bun run platform:setup-repository --discover-pr N --yes. An owner/reviewer merges after full E2E evidence.");
+  await configureBranch(state, apps(root));
   console.log(`Review production reviewers and branch rules: https://github.com/${state.repository}/settings/environments and /settings/branches. See platform/docs/deployment-runbook.md for required checks matching installed apps.`);
   await confirm("Production environment protections and branch rules reviewed/configured?");
   const protection = await github<{ protection_rules: { type: string }[] }>(state.repository, "environments/production");

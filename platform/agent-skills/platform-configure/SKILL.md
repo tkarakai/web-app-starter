@@ -5,13 +5,6 @@ description: Use to set the app's product name, legal entity, support email, loc
 
 # Configure the app
 
-Before changes, use a task branch and an early draft PR. Read `platform/docs/repository-workflow.md`
-and run `bun run platform:setup-repository --check --json` for live controls. Authors never
-approve their own work; feature/bootstrap auto-merge has no standing authority. Preserve
-credentials and protections, and obtain owner consent for repository-wide settings. Named
-maintenance App bots need verified enforcement; policy-only/unknown readiness denies auto-merge.
-
-
 For product identity, runtime, brand and feature switches, every value an app is expected to change lives in the root **`app.config.ts`**, and nowhere
 else. The platform reads it everywhere it needs one of these values: TypeScript through
 `@web-app-starter/app-config`, shell scripts and CI through `platform/tooling/app-config.ts`, Better Auth and the

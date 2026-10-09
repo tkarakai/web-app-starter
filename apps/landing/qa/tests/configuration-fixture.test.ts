@@ -32,7 +32,6 @@ function adoptionServices(root: string, repository: string, commit: string) {
         return JSON.stringify({ full_name: repository, default_branch: "main" });
       }
       if (file === "gh" && args.join(" ") === `repo set-default ${repository}`) return "";
-      if (file === "git" && args[0] === "ls-remote" && args[2] === `https://github.com/${repository}.git`) return `${commit}\trefs/heads/main`;
       assert.equal(file, "git", "Unexpected provider command");
       return git(root, ...args);
     },

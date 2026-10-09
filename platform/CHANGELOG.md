@@ -15,12 +15,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
-- PR-first adoption creates a deliberate empty local bootstrap base and review branch, prints
-  exact draft-PR commands, and refuses existing default-branch adoption without explicit owner
-  override. App-owned agent guides establish branch, review and merge authority from first contact.
-- `platform:setup-repository` inspects live classic/inherited ruleset controls, distinguishes
-  enforced/private-Free policy-only/incomplete readiness, and resumes exact first-PR check
-  discovery. Owner-consented setup preserves existing rules and credentials.
+- Adoption refuses work on the live default branch unless explicitly overridden with
+  `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
+  require task branches, early draft PRs and the existing E2E ready/label policy.
 
 - Additive Better Auth organization schema/client primitives and canonical server-only enrollment,
   membership and lifecycle operations. For authority boundaries and integration limits, see
@@ -36,12 +33,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
   consent preserves native policy and validation. Existing announcement-only test grants
   require new authorization and clients use the gateway tools. Reusable independent and pi
   testers are described in [admin agentic surfaces](docs/agentic-announcements.md).
-
-### Changed
-
-- Maintenance auto-merge fails closed without named repository-only App authority and verified
-  protection, strict required app/security checks and E2E policy. Bootstrap/features never
-  grant automatic merge authority; Renovate defaults to owner/independent review.
 
 ### Fixed
 

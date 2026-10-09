@@ -53,13 +53,10 @@ and upgrade verification may not have run. Keep permission/setup failures separa
 review requests. Delivery preflights the PR switch when its existing token can read it; lack of
 Administration access is reported unknown and never broadened.
 
-With `auto-merge: true`, only mechanically eligible verified updates qualify. The committed
-owner policy must name the exact repository-only App bot, App ID and patch/minor class.
-The publisher inspects live effective protection/rulesets, exact required app and security
-check publishers, strict freshness, linear history, review/stale policy and bypass authority.
-E2E `off`, private Free, unknown permissions or incomplete settings deny auto-merge; the PR
-remains for owner/independent review. See [maintenance and credentials](repository-workflow.md#maintenance-and-credentials)
-for the optional owner-approved read-only Administration grant; delivery never escalates it.
+With `auto-merge: true`, only verified patches without migrations, environment changes,
+unresolved patches or an advisory approval gate qualify. The App must be configured, and the
+base branch must enforce required CI checks. Private GitHub Free repositories may not provide
+that branch protection; auto-merge is then visibly skipped and you merge after checking CI.
 
 ## Finish a draft locally
 

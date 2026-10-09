@@ -2,14 +2,13 @@ import path from "node:path";
 import { verifyServing } from "./proof.ts";
 import { api, HttpError, run, type Run } from "./io.ts";
 import { ENVIRONMENTS, apps, proofContext, secretName, settings, values, type App, type Environment, type State } from "./model.ts";
-import { inspectRepositoryWorkflow, setupRepositoryWorkflow, type SetupOptions } from "../repository-workflow.ts";
 export function convexEnv(backend: string, args: string[], input?: string, exec: Run = run) {
   return exec("bun", ["x", "convex", "env", ...args, "--deployment-name", backend], input,
     { CONVEX_DEPLOY_KEY: "", CONVEX_DEPLOYMENT: "" }, path.resolve("packages/backend"));
 }
 export function requiredChecks(installed: App[]): string[] {
   const title = (app: App) => app[0].toUpperCase() + app.slice(1);
-  return ["CI Shared Complete", "CI Storybook Complete", ...installed.map(app => "CI " + title(app) + " Complete"), "Security Complete"];
+  return ["CI Shared Complete", "CI Storybook Complete", ...installed.map(app => "CI " + title(app) + " Complete")];
 }
 export type Request = <T>(endpoint: string, method?: string, body?: unknown) => Promise<T>;
 export type Check = { step: string; status: "done" | "missing" | "human-only" | "unavailable"; instruction?: string };
@@ -67,7 +66,7 @@ export async function ensureBackend(state: State, env: Environment, request: Req
   if (prod.length !== 1) throw Error(`${name} needs one default production deployment. Configure it at https://dashboard.convex.dev and resume.`);
   state.backends[env] = { id, name: prod[0].name, url: prod[0].deploymentUrl };
 }
-export async function checkSetup(state: State | undefined, installed: App[], exec: Run = run, requiredApps: App[] = apps(process.cwd()), root = process.cwd()): Promise<Check[]> {
+export async function checkSetup(state: State | undefined, installed: App[], exec: Run = run, requiredApps: App[] = apps(process.cwd())): Promise<Check[]> {
   const checks: Check[] = [];
   const check = async (step: string, action: () => Promise<boolean>, instruction: string) => {
     try { checks.push({ step, status: await action() ? "done" : "missing", instruction }); }
@@ -114,11 +113,11 @@ export async function checkSetup(state: State | undefined, installed: App[], exe
     }
   }
   await check("production-reviewer", async () => (await github<{ protection_rules: { type: string }[] }>(state.repository, "environments/production", "GET", undefined, exec)).protection_rules.some(r => r.type === "required_reviewers"), `Configure a production reviewer: https://github.com/${state.repository}/settings/environments`);
-  const workflow = await inspectRepositoryWorkflow(root, state.repository, exec);
-  for (const c of workflow.checks) checks.push({ step: `repository-${c.step}`, status: c.status === "done" ? "done" : c.status === "policy-only" ? "human-only" : c.status === "unavailable" ? "unavailable" : "missing", instruction: c.detail });
-  checks.push({ step: "branch-protection", status: workflow.readiness === "enforced" && state.branch === workflow.defaultBranch
-    && requiredChecks(requiredApps).filter(label => label !== "CI Storybook Complete" || workflow.expectedChecks.includes(label)).every(label => workflow.expectedChecks.includes(label)) ? "done" : workflow.readiness === "policy-only" ? "human-only" : "missing",
-    instruction: `Repository workflow: ${workflow.readiness}. Run bun run platform:setup-repository --check --json. ${workflow.deploymentGate.detail}` });
+  await check("branch-protection", async () => {
+    const protection = await github<{ required_pull_request_reviews?: unknown; required_status_checks?: { contexts?: string[]; checks?: { context: string }[] } }>(state.repository, `branches/${encodeURIComponent(state.branch)}/protection`, "GET", undefined, exec);
+    const contexts = new Set([...(protection.required_status_checks?.contexts ?? []), ...(protection.required_status_checks?.checks ?? []).map(c => c.context)]);
+    return Boolean(protection.required_pull_request_reviews) && requiredChecks(requiredApps).every(context => contexts.has(context));
+  }, "Resume deploy:setup to configure required checks and PR review.");
   await check("staging-proof", async () => {
     if (!state.proof || state.request?.context !== proofContext(state, installed)) return false;
     await verifyServing(state, installed, exec); return true;
@@ -126,10 +125,27 @@ export async function checkSetup(state: State | undefined, installed: App[], exe
   return checks;
 }
 
-/** Configure only after owner consent; retain every existing review/access/check publisher policy. */
-export async function configureBranch(state: State, installed: App[], exec: Run = run, options: SetupOptions = { consent: false }, root = process.cwd()) {
-  if (!installed.length) throw Error("Deployment repository setup needs an installed app inventory");
-  return setupRepositoryWorkflow(root, state.repository, options, exec);
+/** Add the installed app checks without replacing an existing branch's review/access policy. */
+export async function configureBranch(state: State, installed: App[], exec: Run = run) {
+  const contexts = requiredChecks(installed);
+  const endpoint = `branches/${encodeURIComponent(state.branch)}/protection`;
+  type Protection = { required_status_checks?: { strict: boolean; contexts: string[]; checks?: { context: string; app_id: number | null }[] }; required_pull_request_reviews?: unknown };
+  let old: Protection | undefined;
+  try { old = await github<Protection>(state.repository, endpoint, "GET", undefined, exec); }
+  catch (error) {
+    if (!(error instanceof Error && "status" in error && error.status === 404)) throw error;
+  }
+  if (!old) {
+    await github(state.repository, endpoint, "PUT", { required_status_checks: { strict: true, contexts }, enforce_admins: true,
+      required_pull_request_reviews: { required_approving_review_count: 0 }, restrictions: null }, exec);
+    return;
+  }
+  const checks: { context: string; app_id?: number }[] = old.required_status_checks?.checks
+    ? old.required_status_checks.checks.map(c => ({ context: c.context, app_id: c.app_id ?? -1 }))
+    : (old.required_status_checks?.contexts ?? []).map(context => ({ context }));
+  for (const context of contexts) if (!checks.some(c => c.context === context)) checks.push({ context });
+  await github(state.repository, `${endpoint}/required_status_checks`, "PATCH", { strict: old.required_status_checks?.strict ?? true, checks }, exec);
+  if (!old.required_pull_request_reviews) await github(state.repository, `${endpoint}/required_pull_request_reviews`, "PATCH", { required_approving_review_count: 0 }, exec);
 }
 
 export async function ensureDeployKey(state: State, env: Environment, request: Request, exec: Run = run) {

@@ -1,10 +1,5 @@
 # CI on GitHub Actions
 
-Start with the [PR-first repository workflow](repository-workflow.md): draft adoption PR,
-live enforcement inspection, resumable exact check discovery and owner-consented setup.
-Protection, check names and merge authority must be verified before maintenance auto-merge;
-workflow presence and deployment verification do not prevent direct pushes.
-
 GitHub Actions is the starter's CI provider: it schedules workflows, records job results and
 publishes the checks used by pull requests and deployment gates. This guide explains that
 process and its repository-wide policy. GitHub can execute jobs on hosted runners or on your

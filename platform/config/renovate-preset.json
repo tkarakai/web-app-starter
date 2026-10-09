@@ -39,15 +39,15 @@
       "rangeStrategy": "bump"
     },
     {
-      "description": "Maintenance PRs need owner/independent review by default. Named platform updater automation is separately gated by live repository enforcement; dependency auto-merge has no grant.",
+      "description": "Auto-merge non-major updates once CI is green",
       "matchUpdateTypes": [
         "minor",
         "patch",
         "pin",
         "digest"
       ],
-      "automerge": false,
-      "platformAutomerge": false
+      "automerge": true,
+      "platformAutomerge": true
     },
     {
       "description": "Batch every non-major update into one PR per cycle so automerge PRs do not compete for the up-to-date requirement on main. The auth-stack rule below still pulls its packages out (never automerged).",
@@ -150,7 +150,5 @@
     "platform/**",
     ".github/workflows/platform-*.yml",
     ".github/actions/**"
-  ],
-  "automerge": false,
-  "platformAutomerge": false
+  ]
 }

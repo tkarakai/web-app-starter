@@ -12,7 +12,6 @@
 //   --remove <apps>           Comma-separated reference apps to delete: demo
 //   --remove-sample           Remove projects, tasks and uploads; keep account settings and auth
 //   --from-release <vX.Y.Z>  Verify this published source after an existing-repository merge
-//   --bootstrap              Empty target only: local empty base + review branch; never pushes
 //   --allow-default-branch   Explicit owner-authorized bypass of default-branch refusal
 //   --no-upstream             Don't add the `upstream` remote
 //   --skip-install            Don't run `bun install` after removing apps
@@ -39,7 +38,7 @@ import { pathToFileURL } from "node:url";
 
 import { BASE_FILE, SEAM_HOOKS, checkZone, type PlatformBase } from "./check-zone.ts";
 import { adoptionRelease, commandAt, type Command } from "./adopt-release.ts";
-import { adoptionCommands, prepareAdoptionWorkflow } from "./adopt-workflow.ts";
+import { prepareAdoptionWorkflow } from "./adopt-workflow.ts";
 import { applyPrE2e, describeModes, isMode, manualCommand, needsChoice, prE2eStatus, type Exec, type Mode } from "./ci-pr-e2e-setup.ts";
 
 import { installCaller, main as setupUpdates } from "./setup-updates.ts";
@@ -67,7 +66,6 @@ export type AdoptOptions = {
   fromRelease?: string;
   updates?: DeliveryMode;
   updateWorkers?: "hosted" | "local";
-  bootstrap?: boolean;
   allowDefaultBranch?: boolean;
 };
 
@@ -303,8 +301,8 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   if (git(root, ["status", "--porcelain"]) !== "") throw new Error("Adoption needs a clean checkout; commit or preserve your work first");
   const previousUpdates = readRecord(root);
   if (previousUpdates && previousUpdates.repository.toLowerCase() !== options.repo.toLowerCase()) throw new Error("Saved update repository differs; inspect the record before adoption");
-  const { commit, version } = (services.release ?? adoptionRelease)(root, options.fromRelease);
   const workflow = prepareAdoptionWorkflow(root, options, services.command ?? commandAt(root));
+  const { commit, version } = (services.release ?? adoptionRelease)(root, options.fromRelease);
   if (workflow.override) log("Owner-authorized --allow-default-branch: this adoption bypasses PR review. Do not use this as the ordinary app workflow.");
   log(`Pre-adoption checklist for https://github.com/${options.repo}/settings/installations and /settings/hooks:`);
   log("  - Review installed GitHub Apps, webhooks and Git-connected hosts (Vercel, Cloudflare, Netlify, etc.).");
@@ -379,7 +377,7 @@ export function adopt(root: string, options: AdoptOptions, log: (line: string) =
   log("The platform's (never edit; replaced on upgrade): platform/, packages/backend/convex/platform/, .github/workflows/platform-*.yml, .claude/skills/platform-*, .agents/skills/platform-*.");
   log("Deployment: run bun run deploy:setup --check early for accounts, DNS and setup requirements. A new unconfigured app skips automatic deployment; merging to main starts staging deployment once setup is complete.");
   log("Next: fill in the <placeholders> in README.md and AGENTS.md, and review the diff.");
-  for (const instruction of adoptionCommands(workflow)) log(instruction);
+  log("Commit on your task branch and open a draft PR early; follow AGENTS.md for the existing E2E ready/label policy.");
   log(`Then smoke-test the baseline: bun run platform:upgrade --to v${version} --dry-run (expect unchanged).`);
   return zone.errors.length;
 }
@@ -413,7 +411,6 @@ export function parseArgs(argv: readonly string[]): Parsed {
       case "--skip-install": parsed.install = false; break;
       case "--skip-build": parsed.build = false; break;
       case "--yes": parsed.yes = true; break;
-      case "--bootstrap": parsed.bootstrap = true; break;
       case "--allow-default-branch": parsed.allowDefaultBranch = true; break;
       case "--update-workers": {
         const choice = value();
