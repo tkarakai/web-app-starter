@@ -5,6 +5,13 @@ description: Set up or resume this app's Vercel, Convex and GitHub deployment co
 
 # Set up deployment
 
+Before changes, use a task branch and an early draft PR. Read `platform/docs/repository-workflow.md`
+and run `bun run platform:setup-repository --check --json` for live controls. Authors never
+approve their own work; feature/bootstrap auto-merge has no standing authority. Preserve
+credentials and protections, and obtain owner consent for repository-wide settings. Named
+maintenance App bots need verified enforcement; policy-only/unknown readiness denies auto-merge.
+
+
 Read `platform/docs/deploy-setup.md`. Begin with `bun run deploy:setup --check`; its JSON
 reports deployment setup only. Report unavailable provider checks separately from missing
 configuration. Never interpret secret-name presence as proof that a stored key works.

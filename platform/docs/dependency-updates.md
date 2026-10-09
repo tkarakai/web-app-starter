@@ -133,12 +133,12 @@ from `main`, apply the same update, run `--write`, merge it and close the Renova
 
 Defined in the preset's `packageRules`:
 
-- **Patch / minor / pin / digest** → **auto-merged** (squash, matching the linear-history rule on
-  `main`) once all required CI checks pass (`platformAutomerge`).
+- **Patch / minor / pin / digest** → reviewable PRs; shipped auto-merge is disabled.
+  An owner or independent reviewer merges after required CI and full local E2E evidence.
 - **All non-major updates** → grouped into a single "all non-major dependencies" PR per cycle, so
-  automerge PRs do not compete for the "branch must be up to date" requirement on `main` (each merge
+  maintenance PRs do not compete for the "branch must be up to date" requirement on `main` (each merge
   would otherwise leave every other open PR behind until the next run). The auth stack is the one
-  exception: it keeps its own never-automerged group.
+  exception: it keeps its own separate review group.
 - **Major versions** → **never auto-merged**, and **no PR opens until approved** on the dashboard
   (`dependencyDashboardApproval`; they wait under *Pending Approval*). While [draining the queue](#draining-the-queue),
   the agent assesses each one with the `platform-deps` skill's major-ticket procedure:
@@ -234,19 +234,17 @@ What automating bumps actually risks, and what defends against it:
   **no dependency lifecycle scripts** (beyond Bun's small built-in allowlist) — in CI *or* inside
   the Renovate container. Preserve this: adding a package to `trustedDependencies` is a
   security-relevant change and deserves review.
-- **Blast radius**: an auto-merged bump lands on `main`, which triggers `cd-staging.yml` → an
-  **unattended staging deploy**. This is a deliberate trade — staging exists to absorb exactly this,
-  and production deploys stay manual.
-- **The token is the crown jewel**: the only actor that can arm auto-merge programmatically is
-  whoever holds `RENOVATE_TOKEN`. Keep it a fine-grained PAT scoped to this single repo.
+- **Merge authority**: the shipped preset and workflow force auto-merge off. Bootstrap and
+  features never grant standing agent authority; token possession does not authorize merging.
+- **Credentials**: preserve existing credentials. Use a repository-only GitHub App for a named
+  constrained maintenance grant, rather than a personal token with general merge authority.
 
 ### About "Allow auto-merge"
 
-The repo setting is **repo-wide and cannot be scoped** to Renovate — but it is inert on its own.
-It only *permits* arming auto-merge on a PR; a human (or Renovate via its token) must explicitly
-enable it **per PR**, and GitHub still merges only after every required check passes and the branch
-is up to date. Feature PRs are unaffected unless someone deliberately clicks "Enable auto-merge" on
-them.
+This repository-wide setting only permits arming auto-merge on individual PRs. Keep it off by
+default. The [repository workflow](repository-workflow.md#maintenance-and-credentials) checks
+live enforcement and named platform-updater authority; dependency automation has no grant in
+the shipped configuration. A green workflow or unprotected branch is insufficient.
 
 ## The `RENOVATE_TOKEN` secret
 
@@ -260,7 +258,7 @@ rule). If Renovate used the default token, our `ci-*.yml` `pull_request` workflo
 bump PRs — so "the tests run" would silently be false, and auto-merge (which waits on those checks)
 could never complete.
 
-### Creating it (fine-grained PAT)
+### Existing fine-grained PATs (PR creation only)
 
 1. GitHub → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
 2. **Resource owner:** the org/user that owns this repo. **Repository access:** *Only select repositories* → this repo.
@@ -283,9 +281,9 @@ could never complete.
 4. **Expiration:** set a finite expiry (e.g. 90 days) and note the date — see *Rotation* below.
 5. Generate and copy the token.
 
-> **Team alternative:** for shared ownership, create a dedicated **GitHub App** instead of a PAT
-> (no personal account tied to it, finer control, longer-lived) and pass its installation token to
-> the action. A PAT is fine to start.
+> **Recommended:** use a repository-only **GitHub App** and pass its short-lived installation
+> token to the action. Existing fine-grained PATs may continue opening reviewable PRs; preserve
+> them without silently changing identity. A PAT is never an automatic merge grant.
 
 ### Storing it
 
@@ -310,34 +308,14 @@ GitHub → repo **Settings → Secrets and variables → Actions → New reposit
   more subtly, Renovate stops opening PRs and the Dependency Dashboard goes stale. If bump PRs stop
   appearing, check the token first (then the 60-day schedule pause, above).
 
-## Repo settings required for auto-merge
+## Repository workflow readiness
 
-Auto-merge only works when GitHub permits it **and** CI checks are *required* — otherwise Renovate's
-`platformAutomerge` merges as soon as GitHub allows, **before** CI finishes.
-
-Configure these on your repository (via `gh api` or Settings):
-
-1. **Settings → General → Pull Requests → "Allow auto-merge"** — enabled.
-2. **Merge-commit method disabled** — the `main` ruleset requires linear history, so merge commits
-   could never merge anyway; squash/rebase only. `renovate.json` sets
-   `automergeStrategy: "squash"` to match.
-3. **Required status checks on `main`** — the `*-complete` summary jobs from `ci-shared`, `ci-web`,
-   `ci-admin`, `ci-landing` and `ci-storybook`, with "require branches to be
-   up to date". If you use both classic branch protection and a ruleset, they are independent
-   copies: a change to one is not a change to the other, so update and verify both:
-
-   ```bash
-   gh api repos/<owner>/<repo>/branches/main/protection \
-     --jq '.required_status_checks.contexts'
-   gh api repos/<owner>/<repo>/rulesets/<ruleset-id> \
-     --jq '.rules[] | select(.type=="required_status_checks")
-           | .parameters.required_status_checks[].context'
-   ```
-
-   The ruleset is updated with `PUT`, which **replaces the whole ruleset**: read it first and send
-   back every rule plus `bypass_actors`, or you will silently drop protections. Re-check
-   `[.rules[].type]` afterwards.
-4. The **`RENOVATE_TOKEN`** secret exists (above).
+Run `bun run platform:setup-repository --check --json` before relying on repository controls.
+The command inspects live effective protection/rulesets, strict required completion/security
+checks, review policy, E2E, squash-only merging and deletion. Resume first-PR context discovery
+and configure settings only with owner consent; see [repository workflow](repository-workflow.md).
+The shipped dependency bot remains review-only even when these settings are enforced.
+Private-Free policy-only repositories cannot authorize maintenance auto-merge.
 
 ## Diagnosing a stalled queue
 

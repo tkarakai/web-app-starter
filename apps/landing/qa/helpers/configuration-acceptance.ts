@@ -56,7 +56,8 @@ try {
     install: false, build: false, upstream: false, updates: "deferred",
   }, line => lines.push(line), {
     release: () => ({ commit, version: readFileSync(path.join(root, "platform/VERSION"), "utf8").trim() }),
-    command: () => "",
+    command: (file, args) => file === "gh" ? JSON.stringify({ full_name: "fixture/landing", default_branch: "main" })
+      : args[0] === "ls-remote" ? `${commit}\trefs/heads/main` : args[0] === "branch" ? "adopt/landing" : "",
   }), 0, lines.join("\n"));
   const adopted = validateAppConfig((await import(pathToFileURL(path.join(root, "app.config.ts")).href)).default);
   assert(existsSync(path.join(root, ".platform-base.json")));

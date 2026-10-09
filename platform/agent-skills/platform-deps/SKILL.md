@@ -5,6 +5,13 @@ description: Use to update the app's dependencies - Renovate PRs, the Dependency
 
 # Update dependencies
 
+Before changes, use a task branch and an early draft PR. Read `platform/docs/repository-workflow.md`
+and run `bun run platform:setup-repository --check --json` for live controls. Authors never
+approve their own work; feature/bootstrap auto-merge has no standing authority. Preserve
+credentials and protections, and obtain owner consent for repository-wide settings. Named
+maintenance App bots need verified enforcement; policy-only/unknown readiness denies auto-merge.
+
+
 Bring `main` up to date with every eligible dependency update. Decide what the rules let you
 decide, and get the user's decision on the rest.
 
@@ -140,8 +147,9 @@ Refresh first (step 2). If the new snapshot differs from the plan, e.g. new PRs 
 *Pending Approval* items, show the difference and ask again before acting on anything new.
 Otherwise carry out the answers and steps 3–7.
 
-**Merging** anything here means: wait for green checks, make sure the branch is up to date with
-`main`, then `gh pr merge <n> --squash`. A Renovate PR is brought up to date with its rebase box
+**Merging** anything here needs owner authorization and independent review. Wait for green
+checks on the final head, full local CI including E2E and an up-to-date base, then merge only
+within that specific authorization using squash. A Renovate PR is brought up to date with its rebase box
 (step 3); a `deps/` branch by merging `main` into it (a new commit; on a `bun.lock` conflict take
 `main`'s copy, then `bun install --minimum-release-age=864000`) and pushing.
 
@@ -157,13 +165,13 @@ Otherwise carry out the answers and steps 3–7.
    state table in the doc:
    - Green and `BEHIND`: tick its rebase box by editing the PR body
      (`- [ ] <!-- rebase-check -->` → `- [x] <!-- rebase-check -->`), dispatch Renovate, then
-     `gh pr checks <n> --watch` and wait for the automerge. A feature merge can push it `BEHIND`
+     `gh pr checks <n> --watch`, then hand the green PR to its owner/independent reviewer. A feature merge can push it `BEHIND`
      again; repeat.
    - Red: read the failed logs (`gh run view <id> --log-failed`). Flaky: re-run the failed jobs
      once. One member of a group breaks it: add a temporary `HOLD:` rule for that member (a PR
-     you merge yourself; holding is always safe), open a ticket for it, and let the rest merge
-     on the next Renovate run. Otherwise it needs code: open a ticket for it.
-   - `security` label: merges after twelve hours like any other green PR. If the fix is only in a
+     reviewed through the normal PR process), open a ticket for it, and review the remaining PR
+     after the next Renovate run. Otherwise it needs code: open a ticket for it.
+   - `security` label: eligible after twelve hours; still requires review/authorized merge. If the fix is only in a
      new major, open a ticket.
    - Auth stack (never automerged): a decision for the user.
 4. **Holds and preconditions.**

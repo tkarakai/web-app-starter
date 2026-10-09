@@ -1,5 +1,10 @@
 # Set up automatic platform updates
 
+Start with the [PR-first repository workflow](repository-workflow.md): draft adoption PR,
+live enforcement inspection, resumable exact check discovery and owner-consented setup.
+Protection, check names and merge authority must be verified before maintenance auto-merge;
+workflow presence and deployment verification do not prevent direct pushes.
+
 Adoption offers three choices. `bun run adopt --updates app --yes` explicitly authorises the
 App setup described below; `--updates fallback --yes` authorises the limited token setup.
 Interactive adoption explains the scope and asks before remote changes. Non-interactive adoption
@@ -81,6 +86,9 @@ on the same machine or use an SSH tunnel for headless handoff. Leave the termina
 2. **Install.** Choose **Only select repositories**, then this app repository only. Organisation
    approval may be required. The helper verifies actual installation scope and exact permissions,
    authenticates with the private key and mints/revokes a short-lived verification token.
+   Named maintenance auto-merge additionally needs owner-approved Administration, Checks and
+   Variables read-only for live inspection. The manifest does not request these; setup never
+   expands an installation automatically. See [maintenance authority](repository-workflow.md#maintenance-and-credentials).
 3. **Save.** ID goes to `PLATFORM_UPDATER_APP_ID`; key goes via `gh` stdin and GitHub's encrypted
    transport to `PLATFORM_UPDATER_PRIVATE_KEY`. The key never goes to a file, page, log or chat.
 4. **Activate.** Successful guided validation saves the public identity and enables the caller's

@@ -34,3 +34,10 @@ platform releases with [`platform/UPGRADING.md`](platform/UPGRADING.md).
 ## Licence
 
 See [`LICENSE`](LICENSE).
+
+## Review workflow
+
+Create a task branch and open a draft PR before app work. Use
+`bun run platform:setup-repository --check --json` and the
+[repository workflow](platform/docs/repository-workflow.md) to verify enforcement and resume
+first-PR checks. An owner/independent reviewer decides the merge; bootstrap grants no auto-merge.

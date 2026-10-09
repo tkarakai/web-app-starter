@@ -112,6 +112,20 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "release");
   const commit = git(root, "rev-parse", "HEAD");
+  const empty = mkdtempSync(path.join(tmpdir(), "adopt-empty-target-"));
+  t.after(() => rmSync(empty, { recursive: true, force: true }));
+  execFileSync("git", ["clone", "--quiet", root, empty]);
+  const bootstrapLines: string[] = [];
+  assert.equal(adopt(empty, { name: "Empty App", repo: "owner/empty", bootstrap: true, build: false }, line => bootstrapLines.push(line), {
+    release: () => ({ version: read("platform/VERSION").trim(), commit }),
+    command: (file, args) => file === "gh" ? JSON.stringify({ full_name: "owner/empty", default_branch: "main" })
+      : args[0] === "ls-remote" ? "" : git(empty, ...args),
+  }), 0);
+  assert.equal(git(empty, "branch", "--show-current"), "bootstrap/adopt-empty-app");
+  assert.equal(checkZone(empty).mode, "adopted");
+  assert.deepEqual(checkZone(empty).errors, []);
+  assert(bootstrapLines.some(line => line.startsWith("gh pr create --repo 'owner/empty' --draft --base 'main' --head 'bootstrap/adopt-empty-app'")));
+  assert.equal(JSON.parse(readFileSync(path.join(empty, ".platform-base.json"), "utf8")).commit, commit);
   // Existing-repository adoption preserves recorded intent and caller customisations.
   const repaired=mkdtempSync(path.join(tmpdir(), "adopt-existing-updates-"));
   t.after(()=>rmSync(repaired,{recursive:true,force:true}));
@@ -121,7 +135,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   const custom=read("platform/templates/update-platform.yml").replace("23 5 * * 1-5","0 9 * * 2").replace("policy: minor","policy: patch");
   write(repaired,".github/workflows/update-platform.yml",custom);
   git(repaired,"add","-A");git(repaired,"commit","-qm","existing app intent");
-  assert.equal(adopt(repaired,{name:"Acme",repo:"acme/acme-app",build:false},()=>{}, {release:()=>({version:read("platform/VERSION").trim(),commit}),command:()=>""}),0);
+  assert.equal(adopt(repaired,{name:"Acme",repo:"acme/acme-app",build:false},()=>{}, {release:()=>({version:read("platform/VERSION").trim(),commit}),command: (file, args) => file === "gh" ? JSON.stringify({full_name:"acme/acme-app",default_branch:"main"}) : args[0] === "ls-remote" ? `${commit}\trefs/heads/main` : args[0] === "branch" ? "adopt/acme" : ""}),0);
   assert.equal(readFileSync(path.join(repaired,".github/workflows/update-platform.yml"),"utf8"),custom);
   assert.deepEqual(JSON.parse(readFileSync(path.join(repaired,".github/update-delivery.json"),"utf8")),record);
 
@@ -133,7 +147,7 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
 
   const lines: string[] = [];
   const errors = adopt(root, { name: "Acme $& Co", repo: "acme/acme-app", remove: ["demo"], install: false, build: false },
-    (line) => lines.push(line), { release: () => ({ version: read("platform/VERSION").trim(), commit }), command: () => "" });
+    (line) => lines.push(line), { release: () => ({ version: read("platform/VERSION").trim(), commit }), command: (file, args) => file === "gh" ? JSON.stringify({full_name:"acme/acme-app",default_branch:"main"}) : args[0] === "ls-remote" ? `${commit}\trefs/heads/main` : args[0] === "branch" ? "adopt/acme" : "" });
 
   assert.equal(errors, 0, lines.join("\n"));
   const at = (file: string): string => readFileSync(path.join(root, file), "utf8");

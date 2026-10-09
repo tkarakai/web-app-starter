@@ -353,7 +353,11 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
 
 <a id="configure-branch-protection"></a>
 
-**Configure branch protection** (Settings > Branches > `main`):
+**Configure branch protection** after the draft PR publishes contexts:
+
+Use `bun run platform:setup-repository --check --json` and the
+[consented first-PR discovery/setup](repository-workflow.md#first-pr-discovery-and-consented-setup)
+sequence. Preserve existing classic/inherited rules; use the actual default branch.
 
 - [x] Require a pull request before merging
 - [x] Require status checks to pass before merging
@@ -362,7 +366,11 @@ The CD workflows run `convex deploy` with this key to push backend functions to 
   - Required: `CI Admin Complete`
   - Required: `CI Landing Complete`
   - Required: `CI Storybook Complete`
+  - Required: `Security Complete`
+  - Required on public repositories: `CodeQL`
 - [x] Require branches to be up to date before merging
+- [x] Require linear history, sole squash merge, and automatic head-branch deletion
+- [x] Choose minimum approvals and stale-review dismissal with the owner
 
 With `PLATFORM_CI_PR_E2E=on-demand`, these checks also require E2E to have passed on the PR head ([E2E on pull requests](ci-github.md#e2e-on-pull-requests)). On a private repository, branch protection needs a paid plan.
 

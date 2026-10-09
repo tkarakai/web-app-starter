@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { apps, proofContext, writePublicFile, loadState, saveState, secretName, settings, values, type State } from "../deploy-setup/model.ts";
 import { HttpError, run, type Run } from "../deploy-setup/io.ts";
 import { checkSetup, convexEnv, requiredChecks, ensureBackend, ensureProject, storeSecret, type Request } from "../deploy-setup/providers.ts";
+import { fixture as workflowFixture } from "./repository-workflow-fixtures.ts";
 const require = createRequire(import.meta.url);
 const { readiness } = require("../../../.github/scripts/platform-deploy-preflight.cjs") as { readiness: (env: Record<string, string>) => { status: string; missing: string[] } };
 const state = (): State => ({ schema: 1, repository: "owner/app", branch: "main", prefix: "app", team: "team_test", convexTeam: "123", projects: {}, backends: {} });
@@ -93,18 +94,18 @@ test("read-only checks report independent provider failures and never write", as
   assert(!JSON.stringify(checks).includes("private provider response"));
 });
 
-test("branch setup adds checks without replacing existing review/access policy", async () => {
+test("branch setup preserves classic reviewer/access policy and requires owner-selected approvals", async t => {
   const { configureBranch } = await import("../deploy-setup/providers.ts");
-  const calls: { args: string[]; body?: Record<string, unknown> }[] = [];
-  const exec: Run = async (_file, args, input) => {
-    calls.push({ args, body: input ? JSON.parse(input) : undefined });
-    if (args.includes("GET")) return JSON.stringify({ required_status_checks: { strict: false, contexts: ["Custom Business Tests"], checks: [{ context: "Custom Business Tests", app_id: 123 }] }, required_pull_request_reviews: { required_approving_review_count: 2 } });
-    return "{}";
-  };
-  await configureBranch(state(), ["web", "admin", "landing"], exec);
-  assert.equal(calls.length, 2);
-  assert.deepEqual(calls[1].body, { strict: false, checks: [{ context: "Custom Business Tests", app_id: 123 }, ...["CI Shared Complete", "CI Storybook Complete", "CI Web Complete", "CI Admin Complete", "CI Landing Complete"].map(context => ({ context }))] });
-  assert(!JSON.stringify(calls).includes('"restrictions"'));
+  const f = workflowFixture(); t.after(f.cleanup);
+  f.protection.required_status_checks!.strict = false;
+  f.protection.required_status_checks!.checks!.push({ context: "Custom Business Tests", app_id: 123 });
+  f.protection.required_pull_request_reviews!.required_approving_review_count = 2;
+  const before = JSON.stringify(f.protection);
+  await assert.rejects(() => configureBranch(state(), ["web", "admin", "landing"], f.exec, undefined, f.root), /owner consent/);
+  const status = await configureBranch(state(), ["web", "admin", "landing"], f.exec, { consent: true, approvals: 1, dismissStaleReviews: true }, f.root);
+  assert.equal(status.readiness, "enforced"); assert.equal(status.effective.approvals, 2);
+  assert.equal(JSON.stringify(f.protection), before);
+  assert(!f.calls.some(c => c.args[1].endsWith("/protection") && !c.args.includes("GET")));
 });
 
 test("interrupted staging proof resumes the same request without duplicate deployment", async () => {
@@ -167,17 +168,16 @@ test("saved setup cannot map staging and production to the same project", async 
   assert.throws(() => validateState(s), /separate Convex projects/);
 });
 
-test("new branch protection requires PRs and checks without imposing an extra reviewer on solo apps", async () => {
+test("new repository protection needs explicit approval choices rather than silently choosing for a solo owner", async t => {
   const { configureBranch } = await import("../deploy-setup/providers.ts");
-  const { CommandError } = await import("../deploy-setup/io.ts");
-  let body: Record<string, unknown> | undefined;
-  const exec: Run = async (_file, args, input) => {
-    if (args.includes("GET")) throw new CommandError("gh", 1, 404);
-    body = JSON.parse(input!); return "{}";
-  };
-  await configureBranch(state(), ["web", "admin", "landing"], exec);
-  assert.deepEqual(body?.required_pull_request_reviews, { required_approving_review_count: 0 });
-  assert((body?.required_status_checks as { contexts: string[] }).contexts.includes("CI Web Complete"));
+  const f = workflowFixture(); t.after(f.cleanup);
+  rmSync(path.join(f.root, ".github/repository-workflow.json"));
+  await assert.rejects(() => configureBranch(state(), ["web", "admin", "landing"], f.exec, { consent: true }, f.root), /owner must choose/);
+  assert.equal(f.calls.length, 0);
+  f.protection = {}; f.protectionError = 404;
+  const status = await configureBranch(state(), ["web", "admin", "landing"], f.exec, { consent: true, approvals: 0, dismissStaleReviews: false }, f.root);
+  assert.equal(status.readiness, "enforced"); assert.equal(status.effective.approvals, 0);
+  assert(status.effective.requiredChecks.some(c => c.context === "CI Web Complete"));
 });
 
 test("simulated Convex environment consumers use the backend package and clear ambient deployment selection", async () => {
@@ -231,17 +231,12 @@ test("public atomic writes recover stale files and clean up after a failed renam
   }
 });
 
-test("simulated branch inspection rejects every missing installed-app context", async () => {
-  const installed = apps(process.cwd());
-  const required = requiredChecks(installed);
-  for (const representation of ["contexts", "checks"] as const) for (const missing of [undefined, ...required]) {
-    const contexts = required.filter(context => context !== missing);
-    const exec: Run = async (_file, args) => {
-      if (args[1]?.endsWith("/protection")) return JSON.stringify({ required_pull_request_reviews: {},
-        required_status_checks: { [representation]: representation === "contexts" ? contexts : contexts.map(context => ({ context, app_id: 123 })) } });
-      throw Error("unavailable fixture provider");
-    };
-    const checks = await checkSetup(state(), apps(process.cwd()), exec);
+test("simulated branch inspection rejects every missing installed-app or security binding", async t => {
+  const f = workflowFixture(); t.after(f.cleanup);
+  const required = requiredChecks(apps(f.root));
+  for (const missing of [undefined, ...required]) {
+    f.protection.required_status_checks!.checks = f.bindings.filter(c => c.label !== missing).map(c => ({ context: c.context, app_id: c.appId }));
+    const checks = await checkSetup(state(), apps(f.root), f.exec, apps(f.root), f.root);
     assert.equal(checks.find(c => c.step === "branch-protection")?.status, missing ? "missing" : "done");
   }
 });

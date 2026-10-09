@@ -47,4 +47,6 @@ jobs:
         env:
           # Autodiscover is off: operate only on this repo.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Enforce the shipped review default even if a repository preset requests auto-merge.
+          RENOVATE_FORCE: '{"automerge":false,"platformAutomerge":false,"packageRules":[{"matchPackageNames":["*"],"automerge":false,"platformAutomerge":false}]}'
           LOG_LEVEL: ${{ inputs.logLevel || 'info' }}

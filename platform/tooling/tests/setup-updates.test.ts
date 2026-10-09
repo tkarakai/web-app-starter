@@ -43,6 +43,9 @@ test("installation verification checks selected repository and exact permissions
   const multiple = fixtureAPI({ count: 2 }); await assert.rejects(() => verifyInstallation(app, repo, multiple.request), /Select only/); assert.equal(multiple.calls.at(-1)?.method, "DELETE");
   const all = fixtureAPI({ selection: "all" }); await assert.rejects(() => verifyInstallation(app, repo, all.request), /selected app repository only/); assert.equal(all.calls.length, 1);
   const broad = fixtureAPI({ permissions: { ...PERMISSIONS, administration: "write" } }); await assert.rejects(() => verifyInstallation(app, repo, broad.request), /permissions differ/);
+  const inspection = fixtureAPI({ permissions: { ...PERMISSIONS, metadata: "read", administration: "read" } });
+  await verifyInstallation(app, repo, inspection.request);
+  assert.equal(inspection.calls.at(-1)?.method, "DELETE");
 });
 test("private key goes only to gh stdin, and partial storage explains the public ID recovery", () => {
   const calls: { args: string[]; input?: string }[] = [];

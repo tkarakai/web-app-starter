@@ -5,6 +5,13 @@ description: Take a published platform release in an adopted app or finish a dra
 
 # Finish a platform upgrade
 
+Before changes, use a task branch and an early draft PR. Read `platform/docs/repository-workflow.md`
+and run `bun run platform:setup-repository --check --json` for live controls. Authors never
+approve their own work; feature/bootstrap auto-merge has no standing authority. Preserve
+credentials and protections, and obtain owner consent for repository-wide settings. Named
+maintenance App bots need verified enforcement; policy-only/unknown readiness denies auto-merge.
+
+
 Read `platform/UPGRADING.md`, the target release's Action required notes, and the update PR's
 JSON/Markdown report. The report is the inventory of pending work; its immutable plan and
 mutable state are validated by the tool. Never edit report JSON, invent a baseline, skip required

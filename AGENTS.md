@@ -31,6 +31,27 @@ waitlist form and links to web for authentication. Web checks onboarding on each
 request and accepts waitlist submissions inline using the same form as landing. Their name, ports,
 auth cookie prefix, brand and feature switches are set in `app.config.ts`.
 
+## Change workflow
+
+Before editing, inspect the current branch and GitHub default branch. Create a task branch
+for adoption and app changes, then open a draft PR early. Never commit or push app work
+directly to the default branch without explicit owner authorization. An empty repository
+needs only a deliberate minimal base; `bun run adopt --bootstrap` creates it locally and
+prints the exact separate base push and draft-PR commands.
+
+Run `bun run platform:setup-repository --check --json` early. Resume with
+`--discover-pr <number>` after the draft publishes completion checks. Read
+[repository workflow](platform/docs/repository-workflow.md) for enforcement and first-PR setup.
+Follow `PLATFORM_CI_PR_E2E`: full local CI with E2E before readying a private PR or
+adding `run-e2e`, and before merge in every mode. Authors create/update PRs; an owner
+or independent reviewer decides the merge. Per-PR owner authorization can permit an agent
+to merge after all required evidence passes; it never grants standing authority.
+
+Bootstrap and feature PRs have no automatic merge authority. Never enable blanket agent
+auto-merge. Named maintenance bots may arm squash auto-merge only under an owner-approved
+policy with live required checks and branch enforcement verified; private Free policy-only
+repositories cannot use it. Preserve existing protection, credentials and caller settings.
+
 ## Our conventions
 
 - Build features through the platform skills and `platform/docs/`. Never edit `platform/` for an

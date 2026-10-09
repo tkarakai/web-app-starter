@@ -72,6 +72,14 @@ credentials, caller customisations and auto-merge intent. Obtain explicit owner 
 switching identities or enabling repository-wide permissions. An existing update branch must
 be resumed from its saved report with `--relocate`; do not merge report-only drafts.
 
+## PR-first app work
+
+Use your root guide’s Change workflow before implementation: inspect the live default branch,
+create a task branch and open a draft PR early. Adoption and features never acquire automatic
+merge authority. Run `bun run platform:setup-repository --check --json`;
+[repository workflow](docs/repository-workflow.md) owns minimal bootstrap, first-PR check
+discovery/resume, owner consent and the distinction between enforced and policy-only controls.
+
 ## App configuration
 
 The root `app.config.ts` holds every value an app is expected to change: `identity` (product
@@ -123,6 +131,7 @@ bun run platform:check-updates # Discover allowed updates and major releases for
 bun run check:advisories      # Fail on installed high/critical advisories; lower severity warns
 bun run platform:setup-updates # Configure the updater App and caller (docs/setup-updates.md)
 bun run deploy:setup         # Guided Vercel/Convex/GitHub setup; --check gives read-only JSON
+bun run platform:setup-repository --check --json # Live repository workflow readiness
 bun run adopt                # Once, on a fresh clone: make it your app (platform/README.md)
 ```
 

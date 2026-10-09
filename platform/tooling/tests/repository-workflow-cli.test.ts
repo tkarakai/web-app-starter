@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import path from "node:path";
+import { test } from "node:test";
+import { main, type RepositoryWorkflowStatus } from "../repository-workflow.ts";
+import { run } from "../deploy-setup/io.ts";
+import { RECORD } from "../repository-workflow/state.ts";
+import { fixture } from "./repository-workflow-fixtures.ts";
+
+test("CLI discovers origin in a real empty Git repository and reports incomplete without creating a commit/branch/PR", async t => {
+  const f = fixture(); t.after(f.cleanup); f.branchExists = false; f.hasPr = false;
+  rmSync(path.join(f.root, RECORD));
+  await run("git", ["init", "--initial-branch=main"], undefined, undefined, f.root);
+  await run("git", ["remote", "add", "origin", "git@github.com:owner/app.git"], undefined, undefined, f.root);
+  const before = await run("git", ["status", "--porcelain"], undefined, undefined, f.root);
+  const outputs: string[] = [];
+  const code = await main(["--check", "--json"], { root: f.root, exec: f.exec, write: v => outputs.push(v) });
+  const result = JSON.parse(outputs.at(-1)!) as RepositoryWorkflowStatus;
+  assert.equal(code, 2); assert.equal(result.readiness, "incomplete"); assert.equal(result.defaultBranchExists, false);
+  assert.equal(result.discovery, null); assert.equal(result.featureAutoMergeAllowed, false);
+  assert.equal(await run("git", ["status", "--porcelain"], undefined, undefined, f.root), before);
+  assert.equal(await run("git", ["branch", "--show-current"], undefined, undefined, f.root), "main");
+  await assert.rejects(() => run("git", ["rev-parse", "--verify", "HEAD"], undefined, undefined, f.root));
+  assert(!existsSync(path.join(f.root, RECORD)));
+  assert(f.calls.filter(c => c.file === "gh").every(c => c.args.includes("GET")));
+});
+test("CLI public flags check live paid/Free state and exact named maintenance eligibility with stable exit codes", async t => {
+  const f = fixture(); t.after(f.cleanup); const output: string[] = [];
+  const deps = { root: f.root, exec: f.exec, write: (v: string) => output.push(v) };
+  assert.equal(await main(["--check", "--json", "--repo", "owner/app"], deps), 0);
+  assert.equal(JSON.parse(output.at(-1)!).readiness, "enforced");
+  assert.equal(await main(["--json", "--repo", "owner/app", "--maintenance-bot", "owner"], deps), 2);
+  assert.equal(JSON.parse(output.at(-1)!).maintenanceAllowed, false);
+  f.protectionError = 403; f.rulesError = 403;
+  assert.equal(await main(["--check", "--json", "--repo", "owner/app"], deps), 2);
+  assert.equal(JSON.parse(output.at(-1)!).readiness, "policy-only");
+});
+test("CLI saves/resumes first-PR contexts only under explicit owner consent and refuses read-only mutation flags", async t => {
+  const f = fixture(); t.after(f.cleanup); f.protectionError = 404;
+  const deps = { root: f.root, exec: f.exec, write: (_v: string) => {} };
+  const before = readFileSync(path.join(f.root, RECORD), "utf8");
+  await assert.rejects(() => main(["--check", "--yes", "--repo", "owner/app"], deps), /read-only/);
+  await assert.rejects(() => main(["--check", "--discover-pr", "1", "--repo", "owner/app"], deps), /read-only/);
+  await assert.rejects(() => main(["--yes", "--discover-pr", "0", "--repo", "owner/app"], deps), /positive PR/);
+  await assert.rejects(() => main(["--unknown"], deps), /Usage/);
+  assert.equal(f.calls.length, 0); assert.equal(readFileSync(path.join(f.root, RECORD), "utf8"), before);
+  assert.equal(await main(["--yes", "--json", "--repo", "owner/app", "--discover-pr", "1", "--approvals", "2", "--dismiss-stale-reviews"], deps), 0);
+  const saved = JSON.parse(readFileSync(path.join(f.root, RECORD), "utf8"));
+  assert.equal(saved.discovery.pr, 1); assert.equal(saved.approvals, 2);
+  assert.equal(saved.discovery.checks.find((c: { label: string }) => c.label === "Security Complete").context, "Platform / Security Complete");
+});

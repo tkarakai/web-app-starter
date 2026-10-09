@@ -47,7 +47,11 @@ export async function verifyInstallation(app: App, repo: Repository, request: Ap
   const jwt = appJWT(app), installation = object(await request("GET", "/repos/" + repo.full_name + "/installation", jwt));
   demand(installation.app_id === app.id && Number.isSafeInteger(installation.id) && installation.repository_selection === "selected", "Install this App on the selected app repository only");
   const permissions = object(installation.permissions);
-  demand(Object.entries(PERMISSIONS).every(([name, level]) => permissions[name] === level) && Object.keys(permissions).every(name => name === "metadata" || Object.hasOwn(PERMISSIONS, name)), "App installation permissions differ from the requested updater permissions");
+  // Owners may separately consent to read-only enforcement inspection for named maintenance
+  // auto-merge. The registration manifest does not request it and setup never upgrades grants.
+  demand(Object.entries(PERMISSIONS).every(([name, level]) => permissions[name] === level)
+    && Object.keys(permissions).every(name => ["metadata", "administration", "checks", "variables"].includes(name) && permissions[name] === "read"
+      || Object.hasOwn(PERMISSIONS, name)), "App installation permissions differ from the requested updater permissions");
   const token = object(await request("POST", "/app/installations/" + installation.id + "/access_tokens", jwt, { permissions: { metadata: "read" } }));
   demand(typeof token.token === "string" && token.token.length > 0, "Missing installation verification token");
   try {

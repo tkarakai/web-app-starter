@@ -317,6 +317,10 @@ and intent record; installing a schedule alone does not configure working update
 `bun run adopt` (`tooling/adopt.ts`) turns a fresh clone into your app, once. It asks for what it
 needs, or takes flags (`--name`, `--repo owner/name`, `--support-email`, `--cookie-prefix`,
 `--port app=N`, `--remove demo`, `--remove-sample`, `--pr-e2e always|on-demand|off`, `--updates app|fallback|deferred`, `--update-workers hosted|local`, `--yes`).
+`--bootstrap` explicitly selects an empty-target local base and review branch.
+Existing-target adoption on its default branch stops unless the owner explicitly authorizes
+`--allow-default-branch`; `--yes` never supplies that exception.
+
 Install and authenticate the GitHub CLI (`gh auth login`). Start from a clean checkout; adoption refuses to overwrite uncommitted work:
 
 Adoption requires a **published stable release** from `tkarakai/web-app-starter`.
@@ -324,7 +328,9 @@ By default, the checkout must be at that release commit, with no intervening app
 merge commits; for an existing-repository merge, use [the procedure below](#existing-repositories).
 For example, clone with
 `git clone --branch v2.0.0 https://github.com/tkarakai/web-app-starter.git my-app`, then
-`cd my-app` and `git switch -c main`. Select an actually published version. Adoption verifies the published GitHub release and its remote tag before changing files; a version string on `main` alone is not a released baseline. Existing apps adopted from unpublished source need the
+`cd my-app`. Create the empty target repository and use `bun run adopt --bootstrap`;
+see [PR-first repository setup](docs/repository-workflow.md) for the exact minimal base,
+task branch and draft-PR sequence. For an existing target, create a task branch before adoption. Select an actually published version. Adoption verifies the published GitHub release and its remote tag before changing files; a version string on `main` alone is not a released baseline. Existing apps adopted from unpublished source need the
 [one-time source migration](UPGRADING.md#apps-adopted-before-the-first-published-release).
 
 1. Sets the product name, support email, auth cookie prefix and ports in `app.config.ts`.
@@ -347,6 +353,14 @@ and rollback inspect the selected commit, so removing landing does not require a
 Vercel project or block the remaining apps. `bun run dev` regenerates the Convex API after
 sample removal; adoption itself needs no live backend. Configure the updater GitHub App for
 automatic CI on update PRs; see [update delivery](docs/update-delivery.md).
+
+### Repository review and enforcement
+
+Run `bun run platform:setup-repository --check --json` early. Open the adoption PR as draft,
+then resume with `--discover-pr <number>` after CI publishes completion contexts. Setup reports
+`enforced`, private-Free `policy-only`, or `incomplete`, and configures controls only with owner
+consent. Required checks include Security Complete and public CodeQL. Read the
+[full bootstrap, discovery and merge-authority workflow](docs/repository-workflow.md).
 
 ### Deployment setup
 
