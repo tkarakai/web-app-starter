@@ -27,8 +27,8 @@
     "@web-app-starter/edge-rate-limit": "workspace:*",
     "@web-app-starter/i18n": "workspace:*",
     "convex": "^1.46.0",
-    "lucide-react": "^1.48.0",
-    "next-intl": "^4.14.8",
+    "lucide-react": "^1.50.0",
+    "next-intl": "^4.14.9",
     "next-themes": "^0.4.6"
   },
   "peerDependencies": {
@@ -43,8 +43,8 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "6.1.1",
-    "@vitest/coverage-v8": "^5.0.2",
+    "@vitest/coverage-v8": "^5.0.3",
     "happy-dom": "^20.14.5",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   }
 }
