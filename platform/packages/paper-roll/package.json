@@ -13,8 +13,8 @@
     "demo": "bun examples/files.ts"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "@types/node": "^24.13.6",
+    "@types/bun": "^1.4.3",
+    "@types/node": "^24.19.2",
     "typescript": "^6.0.3"
   }
 }

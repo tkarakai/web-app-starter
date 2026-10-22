@@ -9,7 +9,7 @@
 # NODE_VERSION and BUN_VERSION must match .node-version and packageManager;
 # platform/tooling/check-runtime-baseline.ts enforces it.
 ARG NODE_VERSION=24
-ARG BUN_VERSION=1.4.2
+ARG BUN_VERSION=1.4.3
 
 FROM oven/bun:${BUN_VERSION} AS bun
 
