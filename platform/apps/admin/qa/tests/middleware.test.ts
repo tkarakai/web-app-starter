@@ -182,6 +182,33 @@ describe("proxy", () => {
       expect(reset).toBeGreaterThan(0);
     });
 
+    it("static icons do not consume the page request budget", () => {
+      const ip = "static-asset-test-ip";
+
+      // Every page loads its icon, and the connectivity check sends HEAD /favicon.ico.
+      for (let i = 0; i < 150; i++) {
+        for (const path of ["/favicon.ico", "/icon.svg", "/apple-touch-icon.png"]) {
+          const asset = proxy(createRequest(path, {}, { "x-forwarded-for": ip }));
+          expect(asset.status).not.toBe(429);
+          expect(asset.headers.get("X-RateLimit-Limit")).toBeNull();
+        }
+      }
+
+      const page = proxy(createRequest("/", {}, { "x-forwarded-for": ip }));
+      expect(page.status).not.toBe(429);
+      expect(page.headers.get("X-RateLimit-Remaining")).toBe("99");
+    });
+
+    it("paths that only resemble static icons still count as page requests", () => {
+      const ip = "static-lookalike-test-ip";
+
+      for (let i = 0; i < 100; i++) {
+        proxy(createRequest("/icon.svg/x", {}, { "x-forwarded-for": ip }));
+      }
+
+      expect(proxy(createRequest("/favicon.ico.html", {}, { "x-forwarded-for": ip })).status).toBe(429);
+    });
+
     it("429 response includes positive Retry-After value", () => {
       const ip = "retry-after-test-ip";
 
