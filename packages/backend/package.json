@@ -21,7 +21,7 @@
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
     "@zxcvbn-ts/language-en": "^3.0.2",
-    "better-auth": "1.6.33",
+    "better-auth": "1.7.7",
     "convex": "1.46.0",
     "convex-helpers": "^0.1.124",
     "resend": "^6.30.0",
