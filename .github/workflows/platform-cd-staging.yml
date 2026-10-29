@@ -355,21 +355,21 @@ jobs:
     steps:
       - name: Download web artifact
         if: needs.build-web.outputs.reused == 'false'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.build-web.outputs.artifact-name }}
           path: artifacts/web
 
       - name: Download admin artifact
         if: needs.build-admin.outputs.reused == 'false'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.build-admin.outputs.artifact-name }}
           path: artifacts/admin
 
       - name: Download landing artifact
         if: needs.build-landing.outputs.reused == 'false'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.build-landing.outputs.artifact-name }}
           path: artifacts/landing

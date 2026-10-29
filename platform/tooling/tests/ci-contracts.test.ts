@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from "n
 import { matchesGlob } from "node:path";
 import { waitForPage } from "../http-ready.ts";
 import { assessAdvisoryRace, runRaceCheck } from "../advisory-race.ts";
-import { auditResult } from "../dependency-audit.ts";
+import { auditResult, parseExceptions } from "../dependency-audit.ts";
 import { CHECKOUT_CHECKS, PLATFORM_CHECKS, UPGRADE_CHECKS, checksFor, runChecks } from "../ci-checks.ts";
 
 for (const scenario of [
@@ -127,13 +127,18 @@ test("newly recognized alerts block once their fix is older than the security co
   const candidates: Record<string, string[]>[] = [{}, { alias: ["source-map-js@1.2.2"] }, { nested: ["source-map-js@1.2.3"] }];
   for (const candidate of candidates) {
     const repaired = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], {}, undefined, "2026-10-06T01:24:00Z", candidate);
-    assert.deepEqual(repaired, { actionable: [], coolingDown: [], noFixedRelease: [] });
+    assert.deepEqual(repaired, { actionable: [], coolingDown: [], noFixedRelease: [], excepted: [] });
   }
   const mixed = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, undefined, "2026-10-06T01:24:00Z", { alias: ["source-map-js@1.2.2"], "parent/source-map-js": ["source-map-js@1.2.1"] });
   assert.equal(mixed.actionable.length, 1);
   assert.equal(mixed.actionable[0].recognizedAfterRenovate, false);
   const boundary = assessAdvisoryRace([alert("2026-10-06T00:10:00Z", "1.2.3")], times, undefined, "2026-10-06T12:00:00Z", packages);
   assert.equal(boundary.actionable.length, 1);
+  const exception = { advisory: "GHSA-fixture", package: "source-map-js", expires: "2026-10-06", reason: "fixture", ticket: "https://github.com/owner/repo/issues/1" };
+  const excepted = assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, undefined, "2026-10-06T01:24:00Z", packages, [exception]);
+  assert.equal(excepted.actionable.length, 0); assert.equal(excepted.excepted.length, 1);
+  assert.equal(assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, undefined, "2026-10-07T01:24:00Z", packages, [exception]).actionable.length, 1);
+  assert.equal(assessAdvisoryRace([alert("2026-10-05T23:31:00Z")], times, undefined, "2026-10-06T01:24:00Z", packages, [{ ...exception, package: "other" }]).actionable.length, 1);
   const base = alert("2026-10-05T23:31:00Z");
   const unpatchedVulnerability = { ...base.security_advisory.vulnerabilities[0], first_patched_version: null };
   const unpatched = { ...base, security_advisory: { ...base.security_advisory, vulnerabilities: [unpatchedVulnerability] } };
@@ -150,7 +155,7 @@ test("newly recognized alerts block once their fix is older than the security co
     assert.throws(() => assessAdvisoryRace([unsupported], times, undefined, "2026-10-06T01:24:00Z", packages), /Unsupported GitHub advisory range/);
   }
   const empty = { ...base, security_advisory: { ...base.security_advisory, vulnerabilities: [] } };
-  assert.deepEqual(assessAdvisoryRace([empty], {}, undefined, "2026-10-06T01:24:00Z", packages), { actionable: [], coolingDown: [], noFixedRelease: [] });
+  assert.deepEqual(assessAdvisoryRace([empty], {}, undefined, "2026-10-06T01:24:00Z", packages), { actionable: [], coolingDown: [], noFixedRelease: [], excepted: [] });
 });
 
 test("advisory gate retains alerts without Renovate metadata and permits repaired candidates", async t => {
@@ -194,11 +199,26 @@ test("advisory gate retains alerts without Renovate metadata and permits repaire
 
 test("audit enforces severity independently of Bun's any-finding exit and rejects errors", () => {
   const report = (severity: string) => JSON.stringify({ pkg: [{ title: "fixture advisory", severity, url: "https://example.test/advisory" }] });
-  assert.deepEqual(auditResult("{}", 0), { high: 0, lower: 0 });
-  assert.deepEqual(auditResult(report("low"), 1), { high: 0, lower: 1 });
-  assert.deepEqual(auditResult(report("moderate"), 1), { high: 0, lower: 1 });
+  assert.deepEqual(auditResult("{}", 0), { high: 0, lower: 0, excepted: 0 });
+  assert.deepEqual(auditResult(report("low"), 1), { high: 0, lower: 1, excepted: 0 });
+  assert.deepEqual(auditResult(report("moderate"), 1), { high: 0, lower: 1, excepted: 0 });
   for (const severity of ["high", "critical"]) assert.equal(auditResult(report(severity), 1).high, 1);
   for (const [output, status] of [["{}", 1], ["{}", 127], ["network error", 1], ['{"error":"unavailable"}', 0], [report("unknown"), 1], [report("high"), 0]] as const) assert.throws(() => auditResult(output, status));
+});
+
+test("audit exceptions accept only a listed, unexpired advisory in its own package and must stay in use", () => {
+  const ghsa = "GHSA-965c-763c-88jm", url = `https://github.com/advisories/${ghsa}`;
+  const exception = { advisory: ghsa, package: "pkg", expires: "2026-11-12", reason: "path not reached", ticket: "https://github.com/owner/repo/issues/1" };
+  const report = (rows: Record<string, { severity: string; url: string }[]>) => JSON.stringify(Object.fromEntries(Object.entries(rows).map(([name, list]) => [name, list.map(row => ({ title: "fixture", ...row }))])));
+  assert.deepEqual(auditResult(report({ pkg: [{ severity: "critical", url }] }), 1, [exception], "2026-11-12"), { high: 0, lower: 0, excepted: 1 });
+  assert.deepEqual(auditResult(report({ other: [{ severity: "critical", url }], pkg: [{ severity: "high", url }] }), 1, [exception], "2026-11-01"), { high: 1, lower: 0, excepted: 1 });
+  assert.equal(auditResult(report({ pkg: [{ severity: "high", url: "https://github.com/advisories/GHSA-r4xp-prcw-77qf" }, { severity: "high", url }] }), 1, [exception], "2026-11-01").high, 1);
+  assert.throws(() => auditResult(report({ pkg: [{ severity: "critical", url }] }), 1, [exception], "2026-11-13"), /expired on 2026-11-12/);
+  assert.throws(() => auditResult("{}", 0, [exception], "2026-11-01"), /no longer match.*GHSA-965c-763c-88jm/);
+  assert.throws(() => auditResult(report({ pkg: [{ severity: "moderate", url }] }), 1, [exception], "2026-11-01"), /no longer match/);
+  assert.deepEqual(parseExceptions(JSON.stringify({ exceptions: [exception] })), [exception]);
+  for (const bad of [{}, { exceptions: {} }, { exceptions: [], extra: 1 }, { exceptions: [{ ...exception, advisory: "CVE-2026-1" }] }, { exceptions: [{ ...exception, expires: "soon" }] },
+    { exceptions: [{ ...exception, ticket: "see chat" }] }, { exceptions: [{ ...exception, reason: " " }] }, { exceptions: [{ ...exception, scope: "all" }] }]) assert.throws(() => parseExceptions(JSON.stringify(bad)));
 });
 
 test("CI inventory executes every selected stage and propagates each stage failure", () => {

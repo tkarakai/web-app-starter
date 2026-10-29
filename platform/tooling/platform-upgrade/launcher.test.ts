@@ -22,6 +22,7 @@ test("stable launcher runs the pinned target tool; real dry-run, apply and resum
   const pkg = { name: "launcher-fixture", private: true, type: "module", scripts: Object.fromEntries(REQUIRED_CHECKS.map(script => [script, "node -e 'process.exit(0)' "])) };
   write(f.source, "package.json", JSON.stringify(pkg)); write(f.app, "package.json", JSON.stringify(pkg));
   f.manifest.runtime.nodeMajor = Number(process.versions.node.split(".")[0]);
+  f.manifest.runtime.bun = spawnSync("bun", ["--version"], { encoding: "utf8" }).stdout.trim();
   f.publish("2.0.1");
   // Use this release as the app's initial baseline, with an installed launcher.
   git(f.app, "fetch", "--quiet", f.source, "refs/tags/v2.0.1");

@@ -17,9 +17,9 @@ test("platform instruction files match the actual Next.js dev generator", t => {
     t.after(() => rmSync(temp, { recursive: true, force: true }));
     generator.writeAgentFiles(temp);
     const installed = path.join(root, `platform/apps/${app}`);
-    for (const file of ["AGENTS.md", "CLAUDE.md"]) {
-      assert.equal(readFileSync(path.join(installed, file), "utf8"), readFileSync(path.join(temp, file), "utf8"), `${app}/${file}: refresh when upgrading Next.js`);
-    }
+    assert.equal(readFileSync(path.join(installed, "AGENTS.md"), "utf8"), readFileSync(path.join(temp, "AGENTS.md"), "utf8"), `${app}/AGENTS.md: refresh when upgrading Next.js`);
+    // Next.js 16.4 no longer writes CLAUDE.md; ours stays so Claude Code loads the same rules.
+    assert.equal(readFileSync(path.join(installed, "CLAUDE.md"), "utf8"), "@AGENTS.md\n", `${app}/CLAUDE.md must import AGENTS.md`);
     assert(generator.hasCurrentAgentRules(installed));
   }
 });

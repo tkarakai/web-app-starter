@@ -122,7 +122,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() && !env.ACT }}
         continue-on-error: true
         with:
@@ -254,7 +254,7 @@ jobs:
       # Publish only the value-free acceptance report below.
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() && !env.ACT }}
         continue-on-error: true
         with:
@@ -265,7 +265,7 @@ jobs:
           retention-days: ${{ vars.PLATFORM_CI_ARTIFACT_RETENTION_DAYS || 7 }}
 
       - name: Upload visual snapshots
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() && !env.ACT }}
         continue-on-error: true
         with:

@@ -16,10 +16,10 @@
   "dependencies": {
     "@repo/messages": "workspace:*",
     "@web-app-starter/app-config": "workspace:*",
-    "next-intl": "^4.14.8"
+    "next-intl": "^4.14.9"
   },
   "peerDependencies": {
-    "next": "^16.3.8",
+    "next": "^16.4.1",
     "react": "^19.3.0"
   },
   "devDependencies": {

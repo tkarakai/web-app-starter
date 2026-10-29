@@ -79,6 +79,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Native agent execution independently revalidates persisted actor/proof/target authority. Contract
   epoch 2 invalidates older codes, delegations, grants and queued authority; historical task/artifact
   rows stay quarantined instead of being deleted or reclassified by owner alone.
+- Bun baseline 1.4.2 → 1.4.3 (`packageManager`, the `setup-bun` default and the AWS Dockerfiles), with
+  the pending non-major dependency updates: React 19.3.1, Convex 1.47.0, typescript-eslint 8.71.2,
+  Radix primitives, lucide-react 1.59.0, Vitest 5.0.5, Playwright 1.64.1 and pinned GitHub Actions.
 
 - Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.
   Public local-worker setup, registration, diagnostics and the `--public-branch` exception are
@@ -115,6 +118,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
   APIs and membership completion require a verified readiness receipt. Cutover retires legacy
   writers permanently; retain ambiguous data for explicit repair and use compatible forward
   recovery instead of deploying an old binary or resetting the database.
+- **Every app:** install Bun 1.4.3 locally (`bun upgrade`, or your version manager). CI installs it
+  through the `setup-bun` action; take the release, then run `bun install` and `bun run ci:quick`.
+
+- **Every app:** better-auth `<1.7.7` carries GHSA-965c-763c-88jm (critical), GHSA-r4xp-prcw-77qf
+  and GHSA-q84f-53jg-9ppm (high). The fix cannot be installed while `@convex-dev/better-auth`
+  requires `better-auth <1.7.0`, so the audit fails on them. Check each advisory against your auth
+  configuration. The starter enables no social or Generic OAuth provider, OAuth Proxy or device
+  authorization, so none of them apply to it. If none apply to yours either, copy the starter's
+  `dependency-audit-exceptions.json` with your own ticket and expiry. If one does apply, disable that
+  feature until the auth stack can move to 1.7.
 
 - **Apps with local Actions routing or customized CI callers:** stop/drain and retire any public
   local installation using its old absolute command; remove only its registrations and revoke its
@@ -134,6 +147,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   matching empty-domain migration registration. Organization navigation, enrollment and
   membership management remain available; retained security tests use independent private
   resources, and adopted backend/web checks no longer require removed sample modules.
+- Admin no longer counts its static icons (`favicon.ico`, `icon.svg`, `apple-touch-icon.png`) against
+  the per-IP page rate limit. Every page load and connectivity check fetched them, so active admins
+  reached the 100-per-minute limit after about a third as many pages, and fast local E2E runs hit
+  HTTP 429. Agent host isolation and the page limit itself are unchanged.
+
 - Backend session-assurance and recovery-code tests remain runnable after adoption with
   `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
 - Resuming setup with `--local-only` never starts an existing authenticated manager service;
@@ -185,6 +203,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.
   See the [near-gate advisory procedure](docs/dependency-updates.md#advisory-recognition-near-a-merge-or-release-gate)
   for blocking rules, evidence limitations and the merge/release response.
+
+### Security
+
+- Security updates: next 16.4.1, zod 4.6.6, @modelcontextprotocol/sdk 1.32.0, vite 8.3.4,
+  happy-dom 21.0.4, hono 4.13.11, @hono/node-server 2.1.5 and ip-address 10.7.4, plus the
+  transitive body-parser 2.4.0 and undici 8.12.2 (pinned with a root override, because
+  @earendil-works/pi-coding-agent pins an exact vulnerable undici). happy-dom 21 no longer loads
+  CSS files or iframe pages by default; component tests rely on neither.
+
+- Magic Link tokens are stored hashed (`storeToken: "hashed"`), the documented mitigation for
+  GHSA-965c-763c-88jm. Magic links sent before the deploy stop working; users request a new one.
+
+- The dependency audit accepts a reviewed, expiring exception for a high/critical advisory that
+  cannot be fixed yet and is not reachable, listed in the app-owned
+  `dependency-audit-exceptions.json`. Expired or unused exceptions fail the audit. See
+  [reviewed audit exceptions](docs/dependency-updates.md#reviewed-audit-exceptions).
 
 ## [4.1.0] - 2026-10-05
 
