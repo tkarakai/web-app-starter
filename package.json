@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.2",
+  "packageManager": "bun@1.4.3",
   "engines": {
     "node": ">=24.21 <25"
   },
@@ -98,28 +98,28 @@
     "test:agentic": "bun run --cwd platform/packages/agentic test && bun run --cwd platform/packages/announcement-agent test"
   },
   "overrides": {
-    "@peculiar/asn1-schema": "2.9.5",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "convex": "1.46.0",
+    "@peculiar/asn1-schema": "2.11.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "convex": "1.47.0",
     "next": "16.3.8",
-    "typescript-eslint": "8.70.1",
+    "typescript-eslint": "8.71.2",
     "@hono/node-server": "2.1.1",
-    "@smithy/core": "3.35.0",
+    "@smithy/core": "3.36.0",
     "ip-address": "10.7.2",
-    "express-rate-limit": "8.7.0",
+    "express-rate-limit": "8.7.1",
     "hono": "4.13.9",
     "sharp": "0.35.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "24.13.6",
-    "@typescript-eslint/eslint-plugin": "8.70.1",
-    "@typescript-eslint/parser": "8.70.1",
+    "@types/node": "24.19.2",
+    "@typescript-eslint/eslint-plugin": "8.71.2",
+    "@typescript-eslint/parser": "8.71.2",
     "eslint": "9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "turbo": "^2.11.7",
+    "turbo": "^2.11.9",
     "typescript": "6.0.3"
   }
 }
