@@ -47,6 +47,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Every app:** better-auth `<1.7.7` carries GHSA-965c-763c-88jm (critical), GHSA-r4xp-prcw-77qf
+  and GHSA-q84f-53jg-9ppm (high). The fix cannot be installed while `@convex-dev/better-auth`
+  requires `better-auth <1.7.0`, so the audit fails on them. Check each advisory against your auth
+  configuration. The starter enables no social or Generic OAuth provider, OAuth Proxy or device
+  authorization, so none of them apply to it. If none apply to yours either, copy the starter's
+  `dependency-audit-exceptions.json` with your own ticket and expiry. If one does apply, disable that
+  feature until the auth stack can move to 1.7.
+
 - **Apps with local Actions routing or customized CI callers:** stop/drain and retire any public
   local installation using its old absolute command; remove only its registrations and revoke its
   dedicated credential. After upgrading, run
@@ -111,6 +119,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Security CI now checks GitHub's open Dependabot alerts independently of Bun's advisory feed.
   See the [near-gate advisory procedure](docs/dependency-updates.md#advisory-recognition-near-a-merge-or-release-gate)
   for blocking rules, evidence limitations and the merge/release response.
+
+### Security
+
+- Security updates: next 16.4.1, zod 4.6.6, @modelcontextprotocol/sdk 1.32.0, vite 8.3.4,
+  happy-dom 21.0.4, hono 4.13.11, @hono/node-server 2.1.5 and ip-address 10.7.4, plus the
+  transitive body-parser 2.4.0 and undici 8.12.2 (pinned with a root override, because
+  @earendil-works/pi-coding-agent pins an exact vulnerable undici). happy-dom 21 no longer loads
+  CSS files or iframe pages by default; component tests rely on neither.
+
+- Magic Link tokens are stored hashed (`storeToken: "hashed"`), the documented mitigation for
+  GHSA-965c-763c-88jm. Magic links sent before the deploy stop working; users request a new one.
+
+- The dependency audit accepts a reviewed, expiring exception for a high/critical advisory that
+  cannot be fixed yet and is not reachable, listed in the app-owned
+  `dependency-audit-exceptions.json`. Expired or unused exceptions fail the audit. See
+  [reviewed audit exceptions](docs/dependency-updates.md#reviewed-audit-exceptions).
 
 ## [4.1.0] - 2026-10-05
 

@@ -46,6 +46,9 @@ function totp(uri: string): string {
   return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
+// Magic-link tokens are stored as their unpadded base64url SHA-256 (`storeToken: "hashed"`).
+const magicLinkIdentifier = (token: string) => createHash("sha256").update(token).digest("base64url");
+
 async function fixture(role = "user") {
   const t = createSessionAssuranceTestEnv(modules);
   t.registerComponent("betterAuth", authSchema, authModules);
@@ -226,7 +229,7 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(sendAuthEmail).not.toHaveBeenCalled();
     const now = Date.now();
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "verification", data: {
-      identifier: "known-link-token", value: JSON.stringify({ email: f.email, name: "Fixture" }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
+      identifier: magicLinkIdentifier("known-link-token"), value: JSON.stringify({ email: f.email, name: "Fixture" }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
     } } });
     expect((await f.request("/magic-link/verify?token=known-link-token&callbackURL=%2Fdashboard")).status).toBe(403);
     expect((await f.request("/sign-in/email-otp", { email: f.email, otp: "123456" })).status).toBe(403);
@@ -259,6 +262,21 @@ describe("backend session assurance through authentication endpoints", () => {
     await expect(forged.mutation(assuranceApi.write, {})).rejects.toThrow("NOT_AUTHENTICATED");
   });
 
+  test("a magic link stores only a hash of its token and the emailed link still signs in", async () => {
+    const f = await fixture();
+    await f.setting("userMagicLinkEnabled", true);
+    expect((await f.request("/sign-in/magic-link", { email: f.email, callbackURL: "/dashboard" })).status).toBe(200);
+    const url = new URL(vi.mocked(sendAuthEmail).mock.calls[0]![0].urlOrCode);
+    const token = url.searchParams.get("token")!;
+    expect(token).toBeTruthy();
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "verification", where: [{ field: "identifier", value: token }] })).toBeNull();
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "verification", where: [{ field: "identifier", value: magicLinkIdentifier(token) }] })).not.toBeNull();
+    const response = await f.request(`/magic-link/verify?token=${token}`);
+    const body = await response.json();
+    expect(response.status, JSON.stringify(body)).toBe(200);
+    expect((await f.caller(body.token)).session).toMatchObject({ authMethod: "magic-link" });
+  });
+
   test("an email-only session cannot bypass an enrolled factor or replace it", async () => {
     const f = await fixture();
     await f.setting("userMagicLinkEnabled", true);
@@ -266,7 +284,7 @@ describe("backend session assurance through authentication endpoints", () => {
     const enrolled = await f.enroll(initial);
     const now = Date.now();
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "verification", data: {
-      identifier: "email-only", value: JSON.stringify({ email: f.email }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
+      identifier: magicLinkIdentifier("email-only"), value: JSON.stringify({ email: f.email }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
     } } });
     const response = await f.request("/magic-link/verify?token=email-only");
     const body = await response.json();

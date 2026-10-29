@@ -761,6 +761,9 @@ export const createAuthOptions = (
         },
       }),
       magicLink({
+        // Store only a hash of the token, so a value from another verification flow (such as
+        // an OAuth state) can never be redeemed as a magic link (GHSA-965c-763c-88jm).
+        storeToken: "hashed",
         sendMagicLink: async ({ email, url }) => {
           await sendLimitedAuthEmail(ctx, {
             to: email,

@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { lockData } from "./ci-workers/source.ts";
+import { EXCEPTIONS_FILE, parseExceptions, type AuditException } from "./dependency-audit.ts";
 
 const FAST_PATH_HOURS = 12;
 type Vulnerability = {
@@ -20,6 +21,7 @@ export type RaceAssessment = {
   actionable: { alert: Alert; vulnerability: Vulnerability; fixed: string; fixedPublishedAt: string; recognizedAfterRenovate: boolean }[];
   coolingDown: { alert: Alert; vulnerability: Vulnerability; fixed: string; fixedPublishedAt: string }[];
   noFixedRelease: Match[];
+  excepted: Match[];
 };
 
 type Version = { core: [number, number, number]; pre: (number | string)[] };
@@ -88,11 +90,14 @@ function affectedVulnerabilities(alerts: Alert[], packages: Record<string, strin
 }
 
 /** Classify GitHub's open alerts independently of Bun's advisory feed. */
-export function assessAdvisoryRace(alerts: Alert[], registryTimes: RegistryTimes, renovateCompletedAt: string | undefined, now: string, packages: Record<string, string[]>): RaceAssessment {
-  const result: RaceAssessment = { actionable: [], coolingDown: [], noFixedRelease: [] };
+export function assessAdvisoryRace(alerts: Alert[], registryTimes: RegistryTimes, renovateCompletedAt: string | undefined, now: string, packages: Record<string, string[]>, exceptions: AuditException[] = []): RaceAssessment {
+  const result: RaceAssessment = { actionable: [], coolingDown: [], noFixedRelease: [], excepted: [] };
   const nowTime = date(now, "observation");
+  // The same reviewed exceptions as the Bun audit, which fails once one expires.
+  const today = new Date(nowTime).toISOString().slice(0, 10);
   const renovateTime = renovateCompletedAt ? date(renovateCompletedAt, "Renovate completion") : undefined;
   for (const match of affectedVulnerabilities(alerts, packages)) {
+    if (exceptions.some(entry => entry.advisory === match.alert.security_advisory.ghsa_id && entry.package === match.vulnerability.package.name && entry.expires >= today)) { result.excepted.push(match); continue; }
     const fixed = match.vulnerability.first_patched_version?.identifier;
     if (!fixed) { result.noFixedRelease.push(match); continue; }
     const fixedPublishedAt = registryTimes[match.vulnerability.package.name]?.[fixed];
@@ -148,9 +153,11 @@ export async function runRaceCheck(env = process.env): Promise<void> {
   const packages = lockData(readFileSync("bun.lock", "utf8")).packages;
   const matches = affectedVulnerabilities(alertsEvidence.value, packages);
   const times = await registryTimes(matches.flatMap(({ vulnerability }) => vulnerability.first_patched_version ? [vulnerability.package.name] : []));
-  const assessment = assessAdvisoryRace(alertsEvidence.value, times, renovate?.updated_at, alertsEvidence.observedAt, packages);
+  const exceptions = existsSync(EXCEPTIONS_FILE) ? parseExceptions(readFileSync(EXCEPTIONS_FILE, "utf8")) : [];
+  const assessment = assessAdvisoryRace(alertsEvidence.value, times, renovate?.updated_at, alertsEvidence.observedAt, packages, exceptions);
   console.log(`Advisory evidence: GitHub Dependabot alerts observed ${alertsEvidence.observedAt} (request ${alertsEvidence.requestId}); latest Renovate completion ${renovate?.updated_at ?? "unknown"} (${renovate?.conclusion ?? "no completion evidence"}).`);
   for (const item of assessment.coolingDown) console.log(`Security fix cooling down: ${item.alert.security_advisory.ghsa_id}, ${item.vulnerability.package.name}@${item.fixed}, published ${item.fixedPublishedAt}.`);
+  for (const item of assessment.excepted) console.warn(`::warning::${item.alert.security_advisory.ghsa_id} for ${item.vulnerability.package.name} is accepted by ${EXCEPTIONS_FILE}.`);
   for (const item of assessment.noFixedRelease) console.warn(`::warning::${item.alert.security_advisory.ghsa_id} has no fixed npm release for ${item.vulnerability.package.name}; the supplemental Renovate-race gate cannot repair it.`);
   if (assessment.actionable.length) {
     for (const item of assessment.actionable) console.error(`::error::${item.alert.security_advisory.ghsa_id} (${item.alert.security_advisory.severity}) remains open for ${item.vulnerability.package.name} in ${item.alert.dependency.manifest_path}; fixed ${item.fixed} was published ${item.fixedPublishedAt}.${item.recognizedAfterRenovate ? " The alert was recognized after the latest Renovate run." : ""}`);
