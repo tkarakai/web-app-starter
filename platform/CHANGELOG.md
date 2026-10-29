@@ -75,6 +75,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Admin no longer counts its static icons (`favicon.ico`, `icon.svg`, `apple-touch-icon.png`) against
+  the per-IP page rate limit. Every page load and connectivity check fetched them, so active admins
+  reached the 100-per-minute limit after about a third as many pages, and fast local E2E runs hit
+  HTTP 429. Agent host isolation and the page limit itself are unchanged.
+
 - Backend session-assurance and recovery-code tests remain runnable after adoption with
   `--remove-sample`, using platform-owned test fixtures independent of the sample project API.
 - Resuming setup with `--local-only` never starts an existing authenticated manager service;

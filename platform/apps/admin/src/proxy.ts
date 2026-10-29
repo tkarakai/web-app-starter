@@ -26,6 +26,9 @@ const PROTECTED_PREFIXES = [
   "/settings",
 ];
 
+/** Public icons copied by copy-shared-assets.sh; served unchanged to every visitor. */
+const STATIC_ASSETS = new Set(["/favicon.ico", "/icon.svg", "/apple-touch-icon.png"]);
+
 /** Auth routes that authenticated users should skip. */
 const AUTH_ROUTES = ["/sign-in", "/forgot-password", "/reset-password"];
 
@@ -37,7 +40,9 @@ export function proxy(request: NextRequest) {
   if (config && !isAuthOnly && (path === "/settings/agent-access" || path === "/.well-known/oauth-authorization-server"))
     return new NextResponse(null, { status: 404 });
   // These API routes were already outside the page middleware. Host isolation now includes them.
-  if (path.startsWith("/api/") || path.startsWith("/_next/")) return NextResponse.next();
+  // Static icons load with every page and in the connectivity check, so they never count as page
+  // requests against the rate limit.
+  if (path.startsWith("/api/") || path.startsWith("/_next/") || STATIC_ASSETS.has(path)) return NextResponse.next();
 
   // --- Rate limiting (first check) ---
   const clientIp = getClientIp(request);
