@@ -40,12 +40,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Bun baseline 1.4.2 → 1.4.3 (`packageManager`, the `setup-bun` default and the AWS Dockerfiles), with
+  the pending non-major dependency updates: React 19.3.1, Convex 1.47.0, typescript-eslint 8.71.2,
+  Radix primitives, lucide-react 1.59.0, Vitest 5.0.5, Playwright 1.64.1 and pinned GitHub Actions.
+
 - Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.
   Public local-worker setup, registration, diagnostics and the `--public-branch` exception are
   retired. Private owners retain hosted/all-local execution, including auxiliary job coverage.
   Local CLI/container checks without GitHub registration are unchanged.
 
 ### Action required
+
+- **Every app:** install Bun 1.4.3 locally (`bun upgrade`, or your version manager). CI installs it
+  through the `setup-bun` action; take the release, then run `bun install` and `bun run ci:quick`.
 
 - **Every app:** better-auth `<1.7.7` carries GHSA-965c-763c-88jm (critical), GHSA-r4xp-prcw-77qf
   and GHSA-q84f-53jg-9ppm (high). The fix cannot be installed while `@convex-dev/better-auth`
