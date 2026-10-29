@@ -1,0 +1,25 @@
+{
+  "exceptions": [
+    {
+      "advisory": "GHSA-965c-763c-88jm",
+      "package": "better-auth",
+      "expires": "2026-11-12",
+      "reason": "Needs Magic Link plus a social or Generic OAuth provider; no OAuth provider is enabled, and Magic Link tokens are stored hashed. The fix (1.7.7) is outside the Convex adapter peer range.",
+      "ticket": "https://github.com/tkarakai/web-app-starter/issues/350"
+    },
+    {
+      "advisory": "GHSA-r4xp-prcw-77qf",
+      "package": "better-auth",
+      "expires": "2026-11-12",
+      "reason": "Needs the OAuth Proxy plugin, which is not enabled. The fix (1.7.7) is outside the Convex adapter peer range.",
+      "ticket": "https://github.com/tkarakai/web-app-starter/issues/350"
+    },
+    {
+      "advisory": "GHSA-q84f-53jg-9ppm",
+      "package": "better-auth",
+      "expires": "2026-11-12",
+      "reason": "Needs the device-authorization plugin, which is not enabled. The fix (1.7.0-rc.3+) is outside the Convex adapter peer range.",
+      "ticket": "https://github.com/tkarakai/web-app-starter/issues/350"
+    }
+  ]
+}

@@ -211,6 +211,36 @@ or malformed npm publication evidence also fails. An affected alert with no fixe
 instead of blocking this supplemental gate. Release operators must apply the fresh-Renovate
 procedure above whenever they know recognition occurred near the gate.
 
+### Reviewed audit exceptions
+
+Sometimes a high/critical advisory's fix cannot be installed yet. For example, the fix is in a
+version that a peer range excludes, and peers are never forced. The audit, which is fail-closed,
+would then block every PR. If the app does not reach the vulnerable path, the owner can accept the
+advisory for a limited time in the app-owned `dependency-audit-exceptions.json` at the repository
+root:
+
+```json
+{
+  "exceptions": [
+    {
+      "advisory": "GHSA-965c-763c-88jm",
+      "package": "better-auth",
+      "expires": "2026-11-12",
+      "reason": "Why the vulnerable path is not reached, and why the fix cannot be installed yet.",
+      "ticket": "https://github.com/<owner>/<repo>/issues/<n>"
+    }
+  ]
+}
+```
+
+Each entry names one advisory in one package, and every field is required. An exception
+suppresses only that advisory in that package, in both the Bun audit and the Dependabot-alert
+gate. Lower severities never need one. The audit fails when an exception has expired, so it
+must be re-assessed rather than renewed silently. It also fails when an exception no longer
+matches a finding, so it is removed as soon as the fix lands. Keep expiries short, at two weeks
+or less. The ticket holds the assessment and the upgrade that ends the exception. Apply the
+advisory's documented workaround as well, when one exists.
+
 ### Handling each PR state
 
 | State | Action |
