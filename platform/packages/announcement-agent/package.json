@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "0.99.2",
-    "@modelcontextprotocol/sdk": "1.32.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@web-app-starter/agentic": "workspace:*",
     "typebox": "1.4.2"
   },
