@@ -19,7 +19,8 @@ export const organizationObservations = [
   "org-sign-in-page", "org-organization-page", "org-page-other", "org-feedback-present", "org-feedback-absent",
   "org-feedback-unavailable", "org-feedback-reauthentication", "org-feedback-rate-limit",
   "org-feedback-invitation", "org-feedback-not-ready", "org-feedback-generic", "org-expected-id-missing",
-  "org-row-pending", "org-row-not-pending", "org-row-absent", "org-read-failed",
+  "org-row-pending", "org-row-not-pending", "org-row-absent", "org-row-visible", "org-row-hidden",
+  "org-gate-loading", "org-gate-verify", "org-read-failed",
 ] as const;
 export type OrganizationObservation = typeof organizationObservations[number];
 export const activities = ["assertion", "fill", "type", "navigate", "click", "api", "fixture", "hook", "step", "attachment", ...organizationObservations] as const;

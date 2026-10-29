@@ -67,11 +67,16 @@ export async function expectOrganizationTransition(page: Page, organizationId: s
             ["An error occurred", "org-feedback-generic"],
           ];
           for (const [text, category] of knownFeedback) if (alerts.some(alert => alert.includes(text))) result.push(category);
+          // SessionAccessGate replaces granted content with a loading status or a verification card.
+          const shown = (selector: string, text: string) => [...document.querySelectorAll(selector)].some(element => element.checkVisibility() && element.textContent?.trim() === text);
+          if (shown('[role="status"]', "Loading...")) result.push("org-gate-loading");
+          if (shown("h3", "Verify your identity")) result.push("org-gate-verify");
           return result;
         }, organizationId);
         if (memberRow) {
           const texts = await memberRow.allTextContents();
           observations.push(texts.length === 0 ? "org-row-absent" : texts.some(text => /\bPending\b/.test(text)) ? "org-row-pending" : "org-row-not-pending");
+          if (texts.length) observations.push(await memberRow.first().isVisible() ? "org-row-visible" : "org-row-hidden");
         }
         return observations;
       })();
