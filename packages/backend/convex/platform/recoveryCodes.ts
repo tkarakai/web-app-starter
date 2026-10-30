@@ -59,18 +59,13 @@ export async function readBackupCodes(
   const after = await ctx.runQuery(internal.platform.recoveryCodes.snapshot, { userId, sessionId });
   if (before.passwordHash !== after.passwordHash) throw new Error("REAUTHENTICATION_REQUIRED");
   if (!after.backupCodes) return [];
-  return decodeBackupCodes(after.backupCodes);
-}
-
-/** Decode one captured recovery set; callers must preserve its exact fingerprint across validation. */
-export async function decodeBackupCodes(material: string): Promise<string[]> {
   let codes: unknown;
   try {
-    codes = JSON.parse(material);
+    codes = JSON.parse(after.backupCodes);
   } catch {
     const secret = process.env.BETTER_AUTH_SECRET;
     if (!secret) throw new Error("BETTER_AUTH_SECRET not configured");
-    codes = JSON.parse(await symmetricDecrypt({ key: secret, data: material }));
+    codes = JSON.parse(await symmetricDecrypt({ key: secret, data: after.backupCodes }));
   }
   if (!Array.isArray(codes) || !codes.every((code): code is string => typeof code === "string")) {
     throw new Error("INVALID_RECOVERY_CODES");

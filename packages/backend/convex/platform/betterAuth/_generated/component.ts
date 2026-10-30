@@ -3051,13 +3051,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
-      enrollmentStatus: FunctionReference<
-        "query",
-        "internal",
-        { organizationId: string; userId: string },
-        any,
-        Name
-      >;
       leave: FunctionReference<
         "mutation",
         "internal",
