@@ -147,9 +147,10 @@ async function createPersonalOrganization(
 
 /**
  * The organization pre-organization data moves into, for a data migration: one the owner owns
- * **alone**, so nobody else can see the private data it receives. Being an owner is not enough:
- * the user may have been invited into someone else's organization as an owner before the
- * migration reached their rows. Without such an organization, a new personal one is created.
+ * **alone**, with no pending invitation, so nobody else can see the private data it receives.
+ * Being an owner is not enough: the user may have been invited into someone else's
+ * organization as an owner before the migration reached their rows, and members who left may
+ * have left invitations behind. Without such an organization, a new personal one is created.
  * `null` when the owner's account no longer exists; leave such rows unmigrated.
  */
 export async function personalOrganizationForOwner(ctx: Writer, ownerId: string): Promise<string | null> {
@@ -158,7 +159,14 @@ export async function personalOrganizationForOwner(ctx: Writer, ownerId: string)
   for (const membership of await listMemberships(ctx, user._id)) {
     if (parseRole(membership.role) !== "owner") continue;
     const members = await listOrganizationMembers(ctx, membership.organizationId);
-    if (members.length === 1) return membership.organizationId;
+    if (members.length !== 1) continue;
+    // An outstanding invitation (perhaps sent by a member who has since left) could admit
+    // someone after the data arrives.
+    const invited = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "invitation",
+      where: [{ field: "organizationId", value: membership.organizationId }, { field: "status", value: "pending" }],
+    });
+    if (!invited) return membership.organizationId;
   }
   return await createPersonalOrganization(ctx, user);
 }

@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
-import { authClient } from "@web-app-starter/auth/client";
+import { authClient, isAuthRateLimited } from "@web-app-starter/auth/client";
 import { Alert, AlertDescription, Button, toast } from "@web-app-starter/design-system";
 
 import { organizationErrorKey, useOrganizations } from "../lib/organization";
@@ -60,9 +60,9 @@ export function OrganizationInvitations({ onAccepted }: { onAccepted?: () => voi
                 {t("banner.accept")}
               </Button>
             ) : (
-              <Button size="sm" asChild>
-                <a href={`/${locale}/verify-email?email=${encodeURIComponent(invitation.email)}`}>{t("banner.verify")}</a>
-              </Button>
+              <SendVerificationButton email={invitation.email} callbackURL={`/${locale}/dashboard`} size="sm">
+                {t("banner.verify")}
+              </SendVerificationButton>
             )}
             <Button
               size="sm"
@@ -76,6 +76,42 @@ export function OrganizationInvitations({ onAccepted }: { onAccepted?: () => voi
         </Alert>
       ))}
     </div>
+  );
+}
+
+/**
+ * Sends the signed-in user a verification email in place. Accepting an invitation needs a
+ * verified address, and this works whatever the email-verification policy is.
+ */
+export function SendVerificationButton({ email, callbackURL, size, className, children }: {
+  email: string;
+  /** Where the link in the email returns to once verified. */
+  callbackURL: string;
+  size?: React.ComponentProps<typeof Button>["size"];
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("auth");
+  const [sending, setSending] = React.useState(false);
+  const send = async () => {
+    setSending(true);
+    try {
+      const result = await authClient.sendVerificationEmail({ email, callbackURL });
+      if (result.error) {
+        toast.error(isAuthRateLimited(result.error) ? t("errors.rateLimited") : t("verifyEmail.verificationErrorUnknown"));
+      } else {
+        toast.success(t("verifyEmail.resent"));
+      }
+    } catch {
+      toast.error(t("verifyEmail.verificationErrorUnknown"));
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <Button size={size} className={className} disabled={sending} onClick={() => void send()}>
+      {children}
+    </Button>
   );
 }
 

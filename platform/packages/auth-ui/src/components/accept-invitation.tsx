@@ -20,6 +20,7 @@ import {
 
 import { organizationErrorKey } from "../lib/organization";
 import { useSignOut } from "../lib/use-sign-out";
+import { SendVerificationButton } from "./organization-invitations";
 
 function Panel({ title, description, children }: { title: string; description: string; children?: React.ReactNode }) {
   return (
@@ -88,9 +89,13 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   if (!invitation.emailVerified) {
     return (
       <Panel title={t("verifyTitle")} description={t("verifyDescription", { organization: invitation.organizationName, email: invitation.email })}>
-        <Button asChild className="flex-1">
-          <a href={`/${locale}/verify-email?email=${encodeURIComponent(invitation.email)}`}>{t("verify")}</a>
-        </Button>
+        <SendVerificationButton
+          email={invitation.email}
+          callbackURL={`/${locale}/accept-invitation/${encodeURIComponent(invitationId)}`}
+          className="flex-1"
+        >
+          {t("verify")}
+        </SendVerificationButton>
       </Panel>
     );
   }

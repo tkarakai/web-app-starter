@@ -152,4 +152,30 @@ describe("upgrade migration", () => {
     expect(await alice.caller.query(api.projects.get, { id: bobsProject })).toBeNull();
     expect(await f.members(assigned!)).toMatchObject([{ userId: bob.userId, role: "owner" }]);
   });
+
+  test("never moves private data into an organization someone else can still join", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    // Bob became an owner of Acme; Alice invited someone and then left, so Bob is its only member.
+    await f.addMember(acme, bob.userId, "owner");
+    await f.t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId: acme, email: "mallory@example.test", role: "member", status: "pending",
+        inviterId: alice.userId, createdAt: Date.now(), expiresAt: Date.now() + 86_400_000,
+      } },
+    });
+    const alicesMembership = (await f.members(acme)).find((m) => m.userId === alice.userId)!;
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, {
+      input: { model: "member", where: [{ field: "_id", value: alicesMembership._id }] },
+    });
+    const bobsProject = await legacyProject(f, bob.userId);
+
+    await migrate(f);
+    const assigned = (await f.t.run((ctx) => ctx.db.get(bobsProject)))!.organizationId;
+    expect(assigned).toBeDefined();
+    expect(assigned).not.toBe(acme);
+  });
 });
+

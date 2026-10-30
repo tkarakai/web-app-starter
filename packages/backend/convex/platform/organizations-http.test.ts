@@ -60,6 +60,19 @@ describe("organization routes", () => {
     expect(sendAuthEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "carol@example.test", type: "custom" }));
   });
 
+  test("an organization can be renamed, but its slug and metadata stay platform-managed", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    for (const data of [{ slug: "taken" }, { name: "Acme", metadata: { personal: false } }, { logo: "https://example.test/x.png" }]) {
+      const update = await f.post("/organization/update", { organizationId: acme, data }, f.token("alice"));
+      expect(update.status, JSON.stringify(data)).toBe(403);
+    }
+    const rename = await f.post("/organization/update", { organizationId: acme, data: { name: "Acme" } }, f.token("alice"));
+    expect(rename.status, await rename.clone().text()).toBe(200);
+    expect(await alice.caller.query(api.platform.organizations.active, {})).toMatchObject({ name: "Acme" });
+  });
+
   test("every invitation email counts against the inviter, resends included", async () => {
     const f = await fixture();
     const alice = await f.user("alice");

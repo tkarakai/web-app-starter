@@ -49,7 +49,7 @@ only admins delete projects), check `ctx.organizationRole` in your functions.
   session-assurance plugin admits only these routes: `create`, `update`, `set-active`,
   `invite-member`, `cancel-invitation`, `accept-invitation`, `reject-invitation`,
   `remove-member`, `update-member-role` and `leave`. Roles must be exactly one of `owner`, `admin` or `member`;
-  Better Auth's comma-separated role lists are refused. Each needs a fully assured session (email
+  Better Auth's comma-separated role lists are refused. `update` may change only the name. Each needs a fully assured session (email
   verification, MFA and passkey policy met). Platform administrators can't use them, just as
   they can't use the web app.
 - **Accepting needs the invited address, verified.** Better Auth matches the signed-in user's
@@ -138,7 +138,9 @@ existing rows violate, so this takes two releases
 
 1. **Widen and migrate.** Add `organizationId: v.optional(v.string())` and the
    `by_organization` index. Switch the functions to `orgQuery`/`orgMutation` and the access
-   checks to the organization. Add a migration to `convex/migrations.ts`:
+   checks to the organization. Add a migration in its own module, say
+   `convex/bookmarkMigrations.ts`, and list `internal.bookmarkMigrations.bookmarksToOrganizations`
+   in the runner at the bottom of `convex/migrations.ts`:
 
    ```ts
    import { migration } from "./migrations";
@@ -154,9 +156,10 @@ existing rows violate, so this takes two releases
    });
    ```
 
-   `personalOrganizationForOwner` picks an organization the owner owns *alone*, or creates a new
-   personal one, so private data can't land where anyone else can see it (even if the user was
-   invited into another organization as an owner before the migration ran). It returns
+   `personalOrganizationForOwner` picks an organization the owner owns *alone* with no pending
+   invitation, or creates a new personal one, so private data can't land where anyone else can
+   see it (even if the user was invited into another organization as an owner before the
+   migration ran). It returns
    `null` when the owner's account no longer exists. Those rows stay unassigned and unreachable,
    as they were. Deploys run `convex run migrations` automatically. Until a row is migrated, it
    matches no organization: it is hidden, never exposed.

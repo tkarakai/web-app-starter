@@ -162,6 +162,11 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       // Exactly one built-in role. Better Auth trims role lists when validating but not when
       // checking for the owner role, so "admin, owner" would let an admin mint an owner.
       if (ROLE_CHANGE.has(path) && !ORGANIZATION_ROLES.has(endpoint.body?.role)) refuse("INVALID_ROLE");
+      // Renaming only: the slug and metadata are platform-managed, and the platform has no logos.
+      if (path === "/organization/update") {
+        const data: unknown = endpoint.body?.data;
+        if (!data || typeof data !== "object" || Object.keys(data).some((key) => key !== "name")) refuse("ONLY_NAME_CAN_CHANGE");
+      }
       // Every invitation email counts against the inviter, resends included.
       if (path === "/organization/invite-member") {
         const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "organizationInvite", key: pair.user._id });
