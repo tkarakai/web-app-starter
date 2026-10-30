@@ -14,6 +14,7 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { authedMutation, authedQuery, orgQuery } from "./functions";
 import {
   ensurePersonalOrganization,
+  removeMemberships,
   findById,
   findMembership,
   listMemberships,
@@ -178,27 +179,10 @@ export const hasPendingInvitation = internalQuery({
   handler: async (ctx, args) => (await pendingInvitationsFor(ctx, args.email)).length > 0,
 });
 
-/**
- * Account deletion: drop the user's memberships. An organization that would be left with
- * members but no owner passes ownership to its longest-standing remaining member, so it
- * always stays administrable.
- */
+/** Account deletion through Better Auth (`databaseHooks.user.delete`). */
 export const removeUserMemberships = internalMutation({
   args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    for (const member of await listMemberships(ctx, args.userId)) {
-      await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
-        input: { model: "member", where: [{ field: "_id", value: member._id }] },
-      });
-      if (parseRole(member.role) !== "owner") continue;
-      const remaining = await listOrganizationMembers(ctx, member.organizationId);
-      if (remaining.length === 0 || remaining.some((m) => parseRole(m.role) === "owner")) continue;
-      const successor = remaining.find((m) => parseRole(m.role) === "admin") ?? remaining[0];
-      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
-        input: { model: "member", where: [{ field: "_id", value: successor._id }], update: { role: "owner" } },
-      });
-    }
-  },
+  handler: async (ctx, args) => await removeMemberships(ctx, args.userId),
 });
 
 /** New sessions start in the organization the user last switched to, if still a member. */

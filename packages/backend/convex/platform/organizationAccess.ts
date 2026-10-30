@@ -34,6 +34,11 @@ export function parseRole(role: string): OrganizationRole {
   return "member";
 }
 
+/** Ties within a millisecond fall back to Convex's sub-millisecond creation time. */
+function oldestFirst(a: Doc<"member">, b: Doc<"member">): number {
+  return a.createdAt - b.createdAt || a._creationTime - b._creationTime;
+}
+
 /** The user's memberships, oldest first. */
 export async function listMemberships(ctx: Reader, userId: string): Promise<Doc<"member">[]> {
   const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
@@ -41,7 +46,7 @@ export async function listMemberships(ctx: Reader, userId: string): Promise<Doc<
     where: [{ field: "userId", value: userId }],
     paginationOpts: { numItems: MAX_ROWS, cursor: null },
   });
-  return (result.page as Doc<"member">[]).sort((a, b) => a.createdAt - b.createdAt);
+  return (result.page as Doc<"member">[]).sort(oldestFirst);
 }
 
 export async function listOrganizationMembers(ctx: Reader, organizationId: string): Promise<Doc<"member">[]> {
@@ -50,7 +55,7 @@ export async function listOrganizationMembers(ctx: Reader, organizationId: strin
     where: [{ field: "organizationId", value: organizationId }],
     paginationOpts: { numItems: MAX_ROWS, cursor: null },
   });
-  return (result.page as Doc<"member">[]).sort((a, b) => a.createdAt - b.createdAt);
+  return (result.page as Doc<"member">[]).sort(oldestFirst);
 }
 
 export async function findMembership(
@@ -176,3 +181,24 @@ export async function findUserByOwnerId(ctx: Reader, ownerId: string): Promise<D
   }) as Doc<"user"> | null;
   return legacy ?? await findById(ctx, "user", ownerId);
 }
+
+/**
+ * Account deletion: drop the user's memberships. An organization that would be left with
+ * members but no owner passes ownership to its longest-standing admin, else member, so it
+ * always stays administrable. Call it from every path that deletes a user.
+ */
+export async function removeMemberships(ctx: Writer, userId: string): Promise<void> {
+  for (const member of await listMemberships(ctx, userId)) {
+    await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+      input: { model: "member", where: [{ field: "_id", value: member._id }] },
+    });
+    if (parseRole(member.role) !== "owner") continue;
+    const remaining = await listOrganizationMembers(ctx, member.organizationId);
+    if (remaining.length === 0 || remaining.some((m) => parseRole(m.role) === "owner")) continue;
+    const successor = remaining.find((m) => parseRole(m.role) === "admin") ?? remaining[0];
+    await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "member", where: [{ field: "_id", value: successor._id }], update: { role: "owner" } },
+    });
+  }
+}
+

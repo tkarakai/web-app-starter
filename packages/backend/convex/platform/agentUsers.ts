@@ -6,6 +6,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { removeMemberships } from "./organizationAccess";
 
 const userArgs = { userId: v.string() };
 function userResult(user: Doc<"user">) {
@@ -82,6 +83,8 @@ export const remove = adminMutation({ args: userArgs, handler: async (ctx, { use
       if (i === 99) throw new Error("TOO_MANY_USER_RECORDS");
     }
   }
+  // Deleting through the adapter skips Better Auth's user.delete hook; clean up memberships here.
+  await removeMemberships(ctx, userId);
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "user", where: [{ field: "_id", value: userId }] } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-users", action: "admin.user.deleted", resource: `user:${user._id}`, status: "succeeded" });
 } });
