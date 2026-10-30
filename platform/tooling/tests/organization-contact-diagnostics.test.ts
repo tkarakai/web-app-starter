@@ -194,8 +194,8 @@ test("actual failure wrapper emits closed evidence and rethrows the identical or
   const w = wrapper(); const original = new Error(secret);
   await w.run(async () => {
     const ws = new EventEmitter(); w.page.emit("websocket", ws); contact(ws); receive(ws, { type: "MutationResponse", requestId: 1, success: false, errorMessage: secret });
-    await assert.rejects(w.expect(w.page, secret, async () => { throw original; }, { allTextContents: async () => ["Member"] }), error => error === original);
-    assert.ok(w.emitted.includes("org-contact-rpc-rejected")); assert.ok(!w.emitted.some(x => x.includes(secret)));
+    await assert.rejects(w.expect(w.page, secret, async () => { throw original; }, { allTextContents: async () => ["Member"], first: () => ({ isVisible: async () => false }) }), error => error === original);
+    assert.ok(w.emitted.includes("org-contact-rpc-rejected")); assert.ok(w.emitted.includes("org-row-hidden")); assert.ok(!w.emitted.some(x => x.includes(secret)));
   });
   assert.equal(w.page.eventNames().length, 0);
 });
@@ -233,7 +233,7 @@ test("withdrawn directory cannot keep an old current-contact observation", () =>
 test("failure of diagnostic emission cannot replace the original assertion error", async () => {
   const w = wrapper(); const original = new Error(secret); w.playwright.test.step = async () => { throw new Error("probe failure"); };
   await w.run(async () => {
-    await assert.rejects(w.expect(w.page, secret, async () => { throw original; }, { allTextContents: async () => ["Member"] }), error => error === original);
+    await assert.rejects(w.expect(w.page, secret, async () => { throw original; }, { allTextContents: async () => ["Member"], first: () => ({ isVisible: async () => false }) }), error => error === original);
   });
   assert.equal(w.page.eventNames().length, 0);
 });
