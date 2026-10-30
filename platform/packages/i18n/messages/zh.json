@@ -580,6 +580,8 @@
       "signUpHint": "你被邀请加入一个组织。请使用收到邀请的电子邮件地址创建账户。",
       "wrongAccountTitle": "此邀请属于另一个账户",
       "wrongAccountDescription": "邀请发送至 {email}，但你当前登录的是 {current}。请先退出登录，再使用 {email} 登录以接受邀请。",
+      "securityTitle": "完成账户设置",
+      "securityDescription": "加入 {organization} 之前，你的账户还需要完成一项安全步骤。请在控制台中完成，然后返回此链接。",
       "verifyTitle": "请先验证你的邮箱",
       "verifyDescription": "要加入 {organization}，请确认 {email} 是你的地址。",
       "verify": "验证邮箱",

@@ -3,11 +3,12 @@
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@web-app-starter/i18n/navigation";
 import { appConfig } from "@web-app-starter/app-config";
-import { useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationSwitcher, useSignOut } from "@web-app-starter/auth-ui";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from "@web-app-starter/design-system";
+import { AppLogo } from "@/components/app-logo";
 
 export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
   displayName: string;
@@ -16,11 +17,14 @@ export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
 }) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
+  const to = useTranslations("organization");
   const router = useRouter();
   const signOut = useSignOut("/");
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 font-semibold">{appConfig.identity.productName}</SidebarHeader>
+      <SidebarHeader>
+        <OrganizationSwitcher logo={<AppLogo size={20} />} productName={appConfig.identity.productName} />
+      </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -30,6 +34,9 @@ export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild><Link href="/dashboard/settings">{td("account")}</Link></SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild><Link href="/dashboard/settings?tab=organization">{to("label")}</Link></SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>

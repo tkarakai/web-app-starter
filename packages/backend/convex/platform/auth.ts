@@ -513,15 +513,18 @@ export const createAuthOptions = (
       // create or refresh an authenticated session from the verification link.
       autoSignInAfterVerification: false,
       expiresIn: EMAIL_VERIFICATION_EXPIRY_SECONDS,
-      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }, request?: Request) => {
         // Read settings per-request — callbacks are async and have ctx.
         const actionCtx = requireActionCtx(ctx);
         const emailVerifRequired = await actionCtx.runQuery(
           internal.platform.appSettings.getInternal,
           { key: USER_EMAIL_VERIFICATION_REQUIRED_KEY }
         );
-        // If the admin has disabled email verification, skip sending.
-        if (emailVerifRequired === false) return;
+        // If the admin has disabled email verification, skip the automatic sign-up email. A
+        // user who asks for one still gets it: accepting an organization invitation needs a
+        // verified address whatever the policy.
+        const requested = request ? new URL(request.url).pathname.endsWith("/send-verification-email") : false;
+        if (emailVerifRequired === false && !requested) return;
 
         const verificationTemplateSetting = await actionCtx.runQuery(
           internal.platform.appSettings.getInternal,

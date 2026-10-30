@@ -580,6 +580,8 @@
       "signUpHint": "組織への参加に招待されています。招待の送信先メールアドレスでアカウントを作成してください。",
       "wrongAccountTitle": "この招待は別のアカウント宛てです",
       "wrongAccountDescription": "招待の送信先は {email} ですが、現在 {current} でログインしています。ログアウトしてから {email} でログインし、承諾してください。",
+      "securityTitle": "アカウントの設定を完了してください",
+      "securityDescription": "{organization} に参加する前に、アカウントでもう 1 つセキュリティの手順が必要です。ダッシュボードで完了してから、このリンクに戻ってください。",
       "verifyTitle": "まずメールを確認してください",
       "verifyDescription": "{organization} に参加するには、{email} があなたのアドレスであることを確認してください。",
       "verify": "メールを確認",

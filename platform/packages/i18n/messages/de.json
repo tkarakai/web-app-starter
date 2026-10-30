@@ -580,6 +580,8 @@
       "signUpHint": "Sie wurden eingeladen, einer Organisation beizutreten. Erstellen Sie Ihr Konto mit der E-Mail-Adresse, an die die Einladung gesendet wurde.",
       "wrongAccountTitle": "Diese Einladung gilt für ein anderes Konto",
       "wrongAccountDescription": "Sie wurde an {email} gesendet, aber Sie sind als {current} angemeldet. Melden Sie sich ab und dann mit {email} an, um sie anzunehmen.",
+      "securityTitle": "Schließen Sie die Einrichtung Ihres Kontos ab",
+      "securityDescription": "Ihr Konto benötigt noch einen Sicherheitsschritt, bevor Sie {organization} beitreten können. Schließen Sie ihn im Dashboard ab und öffnen Sie dann diesen Link erneut.",
       "verifyTitle": "Verifizieren Sie zuerst Ihre E-Mail",
       "verifyDescription": "Um {organization} beizutreten, bestätigen Sie, dass {email} Ihre Adresse ist.",
       "verify": "E-Mail verifizieren",

@@ -146,28 +146,41 @@ async function createPersonalOrganization(
 }
 
 /**
- * The organization pre-organization data moves into, for a data migration: one the owner
- * owns (normally the personal organization created at sign-up or by this function), never
- * one they were only invited to, so private data can't land in someone else's organization.
+ * The organization pre-organization data moves into, for a data migration: one the owner owns
+ * **alone**, so nobody else can see the private data it receives. Being an owner is not enough:
+ * the user may have been invited into someone else's organization as an owner before the
+ * migration reached their rows. Without such an organization, a new personal one is created.
  * `null` when the owner's account no longer exists; leave such rows unmigrated.
  */
 export async function personalOrganizationForOwner(ctx: Writer, ownerId: string): Promise<string | null> {
   const user = await findUserByOwnerId(ctx, ownerId);
   if (!user) return null;
-  const owned = (await listMemberships(ctx, user._id)).find((member) => parseRole(member.role) === "owner");
-  return owned?.organizationId ?? await createPersonalOrganization(ctx, user);
+  for (const membership of await listMemberships(ctx, user._id)) {
+    if (parseRole(membership.role) !== "owner") continue;
+    const members = await listOrganizationMembers(ctx, membership.organizationId);
+    if (members.length === 1) return membership.organizationId;
+  }
+  return await createPersonalOrganization(ctx, user);
 }
 
-/** Pending invitations to this address that have not expired. */
+/**
+ * Pending invitations to this address that have not expired. Reads every page: accepted,
+ * canceled and expired invitations accumulate, so a fixed-size first page could hide one.
+ */
 export async function pendingInvitationsFor(ctx: Reader, email: string): Promise<Doc<"invitation">[]> {
-  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "invitation",
-    where: [{ field: "email", value: email.trim().toLowerCase() }],
-    paginationOpts: { numItems: MAX_ROWS, cursor: null },
-  });
   const now = Date.now();
-  return (result.page as Doc<"invitation">[])
-    .filter((invitation) => invitation.status === "pending" && invitation.expiresAt > now);
+  const pending: Doc<"invitation">[] = [];
+  let cursor: string | null = null;
+  do {
+    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "invitation",
+      where: [{ field: "email", value: email.trim().toLowerCase() }, { field: "status", value: "pending" }],
+      paginationOpts: { numItems: MAX_ROWS, cursor },
+    });
+    pending.push(...(result.page as Doc<"invitation">[]).filter((invitation) => invitation.expiresAt > now));
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor);
+  return pending;
 }
 
 /**

@@ -214,7 +214,7 @@ On submit, Better Auth's `signUp.email()` creates the credential account and sen
 
 ### 7.2 Step 2 — Verify Email (if required by admin policy)
 
-If `userEmailVerificationRequired` is `true` (the default), the user must click the verification link before accessing the app. If disabled by admin, this step is skipped.
+If `userEmailVerificationRequired` is `true` (the default), the user must click the verification link before accessing the app. If disabled by admin, this step is skipped. Users can still ask for a verification email (`/verify-email`), and must verify before accepting an [organization invitation](organizations.md).
 
 ### 7.3 Optional: Magic Link Setup
 

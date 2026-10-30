@@ -6,7 +6,8 @@ import { v } from "convex/values";
  * each project belongs to an organization, and tasks and uploads reach theirs
  * through their project (`requireProjectAccess`). `ownerId` records who created a row.
  * `schema.ts` spreads them in. Delete this file, its spread in `schema.ts`, and
- * `projects.ts`, `tasks.ts`, `files.ts`, `projectAccess.ts` and `fileAccess.ts`,
+ * `projects.ts`, `tasks.ts`, `files.ts`, `projectAccess.ts`, `fileAccess.ts` and
+ * `sampleMigrations.ts` (and its entry in `migrations.ts`),
  * along with their sample tests, to strip the sample backend.
  */
 export const sampleTables = {

@@ -199,6 +199,7 @@ export const tables = {
   })
     .index("organizationId_status", ["organizationId","status"])
     .index("email_organizationId_status", ["email","organizationId","status"])
+    .index("email_status", ["email","status"])
     .index("status", ["status"])
     .index("inviterId", ["inviterId"]),
   jwks: defineTable({

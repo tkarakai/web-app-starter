@@ -95,6 +95,17 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     );
   }
 
+  if (!invitation.ready) {
+    return (
+      <Panel
+        title={t("securityTitle")}
+        description={t("securityDescription", { organization: invitation.organizationName })}
+      >
+        {dashboard}
+      </Panel>
+    );
+  }
+
   const respond = async (accept: boolean) => {
     setPending(true);
     try {

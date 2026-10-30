@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { appConfig } from "@web-app-starter/app-config";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
 import { SidebarInset, SidebarProvider } from "@web-app-starter/design-system";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
@@ -22,6 +22,9 @@ export function DashboardClient() {
           <SidebarTrigger />
           <h1 className="font-semibold">{appConfig.identity.productName}</h1>
         </header>
+        <div className="p-4 empty:hidden">
+          <OrganizationInvitations />
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

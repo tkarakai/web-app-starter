@@ -580,6 +580,8 @@
       "signUpHint": "Vous avez été invité à rejoindre une organisation. Créez votre compte avec l'adresse e-mail à laquelle l'invitation a été envoyée.",
       "wrongAccountTitle": "Cette invitation est destinée à un autre compte",
       "wrongAccountDescription": "Elle a été envoyée à {email}, mais vous êtes connecté en tant que {current}. Déconnectez-vous, puis connectez-vous avec {email} pour l'accepter.",
+      "securityTitle": "Terminez la configuration de votre compte",
+      "securityDescription": "Votre compte nécessite une étape de sécurité supplémentaire avant de rejoindre {organization}. Terminez-la depuis le tableau de bord, puis revenez à ce lien.",
       "verifyTitle": "Vérifiez d'abord votre e-mail",
       "verifyDescription": "Pour rejoindre {organization}, confirmez que {email} est bien votre adresse.",
       "verify": "Vérifier l'e-mail",

@@ -31,25 +31,9 @@ import { makeMigration, startMigrationsSerially } from "convex-helpers/server/mi
 
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-import { personalOrganizationForOwner } from "./platform/organizationAccess";
 
-const migration = makeMigration(internalMutation, { migrationTable: "migrations" });
-
-/**
- * Organizations (platform v4.2): put each pre-organization project in its creator's
- * personal organization, so nobody loses access on upgrade. Tasks and uploads follow
- * their project. A project whose creator's account was deleted stays unassigned
- * (unreachable, as before) and is logged.
- */
-export const projectsToOrganizations = migration({
-  table: "projects",
-  migrateOne: async (ctx, project) => {
-    if (project.organizationId) return;
-    const organizationId = await personalOrganizationForOwner(ctx, project.ownerId);
-    if (organizationId) return { organizationId };
-    console.warn("PROJECT_WITHOUT_OWNER_ACCOUNT", { projectId: project._id });
-  },
-});
+/** Define a migration: `export const myMigration = migration({ table, migrateOne })`. */
+export const migration = makeMigration(internalMutation, { migrationTable: "migrations" });
 
 // ---------------------------------------------------------------------------
 // Default export: run all pending migrations in series.
@@ -58,7 +42,7 @@ export const projectsToOrganizations = migration({
 
 export default internalMutation(async (ctx) => {
   await startMigrationsSerially(ctx, [
-    internal.migrations.projectsToOrganizations,
+    internal.sampleMigrations.projectsToOrganizations, // Sample domain; removed with the sample.
     // Add future migrations here, in order.
   ]);
 });

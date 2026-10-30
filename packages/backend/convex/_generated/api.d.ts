@@ -69,6 +69,7 @@ import type * as platform_waitlistActions from "../platform/waitlistActions.js";
 import type * as platform_waitlistTokens from "../platform/waitlistTokens.js";
 import type * as projectAccess from "../projectAccess.js";
 import type * as projects from "../projects.js";
+import type * as sampleMigrations from "../sampleMigrations.js";
 import type * as sampleTables from "../sampleTables.js";
 import type * as tasks from "../tasks.js";
 
@@ -140,6 +141,7 @@ declare const fullApi: ApiFromModules<{
   "platform/waitlistTokens": typeof platform_waitlistTokens;
   projectAccess: typeof projectAccess;
   projects: typeof projects;
+  sampleMigrations: typeof sampleMigrations;
   sampleTables: typeof sampleTables;
   tasks: typeof tasks;
 }>;

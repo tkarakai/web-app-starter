@@ -11,7 +11,6 @@ import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
 
-import { internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import type { AuditAction } from "./auditTrailConstants";
 import { runAuditEvent } from "./auditTrailHelpers";
@@ -67,13 +66,11 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
       });
     },
     organizationHooks: {
-      beforeCreateInvitation: async ({ inviter }) => {
-        const limit = await requireActionCtx(ctx).runMutation(internal.platform.rateLimits.consumeAuthRateLimit, {
-          name: "organizationInvite",
-          key: inviter.id,
-        });
-        if (!limit.ok) {
-          throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many invitations. Please try again later." });
+      // The session-assurance plugin already admits only one canonical role and charges the
+      // inviter's budget; this keeps a stored invitation canonical whatever the entry point.
+      beforeCreateInvitation: async ({ invitation }) => {
+        if (!["owner", "admin", "member"].includes(invitation.role)) {
+          throw new APIError("BAD_REQUEST", { code: "INVALID_ROLE", message: "INVALID_ROLE" });
         }
       },
       afterCreateOrganization: async ({ organization: org, user }) => {

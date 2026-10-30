@@ -580,6 +580,8 @@
       "signUpHint": "You were invited to join an organization. Create your account with the email address the invitation was sent to.",
       "wrongAccountTitle": "This invitation is for a different account",
       "wrongAccountDescription": "It was sent to {email}, but you're signed in as {current}. Sign out, then sign in with {email} to accept it.",
+      "securityTitle": "Finish setting up your account",
+      "securityDescription": "Your account needs one more security step before you can join {organization}. Open the dashboard to complete it, then return to this link.",
       "verifyTitle": "Verify your email first",
       "verifyDescription": "To join {organization}, confirm that {email} is your address.",
       "verify": "Verify email",

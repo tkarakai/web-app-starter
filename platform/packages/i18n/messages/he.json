@@ -580,6 +580,8 @@
       "signUpHint": "הוזמנת להצטרף לארגון. צור את החשבון שלך עם כתובת האימייל שאליה נשלחה ההזמנה.",
       "wrongAccountTitle": "ההזמנה הזו מיועדת לחשבון אחר",
       "wrongAccountDescription": "היא נשלחה אל {email}, אבל אתה מחובר בתור {current}. התנתק והתחבר עם {email} כדי לאשר אותה.",
+      "securityTitle": "סיימו את הגדרת החשבון",
+      "securityDescription": "החשבון שלכם צריך שלב אבטחה נוסף לפני ההצטרפות אל {organization}. השלימו אותו בלוח הבקרה ואז חזרו לקישור הזה.",
       "verifyTitle": "אמת קודם את האימייל שלך",
       "verifyDescription": "כדי להצטרף אל {organization}, אשר ש-{email} היא הכתובת שלך.",
       "verify": "אימות אימייל",

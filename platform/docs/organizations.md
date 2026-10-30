@@ -48,13 +48,17 @@ only admins delete projects), check `ctx.organizationRole` in your functions.
 - **Writes go through Better Auth** (`authClient.organization.*`), which checks the roles. The
   session-assurance plugin admits only these routes: `create`, `update`, `set-active`,
   `invite-member`, `cancel-invitation`, `accept-invitation`, `reject-invitation`,
-  `remove-member`, `update-member-role` and `leave`. Each needs a fully assured session (email
+  `remove-member`, `update-member-role` and `leave`. Roles must be exactly one of `owner`, `admin` or `member`;
+  Better Auth's comma-separated role lists are refused. Each needs a fully assured session (email
   verification, MFA and passkey policy met). Platform administrators can't use them, just as
   they can't use the web app.
 - **Accepting needs the invited address, verified.** Better Auth matches the signed-in user's
   email to the invitation and requires `emailVerified` (`requireEmailVerificationOnInvitation`).
-  This stops someone who registered an address they don't own from joining with it.
-- **Limits:** 10 invitations at once and 30 an hour per inviter, plus the platform's auth email
+  This stops someone who registered an address they don't own from joining with it. When the
+  email-verification policy is off, sign-up sends no verification email, but the invitation page
+  and banner still let the invitee request one. A session that still needs verification or
+  enrollment sees what is missing on the invitation page instead of the invitation.
+- **Limits:** 10 invitations at once and 30 an hour per inviter (resends included), plus the platform's auth email
   budgets. Up to 100 members per organization and 50 organizations per user.
 - **Audited:** creating, renaming, invitation sent, canceled, accepted or rejected, member
   removed, member left and role changed (`organization.*` audit actions).
@@ -137,6 +141,7 @@ existing rows violate, so this takes two releases
    checks to the organization. Add a migration to `convex/migrations.ts`:
 
    ```ts
+   import { migration } from "./migrations";
    import { personalOrganizationForOwner } from "./platform/organizationAccess";
 
    export const bookmarksToOrganizations = migration({
@@ -149,8 +154,9 @@ existing rows violate, so this takes two releases
    });
    ```
 
-   `personalOrganizationForOwner` picks an organization the owner *owns*, never one they were
-   only invited to, so private data can't land in someone else's organization. It returns
+   `personalOrganizationForOwner` picks an organization the owner owns *alone*, or creates a new
+   personal one, so private data can't land where anyone else can see it (even if the user was
+   invited into another organization as an owner before the migration ran). It returns
    `null` when the owner's account no longer exists. Those rows stay unassigned and unreachable,
    as they were. Deploys run `convex run migrations` automatically. Until a row is migrated, it
    matches no organization: it is hidden, never exposed.
@@ -159,5 +165,5 @@ existing rows violate, so this takes two releases
    deploy while any remain.
 
 The sample's `projects` table follows exactly this path. Its migration is
-`projectsToOrganizations`, and the release after the one that introduced organizations narrows
-it.
+`projectsToOrganizations` in `convex/sampleMigrations.ts`, and the release after the one that
+introduced organizations narrows it.

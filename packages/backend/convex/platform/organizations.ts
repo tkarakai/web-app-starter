@@ -9,8 +9,9 @@
 import { v } from "convex/values";
 
 import { components } from "../_generated/api";
-import { internalMutation, internalQuery, type QueryCtx } from "../_generated/server";
+import { internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import { evaluateSession, identitySession } from "./sessionPolicy";
 import { authedMutation, authedQuery, orgQuery } from "./functions";
 import {
   ensurePersonalOrganization,
@@ -142,12 +143,19 @@ export const myInvitations = authedQuery({
 /**
  * One invitation, for the page its email links to. The link carries the invitation ID,
  * so anyone signed in who holds it sees whom it is for; only that address can accept it.
+ * Answers any signed-in session, including one that still has to verify its email or finish
+ * enrollment, so the page can say what is missing; `ready` is false until it has. Accepting
+ * still requires a fully assured session.
  */
-export const invitation = authedQuery({
+export const invitation = query({
   args: { id: v.string() },
   handler: async (ctx, args) => {
+    const pair = await identitySession(ctx);
+    if (!pair || pair.session.authPurpose === "mcp-authorization") return null;
     const row = await findById(ctx, "invitation", args.id);
-    return row ? await invitationView(ctx, row) : null;
+    if (!row) return null;
+    const ready = (await evaluateSession(ctx, pair)).allowed;
+    return { ...await invitationView({ ...ctx, user: pair.user }, row), ready };
   },
 });
 

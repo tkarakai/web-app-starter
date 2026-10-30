@@ -580,6 +580,8 @@
       "signUpHint": "Je bent uitgenodigd voor een organisatie. Maak je account aan met het e-mailadres waarnaar de uitnodiging is gestuurd.",
       "wrongAccountTitle": "Deze uitnodiging is voor een ander account",
       "wrongAccountDescription": "Ze is verstuurd naar {email}, maar je bent ingelogd als {current}. Log uit en log in met {email} om haar te accepteren.",
+      "securityTitle": "Rond het instellen van je account af",
+      "securityDescription": "Je account heeft nog één beveiligingsstap nodig voordat je lid kunt worden van {organization}. Rond die af via het dashboard en keer daarna terug naar deze link.",
       "verifyTitle": "Verifieer eerst je e-mail",
       "verifyDescription": "Om lid te worden van {organization} moet je bevestigen dat {email} jouw adres is.",
       "verify": "E-mail verifiëren",

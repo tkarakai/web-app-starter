@@ -580,6 +580,8 @@
       "signUpHint": "Sei stato invitato a unirti a un'organizzazione. Crea il tuo account con l'indirizzo email a cui è stato inviato l'invito.",
       "wrongAccountTitle": "Questo invito è per un altro account",
       "wrongAccountDescription": "È stato inviato a {email}, ma hai effettuato l'accesso come {current}. Esci, poi accedi con {email} per accettarlo.",
+      "securityTitle": "Completa la configurazione del tuo account",
+      "securityDescription": "Il tuo account richiede un ulteriore passaggio di sicurezza prima di unirti a {organization}. Completalo dalla dashboard, poi torna a questo link.",
       "verifyTitle": "Verifica prima la tua email",
       "verifyDescription": "Per unirti a {organization}, conferma che {email} è il tuo indirizzo.",
       "verify": "Verifica email",

@@ -43,6 +43,8 @@ const ORGANIZATION = new Set([
   "/organization/accept-invitation", "/organization/reject-invitation",
   "/organization/remove-member", "/organization/update-member-role", "/organization/leave",
 ]);
+const ROLE_CHANGE = new Set(["/organization/invite-member", "/organization/update-member-role"]);
+const ORGANIZATION_ROLES = new Set<unknown>(["owner", "admin", "member"]);
 // These methods have no supported platform flow. Installing a plugin is not authorization.
 const DISABLED = new Set([
   "/sign-in/email-otp", "/sign-in/social", "/callback/:id", "/link-social", "/unlink-account",
@@ -157,6 +159,14 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     // Organizations are for application users; administrators cannot use the web app.
     if (policy === "organization") {
       if (assurance.scope === "admin") refuse("NOT_APPLICATION_USER");
+      // Exactly one built-in role. Better Auth trims role lists when validating but not when
+      // checking for the owner role, so "admin, owner" would let an admin mint an owner.
+      if (ROLE_CHANGE.has(path) && !ORGANIZATION_ROLES.has(endpoint.body?.role)) refuse("INVALID_ROLE");
+      // Every invitation email counts against the inviter, resends included.
+      if (path === "/organization/invite-member") {
+        const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "organizationInvite", key: pair.user._id });
+        if (!limit.ok) throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many invitations." });
+      }
       return;
     }
     if (policy === "admin" && assurance.scope !== "admin") refuse("NOT_ADMIN");

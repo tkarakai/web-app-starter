@@ -580,6 +580,8 @@
       "signUpHint": "Você foi convidado para entrar em uma organização. Crie sua conta com o endereço de e-mail para o qual o convite foi enviado.",
       "wrongAccountTitle": "Este convite é para outra conta",
       "wrongAccountDescription": "Ele foi enviado para {email}, mas você está conectado como {current}. Saia e entre com {email} para aceitá-lo.",
+      "securityTitle": "Conclua a configuração da sua conta",
+      "securityDescription": "Sua conta precisa de mais uma etapa de segurança antes de entrar em {organization}. Conclua-a no painel e depois volte a este link.",
       "verifyTitle": "Verifique seu e-mail primeiro",
       "verifyDescription": "Para entrar em {organization}, confirme que {email} é o seu endereço.",
       "verify": "Verificar e-mail",

@@ -580,6 +580,8 @@
       "signUpHint": "Meghívást kaptál egy szervezetbe. Hozd létre a fiókodat azzal az e-mail-címmel, amelyre a meghívó érkezett.",
       "wrongAccountTitle": "Ez a meghívó egy másik fiókhoz tartozik",
       "wrongAccountDescription": "A(z) {email} címre érkezett, de te {current} fiókkal vagy bejelentkezve. Jelentkezz ki, majd az elfogadáshoz jelentkezz be a(z) {email} címmel.",
+      "securityTitle": "Fejezd be a fiókod beállítását",
+      "securityDescription": "A fiókodnak még egy biztonsági lépésre van szüksége, mielőtt csatlakozhatsz ehhez: {organization}. Fejezd be az irányítópulton, majd térj vissza ehhez a hivatkozáshoz.",
       "verifyTitle": "Előbb erősítsd meg az e-mail-címedet",
       "verifyDescription": "A(z) {organization} szervezethez való csatlakozáshoz erősítsd meg, hogy a(z) {email} a te címed.",
       "verify": "E-mail megerősítése",

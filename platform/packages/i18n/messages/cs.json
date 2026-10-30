@@ -580,6 +580,8 @@
       "signUpHint": "Byli jste pozváni do organizace. Vytvořte si účet s e-mailovou adresou, na kterou byla pozvánka odeslána.",
       "wrongAccountTitle": "Tato pozvánka patří jinému účtu",
       "wrongAccountDescription": "Byla odeslána na adresu {email}, ale vy jste přihlášeni jako {current}. Odhlaste se a pro přijetí se přihlaste adresou {email}.",
+      "securityTitle": "Dokončete nastavení účtu",
+      "securityDescription": "Než se připojíte k organizaci {organization}, musí váš účet projít ještě jedním bezpečnostním krokem. Dokončete ho na nástěnce a pak se k tomuto odkazu vraťte.",
       "verifyTitle": "Nejprve ověřte svůj e-mail",
       "verifyDescription": "Pro připojení k organizaci {organization} potvrďte, že {email} je vaše adresa.",
       "verify": "Ověřit e-mail",

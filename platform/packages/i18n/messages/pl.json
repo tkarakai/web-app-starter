@@ -580,6 +580,8 @@
       "signUpHint": "Zaproszono Cię do organizacji. Utwórz konto z adresem e-mail, na który wysłano zaproszenie.",
       "wrongAccountTitle": "To zaproszenie jest przeznaczone dla innego konta",
       "wrongAccountDescription": "Wysłano je na adres {email}, ale jesteś zalogowany jako {current}. Wyloguj się, a następnie zaloguj adresem {email}, aby je zaakceptować.",
+      "securityTitle": "Dokończ konfigurację konta",
+      "securityDescription": "Zanim dołączysz do organizacji {organization}, Twoje konto wymaga jeszcze jednego kroku zabezpieczeń. Dokończ go w panelu, a potem wróć do tego linku.",
       "verifyTitle": "Najpierw zweryfikuj swój e-mail",
       "verifyDescription": "Aby dołączyć do organizacji {organization}, potwierdź, że {email} jest Twoim adresem.",
       "verify": "Zweryfikuj e-mail",
