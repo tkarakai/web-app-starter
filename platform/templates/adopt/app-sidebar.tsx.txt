@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@web-app-starter/i18n/navigation";
 import { appConfig } from "@web-app-starter/app-config";
 import { useSignOut } from "@web-app-starter/auth-ui";
@@ -19,7 +19,7 @@ export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
   const td = useTranslations("dashboard");
   const to = useTranslations("organizations");
   const router = useRouter();
-  const signOut = useSignOut("/");
+  const signOut = useSignOut(`/${useLocale()}/sign-in`);
   return (
     <Sidebar>
       <SidebarHeader className="p-4 font-semibold">{appConfig.identity.productName}</SidebarHeader>

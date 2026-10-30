@@ -143,6 +143,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- The adopted app sidebar (`platform/templates/adopt/app-sidebar.tsx.txt`) signs out straight to
+  the locale sign-in page. Signing out to `/` bounced through the protected dashboard, which the
+  Next.js router treated as a stale route and finished with a full page reload.
 - Fresh `adopt --remove-sample` removes both legacy and tenant sample APIs and installs
   matching empty-domain migration registration. Organization navigation, enrollment and
   membership management remain available; retained security tests use independent private

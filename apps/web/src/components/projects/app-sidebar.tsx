@@ -6,7 +6,7 @@ import * as React from "react";
 import { useRouter } from "@web-app-starter/i18n/navigation";
 import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useQuery } from "convex/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { LocaleSwitcher, useSignOut } from "@web-app-starter/auth-ui";
@@ -117,7 +117,9 @@ export function AppSidebar({
     }
   };
 
-  const handleSignOut = useSignOut("/");
+  // Go straight to sign-in: "/" bounces through the protected dashboard, and the router
+  // treats that redirect as a stale route and falls back to a full page load.
+  const handleSignOut = useSignOut(`/${useLocale()}/sign-in`);
 
   return (
     <>
