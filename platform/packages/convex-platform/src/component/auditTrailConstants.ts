@@ -88,6 +88,17 @@ export const AUDIT_ACTIONS = [
   "admin.onboarding.passkey_skipped",
   "admin.onboarding.completed",
 
+  // organization.*
+  "organization.created",
+  "organization.updated",
+  "organization.invitation.sent",
+  "organization.invitation.canceled",
+  "organization.invitation.accepted",
+  "organization.invitation.rejected",
+  "organization.member.removed",
+  "organization.member.left",
+  "organization.member.role_changed",
+
   // waitlist.*
   "waitlist.joined",
   "waitlist.invitation.sent",

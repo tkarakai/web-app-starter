@@ -165,6 +165,33 @@ function buildEmailContent(
   }
 }
 
+/**
+ * The organization invitation email. Sent with `type: "custom"`; it carries the
+ * inviter's and organization's names, which the fixed templates above don't take.
+ */
+export function organizationInvitationEmail(opts: {
+  inviterName: string;
+  organizationName: string;
+  productName: string;
+  url: string;
+  expiresInDays: number;
+}): { subject: string; html: string; text: string } {
+  const { inviterName, organizationName, productName, url, expiresInDays } = opts;
+  const lead = `${inviterName} invited you to join ${organizationName} on ${productName}.`;
+  const note = `The invitation expires in ${expiresInDays} days. If you weren't expecting it, you can safely ignore this email.`;
+  return withTextFooter({
+    subject: `${inviterName} invited you to join ${organizationName}`,
+    html: wrapHtml(
+      `Join ${organizationName}`,
+      `<p style="${pStyle}">${escapeHtml(lead)}</p>` +
+        ctaButton("View invitation", url) +
+        `<p style="${smallStyle}">${escapeHtml(note)}</p>` +
+        fallbackUrl(url),
+    ),
+    text: `Join ${organizationName}\n\n${lead}\n\nOpen the invitation:\n\n${url}\n\n${note}`,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // HTML helpers — minimal inline-styled email template
 // ---------------------------------------------------------------------------

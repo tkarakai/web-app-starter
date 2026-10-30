@@ -1,0 +1,178 @@
+/**
+ * Organization membership reads and the one rule that picks the caller's organization.
+ *
+ * Organizations, members and invitations are Better Auth organization-plugin rows in the
+ * Better Auth component. Writes go through Better Auth's endpoints, which check roles;
+ * this file only reads them, plus `ensurePersonalOrganization`, which gives a user with
+ * no membership their own organization. See platform/docs/organizations.md.
+ */
+import { components } from "../_generated/api";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { Doc } from "./betterAuth/_generated/dataModel";
+
+type Reader = Pick<QueryCtx, "runQuery">;
+type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
+
+export type OrganizationRole = "owner" | "admin" | "member";
+
+/** Added to `ctx` by `orgQuery` and `orgMutation`. */
+export type ActiveOrganization = {
+  /** The organization every read and write in this request belongs to. */
+  organizationId: string;
+  /** The caller's role in it. */
+  organizationRole: OrganizationRole;
+};
+
+/** Better Auth's `membershipLimit` and `organizationLimit` are below this. */
+const MAX_ROWS = 200;
+
+/** Better Auth stores roles as a comma-separated list; the platform uses one built-in role. */
+export function parseRole(role: string): OrganizationRole {
+  const roles = role.split(",").map((r) => r.trim());
+  if (roles.includes("owner")) return "owner";
+  if (roles.includes("admin")) return "admin";
+  return "member";
+}
+
+/** The user's memberships, oldest first. */
+export async function listMemberships(ctx: Reader, userId: string): Promise<Doc<"member">[]> {
+  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "member",
+    where: [{ field: "userId", value: userId }],
+    paginationOpts: { numItems: MAX_ROWS, cursor: null },
+  });
+  return (result.page as Doc<"member">[]).sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export async function listOrganizationMembers(ctx: Reader, organizationId: string): Promise<Doc<"member">[]> {
+  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "member",
+    where: [{ field: "organizationId", value: organizationId }],
+    paginationOpts: { numItems: MAX_ROWS, cursor: null },
+  });
+  return (result.page as Doc<"member">[]).sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export async function findMembership(
+  ctx: Reader,
+  userId: string,
+  organizationId: string,
+): Promise<Doc<"member"> | null> {
+  return await ctx.runQuery(components.betterAuth.adapter.findOne, {
+    model: "member",
+    where: [
+      { field: "organizationId", value: organizationId },
+      { field: "userId", value: userId },
+    ],
+  }) as Doc<"member"> | null;
+}
+
+/** Look up a row by a caller-supplied ID; a malformed ID is simply not found. */
+export async function findById<M extends "organization" | "invitation" | "user">(
+  ctx: Reader,
+  model: M,
+  id: string,
+): Promise<Doc<M> | null> {
+  try {
+    return await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model,
+      where: [{ field: "_id", value: id }],
+    }) as Doc<M> | null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The caller's organization: the session's active organization while they are still a
+ * member of it, otherwise their oldest membership. Removal from an organization therefore
+ * takes effect on the next request. `null` only when the user belongs to none.
+ */
+export async function resolveActiveOrganization(
+  ctx: Reader,
+  user: Pick<Doc<"user">, "_id">,
+  session: Pick<Doc<"session">, "activeOrganizationId">,
+): Promise<ActiveOrganization | null> {
+  const requested = session.activeOrganizationId;
+  const member = (requested ? await findMembership(ctx, user._id, requested) : null)
+    ?? (await listMemberships(ctx, user._id))[0];
+  return member ? { organizationId: member.organizationId, organizationRole: parseRole(member.role) } : null;
+}
+
+/** A new personal organization is named after its user; they can rename it. */
+export function personalOrganizationName(user: Pick<Doc<"user">, "name" | "email">): string {
+  const name = user.name?.trim() || user.email.split("@")[0] || user.email;
+  return name.slice(0, 100);
+}
+
+/**
+ * Give a user with no membership their own organization, as its owner. Idempotent: returns
+ * the oldest existing membership's organization when there is one. Runs at sign-up and
+ * whenever a signed-in user turns out to have no organization.
+ */
+export async function ensurePersonalOrganization(
+  ctx: Writer,
+  user: Pick<Doc<"user">, "_id" | "name" | "email">,
+): Promise<ActiveOrganization> {
+  const existing = (await listMemberships(ctx, user._id))[0];
+  if (existing) return { organizationId: existing.organizationId, organizationRole: parseRole(existing.role) };
+  return { organizationId: await createPersonalOrganization(ctx, user), organizationRole: "owner" };
+}
+
+async function createPersonalOrganization(
+  ctx: Writer,
+  user: Pick<Doc<"user">, "_id" | "name" | "email">,
+): Promise<string> {
+  const now = Date.now();
+  const organization = await ctx.runMutation(components.betterAuth.adapter.create, {
+    input: {
+      model: "organization",
+      // The slug is internal (Better Auth requires one); the UI never shows it.
+      data: { name: personalOrganizationName(user), slug: `${user._id}-${now.toString(36)}`, createdAt: now },
+    },
+  });
+  await ctx.runMutation(components.betterAuth.adapter.create, {
+    input: {
+      model: "member",
+      data: { organizationId: organization._id, userId: user._id, role: "owner", createdAt: now },
+    },
+  });
+  return organization._id;
+}
+
+/**
+ * The organization pre-organization data moves into, for a data migration: one the owner
+ * owns (normally the personal organization created at sign-up or by this function), never
+ * one they were only invited to, so private data can't land in someone else's organization.
+ * `null` when the owner's account no longer exists; leave such rows unmigrated.
+ */
+export async function personalOrganizationForOwner(ctx: Writer, ownerId: string): Promise<string | null> {
+  const user = await findUserByOwnerId(ctx, ownerId);
+  if (!user) return null;
+  const owned = (await listMemberships(ctx, user._id)).find((member) => parseRole(member.role) === "owner");
+  return owned?.organizationId ?? await createPersonalOrganization(ctx, user);
+}
+
+/** Pending invitations to this address that have not expired. */
+export async function pendingInvitationsFor(ctx: Reader, email: string): Promise<Doc<"invitation">[]> {
+  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "invitation",
+    where: [{ field: "email", value: email.trim().toLowerCase() }],
+    paginationOpts: { numItems: MAX_ROWS, cursor: null },
+  });
+  const now = Date.now();
+  return (result.page as Doc<"invitation">[])
+    .filter((invitation) => invitation.status === "pending" && invitation.expiresAt > now);
+}
+
+/**
+ * Find the user who owns pre-organization data. `ownerId` is `user.userId ?? user._id`
+ * (see `authorizedSession`), so check the legacy `userId` field first.
+ */
+export async function findUserByOwnerId(ctx: Reader, ownerId: string): Promise<Doc<"user"> | null> {
+  const legacy = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+    model: "user",
+    where: [{ field: "userId", value: ownerId }],
+  }) as Doc<"user"> | null;
+  return legacy ?? await findById(ctx, "user", ownerId);
+}

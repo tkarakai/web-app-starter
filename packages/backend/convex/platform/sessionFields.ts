@@ -12,5 +12,10 @@ export const sessionFields = {
   recoveryFactorId: { type: "string", required: false, input: false, returned: false },
 } as const;
 
+/** Server-owned user fields. Set only by the platform's organization hooks. */
+export const userFields = {
+  lastActiveOrganizationId: { type: "string", required: false, input: false, returned: false },
+} as const;
+
 export const ADMIN_SESSION_MS = 4 * 60 * 60 * 1000;
 export const RECENT_AUTH_MS = 5 * 60 * 1000;

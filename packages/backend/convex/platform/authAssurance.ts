@@ -35,19 +35,28 @@ const SENSITIVE = new Set([
 ]);
 const PASSWORD_PROOF = new Set(["/verify-password", "/change-password", "/delete-user", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes"]);
 const ACTIVE_SESSION_ROTATION = new Set(["/change-password", "/two-factor/disable", "/two-factor/enable", "/two-factor/verify-totp", "/two-factor/verify-otp"]);
+// The organization writes the platform UI uses. Reads are Convex queries; deletion,
+// teams and access-control routes stay disabled.
+const ORGANIZATION = new Set([
+  "/organization/create", "/organization/update", "/organization/set-active",
+  "/organization/invite-member", "/organization/cancel-invitation",
+  "/organization/accept-invitation", "/organization/reject-invitation",
+  "/organization/remove-member", "/organization/update-member-role", "/organization/leave",
+]);
 // These methods have no supported platform flow. Installing a plugin is not authorization.
 const DISABLED = new Set([
   "/sign-in/email-otp", "/sign-in/social", "/callback/:id", "/link-social", "/unlink-account",
   "/refresh-token", "/get-access-token", "/account-info", "/list-accounts",
   "/admin/impersonate-user", "/admin/stop-impersonating",
 ]);
-export function authRoutePolicy(path: string): "public" | "self" | "factor" | "enroll" | "sensitive" | "admin" | "disabled" {
+export function authRoutePolicy(path: string): "public" | "self" | "factor" | "enroll" | "sensitive" | "organization" | "admin" | "disabled" {
   if (DISABLED.has(path)) return "disabled";
   if (PUBLIC.has(path) || /^\/reset-password\/[^/]+$/.test(path)) return "public";
   if (SELF.has(path)) return "self";
   if (FACTOR.has(path)) return "factor";
   if (ENROLL.has(path)) return "enroll";
   if (SENSITIVE.has(path)) return "sensitive";
+  if (ORGANIZATION.has(path)) return "organization";
   if (path.startsWith("/admin/")) return "admin";
   return "disabled";
 }
@@ -145,6 +154,11 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       return;
     }
     if (!assurance.allowed) refuse("SECURITY_ENROLLMENT_REQUIRED");
+    // Organizations are for application users; administrators cannot use the web app.
+    if (policy === "organization") {
+      if (assurance.scope === "admin") refuse("NOT_APPLICATION_USER");
+      return;
+    }
     if (policy === "admin" && assurance.scope !== "admin") refuse("NOT_ADMIN");
     if (!assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
   });

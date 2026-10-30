@@ -3,6 +3,8 @@ import { v } from "convex/values";
 
 /**
  * The sample domain's tables: projects with tasks and file uploads. App-owned;
+ * each project belongs to an organization, and tasks and uploads reach theirs
+ * through their project (`requireProjectAccess`). `ownerId` records who created a row.
  * `schema.ts` spreads them in. Delete this file, its spread in `schema.ts`, and
  * `projects.ts`, `tasks.ts`, `files.ts`, `projectAccess.ts` and `fileAccess.ts`,
  * along with their sample tests, to strip the sample backend.
@@ -12,8 +14,13 @@ export const sampleTables = {
     name: v.string(),
     description: v.string(),
     ownerId: v.string(),
+    // Optional only until `migrations.ts` has backfilled pre-organization rows; the next
+    // release makes it required (platform/docs/organizations.md#upgrading-existing-data).
+    organizationId: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_owner", ["ownerId"]),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_organization", ["organizationId"]),
 
   tasks: defineTable({
     title: v.string(),

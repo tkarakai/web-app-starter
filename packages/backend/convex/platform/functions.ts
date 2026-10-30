@@ -7,6 +7,7 @@ import {
 import type { ObjectType, PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
+import { ensurePersonalOrganization, resolveActiveOrganization, type ActiveOrganization } from "./organizationAccess";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -62,6 +63,18 @@ export async function getAuth(ctx: QueryCtx) {
 type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
 
 /**
+ * `getAuth` plus the caller's active organization, for functions that can't use
+ * `orgQuery`/`orgMutation` (internal functions called from an action). `null` when the
+ * caller is not authenticated or belongs to no organization.
+ */
+export async function getOrgAuth(ctx: QueryCtx): Promise<(AuthInfo & ActiveOrganization) | null> {
+  const auth = await getAuth(ctx);
+  if (!auth) return null;
+  const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
+  return organization ? { ...auth, ...organization } : null;
+}
+
+/**
  * Authenticated query builder.
  * Handlers receive `ctx.user` and `ctx.ownerId` automatically.
  * Returns `null` when the caller is not authenticated — safe for
@@ -109,6 +122,60 @@ export const authedMutation = captureNativeBuilder(customMutation(
     return auth;
   }),
 ), "mutation");
+
+/**
+ * Organization-scoped query builder: use it for every read of app data.
+ * Handlers receive `ctx.organizationId` and `ctx.organizationRole` (the caller's active
+ * organization, membership re-checked on every call) as well as `ctx.user` and `ctx.ownerId`.
+ * Returns `null` when the caller is not authenticated or belongs to no organization.
+ * Filter every read by `ctx.organizationId`; never accept an organization ID as an argument.
+ */
+export function orgQuery<
+  ArgsValidator extends PropertyValidators,
+  Output,
+>(func: {
+  args: ArgsValidator;
+  handler: (
+    ctx: QueryCtx & AuthInfo & ActiveOrganization,
+    args: ObjectType<ArgsValidator>,
+  ) => Output | Promise<Output>;
+}) {
+  // Deliberately not registered as a native capability: agent surfaces would bypass the
+  // organization resolution below.
+  return query({
+    args: func.args,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: async (ctx: QueryCtx, args: any): Promise<Output | null> => {
+      const auth = await getOrgAuth(ctx);
+      if (!auth) return null;
+      return func.handler({ ...ctx, ...auth }, args);
+    },
+  });
+}
+
+/**
+ * Organization-scoped mutation builder: use it for every write of app data.
+ * Like `authedMutation`, plus `ctx.organizationId` and `ctx.organizationRole`. Stamp new
+ * rows with `ctx.organizationId`. A user who belongs to no organization (only possible
+ * while an upgrade migrates, or after leaving every organization) gets a personal one.
+ */
+export const orgMutation = customMutation(
+  mutation,
+  customCtx(async (ctx) => {
+    const auth = await getAuth(ctx);
+    if (!auth) throw new Error("NOT_AUTHENTICATED");
+
+    await rateLimit(ctx, {
+      name: "mutationGlobal",
+      key: auth.ownerId,
+      throws: true,
+    });
+
+    const organization = await resolveActiveOrganization(ctx, auth.user, auth.session)
+      ?? await ensurePersonalOrganization(ctx, auth.user);
+    return { ...auth, ...organization };
+  }),
+);
 
 /** Administrative writes additionally require recent authentication under current policy. */
 export const adminMutation = captureNativeBuilder(customMutation(

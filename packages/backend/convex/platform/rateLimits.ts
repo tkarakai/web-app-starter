@@ -123,6 +123,9 @@ const rateLimitDefs = {
     period: MINUTE,
     capacity: 5,
   },
+  /** Organization invitations sent, keyed by inviting user (resends count). */
+  organizationInvite: { kind: "token bucket", rate: 30, period: 60 * MINUTE, capacity: 10 },
+
   /** Password/factor step-up attempts, including already-authenticated sessions. */
   authStepUp: { kind: "token bucket", rate: 5, period: MINUTE, capacity: 5 },
 

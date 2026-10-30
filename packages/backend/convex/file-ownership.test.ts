@@ -90,12 +90,14 @@ describe("private file ownership", () => {
     expect(await f.t.run((ctx) => ctx.db.query("uploads").collect())).toHaveLength(1);
   });
 
-  test("project permission changes deny previously authorized downloads", async () => {
+  test("files follow their project's organization; earlier access is not retained", async () => {
     const f = await fixture();
     await f.alice.caller.action(api.files.downloadFile, { id: f.id });
-    await f.t.run((ctx) => ctx.db.patch(f.alice.projectId, { ownerId: f.bob.userId }));
+    await expect(f.bob.caller.action(api.files.downloadFile, { id: f.id })).rejects.toThrow("PROJECT_NOT_FOUND");
+    const bobOrganization = await f.t.run(async (ctx) => (await ctx.db.get(f.bob.projectId))!.organizationId);
+    await f.t.run((ctx) => ctx.db.patch(f.alice.projectId, { organizationId: bobOrganization }));
     await expect(f.alice.caller.action(api.files.downloadFile, { id: f.id })).rejects.toThrow("PROJECT_NOT_FOUND");
-    await expect(f.bob.caller.action(api.files.downloadFile, { id: f.id })).rejects.toThrow("FILE_QUARANTINED");
+    expect(await f.bob.caller.action(api.files.downloadFile, { id: f.id })).toMatchObject({ bytes: bytes() });
   });
 
   test("banning an owner denies future file operations", async () => {
