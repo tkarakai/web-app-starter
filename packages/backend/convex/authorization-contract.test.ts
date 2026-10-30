@@ -127,7 +127,7 @@ describe("registered backend authorization contract", () => {
 
   test("a signed-in non-owner cannot read project, task or upload details", async () => {
     const f = await createFixture();
-    await expect(f.nonOwner.query(api.projects.get, { id: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    expect(await f.nonOwner.query(api.projects.get, { id: f.projectId })).toBeNull();
     await expect(f.nonOwner.query(api.tasks.listByProject, { projectId: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(f.nonOwner.query(api.files.listUploads, { projectId: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
   });

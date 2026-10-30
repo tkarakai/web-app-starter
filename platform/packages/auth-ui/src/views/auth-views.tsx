@@ -12,6 +12,7 @@ import {
 } from "@web-app-starter/design-system";
 import { SiteHeader } from "@web-app-starter/design-patterns";
 
+import { AcceptInvitation } from "../components/accept-invitation";
 import { AuthForm } from "../components/auth-form";
 import { ForgotPasswordForm } from "../components/forgot-password-form";
 import { InvitationSignupForm } from "../components/invitation-signup-form";
@@ -84,35 +85,54 @@ export async function SignInView() {
   );
 }
 
+interface SignUpViewProps {
+  /** `?invitation=` comes from an organization invitation link (see AcceptInvitation). */
+  searchParams?: Promise<{ invitation?: string }>;
+}
+
 /** Existing email-only web waitlist view, retained for apps that already compose it. */
-export async function SignUpView() {
-  return renderSignUpView(WaitlistForm);
+export async function SignUpView({ searchParams }: SignUpViewProps = {}) {
+  return renderSignUpView(WaitlistForm, searchParams);
 }
 
 /** Compatibility entry point: accept waitlist email on this page. */
-export async function LandingSignUpView() {
-  return renderSignUpView(WaitlistForm);
+export async function LandingSignUpView({ searchParams }: SignUpViewProps = {}) {
+  return renderSignUpView(WaitlistForm, searchParams);
 }
 
 /** Compose an app-owned question form into a route with the same onboarding gate. */
 export function createSignUpView({ waitlistForm }: {
   waitlistForm: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>;
 }) {
-  return async function SignUpPage() {
-    return renderSignUpView(waitlistForm);
+  return async function SignUpPage({ searchParams }: SignUpViewProps = {}) {
+    return renderSignUpView(waitlistForm, searchParams);
   };
 }
 
-/** Gate account creation on every request; accept waitlist submissions in place. */
-async function renderSignUpView(Waitlist: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>) {
+/**
+ * Gate account creation on every request; accept waitlist submissions in place. Someone
+ * arriving from an organization invitation gets the account form whatever the onboarding
+ * mode: the backend admits the sign-up only for an address with a pending invitation.
+ */
+async function renderSignUpView(
+  Waitlist: ComponentType<Pick<WaitlistFormProps, "convexSiteUrl">>,
+  searchParams?: SignUpViewProps["searchParams"],
+) {
   const ts = await getTranslations("auth.signIn");
   const ti = await getTranslations("auth.invitation");
+  const to = await getTranslations("organization.invitation");
   const onboardingType = await fetchOnboardingType();
   const locale = await getLocale();
+  const invited = Boolean((await searchParams)?.invitation);
 
   return (
     <AuthPageShell namespace="auth.signUp" background="var(--glow-cool)">
-      {onboardingType === "publicSignup" ? (
+      {invited && onboardingType !== "publicSignup" ? (
+        <div className="w-full max-w-md space-y-4">
+          <p className="text-sm text-muted-foreground" data-testid="organization-invitation-signup">{to("signUpHint")}</p>
+          <AuthForm mode="sign-up" />
+        </div>
+      ) : onboardingType === "publicSignup" ? (
         <AuthForm mode="sign-up" />
       ) : onboardingType === "publicWaitlist" ? (
         <Waitlist convexSiteUrl={process.env.CONVEX_SITE_URL!} />
@@ -179,6 +199,20 @@ export async function InvitationSignupView({ searchParams }: InvitationSignupVie
   return (
     <AuthPageShell namespace="auth.invitation" background="var(--glow-cool)">
       <InvitationSignupForm token={token} />
+    </AuthPageShell>
+  );
+}
+
+interface AcceptInvitationViewProps {
+  params: Promise<{ id: string }>;
+}
+
+/** Default organization-invitation page (the link in an organization invitation email). */
+export async function AcceptInvitationView({ params }: AcceptInvitationViewProps) {
+  const { id } = await params;
+  return (
+    <AuthPageShell namespace="organization.invitation" background="var(--glow-cool)">
+      <AcceptInvitation invitationId={id} />
     </AuthPageShell>
   );
 }

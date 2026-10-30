@@ -21,11 +21,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { OrganizationSection, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ProfileSection } from "@/components/settings/profile-section";
 import { SecuritySection } from "@/components/settings/security-section";
+
+type Tab = "profile" | "security" | "organization";
+
+function parseTab(value: string | null): Tab {
+  return value === "security" || value === "organization" ? value : "profile";
+}
 
 export function AccountClient() {
   const router = useRouter();
@@ -33,9 +39,8 @@ export function AccountClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const [tab, setTab] = React.useState<"profile" | "security">(
-    searchParams.get("tab") === "security" ? "security" : "profile",
-  );
+  const to = useTranslations("organization");
+  const [tab, setTab] = React.useState<Tab>(parseTab(searchParams.get("tab")));
 
   const urlTab = searchParams.get("tab");
   const previousUrlTab = React.useRef(urlTab);
@@ -43,7 +48,7 @@ export function AccountClient() {
     // Activity reconnects effects; only navigation should replace local selection.
     if (previousUrlTab.current === urlTab) return;
     previousUrlTab.current = urlTab;
-    setTab(urlTab === "security" ? "security" : "profile");
+    setTab(parseTab(urlTab));
   }, [urlTab]);
 
   const displayName = authUser?.name ?? tc("anonymous");
@@ -101,16 +106,20 @@ export function AccountClient() {
 
             <Separator />
 
-            <Tabs value={tab} onValueChange={(value) => setTab(value === "security" ? "security" : "profile")}>
+            <Tabs value={tab} onValueChange={(value) => setTab(parseTab(value))}>
               <TabsList>
                 <TabsTrigger value="profile">{td("profile.title")}</TabsTrigger>
                 <TabsTrigger value="security">{td("security")}</TabsTrigger>
+                <TabsTrigger value="organization">{to("label")}</TabsTrigger>
               </TabsList>
               <TabsContent value="profile" className="mt-4">
                 <ProfileSection />
               </TabsContent>
               <TabsContent value="security" className="mt-4">
                 <SecuritySection />
+              </TabsContent>
+              <TabsContent value="organization" className="mt-4">
+                <OrganizationSection />
               </TabsContent>
             </Tabs>
           </div>

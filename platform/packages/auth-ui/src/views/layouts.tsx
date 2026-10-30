@@ -11,6 +11,7 @@ import {
 import { Button } from "@web-app-starter/design-system";
 
 import { AuthGuard } from "../components/auth-guard";
+import { EnsureOrganization } from "../components/organization-invitations";
 import { ForceSystemTheme } from "../components/force-system-theme";
 import { GuestGuard } from "../components/guest-guard";
 
@@ -41,6 +42,7 @@ export function PublicAuthLayout({ children }: { children: ReactNode }) {
  * user for `useAuthUser()`, and enforces the platform's access rules:
  * no session or a stale one → clear-session (then sign-in); admins → `/forbidden`.
  * The shared guard presents the live backend enrollment and verification decision.
+ * A signed-in user who belongs to no organization is given a personal one.
  */
 export async function ProtectedLayout({ children }: { children: ReactNode }) {
   const authed = await isAuthenticated();
@@ -72,7 +74,12 @@ export async function ProtectedLayout({ children }: { children: ReactNode }) {
     redirect("/forbidden");
   }
 
-  return <AuthGuard preloadedUser={preloadedUser}>{children}</AuthGuard>;
+  return (
+    <AuthGuard preloadedUser={preloadedUser}>
+      <EnsureOrganization />
+      {children}
+    </AuthGuard>
+  );
 }
 
 /** Default `/forbidden` page: shown to admins and banned users who reach the web app. */

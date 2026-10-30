@@ -5,6 +5,7 @@ import {
   adminClient,
   emailOTPClient,
   magicLinkClient,
+  organizationClient,
   twoFactorClient,
 } from "better-auth/client/plugins";
 
@@ -68,6 +69,9 @@ export const authClient = createAuthClient({
     magicLinkClient(),
     twoFactorClient(),
     passkeyClient(),
+    // Organization writes (create, switch, invite, accept, roles, leave). Reads are
+    // Convex queries: `api.platform.organizations.*`.
+    organizationClient(),
   ],
   fetchOptions: {
     onError: async (context) => {

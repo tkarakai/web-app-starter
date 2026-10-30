@@ -22,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
 import { useProfileSync } from "@/hooks/useProfileSync";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
@@ -68,6 +68,9 @@ export function DashboardClient() {
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto w-full max-w-4xl px-6 pt-4 empty:hidden">
+            <OrganizationInvitations onAccepted={() => setSelectedProjectId(null)} />
+          </div>
           {selectedProjectId ? (
             <ProjectContent
               projectId={selectedProjectId}

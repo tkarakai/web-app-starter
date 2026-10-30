@@ -71,3 +71,20 @@ test("web selects signup, an inline waitlist and invite-only on consecutive requ
     expect(renderToStaticMarkup((await SignUpView()).props.children)).toBe(html);
   } finally { fetchSpy.mockRestore(); }
 });
+
+test("an organization invitation link gets the account form even when sign-up is closed", async () => {
+  process.env.CONVEX_SITE_URL = "https://runtime.example.test";
+  const fetchSpy = spyOn(globalThis, "fetch");
+  try {
+    for (const onboardingType of ["inviteOnly", "publicWaitlist"]) {
+      fetchSpy.mockResolvedValueOnce(Response.json({ onboardingType }));
+      const page = await WebSignUpView({ searchParams: Promise.resolve({ invitation: "invitation-id" }) });
+      const form = (page.props.children as ReactElement<{ children: ReactElement[] }>).props.children[1];
+      expect(form.type).toBe(AuthForm);
+    }
+    // Without the parameter, a closed mode stays closed.
+    fetchSpy.mockResolvedValueOnce(Response.json({ onboardingType: "inviteOnly" }));
+    const closed = await WebSignUpView({ searchParams: Promise.resolve({}) });
+    expect(renderToStaticMarkup(closed.props.children)).not.toContain("<form");
+  } finally { fetchSpy.mockRestore(); }
+});

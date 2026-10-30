@@ -78,7 +78,7 @@ describe("organizations", () => {
     await bob.caller.mutation(api.platform.organizations.ensure, {});
 
     expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
-    await expect(bob.caller.query(api.projects.get, { id: projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
     await expect(bob.caller.query(api.tasks.listByProject, { projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(bob.caller.mutation(api.projects.update, { id: projectId, name: "Mine" })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(bob.caller.mutation(api.tasks.update, { id: taskId, title: "Mine" })).rejects.toThrow("PROJECT_NOT_FOUND");
@@ -88,7 +88,7 @@ describe("organizations", () => {
     // A session pointing at an organization Bob doesn't belong to changes nothing.
     await bob.switchTo(await activeOrganization(alice.caller));
     expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
-    await expect(bob.caller.query(api.projects.get, { id: projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
   });
 
   test("members share the organization's data, switch between organizations, and lose access when removed", async () => {
@@ -122,7 +122,7 @@ describe("organizations", () => {
     });
     expect(await activeOrganization(bob.caller)).toBe(bobsOwn);
     expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
-    await expect(bob.caller.query(api.projects.get, { id: projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
   });
 
   test("the settings view lists members for everyone and pending invitations for owners and admins", async () => {

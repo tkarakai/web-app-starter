@@ -53,10 +53,12 @@ export const listWithStats = orgQuery({
   },
 });
 
+/** `null` when the project is gone or belongs to another organization (a teammate may delete it). */
 export const get = orgQuery({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    return requireProjectAccess(ctx, args.id);
+    const project = await ctx.db.get(args.id);
+    return project?.organizationId && project.organizationId === ctx.organizationId ? project : null;
   },
 });
 

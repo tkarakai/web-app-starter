@@ -185,6 +185,10 @@ reads `CONVEX_SITE_URL/api/waitlist/status` uncached on every request. `publicSi
 renders account creation; `publicWaitlist` renders the same app-owned form as landing,
 without a cross-app navigation. Invite-only, unknown responses and backend failures stay closed.
 The compatible `SignUpView` and `LandingSignUpView` entry points accept email inline too.
+An organization invitation link (`/sign-up?invitation=<id>`) gets the account form in every mode;
+the backend's `user.create.before` hook admits the account only for an address with a pending,
+unexpired organization invitation ([organizations](organizations.md)). Every new account gets a
+personal organization.
 
 **App-owned forms:** customize `packages/onboarding/waitlist-form.tsx` once for both
 landing and web. The reference questions are optional: email alone is sufficient.
@@ -424,8 +428,9 @@ Denied retained content is suspended with React Activity, including its portals 
 effects, so modal focus, pointer and scroll locks do not obstruct fresh verification. Authorized
 content resumes with its in-memory state; no setup secrets are persisted in browser storage.
 
-For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
-`packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
+For app endpoints, use `orgQuery`, `orgMutation` or `getOrgAuth` (organization-scoped app data;
+see [organizations](organizations.md)) or `authedQuery`, `authedMutation` or `getAuth` (personal
+data) from `packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
 administrative writes, use `adminMutation`, which adds the admin-role and recent-proof checks.
 Actions should authorize through an internal query using the same helper and recheck before
 committing sensitive side effects. `auth.getCurrentUser` and `sessionAssurance.status` intentionally
@@ -472,6 +477,10 @@ before account creation.
 ### 9.4 User Invitations (comparison)
 
 User invitations are sent from **Manage > Onboarding** (Users tab) and allow **multiple email addresses**. The invitation link points to `/signup-with-invitation?token=<invitation-token>` on the first origin in `SITE_URL` and is only valid for the web app. User invitations follow the user sign-up flow (§7).
+
+Organization invitations are different: an organization's owners and admins send them from
+Settings → Organization, and they admit the address to that organization (and, if needed, to
+sign-up). See [organizations](organizations.md).
 
 ### Waitlist metadata contract
 

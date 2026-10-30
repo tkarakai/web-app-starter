@@ -15,6 +15,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- **Organizations** (multi-tenancy) on Better Auth's organization plugin. Every user gets a
+  personal organization at sign-up and can create more or be invited to others, with the
+  built-in `owner`, `admin` and `member` roles. App functions scope data with the new
+  `orgQuery`/`orgMutation` builders (`ctx.organizationId`, re-checked against membership on
+  every call). The UI comes from `@web-app-starter/auth-ui`: `OrganizationSwitcher`,
+  `OrganizationSection`, `OrganizationInvitations` and `AcceptInvitationView`. An organization
+  invitation admits its address to sign-up even when sign-up is closed. The reference app's
+  projects (and their tasks and files) now belong to, and are shared within, the active
+  organization; its migration moves existing projects into each creator's personal
+  organization. Existing apps keep working unchanged: their per-user tables stay per-user until
+  they adopt organizations. See [organizations](docs/organizations.md), including "Adopting
+  organizations in an existing app".
+
 - Adoption refuses work on the live default branch unless explicitly overridden with
   `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
   require task branches, early draft PRs and the existing E2E ready/label policy.

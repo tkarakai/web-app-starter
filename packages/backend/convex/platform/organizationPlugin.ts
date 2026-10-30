@@ -52,14 +52,16 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
     disableOrganizationDeletion: true,
     teams: { enabled: false },
     sendInvitationEmail: async ({ id, email, organization: org, inviter }) => {
+      const url = `${siteUrl}/accept-invitation/${encodeURIComponent(id)}`;
       await sendLimitedAuthEmail(ctx, {
         to: email,
         type: "custom",
+        urlOrCode: url,
         ...organizationInvitationEmail({
           inviterName: inviter.user.name || inviter.user.email,
           organizationName: org.name,
           productName: appConfig.identity.productName,
-          url: `${siteUrl}/accept-invitation/${encodeURIComponent(id)}`,
+          url,
           expiresInDays: INVITATION_EXPIRY_DAYS,
         }),
       });

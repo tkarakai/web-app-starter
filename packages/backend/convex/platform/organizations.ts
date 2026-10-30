@@ -122,6 +122,7 @@ async function invitationView(
     status: invitation.status,
     expired: invitation.expiresAt <= Date.now(),
     isRecipient: invitation.email.toLowerCase() === ctx.user.email.toLowerCase(),
+    signedInAs: ctx.user.email,
     emailVerified: ctx.user.emailVerified,
     alreadyMember: membership !== null,
   };

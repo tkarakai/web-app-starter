@@ -19,13 +19,15 @@ an old client. Retire old upload URLs and reconcile their orphan objects separat
 
 `listUploads` returns display metadata and `available`, with no storage URL or storage ID.
 `downloadFile({ id })` authenticates and checks the project and exclusive file ownership each
-time, returning bytes for a local browser download. A ban or revoked project access prevents
+time, returning bytes for a local browser download. A verified upload is shared like its
+project: every member of the project's [organization](organizations.md) may read and delete it,
+and removal from the organization ends access on the next request. A ban or revoked project access prevents
 subsequent downloads. A recipient can retain bytes already downloaded; revocation cannot erase
 those copies. The server does not issue bearer storage URLs for new files.
 
 Direct file deletion and project cascade deletion require the same ownership proof. A duplicate
 reference or an upload without trusted provenance blocks the entire deletion transaction, so
-neither another owner's file nor part of a project's records are lost.
+neither another project's file nor part of a project's records are lost.
 
 ## Existing deployments
 

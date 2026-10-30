@@ -4,12 +4,12 @@ import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-c
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
+import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { LocaleSwitcher, useSignOut } from "@web-app-starter/auth-ui";
+import { LocaleSwitcher, OrganizationSwitcher, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -77,6 +77,7 @@ export function AppSidebar({
   const tp = useTranslations("projects");
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
+  const to = useTranslations("organization");
 
   const projects: Project[] = useQuery(api.projects.list) ?? [];
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
@@ -128,14 +129,12 @@ export function AppSidebar({
     <>
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip={appConfig.identity.productName} className="font-semibold">
-                <AppLogo size={20} />
-                <span>{appConfig.identity.productName}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <OrganizationSwitcher
+            logo={<AppLogo size={20} />}
+            productName={appConfig.identity.productName}
+            // A project selected in one organization doesn't exist in the next.
+            onSwitch={() => { if (selectedProjectId) onSelectProject(null); }}
+          />
         </SidebarHeader>
 
         <SidebarContent>
@@ -226,6 +225,10 @@ export function AppSidebar({
                   <DropdownMenuItem onSelect={() => router.push("/dashboard/settings")}>
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings?tab=organization")}>
+                    <Building2 className="me-2 h-4 w-4" />
+                    {to("label")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
