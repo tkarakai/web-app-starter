@@ -3,15 +3,16 @@ import schema from "./schema";
 import { createAuthOptions } from "../auth";
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
-import { guardAdapterMutation } from "./organizationSecurityGuard";
 
-const adapter = createApi(schema, createAuthOptions);
-export const { findOne, findMany } = adapter;
-export const create = guardAdapterMutation(adapter.create);
-export const updateOne = guardAdapterMutation(adapter.updateOne);
-export const updateMany = guardAdapterMutation(adapter.updateMany);
-export const deleteOne = guardAdapterMutation(adapter.deleteOne);
-export const deleteMany = guardAdapterMutation(adapter.deleteMany);
+export const {
+  create,
+  findOne,
+  findMany,
+  updateOne,
+  updateMany,
+  deleteOne,
+  deleteMany,
+} = createApi(schema, createAuthOptions);
 
 export const reuseOtp = mutation({
   args: { identifier: v.string(), value: v.string(), expiresAt: v.number(), allowedAttempts: v.number() },

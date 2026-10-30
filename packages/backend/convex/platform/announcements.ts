@@ -5,7 +5,7 @@ import type { authorizedSession } from "./sessionPolicy";
 type AnnouncementIdentity = Pick<NonNullable<Awaited<ReturnType<typeof authorizedSession>>>, "user" | "ownerId">;
 import { components } from "../_generated/api";
 import { internalMutation, internalQuery, query } from "../_generated/server";
-import { appOperatorMutation, appOperatorQuery } from "./functions";
+import { adminMutation, authedQuery } from "./functions";
 
 // Shared native handlers used by the UI and authenticated capability adapters.
 export const announcementListArgs = {
@@ -134,7 +134,7 @@ export const handleScheduledEnd = internalMutation({
   },
 });
 
-export const list = appOperatorQuery({
+export const list = authedQuery({
   args: announcementListArgs,
   handler: listAnnouncement,
 });
@@ -148,17 +148,17 @@ export const getAdminListInternal = internalQuery({
   },
 });
 
-export const create = appOperatorMutation({
+export const create = adminMutation({
   args: announcementCreateArgs,
   handler: createAnnouncement,
 });
 
-export const update = appOperatorMutation({
+export const update = adminMutation({
   args: announcementUpdateArgs,
   handler: updateAnnouncement,
 });
 
-export const publishNow = appOperatorMutation({
+export const publishNow = adminMutation({
   args: {
     announcementId: v.string(),
   },
@@ -177,7 +177,7 @@ export const publishNowInternal = internalMutation({
   },
 });
 
-export const unpublishNow = appOperatorMutation({
+export const unpublishNow = adminMutation({
   args: {
     announcementId: v.string(),
   },
@@ -196,7 +196,7 @@ export const unpublishNowInternal = internalMutation({
   },
 });
 
-export const setLive = appOperatorMutation({
+export const setLive = adminMutation({
   args: {
     announcementId: v.string(),
     isLive: v.boolean(),
@@ -208,7 +208,7 @@ export const setLive = appOperatorMutation({
   },
 });
 
-export const archive = appOperatorMutation({
+export const archive = adminMutation({
   args: {
     announcementId: v.string(),
   },
@@ -218,7 +218,7 @@ export const archive = appOperatorMutation({
   },
 });
 
-export const remove = appOperatorMutation({
+export const remove = adminMutation({
   args: announcementRemoveArgs,
   handler: removeAnnouncement,
 });

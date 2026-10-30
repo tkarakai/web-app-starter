@@ -1,17 +1,9 @@
-/** @deprecated API namespace retained for compatibility; these are app-operator operations. */
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { getAuth } from "./functions";
-import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
-import { filterAppOperatorEmails } from "./appOperatorDirectory";
-
-async function appOperatorEmails(ctx: QueryCtx): Promise<string[]> {
-  const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
-  return filterAppOperatorEmails(ctx, rows.map(row => row.email));
-}
 
 export const list = internalQuery({
   args: {},
@@ -41,10 +33,12 @@ export const listProtected = rememberNative(query({
     // Only admin users may see the admin email list.
     // Without this check any authenticated user could enumerate admin emails,
     // which could be combined with other attacks (e.g. phishing, account takeover).
-    if (!await isAppOperatorIdentity(ctx, user)) {
+    const role = (user as Record<string, unknown>).role;
+    if (role !== "admin") {
       return [];
     }
 
-    return await appOperatorEmails(ctx);
+    const rows = await ctx.runQuery(components.platform.adminEmails.list, {});
+    return rows.map((r) => r.email);
   },
-}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { await requireAppOperator(ctx); return await appOperatorEmails(ctx); } }, "query");
+}), { args: listProtectedNativeArgs, handler: async (ctx: QueryCtx, _args: ObjectType<typeof listProtectedNativeArgs>) => { const rows = await ctx.runQuery(components.platform.adminEmails.list, {}); return rows.map(row => row.email); } }, "query");

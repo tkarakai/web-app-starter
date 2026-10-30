@@ -30,7 +30,7 @@ describe("settings and announcements wrappers", () => {
     await expect(member.mutation(api.platform.appSettings.set, setting)).rejects.toThrow("NOT_ADMIN");
     await admin.mutation(api.platform.appSettings.set, setting);
     expect(await t.query(api.platform.appSettings.getPublic, { key: setting.key })).toBe(true);
-    await expect(member.query(api.platform.appSettings.get, { key: setting.key })).rejects.toThrow("NOT_ADMIN");
+    expect(await member.query(api.platform.appSettings.get, { key: setting.key })).toBeNull();
     expect(await t.query(api.platform.appSettings.getPublic, { key: "invitationEmailTemplate" })).toBeNull();
     await admin.mutation(api.platform.adminAuth.setEmailVerificationPolicy, { required: false });
     expect(await admin.query(api.platform.adminAuth.getEmailVerificationPolicy, {})).toEqual({ emailVerificationRequired: false });
@@ -57,7 +57,7 @@ describe("settings and announcements wrappers", () => {
     await expect(member.mutation(api.platform.announcements.create, args)).rejects.toThrow("NOT_ADMIN");
     const { id } = await admin.mutation(api.platform.announcements.create, args);
     expect(typeof id).toBe("string");
-    await expect(member.query(api.platform.announcements.list, {})).rejects.toThrow("NOT_ADMIN");
+    expect(await member.query(api.platform.announcements.list, {})).toBeNull();
     await admin.mutation(api.platform.announcements.publishNow, { announcementId: id });
     const active = await t.query(api.platform.announcements.getActivePublic, {});
     expect(active?._id).toBe(id);

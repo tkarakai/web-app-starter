@@ -3,10 +3,11 @@
 import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
 
 import * as React from "react";
+import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
+import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
-import { usePersonalDataContext, usePersonalProject, usePersonalProjects } from "@/hooks/use-personal-data";
 import {
   BreadcrumbItem,
   BreadcrumbLink,
@@ -30,7 +31,6 @@ import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectSummary } from "@/components/projects/project-summary";
 import { TaskList } from "@/components/projects/task-list";
 import { UploadPanel } from "@/components/projects/upload-panel";
-import { PersonalDataNotReady } from "@/components/projects/personal-data-not-ready";
 
 export function DashboardClient() {
   // Sync user profile (locale) between Convex and localStorage
@@ -40,22 +40,13 @@ export function DashboardClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
 
-  const context = usePersonalDataContext();
-  const realm = JSON.stringify([context.state, context.userId, context.ownerId, context.tenant?.organizationId, Boolean(context.legacy), context.legacy?.organizationId]);
-  const [selection, setSelection] = React.useState<{ realm: string; id: Id<"projects"> } | null>(null);
-  const selectedProjectId = selection?.realm === realm ? selection.id : null;
-  const setSelectedProjectId = (id: Id<"projects"> | null) => setSelection(id ? { realm, id } : null);
-  // Remount (discarding drafts and open menus) only when one resolved identity replaces another;
-  // loading or a transient reload of the same identity keeps the mounted dashboard.
-  const resolved = context.state === "ready" ? realm : null;
-  const [mounted, setMounted] = React.useState<{ realm: string | null; generation: number }>({ realm: null, generation: 0 });
-  if (resolved !== null && resolved !== mounted.realm) setMounted({ realm: resolved, generation: mounted.realm === null ? mounted.generation : mounted.generation + 1 });
+  const [selectedProjectId, setSelectedProjectId] = React.useState<Id<"projects"> | null>(null);
 
   const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
 
   return (
-    <SidebarProvider key={mounted.generation}>
+    <SidebarProvider>
       <AppSidebar
         displayName={displayName}
         displayEmail={displayEmail ?? undefined}
@@ -77,7 +68,7 @@ export function DashboardClient() {
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
-          {context.state !== "ready" ? <PersonalDataNotReady state={context.state} /> : selectedProjectId ? (
+          {selectedProjectId ? (
             <ProjectContent
               projectId={selectedProjectId}
               onDeleted={() => setSelectedProjectId(null)}
@@ -100,7 +91,10 @@ function DashboardBreadcrumbs({
   onNavigateToProjects: () => void;
 }) {
   const td = useTranslations("dashboard");
-  const project = usePersonalProject(selectedProjectId);
+  const project = useQuery(
+    api.projects.get,
+    selectedProjectId ? { id: selectedProjectId } : "skip"
+  );
 
   return (
     <Breadcrumb>
@@ -135,11 +129,16 @@ function ProjectsOverview({
 }: {
   onSelectProject: (id: Id<"projects">) => void;
 }) {
+  const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const { context, projects } = usePersonalProjects();
+  const projects = useQuery(api.projects.list);
 
   if (projects === undefined || projects === null) {
-    return <PersonalDataNotReady state={context.state === "unavailable" ? "unavailable" : "loading"} />;
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="text-sm text-muted-foreground">{tc("loading")}</div>
+      </div>
+    );
   }
 
   if (projects.length === 0) {
@@ -165,12 +164,16 @@ function ProjectContent({
   projectId: Id<"projects">;
   onDeleted: () => void;
 }) {
+  const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const context = usePersonalDataContext();
-  const project = usePersonalProject(projectId);
+  const project = useQuery(api.projects.get, { id: projectId });
 
   if (project === undefined) {
-    return <PersonalDataNotReady state={context.state === "unavailable" ? "unavailable" : "loading"} />;
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="text-sm text-muted-foreground">{tc("loading")}</div>
+      </div>
+    );
   }
 
   if (project === null) {
@@ -184,17 +187,17 @@ function ProjectContent({
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
-      <ProjectHeader project={project} dataPlane={project.dataPlane} onDeleted={onDeleted} />
+      <ProjectHeader project={project} onDeleted={onDeleted} />
       <Tabs defaultValue="tasks">
         <TabsList>
           <TabsTrigger value="tasks">{td("tabs.tasks")}</TabsTrigger>
           <TabsTrigger value="attachments">{td("tabs.attachments")}</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-4">
-          <TaskList projectId={projectId} dataPlane={project.dataPlane} />
+          <TaskList projectId={projectId} />
         </TabsContent>
         <TabsContent value="attachments" className="mt-4">
-          <UploadPanel projectId={projectId} dataPlane={project.dataPlane} collapsible={false} />
+          <UploadPanel projectId={projectId} collapsible={false} />
         </TabsContent>
       </Tabs>
     </div>

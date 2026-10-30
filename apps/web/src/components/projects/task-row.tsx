@@ -6,6 +6,7 @@ import * as React from "react";
 import { Circle, CircleCheck, CircleDashed, Clock, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
 import {
   Badge,
@@ -23,8 +24,7 @@ import {
   SelectValue,
   Textarea,
 } from "@web-app-starter/design-system";
-import { usePersonalTaskMutations } from "@/hooks/use-personal-data";
-import type { PersonalDataPlane } from "@/hooks/personal-data-context";
+import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { getDeadlineUrgency, type DeadlineUrgency } from "@/lib/format";
 import { normalizeText, type TaskStatus } from "@/lib/projects";
 import { DeadlineInput } from "./deadline-input";
@@ -77,13 +77,13 @@ function StatusIcon({ status, className }: { status: TaskStatus; className?: str
 
 type TaskRowProps = {
   task: Task;
-  dataPlane: PersonalDataPlane;
   locale?: string;
   timeZone?: string;
 };
 
-export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
-  const { update: updateTask, remove: removeTask, available } = usePersonalTaskMutations(dataPlane, task._id);
+export function TaskRow({ task, locale, timeZone }: TaskRowProps) {
+  const updateTask = useMutationWithToast(api.tasks.update);
+  const removeTask = useMutationWithToast(api.tasks.remove);
   const t = useTranslations("tasks");
   const tc = useTranslations("common");
 
@@ -110,14 +110,13 @@ export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
   }, [confirming]);
 
   const handleToggleStatus = async () => {
-    if (!available) return;
     await updateTask({ id: task._id, status: statusCycle[task.status] });
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedTitle = normalizeText(title);
-    if (!trimmedTitle || !available) return;
+    if (!trimmedTitle) return;
 
     setSubmitting(true);
     try {
@@ -135,7 +134,6 @@ export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
   };
 
   const handleDeleteClick = async () => {
-    if (!available) return;
     if (!confirming) {
       setConfirming(true);
       return;
@@ -155,7 +153,6 @@ export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
       <div className="group flex items-start gap-3 rounded-lg border border-border/60 bg-card/50 px-4 py-3 transition-colors hover:bg-card/80">
         <button
           type="button"
-          disabled={!available}
           onClick={handleToggleStatus}
           className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-foreground"
           aria-label={t("aria.changeStatus", { status: statusLabel })}
@@ -201,7 +198,6 @@ export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
           </Badge>
           <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
-              disabled={!available}
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
@@ -211,7 +207,6 @@ export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
               <span className="sr-only">{t("editTask")}</span>
             </Button>
             <Button
-              disabled={!available}
               variant="ghost"
               size="sm"
               className={`h-7 w-7 p-0 ${confirming ? "text-destructive opacity-100" : "text-muted-foreground hover:text-destructive"}`}
@@ -267,7 +262,7 @@ export function TaskRow({ task, dataPlane, locale, timeZone }: TaskRowProps) {
               </Select>
             </div>
             <DeadlineInput value={deadline} onChange={setDeadline} timeZone={timeZone} />
-            <Button type="submit" className="w-full" disabled={submitting || !available}>
+            <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? tc("saving") : tc("save")}
             </Button>
           </form>

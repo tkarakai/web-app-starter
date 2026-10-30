@@ -1,16 +1,24 @@
-/** @deprecated API namespace retained for compatibility; these are app-operator operations. */
-import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { appOperatorMutation, authedQuery } from "./functions";
+import { adminMutation, authedQuery } from "./functions";
 import { parseUserAgent } from "./parseUserAgent";
-import { requireAppOperator } from "./appOperatorAccess";
 
 // ---------------------------------------------------------------------------
-// Operator policy and passkey enrollment status. Shared bodies verify live app-operator authority.
+// Admin auth functions — session management, MFA policy
+// All functions verify the caller has role === "admin".
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Helper: verify admin role
+// ---------------------------------------------------------------------------
+
+function requireAdmin(user: Record<string, unknown>): void {
+  if (user.role !== "admin") {
+    throw new Error("NOT_ADMIN");
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Admin query: get MFA policy setting
@@ -19,7 +27,7 @@ import { requireAppOperator } from "./appOperatorAccess";
 export const getMfaPolicy = authedQuery({
   args: {},
   handler: async (ctx) => {
-    await requireAppOperator(ctx);
+    requireAdmin(ctx.user as Record<string, unknown>);
 
     const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailMfaRequired" });
 
@@ -33,19 +41,19 @@ export const getMfaPolicy = authedQuery({
 // Admin mutation: toggle MFA policy
 // ---------------------------------------------------------------------------
 
-export const setMfaPolicy = appOperatorMutation({
+export const setMfaPolicy = adminMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
-    const actor = await requireAppOperator(ctx, { write: true });
+    requireAdmin(ctx.user as Record<string, unknown>);
 
     const key = "emailMfaRequired";
     const value = JSON.stringify(args.required);
     const { previousValue: oldValue } = await ctx.runMutation(components.platform.appSettings.putRaw, { key, value, updatedBy: ctx.ownerId });
 
     await scheduleAuditEvent(ctx, {
-      actor: actor.user.email,
-      authenticatedUserId: actor.user._id,
-      sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.administrativeMutation,
+      actor: ctx.ownerId,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
       action: "admin.mfa_policy_changed",
       resource: `appSettings:${key}`,
       status: "succeeded",
@@ -62,7 +70,7 @@ export const setMfaPolicy = appOperatorMutation({
 export const getEmailVerificationPolicy = authedQuery({
   args: {},
   handler: async (ctx) => {
-    await requireAppOperator(ctx);
+    requireAdmin(ctx.user as Record<string, unknown>);
 
     const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: "emailVerificationRequired" });
 
@@ -76,19 +84,19 @@ export const getEmailVerificationPolicy = authedQuery({
 // Admin mutation: toggle email verification policy
 // ---------------------------------------------------------------------------
 
-export const setEmailVerificationPolicy = appOperatorMutation({
+export const setEmailVerificationPolicy = adminMutation({
   args: { required: v.boolean() },
   handler: async (ctx, args) => {
-    const actor = await requireAppOperator(ctx, { write: true });
+    requireAdmin(ctx.user as Record<string, unknown>);
 
     const key = "emailVerificationRequired";
     const value = JSON.stringify(args.required);
     const { previousValue: oldValue } = await ctx.runMutation(components.platform.appSettings.putRaw, { key, value, updatedBy: ctx.ownerId });
 
     await scheduleAuditEvent(ctx, {
-      actor: actor.user.email,
-      authenticatedUserId: actor.user._id,
-      sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.administrativeMutation,
+      actor: ctx.ownerId,
+      authenticatedUserId: ctx.ownerId,
+      sourceDetail: "admin-mutation",
       action: "admin.email_verification_policy_changed",
       resource: `appSettings:${key}`,
       status: "succeeded",
@@ -102,15 +110,27 @@ export const setEmailVerificationPolicy = appOperatorMutation({
 // Admin query: passkey status for a set of user IDs
 // ---------------------------------------------------------------------------
 
-/** @deprecated Wire name retained for app-operator passkey-status compatibility. */
 export const listAdminPasskeyUserIds = authedQuery({
   args: { userIds: v.array(v.string()) },
   handler: async (ctx, args) => {
-    const actor = await requireAppOperator(ctx);
-    if (args.userIds.length > 100) throw new Error("INVALID_PAGE_SIZE");
-    return ctx.runQuery(components.betterAuth.appOperators.listPasskeyUserIds, {
-      operatorId: actor.user._id, userIds: args.userIds,
-    });
+    requireAdmin(ctx.user as Record<string, unknown>);
+
+    if (args.userIds.length === 0) return [];
+
+    const result = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      {
+        model: "passkey" as const,
+        where: [
+          { field: "userId", operator: "in" as const, value: args.userIds },
+        ],
+        paginationOpts: { cursor: null, numItems: 1000 },
+      },
+    );
+
+    const page = (result as { page?: Array<{ userId: string }> }).page ?? [];
+    const userIdsWithPasskey = [...new Set(page.map((p) => p.userId))];
+    return userIdsWithPasskey;
   },
 });
 

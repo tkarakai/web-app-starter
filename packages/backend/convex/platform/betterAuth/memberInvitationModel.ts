@@ -1,10 +1,9 @@
 import type { QueryCtx } from "./_generated/server";
-import { requireOrgAdmin, organizationUser, MEMBER_LIMIT, organization } from "./organizationModel";
+import { administrator, customer, MEMBER_LIMIT, organization, ROLE_ADMIN, ROLE_MEMBER } from "./organizationModel";
 import type { Id } from "./_generated/dataModel";
-import { MEMBERSHIP_MANAGEMENT_EXPERIENCE, ORG_ADMIN_MEMBERSHIP_ROLE, ORG_MEMBER_ROLE } from "./organizationVocabulary";
 
 export const invitationRole = (role: string | null | undefined) => {
-  if (role !== ORG_MEMBER_ROLE && role !== ORG_ADMIN_MEMBERSHIP_ROLE) throw new Error("INVALID_MEMBER_INVITATION");
+  if (role !== ROLE_MEMBER && role !== ROLE_ADMIN) throw new Error("INVALID_MEMBER_INVITATION");
   return role;
 };
 
@@ -14,8 +13,8 @@ export async function liveInvitation(ctx: QueryCtx, id: Id<"invitation">, organi
     || (pending ? invite.status !== "pending" : !["pending", "accepted"].includes(invite.status))) throw new Error("INVALID_MEMBER_INVITATION");
   invitationRole(invite.role);
   const org = await organization(ctx, invite.organizationId);
-  if (org.experience !== MEMBERSHIP_MANAGEMENT_EXPERIENCE) throw new Error("INVALID_MEMBER_INVITATION");
-  await requireOrgAdmin(ctx, org._id, invite.inviterId);
+  if (org.experience !== "collaborative") throw new Error("INVALID_MEMBER_INVITATION");
+  await administrator(ctx, org._id, invite.inviterId);
   return { invite, org };
 }
 
@@ -35,7 +34,7 @@ export async function registrationClaim(ctx: QueryCtx, capabilityHash: string, e
 
 export async function recipient(ctx: QueryCtx, tokenHash: string, organizationId: string, userId: string, pending = true) {
   const { invite, org } = await invitationByToken(ctx, tokenHash, organizationId, pending);
-  const user = await organizationUser(ctx, userId);
+  const user = await customer(ctx, userId);
   if (user.email.trim().toLowerCase() !== invite.email) throw new Error("INVITATION_RECIPIENT_MISMATCH");
   return { invite, org, user };
 }

@@ -7,8 +7,7 @@ import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { internalMutation, query } from "../_generated/server";
 import { getAuth } from "./functions";
-import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
-import { appOperatorMutation } from "./functions";
+import { adminMutation } from "./functions";
 import { rateLimit } from "./rateLimits";
 
 import { parseOnboardingType, isWaitlistOnboarding } from "./onboardingType";
@@ -48,7 +47,8 @@ export const list = rememberNative(query({
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
-    if (!user || !await isAppOperatorIdentity(ctx, user)) {
+    const role = user ? (user as Record<string, unknown>).role : undefined;
+    if (role !== "admin") {
       return {
         page: [],
         isDone: true,
@@ -58,9 +58,9 @@ export const list = rememberNative(query({
 
     return await ctx.runQuery(components.platform.waitlist.list, args);
   },
-}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { await requireAppOperator(ctx); return await ctx.runQuery(components.platform.waitlist.list, args); } }, "query");
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.waitlist.list, args); } }, "query");
 
-export const invite = appOperatorMutation({
+export const invite = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -70,7 +70,7 @@ export const invite = appOperatorMutation({
   },
 });
 
-export const inviteMany = appOperatorMutation({
+export const inviteMany = adminMutation({
   args: { emails: v.array(v.string()) },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -83,7 +83,7 @@ export const inviteMany = appOperatorMutation({
   },
 });
 
-export const uninvite = appOperatorMutation({
+export const uninvite = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
@@ -92,7 +92,7 @@ export const uninvite = appOperatorMutation({
   },
 });
 
-export const remove = appOperatorMutation({
+export const remove = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;

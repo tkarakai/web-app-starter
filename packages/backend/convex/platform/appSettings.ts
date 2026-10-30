@@ -2,25 +2,20 @@
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
-import { appOperatorMutation, appOperatorQuery } from "./functions";
+import { adminMutation, authedQuery } from "./functions";
 import { DEFAULT_EMAIL_TEMPLATE, DEFAULT_VERIFICATION_EMAIL_TEMPLATE, type EmailTemplate } from "./emailTemplates";
-import { readAdminPasskeyPolicy } from "./organizationPolicy";
-import { isPasskeyPolicy } from "./securityPolicies";
-import { runAuditEvent } from "./auditTrailHelpers";
 
 export const getPublic = query({
   args: { key: v.string() },
   handler: async (ctx, args) => {
-    if (args.key === "adminPasskeyPolicy") return readAdminPasskeyPolicy(ctx);
     return await ctx.runQuery(components.platform.appSettings.getPublic, args);
   },
 });
 
-export const get = appOperatorQuery({
+export const get = authedQuery({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
-    if (args.key === "adminPasskeyPolicy") return readAdminPasskeyPolicy(ctx);
     return await ctx.runQuery(components.platform.appSettings.get, args);
   },
 });
@@ -28,45 +23,27 @@ export const get = appOperatorQuery({
 export const getInternal = internalQuery({
   args: { key: v.string() },
   handler: async (ctx, args) => {
-    if (args.key === "adminPasskeyPolicy") return readAdminPasskeyPolicy(ctx);
     return await ctx.runQuery(components.platform.appSettings.getInternal, args);
   },
 });
 
-export const set = appOperatorMutation({
+export const set = adminMutation({
   args: { key: v.string(), value: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
-    if (args.key === "adminPasskeyPolicy") {
-      if (!isPasskeyPolicy(args.value)) throw new Error("INVALID_VALUE");
-      const previous = await readAdminPasskeyPolicy(ctx);
-      await ctx.runMutation(components.betterAuth.organizationSecurity.setPolicy, args);
-      await runAuditEvent(ctx, { happenedAt: Date.now(), actor: ctx.ownerId, authenticatedUserId: ctx.user._id,
-        sourceDetail: "admin-settings", action: "admin.admin_passkey_policy_changed", resource: "appSettings:adminPasskeyPolicy",
-        status: "succeeded", oldValue: previous, newValue: args.value });
-      return null;
-    }
     return await ctx.runMutation(components.platform.appSettings.set, { ...args, userId: ctx.ownerId });
   },
 });
 
-export const remove = appOperatorMutation({
+export const remove = adminMutation({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
-    if (args.key === "adminPasskeyPolicy") {
-      const previous = await readAdminPasskeyPolicy(ctx);
-      await ctx.runMutation(components.betterAuth.organizationSecurity.setPolicy, { key: args.key, value: "optional" });
-      await runAuditEvent(ctx, { happenedAt: Date.now(), actor: ctx.ownerId, authenticatedUserId: ctx.user._id,
-        sourceDetail: "admin-settings", action: "admin.admin_passkey_policy_changed", resource: "appSettings:adminPasskeyPolicy",
-        status: "succeeded", oldValue: previous, newValue: "optional" });
-      return null;
-    }
     return await ctx.runMutation(components.platform.appSettings.remove, args);
   },
 });
 
-export const getEmailTemplate = appOperatorQuery({
+export const getEmailTemplate = authedQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;
@@ -75,7 +52,7 @@ export const getEmailTemplate = appOperatorQuery({
   },
 });
 
-export const getVerificationEmailTemplate = appOperatorQuery({
+export const getVerificationEmailTemplate = authedQuery({
   args: {},
   handler: async (ctx) => {
     if ((ctx.user as Record<string, unknown>).role !== "admin") return null;

@@ -7,12 +7,8 @@ import { requireGrant } from "./agentAccess";
 import { authorizedSession } from "./sessionPolicy";
 import { surfaceConfiguration } from "./agentSurfaces";
 import { rateLimit } from "./rateLimits";
-import { catalogueRows, capabilityRegistry, registeredExposures, workflowResult, sanitizeNativeResult } from "./agentRegistry";
-import { nativeDefinition } from "./nativeCapabilities";
-import { canonicalAppOperatorAuth, invokeNative } from "./agentNativePolicy";
-import { exposureInventory, operationExposure } from "./agentExposure";
-import { AGENT_CONTRACT_EPOCH } from "./agentContract";
-import { requireAppOperator } from "./appOperatorAccess";
+import { catalogueRows, capabilityRegistry, workflowResult, sanitizeNativeResult } from "./agentRegistry";
+import { invokeNative, nativeDefinition } from "./nativeCapabilities";
 const args = { name: v.string(), input: v.any() };
 const credentialArgs = { token: v.string(), resource: v.string() };
 const rowsValidator = v.array(v.object({ name: v.string(), title: v.string(), description: v.string(), effect: v.union(v.literal("read"), v.literal("write"), v.literal("browser"), v.literal("human")), inputSchema: v.any() }));
@@ -28,8 +24,6 @@ function boundInputs(input: unknown) {
 export async function runCapability(ctx: QueryCtx | MutationCtx, auth: unknown, name: string, input: unknown, write: boolean) {
   const value = entry(name); boundInputs(input);
   if (!value.registered) {
-    if (operationExposure(value.operation ?? name).classification !== "human-workflow") throw new Error("NATIVE_OPERATION_DENIED");
-    await canonicalAppOperatorAuth(ctx, auth);
     if (write || Object.keys(input as object).length) throw new Error("INVALID_INPUT");
     return workflowResult(value);
   }
@@ -38,11 +32,6 @@ export async function runCapability(ctx: QueryCtx | MutationCtx, auth: unknown, 
   return sanitizeNativeResult(name, result, ctx);
 }
 export const catalogue = query({ args: credentialArgs, returns: rowsValidator, handler: async (ctx, { token, resource }) => { await requireGrant(ctx, token, resource); return catalogueRows(); } });
-/** Query consumers inspect the same policy inventory used by native dispatch. */
-export const exposure = query({ args: credentialArgs, returns: v.any(), handler: async (ctx, { token, resource }) => {
-  await requireGrant(ctx, token, resource);
-  return { contractEpoch: AGENT_CONTRACT_EPOCH, operations: exposureInventory(), capabilities: registeredExposures(), unknown: { classification: "internal-denied", native: false } };
-} });
 export const read = query({ args: { ...credentialArgs, ...args }, returns: v.any(), handler: async (ctx, { token, resource, name, input }) => runCapability(ctx, await requireGrant(ctx, token, resource), name, input, false) });
 export const write = mutation({ args: { ...credentialArgs, ...args }, returns: v.any(), handler: async (ctx, { token, resource, name, input }) => {
   const auth = await requireGrant(ctx, token, resource, true);
@@ -54,7 +43,7 @@ async function browserAuth(ctx: QueryCtx, recent = false) {
   const auth = await authorizedSession(ctx);
   if (!auth || auth.user.role !== "admin") throw new Error("NOT_ADMIN");
   if (recent && !auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  return { ...auth, ...await requireAppOperator({ ...ctx, ...auth }, { write: recent }) };
+  return auth;
 }
 export const browserRead = query({ args, returns: v.any(), handler: async (ctx, { name, input }) => runCapability(ctx, await browserAuth(ctx), name, input, false) });
 export const browserWrite = mutation({ args, returns: v.any(), handler: async (ctx, { name, input }) => {

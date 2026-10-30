@@ -24,7 +24,6 @@ type SendAuthEmailOptions =
       subject?: never;
       html?: never;
       text?: never;
-      previewUrl?: never;
     }
   | {
       to: string;
@@ -32,8 +31,6 @@ type SendAuthEmailOptions =
       subject: string;
       html: string;
       text: string;
-      /** Local console inbox link only; never included in provider metadata. */
-      previewUrl?: string;
       urlOrCode?: never;
       linkExpiry?: never;
     };
@@ -50,7 +47,7 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
       ? { subject: opts.subject, html: opts.html, text: opts.text }
       : withTextFooter(buildEmailContent(type, opts.urlOrCode, opts.linkExpiry));
 
-  const urlOrCode = type !== "custom" ? opts.urlOrCode : opts.previewUrl;
+  const urlOrCode = type !== "custom" ? opts.urlOrCode : undefined;
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     assertMockEmailAllowed();

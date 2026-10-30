@@ -20,7 +20,6 @@ export { useSignOut } from "./lib/use-sign-out";
 export { ChangePasswordForm } from "./settings/change-password-form";
 export { PasskeySection } from "./settings/passkey-section";
 export { TwoFactorSection } from "./settings/two-factor-section";
-export { OrganizationFactorReplacement } from "./settings/organization-factor-replacement";
 export { SessionsList } from "./settings/sessions-list";
 export { SecuritySection } from "./settings/security-section";
 export { WaitlistForm, type WaitlistFormProps } from "./components/waitlist-form";
