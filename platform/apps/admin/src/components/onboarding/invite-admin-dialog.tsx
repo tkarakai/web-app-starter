@@ -67,9 +67,9 @@ export function InviteAdminDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite app operator</DialogTitle>
+          <DialogTitle>Invite Admin</DialogTitle>
           <DialogDescription>
-            Send an invitation email to set up a new app-operator account.
+            Send an invitation email to set up a new admin account.
           </DialogDescription>
         </DialogHeader>
 

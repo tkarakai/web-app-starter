@@ -8,7 +8,6 @@ import {
   USER_MAGIC_LINK_ENABLED_KEY, type PasskeyPolicy,
 } from "./securityPolicies";
 import { ADMIN_SESSION_MS, RECENT_AUTH_MS } from "./sessionFields";
-import { readAdminPasskeyPolicy } from "./organizationPolicy";
 
 type Reader = Pick<GenericCtx<DataModel>, "runQuery">;
 export type AuthSession = { user: Doc<"user">; session: Doc<"session"> };
@@ -16,7 +15,6 @@ export type SessionProof = Pick<Doc<"session">, "createdAt" | "expiresAt" | "ass
 export type AssuranceSubject = { user: Doc<"user">; session: SessionProof };
 
 async function setting(ctx: Reader, key: string): Promise<unknown> {
-  if (key === "adminPasskeyPolicy") return readAdminPasskeyPolicy(ctx);
   const row = await ctx.runQuery(components.platform.appSettings.getRaw, { key });
   if (!row) return undefined;
   try { return JSON.parse(row.value); } catch { return row.value; }
@@ -44,15 +42,13 @@ export async function readPolicies(ctx: Reader, user: Doc<"user">) {
     : null);
   const enrollment = Boolean(onboarding && !onboarding.completed);
   const scope = enrollment ? "admin" : roleScope;
-  const orgAdmin = scope === "user" ? await ctx.runQuery(components.betterAuth.organizations.adminSecurity, { userId: user._id }) : null;
-  const securityScope = orgAdmin?.required ? "admin" : scope;
-  const rawPasskey = await setting(ctx, getPasskeyPolicyKey(securityScope));
+  const rawPasskey = await setting(ctx, getPasskeyPolicyKey(scope));
   const passkeyPolicy: PasskeyPolicy = rawPasskey === undefined ? "optional"
     : rawPasskey === "disabled" || rawPasskey === "optional" ? rawPasskey : "required";
   return {
-    scope, securityScope, enrollment, passkeyPolicy, organizationAdminValid: orgAdmin?.valid ?? true,
-    emailRequired: Boolean(orgAdmin?.required) || await booleanPolicy(ctx, getEmailVerificationRequiredKey(securityScope), LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true),
-    mfaRequired: Boolean(orgAdmin?.required) || enrollment || await booleanPolicy(ctx, getMfaRequiredKey(securityScope), LEGACY_MFA_REQUIRED_KEY, false),
+    scope, enrollment, passkeyPolicy,
+    emailRequired: await booleanPolicy(ctx, getEmailVerificationRequiredKey(scope), LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true),
+    mfaRequired: enrollment || await booleanPolicy(ctx, getMfaRequiredKey(scope), LEGACY_MFA_REQUIRED_KEY, false),
   };
 }
 
@@ -87,25 +83,8 @@ export type AssuranceReason = "ready" | "reauthenticate" | "email_verification" 
 
 /** Shared by Convex and Better Auth. Account flags are requirements, never session proof. */
 export async function evaluateSession(ctx: Reader, pair: AssuranceSubject) {
-  return evaluateWithPolicy(ctx, pair, await readPolicies(ctx, pair.user));
-}
-
-/** Elevated proof for this enrollment only: never changes identity/operator authority or personal access. */
-export async function evaluateOrganizationEnrollment(ctx: Reader, pair: AssuranceSubject, organizationId: string) {
-  const ordinary = await readPolicies(ctx, pair.user);
-  if (ordinary.scope !== "user") throw new Error("NOT_CUSTOMER");
-  const enrollment = await ctx.runQuery(components.betterAuth.organizations.enrollmentStatus, { organizationId, userId: pair.user._id });
-  if (!enrollment) throw new Error("INVALID_ENROLLMENT");
-  const rawPasskey = await setting(ctx, getPasskeyPolicyKey("admin"));
-  const passkeyPolicy: PasskeyPolicy = rawPasskey === undefined ? "optional"
-    : rawPasskey === "disabled" || rawPasskey === "optional" ? rawPasskey : "required";
-  const policy = { scope: "user" as const, securityScope: "admin" as const, enrollment: false,
-    emailRequired: true, mfaRequired: true, passkeyPolicy, organizationAdminValid: true };
-  return { ...await evaluateWithPolicy(ctx, pair, policy), setup: enrollment };
-}
-
-async function evaluateWithPolicy(ctx: Reader, pair: AssuranceSubject, policy: Awaited<ReturnType<typeof readPolicies>>) {
   const { user, session } = pair;
+  const policy = await readPolicies(ctx, user);
   const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, {
     model: "twoFactor", where: [{ field: "userId", value: user._id }],
   });
@@ -131,14 +110,12 @@ async function evaluateWithPolicy(ctx: Reader, pair: AssuranceSubject, policy: A
   const primary = session.assuranceVersion === 1 && Boolean(session.primaryVerifiedAt && session.primaryVerifiedAt <= now)
     && ["password", "magic-link", "passkey"].includes(session.authMethod ?? "");
   let reason: AssuranceReason = "ready";
-  if (!primary || session.expiresAt <= now || (policy.securityScope === "admin"
-    && (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS <= now)) reason = "reauthenticate";
-  else if (session.authMethod === "magic-link" && (policy.securityScope === "admin" || !await emailLoginEnabled(ctx))) reason = "method_disabled";
+  if (!primary) reason = "reauthenticate";
+  else if (session.authMethod === "magic-link" && (policy.scope === "admin" || !await emailLoginEnabled(ctx))) reason = "method_disabled";
   else if (session.authMethod === "passkey" && !strong) reason = "reauthenticate";
   else if (policy.emailRequired && !user.emailVerified) reason = "email_verification";
   else if (session.recoveryOnly) reason = "recovery";
   else if (policy.enrollment) reason = "enrollment";
-  else if (!policy.organizationAdminValid) reason = "enrollment";
   else if (mfaNeeded && !strong) reason = hasTotp || (hasPasskey && policy.passkeyPolicy !== "disabled") ? "mfa_verification" : "mfa_enrollment";
   else if (policy.passkeyPolicy === "required") {
     if (!hasPasskey) reason = "passkey_enrollment";
@@ -149,7 +126,7 @@ async function evaluateWithPolicy(ctx: Reader, pair: AssuranceSubject, policy: A
     ...policy, hasTotp, hasPasskey, strong, strongForChanges, reason,
     primaryRecentUntil: (session.primaryVerifiedAt ?? 0) + RECENT_AUTH_MS,
     allowed: reason === "ready", recent: recentUntil > now, recentUntil,
-    expiresAt: Math.min(session.expiresAt, policy.securityScope === "admin" ? (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS : session.expiresAt),
+    expiresAt: Math.min(session.expiresAt, policy.scope === "admin" ? (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS : session.expiresAt),
   };
 }
 
@@ -161,15 +138,3 @@ export async function authorizedSession(ctx: GenericCtx<DataModel>, recent = fal
   if (!assurance.allowed || (recent && !assurance.recent)) return null;
   return { ...pair, assurance, ownerId: (pair.user.userId ?? pair.user._id).toString() };
 }
-
-/** Shared public member-management boundary; scope is authority, securityScope is only assurance. */
-export async function requireOrgAdminSession(ctx: GenericCtx<DataModel>, organizationId: string, recent = false) {
-  const pair = await authorizedSession(ctx, recent);
-  if (!pair) throw new Error("NOT_AUTHENTICATED");
-  if (pair.assurance.scope !== "user") throw new Error("NOT_CUSTOMER");
-  const organization = await ctx.runQuery(components.betterAuth.organizations.context, { organizationId, userId: pair.user._id });
-  if (!organization.canManageMembers || pair.assurance.securityScope !== "admin") throw new Error("NOT_ORGANIZATION_ADMIN");
-  return { ...pair, organization };
-}
-
-export const requireOrganizationAdminSession = requireOrgAdminSession;

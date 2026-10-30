@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { Table } from "@tanstack/react-table";
-import { Ban, Unlock } from "lucide-react";
+import { Ban, Trash2, Unlock } from "lucide-react";
 
 import {
   Button,
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web-app-starter/design-system";
-import type { AppOperatorUser } from "@/lib/admin-api";
+import type { AdminUser } from "@/lib/admin-api";
 import { ColumnSelector } from "./column-selector";
 import type { usersTableFeatures } from "./table-features";
 
@@ -25,7 +25,8 @@ type FilterBarProps = {
   selectedCount: number;
   onBatchBan: () => void;
   onBatchUnban: () => void;
-  table: Table<typeof usersTableFeatures, AppOperatorUser>;
+  onBatchDelete: () => void;
+  table: Table<typeof usersTableFeatures, AdminUser>;
   total: number;
   loading: boolean;
 };
@@ -38,6 +39,7 @@ export function FilterBar({
   selectedCount,
   onBatchBan,
   onBatchUnban,
+  onBatchDelete,
   table,
   total,
   loading,
@@ -46,7 +48,7 @@ export function FilterBar({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-1 items-center gap-3">
         <Input
-          placeholder="Search app operators by name or email..."
+          placeholder="Search by name or email..."
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           className="max-w-xs"
@@ -63,7 +65,7 @@ export function FilterBar({
         </Select>
         <ColumnSelector table={table} />
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {loading ? "Loading..." : `${total} ${total === 1 ? "app operator" : "app operators"} loaded`}
+          {loading ? "Loading..." : `${total} users`}
         </span>
       </div>
 
@@ -79,6 +81,10 @@ export function FilterBar({
           <Button variant="outline" size="sm" onClick={onBatchUnban}>
             <Unlock className="mr-1.5 h-3.5 w-3.5" />
             Unban
+          </Button>
+          <Button variant="destructive" size="sm" onClick={onBatchDelete}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Delete
           </Button>
         </div>
       )}

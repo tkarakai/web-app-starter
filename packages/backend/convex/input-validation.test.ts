@@ -7,8 +7,7 @@ import {
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
 } from "./platform/functions";
-// Unit coverage of the pure ownership/provenance check; registered API tests cover live authorization.
-import { requireOwnedLegacyProject as requireProjectAccess } from "./projectAccess";
+import { requireProjectAccess } from "./projectAccess";
 
 function createTestEnv() {
   return createPlatformTest();

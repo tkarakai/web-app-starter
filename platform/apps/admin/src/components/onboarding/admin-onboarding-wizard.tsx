@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS } from "@/lib/app-operator-audit-compatibility";
 import { AdminSessionAccessGate } from "@web-app-starter/auth-ui";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -38,7 +37,7 @@ const STEP_TITLES: Record<WizardStep, string> = {
 };
 
 const STEP_DESCRIPTIONS: Record<WizardStep, string> = {
-  0: "Set up your app-operator credentials to get started.",
+  0: "Set up your admin credentials to get started.",
   1: "Add an extra layer of security with an authenticator app.",
   2: "Store these codes safely — they're your backup if you lose your device.",
   3: "Passkeys provide fast, phishing-resistant sign-in.",
@@ -126,7 +125,7 @@ export function AdminOnboardingWizard() {
           if (onboardingStatus === undefined) return; // still loading
 
           if (onboardingStatus && !onboardingStatus.completed) {
-            // Resume incomplete onboarding for this app operator — skip the intro
+            // Resume incomplete onboarding for this admin — skip the intro
             const resumeStep = (onboardingStatus.step ?? 1) as WizardStep;
             setEmail(userEmail ?? "");
             setStep(resumeStep);
@@ -139,7 +138,7 @@ export function AdminOnboardingWizard() {
           // Active session but onboarding is complete (or no record) — treat token
           // as missing/invalid just like the unauthenticated path below. If there's
           // no valid token, show the appropriate error; if the token is for the same
-          // email we already handled above. Redirect completed app operators to dashboard.
+          // email we already handled above. Redirect completed admins to dashboard.
           if (!token) {
             router.replace("/dashboard");
             return;
@@ -151,7 +150,7 @@ export function AdminOnboardingWizard() {
             const reasons: Record<string, string> = {
               NOT_FOUND: "This invitation link is invalid.",
               ALREADY_CLAIMED: "This invitation has already been used.",
-              EXPIRED: "This invitation has expired. Please ask an app operator to resend.",
+              EXPIRED: "This invitation has expired. Please ask an admin to resend.",
             };
             setError(reasons[tokenResult.reason] ?? "Invalid invitation.");
             setMode("error");
@@ -176,7 +175,7 @@ export function AdminOnboardingWizard() {
           const reasons: Record<string, string> = {
             NOT_FOUND: "This invitation link is invalid.",
             ALREADY_CLAIMED: "This invitation has already been used.",
-            EXPIRED: "This invitation has expired. Please ask an app operator to resend.",
+            EXPIRED: "This invitation has expired. Please ask an admin to resend.",
           };
           setError(reasons[tokenResult.reason] ?? "Invalid invitation.");
           setMode("error");
@@ -211,7 +210,7 @@ export function AdminOnboardingWizard() {
 
     await postAuditEvent({
       happenedAt: Date.now(),
-      sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.onboarding,
+      sourceDetail: "admin-onboarding",
       action: "admin.onboarding.account_created",
       resource: `admin-invitation:${email}`,
       status: "succeeded",
@@ -227,7 +226,7 @@ export function AdminOnboardingWizard() {
 
     await postAuditEvent({
       happenedAt: Date.now(),
-      sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.onboarding,
+      sourceDetail: "admin-onboarding",
       action: "admin.onboarding.totp_configured",
       resource: `admin-invitation:${email}`,
       status: "succeeded",
@@ -242,7 +241,7 @@ export function AdminOnboardingWizard() {
   const handleBackupCodesComplete = React.useCallback(async () => {
     await postAuditEvent({
       happenedAt: Date.now(),
-      sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.onboarding,
+      sourceDetail: "admin-onboarding",
       action: "admin.onboarding.backup_codes_acknowledged",
       resource: `admin-invitation:${email}`,
       status: "succeeded",
@@ -261,7 +260,7 @@ export function AdminOnboardingWizard() {
 
     await postAuditEvent({
       happenedAt: Date.now(),
-      sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.onboarding,
+      sourceDetail: "admin-onboarding",
       action,
       resource: `admin-invitation:${email}`,
       status,
@@ -269,7 +268,7 @@ export function AdminOnboardingWizard() {
 
     await postAuditEvent({
       happenedAt: Date.now(),
-      sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.onboarding,
+      sourceDetail: "admin-onboarding",
       action: "admin.onboarding.completed",
       resource: `admin-invitation:${email}`,
       status: "succeeded",
@@ -366,7 +365,7 @@ export function AdminOnboardingWizard() {
               Welcome to the Team
             </CardTitle>
             <CardDescription>
-              You've been invited as an app operator. Let's get your account
+              You've been invited as an administrator. Let's get your account
               set up with the security it needs.
             </CardDescription>
           </>
@@ -390,7 +389,7 @@ export function AdminOnboardingWizard() {
           {showIntro ? (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">
-                App-operator accounts have elevated privileges, so they require
+                Admin accounts have elevated privileges, so they require
                 stronger protection. This quick setup walks you through
                 everything — it only takes a few minutes.
               </p>
@@ -403,7 +402,7 @@ export function AdminOnboardingWizard() {
                   <div>
                     <p className="text-sm font-medium">Create your account</p>
                     <p className="text-xs text-muted-foreground">
-                      Choose a strong password for your app-operator credentials.
+                      Choose a strong password for your admin credentials.
                     </p>
                   </div>
                 </div>

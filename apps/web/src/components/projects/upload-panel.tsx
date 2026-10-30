@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { ChevronRight, Trash2, UploadCloud } from "lucide-react";
+import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
+import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
 import {
   Button,
@@ -15,33 +17,32 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@web-app-starter/design-system";
-import { usePersonalFiles } from "@/hooks/use-personal-data";
-import type { PersonalDataPlane } from "@/hooks/personal-data-context";
+import { useMutationWithToast } from "@/hooks/use-mutation-with-toast";
 import { formatBytes } from "@/lib/format";
-import { PersonalDataNotReady } from "./personal-data-not-ready";
 
 const MAX_FILE_SIZE = 1_048_576; // 1MB
 
 type UploadPanelProps = {
   projectId: Id<"projects">;
-  dataPlane: PersonalDataPlane;
   collapsible?: boolean;
 };
 
-export function UploadPanel({ projectId, dataPlane, collapsible = true }: UploadPanelProps) {
+export function UploadPanel({ projectId, collapsible = true }: UploadPanelProps) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(!collapsible);
   const t = useTranslations("uploads");
 
-  const files = usePersonalFiles(projectId, dataPlane);
+  const uploadFile = useAction(api.files.uploadFile);
+  const downloadFile = useAction(api.files.downloadFile);
   const tErrors = useTranslations("errors.convex");
-  const uploads = files.uploads ?? [];
+  const deleteUpload = useMutationWithToast(api.files.deleteUpload);
+  const uploads = useQuery(api.files.listUploads, { projectId }) ?? [];
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !files.available) return;
+    if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
       setError(t("errors.tooLarge"));
@@ -53,12 +54,11 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
     setError(null);
 
     try {
-      const request = files.capture();
-      const bytes = await file.arrayBuffer();
-      await request.upload({
-        bytes,
+      await uploadFile({
+        bytes: await file.arrayBuffer(),
         contentType: file.type || "application/octet-stream",
         name: file.name,
+        projectId,
       });
 
       if (fileInputRef.current) {
@@ -74,8 +74,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
   const handleDownload = async (id: Id<"uploads">) => {
     setError(null);
     try {
-      const request = files.capture();
-      const file = await request.download(id);
+      const file = await downloadFile({ id });
       const url = URL.createObjectURL(new Blob([file.bytes], { type: file.contentType }));
       const link = document.createElement("a");
       link.href = url;
@@ -89,8 +88,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
   };
 
   const handleDelete = async (id: Id<"uploads">) => {
-    if (!files.available) return;
-    await files.capture().remove(id);
+    await deleteUpload({ id });
   };
 
   const content = (
@@ -106,7 +104,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
           {error}
         </div>
       )}
-      {files.uploads === undefined ? <PersonalDataNotReady state={files.available || files.state === "loading" ? "loading" : "unavailable"} /> : uploads.length === 0 ? (
+      {uploads.length === 0 ? (
         <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
           {t("emptyState")}
         </div>
@@ -115,7 +113,6 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
           {uploads.map((upload) => (
             <div
               key={upload._id}
-              data-upload-id={upload._id}
               className="group flex items-center justify-between rounded-md border border-border/70 bg-card px-3 py-2 text-sm"
             >
               <div>
@@ -128,7 +125,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
                 <Button
                   variant="link"
                   size="sm"
-                  disabled={!files.available || !upload.available}
+                  disabled={!upload.available}
                   onClick={() => handleDownload(upload._id)}
                 >
                   {t("view")}
@@ -137,7 +134,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                  disabled={!files.available || !upload.available}
+                  disabled={!upload.available}
                   onClick={() => handleDelete(upload._id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -163,7 +160,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
             size="sm"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || !files.available}
+            disabled={uploading}
           >
             <UploadCloud className="h-4 w-4" />
             {uploading ? t("uploading") : t("addFile")}
@@ -193,7 +190,7 @@ export function UploadPanel({ projectId, dataPlane, collapsible = true }: Upload
             size="sm"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || !files.available}
+            disabled={uploading}
           >
             <UploadCloud className="h-4 w-4" />
             {uploading ? t("uploading") : t("addFile")}

@@ -15,9 +15,7 @@ Last verified against `main` on 2026-09-15.
 - `happenedAt`, IDs, and tokens are dynamic.
 - Unless a row lists them, `oldValue`, `newValue`, `reason`, `meta`, and `truncatedFields`
   are empty.
-- Source details below identify writer inputs, not stored classifications or operator-visible
-  output. See [source classification and projection](audit-trail-architecture.md#source-format)
-  for the authoritative storage/read contract.
+- `source` is `<transport>:<detail>` — the tables below give the full value.
 - For `web:*` events posted through `auditTrail.postEvent`, the backend injects `actor`
   (signed-in email) and `authenticatedUserId` (signed-in user ID). Clients cannot forge them.
 - For `server:*` events, both come from backend code or hook context.
@@ -42,7 +40,7 @@ Last verified against `main` on 2026-09-15.
 `waitlist.join` — `packages/backend/convex/platform/waitlist.ts`
 
 - `action`: `waitlist.joined`
-- `sourceDetail`: `waitlist`
+- `source`: `server:waitlist`
 - `actor`: submitted email (lowercased by the HTTP layer)
 - `authenticatedUserId`: empty
 - `resource`: `waitlist-entry:<entryId>`
@@ -59,7 +57,7 @@ rejections — those throw before the audit call.
 Emitted from a `finally`, so both outcomes are recorded.
 
 - `action`: `waitlist.token.claimed`
-- `sourceDetail`: `waitlist-token`
+- `source`: `server:waitlist-token`
 - `authenticatedUserId`: empty
 - `actor`: invited email from the token, or `unknown` when the token is not found
 - `resource`: `invitation-token:<tokenId>`, or `token:unknown` when not found
@@ -75,7 +73,7 @@ Lookup is by `sha256Hex(token)` against the `by_token` index — tokens are hash
 `waitlistTokens.releaseClaim` — `packages/backend/convex/platform/waitlistTokens.ts`
 
 - `action`: `waitlist.token.released`
-- `sourceDetail`: `waitlist-token`
+- `source`: `server:waitlist-token`
 - `actor`: invited email from the token
 - `resource`: `invitation-token:<tokenId>`
 - `status`: `succeeded`
@@ -91,7 +89,7 @@ with no event.
 
 ## 2. Better Auth endpoint hook events
 
-`sourceDetail`: `auth-endpoint-hook`. Emitted by the `hooks.after` middleware in
+`source`: `server:auth-endpoint-hook`. Emitted by the `hooks.after` middleware in
 `packages/backend/convex/platform/auth.ts`, driven by the `AUTH_ENDPOINT_AUDIT_CONFIG` map in the
 same module. Every event in this section carries:
 
@@ -124,7 +122,7 @@ the reset proves address control) — that side effect writes no separate audit 
 
 ## 3. Better Auth database hook events
 
-`sourceDetail`: `auth-hook`. Emitted from `databaseHooks` in
+`source`: `server:auth-hook`. Emitted from `databaseHooks` in
 `packages/backend/convex/platform/auth.ts`. `meta` carries `{"ip":…,"userAgent":…}` when the
 session record has them (IP truncated to 200 chars, user agent to 500).
 
@@ -162,13 +160,13 @@ An auth `before` hook rejection prevents the `after` hook, so **no `auth.sign_up
 is written** — only `auth.sign_up.requested` with a `failed.*` status records the attempt.
 Administrator enrollment follows the [bound enrollment contract](authentication-and-onboarding.md#6-admin-onboarding-flow):
 `adminInvitations.registerAccount` schedules the success event directly with
-`sourceDetail: admin-enrollment`, using the same actor, user ID and resource fields above.
+`source: server:admin-enrollment`, using the same actor, user ID and resource fields above.
 
 ---
 
 ## 4. Authenticated user settings
 
-`sourceDetail`: `settings` (web app) or `admin-settings` (admin app). All are
+`source`: `web:settings` (web app) or `web:admin-settings` (admin app). All are
 client-posted with `actor` and `authenticatedUserId` injected server-side.
 
 | Action | `action` | `resource` | Notes |
@@ -176,7 +174,7 @@ client-posted with `actor` and `authenticatedUserId` injected server-side.
 | Change password | `auth.password_changed` | `user:self` | `meta`: `{"revokeOtherSessions":true}` when checked. `failed.wrong_password` on auth error, `failed.unknown` on throw. Client-side mismatch (pre-request) writes nothing. |
 | Save profile, name changed | `user.name_changed` | `user:self` | `oldValue`: `{"name":"<old>"}`, `newValue`: `{"name":"<new>"}` |
 | Save profile, name unchanged | `user.profile_updated` | `user:self` | |
-| Revoke one of my sessions | `auth.session.revoked` | `session:…<last8OfToken>` | Also produces an `auth-hook` `auth.sign_out` |
+| Revoke one of my sessions | `auth.session.revoked` | `session:…<last8OfToken>` | Also produces a `server:auth-hook` `auth.sign_out` |
 | Revoke all my other sessions | `auth.session.revoked_all` | `session:all-others` | One `auth.sign_out` per deleted session |
 | Register a passkey | `auth.passkey.added` | `passkey:self` | |
 | Rename a passkey | `auth.passkey.renamed` | `passkey:<id>` | |
@@ -197,7 +195,7 @@ Failure status on all of these is `failed.unknown` unless noted; the client maps
 password case more precisely.
 
 The native account capabilities in `packages/backend/convex/platform/agentRegistry.ts`
-schedule successful events with `sourceDetail: agent-account`, the acting admin's email
+schedule successful events with `source: server:agent-account`, the acting admin's email
 and `ctx.ownerId`. `renamePasskey` and `removePasskey` use the passkey actions above and
 `passkey:<id>` resources. `revokeOtherSessions` uses `auth.session.revoked_all` with
 `user:<actingUserId>`; it preserves a live browser caller's session, while a remote delegation
@@ -206,33 +204,46 @@ Better Auth endpoint-hook sign-out events. Rejected operations write no success 
 
 ---
 
-## 5. App-operator identity administration
+## 5. Admin user management
 
-The admin UI helpers in `platform/apps/admin/src/lib/admin-api.ts` call the guarded
-`api.platform.agentUsers` APIs through the authenticated provider client. The directory and
-session dialog target canonical app operators only. They no longer post client success/failure
-records; the executing backend mutations schedule success events with
-`sourceDetail: agent-users`, the acting app operator's email and `ctx.ownerId`.
-Direct UI and native calls use the same writers. Rejected operations write no success event.
+`source`: `web:admin`. Emitted from the shared helpers in `platform/apps/admin/src/lib/admin-api.ts`
+(`banUser`, `unbanUser`, `removeUser`, `setUserRole`, `revokeSession`, `revokeAllSessions`),
+each taking `postAuditEvent` as a callback from the calling component.
 
-| Function | `action` | `resource` | Extra fields |
+Callers: `users-data-table.tsx`, `user-sessions-dialog.tsx` (under
+`platform/apps/admin/src/components/users/`) and `session-viewer.tsx` (under
+`platform/apps/admin/src/components/sessions/`).
+
+All emit from a `finally`, so both success and failure are recorded. Failure statuses are
+mapped from the auth API error: `failed.validation_error`, `failed.unauthorized`,
+`failed.blocked`, `failed.not_found`, `failed.rate_limited`, `failed.internal_error`,
+`failed.unknown`.
+
+| Action | `action` | `resource` | Extra fields |
 |---|---|---|---|
-| `ban` | `admin.user.banned` | `user:<targetUserId>` | `reason`: requested ban reason |
-| `unban` | `admin.user.unbanned` | `user:<targetUserId>` | |
-| `update` | `user.profile_updated` | `user:<targetUserId>` | |
-| `revokeSession` | `admin.session.revoked` | `session:<opaqueSessionId>` | |
-| `revokeSessions` | `admin.session.revoked_all` | `user:<targetUserId>` | |
+| Ban user | `admin.user.banned` | `user:<targetUserId>` | `reason`: ban reason; `meta`: `{"banExpiresIn":<seconds>}` when set |
+| Unban user | `admin.user.unbanned` | `user:<targetUserId>` | |
+| Delete user | `admin.user.deleted` | `user:<targetUserId>` | |
+| Change role | `admin.role_changed` | `user:<targetUserId>` | `newValue`: `{"role":"admin"}` or `{"role":"user"}` |
+| Revoke one session | `admin.session.revoked` | `session:…<last8OfToken>` | |
+| Revoke all sessions | `admin.session.revoked_all` | `user:<targetUserId>` | |
 
-Identity deletion and global role conversion are unavailable. The compatibility `setRole`
-API permits only an already-held `admin` value and writes no role-change event. The enum's
-historical deletion/role-change actions remain for retained records. Direct component session
-changes do not emit Better Auth endpoint-hook events.
+On failure the extra fields still reflect what was *requested*, not what took effect.
+
+Native user capabilities in `packages/backend/convex/platform/agentUsers.ts` schedule
+successful events with `source: server:agent-users`, the acting admin's email and
+`ctx.ownerId`. Ban, unban, delete, role change and session revocation use the actions above;
+`update` uses `user.profile_updated` with `user:<targetUserId>`. Differences from the UI
+records: ban records `reason` without `banExpiresIn` metadata; role change records the old
+and new role as plain strings; single-session revocation uses `session:<opaqueSessionId>`.
+Direct component changes do not emit Better Auth endpoint-hook events, and rejected
+operations write no success event.
 
 ---
 
 ## 6. Backend admin mutations
 
-`sourceDetail`: `admin-mutation` unless noted. `actor` is the admin's email and
+`source`: `server:admin-mutation` unless noted. `actor` is the admin's email and
 `authenticatedUserId` is `ctx.ownerId` — except where flagged below. **None of these
 write a failure event**; the mutations throw before reaching the audit call.
 
@@ -262,7 +273,7 @@ Note the `resource` shape is inconsistent between the two — email for `sent`, 
 For invitation acceptance and role activation, see the
 [administrator enrollment contract](authentication-and-onboarding.md#6-admin-onboarding-flow).
 `completeOnboarding` also schedules `admin.onboarding.completed` when completing bound
-enrollment: `sourceDetail: admin-enrollment`, `resource: user:<userId>`, `status: succeeded`,
+enrollment: `source: server:admin-enrollment`, `resource: user:<userId>`, `status: succeeded`,
 with the recipient's email and user ID as actor and authenticated user. This is separate
 from the client wizard event catalogued below.
 
@@ -271,7 +282,7 @@ from the client wizard event catalogued below.
 All routed through the module's local audit helper, with `resource` always
 `announcement:<announcementId>` and `status` always `succeeded`.
 
-Admin-initiated (`sourceDetail`: `admin-mutation`, `actor`: admin email):
+Admin-initiated (`source`: `server:admin-mutation`, `actor`: admin email):
 `announcement.created`, `announcement.updated`, `announcement.deleted`,
 `announcement.live_enabled`, `announcement.live_disabled`,
 `announcement.publish_scheduled`, `announcement.publish_canceled`,
@@ -286,7 +297,7 @@ which.
 ### Settings and policy changes — `packages/backend/convex/platform/appSettings.ts`
 
 `appSettings.set` is the mutation the admin UI actually calls. It emits
-`sourceDetail`: `admin-settings` with `actor` and `authenticatedUserId` both set to
+`source`: `server:admin-settings` with `actor` and `authenticatedUserId` both set to
 `ctx.ownerId` (a **user ID, not an email** — unlike every other admin event),
 `resource`: `appSettings:<key>`, and `oldValue` / `newValue` holding the raw stored
 strings.
@@ -305,13 +316,6 @@ Only keys present in the module's `POLICY_AUDIT_ACTIONS` map produce an event:
 
 Other accepted keys write **no** audit event — see section 7.
 
-### Organization availability — `packages/backend/convex/platform/organizations.ts`
-
-`setLifecycle` schedules `admin.organization.lifecycle_changed` after the guarded component
-mutation succeeds, with `sourceDetail: organization-control`, `resource: organization:<organizationId>`,
-`newValue` equal to the requested `active` or `disabled` value, and `status: succeeded`.
-The actor is the authenticated app operator's email and ID. Rejected changes write no success event.
-
 ### Legacy policy mutations — `packages/backend/convex/platform/adminAuth.ts`
 
 `setMfaPolicy` (`admin.mfa_policy_changed`) and `setEmailVerificationPolicy`
@@ -323,7 +327,7 @@ rather than an email. **Neither is called from the admin UI** — the UI uses
 
 ## 7. Admin onboarding wizard
 
-`sourceDetail`: `admin-onboarding`, `resource`: `admin-invitation:<email>`, `status`:
+`source`: `web:admin-onboarding`, `resource`: `admin-invitation:<email>`, `status`:
 `succeeded`. Emitted from
 `platform/apps/admin/src/components/onboarding/admin-onboarding-wizard.tsx`.
 
@@ -379,7 +383,8 @@ changing them leaves no trace:
 - Token deletions cascaded by `waitlist.remove`.
 - Every failure path in section 6 — the backend admin mutations throw before auditing, so
   a rejected admin action (`NOT_ADMIN`, `CANNOT_DELETE_CLAIMED`, `ENTRY_NOT_FOUND`) is
-  invisible. The app-operator identity mutations in section 5 likewise write success only.
+  invisible. Compare section 5, where the client emits from a `finally` and failures are
+  captured.
 
 ### Agent surface availability and grant revocation
 
@@ -397,6 +402,6 @@ These records use `source: server:agent-surface`, the authenticated operator's e
 [the surface controls](agentic-announcements.md#enable-and-authenticate).
 
 `agentAccess.revoke` in `packages/backend/convex/platform/agentAccess.ts` schedules
-`admin.agent_grant_revoked`, `sourceDetail: agent-access`, `resource: agent-grant:<id>`,
+`admin.agent_grant_revoked`, `source: server:agent-access`, `resource: agent-grant:<id>`,
 `status: succeeded`, with the acting admin's email and `ctx.ownerId`. It requires ownership
 and recent authentication; rejected revocations write no success event.

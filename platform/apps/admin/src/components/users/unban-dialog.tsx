@@ -10,13 +10,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@web-app-starter/design-system";
-import type { AppOperatorUser } from "@/lib/admin-api";
+import type { AdminUser } from "@/lib/admin-api";
 import { BanDetailsCard } from "./ban-details-card";
 
 type UnbanDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: AppOperatorUser;
+  user: AdminUser;
   pending?: boolean;
   onConfirm: () => void;
 };
@@ -43,7 +43,7 @@ export function UnbanDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={pending}>
-            {pending ? "Processing..." : "Unban app operator"}
+            {pending ? "Processing..." : "Unban user"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

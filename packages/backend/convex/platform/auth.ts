@@ -1,17 +1,14 @@
-import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS, LEGACY_AUTH_ENDPOINT_AUDIT_SOURCE_DETAIL } from "./appOperatorAuditCompatibility";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
-import { verifyPassword } from "better-auth/crypto";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { v } from "convex/values";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { admin, emailOTP, haveIBeenPwned, magicLink, organization, twoFactor } from "better-auth/plugins";
+import { admin, emailOTP, haveIBeenPwned, magicLink, twoFactor } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
 import { getMinPasswordLength } from "@web-app-starter/auth/password-policy";
-import { organizationDefaults } from "@web-app-starter/auth/organizations";
 import { AUTH_COOKIE_PREFIX, SESSION_COOKIE_NAME } from "@web-app-starter/auth/cookies";
 
 import { components, internal } from "../_generated/api";
@@ -27,11 +24,9 @@ import { renderVerificationEmailTemplate, formatDurationHuman } from "./emailTem
 import { isSignupOnboarding, parseOnboardingType } from "./onboardingType";
 import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
-import { decodeBackupCodes, readBackupCodes } from "./recoveryCodes";
+import { readBackupCodes } from "./recoveryCodes";
 import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields } from "./sessionFields";
-import { customerAdmissionFields } from "./customerAdmissionFields";
-import { assertLocalFixtures } from "./localFixtures";
 import { identitySession } from "./sessionPolicy";
 
 /** Truncate a string to at most `max` characters. */
@@ -90,30 +85,55 @@ const multiOriginPlugin = (siteUrls: string[]): BetterAuthPlugin => ({
   },
 });
 
-// Generic Better Auth administration has multi-transaction target checks and organization-user-wide
-// semantics. Keep it unavailable; supported operator APIs check actor/target at commit instead.
-function privacyBoundaryCode(path: string): string | null {
-  if (path.startsWith("/admin/")) return "OPERATOR_API_REQUIRED";
-  // Identity deletion can orphan legacy private ownership or violate organization membership invariants.
-  if (path === "/delete-user" || path === "/delete-user/callback") return "IDENTITY_DELETION_REQUIRES_REVIEWED_MAPPING";
-  return null;
-}
+// Admin mutation paths that should be guarded for protected admins
+const PROTECTED_ADMIN_PATHS = [
+  "/admin/ban-user",
+  "/admin/remove-user",
+  "/admin/set-role",
+];
 
-const appOperatorAdminBoundaryPlugin = (): BetterAuthPlugin => ({
-  // Deprecated plugin identifier retained for compatibility; this is the app-operator boundary.
-  id: "operator-admin-boundary",
-  async onRequest(request) {
+// Plugin that prevents banning, deleting, or demoting users whose emails
+// appear in the adminEmails table.
+const protectedAdminPlugin = (
+  convexCtx: GenericCtx<DataModel>,
+): BetterAuthPlugin => ({
+  id: "protected-admin",
+  async onRequest(request, ctx) {
     const url = new URL(request.url);
     // Strip the base path prefix (e.g. /api/auth) to get the route path
     const path = url.pathname.replace(/^\/api\/auth/, "");
 
-    const code = privacyBoundaryCode(path);
-    if (!code) return;
-    return {
-      response: new Response(JSON.stringify({ code, message: code }), {
-        status: 403, headers: { "Content-Type": "application/json" },
-      }),
-    };
+    if (!PROTECTED_ADMIN_PATHS.some((p) => path.endsWith(p))) return;
+
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.clone().json()) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+
+    const userId = body.userId as string | undefined;
+    if (!userId) return;
+
+    const targetUser = await ctx.internalAdapter.findUserById(userId);
+    if (!targetUser) return;
+
+    const actionCtx = requireActionCtx(convexCtx);
+    const adminEmailRows = await actionCtx.runQuery(internal.platform.adminEmails.list);
+    if (
+      adminEmailRows.some(
+        (row: { email: string }) => row.email === targetUser.email,
+      )
+    ) {
+      return {
+        response: new Response(
+          JSON.stringify({
+            error: { message: "Cannot modify a protected admin" },
+          }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        ),
+      };
+    }
   },
 });
 
@@ -418,10 +438,7 @@ const emailVerifiedOnResetPlugin = (
 
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
-  // localOperatorSignup is a deprecated fixture-option spelling for local app-operator signup.
-  options: { localOperatorSignup?: boolean; requireMemberVerification?: boolean } = {},
 ) => {
-  if (options.localOperatorSignup) assertLocalFixtures();
   const { siteUrl, siteUrls } = getSiteUrls();
   const passkeyRpId = getPasskeyRpId();
   const assurance = createAssuranceHooks(ctx);
@@ -444,7 +461,6 @@ export const createAuthOptions = (
       });
       return adapter;
     },
-    user: { additionalFields: customerAdmissionFields },
     session: {
       // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
       // The backend policy also enforces an absolute four-hour administrator lifetime.
@@ -484,9 +500,8 @@ export const createAuthOptions = (
           internal.platform.appSettings.getInternal,
           { key: USER_EMAIL_VERIFICATION_REQUIRED_KEY }
         );
-        // Member acceptance always requires verified email, even if ordinary
-        // ordinary user verification is optional. Only a bound server flow selects this.
-        if (emailVerifRequired === false && !options.requireMemberVerification) return;
+        // If the admin has disabled email verification, skip sending.
+        if (emailVerifRequired === false) return;
 
         const verificationTemplateSetting = await actionCtx.runQuery(
           internal.platform.appSettings.getInternal,
@@ -525,41 +540,6 @@ export const createAuthOptions = (
     },
     hooks: {
       before: createAuthMiddleware(async endpoint => {
-        // onRequest is not run by direct Better Auth API calls. Apply the same boundary there.
-        const code = privacyBoundaryCode(endpoint.path ?? "");
-        if (code) throw new APIError("FORBIDDEN", { code, message: code });
-        if (endpoint.path === "/reset-password") {
-          // Direct auth.api calls skip onRequest. Capture the native capability
-          // before Better Auth atomically consumes it, for both entry points.
-          const token = endpoint.body?.token ?? endpoint.query?.token;
-          const verification = typeof token === "string"
-            ? await endpoint.context.internalAdapter.findVerificationValue(`reset-password:${token}`) : null;
-          pendingResetUserId = verification && new Date(verification.expiresAt).getTime() > Date.now() ? verification.value : null;
-        }
-        if (endpoint.path === "/two-factor/verify-backup-code") {
-          const incrementOne = endpoint.context.adapter.incrementOne;
-          endpoint.context.adapter.incrementOne = async input => {
-            if (input.model === "twoFactor" && typeof input.set?.backupCodes === "string") {
-              const factor = await endpoint.context.adapter.findOne<{ id: string; userId: string; backupCodes: string }>({ model: "twoFactor", where: input.where });
-              if (factor && await requireActionCtx(ctx).runQuery(components.betterAuth.organizationSecurity.hasEnrollment, { userId: factor.userId })) {
-                const previous = await decodeBackupCodes(factor.backupCodes);
-                const next = await decodeBackupCodes(input.set.backupCodes);
-                const code = endpoint.body?.code;
-                if (typeof code !== "string" || !previous.includes(code) || next.length !== previous.length - 1
-                  || new Set(previous).size !== previous.length || next.some(value => value === code || !previous.includes(value))
-                  || new Set(next).size !== next.length) throw new APIError("FORBIDDEN", { code: "INVALID_RECOVERY_CODES", message: "INVALID_RECOVERY_CODES" });
-                await requireActionCtx(ctx).runMutation(components.betterAuth.organizationSecurity.consumeRecoveryCode, {
-                  userId: factor.userId, factorId: factor.id, currentCodes: factor.backupCodes, nextCodes: input.set.backupCodes,
-                });
-                // The atomic component CAS already consumed the code. Retain the
-                // adapter's result mapping with an idempotent CAS against that set.
-                return incrementOne({ ...input, where: input.where.map(condition => condition.field === "backupCodes"
-                  ? { ...condition, value: input.set!.backupCodes as string } : condition) });
-              }
-            }
-            return incrementOne(input);
-          };
-        }
         if (endpoint.path !== "/revoke-other-sessions") return;
         // Better Auth deletes these in parallel and silently skips a deletion
         // when its lookup hits Convex's query concurrency limit. Keep the full
@@ -606,7 +586,7 @@ export const createAuthOptions = (
         await runAuditEvent(actionCtx, {
           happenedAt: Date.now(),
           actor,
-          sourceDetail: LEGACY_AUTH_ENDPOINT_AUDIT_SOURCE_DETAIL,
+          sourceDetail: "auth-endpoint-hook",
           action: config.action,
           resource: config.resource(actor),
           status,
@@ -632,49 +612,9 @@ export const createAuthOptions = (
       },
     },
     databaseHooks: {
-      account: {
-        update: {
-          before: async (account, endpoint) => {
-            if (typeof account.password !== "string") return;
-            const path = endpoint?.path;
-            const userId = path === "/reset-password" ? pendingResetUserId : endpoint?.context.session?.user.id;
-            if (!userId) return; // Unsupported/unbound raw updates still meet the mandatory adapter invariant.
-            const actionCtx = requireActionCtx(ctx);
-            if (!await actionCtx.runQuery(components.betterAuth.organizationSecurity.hasEnrollment, { userId })) return;
-            const password = endpoint?.body?.newPassword;
-            const user = await authComponent.getAnyUserById(ctx, userId);
-            if (!user || typeof password !== "string" || password.length > 128) throw new APIError("BAD_REQUEST", { code: "PASSWORD_TOO_WEAK", message: "PASSWORD_TOO_WEAK" });
-            const adminPasswordValidated = validatePasswordStrength(password, user.email, "admin").valid;
-            const authority = await actionCtx.runQuery(components.betterAuth.organizations.adminSecurity, { userId });
-            if (authority.required && !adminPasswordValidated) throw new APIError("BAD_REQUEST", { code: "PASSWORD_TOO_WEAK", message: "PASSWORD_TOO_WEAK" });
-            // Better Auth 1.6 consumes a reset token before this hook, or verifies
-            // the current password for change-password. Keep that native proof,
-            // but move hash + durable enrollment receipts together atomically.
-            if (path !== "/reset-password" && path !== "/change-password") throw new APIError("FORBIDDEN", { code: "AUTH_METHOD_DISABLED", message: "AUTH_METHOD_DISABLED" });
-            if (path === "/change-password" && !endpoint?.context.session?.session.id) throw new APIError("FORBIDDEN", { code: "NOT_AUTHENTICATED", message: "NOT_AUTHENTICATED" });
-            const current = await actionCtx.runQuery(components.betterAuth.adapter.findOne, { model: "account", where: [
-              { field: "userId", value: userId }, { field: "providerId", value: "credential" },
-            ] });
-            if (!current?.password) throw new APIError("FORBIDDEN", { code: "REAUTHENTICATION_REQUIRED", message: "REAUTHENTICATION_REQUIRED" });
-            if (path === "/change-password" && (typeof endpoint?.body?.currentPassword !== "string"
-              || !await verifyPassword({ password: endpoint.body.currentPassword, hash: current.password }))) {
-              throw new APIError("FORBIDDEN", { code: "REAUTHENTICATION_REQUIRED", message: "REAUTHENTICATION_REQUIRED" });
-            }
-            await actionCtx.runMutation(components.betterAuth.organizationSecurity.replaceCredential, {
-              userId, currentHash: current.password, newHash: account.password, adminPasswordValidated,
-              ...(path === "/change-password" ? { sessionId: endpoint?.context.session?.session.id } : {}),
-            });
-          },
-        },
-      },
       session: {
         create: {
-          before: async (session, endpoint) => {
-            // The persisted admission survives a failed signup after-hook. Retry only
-            // explicitly customer-admitted users, never every identity that signs in.
-            await requireActionCtx(ctx).runMutation(components.betterAuth.organizations.resumeCustomerProvisioning, { userId: session.userId });
-            return assurance.beforeCreate?.(session, endpoint);
-          },
+          before: assurance.beforeCreate,
           after: async (session) => {
             const actionCtx = requireActionCtx(ctx);
             const s = session as Record<string, unknown>;
@@ -695,7 +635,7 @@ export const createAuthOptions = (
               happenedAt: Date.now(),
               actor: email,
               authenticatedUserId: userId,
-              sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.authentication,
+              sourceDetail: "auth-hook",
               action: "auth.sign_in",
               resource: `session:${sessionId}`,
               status: "succeeded",
@@ -723,7 +663,7 @@ export const createAuthOptions = (
               happenedAt: Date.now(),
               actor: email,
               authenticatedUserId: userId,
-              sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.authentication,
+              sourceDetail: "auth-hook",
               action: "auth.sign_out",
               resource: `session:${sessionId}`,
               status: "succeeded",
@@ -761,18 +701,17 @@ export const createAuthOptions = (
             if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
               throw new Error("ADMIN_ENROLLMENT_REQUIRED");
             }
-            return { data: { ...user, customerAdmission: options.localOperatorSignup ? null : hasWaitlistInvitation ? "customer-invitation" : "public-signup" } };
+            return { data: user };
           },
           after: async (user) => {
             const actionCtx = requireActionCtx(ctx);
             const userId = (user as Record<string, unknown>).id as string ?? "";
-            await actionCtx.runMutation(components.betterAuth.organizations.resumeCustomerProvisioning, { userId });
 
             await runAuditEvent(actionCtx, {
               happenedAt: Date.now(),
               actor: user.email,
               authenticatedUserId: userId || undefined,
-              sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.authentication,
+              sourceDetail: "auth-hook",
               action: "auth.sign_up",
               resource: `user:${userId}`,
               status: "succeeded",
@@ -786,11 +725,9 @@ export const createAuthOptions = (
       convexRateLimitPlugin(ctx),
       emailVerifiedOnResetPlugin((id) => { pendingResetUserId = id; }),
       multiOriginPlugin(siteUrls),
-      appOperatorAdminBoundaryPlugin(),
+      protectedAdminPlugin(ctx),
       passwordStrengthPlugin(ctx),
       admin(),
-      // Organization endpoints remain denied by authRoutePolicy until explicitly integrated.
-      organization(organizationDefaults),
       twoFactor({
         issuer: getTotpIssuer(siteUrl),
         totpOptions: {
@@ -856,9 +793,8 @@ export const createAuthOptions = (
   } satisfies BetterAuthOptions;
 };
 
-// Retain the deprecated localOperatorSignup option name for existing fixture callers.
-export const createAuth = (ctx: GenericCtx<DataModel>, options: { localOperatorSignup?: boolean; requireMemberVerification?: boolean } = {}) => {
-  return betterAuth(createAuthOptions(ctx, options));
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  return betterAuth(createAuthOptions(ctx));
 };
 
 export const getCurrentUser = query({

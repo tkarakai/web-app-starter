@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS } from "@/lib/app-operator-audit-compatibility";
 import { useMutation, useQuery } from "convex/react";
 import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -117,7 +116,7 @@ export function AdminPasskeySection() {
       setAdding(false);
       postAuditEvent({
         happenedAt,
-        sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.settings,
+        sourceDetail: "admin-settings",
         action: "auth.passkey.added",
         resource: "passkey:self",
         status,
@@ -155,7 +154,7 @@ export function AdminPasskeySection() {
     } finally {
       postAuditEvent({
         happenedAt,
-        sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.settings,
+        sourceDetail: "admin-settings",
         action: "auth.passkey.renamed",
         resource: `passkey:${id}`,
         status,
@@ -187,7 +186,7 @@ export function AdminPasskeySection() {
     } finally {
       postAuditEvent({
         happenedAt,
-        sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.settings,
+        sourceDetail: "admin-settings",
         action: "auth.passkey.deleted",
         resource: `passkey:${id}`,
         status,
@@ -204,7 +203,7 @@ export function AdminPasskeySection() {
       <div className="flex items-center gap-2">
         <KeyRound className="h-4 w-4 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Manage passkeys for your app-operator account.
+          Manage passkeys for your admin account.
         </p>
       </div>
 
@@ -214,7 +213,7 @@ export function AdminPasskeySection() {
         </Badge>
         {policy === "disabled" ? (
           <span className="text-xs text-muted-foreground">
-            App-admin passkey policy is currently disabled.
+            Admin passkey policy is currently disabled.
           </span>
         ) : null}
       </div>

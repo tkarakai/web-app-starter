@@ -9,24 +9,21 @@ import {
 } from "./platform/functions";
 import { requireFileAccess } from "./fileAccess";
 import { requireProjectAccess } from "./projectAccess";
-import { requireLegacyPrivateAccess } from "./platform/tenantContext";
 
 export const list = authedQuery({
-  args: { organizationId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    await requireLegacyPrivateAccess(ctx, args.organizationId);
+  args: {},
+  handler: async (ctx) => {
     return ctx.db
       .query("projects")
       .withIndex("by_owner", (q) => q.eq("ownerId", ctx.ownerId))
       .order("desc")
-      .collect().then(rows => rows.filter(row => row.organizationId === undefined));
+      .collect();
   },
 });
 
 export const listWithStats = authedQuery({
-  args: { organizationId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    await requireLegacyPrivateAccess(ctx, args.organizationId);
+  args: {},
+  handler: async (ctx) => {
     const projects = await ctx.db
       .query("projects")
       .withIndex("by_owner", (q) => q.eq("ownerId", ctx.ownerId))
@@ -34,7 +31,7 @@ export const listWithStats = authedQuery({
       .collect();
 
     return Promise.all(
-      projects.filter(project => project.organizationId === undefined).map(async (project) => {
+      projects.map(async (project) => {
         const tasks = await ctx.db
           .query("tasks")
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
@@ -45,8 +42,6 @@ export const listWithStats = authedQuery({
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
           .collect();
 
-        if (tasks.some(task => task.organizationId !== undefined || task.ownerId !== ctx.ownerId)
-          || uploads.some(upload => upload.organizationId !== undefined || upload.ownerId !== ctx.ownerId)) throw new Error("LEGACY_RESOURCE_REQUIRES_MIGRATION");
         return {
           ...project,
           taskCount: tasks.length,
@@ -59,22 +54,18 @@ export const listWithStats = authedQuery({
 });
 
 export const get = authedQuery({
-  args: { id: v.id("projects"), organizationId: v.optional(v.string()) },
+  args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    await requireLegacyPrivateAccess(ctx, args.organizationId);
-    const project = await ctx.db.get(args.id);
-    return project && project.ownerId === ctx.ownerId && project.organizationId === undefined ? project : null;
+    return requireProjectAccess(ctx, args.id);
   },
 });
 
 export const create = authedMutation({
   args: {
-    organizationId: v.optional(v.string()),
     name: v.string(),
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireLegacyPrivateAccess(ctx, args.organizationId);
     assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
     assertMaxLength(args.description, MAX_DESCRIPTION_LENGTH, "DESCRIPTION");
 
@@ -89,13 +80,12 @@ export const create = authedMutation({
 
 export const update = authedMutation({
   args: {
-    organizationId: v.optional(v.string()),
     id: v.id("projects"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireProjectAccess(ctx, args.id, args.organizationId);
+    await requireProjectAccess(ctx, args.id);
     assertMaxLength(args.name, MAX_NAME_LENGTH, "NAME");
     assertMaxLength(args.description, MAX_DESCRIPTION_LENGTH, "DESCRIPTION");
 
@@ -108,9 +98,9 @@ export const update = authedMutation({
 });
 
 export const remove = authedMutation({
-  args: { id: v.id("projects"), organizationId: v.optional(v.string()) },
+  args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    await requireProjectAccess(ctx, args.id, args.organizationId);
+    await requireProjectAccess(ctx, args.id);
 
     // Cascade delete all tasks belonging to this project
     const tasks = await ctx.db
@@ -119,7 +109,6 @@ export const remove = authedMutation({
       .collect();
 
     for (const task of tasks) {
-      if (task.organizationId !== undefined || task.ownerId !== ctx.ownerId) throw new Error("LEGACY_RESOURCE_REQUIRES_MIGRATION");
       await ctx.db.delete(task._id);
     }
 
@@ -130,7 +119,7 @@ export const remove = authedMutation({
       .collect();
 
     // Refuse the entire cascade when a legacy or aliased object needs operator review.
-    for (const upload of uploads) await requireFileAccess(ctx, upload, args.organizationId);
+    for (const upload of uploads) await requireFileAccess(ctx, upload);
 
     for (const upload of uploads) {
       await ctx.storage.delete(upload.storageId);

@@ -9,8 +9,8 @@ This spec covers authentication, onboarding, and recovery for both **admin** and
 |---|---|---|
 | App | Admin app | Web app |
 | Sign-in URL | `admin-app/sign-in` | `web-app/sign-in` |
-| Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` for customer signup; [member admission API](architecture.md#invitation-bound-member-admission-api) for organization invitations |
-| How account is created | Bootstrap or admin invitation only | Self-signup (if enabled), customer invitation or [invitation-bound member registration](architecture.md#invitation-bound-member-admission-api) |
+| Onboarding path | `admin-app/onboarding` (dedicated wizard) | `web-app/sign-up` (signup flow *is* onboarding) |
+| How account is created | Bootstrap or admin invitation only | Self-signup (if enabled) or user invitation |
 | Password required | Yes — see §5 | Yes — see §5 |
 | 2FA (TOTP) | Required for invitation enrollment; subsequent access follows live MFA policy | Admin-configurable: optional or required |
 | Passkey | According to `adminPasskeyPolicy` | According to `userPasskeyPolicy` |
@@ -53,10 +53,7 @@ No magic link option for admins.
 
 ### 3.3 Admin-Controlled Security Policies for Users
 
-Admins configure these from the admin app's security settings. Policies are read at request time.
-`adminPasskeyPolicy` is canonical in the auth component so policy changes and last-org-admin
-protection commit together; other settings remain in `appSettings`. Use the public settings APIs,
-including for this key; see [organization security and storage compatibility](organization-security.md).
+Admins configure these from the admin app's security settings. All policies are stored in the `appSettings` table and read at request time.
 
 | Setting | Key | Options | Default |
 |---|---|---|---|
@@ -210,20 +207,6 @@ No stored-answer migration is needed.
 User enters their email and creates a password that meets the shared policy in §5.
 
 On submit, Better Auth's `signUp.email()` creates the credential account and sends a verification email (if email verification is enabled by admin policy).
-
-Server-authorized new-customer signup also provisions one
-invisible personal organization with the initial user as `org-admin`, without granting app-operator
-role or requiring administrator factor enrollment. Customer onboarding invitations remain new-customer
-admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
-for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
-
-### Organization-member invitations are not customer signup
-
-A member invitation joins an existing organization, rather than admitting a new customer.
-The [invitation-bound admission API](architecture.md#invitation-bound-member-admission-api)
-owns the registration, recipient verification, acceptance and pending administrator setup
-contract, including its current integration limits. The customer signup steps below apply to
-new-customer admission.
 
 ### 7.2 Step 2 — Verify Email (if required by admin policy)
 
@@ -406,7 +389,7 @@ seven-day lifetime. Expired, revoked or banned sessions fail live backend checks
 using an earlier Convex JWT. An already delivered response cannot be withdrawn from a client;
 subsequent requests and reactive queries that rerun check the live policy again.
 
-App-operator HTTP/control mutations and password/profile/factor
+Administrative HTTP operations and platform administrative mutations, password/profile/factor
 changes and recovery-code export require authentication within **five minutes**. When an enrolled
 or required factor exists, that must be recent strong proof; a password alone cannot substitute.
 Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the
@@ -443,8 +426,7 @@ content resumes with its in-memory state; no setup secrets are persisted in brow
 
 For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
 `packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
-app-operator writes and organization-owned data, follow the
-[builder and authority boundaries](organization-context.md).
+administrative writes, use `adminMutation`, which adds the admin-role and recent-proof checks.
 Actions should authorize through an internal query using the same helper and recheck before
 committing sensitive side effects. `auth.getCurrentUser` and `sessionAssurance.status` intentionally
 return limited self-service identity/status and are **not authorization helpers**. Never authorize

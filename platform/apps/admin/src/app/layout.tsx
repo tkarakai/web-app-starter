@@ -23,7 +23,7 @@ const raleway = Raleway({
 });
 
 export const metadata: Metadata = {
-  title: `App admin - ${appConfig.identity.productName}`,
+  title: `Admin - ${appConfig.identity.productName}`,
   description: `Administration panel for ${appConfig.identity.productName}.`,
   icons: {
     icon: [

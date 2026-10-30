@@ -2,12 +2,6 @@ import { defineConfig, devices } from "@playwright/test";
 import { localAppOrigin } from "@web-app-starter/app-config";
 import * as fs from "fs";
 import * as path from "path";
-import { assertSecretSafeRunner } from "../../platform/tooling/e2e/secret-safe-config";
-
-// Auth tests display TOTP/recovery secrets. Playwright's automatic AI error
-// snapshot is independent of trace/screenshot settings and must remain disabled.
-process.env.PLAYWRIGHT_NO_COPY_PROMPT = "1";
-assertSecretSafeRunner();
 
 /**
  * Read a value from .env.local (updated by dev-start.sh with actual ports)
@@ -38,10 +32,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  // Sharded CI runs emit blob reports that a downstream job merges into one HTML
+  // report; a local run still gets the HTML report directly.
+  //
   // CI runs four shards (platform-ci-web.yml). Each shard runs whole spec files,
   // balanced by the per-file seconds in qa/e2e/shard-durations.json; refresh it
   // when you add or slow down specs (platform/docs/testing.md).
-  reporter: [["../../platform/tooling/e2e/secret-safe-reporter.ts"]],
+  reporter: process.env.CI
+    ? [["github"], ["blob"]]
+    : [["html", { outputFolder: "qa/playwright-report" }]],
   updateSnapshots: "missing",
   snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
   expect: {
@@ -52,19 +51,13 @@ export default defineConfig({
   },
   use: {
     baseURL: deployedBaseUrl ?? getEnvValue("APP_ORIGIN", localAppOrigin("web")),
-    trace: "off",
-    screenshot: "off",
-    video: "off",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
   },
   projects: [
     {
       name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        trace: "off",
-        screenshot: "off",
-        video: "off",
-      },
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer: deployedBaseUrl

@@ -4,8 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import { ALLOWED_CONTENT_TYPES } from "./files";
 import { isEmailVerificationRequired } from "./platform/functions";
-// Pure ownership unit coverage. Live authentication/organization gates are exercised by registered API suites.
-import { requireOwnedLegacyProject as requireProjectAccess } from "./projectAccess";
+import { requireProjectAccess } from "./projectAccess";
 import { VALID_THEMES } from "./platform/userProfiles";
 
 function createTestEnv() {
@@ -79,7 +78,7 @@ describe("email verification policy fallback", () => {
   });
 });
 
-describe("legacy private resource ownership", () => {
+describe("authorization — cross-tenant isolation", () => {
   describe("project access control", () => {
     test("owner can access their own project", async () => {
       const t = createTestEnv();

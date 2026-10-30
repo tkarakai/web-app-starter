@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS } from "@/lib/app-operator-audit-compatibility";
 import {
   Globe,
   Laptop,
@@ -121,7 +120,7 @@ export function AdminSessionsList() {
       setRevoking(null);
       postAuditEvent({
         happenedAt,
-        sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.settings,
+        sourceDetail: "admin-settings",
         action: "auth.session.revoked",
         resource: `session:…${sessionToken.slice(-8)}`,
         status,
@@ -144,7 +143,7 @@ export function AdminSessionsList() {
       setRevokingAll(false);
       postAuditEvent({
         happenedAt,
-        sourceDetail: LEGACY_APP_OPERATOR_UI_AUDIT_SOURCE_DETAILS.settings,
+        sourceDetail: "admin-settings",
         action: "auth.session.revoked_all",
         resource: "session:all-others",
         status,

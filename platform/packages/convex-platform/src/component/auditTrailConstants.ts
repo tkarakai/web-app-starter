@@ -46,7 +46,6 @@ export const AUDIT_ACTIONS = [
   "admin.user.unbanned",
   "admin.user.deleted",
   "admin.role_changed",
-  "admin.organization.lifecycle_changed",
   "admin.mcp_enabled",
   "admin.mcp_disabled",
   "admin.agent_surface_enabled",

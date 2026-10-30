@@ -9,9 +9,10 @@ import {
   Tablet,
   Trash2,
 } from "lucide-react";
-import { useConvex } from "convex/react";
+import { useMutation } from "convex/react";
 import { toast } from "sonner";
 
+import { api } from "@repo/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,13 +42,13 @@ import {
   TooltipTrigger,
   parseUserAgent,
 } from "@web-app-starter/design-system";
-import type { AppOperatorSession, AppOperatorUser } from "@/lib/admin-api";
-import { listAppOperatorSessions, revokeAllAppOperatorSessions, revokeAppOperatorSession } from "@/lib/admin-api";
+import type { AdminSession, AdminUser } from "@/lib/admin-api";
+import { listUserSessions, revokeAllSessions, revokeSession } from "@/lib/admin-api";
 
 type UserSessionsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: AppOperatorUser | null;
+  user: AdminUser | null;
 };
 
 function formatDate(date: Date): string {
@@ -70,6 +71,21 @@ function formatFullDateTime(date: Date): string {
   });
 }
 
+function formatRelativeTime(date: Date): string {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (seconds < 60) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return formatDate(date);
+}
+
 function DeviceIcon({ device }: { device: string }) {
   if (device === "mobile") {
     return <Smartphone className="h-4 w-4 text-muted-foreground" />;
@@ -85,10 +101,10 @@ export function UserSessionsDialog({
   onOpenChange,
   user,
 }: UserSessionsDialogProps) {
-  const client = useConvex();
-  const [sessions, setSessions] = React.useState<AppOperatorSession[]>([]);
+  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
+  const [sessions, setSessions] = React.useState<AdminSession[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [revokeTarget, setRevokeTarget] = React.useState<AppOperatorSession | null>(null);
+  const [revokeTarget, setRevokeTarget] = React.useState<AdminSession | null>(null);
   const [revokePending, setRevokePending] = React.useState(false);
   const [revokeAllOpen, setRevokeAllOpen] = React.useState(false);
   const [revokeAllPending, setRevokeAllPending] = React.useState(false);
@@ -99,7 +115,7 @@ export function UserSessionsDialog({
     const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
-      const result = await listAppOperatorSessions(client, user.id);
+      const result = await listUserSessions(user.id);
       if (requestId !== requestIdRef.current) return;
       setSessions(result);
     } catch (err) {
@@ -111,7 +127,7 @@ export function UserSessionsDialog({
         setLoading(false);
       }
     }
-  }, [client, user]);
+  }, [user]);
 
   React.useEffect(() => {
     requestIdRef.current += 1;
@@ -121,19 +137,16 @@ export function UserSessionsDialog({
     setLoading(false);
     if (!open || !user) return;
     void fetchSessions();
-    return () => { requestIdRef.current += 1; };
   }, [open, user, fetchSessions]);
 
   const handleRevokeConfirm = async () => {
     if (!user || !revokeTarget) return;
-    const requestId = requestIdRef.current;
     setRevokePending(true);
     try {
-      await revokeAppOperatorSession(client, user.id, revokeTarget.id);
-      if (requestId !== requestIdRef.current) return;
+      await revokeSession(revokeTarget.token, postAuditEvent);
       toast.success("Session revoked");
       setRevokeTarget(null);
-      void fetchSessions();
+      fetchSessions();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to revoke session");
     } finally {
@@ -143,14 +156,12 @@ export function UserSessionsDialog({
 
   const handleRevokeAllConfirm = async () => {
     if (!user) return;
-    const requestId = requestIdRef.current;
     setRevokeAllPending(true);
     try {
-      await revokeAllAppOperatorSessions(client, user.id);
-      if (requestId !== requestIdRef.current) return;
+      await revokeAllSessions(user.id, postAuditEvent);
       toast.success(`All sessions revoked for ${user.email}`);
       setRevokeAllOpen(false);
-      void fetchSessions();
+      fetchSessions();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to revoke sessions");
     } finally {
@@ -158,7 +169,7 @@ export function UserSessionsDialog({
     }
   };
 
-  const isExpired = (session: AppOperatorSession): boolean =>
+  const isExpired = (session: AdminSession): boolean =>
     session.expiresAt.getTime() < Date.now();
 
   if (!user) return null;
@@ -216,6 +227,7 @@ export function UserSessionsDialog({
                   <TableHead>OS</TableHead>
                   <TableHead>IP Address</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Last Active</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[120px] text-right">Action</TableHead>
                 </TableRow>
@@ -224,7 +236,7 @@ export function UserSessionsDialog({
                 {loading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`}>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 8 }).map((_, j) => (
                         <TableCell key={`skeleton-${i}-${j}`}>
                           <Skeleton className="h-5 w-full" />
                         </TableCell>
@@ -233,7 +245,7 @@ export function UserSessionsDialog({
                   ))
                 ) : sessions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       No active sessions found.
                     </TableCell>
                   </TableRow>
@@ -269,6 +281,18 @@ export function UserSessionsDialog({
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>{formatFullDateTime(session.createdAt)}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-default text-sm">
+                                {formatRelativeTime(session.updatedAt)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{formatFullDateTime(session.updatedAt)}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
@@ -317,7 +341,7 @@ export function UserSessionsDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke session</AlertDialogTitle>
             <AlertDialogDescription>
-              This will immediately sign out this device.
+              This will immediately sign out this device and invalidate the session token.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -338,7 +362,7 @@ export function UserSessionsDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke all sessions?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will sign out this app operator from all devices immediately.
+              This will sign out this user from all devices immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

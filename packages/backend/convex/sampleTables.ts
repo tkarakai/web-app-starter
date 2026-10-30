@@ -11,12 +11,9 @@ export const sampleTables = {
   projects: defineTable({
     name: v.string(),
     description: v.string(),
-    // Widen only: missing context is legacy-private data, never accepted by tenant APIs.
-    organizationId: v.optional(v.string()),
     ownerId: v.string(),
     createdAt: v.number(),
-  }).index("by_owner", ["ownerId"])
-    .index("by_organization_owner", ["organizationId", "ownerId"]),
+  }).index("by_owner", ["ownerId"]),
 
   tasks: defineTable({
     title: v.string(),
@@ -27,7 +24,6 @@ export const sampleTables = {
       v.literal("done")
     ),
     deadline: v.optional(v.number()),
-    organizationId: v.optional(v.string()),
     projectId: v.id("projects"),
     ownerId: v.string(),
     createdAt: v.number(),
@@ -41,7 +37,6 @@ export const sampleTables = {
     name: v.string(),
     contentType: v.string(),
     size: v.number(),
-    organizationId: v.optional(v.string()),
     projectId: v.id("projects"),
     ownerId: v.string(),
     createdAt: v.number(),

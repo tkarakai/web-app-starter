@@ -18,14 +18,14 @@ export default function OnboardingPage() {
           Onboarding Queue
         </h1>
         <p className="text-sm text-muted-foreground">
-          Manage waitlist entries, invitations, and app-operator accounts.
+          Manage waitlist entries, invitations, and admin accounts.
         </p>
       </div>
 
       <Tabs defaultValue="users">
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="admins">App operators</TabsTrigger>
+          <TabsTrigger value="admins">Admins</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-4 space-y-4">

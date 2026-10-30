@@ -2,12 +2,6 @@ import { defineConfig, devices } from "@playwright/test";
 import { localAppOrigin } from "@web-app-starter/app-config";
 import * as fs from "fs";
 import * as path from "path";
-import { assertSecretSafeRunner } from "../../tooling/e2e/secret-safe-config";
-
-// Auth tests display TOTP/recovery secrets. Playwright's automatic AI error
-// snapshot is independent of trace/screenshot settings and must remain disabled.
-process.env.PLAYWRIGHT_NO_COPY_PROMPT = "1";
-assertSecretSafeRunner();
 
 /**
  * Read a value from .env.local (updated by dev-start.sh with actual ports)
@@ -38,7 +32,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: [[path.resolve(__dirname, "../../tooling/e2e/secret-safe-reporter.ts")]],
+  reporter: process.env.CI
+    ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
+    : [["html", { outputFolder: "qa/playwright-report" }]],
   updateSnapshots: "missing",
   snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
   expect: {
@@ -49,9 +45,8 @@ export default defineConfig({
   },
   use: {
     baseURL: deployedBaseUrl ?? getEnvValue("APP_ORIGIN", localAppOrigin("admin")),
-    trace: "off",
-    screenshot: "off",
-    video: "off",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
   },
   projects: [
     {
@@ -62,9 +57,7 @@ export default defineConfig({
   webServer: deployedBaseUrl
     ? undefined
     : {
-        // Cross-app acceptance explicitly requires the customer app. Enabling
-        // operator transports alone must keep admin-only installations usable.
-        command: `../../tooling/dev-start.sh --ci --app=${process.env.E2E_ORGANIZATION_AGENTS === "true" ? "web,admin" : "admin"}`,
+        command: "../../tooling/dev-start.sh --ci --app=admin",
         // Playwright discards webServer stdout by default, which turns any CI
         // boot failure into a bare "Exit code: 1" with no diagnostics.
         stdout: "pipe",

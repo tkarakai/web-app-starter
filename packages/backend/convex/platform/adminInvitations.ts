@@ -1,6 +1,3 @@
-import { assertOrganizationWriteAllowed } from "./organizationReadiness";
-/** @deprecated API namespace retained for compatibility; these are app-operator operations. */
-import { LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS } from "./appOperatorAuditCompatibility";
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
@@ -15,10 +12,8 @@ import { paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { identitySession, evaluateSession } from "./sessionPolicy";
-import { readAdminPasskeyPolicy } from "./organizationPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { appOperatorMutation, getAuth } from "./functions";
-import { isAppOperatorIdentity, requireAppOperator } from "./appOperatorAccess";
+import { adminMutation, getAuth } from "./functions";
 
 const listNativeArgs = { paginationOpts: paginationOptsValidator };
 export const list = rememberNative(query({
@@ -26,7 +21,8 @@ export const list = rememberNative(query({
   handler: async (ctx, args) => {
 
     const user = (await getAuth(ctx))?.user;
-    if (!user || !await isAppOperatorIdentity(ctx, user)) {
+    const role = user ? (user as Record<string, unknown>).role : undefined;
+    if (role !== "admin") {
       return {
         page: [],
         isDone: true,
@@ -36,12 +32,11 @@ export const list = rememberNative(query({
 
     return await ctx.runQuery(components.platform.adminInvitations.list, args);
   },
-}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { await requireAppOperator(ctx); return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
+}), { args: listNativeArgs, handler: async (ctx: QueryCtx, args: ObjectType<typeof listNativeArgs>) => { return await ctx.runQuery(components.platform.adminInvitations.list, args); } }, "query");
 
-export const invite = appOperatorMutation({
+export const invite = adminMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") throw new Error("NOT_ADMIN");
     const email = args.email.trim().toLowerCase();
@@ -52,10 +47,9 @@ export const invite = appOperatorMutation({
   },
 });
 
-export const remove = appOperatorMutation({
+export const remove = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") throw new Error("NOT_ADMIN");
     return await ctx.runMutation(components.platform.adminInvitations.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
@@ -67,7 +61,6 @@ export const createForSeed = internalMutation({
     email: v.string(),
   },
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
     assertLocalFixtures();
     return await ctx.runMutation(components.platform.adminInvitations.createForSeed, args);
   },
@@ -80,7 +73,6 @@ export const setToken = internalMutation({
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
     return await ctx.runMutation(components.platform.adminInvitations.setToken, args);
   },
 });
@@ -107,7 +99,6 @@ export const claimInvitation = action({
 export const advanceOnboardingStep = mutation({
   args: { step: v.number() },
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
@@ -131,7 +122,6 @@ export const advanceOnboardingStep = mutation({
 export const completeOnboarding = mutation({
   args: {},
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
@@ -144,14 +134,14 @@ export const completeOnboarding = mutation({
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (bound) {
       if (!bound.completed && bound.step < 3) throw new Error("ONBOARDING_INCOMPLETE");
-      const policy = await readAdminPasskeyPolicy(ctx);
+      const policy = await ctx.runQuery(components.platform.appSettings.getInternal, { key: "adminPasskeyPolicy" });
       if (policy === "required") {
         const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "userId", value: user._id }] });
         if (!passkey) throw new Error("PASSKEY_REQUIRED");
       }
       await ctx.runMutation(components.platform.adminInvitations.finishBoundOnboarding, { email: user.email, userId: user._id });
       await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: user._id }], update: { role: "admin", updatedAt: Date.now() } } });
-      await scheduleAuditEvent(ctx, { actor: user.email, authenticatedUserId: user._id, sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.enrollment, action: "admin.onboarding.completed", resource: `user:${user._id}`, status: "succeeded" });
+      await scheduleAuditEvent(ctx, { actor: user.email, authenticatedUserId: user._id, sourceDetail: "admin-enrollment", action: "admin.onboarding.completed", resource: `user:${user._id}`, status: "succeeded" });
     } else {
       // Already-established legacy administrators retain their existing identity.
       if (user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
@@ -212,7 +202,6 @@ export const registerAccount = internalMutation({
   args: { capabilityHash: v.string(), email: v.string(), name: v.string(), passwordHash: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await assertOrganizationWriteAllowed(ctx, "control");
     const enrollment = await ctx.runQuery(components.platform.adminInvitations.enrollment, { capabilityHash: args.capabilityHash, email: args.email });
     if (enrollment.userId) return;
     const existing = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: enrollment.email }] });
@@ -225,7 +214,7 @@ export const registerAccount = internalMutation({
       userId: user._id, accountId: user._id, providerId: "credential", password: args.passwordHash, createdAt: now, updatedAt: now,
     } } });
     await ctx.runMutation(components.platform.adminInvitations.consumeEnrollment, { capabilityHash: args.capabilityHash, email: enrollment.email, userId: user._id });
-    await scheduleAuditEvent(ctx, { actor: enrollment.email, authenticatedUserId: user._id, sourceDetail: LEGACY_APP_OPERATOR_AUDIT_SOURCE_DETAILS.enrollment, action: "auth.sign_up", resource: `user:${user._id}`, status: "succeeded" });
+    await scheduleAuditEvent(ctx, { actor: enrollment.email, authenticatedUserId: user._id, sourceDetail: "admin-enrollment", action: "auth.sign_up", resource: `user:${user._id}`, status: "succeeded" });
   },
 });
 

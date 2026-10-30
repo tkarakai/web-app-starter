@@ -10,23 +10,20 @@ import {
 import { requireProjectAccess } from "./projectAccess";
 
 export const listByProject = authedQuery({
-  args: { projectId: v.id("projects"), organizationId: v.optional(v.string()) },
+  args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    await requireProjectAccess(ctx, args.projectId, args.organizationId);
+    await requireProjectAccess(ctx, args.projectId);
 
-    const rows = await ctx.db
+    return ctx.db
       .query("tasks")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .order("desc")
       .collect();
-    if (rows.some(row => row.organizationId !== undefined || row.ownerId !== ctx.ownerId)) throw new Error("LEGACY_RESOURCE_REQUIRES_MIGRATION");
-    return rows;
   },
 });
 
 export const create = authedMutation({
   args: {
-    organizationId: v.optional(v.string()),
     title: v.string(),
     description: v.string(),
     status: v.union(
@@ -38,7 +35,7 @@ export const create = authedMutation({
     deadline: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireProjectAccess(ctx, args.projectId, args.organizationId);
+    await requireProjectAccess(ctx, args.projectId);
     assertMaxLength(args.title, MAX_NAME_LENGTH, "TITLE");
     assertMaxLength(args.description, MAX_DESCRIPTION_LENGTH, "DESCRIPTION");
 
@@ -56,7 +53,6 @@ export const create = authedMutation({
 
 export const update = authedMutation({
   args: {
-    organizationId: v.optional(v.string()),
     id: v.id("tasks"),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -75,9 +71,8 @@ export const update = authedMutation({
       throw new Error("TASK_NOT_FOUND");
     }
 
-    // Verify both legacy provenance and ownership through the project chain.
-    await requireProjectAccess(ctx, task.projectId, args.organizationId);
-    if (task.organizationId !== undefined || task.ownerId !== ctx.ownerId) throw new Error("LEGACY_RESOURCE_REQUIRES_MIGRATION");
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, task.projectId);
     assertMaxLength(args.title, MAX_NAME_LENGTH, "TITLE");
     assertMaxLength(args.description, MAX_DESCRIPTION_LENGTH, "DESCRIPTION");
 
@@ -100,16 +95,15 @@ export const update = authedMutation({
 });
 
 export const remove = authedMutation({
-  args: { id: v.id("tasks"), organizationId: v.optional(v.string()) },
+  args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.id);
     if (!task) {
       throw new Error("TASK_NOT_FOUND");
     }
 
-    // Verify both legacy provenance and ownership through the project chain.
-    await requireProjectAccess(ctx, task.projectId, args.organizationId);
-    if (task.organizationId !== undefined || task.ownerId !== ctx.ownerId) throw new Error("LEGACY_RESOURCE_REQUIRES_MIGRATION");
+    // Verify ownership through the project chain
+    await requireProjectAccess(ctx, task.projectId);
 
     await ctx.db.delete(args.id);
   },

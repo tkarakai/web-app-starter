@@ -9,8 +9,7 @@
     "./server": "./src/server.ts",
     "./provider": "./src/provider.tsx",
     "./error-handler": "./src/convex-error-handler.tsx",
-    "./password-policy": "./src/password-policy.ts",
-    "./organizations": "./src/organizations.ts"
+    "./password-policy": "./src/password-policy.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "~1.6.33",

@@ -224,11 +224,6 @@ function validateValue(key: string, value: string): void {
 
 type SettingReadCtx = Pick<QueryCtx, "db">;
 
-/** Auth owns this policy beside the protected memberships. Legacy rows remain read-only for migration. */
-function guardOrganizationPolicy(key: string) {
-  if (key === ADMIN_PASSKEY_POLICY_KEY) throw new Error("USE_CANONICAL_ORGANIZATION_POLICY");
-}
-
 async function getSettingRecord(ctx: SettingReadCtx, key: string) {
   return await ctx.db
     .query("appSettings")
@@ -327,7 +322,6 @@ export const set = mutation({
     }
 
     validateValue(args.key, args.value);
-    guardOrganizationPolicy(args.key);
 
     const existing = await getSettingRecord(ctx, args.key);
 
@@ -384,8 +378,6 @@ export const remove = mutation({
       throw new Error("INVALID_SETTING_KEY");
     }
 
-    guardOrganizationPolicy(args.key);
-
     const existing = await getSettingRecord(ctx, args.key);
 
     if (existing) {
@@ -424,9 +416,8 @@ export const putRaw = mutation({
   args: { key: v.string(), value: v.string(), updatedBy: v.optional(v.string()) },
   returns: v.object({ previousValue: v.optional(v.string()) }),
   handler: async (ctx, args) => {
-    guardOrganizationPolicy(args.key);
     const existing = await getSettingRecord(ctx, args.key);
-    const next = { key: args.key, value: args.value, updatedBy: args.updatedBy, updatedAt: Date.now() };
+    const next = { ...args, updatedAt: Date.now() };
     if (existing) await ctx.db.patch(existing._id, next);
     else await ctx.db.insert("appSettings", next);
     return { previousValue: existing?.value };

@@ -1,5 +1,4 @@
 export const CLIENT_ID = "pi-announcements";
-/** Deprecated app-operator scope wire identifier; preserve PKCE/consent/exchange compatibility. */
 export const SCOPE = "admin:manage";
 export function validateAuthorization(params: URLSearchParams) {
   const redirectUri = params.get("redirect_uri") ?? "";
