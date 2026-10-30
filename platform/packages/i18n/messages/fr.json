@@ -476,5 +476,122 @@
       "verify": "Vérifier",
       "continue": "Continuer"
     }
+  },
+  "organization": {
+    "label": "Organisation",
+    "roles": {
+      "owner": "Propriétaire",
+      "admin": "Admin",
+      "member": "Membre"
+    },
+    "roleHelp": {
+      "owner": "Peut tout ce que peut un admin et peut nommer d'autres propriétaires.",
+      "admin": "Invite et retire des personnes, modifie les rôles et renomme l'organisation.",
+      "member": "Travaille sur les projets de l'organisation."
+    },
+    "switcher": {
+      "label": "Changer d'organisation",
+      "heading": "Vos organisations",
+      "create": "Créer une organisation",
+      "settings": "Paramètres de l'organisation"
+    },
+    "settings": {
+      "title": "Organisation",
+      "description": "Toutes les personnes de {name} partagent ses projets. Les propriétaires et les admins décident qui en fait partie.",
+      "nameLabel": "Nom de l'organisation",
+      "renamed": "Organisation renommée.",
+      "yourRole": "Votre rôle : {role}",
+      "members": "Membres",
+      "memberCount": "{count, plural, one {# membre} other {# membres}}",
+      "you": "Vous",
+      "joined": "Membre depuis le {date}",
+      "changeRole": "Modifier le rôle de {name}",
+      "roleChanged": "{name} est maintenant {role}.",
+      "remove": "Retirer",
+      "removeLabel": "Retirer {name}",
+      "removeTitle": "Retirer {name} ?",
+      "removeDescription": "{name} perd immédiatement l'accès à {organization} et à ses projets. Ce qu'elle a créé est conservé.",
+      "removed": "{name} a été retiré."
+    },
+    "invite": {
+      "title": "Inviter des personnes",
+      "description": "Elles reçoivent un e-mail avec un lien pour rejoindre l'organisation. Les invitations expirent après 7 jours.",
+      "email": "Adresse e-mail",
+      "emailPlaceholder": "nom@entreprise.fr",
+      "role": "Rôle",
+      "send": "Envoyer l'invitation",
+      "sending": "Envoi en cours...",
+      "sent": "Invitation envoyée à {email}."
+    },
+    "pending": {
+      "title": "Invitations en attente",
+      "expires": "Expire le {date}",
+      "expired": "Expirée",
+      "resend": "Renvoyer",
+      "resent": "Invitation renvoyée à {email}.",
+      "cancel": "Annuler l'invitation",
+      "canceled": "Invitation à {email} annulée."
+    },
+    "leave": {
+      "title": "Quitter l'organisation",
+      "description": "Vous perdez l'accès à {name} et à ses projets. Seule une nouvelle invitation vous permettra d'y revenir.",
+      "action": "Quitter",
+      "confirmTitle": "Quitter {name} ?",
+      "left": "Vous avez quitté {name}.",
+      "onlyOrganization": "C'est votre seule organisation, vous ne pouvez donc pas la quitter."
+    },
+    "create": {
+      "title": "Nouvelle organisation",
+      "description": "Créez une organisation distincte, avec ses propres membres et projets. Vous en serez le propriétaire.",
+      "action": "Créer une organisation",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Acme SAS",
+      "created": "{name} a été créée. Vous travaillez maintenant dedans."
+    },
+    "errors": {
+      "generic": "Une erreur s'est produite. Veuillez réessayer.",
+      "rateLimited": "Trop de requêtes. Veuillez patienter un instant puis réessayer.",
+      "notAllowed": "Vous n'avez pas l'autorisation d'effectuer cette action.",
+      "alreadyMember": "Cette personne est déjà membre.",
+      "lastOwner": "Une organisation doit avoir au moins un propriétaire. Nommez d'abord un autre propriétaire.",
+      "invalidEmail": "Saisissez une adresse e-mail valide."
+    },
+    "banner": {
+      "message": "{inviter} vous a invité à rejoindre {organization}.",
+      "accept": "Accepter",
+      "decline": "Refuser",
+      "verifyFirst": "Vérifiez votre adresse e-mail pour accepter.",
+      "verify": "Vérifier l'e-mail",
+      "joined": "Vous avez rejoint {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Vous êtes invité",
+      "pageDescription": "Rejoignez une organisation pour travailler avec votre équipe sur ses projets.",
+      "title": "Rejoindre {organization}",
+      "description": "{inviter} vous a invité à rejoindre {organization} en tant que {role}.",
+      "accept": "Accepter l'invitation",
+      "accepting": "Inscription en cours...",
+      "decline": "Refuser",
+      "declined": "Vous avez refusé l'invitation.",
+      "signedOutTitle": "Connectez-vous pour accepter votre invitation",
+      "signedOutDescription": "Utilisez l'adresse e-mail à laquelle l'invitation a été envoyée. Nouveau ici ? Créez un compte avec cette adresse ; votre invitation vous attendra sur votre tableau de bord.",
+      "signIn": "Se connecter",
+      "signUp": "Créer un compte",
+      "signUpHint": "Vous avez été invité à rejoindre une organisation. Créez votre compte avec l'adresse e-mail à laquelle l'invitation a été envoyée.",
+      "wrongAccountTitle": "Cette invitation est destinée à un autre compte",
+      "wrongAccountDescription": "Elle a été envoyée à {email}, mais vous êtes connecté en tant que {current}. Déconnectez-vous, puis connectez-vous avec {email} pour l'accepter.",
+      "verifyTitle": "Vérifiez d'abord votre e-mail",
+      "verifyDescription": "Pour rejoindre {organization}, confirmez que {email} est bien votre adresse.",
+      "verify": "Vérifier l'e-mail",
+      "notFoundTitle": "Invitation introuvable",
+      "notFoundDescription": "Le lien est peut-être incomplet. Demandez à la personne qui vous a invité d'envoyer une nouvelle invitation.",
+      "usedTitle": "Cette invitation n'est plus valide",
+      "usedDescription": "Elle a déjà été acceptée, refusée ou annulée. Demandez une nouvelle invitation si vous avez toujours besoin d'un accès.",
+      "expiredTitle": "Cette invitation a expiré",
+      "expiredDescription": "Les invitations sont valables 7 jours. Demandez à {inviter} d'en envoyer une nouvelle.",
+      "alreadyMemberTitle": "Vous êtes déjà dans {organization}",
+      "alreadyMemberDescription": "Ouvrez le tableau de bord et sélectionnez-la dans le sélecteur d'organisation.",
+      "openDashboard": "Aller au tableau de bord"
+    }
   }
 }

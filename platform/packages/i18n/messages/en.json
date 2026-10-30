@@ -508,6 +508,7 @@
       "changeRole": "Change role for {name}",
       "roleChanged": "{name} is now {role}.",
       "remove": "Remove",
+      "removeLabel": "Remove {name}",
       "removeTitle": "Remove {name}?",
       "removeDescription": "{name} loses access to {organization} and its projects right away. What they created stays.",
       "removed": "{name} was removed."

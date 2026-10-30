@@ -476,5 +476,122 @@
       "verify": "Bestätigen",
       "continue": "Weiter"
     }
+  },
+  "organization": {
+    "label": "Organisation",
+    "roles": {
+      "owner": "Inhaber",
+      "admin": "Admin",
+      "member": "Mitglied"
+    },
+    "roleHelp": {
+      "owner": "Kann alles, was ein Admin kann, und weitere Personen zu Inhabern machen.",
+      "admin": "Lädt Personen ein und entfernt sie, ändert Rollen und benennt die Organisation um.",
+      "member": "Arbeitet an den Projekten der Organisation."
+    },
+    "switcher": {
+      "label": "Organisation wechseln",
+      "heading": "Ihre Organisationen",
+      "create": "Organisation erstellen",
+      "settings": "Organisationseinstellungen"
+    },
+    "settings": {
+      "title": "Organisation",
+      "description": "Alle in {name} teilen sich die Projekte. Inhaber und Admins entscheiden, wer dazugehört.",
+      "nameLabel": "Name der Organisation",
+      "renamed": "Organisation umbenannt.",
+      "yourRole": "Ihre Rolle: {role}",
+      "members": "Mitglieder",
+      "memberCount": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+      "you": "Sie",
+      "joined": "Beigetreten am {date}",
+      "changeRole": "Rolle von {name} ändern",
+      "roleChanged": "{name} ist jetzt {role}.",
+      "remove": "Entfernen",
+      "removeLabel": "{name} entfernen",
+      "removeTitle": "{name} entfernen?",
+      "removeDescription": "{name} verliert sofort den Zugriff auf {organization} und die zugehörigen Projekte. Was die Person erstellt hat, bleibt erhalten.",
+      "removed": "{name} wurde entfernt."
+    },
+    "invite": {
+      "title": "Personen einladen",
+      "description": "Sie erhalten eine E-Mail mit einem Link zum Beitreten. Einladungen laufen nach 7 Tagen ab.",
+      "email": "E-Mail-Adresse",
+      "emailPlaceholder": "name@firma.de",
+      "role": "Rolle",
+      "send": "Einladung senden",
+      "sending": "Wird gesendet...",
+      "sent": "Einladung an {email} gesendet."
+    },
+    "pending": {
+      "title": "Offene Einladungen",
+      "expires": "Läuft ab am {date}",
+      "expired": "Abgelaufen",
+      "resend": "Erneut senden",
+      "resent": "Einladung erneut an {email} gesendet.",
+      "cancel": "Einladung zurückziehen",
+      "canceled": "Einladung an {email} zurückgezogen."
+    },
+    "leave": {
+      "title": "Organisation verlassen",
+      "description": "Sie verlieren den Zugriff auf {name} und die zugehörigen Projekte. Nur eine neue Einladung bringt Sie wieder hinein.",
+      "action": "Verlassen",
+      "confirmTitle": "{name} verlassen?",
+      "left": "Sie haben {name} verlassen.",
+      "onlyOrganization": "Dies ist Ihre einzige Organisation, daher können Sie sie nicht verlassen."
+    },
+    "create": {
+      "title": "Neue Organisation",
+      "description": "Starten Sie eine eigene Organisation mit eigenen Mitgliedern und Projekten. Sie werden ihr Inhaber.",
+      "action": "Organisation erstellen",
+      "nameLabel": "Name",
+      "namePlaceholder": "Acme GmbH",
+      "created": "{name} wurde erstellt. Sie arbeiten jetzt darin."
+    },
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+      "notAllowed": "Dafür fehlt Ihnen die Berechtigung.",
+      "alreadyMember": "Diese Person ist bereits Mitglied.",
+      "lastOwner": "Eine Organisation braucht mindestens einen Inhaber. Machen Sie zuerst eine andere Person zum Inhaber.",
+      "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse ein."
+    },
+    "banner": {
+      "message": "{inviter} hat Sie eingeladen, {organization} beizutreten.",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "verifyFirst": "Verifizieren Sie Ihre E-Mail-Adresse, um anzunehmen.",
+      "verify": "E-Mail verifizieren",
+      "joined": "Sie sind {organization} beigetreten."
+    },
+    "invitation": {
+      "pageHeading": "Sie sind eingeladen",
+      "pageDescription": "Treten Sie einer Organisation bei, um mit Ihrem Team an deren Projekten zu arbeiten.",
+      "title": "{organization} beitreten",
+      "description": "{inviter} hat Sie eingeladen, {organization} als {role} beizutreten.",
+      "accept": "Einladung annehmen",
+      "accepting": "Beitritt läuft...",
+      "decline": "Ablehnen",
+      "declined": "Sie haben die Einladung abgelehnt.",
+      "signedOutTitle": "Melden Sie sich an, um Ihre Einladung anzunehmen",
+      "signedOutDescription": "Verwenden Sie die E-Mail-Adresse, an die die Einladung gesendet wurde. Neu hier? Erstellen Sie ein Konto mit dieser Adresse; Ihre Einladung wartet dann auf Ihrem Dashboard.",
+      "signIn": "Anmelden",
+      "signUp": "Konto erstellen",
+      "signUpHint": "Sie wurden eingeladen, einer Organisation beizutreten. Erstellen Sie Ihr Konto mit der E-Mail-Adresse, an die die Einladung gesendet wurde.",
+      "wrongAccountTitle": "Diese Einladung gilt für ein anderes Konto",
+      "wrongAccountDescription": "Sie wurde an {email} gesendet, aber Sie sind als {current} angemeldet. Melden Sie sich ab und dann mit {email} an, um sie anzunehmen.",
+      "verifyTitle": "Verifizieren Sie zuerst Ihre E-Mail",
+      "verifyDescription": "Um {organization} beizutreten, bestätigen Sie, dass {email} Ihre Adresse ist.",
+      "verify": "E-Mail verifizieren",
+      "notFoundTitle": "Einladung nicht gefunden",
+      "notFoundDescription": "Der Link ist möglicherweise unvollständig. Bitten Sie die einladende Person, eine neue Einladung zu senden.",
+      "usedTitle": "Diese Einladung ist nicht mehr gültig",
+      "usedDescription": "Sie wurde bereits angenommen, abgelehnt oder zurückgezogen. Fordern Sie eine neue Einladung an, wenn Sie weiterhin Zugriff brauchen.",
+      "expiredTitle": "Diese Einladung ist abgelaufen",
+      "expiredDescription": "Einladungen sind 7 Tage lang gültig. Bitten Sie {inviter}, eine neue zu senden.",
+      "alreadyMemberTitle": "Sie sind bereits in {organization}",
+      "alreadyMemberDescription": "Öffnen Sie das Dashboard und wählen Sie sie im Organisationswechsler aus.",
+      "openDashboard": "Zum Dashboard"
+    }
   }
 }

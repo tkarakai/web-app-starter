@@ -476,5 +476,122 @@
       "verify": "验证",
       "continue": "继续"
     }
+  },
+  "organization": {
+    "label": "组织",
+    "roles": {
+      "owner": "所有者",
+      "admin": "管理员",
+      "member": "成员"
+    },
+    "roleHelp": {
+      "owner": "可以执行管理员的所有操作，并可将其他人设为所有者。",
+      "admin": "邀请和移除成员、更改角色并重命名组织。",
+      "member": "参与组织的项目。"
+    },
+    "switcher": {
+      "label": "切换组织",
+      "heading": "你的组织",
+      "create": "创建组织",
+      "settings": "组织设置"
+    },
+    "settings": {
+      "title": "组织",
+      "description": "{name} 中的所有人共享其项目。所有者和管理员决定谁可以加入。",
+      "nameLabel": "组织名称",
+      "renamed": "组织已重命名。",
+      "yourRole": "你的角色：{role}",
+      "members": "成员",
+      "memberCount": "{count, plural, other {# 位成员}}",
+      "you": "你",
+      "joined": "加入于 {date}",
+      "changeRole": "更改 {name} 的角色",
+      "roleChanged": "{name} 现在是{role}。",
+      "remove": "移除",
+      "removeLabel": "移除 {name}",
+      "removeTitle": "移除 {name}？",
+      "removeDescription": "{name} 将立即失去对 {organization} 及其项目的访问权限。其创建的内容会保留。",
+      "removed": "已移除 {name}。"
+    },
+    "invite": {
+      "title": "邀请成员",
+      "description": "对方会收到一封带有加入链接的邮件。邀请将在 7 天后过期。",
+      "email": "电子邮件地址",
+      "emailPlaceholder": "name@company.com",
+      "role": "角色",
+      "send": "发送邀请",
+      "sending": "发送中...",
+      "sent": "已向 {email} 发送邀请。"
+    },
+    "pending": {
+      "title": "待处理的邀请",
+      "expires": "过期时间：{date}",
+      "expired": "已过期",
+      "resend": "重新发送",
+      "resent": "已再次向 {email} 发送邀请。",
+      "cancel": "取消邀请",
+      "canceled": "已取消发给 {email} 的邀请。"
+    },
+    "leave": {
+      "title": "退出组织",
+      "description": "你将失去对 {name} 及其项目的访问权限。只有收到新的邀请才能重新加入。",
+      "action": "退出",
+      "confirmTitle": "退出 {name}？",
+      "left": "你已退出 {name}。",
+      "onlyOrganization": "这是你唯一的组织，因此无法退出。"
+    },
+    "create": {
+      "title": "新建组织",
+      "description": "创建一个拥有独立成员和项目的组织。你将成为其所有者。",
+      "action": "创建组织",
+      "nameLabel": "名称",
+      "namePlaceholder": "Acme 有限公司",
+      "created": "已创建 {name}。你现在正在其中工作。"
+    },
+    "errors": {
+      "generic": "出了点问题。请重试。",
+      "rateLimited": "请求过多。请稍等片刻后重试。",
+      "notAllowed": "你没有执行此操作的权限。",
+      "alreadyMember": "该用户已是成员。",
+      "lastOwner": "组织至少需要一位所有者。请先将其他人设为所有者。",
+      "invalidEmail": "请输入有效的电子邮件地址。"
+    },
+    "banner": {
+      "message": "{inviter} 邀请你加入 {organization}。",
+      "accept": "接受",
+      "decline": "拒绝",
+      "verifyFirst": "请先验证你的电子邮件地址再接受。",
+      "verify": "验证邮箱",
+      "joined": "你已加入 {organization}。"
+    },
+    "invitation": {
+      "pageHeading": "你收到了邀请",
+      "pageDescription": "加入组织，与团队一起处理其项目。",
+      "title": "加入 {organization}",
+      "description": "{inviter} 邀请你以{role}身份加入 {organization}。",
+      "accept": "接受邀请",
+      "accepting": "正在加入...",
+      "decline": "拒绝",
+      "declined": "你已拒绝邀请。",
+      "signedOutTitle": "登录以接受邀请",
+      "signedOutDescription": "请使用收到邀请的电子邮件地址。第一次使用？请用该地址创建账户，你的邀请会显示在控制面板中。",
+      "signIn": "登录",
+      "signUp": "创建账户",
+      "signUpHint": "你被邀请加入一个组织。请使用收到邀请的电子邮件地址创建账户。",
+      "wrongAccountTitle": "此邀请属于另一个账户",
+      "wrongAccountDescription": "邀请发送至 {email}，但你当前登录的是 {current}。请先退出登录，再使用 {email} 登录以接受邀请。",
+      "verifyTitle": "请先验证你的邮箱",
+      "verifyDescription": "要加入 {organization}，请确认 {email} 是你的地址。",
+      "verify": "验证邮箱",
+      "notFoundTitle": "未找到邀请",
+      "notFoundDescription": "链接可能不完整。请让邀请你的人重新发送邀请。",
+      "usedTitle": "此邀请已失效",
+      "usedDescription": "它已被接受、拒绝或取消。如果你仍需要访问权限，请申请新的邀请。",
+      "expiredTitle": "此邀请已过期",
+      "expiredDescription": "邀请的有效期为 7 天。请让 {inviter} 重新发送。",
+      "alreadyMemberTitle": "你已在 {organization} 中",
+      "alreadyMemberDescription": "打开控制面板，并在组织切换器中选择它。",
+      "openDashboard": "前往控制面板"
+    }
   }
 }

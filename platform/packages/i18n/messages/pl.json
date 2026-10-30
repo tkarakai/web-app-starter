@@ -476,5 +476,122 @@
       "verify": "Zweryfikuj",
       "continue": "Kontynuuj"
     }
+  },
+  "organization": {
+    "label": "Organizacja",
+    "roles": {
+      "owner": "Właściciel",
+      "admin": "Administrator",
+      "member": "Członek"
+    },
+    "roleHelp": {
+      "owner": "Może wszystko, co administrator, i może nadawać innym rolę właściciela.",
+      "admin": "Zaprasza i usuwa osoby, zmienia role i zmienia nazwę organizacji.",
+      "member": "Pracuje nad projektami organizacji."
+    },
+    "switcher": {
+      "label": "Przełącz organizację",
+      "heading": "Twoje organizacje",
+      "create": "Utwórz organizację",
+      "settings": "Ustawienia organizacji"
+    },
+    "settings": {
+      "title": "Organizacja",
+      "description": "Wszyscy w {name} współdzielą jej projekty. O członkostwie decydują właściciele i administratorzy.",
+      "nameLabel": "Nazwa organizacji",
+      "renamed": "Zmieniono nazwę organizacji.",
+      "yourRole": "Twoja rola: {role}",
+      "members": "Członkowie",
+      "memberCount": "{count, plural, one {# członek} few {# członkowie} many {# członków} other {# członka}}",
+      "you": "Ty",
+      "joined": "Dołączono {date}",
+      "changeRole": "Zmień rolę użytkownika {name}",
+      "roleChanged": "Użytkownik {name} ma teraz rolę: {role}.",
+      "remove": "Usuń",
+      "removeLabel": "Usuń użytkownika {name}",
+      "removeTitle": "Usunąć użytkownika {name}?",
+      "removeDescription": "{name} natychmiast traci dostęp do organizacji {organization} i jej projektów. To, co utworzył(a), pozostaje.",
+      "removed": "Użytkownik {name} został usunięty."
+    },
+    "invite": {
+      "title": "Zaproś osoby",
+      "description": "Dostaną e-mail z linkiem do dołączenia. Zaproszenia wygasają po 7 dniach.",
+      "email": "Adres e-mail",
+      "emailPlaceholder": "imie@firma.pl",
+      "role": "Rola",
+      "send": "Wyślij zaproszenie",
+      "sending": "Wysyłanie...",
+      "sent": "Zaproszenie wysłane na adres {email}."
+    },
+    "pending": {
+      "title": "Oczekujące zaproszenia",
+      "expires": "Wygasa {date}",
+      "expired": "Wygasło",
+      "resend": "Wyślij ponownie",
+      "resent": "Zaproszenie ponownie wysłane na adres {email}.",
+      "cancel": "Anuluj zaproszenie",
+      "canceled": "Zaproszenie dla {email} zostało anulowane."
+    },
+    "leave": {
+      "title": "Opuść organizację",
+      "description": "Tracisz dostęp do organizacji {name} i jej projektów. Wrócić możesz tylko dzięki nowemu zaproszeniu.",
+      "action": "Opuść",
+      "confirmTitle": "Opuścić organizację {name}?",
+      "left": "Opuszczono organizację {name}.",
+      "onlyOrganization": "To Twoja jedyna organizacja, więc nie możesz jej opuścić."
+    },
+    "create": {
+      "title": "Nowa organizacja",
+      "description": "Załóż osobną organizację z własnymi członkami i projektami. Zostaniesz jej właścicielem.",
+      "action": "Utwórz organizację",
+      "nameLabel": "Nazwa",
+      "namePlaceholder": "Acme sp. z o.o.",
+      "created": "Organizacja {name} została utworzona. Teraz w niej pracujesz."
+    },
+    "errors": {
+      "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+      "rateLimited": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
+      "notAllowed": "Nie masz uprawnień do tej czynności.",
+      "alreadyMember": "Ta osoba jest już członkiem.",
+      "lastOwner": "Organizacja potrzebuje co najmniej jednego właściciela. Najpierw nadaj tę rolę komuś innemu.",
+      "invalidEmail": "Wpisz prawidłowy adres e-mail."
+    },
+    "banner": {
+      "message": "{inviter} zaprasza Cię do organizacji {organization}.",
+      "accept": "Akceptuj",
+      "decline": "Odrzuć",
+      "verifyFirst": "Aby zaakceptować, zweryfikuj swój adres e-mail.",
+      "verify": "Zweryfikuj e-mail",
+      "joined": "Dołączono do organizacji {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Masz zaproszenie",
+      "pageDescription": "Dołącz do organizacji, aby pracować ze swoim zespołem nad jej projektami.",
+      "title": "Dołącz do organizacji {organization}",
+      "description": "{inviter} zaprasza Cię do organizacji {organization} w roli: {role}.",
+      "accept": "Zaakceptuj zaproszenie",
+      "accepting": "Dołączanie...",
+      "decline": "Odrzuć",
+      "declined": "Zaproszenie zostało odrzucone.",
+      "signedOutTitle": "Zaloguj się, aby zaakceptować zaproszenie",
+      "signedOutDescription": "Użyj adresu e-mail, na który wysłano zaproszenie. Jesteś tu nowy? Utwórz konto z tym adresem; zaproszenie będzie czekać w Twoim panelu.",
+      "signIn": "Zaloguj się",
+      "signUp": "Utwórz konto",
+      "signUpHint": "Zaproszono Cię do organizacji. Utwórz konto z adresem e-mail, na który wysłano zaproszenie.",
+      "wrongAccountTitle": "To zaproszenie jest przeznaczone dla innego konta",
+      "wrongAccountDescription": "Wysłano je na adres {email}, ale jesteś zalogowany jako {current}. Wyloguj się, a następnie zaloguj adresem {email}, aby je zaakceptować.",
+      "verifyTitle": "Najpierw zweryfikuj swój e-mail",
+      "verifyDescription": "Aby dołączyć do organizacji {organization}, potwierdź, że {email} jest Twoim adresem.",
+      "verify": "Zweryfikuj e-mail",
+      "notFoundTitle": "Nie znaleziono zaproszenia",
+      "notFoundDescription": "Link może być niekompletny. Poproś osobę, która Cię zaprosiła, o nowe zaproszenie.",
+      "usedTitle": "To zaproszenie jest już nieważne",
+      "usedDescription": "Zostało już zaakceptowane, odrzucone lub anulowane. Poproś o nowe zaproszenie, jeśli nadal potrzebujesz dostępu.",
+      "expiredTitle": "To zaproszenie wygasło",
+      "expiredDescription": "Zaproszenia są ważne przez 7 dni. Poproś użytkownika {inviter} o nowe.",
+      "alreadyMemberTitle": "Jesteś już w organizacji {organization}",
+      "alreadyMemberDescription": "Otwórz panel i wybierz ją w przełączniku organizacji.",
+      "openDashboard": "Przejdź do panelu"
+    }
   }
 }

@@ -476,5 +476,122 @@
       "verify": "Verificar",
       "continue": "Continuar"
     }
+  },
+  "organization": {
+    "label": "Organização",
+    "roles": {
+      "owner": "Proprietário",
+      "admin": "Administrador",
+      "member": "Membro"
+    },
+    "roleHelp": {
+      "owner": "Pode fazer tudo o que um administrador faz e tornar outras pessoas proprietárias.",
+      "admin": "Convida e remove pessoas, altera funções e renomeia a organização.",
+      "member": "Trabalha nos projetos da organização."
+    },
+    "switcher": {
+      "label": "Trocar de organização",
+      "heading": "Suas organizações",
+      "create": "Criar organização",
+      "settings": "Configurações da organização"
+    },
+    "settings": {
+      "title": "Organização",
+      "description": "Todos em {name} compartilham os projetos. Proprietários e administradores decidem quem participa.",
+      "nameLabel": "Nome da organização",
+      "renamed": "Organização renomeada.",
+      "yourRole": "Sua função: {role}",
+      "members": "Membros",
+      "memberCount": "{count, plural, one {# membro} other {# membros}}",
+      "you": "Você",
+      "joined": "Entrou em {date}",
+      "changeRole": "Alterar a função de {name}",
+      "roleChanged": "{name} agora é {role}.",
+      "remove": "Remover",
+      "removeLabel": "Remover {name}",
+      "removeTitle": "Remover {name}?",
+      "removeDescription": "{name} perde imediatamente o acesso a {organization} e aos seus projetos. O que foi criado permanece.",
+      "removed": "{name} foi removido."
+    },
+    "invite": {
+      "title": "Convidar pessoas",
+      "description": "Elas recebem um e-mail com um link para entrar. Os convites expiram após 7 dias.",
+      "email": "Endereço de e-mail",
+      "emailPlaceholder": "nome@empresa.com",
+      "role": "Função",
+      "send": "Enviar convite",
+      "sending": "Enviando...",
+      "sent": "Convite enviado para {email}."
+    },
+    "pending": {
+      "title": "Convites pendentes",
+      "expires": "Expira em {date}",
+      "expired": "Expirado",
+      "resend": "Reenviar",
+      "resent": "Convite reenviado para {email}.",
+      "cancel": "Cancelar convite",
+      "canceled": "Convite para {email} cancelado."
+    },
+    "leave": {
+      "title": "Sair da organização",
+      "description": "Você perde o acesso a {name} e aos seus projetos. Somente um novo convite permite que você volte.",
+      "action": "Sair",
+      "confirmTitle": "Sair de {name}?",
+      "left": "Você saiu de {name}.",
+      "onlyOrganization": "Esta é a sua única organização, então você não pode sair dela."
+    },
+    "create": {
+      "title": "Nova organização",
+      "description": "Crie uma organização separada, com seus próprios membros e projetos. Você será o proprietário.",
+      "action": "Criar organização",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Acme Ltda.",
+      "created": "{name} criada. Agora você está trabalhando nela."
+    },
+    "errors": {
+      "generic": "Algo deu errado. Tente novamente.",
+      "rateLimited": "Muitas solicitações. Aguarde um instante e tente novamente.",
+      "notAllowed": "Você não tem permissão para fazer isso.",
+      "alreadyMember": "Essa pessoa já é membro.",
+      "lastOwner": "Uma organização precisa de pelo menos um proprietário. Torne outra pessoa proprietária primeiro.",
+      "invalidEmail": "Digite um endereço de e-mail válido."
+    },
+    "banner": {
+      "message": "{inviter} convidou você para entrar em {organization}.",
+      "accept": "Aceitar",
+      "decline": "Recusar",
+      "verifyFirst": "Verifique seu e-mail para aceitar.",
+      "verify": "Verificar e-mail",
+      "joined": "Você entrou em {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Você foi convidado",
+      "pageDescription": "Entre em uma organização para trabalhar com sua equipe nos projetos dela.",
+      "title": "Entrar em {organization}",
+      "description": "{inviter} convidou você para entrar em {organization} como {role}.",
+      "accept": "Aceitar convite",
+      "accepting": "Entrando...",
+      "decline": "Recusar",
+      "declined": "Você recusou o convite.",
+      "signedOutTitle": "Entre para aceitar seu convite",
+      "signedOutDescription": "Use o endereço de e-mail para o qual o convite foi enviado. Novo por aqui? Crie uma conta com esse endereço; seu convite estará esperando no painel.",
+      "signIn": "Entrar",
+      "signUp": "Criar conta",
+      "signUpHint": "Você foi convidado para entrar em uma organização. Crie sua conta com o endereço de e-mail para o qual o convite foi enviado.",
+      "wrongAccountTitle": "Este convite é para outra conta",
+      "wrongAccountDescription": "Ele foi enviado para {email}, mas você está conectado como {current}. Saia e entre com {email} para aceitá-lo.",
+      "verifyTitle": "Verifique seu e-mail primeiro",
+      "verifyDescription": "Para entrar em {organization}, confirme que {email} é o seu endereço.",
+      "verify": "Verificar e-mail",
+      "notFoundTitle": "Convite não encontrado",
+      "notFoundDescription": "O link pode estar incompleto. Peça a quem convidou você que envie um novo convite.",
+      "usedTitle": "Este convite não é mais válido",
+      "usedDescription": "Ele já foi aceito, recusado ou cancelado. Peça um novo convite se ainda precisar de acesso.",
+      "expiredTitle": "Este convite expirou",
+      "expiredDescription": "Os convites são válidos por 7 dias. Peça a {inviter} que envie um novo.",
+      "alreadyMemberTitle": "Você já está em {organization}",
+      "alreadyMemberDescription": "Abra o painel e escolha-a no seletor de organizações.",
+      "openDashboard": "Ir para o painel"
+    }
   }
 }

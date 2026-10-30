@@ -476,5 +476,122 @@
       "verify": "אימות",
       "continue": "המשך"
     }
+  },
+  "organization": {
+    "label": "ארגון",
+    "roles": {
+      "owner": "בעלים",
+      "admin": "מנהל",
+      "member": "חבר"
+    },
+    "roleHelp": {
+      "owner": "יכול לעשות כל מה שמנהל יכול, וגם למנות בעלים נוספים.",
+      "admin": "מזמין ומסיר אנשים, משנה תפקידים ומשנה את שם הארגון.",
+      "member": "עובד על הפרויקטים של הארגון."
+    },
+    "switcher": {
+      "label": "החלפת ארגון",
+      "heading": "הארגונים שלך",
+      "create": "יצירת ארגון",
+      "settings": "הגדרות ארגון"
+    },
+    "settings": {
+      "title": "ארגון",
+      "description": "כל חברי {name} משתפים את הפרויקטים שלו. בעלים ומנהלים מחליטים מי שייך אליו.",
+      "nameLabel": "שם הארגון",
+      "renamed": "שם הארגון שונה.",
+      "yourRole": "התפקיד שלך: {role}",
+      "members": "חברים",
+      "memberCount": "{count, plural, one {חבר אחד} two {# חברים} other {# חברים}}",
+      "you": "אתה",
+      "joined": "הצטרף ב-{date}",
+      "changeRole": "שינוי התפקיד של {name}",
+      "roleChanged": "{name} הוא עכשיו {role}.",
+      "remove": "הסרה",
+      "removeLabel": "הסרת {name}",
+      "removeTitle": "להסיר את {name}?",
+      "removeDescription": "{name} מאבד מיד את הגישה אל {organization} ואל הפרויקטים שלו. מה שנוצר על ידו נשאר.",
+      "removed": "{name} הוסר."
+    },
+    "invite": {
+      "title": "הזמנת אנשים",
+      "description": "הם יקבלו אימייל עם קישור להצטרפות. ההזמנות פגות תוקף אחרי 7 ימים.",
+      "email": "כתובת אימייל",
+      "emailPlaceholder": "name@company.com",
+      "role": "תפקיד",
+      "send": "שליחת הזמנה",
+      "sending": "שולח...",
+      "sent": "ההזמנה נשלחה אל {email}."
+    },
+    "pending": {
+      "title": "הזמנות ממתינות",
+      "expires": "פג תוקף ב-{date}",
+      "expired": "פג תוקף",
+      "resend": "שליחה מחדש",
+      "resent": "ההזמנה נשלחה שוב אל {email}.",
+      "cancel": "ביטול הזמנה",
+      "canceled": "ההזמנה ל-{email} בוטלה."
+    },
+    "leave": {
+      "title": "עזיבת הארגון",
+      "description": "תאבד את הגישה אל {name} ואל הפרויקטים שלו. רק הזמנה חדשה תאפשר לך לחזור.",
+      "action": "עזיבה",
+      "confirmTitle": "לעזוב את {name}?",
+      "left": "עזבת את {name}.",
+      "onlyOrganization": "זה הארגון היחיד שלך, ולכן אי אפשר לעזוב אותו."
+    },
+    "create": {
+      "title": "ארגון חדש",
+      "description": "צור ארגון נפרד עם חברים ופרויקטים משלו. אתה תהיה הבעלים שלו.",
+      "action": "יצירת ארגון",
+      "nameLabel": "שם",
+      "namePlaceholder": "אקמי בע״מ",
+      "created": "{name} נוצר. אתה עובד בו עכשיו."
+    },
+    "errors": {
+      "generic": "משהו השתבש. נסה שוב.",
+      "rateLimited": "יותר מדי בקשות. המתן רגע ונסה שוב.",
+      "notAllowed": "אין לך הרשאה לבצע פעולה זו.",
+      "alreadyMember": "האדם הזה כבר חבר.",
+      "lastOwner": "לארגון חייב להיות לפחות בעלים אחד. מנה קודם בעלים אחר.",
+      "invalidEmail": "הזן כתובת אימייל תקינה."
+    },
+    "banner": {
+      "message": "{inviter} הזמין אותך להצטרף אל {organization}.",
+      "accept": "אישור",
+      "decline": "דחייה",
+      "verifyFirst": "אמת את כתובת האימייל שלך כדי לאשר.",
+      "verify": "אימות אימייל",
+      "joined": "הצטרפת אל {organization}."
+    },
+    "invitation": {
+      "pageHeading": "הוזמנת",
+      "pageDescription": "הצטרף לארגון כדי לעבוד עם הצוות שלך על הפרויקטים שלו.",
+      "title": "הצטרפות אל {organization}",
+      "description": "{inviter} הזמין אותך להצטרף אל {organization} בתפקיד {role}.",
+      "accept": "אישור ההזמנה",
+      "accepting": "מצטרף...",
+      "decline": "דחייה",
+      "declined": "דחית את ההזמנה.",
+      "signedOutTitle": "התחבר כדי לאשר את ההזמנה",
+      "signedOutDescription": "השתמש בכתובת האימייל שאליה נשלחה ההזמנה. חדש כאן? צור חשבון עם הכתובת הזו; ההזמנה שלך תמתין בלוח הבקרה.",
+      "signIn": "התחברות",
+      "signUp": "צור חשבון",
+      "signUpHint": "הוזמנת להצטרף לארגון. צור את החשבון שלך עם כתובת האימייל שאליה נשלחה ההזמנה.",
+      "wrongAccountTitle": "ההזמנה הזו מיועדת לחשבון אחר",
+      "wrongAccountDescription": "היא נשלחה אל {email}, אבל אתה מחובר בתור {current}. התנתק והתחבר עם {email} כדי לאשר אותה.",
+      "verifyTitle": "אמת קודם את האימייל שלך",
+      "verifyDescription": "כדי להצטרף אל {organization}, אשר ש-{email} היא הכתובת שלך.",
+      "verify": "אימות אימייל",
+      "notFoundTitle": "ההזמנה לא נמצאה",
+      "notFoundDescription": "ייתכן שהקישור חלקי. בקש ממי שהזמין אותך לשלוח הזמנה חדשה.",
+      "usedTitle": "ההזמנה הזו כבר אינה תקפה",
+      "usedDescription": "היא כבר אושרה, נדחתה או בוטלה. בקש הזמנה חדשה אם אתה עדיין צריך גישה.",
+      "expiredTitle": "תוקף ההזמנה פג",
+      "expiredDescription": "ההזמנות תקפות ל-7 ימים. בקש מ-{inviter} לשלוח הזמנה חדשה.",
+      "alreadyMemberTitle": "אתה כבר ב-{organization}",
+      "alreadyMemberDescription": "פתח את לוח הבקרה ובחר בו ממחליף הארגונים.",
+      "openDashboard": "מעבר ללוח הבקרה"
+    }
   }
 }

@@ -476,5 +476,122 @@
       "verify": "Verificar",
       "continue": "Continuar"
     }
+  },
+  "organization": {
+    "label": "Organización",
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "member": "Miembro"
+    },
+    "roleHelp": {
+      "owner": "Puede hacer todo lo que hace un administrador y nombrar a otros propietarios.",
+      "admin": "Invita y elimina personas, cambia roles y cambia el nombre de la organización.",
+      "member": "Trabaja en los proyectos de la organización."
+    },
+    "switcher": {
+      "label": "Cambiar de organización",
+      "heading": "Tus organizaciones",
+      "create": "Crear organización",
+      "settings": "Ajustes de la organización"
+    },
+    "settings": {
+      "title": "Organización",
+      "description": "Todos los de {name} comparten sus proyectos. Los propietarios y administradores deciden quién pertenece.",
+      "nameLabel": "Nombre de la organización",
+      "renamed": "Organización renombrada.",
+      "yourRole": "Tu rol: {role}",
+      "members": "Miembros",
+      "memberCount": "{count, plural, one {# miembro} other {# miembros}}",
+      "you": "Tú",
+      "joined": "Se unió el {date}",
+      "changeRole": "Cambiar el rol de {name}",
+      "roleChanged": "{name} ahora es {role}.",
+      "remove": "Eliminar",
+      "removeLabel": "Quitar a {name}",
+      "removeTitle": "¿Eliminar a {name}?",
+      "removeDescription": "{name} pierde de inmediato el acceso a {organization} y a sus proyectos. Lo que creó se conserva.",
+      "removed": "{name} fue eliminado."
+    },
+    "invite": {
+      "title": "Invitar personas",
+      "description": "Recibirán un correo con un enlace para unirse. Las invitaciones caducan a los 7 días.",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "nombre@empresa.com",
+      "role": "Rol",
+      "send": "Enviar invitación",
+      "sending": "Enviando...",
+      "sent": "Invitación enviada a {email}."
+    },
+    "pending": {
+      "title": "Invitaciones pendientes",
+      "expires": "Caduca el {date}",
+      "expired": "Caducada",
+      "resend": "Reenviar",
+      "resent": "Invitación reenviada a {email}.",
+      "cancel": "Cancelar invitación",
+      "canceled": "Invitación a {email} cancelada."
+    },
+    "leave": {
+      "title": "Salir de la organización",
+      "description": "Pierdes el acceso a {name} y a sus proyectos. Solo una nueva invitación te permitirá volver a entrar.",
+      "action": "Salir",
+      "confirmTitle": "¿Salir de {name}?",
+      "left": "Has salido de {name}.",
+      "onlyOrganization": "Esta es tu única organización, así que no puedes salir de ella."
+    },
+    "create": {
+      "title": "Nueva organización",
+      "description": "Crea una organización independiente con sus propios miembros y proyectos. Serás su propietario.",
+      "action": "Crear organización",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Acme S.L.",
+      "created": "{name} creada. Ahora estás trabajando en ella."
+    },
+    "errors": {
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "rateLimited": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.",
+      "notAllowed": "No tienes permiso para hacer eso.",
+      "alreadyMember": "Esa persona ya es miembro.",
+      "lastOwner": "Una organización necesita al menos un propietario. Primero nombra a otro propietario.",
+      "invalidEmail": "Introduce un correo electrónico válido."
+    },
+    "banner": {
+      "message": "{inviter} te ha invitado a unirte a {organization}.",
+      "accept": "Aceptar",
+      "decline": "Rechazar",
+      "verifyFirst": "Verifica tu correo electrónico para aceptar.",
+      "verify": "Verificar correo",
+      "joined": "Te has unido a {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Estás invitado",
+      "pageDescription": "Únete a una organización para trabajar con tu equipo en sus proyectos.",
+      "title": "Únete a {organization}",
+      "description": "{inviter} te ha invitado a unirte a {organization} como {role}.",
+      "accept": "Aceptar invitación",
+      "accepting": "Uniéndote...",
+      "decline": "Rechazar",
+      "declined": "Has rechazado la invitación.",
+      "signedOutTitle": "Inicia sesión para aceptar tu invitación",
+      "signedOutDescription": "Usa el correo electrónico al que se envió la invitación. ¿Eres nuevo? Crea una cuenta con esa dirección; tu invitación te estará esperando en tu panel.",
+      "signIn": "Iniciar sesión",
+      "signUp": "Crear cuenta",
+      "signUpHint": "Te han invitado a unirte a una organización. Crea tu cuenta con el correo electrónico al que se envió la invitación.",
+      "wrongAccountTitle": "Esta invitación es para otra cuenta",
+      "wrongAccountDescription": "Se envió a {email}, pero has iniciado sesión como {current}. Cierra sesión e inicia sesión con {email} para aceptarla.",
+      "verifyTitle": "Verifica primero tu correo",
+      "verifyDescription": "Para unirte a {organization}, confirma que {email} es tu dirección.",
+      "verify": "Verificar correo",
+      "notFoundTitle": "Invitación no encontrada",
+      "notFoundDescription": "Puede que el enlace esté incompleto. Pide a quien te invitó que envíe una nueva invitación.",
+      "usedTitle": "Esta invitación ya no es válida",
+      "usedDescription": "Ya fue aceptada, rechazada o cancelada. Pide una nueva invitación si aún necesitas acceso.",
+      "expiredTitle": "Esta invitación ha caducado",
+      "expiredDescription": "Las invitaciones son válidas durante 7 días. Pide a {inviter} que envíe una nueva.",
+      "alreadyMemberTitle": "Ya estás en {organization}",
+      "alreadyMemberDescription": "Abre el panel y selecciónala en el selector de organizaciones.",
+      "openDashboard": "Ir al panel"
+    }
   }
 }

@@ -476,5 +476,122 @@
       "verify": "Megerősítés",
       "continue": "Folytatás"
     }
+  },
+  "organization": {
+    "label": "Szervezet",
+    "roles": {
+      "owner": "Tulajdonos",
+      "admin": "Admin",
+      "member": "Tag"
+    },
+    "roleHelp": {
+      "owner": "Mindent megtehet, amit egy admin, és másokat is tulajdonossá tehet.",
+      "admin": "Embereket hív meg és távolít el, szerepeket módosít, és átnevezi a szervezetet.",
+      "member": "A szervezet projektjein dolgozik."
+    },
+    "switcher": {
+      "label": "Szervezet váltása",
+      "heading": "Szervezeteid",
+      "create": "Szervezet létrehozása",
+      "settings": "Szervezet beállításai"
+    },
+    "settings": {
+      "title": "Szervezet",
+      "description": "A(z) {name} minden tagja közösen használja a projekteket. A tulajdonosok és az adminok döntik el, ki tartozik hozzá.",
+      "nameLabel": "Szervezet neve",
+      "renamed": "A szervezet átnevezve.",
+      "yourRole": "Szerepköröd: {role}",
+      "members": "Tagok",
+      "memberCount": "{count, plural, one {# tag} other {# tag}}",
+      "you": "Te",
+      "joined": "Csatlakozott: {date}",
+      "changeRole": "{name} szerepkörének módosítása",
+      "roleChanged": "{name} mostantól {role}.",
+      "remove": "Eltávolítás",
+      "removeLabel": "{name} eltávolítása",
+      "removeTitle": "Eltávolítod: {name}?",
+      "removeDescription": "{name} azonnal elveszíti a hozzáférését a(z) {organization} szervezethez és projektjeihez. Amit létrehozott, megmarad.",
+      "removed": "{name} eltávolítva."
+    },
+    "invite": {
+      "title": "Emberek meghívása",
+      "description": "E-mailt kapnak egy csatlakozási hivatkozással. A meghívók 7 nap után lejárnak.",
+      "email": "E-mail-cím",
+      "emailPlaceholder": "nev@cegnev.hu",
+      "role": "Szerepkör",
+      "send": "Meghívó küldése",
+      "sending": "Küldés...",
+      "sent": "Meghívó elküldve ide: {email}."
+    },
+    "pending": {
+      "title": "Függőben lévő meghívók",
+      "expires": "Lejár: {date}",
+      "expired": "Lejárt",
+      "resend": "Újraküldés",
+      "resent": "A meghívó újra elküldve ide: {email}.",
+      "cancel": "Meghívó visszavonása",
+      "canceled": "A(z) {email} címre szóló meghívó visszavonva."
+    },
+    "leave": {
+      "title": "Kilépés a szervezetből",
+      "description": "Elveszíted a hozzáférést a(z) {name} szervezethez és projektjeihez. Csak új meghívóval juthatsz vissza.",
+      "action": "Kilépés",
+      "confirmTitle": "Kilépsz innen: {name}?",
+      "left": "Kiléptél innen: {name}.",
+      "onlyOrganization": "Ez az egyetlen szervezeted, ezért nem léphetsz ki belőle."
+    },
+    "create": {
+      "title": "Új szervezet",
+      "description": "Hozz létre egy különálló szervezetet saját tagokkal és projektekkel. Te leszel a tulajdonosa.",
+      "action": "Szervezet létrehozása",
+      "nameLabel": "Név",
+      "namePlaceholder": "Acme Kft.",
+      "created": "A(z) {name} létrejött. Mostantól ebben dolgozol."
+    },
+    "errors": {
+      "generic": "Hiba történt. Kérjük, próbáld újra.",
+      "rateLimited": "Túl sok kérés. Várj egy kicsit, és próbáld újra.",
+      "notAllowed": "Ehhez nincs jogosultságod.",
+      "alreadyMember": "Ez a személy már tag.",
+      "lastOwner": "Egy szervezetnek legalább egy tulajdonosra van szüksége. Előbb tegyél tulajdonossá valaki mást.",
+      "invalidEmail": "Adj meg érvényes e-mail-címet."
+    },
+    "banner": {
+      "message": "{inviter} meghívott a(z) {organization} szervezetbe.",
+      "accept": "Elfogadás",
+      "decline": "Elutasítás",
+      "verifyFirst": "Az elfogadáshoz erősítsd meg az e-mail-címedet.",
+      "verify": "E-mail megerősítése",
+      "joined": "Csatlakoztál a(z) {organization} szervezethez."
+    },
+    "invitation": {
+      "pageHeading": "Meghívást kaptál",
+      "pageDescription": "Csatlakozz egy szervezethez, hogy a csapatoddal együtt dolgozhass a projektjein.",
+      "title": "Csatlakozás: {organization}",
+      "description": "{inviter} meghívott a(z) {organization} szervezetbe {role} szerepkörrel.",
+      "accept": "Meghívó elfogadása",
+      "accepting": "Csatlakozás...",
+      "decline": "Elutasítás",
+      "declined": "Elutasítottad a meghívót.",
+      "signedOutTitle": "Jelentkezz be a meghívó elfogadásához",
+      "signedOutDescription": "Használd azt az e-mail-címet, amelyre a meghívó érkezett. Új vagy itt? Hozz létre fiókot ezzel a címmel; a meghívód a vezérlőpulton vár majd.",
+      "signIn": "Bejelentkezés",
+      "signUp": "Fiók létrehozása",
+      "signUpHint": "Meghívást kaptál egy szervezetbe. Hozd létre a fiókodat azzal az e-mail-címmel, amelyre a meghívó érkezett.",
+      "wrongAccountTitle": "Ez a meghívó egy másik fiókhoz tartozik",
+      "wrongAccountDescription": "A(z) {email} címre érkezett, de te {current} fiókkal vagy bejelentkezve. Jelentkezz ki, majd az elfogadáshoz jelentkezz be a(z) {email} címmel.",
+      "verifyTitle": "Előbb erősítsd meg az e-mail-címedet",
+      "verifyDescription": "A(z) {organization} szervezethez való csatlakozáshoz erősítsd meg, hogy a(z) {email} a te címed.",
+      "verify": "E-mail megerősítése",
+      "notFoundTitle": "A meghívó nem található",
+      "notFoundDescription": "A hivatkozás hiányos lehet. Kérd meg a meghívódat küldő személyt, hogy küldjön új meghívót.",
+      "usedTitle": "Ez a meghívó már nem érvényes",
+      "usedDescription": "Már elfogadták, elutasították vagy visszavonták. Ha még szükséged van hozzáférésre, kérj új meghívót.",
+      "expiredTitle": "Ez a meghívó lejárt",
+      "expiredDescription": "A meghívók 7 napig érvényesek. Kérd meg {inviter} felhasználót, hogy küldjön újat.",
+      "alreadyMemberTitle": "Már tagja vagy a(z) {organization} szervezetnek",
+      "alreadyMemberDescription": "Nyisd meg a vezérlőpultot, és válaszd ki a szervezetváltóban.",
+      "openDashboard": "Ugrás a vezérlőpultra"
+    }
   }
 }

@@ -476,5 +476,122 @@
       "verify": "Verifica",
       "continue": "Continua"
     }
+  },
+  "organization": {
+    "label": "Organizzazione",
+    "roles": {
+      "owner": "Proprietario",
+      "admin": "Admin",
+      "member": "Membro"
+    },
+    "roleHelp": {
+      "owner": "Può fare tutto ciò che fa un admin e nominare altri proprietari.",
+      "admin": "Invita e rimuove persone, cambia i ruoli e rinomina l'organizzazione.",
+      "member": "Lavora sui progetti dell'organizzazione."
+    },
+    "switcher": {
+      "label": "Cambia organizzazione",
+      "heading": "Le tue organizzazioni",
+      "create": "Crea organizzazione",
+      "settings": "Impostazioni dell'organizzazione"
+    },
+    "settings": {
+      "title": "Organizzazione",
+      "description": "Tutti i membri di {name} condividono i suoi progetti. Proprietari e admin decidono chi ne fa parte.",
+      "nameLabel": "Nome dell'organizzazione",
+      "renamed": "Organizzazione rinominata.",
+      "yourRole": "Il tuo ruolo: {role}",
+      "members": "Membri",
+      "memberCount": "{count, plural, one {# membro} other {# membri}}",
+      "you": "Tu",
+      "joined": "Iscritto dal {date}",
+      "changeRole": "Cambia il ruolo di {name}",
+      "roleChanged": "{name} ora è {role}.",
+      "remove": "Rimuovi",
+      "removeLabel": "Rimuovi {name}",
+      "removeTitle": "Rimuovere {name}?",
+      "removeDescription": "{name} perde subito l'accesso a {organization} e ai suoi progetti. Ciò che ha creato resta.",
+      "removed": "{name} è stato rimosso."
+    },
+    "invite": {
+      "title": "Invita persone",
+      "description": "Riceveranno un'email con un link per unirsi. Gli inviti scadono dopo 7 giorni.",
+      "email": "Indirizzo email",
+      "emailPlaceholder": "nome@azienda.it",
+      "role": "Ruolo",
+      "send": "Invia invito",
+      "sending": "Invio in corso...",
+      "sent": "Invito inviato a {email}."
+    },
+    "pending": {
+      "title": "Inviti in sospeso",
+      "expires": "Scade il {date}",
+      "expired": "Scaduto",
+      "resend": "Invia di nuovo",
+      "resent": "Invito inviato di nuovo a {email}.",
+      "cancel": "Annulla invito",
+      "canceled": "Invito a {email} annullato."
+    },
+    "leave": {
+      "title": "Esci dall'organizzazione",
+      "description": "Perdi l'accesso a {name} e ai suoi progetti. Solo un nuovo invito ti permetterà di rientrare.",
+      "action": "Esci",
+      "confirmTitle": "Uscire da {name}?",
+      "left": "Sei uscito da {name}.",
+      "onlyOrganization": "È la tua unica organizzazione, quindi non puoi uscirne."
+    },
+    "create": {
+      "title": "Nuova organizzazione",
+      "description": "Crea un'organizzazione separata con i propri membri e progetti. Ne sarai il proprietario.",
+      "action": "Crea organizzazione",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Acme S.r.l.",
+      "created": "{name} creata. Ora stai lavorando al suo interno."
+    },
+    "errors": {
+      "generic": "Qualcosa è andato storto. Riprova.",
+      "rateLimited": "Troppe richieste. Attendi un momento e riprova.",
+      "notAllowed": "Non hai il permesso di farlo.",
+      "alreadyMember": "Questa persona è già un membro.",
+      "lastOwner": "Un'organizzazione ha bisogno di almeno un proprietario. Nomina prima un altro proprietario.",
+      "invalidEmail": "Inserisci un indirizzo email valido."
+    },
+    "banner": {
+      "message": "{inviter} ti ha invitato a unirti a {organization}.",
+      "accept": "Accetta",
+      "decline": "Rifiuta",
+      "verifyFirst": "Verifica il tuo indirizzo email per accettare.",
+      "verify": "Verifica email",
+      "joined": "Ti sei unito a {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Sei stato invitato",
+      "pageDescription": "Unisciti a un'organizzazione per lavorare con il tuo team ai suoi progetti.",
+      "title": "Unisciti a {organization}",
+      "description": "{inviter} ti ha invitato a unirti a {organization} come {role}.",
+      "accept": "Accetta l'invito",
+      "accepting": "Iscrizione in corso...",
+      "decline": "Rifiuta",
+      "declined": "Hai rifiutato l'invito.",
+      "signedOutTitle": "Accedi per accettare il tuo invito",
+      "signedOutDescription": "Usa l'indirizzo email a cui è stato inviato l'invito. Nuovo qui? Crea un account con quell'indirizzo; il tuo invito ti aspetterà nella dashboard.",
+      "signIn": "Accedi",
+      "signUp": "Crea account",
+      "signUpHint": "Sei stato invitato a unirti a un'organizzazione. Crea il tuo account con l'indirizzo email a cui è stato inviato l'invito.",
+      "wrongAccountTitle": "Questo invito è per un altro account",
+      "wrongAccountDescription": "È stato inviato a {email}, ma hai effettuato l'accesso come {current}. Esci, poi accedi con {email} per accettarlo.",
+      "verifyTitle": "Verifica prima la tua email",
+      "verifyDescription": "Per unirti a {organization}, conferma che {email} è il tuo indirizzo.",
+      "verify": "Verifica email",
+      "notFoundTitle": "Invito non trovato",
+      "notFoundDescription": "Il link potrebbe essere incompleto. Chiedi a chi ti ha invitato di inviare un nuovo invito.",
+      "usedTitle": "Questo invito non è più valido",
+      "usedDescription": "È già stato accettato, rifiutato o annullato. Chiedi un nuovo invito se hai ancora bisogno di accedere.",
+      "expiredTitle": "Questo invito è scaduto",
+      "expiredDescription": "Gli inviti sono validi per 7 giorni. Chiedi a {inviter} di inviarne uno nuovo.",
+      "alreadyMemberTitle": "Sei già in {organization}",
+      "alreadyMemberDescription": "Apri la dashboard e selezionala dal selettore delle organizzazioni.",
+      "openDashboard": "Vai alla dashboard"
+    }
   }
 }

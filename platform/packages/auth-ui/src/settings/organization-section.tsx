@@ -216,7 +216,7 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
                 {manageable && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label={t("settings.removeTitle", { name: member.name || member.email })}>
+                      <Button variant="ghost" size="icon" aria-label={t("settings.removeLabel", { name: member.name || member.email })}>
                         <UserMinus className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
