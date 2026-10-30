@@ -8,8 +8,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Node resolves TypeScript entrypoints to physical paths. Keep every helper
+# invocation physical too, including when the checkout is reached by a symlink.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 PID_FILE="$PROJECT_DIR/.dev-pids"
 CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
@@ -38,11 +40,13 @@ app_dir() {
 # PARSE ARGUMENTS
 # ============================================================
 # --ci          Non-interactive/foreground mode (for Playwright)
+# --prepare-only Verify the local backend, then stop it without starting apps
 # --app=NAME    Start specific app(s): web, admin, landing (comma-separated)
 # No --app flag means start every installed core app
 
 NON_INTERACTIVE=false
 FORCE_RESTART=false
+PREPARE_ONLY=false
 SELECTED_APPS=""
 
 for arg in "$@"; do
@@ -52,6 +56,10 @@ for arg in "$@"; do
             ;;
         --restart)
             FORCE_RESTART=true
+            ;;
+        --prepare-only)
+            PREPARE_ONLY=true
+            NON_INTERACTIVE=true
             ;;
         --app=*)
             SELECTED_APPS="${arg#--app=}"
@@ -121,6 +129,11 @@ if [ "$START_WEB$START_ADMIN$START_LANDING$START_STORYBOOK" = falsefalsefalsefal
     exit 1
 fi
 
+if [ "$PREPARE_ONLY" = true ] && [ "$NEED_CONVEX" = false ]; then
+    echo "No backend preparation needed for the selected apps."
+    exit 0
+fi
+
 if [ "$NON_INTERACTIVE" = true ]; then
     echo "[CI MODE] Running in non-interactive/foreground mode"
     echo "[CI MODE] Current directory: $(pwd)"
@@ -158,7 +171,11 @@ cleanup_on_exit() {
             name=${entry%:*}; pid=${entry##*:}
             "$NODE_TS" "$PROCESS_HELPER" stop --name "$name" --pid "$pid" &
             cleanup_pid=$!
-            wait "$cleanup_pid" || true
+            if ! wait "$cleanup_pid"; then
+                # A successful preflight must not hand browsers a surviving
+                # preparation process. Preserve an earlier failure status.
+                if [ "$PREPARE_ONLY" = true ] && [ "$status" -eq 0 ]; then status=1; fi
+            fi
         done
         set +m
         [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
@@ -442,6 +459,10 @@ if [ -n "$PROCESS_ROWS" ] || [ -f "$PID_FILE" ]; then
     done < <(printf '%s\n' "$PROCESS_ROWS"; [ ! -f "$PID_FILE" ] || cat "$PID_FILE")
 
     if [ "$HAS_RUNNING_PROCESSES" = true ]; then
+        if [ "$PREPARE_ONLY" = true ]; then
+            echo "Backend preparation requires this checkout's managed services to be stopped first."
+            exit 1
+        fi
         if [ "$FORCE_RESTART" = true ] || [ ! -t 0 ]; then
             # --restart flag or non-interactive: auto-stop without prompting
             echo -e "${YELLOW}Stopping existing processes...${NC}"
@@ -808,9 +829,18 @@ if [ "$NEED_CONVEX" = true ]; then
     else
         echo -e "  ${GREEN}✔${NC} Migrations: ${MIGRATION_OUTPUT}"
     fi
+    # Fresh and existing local installations use the same preserving verifier as deployments.
+    # A blocked mapping leaves maintenance in place and must be repaired, never reset.
+    echo -e "${GREEN}▶ Verifying organization data cutover...${NC}"
+    "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" organization
 else
     # Create PID file even if Convex isn't needed
     > "$PID_FILE"
+fi
+
+if [ "$PREPARE_ONLY" = true ]; then
+    echo "Local backend preparation complete; releasing owned backend before browser startup."
+    exit 0
 fi
 
 # ============================================================

@@ -64,8 +64,9 @@ and `AUTH_EMAIL_RATE_PER_DAY` configuration against the
 
 Deploy the authentication backend and UI together. Existing sessions without verified proof
 must reauthenticate or sign in again. Custom auth screens must handle limited enrollment and
-recovery sessions and fresh verification; app-owned administrator mutations must use
-`adminMutation`. Required passkeys need current-session passkey authentication. Email-OTP
+recovery sessions and fresh verification; app-owned control mutations must follow the
+[current endpoint builder guidance](authentication-and-onboarding.md#86-enrollment-recovery-and-custom-endpoints).
+Required passkeys need current-session passkey authentication. Email-OTP
 sign-in, social account/token routes and admin impersonation are unavailable; password reset
 and email verification remain supported. Follow
 [session assurance](authentication-and-onboarding.md#85-session-assurance-and-reauthentication).

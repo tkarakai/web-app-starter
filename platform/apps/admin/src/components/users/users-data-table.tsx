@@ -9,7 +9,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useQuery } from "convex/react";
 import { api } from "@repo/backend";
 
 import {
@@ -23,14 +23,13 @@ import {
   TableRow,
   TooltipProvider,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
-import { banUser, unbanUser, removeUser, setUserRole } from "@/lib/admin-api";
-import { useUsers } from "@/hooks/use-users";
+import type { AppOperatorUser } from "@/lib/admin-api";
+import { banAppOperator, unbanAppOperator } from "@/lib/admin-api";
+import { useAppOperators, type AppOperatorFilters } from "@/hooks/use-users";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { createColumns } from "./columns";
 import { usersTableFeatures } from "./table-features";
 import { FilterBar } from "./filter-bar";
-import { ConfirmationDialog } from "./confirmation-dialog";
 import { BanDialog } from "./ban-dialog";
 import { UnbanDialog } from "./unban-dialog";
 import { BatchActionDialog } from "./batch-action-dialog";
@@ -40,43 +39,30 @@ import { UserSessionsDialog } from "./user-sessions-dialog";
 type UserAction =
   | "ban"
   | "unban"
-  | "delete"
-  | "makeAdmin"
-  | "removeAdmin"
   | "sessions";
 
 type PendingAction = {
   action: UserAction;
-  users: AdminUser[];
+  users: AppOperatorUser[];
 };
-
-/** Column sort IDs that differ from server field names. */
-const SORT_FIELD_MAP: Record<string, string> = {
-  status: "banned",
-};
-
-/** Columns that must be sorted client-side (server can't sort booleans via query params). */
-const CLIENT_SORT_COLUMNS = new Set(["status"]);
 
 /** Default column visibility — optional columns hidden by default. */
 const DEFAULT_COLUMN_VISIBILITY: ColumnVisibilityState = {
   image: false,
   updatedAt: false,
   emailVerified: false,
-  phoneNumber: false,
-  phoneNumberVerified: false,
   twoFactorEnabled: false,
 };
 
 /** Debounce delay for name search (ms). */
 const SEARCH_DEBOUNCE = 300;
 
-export function UsersDataTable() {
+export function AppOperatorsDataTable() {
   const authUser = useAuthUser();
   const currentUserId = authUser?.id;
-  const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
+  const client = useConvex();
 
-  // Protected admin emails (from adminEmails table) — these users cannot be banned/deleted/demoted.
+  // Bootstrap app-operator protection is additional to the backend's canonical identity boundary.
   const protectedEmailsList = useQuery(api.platform.adminEmails.listProtected);
   const protectedEmails = React.useMemo(
     () => new Set(protectedEmailsList ?? []),
@@ -100,48 +86,38 @@ export function UsersDataTable() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Build server-side sort/search params (status filtering + sorting done client-side).
+  // The server owns status/search filtering and the supported creation-time order.
   const filterParams = React.useMemo(() => {
-    const params: Record<string, string | undefined> = {};
+    const params: AppOperatorFilters = {};
 
     if (debouncedSearch) {
       params.searchValue = debouncedSearch;
     }
 
-    // Server-side sorting: map column IDs to DB field names (skip client-sorted columns).
-    if (sorting.length > 0 && !CLIENT_SORT_COLUMNS.has(sorting[0].id)) {
-      const columnId = sorting[0].id;
-      params.sortBy = SORT_FIELD_MAP[columnId] ?? columnId;
+    if (statusFilter === "active" || statusFilter === "banned") params.status = statusFilter;
+    if (sorting[0]?.id === "createdAt") {
+      params.sortBy = "createdAt";
       params.sortDirection = sorting[0].desc ? "desc" : "asc";
     }
 
     return params;
-  }, [debouncedSearch, sorting]);
+  }, [debouncedSearch, statusFilter, sorting]);
 
-  const { users: allUsers, total, loading, loadingMore, hasMore, loadMore, refresh } =
-    useUsers(filterParams);
-
-  // Client-side status filtering (server-side boolean filter doesn't work with string query params).
-  const filteredUsers = React.useMemo(() => {
-    if (statusFilter === "active") return allUsers.filter((u) => u.banned !== true);
-    if (statusFilter === "banned") return allUsers.filter((u) => u.banned === true);
-    return allUsers;
-  }, [allUsers, statusFilter]);
+  const { users: allUsers, total, loading, loadingMore, hasMore, loadMore, refresh, error } =
+    useAppOperators(filterParams);
 
   // Client-side sorting for columns that can't be sorted server-side (e.g. boolean fields).
   const sortedUsers = React.useMemo(() => {
     if (sorting.length > 0 && sorting[0].id === "status") {
       const dir = sorting[0].desc ? -1 : 1;
-      return [...filteredUsers].sort((a, b) => {
+      return [...allUsers].sort((a, b) => {
         const aVal = a.banned === true ? 1 : 0;
         const bVal = b.banned === true ? 1 : 0;
         return (aVal - bVal) * dir;
       });
     }
-    return filteredUsers;
-  }, [filteredUsers, sorting]);
-
-  const filteredTotal = statusFilter === "all" ? total : filteredUsers.length;
+    return allUsers;
+  }, [allUsers, sorting]);
 
   // Clear selection when filters or sorting change.
   React.useEffect(() => {
@@ -168,20 +144,16 @@ export function UsersDataTable() {
   // ----- Dialog state -----
 
   // Ban dialog (single + batch)
-  const [banTarget, setBanTarget] = React.useState<AdminUser[] | null>(null);
+  const [banTarget, setBanTarget] = React.useState<AppOperatorUser[] | null>(null);
   const [banPending, setBanPending] = React.useState(false);
 
   // Unban dialog (single only)
-  const [unbanTarget, setUnbanTarget] = React.useState<AdminUser | null>(null);
+  const [unbanTarget, setUnbanTarget] = React.useState<AppOperatorUser | null>(null);
   const [unbanPending, setUnbanPending] = React.useState(false);
 
-  // Simple confirmation dialog (delete, role change)
-  const [singleAction, setSingleAction] = React.useState<PendingAction | null>(null);
-  const [singlePending, setSinglePending] = React.useState(false);
-
-  // Batch action dialog (unban batch, delete batch)
+  // Batch action dialog (ban/unban only)
   const [batchAction, setBatchAction] = React.useState<PendingAction | null>(null);
-  const [sessionsTarget, setSessionsTarget] = React.useState<AdminUser | null>(null);
+  const [sessionsTarget, setSessionsTarget] = React.useState<AppOperatorUser | null>(null);
 
   // Ban params ref for batch ban execution
   const batchBanParamsRef = React.useRef<{
@@ -200,7 +172,7 @@ export function UsersDataTable() {
   // ----- Action routing -----
 
   const handleAction = React.useCallback(
-    (action: UserAction, actionUsers: AdminUser[]) => {
+    (action: UserAction, actionUsers: AppOperatorUser[]) => {
       if (action === "sessions") {
         if (actionUsers.length === 1) {
           setSessionsTarget(actionUsers[0]);
@@ -209,8 +181,6 @@ export function UsersDataTable() {
         setBanTarget(actionUsers);
       } else if (action === "unban" && actionUsers.length === 1) {
         setUnbanTarget(actionUsers[0]);
-      } else if (actionUsers.length === 1) {
-        setSingleAction({ action, users: actionUsers });
       } else {
         setBatchAction({ action, users: actionUsers });
       }
@@ -226,13 +196,13 @@ export function UsersDataTable() {
     if (banTarget.length === 1) {
       setBanPending(true);
       try {
-        await banUser(banTarget[0].id, banReason, banExpiresIn, postAuditEvent);
+        await banAppOperator(client, banTarget[0].id, banReason, banExpiresIn);
         toast.success(`${banTarget[0].email} has been banned`);
         setBanTarget(null);
         setRowSelection({});
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to ban user");
+        toast.error(err instanceof Error ? err.message : "Failed to ban app operator");
       } finally {
         setBanPending(false);
       }
@@ -251,44 +221,15 @@ export function UsersDataTable() {
     if (!unbanTarget) return;
     setUnbanPending(true);
     try {
-      await unbanUser(unbanTarget.id, postAuditEvent);
+      await unbanAppOperator(client, unbanTarget.id);
       toast.success(`${unbanTarget.email} has been unbanned`);
       setUnbanTarget(null);
       setRowSelection({});
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to unban user");
+      toast.error(err instanceof Error ? err.message : "Failed to unban app operator");
     } finally {
       setUnbanPending(false);
-    }
-  };
-
-  // ----- Single action confirm (delete, role change) -----
-
-  const handleSingleConfirm = async () => {
-    if (!singleAction) return;
-    const { action, users: actionUsers } = singleAction;
-    const user = actionUsers[0];
-
-    setSinglePending(true);
-    try {
-      if (action === "delete") await removeUser(user.id, postAuditEvent);
-      else if (action === "makeAdmin") await setUserRole(user.id, "admin", postAuditEvent);
-      else if (action === "removeAdmin") await setUserRole(user.id, "user", postAuditEvent);
-
-      const messages: Record<string, string> = {
-        delete: `${user.email} has been deleted`,
-        makeAdmin: `${user.email} is now an admin`,
-        removeAdmin: `${user.email} is no longer an admin`,
-      };
-      toast.success(messages[action] ?? "Action completed");
-      setSingleAction(null);
-      setRowSelection({});
-      refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Action failed");
-    } finally {
-      setSinglePending(false);
     }
   };
 
@@ -307,20 +248,18 @@ export function UsersDataTable() {
   };
 
   const batchExecutor = React.useCallback(
-    async (user: AdminUser) => {
+    async (user: AppOperatorUser) => {
       if (!batchAction) return;
       if (batchAction.action === "ban") {
         if (user.banned === true) return; // Already banned — skip (defense-in-depth)
         const params = batchBanParamsRef.current;
-        await banUser(user.id, params?.banReason ?? "", params?.banExpiresIn, postAuditEvent);
+        await banAppOperator(client, user.id, params?.banReason ?? "", params?.banExpiresIn);
       } else if (batchAction.action === "unban") {
         if (user.banned !== true) return; // Not banned — skip (defense-in-depth)
-        await unbanUser(user.id, postAuditEvent);
-      } else if (batchAction.action === "delete") {
-        await removeUser(user.id, postAuditEvent);
+        await unbanAppOperator(client, user.id);
       }
     },
-    [batchAction, postAuditEvent],
+    [batchAction, client],
   );
 
   // ----- Label helpers -----
@@ -329,50 +268,31 @@ export function UsersDataTable() {
     const labels: Record<UserAction, string> = {
       ban: "Ban",
       unban: "Unban",
-      delete: "Delete",
-      makeAdmin: "Make admin",
-      removeAdmin: "Remove admin",
       sessions: "Sessions",
     };
     return labels[action];
   };
 
-  const actionDescription = (action: UserAction, target: string): string => {
-    if (action === "delete") {
-      return `Are you sure you want to delete ${target}? This action cannot be undone.`;
-    }
-    if (action === "makeAdmin") {
-      return `Are you sure you want to grant admin privileges to ${target}?`;
-    }
-    if (action === "removeAdmin") {
-      return `Are you sure you want to remove admin privileges from ${target}?`;
-    }
-    return `Are you sure you want to ${action} ${target}?`;
-  };
-
   // Batch description with applicable count info.
   const batchDescriptionText = React.useCallback(
-    (action: UserAction, actionUsers: AdminUser[]): string => {
+    (action: UserAction, actionUsers: AppOperatorUser[]): string => {
       const totalCount = actionUsers.length;
 
       if (action === "ban") {
         const applicable = actionUsers.filter((u) => u.banned !== true).length;
-        if (applicable === 0) return "None of the selected users can be banned (all are already banned).";
+        if (applicable === 0) return "None of the selected app operators can be banned (all are already banned).";
         if (applicable < totalCount)
-          return `${applicable} of ${totalCount} selected users will be banned (${totalCount - applicable} already banned).`;
-        return `Are you sure you want to ban ${totalCount} selected users?`;
+          return `${applicable} of ${totalCount} selected app operators will be banned (${totalCount - applicable} already banned).`;
+        return `Are you sure you want to ban ${totalCount} selected app operators?`;
       }
       if (action === "unban") {
         const applicable = actionUsers.filter((u) => u.banned === true).length;
-        if (applicable === 0) return "None of the selected users can be unbanned (none are banned).";
+        if (applicable === 0) return "None of the selected app operators can be unbanned (none are banned).";
         if (applicable < totalCount)
-          return `${applicable} of ${totalCount} selected users will be unbanned (${totalCount - applicable} not banned).`;
-        return `Are you sure you want to unban ${totalCount} selected users?`;
+          return `${applicable} of ${totalCount} selected app operators will be unbanned (${totalCount - applicable} not banned).`;
+        return `Are you sure you want to unban ${totalCount} selected app operators?`;
       }
-      if (action === "delete") {
-        return `Are you sure you want to delete ${totalCount} selected users? This action cannot be undone.`;
-      }
-      return `Are you sure you want to ${action} ${totalCount} selected users?`;
+      return `Are you sure you want to ${action} ${totalCount} selected app operators?`;
     },
     [],
   );
@@ -397,11 +317,14 @@ export function UsersDataTable() {
             selectedCount={selectedUsers.length}
             onBatchBan={() => handleAction("ban", selectedUsers)}
             onBatchUnban={() => handleAction("unban", selectedUsers)}
-            onBatchDelete={() => handleAction("delete", selectedUsers)}
             table={table}
-            total={filteredTotal}
+            total={total}
             loading={loading}
           />
+
+          {error && <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
+            <span>{error}</span><Button variant="outline" size="sm" onClick={refresh}>Retry</Button>
+          </div>}
 
           <div className="rounded-md border">
             <Table>
@@ -435,7 +358,7 @@ export function UsersDataTable() {
                       colSpan={table.getVisibleFlatColumns().length}
                       className="h-24 text-center"
                     >
-                      No users found.
+                      No app operators found.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -497,32 +420,15 @@ export function UsersDataTable() {
         />
       )}
 
-      {/* Single-user confirmation dialog (delete, role change) */}
-      {singleAction && singleAction.users.length === 1 && (
-        <ConfirmationDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setSingleAction(null);
-          }}
-          title={`${actionLabel(singleAction.action)} user`}
-          description={actionDescription(singleAction.action, singleAction.users[0].email)}
-          confirmLabel={actionLabel(singleAction.action)}
-          destructive={singleAction.action === "delete"}
-          pending={singlePending}
-          onConfirm={handleSingleConfirm}
-        />
-      )}
-
       {/* Batch action dialog with progress */}
       {batchAction && batchAction.users.length > 0 && (
         <BatchActionDialog
           open
           onClose={handleBatchClose}
           onCancel={handleBatchCancel}
-          title={`${actionLabel(batchAction.action)} ${batchAction.users.length} users`}
+          title={`${actionLabel(batchAction.action)} ${batchAction.users.length} app operators`}
           description={batchDescriptionText(batchAction.action, batchAction.users)}
           confirmLabel={`${actionLabel(batchAction.action)} all`}
-          destructive={batchAction.action === "delete"}
           users={batchApplicableUsers}
           action={batchExecutor}
           confirmDisabled={batchApplicableUsers.length === 0}
@@ -539,3 +445,6 @@ export function UsersDataTable() {
     </UserActionsProvider>
   );
 }
+
+/** @deprecated Use AppOperatorsDataTable. */
+export const UsersDataTable = AppOperatorsDataTable;

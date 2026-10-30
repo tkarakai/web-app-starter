@@ -84,11 +84,11 @@ export function EmailVerificationPolicyCard({ scope }: { scope: Scope }) {
             </div>
             <div>
               <CardTitle className="text-base">
-                {isAdminScope ? "Admin Email Verification Policy" : "User Email Verification Policy"}
+                {isAdminScope ? "App-admin Email Verification Policy" : "User Email Verification Policy"}
               </CardTitle>
               <CardDescription>
                 {isAdminScope
-                  ? "Require admins to verify their email address before accessing admin routes"
+                  ? "Require app operators to verify their email address before accessing app-admin routes"
                   : "Require users to verify their email address before accessing the app"}
               </CardDescription>
             </div>
@@ -116,10 +116,10 @@ export function EmailVerificationPolicyCard({ scope }: { scope: Scope }) {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isEnabled
                   ? isAdminScope
-                    ? "Admins must verify their email address before accessing dashboard routes."
+                    ? "App operators must verify their email address before accessing dashboard routes."
                     : "Users must verify their email address before accessing the dashboard. Unverified users are redirected to a verification page."
                   : isAdminScope
-                  ? "Email verification is optional for admins."
+                  ? "Email verification is optional for app operators."
                   : "Email verification is optional. Users can access the app immediately after signing up without verifying their email."}
               </p>
             </>

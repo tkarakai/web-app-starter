@@ -10,25 +10,23 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 import type { usersTableFeatures } from "./table-features";
 
 const COLUMN_LABELS: Record<string, string> = {
   image: "Avatar",
   name: "Name",
   email: "Email",
-  role: "Role",
+  role: "Account",
   status: "Status",
   createdAt: "Created",
   updatedAt: "Updated",
   emailVerified: "Email Verified",
-  phoneNumber: "Phone",
-  phoneNumberVerified: "Phone Verified",
   twoFactorEnabled: "2FA",
 };
 
 type ColumnSelectorProps = {
-  table: Table<typeof usersTableFeatures, AdminUser>;
+  table: Table<typeof usersTableFeatures, AppOperatorUser>;
 };
 
 export function ColumnSelector({ table }: ColumnSelectorProps) {

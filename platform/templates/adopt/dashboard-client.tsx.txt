@@ -8,11 +8,14 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { SidebarTrigger } from "@/components/ui/localized-controls";
 import { useProfileSync } from "@/hooks/useProfileSync";
+import { usePersonalDataContext } from "@/hooks/use-personal-data";
 
 export function DashboardClient() {
   useProfileSync();
   const user = useAuthUser();
   const tc = useTranslations("common");
+  const to = useTranslations("organizations");
+  const context = usePersonalDataContext();
   return (
     <SidebarProvider>
       <AppSidebar displayName={user?.name ?? tc("anonymous")} displayEmail={user?.email} />
@@ -22,6 +25,9 @@ export function DashboardClient() {
           <SidebarTrigger />
           <h1 className="font-semibold">{appConfig.identity.productName}</h1>
         </header>
+        <div data-personal-data-state={context.state} className="p-4">
+          {context.state !== "ready" && <p role="status">{context.state === "loading" ? tc("loading") : to("chooseAvailable")}</p>}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

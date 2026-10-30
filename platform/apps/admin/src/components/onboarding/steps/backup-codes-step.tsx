@@ -57,7 +57,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
 
   const handleDownload = () => {
     const content = [
-      `${appConfig.identity.productName} — Admin Backup codes`,
+      `${appConfig.identity.productName} — App-operator backup codes`,
       "=====================================",
       "",
       BACKUP_CODES_DESCRIPTION,
@@ -71,7 +71,7 @@ export function BackupCodesStep({ backupCodes: initialCodes, onComplete }: Backu
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "admin-backup-codes.txt";
+    a.download = "app-operator-backup-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   };

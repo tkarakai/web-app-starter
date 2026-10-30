@@ -43,9 +43,12 @@ export async function runConfiguredWeb(variant: WebConfigurationVariant, suite: 
         ? join(webRoot, "qa/tests/middleware-auth-routes.test.ts")
         : join(webRoot, "../../platform/packages/auth-ui/qa/tests/onboarding.test.ts"),
       "--preload", join(webRoot, "qa/tests/helpers/web-config.preload.ts")]
-      : ["node", join(webRoot, "node_modules/@playwright/test/cli.js"), "test",
-        suite === "discovery" ? "qa/e2e/waitlist-signup.spec.ts" : "qa/e2e/waitlist-configuration.spec.ts",
-        "--reporter=json", ...(suite === "discovery" ? ["--list"] : ["--workers=1", "--retries=0", `--output=${join(directory, "results")}`])];
+      : suite === "discovery"
+        ? ["node", join(webRoot, "node_modules/@playwright/test/cli.js"), "test",
+          "qa/e2e/waitlist-signup.spec.ts", "--reporter=json", "--list"]
+        : [join(webRoot, "../../platform/tooling/node-ts.sh"),
+          join(webRoot, "../../platform/tooling/e2e/secret-safe-playwright.ts"),
+          "qa/e2e/waitlist-configuration.spec.ts", "--reporter=json", "--workers=1", "--retries=0"];
     const child = spawn(command, {
       cwd: bunSuite ? directory : webRoot,
       env: {
@@ -56,6 +59,8 @@ export async function runConfiguredWeb(variant: WebConfigurationVariant, suite: 
           NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import ${JSON.stringify(loader)}`,
           // These checks do not request page/backend fixtures or an app server.
           E2E_BASE_URL: "http://127.0.0.1:1",
+          // Executed tests use the same protected runner as other web acceptance.
+          E2E_SAFE_REPORT_DIR: join(directory, "safe-report"),
         }),
       },
       stdout: "pipe",

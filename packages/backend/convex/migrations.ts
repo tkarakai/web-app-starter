@@ -41,3 +41,6 @@ export default internalMutation(async (ctx) => {
     // Add future migrations here, in order.
   ]);
 });
+
+/** Organization cutover is explicit and preserving; the generic serial runner cannot mark it done. */
+export { begin as organizationCutover } from "./organizationMigration";

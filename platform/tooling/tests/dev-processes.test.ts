@@ -20,7 +20,7 @@ const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const ROOT = path.resolve(SCRIPTS, "../..");
 const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts", "local-dev-deps.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
-const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"];
+const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts", ".github/actions/deploy-convex/organization-target.ts", ".github/actions/deploy-convex/organization-source.ts"];
 
 let temp: string, base: string, root: string, foreign: string, processes: ChildProcess[];
 
@@ -625,6 +625,12 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
     if (app === "landing") {
       // Substitute Convex's executable boundary too: landing now needs its HTTP endpoint.
       fs.mkdirSync(path.join(root, "packages/backend"), { recursive: true });
+      // Model the migration inventory executable boundary separately from its
+      // own real inventory tests. The launcher still verifies source, target,
+      // migration progress and the exact readiness receipt through real code.
+      fs.mkdirSync(path.join(root, "packages/backend/convex/platform"), { recursive: true });
+      fs.writeFileSync(path.join(root, "packages/backend/convex/platform/organizationReadiness.ts"), "export const ORGANIZATION_MIGRATION_CONTRACT_VERSION = 1;\n");
+      fs.writeFileSync(path.join(root, "platform/tooling/organization-migration-check.ts"), `import {resolve} from "node:path"; import {fileURLToPath} from "node:url"; export const organizationFunctionRoot = root => resolve(root,"packages/backend/convex"); if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) console.log(JSON.stringify({registryHash:${JSON.stringify("a".repeat(64))}}));\n`);
       fs.mkdirSync(path.join(root, "node_modules/.bin"), { recursive: true });
       fs.writeFileSync(path.join(root, "node_modules/.bin/esbuild"), "#!/bin/sh\necho 0.25.0\n", { mode: 0o755 });
       fs.writeFileSync(path.join(root,"packages/convex/fixture.cjs"), "if(process.argv[2]!=='dev'){console.log('fixture');process.exit(0);}\nconst fs = require('node:fs');\nfs.writeFileSync('.env.local', 'CONVEX_DEPLOYMENT=anonymous:process-fixture\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');\nfs.mkdirSync('.convex/local/default', { recursive: true });\nfs.writeFileSync('.convex/local/default/config.json', JSON.stringify({ deploymentName: 'process-fixture', adminKey: 'synthetic-local-key', ports: { cloud: 43210, site: 43211 } }));\nconsole.log('Convex functions ready');\nsetTimeout(() => {}, 300000);\n");
@@ -632,9 +638,22 @@ for (const args of [["dev", "--app=storybook"], ["run", "dev:storybook"], ["run"
       fs.rmSync(path.join(root, "packages/backend/node_modules/.bin/convex"), { force: true });
       fs.writeFileSync(path.join(root, "packages/backend/node_modules/.bin/convex"), `#!/usr/bin/env node
 const fs = require('node:fs');
-if (process.argv.slice(2, 5).join(' ') !== 'env set --force') process.exit(127);
-const input = fs.readFileSync(0, 'utf8');
-if (!/^DEV_FIXTURE_SECRET=[a-f0-9]{64}$/m.test(input) || !input.includes('DEV_FIXTURE_RUNTIME=anonymous')) process.exit(1);
+const args = process.argv.slice(2);
+const file = '.organization-fixture.json';
+const state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file,'utf8')) : {env:{}, ready:false};
+if (args.slice(0,3).join(' ') === 'env set --force') {
+  const input = fs.readFileSync(0, 'utf8');
+  if (!/^DEV_FIXTURE_SECRET=[a-f0-9]{64}$/m.test(input) || !input.includes('DEV_FIXTURE_RUNTIME=anonymous')) process.exit(1);
+} else if (args.slice(0,2).join(' ') === 'env list') console.log(Object.keys(state.env).join('\\n'));
+else if (args.slice(0,2).join(' ') === 'env set') state.env[args[2]]=args[3];
+else if (args[0] === 'run') {
+  if (args[1] === 'organizationMigration:status') console.log(JSON.stringify({deployment:'http://127.0.0.1:43210',expectedRegistryHash:'${"a".repeat(64)}',deploymentVersion:state.env.ORGANIZATION_DEPLOYMENT_VERSION,registryHash:state.env.ORGANIZATION_REGISTRY_HASH,ready:state.ready}));
+  else if (args[1] === 'organizationMigration:begin') state.ready=false;
+  else if (args[1] === 'organizationMigration:step') console.log('{"complete":true}');
+  else if (args[1] === 'organizationMigration:finalize') {state.ready=true;console.log('{"ready":true}');}
+  else process.exit(127);
+} else process.exit(127);
+fs.writeFileSync(file,JSON.stringify(state));
 `, { mode: 0o755 });
       fs.writeFileSync(path.join(bindir, "bunx"), `#!/usr/bin/env node
 if (process.argv[2] === 'convex') { console.log('fixture'); process.exit(0); }
@@ -680,6 +699,9 @@ const {createServer} = await import('node:http'); const server = createServer((r
         const capabilityFile = path.join(root, ".env.e2e.local");
         assert.match(fs.readFileSync(capabilityFile, "utf8"), /^DEV_FIXTURE_SECRET=[a-f0-9]{64}$/m);
         assert.equal(fs.statSync(capabilityFile).mode & 0o777, 0o600);
+        const organization = JSON.parse(fs.readFileSync(path.join(root, "packages/backend/.organization-fixture.json"), "utf8"));
+        assert.equal(organization.ready, true);
+        assert.equal(organization.env.ORGANIZATION_CUTOVER_ENFORCED, "1");
       }
       const status = await runScript("dev-status.sh");
       assert.match(status.stdout, new RegExp(app));

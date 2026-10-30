@@ -7,7 +7,7 @@ import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join, dirname, delimiter } from "node:path";
 import { createRequire } from "node:module";
-import { spawn, execFileSync, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, execFileSync, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { stop, readRecords } from "./dev-processes.ts";
 import appConfig from "../../app.config.ts";
@@ -21,6 +21,7 @@ let child: ChildProcess | undefined, logs = "";
 let childClosed = false;
 let unrelated: ChildProcess | undefined;
 const unrelatedRoot = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "starter-unrelated-backend-")));
+const linkedFixture = join(unrelatedRoot, "linked-checkout");
 async function shutdown() {
   if (child && child.exitCode === null && child.signalCode === null) {
     // Bun can exit before its shell finishes the EXIT trap. Wait for inherited
@@ -32,10 +33,10 @@ async function shutdown() {
   stop(fixture);
   if (child && child.exitCode === null && child.signalCode === null) { try { process.kill(-child.pid!, "SIGKILL"); } catch { /* Already exited. */ } }
 }
-function launch(args: string[], timeout = "30000", env: Record<string, string | undefined> = {}) {
+function launch(args: string[], timeout = "30000", env: Record<string, string | undefined> = {}, executable = "bun") {
   logs = "";
   childClosed = false;
-  child = spawn("bun", args, { cwd: fixture, detached: true, env: { ...process.env, LANDING_URL: undefined, AGENT_MCP_ENABLED: undefined, AGENT_MCP_ORIGIN: undefined, AGENT_MCP_AUTH_ORIGIN: undefined, ...env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
+  child = spawn(executable, args, { cwd: fixture, detached: true, env: { ...process.env, LANDING_URL: undefined, AGENT_MCP_ENABLED: undefined, AGENT_MCP_ORIGIN: undefined, AGENT_MCP_AUTH_ORIGIN: undefined, ORGANIZATION_MIGRATION_BATCH_SIZE: undefined, ...env, CI: "true", DEV_READY_TIMEOUT_MS: timeout, PATH: join(fixture, "bin") + delimiter + process.env.PATH }, stdio: ["ignore", "pipe", "pipe"] });
   child.once("close", () => { childClosed = true; });
   child.stdout!.on("data", data => { logs += String(data); }); child.stderr!.on("data", data => { logs += String(data); });
 }
@@ -45,9 +46,9 @@ async function until(check: () => boolean, ms = 90_000) {
   throw new Error("Startup smoke timed out\n" + logs);
 }
 try {
-  const tools = ["package.json", "node-ts.sh", "dev-start.sh", "dev-convex.sh", "dev-processes.ts", "dev-stop.sh", "dev-status.sh", "dev-dashboard.sh", "app-config.ts", "agentic-origins.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh", "local-fixtures.ts", "http-ready.ts", "local-dev-deps.ts"];
+  const tools = ["package.json", "node-ts.sh", "dev-start.sh", "dev-convex.sh", "dev-processes.ts", "dev-stop.sh", "dev-status.sh", "dev-dashboard.sh", "app-config.ts", "agentic-origins.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh", "local-fixtures.ts", "organization-migration-check.ts", "http-ready.ts", "local-dev-deps.ts"];
   for (const name of tools) write("platform/tooling/" + name, fs.readFileSync(join(source, "platform/tooling", name), "utf8"));
-  for (const file of ["platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"]) write(file, fs.readFileSync(join(source, file), "utf8"));
+  for (const file of ["platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts", ".github/actions/deploy-convex/organization-target.ts", ".github/actions/deploy-convex/organization-source.ts"]) write(file, fs.readFileSync(join(source, file), "utf8"));
   for (const icon of Object.values(appConfig.brand.icons)) {
     const target = join(fixture, icon); fs.mkdirSync(dirname(target), { recursive: true }); fs.copyFileSync(join(source, icon), target);
   }
@@ -55,14 +56,56 @@ try {
   const root = JSON.parse(fs.readFileSync(join(source, "package.json"), "utf8"));
   const scripts: Record<string, string> = Object.fromEntries(Object.entries(root.scripts).filter(([name]) => ["dev", "predev", "dev:web", "dev:landing"].includes(name))) as Record<string, string>;
   scripts.postinstall = "node -e \"require('fs').appendFileSync('installs.log','install\\n')\"";
-  json("package.json", { private: true, type: "module", packageManager: root.packageManager, workspaces: ["apps/*", "platform/apps/*", "packages/*"], scripts, dependencies: { esbuild: "workspace:*" } });
+  json("package.json", { private: true, type: "module", packageManager: root.packageManager, workspaces: ["apps/*", "platform/apps/*", "packages/*"], scripts, dependencies: { esbuild: "workspace:*", typescript: root.devDependencies.typescript } });
   json("packages/esbuild/package.json", { name: "esbuild", version: "0.0.0", bin: "bin.cjs" }); write("packages/esbuild/bin.cjs", "#!/usr/bin/env node\nconsole.log('0.25.0')");
   json("packages/backend/package.json", { name: "@repo/backend", dependencies: { convex: "workspace:*" } });
   json("packages/convex/package.json", { name: "convex", version: "0.0.0", bin: "bin.cjs" });
-  write("packages/convex/bin.cjs", "#!/usr/bin/env node\nif(process.argv[2]==='env' && process.argv[3]==='set' && process.argv[4]==='--force'){require('fs').readFileSync(0,'utf8');} else if(process.argv[3]==='get')console.log('fixture');");
+  // This empty source inventory belongs only to the fake backend below. The real
+  // launcher/scanner still run; this smoke does not deploy or migrate Convex data.
+  const registry = { components: {}, functions: {}, jobs: {}, tables: {}, version: 1 };
+  write("packages/backend/convex/organizationMigrationRegistry.ts", `export const organizationMigrationRegistry = ${JSON.stringify(registry)};`);
+  write("packages/backend/convex/platform/organizationReadiness.ts", "export const ORGANIZATION_MIGRATION_CONTRACT_VERSION = 1;");
   write("packages/convex/bin.cjs", `#!/usr/bin/env node
-if(process.argv[2]!=='dev'){console.log('fixture');process.exit(0);}
 const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const args=process.argv.slice(2); const envAt=args.indexOf('--env-file');
+if(envAt>=0) args.splice(envAt,2);
+const stateFile='.convex/startup-smoke-state.json';
+const state=fs.existsSync(stateFile)?JSON.parse(fs.readFileSync(stateFile,'utf8')):{env:{BETTER_AUTH_SECRET:'startup-only-fixture'},ready:false,calls:[]};
+const save=()=>{fs.mkdirSync('.convex',{recursive:true});fs.writeFileSync(stateFile,JSON.stringify(state),{mode:0o600});};
+const expectedRegistryHash=require('node:crypto').createHash('sha256').update(${JSON.stringify(JSON.stringify(registry))}).digest('hex');
+const deployment='http://127.0.0.1:43210';
+if(args[0]==='env') {
+  if(args[1]==='list' && args[2]==='--names-only') console.log(Object.keys(state.env).join('\\n'));
+  else if(args[1]==='get') console.log(state.env[args[2]]??'');
+  else if(args[1]==='set') {
+    if(args[2]==='--force') Object.assign(state.env,require('node:util').parseEnv(fs.readFileSync(0,'utf8')));
+    else { assert.equal(args.length,4); state.env[args[2]]=args[3]; }
+    if(args[2]==='ORGANIZATION_CUTOVER_ENFORCED') assert.equal(state.ready,true);
+    save();
+  } else throw new Error('Unsupported startup fixture env command');
+  process.exit(0);
+}
+if(args[0]==='run') {
+  const name=args[1]; const input=JSON.parse(args[2]??'{}'); let result=null;
+  if(name.startsWith('organizationMigration:')) state.calls.push(name.split(':')[1]);
+  if(name==='organizationMigration:status') result={deployment,expectedRegistryHash,ready:state.ready,deploymentVersion:state.deploymentVersion,registryHash:state.registryHash};
+  else if(name==='organizationMigration:maintenance') { assert.equal(input.confirmDeployment,deployment);state.ready=false; }
+  else if(name==='organizationMigration:begin') {
+    assert.equal(input.confirmDeployment,deployment);assert.equal(input.deploymentVersion,state.env.ORGANIZATION_DEPLOYMENT_VERSION);
+    assert.match(input.deploymentVersion,/^[a-f0-9]{64}$/);assert.equal(state.env.ORGANIZATION_REGISTRY_HASH,expectedRegistryHash);
+    state.ready=false;state.begun=true;state.stepped=false;
+  } else if(name==='organizationMigration:step') {
+    assert.equal(state.begun,true);assert.equal(input.batchSize,10);
+    if(process.env.STARTUP_SMOKE_BLOCK_ORGANIZATION==='1') { save();console.error('Uncaught Error: ORGANIZATION_STARTUP_FIXTURE_BLOCKED');process.exit(1); }
+    state.stepped=true;result={complete:true};
+  } else if(name==='organizationMigration:finalize') {
+    assert.equal(state.begun,true);assert.equal(state.stepped,true);state.ready=true;
+    state.deploymentVersion=state.env.ORGANIZATION_DEPLOYMENT_VERSION;state.registryHash=expectedRegistryHash;result={ready:true};
+  } else if(!['platform/devSeed:seed','migrations'].includes(name)) throw new Error('Unsupported startup fixture run command');
+  save();console.log(JSON.stringify(result));process.exit(0);
+}
+assert.equal(args[0],'dev','Unsupported startup fixture command');
 fs.writeFileSync('.env.local','CONVEX_DEPLOYMENT=anonymous:startup-smoke\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
 fs.mkdirSync('.convex/local/default',{recursive:true});
 fs.writeFileSync('.convex/local/default/config.json',JSON.stringify({deploymentName:'startup-smoke',adminKey:'local-fixture',ports:{cloud:43210,site:43211}}));
@@ -78,7 +121,7 @@ console.log('Convex functions ready');setInterval(()=>{},1000);
     write(`${dir}/next.config.mjs`, `import fs from 'node:fs';
 const keys=${JSON.stringify(keys)};
 for(const key of keys) if(!process.env[key]) throw new Error('Missing startup configuration: '+key);
-fs.writeFileSync('startup.json',JSON.stringify(Object.fromEntries(keys.map(key=>[key,process.env[key]]))));
+fs.writeFileSync('.startup.json',JSON.stringify(Object.fromEntries(keys.map(key=>[key,process.env[key]]))));
 export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
     write(`${dir}/postcss.config.mjs`, 'export default {plugins:{"@tailwindcss/postcss":{}}};');
     write(`${dir}/app/layout.jsx`, 'import "./globals.css"; export default function Layout({children}) {return <html lang="en"><body>{children}</body></html>}');
@@ -113,10 +156,63 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
     assert.match(css, /workspace-proof/);
   }
   assert.equal(fs.readFileSync(join(fixture, "installs.log"), "utf8"), "install\n", "one preflight install per public command");
-  const boot = (dir: string) => JSON.parse(fs.readFileSync(join(fixture, dir, "startup.json"), "utf8")) as Record<string, string>;
+  const boot = (dir: string) => JSON.parse(fs.readFileSync(join(fixture, dir, ".startup.json"), "utf8")) as Record<string, string>;
   assert.equal(boot("apps/web").LANDING_URL, boot("apps/landing").NEXT_PUBLIC_SITE_URL);
   assert.equal(boot("apps/landing").NEXT_PUBLIC_WEB_APP_URL, boot("apps/web").APP_ORIGIN);
+  const organizationState = () => JSON.parse(fs.readFileSync(join(fixture, "packages/backend/.convex/startup-smoke-state.json"), "utf8"));
+  assert.equal(organizationState().ready, true, "launcher must finish the fake organization protocol before app startup");
+  assert.deepEqual(organizationState().calls, ["status", "begin", "step", "status", "finalize", "status"]);
+  const existingServices = readRecords(fixture);
+  const refusedPreparation = spawnSync("bun", ["dev", "--prepare-only", "--restart", "--app=web"], {
+    cwd: fixture, encoding: "utf8", timeout: 30_000,
+    env: { ...process.env, CI: "true", PATH: join(fixture, "bin") + delimiter + process.env.PATH },
+  });
+  assert.notEqual(refusedPreparation.status, 0, "preparation must not replace running managed services");
+  assert.match(refusedPreparation.stdout + refusedPreparation.stderr, /managed services to be stopped first/);
+  assert.deepEqual(readRecords(fixture), existingServices);
+  for (const service of Object.values(existingServices)) process.kill(service.pid, 0);
+  assert.equal((await fetch(boot("apps/web").APP_ORIGIN)).status, 200);
   await shutdown();
+  const database = join(fixture, "packages/backend/.convex/local/default/database-proof");
+  fs.writeFileSync(database, "preserve local database");
+  unrelated = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd: unrelatedRoot, stdio: "ignore" });
+  fs.symlinkSync(fixture, linkedFixture, "dir");
+  const bootTimes = ["apps/web", "apps/landing"].map(dir => fs.statSync(join(fixture, dir, ".startup.json")).mtimeMs);
+  const prepare = async (env: Record<string, string | undefined> = {}) => {
+    // A logical checkout path must still execute the real verification and
+    // identity-scoped cleanup helpers, whose Node entrypoints use physical paths.
+    launch([join(linkedFixture, "platform/tooling/dev-start.sh"), "--prepare-only", "--app=web,landing"], "30000", env, "bash");
+    await until(() => childClosed || logs.includes("Starting Next.js"), 60_000);
+    assert.ok(!logs.includes("Starting Next.js"), "preparation must exit before any app/browser startup timer begins");
+    assert.deepEqual(readRecords(fixture), {});
+    assert.deepEqual(["apps/web", "apps/landing"].map(dir => fs.statSync(join(fixture, dir, ".startup.json")).mtimeMs), bootTimes);
+    assert.equal(fs.readFileSync(database, "utf8"), "preserve local database");
+    process.kill(unrelated!.pid!, 0);
+  };
+  const beforePrepare = organizationState().calls.length;
+  await prepare();
+  assert.equal(child!.exitCode, 0, logs);
+  assert.equal(organizationState().ready, true);
+  assert.equal(organizationState().env.ORGANIZATION_CUTOVER_ENFORCED, "1");
+  assert.deepEqual(organizationState().calls.slice(beforePrepare), ["status", "status", "begin", "step", "status", "finalize", "status"]);
+  await prepare({ STARTUP_SMOKE_BLOCK_ORGANIZATION: "1" });
+  assert.notEqual(child!.exitCode, 0, logs);
+  assert.match(logs, /ORGANIZATION_STARTUP_FIXTURE_BLOCKED/);
+  assert.equal(organizationState().ready, false);
+  assert.equal(organizationState().calls.at(-1), "step");
+  const beforeRefusal = organizationState().calls.length;
+  await prepare({ CONVEX_DEPLOY_KEY: "production:synthetic-refused-target" });
+  assert.notEqual(child!.exitCode, 0, logs);
+  assert.match(logs, /refuses deployment keys/);
+  assert.equal(organizationState().calls.length, beforeRefusal, "remote target refusal must precede backend mutation");
+  launch(["dev", "--app=web,landing"], "30000", { STARTUP_SMOKE_BLOCK_ORGANIZATION: "1" });
+  await until(() => childClosed, 60_000);
+  assert.notEqual(child!.exitCode, 0, logs);
+  assert.match(logs, /ORGANIZATION_STARTUP_FIXTURE_BLOCKED/);
+  assert.ok(!logs.includes("[CI MODE] Staying in foreground"));
+  assert.equal(organizationState().ready, false);
+  assert.equal(organizationState().calls.at(-1), "step");
+  assert.deepEqual(readRecords(fixture), {});
   for (const configured of [undefined, undefined, "https://landing.example.test"]) {
     fs.rmSync(join(fixture, "apps/web/.env.local"));
     fs.rmSync(join(fixture, "apps/web/.next"), { recursive: true, force: true });
@@ -143,9 +239,6 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
   assert.deepEqual(readRecords(fixture), {});
   write("packages/onboarding/styles.css", ".workspace-proof { color: rgb(12, 34, 56); }");
   write("apps/landing/next.config.mjs", "throw new Error('FORCED_LATER_CONFIG_FAILURE');");
-  const database = join(fixture, "packages/backend/.convex/local/default/database-proof");
-  fs.writeFileSync(database, "preserve local database");
-  unrelated = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd: unrelatedRoot, stdio: "ignore" });
   launch(["dev", "--app=web,landing"], "2500");
   await until(() => childClosed, 60_000);
   assert.notEqual(child!.exitCode, 0, logs);

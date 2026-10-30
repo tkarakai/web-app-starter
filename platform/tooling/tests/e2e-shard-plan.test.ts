@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { estimate, main, planShards, recordDurations, specFiles } from "../e2e-shard-plan.ts";
+import type { SafeReport } from "../e2e/secret-safe-report.ts";
 
 const files = [
   { file: "a.spec.ts", tests: 2 },
@@ -74,5 +75,15 @@ test("plan writes this shard's test list", () => {
   assert.deepEqual([...lists[0]!, ...lists[1]!].sort(), files.map((f) => f.file));
   assert.match(lines[0]!, /durations from durations\.json/);
   assert.throws(() => main(["plan", "--list", "x", "--shard", "3/2", "--out", "y"]), /out of range/);
+});
+
+test("safe reports retain final-attempt duration weights without raw Playwright values", () => {
+  const attempt = (durationMs: number, retry: number) => ({ status: "passed" as const, expectedStatus: "passed" as const, retry, durationMs, diagnostics: [], activities: {}, failures: [] });
+  const report: SafeReport = { version: 1, status: "passed", globalErrors: [], suppressedOutputBytes: 0, tests: [
+    { number: 1, file: "auth.spec.ts", line: 1, column: 1, outcome: "flaky", attempts: [attempt(90_000, 0), attempt(2000, 1)] },
+    { number: 2, file: "auth.spec.ts", line: 2, column: 1, outcome: "expected", attempts: [attempt(3000, 0)] },
+  ] };
+  assert.deepEqual(recordDurations(report), { "auth.spec.ts": 5 });
+  assert.throws(() => recordDurations({ ...report, version: 2 } as unknown as SafeReport), /Invalid safe version/);
 });
 

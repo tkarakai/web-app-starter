@@ -292,12 +292,12 @@ export function AdminsDataTable() {
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {loading
-              ? "Loading admins..."
-              : `${entries.length} admin invitation${entries.length !== 1 ? "s" : ""}`}
+              ? "Loading app operators..."
+              : `${entries.length} app-operator invitation${entries.length !== 1 ? "s" : ""}`}
           </p>
           <Button size="sm" onClick={() => setInviteOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Invite Admin
+            Invite app operator
           </Button>
         </div>
 
@@ -337,7 +337,7 @@ export function AdminsDataTable() {
                     colSpan={table.getVisibleFlatColumns().length}
                     className="h-24 text-center"
                   >
-                    No admin invitations found.
+                    No app-operator invitations found.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -380,7 +380,7 @@ export function AdminsDataTable() {
           onOpenChange={(open) => {
             if (!open) setDeleteTarget(null);
           }}
-          title="Delete admin invitation"
+          title="Delete app-operator invitation"
           description={`Are you sure you want to delete the invitation for ${deleteTarget.email}? This action cannot be undone.`}
           confirmLabel="Delete"
           destructive

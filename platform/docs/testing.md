@@ -108,13 +108,39 @@ takes much longer than the others, refresh the durations from a full run:
 
 ```bash
 cd apps/web
-CI=true PLAYWRIGHT_JSON_OUTPUT_FILE=/tmp/web-e2e.json bunx playwright test --project=chromium --reporter=json
+CI=true bun run test:e2e --project=chromium --reporter=json
 cd ../..
 ./platform/tooling/node-ts.sh platform/tooling/e2e-shard-plan.ts record \
-  --report /tmp/web-e2e.json --out apps/web/qa/e2e/shard-durations.json
+  --report apps/web/qa/safe-e2e-report/report.json --out apps/web/qa/e2e/shard-durations.json
 ```
 
 Only the proportions matter, so a local run works as well as a CI one. Commit the file.
+
+### Credential-safe browser reports
+
+Run web/admin browser tests through `bun run test:e2e`. Their runner publishes only outcomes,
+source locations, timing and diagnostic categories in `qa/safe-e2e-report/report.json` and
+`index.html`. Passwords, recovery codes, bearer links, raw action titles, console output and
+attachments are excluded. Automatic screenshots, video, traces and AI error snapshots are off.
+The wrapper consumes and discards raw child output, and removes its own temporary artifacts
+after normal completion. Its exit code still reports test failure. Each failed hosted web shard
+publishes `report.json` and `index.html`; hosted artifacts currently exclude the progress files.
+
+Validated progress appears on stderr and in `progress.ndjson` as tests start and attempts finish.
+`progress.json` contains initial and final progress snapshots. All progress is explicitly incomplete;
+use the final `report.json` and process exit status for the suite result. If execution is interrupted,
+only complete newline-terminated journal records are usable observations; a started test has no
+assumed outcome. Cancellation may prevent artifact upload, but already emitted safe progress can
+remain in the job log. With `--reporter=json`, stdout contains one final report document if the
+wrapper reaches final publication; killing the wrapper can leave no final document.
+
+`--reporter=list`, `github`, `json` and `html` select safe output formats. Direct Playwright
+execution and custom/blob reporters are refused by the shipped authenticated-app configs;
+`playwright test --list --reporter=json` is allowed for discovery without running ceremonies.
+Interactive `--ui`/`--debug` and capture overrides are unsupported for these credential-bearing
+suites; use a focused headless run and the failing source location to diagnose a failure.
+Server logs retained by the development launcher can contain auth email links. Keep them private
+and do not upload them with browser reports.
 
 ## Playwright E2E Test Pattern
 
@@ -150,7 +176,21 @@ Platform session-assurance and recovery tests use test-only endpoints registered
 `convex/platform/sessionAssurance.test-helpers.ts`. They exercise the real authenticated
 query and mutation wrappers without depending on sample tables or functions, so they keep
 running after `adopt --remove-sample`. The fixture endpoints are never deployed.
-The adoption tooling tests also execute the retained backend suite after sample removal.
+Organization membership, enrollment and operator-boundary tests use
+`privateResources.test-helpers.ts`: a test-only schema with real tenant wrappers, explicit
+organization context and private ownership checks. It imports no sample API and adds no
+deployed endpoint. Pass the test's `modules` map into the helper, keeping test discovery out
+of the production TypeScript graph.
+
+The adoption tooling tests execute the retained backend suite, the organization/context web
+tests, typechecks and browser-test discovery after actual sample removal. Workspace imports
+resolve to that copied app, not the original starter. Fresh `adopt --remove-sample` installs
+empty-domain migration registration and acceptance templates; these retain identity, authority
+retirement, audit privacy, readiness, interrupted migration and forward-recovery checks, plus
+a test-only custom business migration. The source inventory must still reject unclassified
+tables and exports. Sample graph/file tests remain with the optional sample implementation.
+After changing backend modules in a real app, run Convex code generation against your own
+development deployment before treating an app typecheck as final generated-API evidence.
 
 ```typescript
 // packages/backend/convex/projects.test.ts (the sample domain)
@@ -184,6 +224,21 @@ describe("projects", () => {
 ```
 
 > **IMPORTANT**: In monorepos with hoisted `node_modules`, `convexTest()` needs the glob as its second argument: `convexTest(schema, import.meta.glob("./**/*.*s"))`. Without it, auto-discovery of Convex modules fails. The glob must be taken from the `convex/` root: a test in a subdirectory (such as the platform's own tests in `convex/platform/`) imports `modules` from `convex/test.modules.ts` instead, because a glob taken there keys its own directory's files as `./x.ts` and convex-test cannot find them.
+
+### Organization and operator acceptance
+
+Exercise registered APIs with real canonical Better Auth users, sessions and memberships. Include
+independent owners in two organizations and a shared identity with differing membership roles;
+check explicit/missing/forged context, cross-owner/parent children, suspension/removal/reactivation,
+async transfer reauthorization and captured-context writes. Prove that strict tenant getters return
+no untagged/foreign data and that the separate legacy-private bridge neither guesses a mapping nor
+accepts a wrong personal ID. Preserve rows and bytes in negative tests.
+
+Operator tests must distinguish canonical global operators from customer org-admins, reserved
+emails and mixed identities. Execute both direct and native interfaces, including persisted proof,
+unknown captured-operation denial and safe DTO/cursor/artifact projections. A supplied owner/user
+snapshot or source-code assertion is not evidence of authorization. Pure ownership helper unit
+tests do not replace this registered-interface coverage. See [organization context](organization-context.md).
 
 ### Scheduled Functions and Fake Timers
 

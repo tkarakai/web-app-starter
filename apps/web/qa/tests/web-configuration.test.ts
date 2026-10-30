@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { allLocales } from "@web-app-starter/i18n";
+import { counts, validateReport } from "../../../../platform/tooling/e2e/secret-safe-report";
 import { runConfiguredWeb, type WebConfigurationVariant } from "./helpers/web-configuration";
 
 interface DiscoveredSuite {
@@ -58,12 +59,14 @@ describe("retained web tests follow app configuration", () => {
     it(`${variant.name}: translators execute in real Playwright Node workers`, async () => {
       const result = await runConfiguredWeb(variant, "translations");
       expect(result.code, result.stderr).toBe(0);
-      const report = JSON.parse(result.stdout) as {
-        errors: unknown[];
-        stats: { expected: number; unexpected: number; skipped: number; flaky: number };
-      };
-      expect(report.errors).toEqual([]);
-      expect(report.stats).toMatchObject({ expected: variant.i18n.locales.length, unexpected: 0, skipped: 0, flaky: 0 });
+      const report = validateReport(JSON.parse(result.stdout));
+      expect(report.status).toBe("passed");
+      expect(report.globalErrors).toEqual([]);
+      expect(counts(report)).toEqual({
+        tests: variant.i18n.locales.length, attempts: variant.i18n.locales.length,
+        passed: variant.i18n.locales.length, unexpected: 0, skipped: 0, flaky: 0,
+        failed: 0, timedOut: 0, interrupted: 0, retries: 0,
+      });
     }, 15_000);
   }
 });

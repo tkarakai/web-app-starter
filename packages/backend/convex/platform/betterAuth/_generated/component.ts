@@ -66,6 +66,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   primaryVerifiedAt?: null | number;
                   recoveryFactorId?: null | string;
                   recoveryOnly?: null | boolean;
+                  recoverySourceFactorId?: null | string;
+                  recoverySourceFactorProof?: null | string;
                   strongFactorId?: null | string;
                   strongFactorType?: null | string;
                   strongVerifiedAt?: null | number;
@@ -179,6 +181,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   metadata?: null | string;
                   name: string;
                   personalOwnerId?: null | string;
+                  primaryContactMemberId?: string;
                   slug: string;
                 };
                 model: "organization";
@@ -199,6 +202,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   acceptedMemberId?: string;
                   acceptedUserId?: string;
                   createdAt: number;
+                  deliveredAt?: number;
+                  deliveryError?: string;
+                  deliveryState?: "pending" | "sent" | "failed";
+                  deliveryVersion?: number;
                   email: string;
                   expiresAt: number;
                   intendedRole?: null | string;
@@ -228,9 +235,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   backupFactorId?: string;
                   completedAt?: number;
                   createdAt: number;
+                  factorSecretProof?: string;
                   memberId: string;
                   name?: string;
                   organizationId: string;
+                  passwordEmail?: string;
                   passwordProof?: string;
                   passwordVerifiedAt?: number;
                   purpose: "collaboration" | "promotion" | "invitation";
@@ -238,6 +247,44 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   userId: string;
                 };
                 model: "organizationEnrollments";
+              }
+            | {
+                data: {
+                  key: "admin";
+                  passkeyPolicy: "disabled" | "optional" | "required";
+                };
+                model: "organizationSecurityPolicy";
+              }
+            | {
+                data: {
+                  blocked: boolean;
+                  deploymentVersion: string;
+                  key: "organization-v1";
+                };
+                model: "organizationMigrationBarrier";
+              }
+            | {
+                data: {
+                  backupCodes: string;
+                  credentialProof: string;
+                  expiresAt: number;
+                  factorId: string;
+                  factorSecretProof: string;
+                  secret: string;
+                  sessionId: string;
+                  userId: string;
+                };
+                model: "organizationSecurityChanges";
+              }
+            | {
+                data: {
+                  action: string;
+                  actorId: string;
+                  happenedAt: number;
+                  organizationId: string;
+                  targetId?: string;
+                };
+                model: "organizationAudit";
               }
             | {
                 data: {
@@ -337,6 +384,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorType"
                     | "recoveryOnly"
                     | "recoveryFactorId"
+                    | "recoverySourceFactorId"
+                    | "recoverySourceFactorProof"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -628,6 +677,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "experience"
                     | "lifecycle"
                     | "personalOwnerId"
+                    | "primaryContactMemberId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -701,6 +751,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "tokenHash"
                     | "acceptedUserId"
                     | "acceptedMemberId"
+                    | "deliveryState"
+                    | "deliveryVersion"
+                    | "deliveredAt"
+                    | "deliveryError"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -770,12 +824,137 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "name"
                     | "slug"
                     | "passwordProof"
+                    | "passwordEmail"
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "factorSecretProof"
                     | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityPolicy";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "passkeyPolicy" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationMigrationBarrier";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "blocked" | "deploymentVersion" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityChanges";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "userId"
+                    | "sessionId"
+                    | "credentialProof"
+                    | "factorId"
+                    | "factorSecretProof"
+                    | "secret"
+                    | "backupCodes"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationAudit";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "organizationId"
+                    | "actorId"
+                    | "action"
+                    | "targetId"
+                    | "happenedAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -946,6 +1125,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorType"
                     | "recoveryOnly"
                     | "recoveryFactorId"
+                    | "recoverySourceFactorId"
+                    | "recoverySourceFactorProof"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1237,6 +1418,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "experience"
                     | "lifecycle"
                     | "personalOwnerId"
+                    | "primaryContactMemberId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1310,6 +1492,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "tokenHash"
                     | "acceptedUserId"
                     | "acceptedMemberId"
+                    | "deliveryState"
+                    | "deliveryVersion"
+                    | "deliveredAt"
+                    | "deliveryError"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1379,12 +1565,137 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "name"
                     | "slug"
                     | "passwordProof"
+                    | "passwordEmail"
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "factorSecretProof"
                     | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityPolicy";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "passkeyPolicy" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationMigrationBarrier";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "blocked" | "deploymentVersion" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityChanges";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "userId"
+                    | "sessionId"
+                    | "credentialProof"
+                    | "factorId"
+                    | "factorSecretProof"
+                    | "secret"
+                    | "backupCodes"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationAudit";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "organizationId"
+                    | "actorId"
+                    | "action"
+                    | "targetId"
+                    | "happenedAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1493,6 +1804,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "invitation"
             | "organizationInvitationClaims"
             | "organizationEnrollments"
+            | "organizationSecurityPolicy"
+            | "organizationMigrationBarrier"
+            | "organizationSecurityChanges"
+            | "organizationAudit"
             | "jwks"
             | "rateLimit";
           offset?: number;
@@ -1554,6 +1869,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "invitation"
             | "organizationInvitationClaims"
             | "organizationEnrollments"
+            | "organizationSecurityPolicy"
+            | "organizationMigrationBarrier"
+            | "organizationSecurityChanges"
+            | "organizationAudit"
             | "jwks"
             | "rateLimit";
           select?: Array<string>;
@@ -1683,6 +2002,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   primaryVerifiedAt?: null | number;
                   recoveryFactorId?: null | string;
                   recoveryOnly?: null | boolean;
+                  recoverySourceFactorId?: null | string;
+                  recoverySourceFactorProof?: null | string;
                   strongFactorId?: null | string;
                   strongFactorType?: null | string;
                   strongVerifiedAt?: null | number;
@@ -1713,6 +2034,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorType"
                     | "recoveryOnly"
                     | "recoveryFactorId"
+                    | "recoverySourceFactorId"
+                    | "recoverySourceFactorProof"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2074,6 +2397,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   metadata?: null | string;
                   name?: string;
                   personalOwnerId?: null | string;
+                  primaryContactMemberId?: string;
                   slug?: string;
                 };
                 where?: Array<{
@@ -2087,6 +2411,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "experience"
                     | "lifecycle"
                     | "personalOwnerId"
+                    | "primaryContactMemberId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2158,6 +2483,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   acceptedMemberId?: string;
                   acceptedUserId?: string;
                   createdAt?: number;
+                  deliveredAt?: number;
+                  deliveryError?: string;
+                  deliveryState?: "pending" | "sent" | "failed";
+                  deliveryVersion?: number;
                   email?: string;
                   expiresAt?: number;
                   intendedRole?: null | string;
@@ -2181,6 +2510,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "tokenHash"
                     | "acceptedUserId"
                     | "acceptedMemberId"
+                    | "deliveryState"
+                    | "deliveryVersion"
+                    | "deliveredAt"
+                    | "deliveryError"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2254,9 +2587,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   backupFactorId?: string;
                   completedAt?: number;
                   createdAt?: number;
+                  factorSecretProof?: string;
                   memberId?: string;
                   name?: string;
                   organizationId?: string;
+                  passwordEmail?: string;
                   passwordProof?: string;
                   passwordVerifiedAt?: number;
                   purpose?: "collaboration" | "promotion" | "invitation";
@@ -2273,12 +2608,163 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "name"
                     | "slug"
                     | "passwordProof"
+                    | "passwordEmail"
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "factorSecretProof"
                     | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityPolicy";
+                update: {
+                  key?: "admin";
+                  passkeyPolicy?: "disabled" | "optional" | "required";
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "passkeyPolicy" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationMigrationBarrier";
+                update: {
+                  blocked?: boolean;
+                  deploymentVersion?: string;
+                  key?: "organization-v1";
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "blocked" | "deploymentVersion" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityChanges";
+                update: {
+                  backupCodes?: string;
+                  credentialProof?: string;
+                  expiresAt?: number;
+                  factorId?: string;
+                  factorSecretProof?: string;
+                  secret?: string;
+                  sessionId?: string;
+                  userId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "userId"
+                    | "sessionId"
+                    | "credentialProof"
+                    | "factorId"
+                    | "factorSecretProof"
+                    | "secret"
+                    | "backupCodes"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationAudit";
+                update: {
+                  action?: string;
+                  actorId?: string;
+                  happenedAt?: number;
+                  organizationId?: string;
+                  targetId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "organizationId"
+                    | "actorId"
+                    | "action"
+                    | "targetId"
+                    | "happenedAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2471,6 +2957,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   primaryVerifiedAt?: null | number;
                   recoveryFactorId?: null | string;
                   recoveryOnly?: null | boolean;
+                  recoverySourceFactorId?: null | string;
+                  recoverySourceFactorProof?: null | string;
                   strongFactorId?: null | string;
                   strongFactorType?: null | string;
                   strongVerifiedAt?: null | number;
@@ -2501,6 +2989,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "strongFactorType"
                     | "recoveryOnly"
                     | "recoveryFactorId"
+                    | "recoverySourceFactorId"
+                    | "recoverySourceFactorProof"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2862,6 +3352,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   metadata?: null | string;
                   name?: string;
                   personalOwnerId?: null | string;
+                  primaryContactMemberId?: string;
                   slug?: string;
                 };
                 where?: Array<{
@@ -2875,6 +3366,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "experience"
                     | "lifecycle"
                     | "personalOwnerId"
+                    | "primaryContactMemberId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2946,6 +3438,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   acceptedMemberId?: string;
                   acceptedUserId?: string;
                   createdAt?: number;
+                  deliveredAt?: number;
+                  deliveryError?: string;
+                  deliveryState?: "pending" | "sent" | "failed";
+                  deliveryVersion?: number;
                   email?: string;
                   expiresAt?: number;
                   intendedRole?: null | string;
@@ -2969,6 +3465,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "tokenHash"
                     | "acceptedUserId"
                     | "acceptedMemberId"
+                    | "deliveryState"
+                    | "deliveryVersion"
+                    | "deliveredAt"
+                    | "deliveryError"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -3042,9 +3542,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   backupFactorId?: string;
                   completedAt?: number;
                   createdAt?: number;
+                  factorSecretProof?: string;
                   memberId?: string;
                   name?: string;
                   organizationId?: string;
+                  passwordEmail?: string;
                   passwordProof?: string;
                   passwordVerifiedAt?: number;
                   purpose?: "collaboration" | "promotion" | "invitation";
@@ -3061,12 +3563,163 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "name"
                     | "slug"
                     | "passwordProof"
+                    | "passwordEmail"
                     | "passwordVerifiedAt"
                     | "backupAcknowledgedAt"
                     | "backupFactorId"
+                    | "factorSecretProof"
                     | "backupCodesProof"
                     | "completedAt"
                     | "createdAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityPolicy";
+                update: {
+                  key?: "admin";
+                  passkeyPolicy?: "disabled" | "optional" | "required";
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "passkeyPolicy" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationMigrationBarrier";
+                update: {
+                  blocked?: boolean;
+                  deploymentVersion?: string;
+                  key?: "organization-v1";
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "key" | "blocked" | "deploymentVersion" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationSecurityChanges";
+                update: {
+                  backupCodes?: string;
+                  credentialProof?: string;
+                  expiresAt?: number;
+                  factorId?: string;
+                  factorSecretProof?: string;
+                  secret?: string;
+                  sessionId?: string;
+                  userId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "userId"
+                    | "sessionId"
+                    | "credentialProof"
+                    | "factorId"
+                    | "factorSecretProof"
+                    | "secret"
+                    | "backupCodes"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "organizationAudit";
+                update: {
+                  action?: string;
+                  actorId?: string;
+                  happenedAt?: number;
+                  organizationId?: string;
+                  targetId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "organizationId"
+                    | "actorId"
+                    | "action"
+                    | "targetId"
+                    | "happenedAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -3166,6 +3819,68 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    appOperators: {
+      filterEmails: FunctionReference<
+        "query",
+        "internal",
+        { emails: Array<string> },
+        Array<string | null>,
+        Name
+      >;
+      listDirectory: FunctionReference<
+        "query",
+        "internal",
+        {
+          emailVerified?: boolean;
+          operatorId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          search?: string;
+          searchField?: "email" | "name";
+          sortDirection?: "asc" | "desc";
+          status?: "active" | "banned";
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            banExpires?: number | null;
+            banReason?: string | null;
+            banned: boolean;
+            createdAt: number;
+            email: string;
+            emailVerified: boolean;
+            id: string;
+            image?: string | null;
+            name: string;
+            role: string;
+            twoFactorEnabled: boolean;
+            updatedAt: number;
+          }>;
+        },
+        Name
+      >;
+      listPasskeyUserIds: FunctionReference<
+        "query",
+        "internal",
+        { operatorId: string; userIds: Array<string> },
+        Array<string>,
+        Name
+      >;
+      validateTargets: FunctionReference<
+        "query",
+        "internal",
+        { userIds: Array<string> },
+        null,
+        Name
+      >;
+    };
     memberInvitations: {
       accept: FunctionReference<
         "mutation",
@@ -3178,6 +3893,18 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         { actorId: string; invitationId: string; organizationId: string },
+        any,
+        Name
+      >;
+      delivery: FunctionReference<
+        "query",
+        "internal",
+        {
+          invitationId: string;
+          organizationId: string;
+          tokenHash: string;
+          version: number;
+        },
         any,
         Name
       >;
@@ -3202,10 +3929,41 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      list: FunctionReference<
+        "query",
+        "internal",
+        {
+          actorId: string;
+          organizationId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        any,
+        Name
+      >;
       preview: FunctionReference<
         "query",
         "internal",
         { organizationId: string; tokenHash: string },
+        any,
+        Name
+      >;
+      recordDelivery: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          invitationId: string;
+          organizationId: string;
+          sent: boolean;
+          tokenHash: string;
+          version: number;
+        },
         any,
         Name
       >;
@@ -3228,10 +3986,49 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      resend: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId: string;
+          invitationId: string;
+          organizationId: string;
+          tokenHash: string;
+        },
+        any,
+        Name
+      >;
       verificationRecipient: FunctionReference<
         "query",
         "internal",
         { organizationId: string; tokenHash: string; userId: string },
+        any,
+        Name
+      >;
+    };
+    organizationAudit: {
+      list: FunctionReference<
+        "query",
+        "internal",
+        { actorId: string; organizationId: string },
+        any,
+        Name
+      >;
+    };
+    organizationMigration: {
+      provisionLegacyPersonal: FunctionReference<
+        "mutation",
+        "internal",
+        { deploymentVersion: string; userId: string },
+        any,
+        Name
+      >;
+    };
+    organizationMigrationBarrier: {
+      set: FunctionReference<
+        "mutation",
+        "internal",
+        { blocked: boolean; deploymentVersion: string },
         any,
         Name
       >;
@@ -3249,7 +4046,21 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      adminSecurity: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        any,
+        Name
+      >;
       beginCollaboration: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; organizationId: string; slug: string; userId: string },
+        any,
+        Name
+      >;
+      beginMembershipManagement: FunctionReference<
         "mutation",
         "internal",
         { name: string; organizationId: string; slug: string; userId: string },
@@ -3289,6 +4100,23 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      controlList: FunctionReference<
+        "query",
+        "internal",
+        {
+          operatorId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        any,
+        Name
+      >;
       directory: FunctionReference<
         "query",
         "internal",
@@ -3321,6 +4149,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      legacyPrivateAccess: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        any,
+        Name
+      >;
+      mine: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        any,
+        Name
+      >;
       provisionPersonal: FunctionReference<
         "mutation",
         "internal",
@@ -3342,6 +4184,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      setContact: FunctionReference<
+        "mutation",
+        "internal",
+        { actorId: string; memberId: string; organizationId: string },
+        any,
+        Name
+      >;
       setLifecycle: FunctionReference<
         "mutation",
         "internal",
@@ -3349,6 +4198,122 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           lifecycle: "active" | "disabled";
           operatorId: string;
           organizationId: string;
+        },
+        any,
+        Name
+      >;
+    };
+    organizationSecurity: {
+      consumeRecoveryCode: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          currentCodes: string;
+          factorId: string;
+          nextCodes: string;
+          userId: string;
+        },
+        any,
+        Name
+      >;
+      hasEnrollment: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        any,
+        Name
+      >;
+      initializeMigrationPolicy: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          deploymentVersion: string;
+          value: "disabled" | "optional" | "required";
+        },
+        any,
+        Name
+      >;
+      initializePolicy: FunctionReference<
+        "mutation",
+        "internal",
+        { value: "disabled" | "optional" | "required" },
+        any,
+        Name
+      >;
+      policy: FunctionReference<"query", "internal", {}, any, Name>;
+      replaceCredential: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          adminPasswordValidated: boolean;
+          currentHash: string;
+          newHash: string;
+          sessionId?: string;
+          userId: string;
+        },
+        any,
+        Name
+      >;
+      replaceFactor: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          changeId: string;
+          replacementProof: string;
+          sessionId: string;
+          userId: string;
+        },
+        any,
+        Name
+      >;
+      setPolicy: FunctionReference<
+        "mutation",
+        "internal",
+        { key: string; value: string },
+        any,
+        Name
+      >;
+      snapshot: FunctionReference<
+        "query",
+        "internal",
+        { sessionId: string; userId: string },
+        any,
+        Name
+      >;
+      stagedFactor: FunctionReference<
+        "query",
+        "internal",
+        { changeId: string; sessionId: string; userId: string },
+        any,
+        Name
+      >;
+      stageFactor: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          backupCodes: string;
+          credentialProof: string;
+          factorSecretProof: string;
+          secret: string;
+          sessionId: string;
+          userId: string;
+        },
+        any,
+        Name
+      >;
+      verifyMigrationPolicyPage: FunctionReference<
+        "query",
+        "internal",
+        {
+          deploymentVersion: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
         },
         any,
         Name

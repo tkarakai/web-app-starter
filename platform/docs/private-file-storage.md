@@ -6,8 +6,13 @@ sample code: adopting apps must port these changes to their own file feature whe
 
 ## Upload, read and delete
 
-Call `api.files.uploadFile({ projectId, name, contentType, bytes })`, where `bytes` is the
-file's `ArrayBuffer`. The server checks the authenticated caller and project, enforces the
+For an organization-scoped project, call
+`api.tenantFiles.uploadFile({ organizationId, projectId, name, contentType, bytes })`, where
+`bytes` is the file's `ArrayBuffer`. Use `api.files.uploadFile` only for the separate legacy-private
+plane, carrying the captured personal `organizationId` when available. Resolve and capture the
+account/context before reading bytes; see
+[sample APIs and the legacy bridge](organization-context.md#sample-apis-and-the-legacy-bridge).
+The server checks the authenticated caller and project, enforces the
 1 MiB size and content-type allowlist, stores the bytes itself, then records immutable ownership.
 It checks authorization again before finalizing. Failed finalization cleans up only the newly
 created, unattached object; a committed attachment is preserved if its response was lost.
@@ -17,9 +22,13 @@ together. An old upload URL may still accept bytes until it expires, but its sto
 be registered through a public API. Do not restore a client-selected storage-ID path to support
 an old client. Retire old upload URLs and reconcile their orphan objects separately.
 
-`listUploads` returns display metadata and `available`, with no storage URL or storage ID.
-`downloadFile({ id })` authenticates and checks the project and exclusive file ownership each
-time, returning bytes for a local browser download. A ban or revoked project access prevents
+Both planes' `listUploads` return display metadata without storage URLs or storage IDs;
+the legacy list also reports `available` for quarantined uploads. Scoped
+`api.tenantFiles.downloadFile({ organizationId, id })` and legacy
+`api.files.downloadFile({ id, organizationId })` authenticate and check the project and exclusive
+file ownership before reading storage and again before returning bytes for a local browser download.
+The personal caller omits the legacy organization ID only for historical identities without a
+canonical personal context. A ban or revoked project access prevents
 subsequent downloads. A recipient can retain bytes already downloaded; revocation cannot erase
 those copies. The server does not issue bearer storage URLs for new files.
 
@@ -61,10 +70,13 @@ when confidentiality requires URL revocation. See [Convex storage security](http
 
 ## Porting the fix into an adopted app
 
-Port `files.ts`, `fileAccess.ts`, the guarded upload cascade in `projects.ts`, the optional
-ownership field and `by_storage` index in `sampleTables.ts`, and the file panel's authenticated
-action calls. Keep the app's own tables, permissions and UI. The platform auth helper is exported
-from `platform/functions.ts`; both upload finalization and download checks use it.
+Port the file modules and guarded project cascades for each plane you retain, including
+`tenantFiles.ts`, `tenantAccess.ts` and `tenantProjects.ts` for scoped data, and
+`files.ts`, `fileAccess.ts` and `projects.ts` for the legacy bridge. Keep the optional ownership
+and organization fields and consumed indexes in `sampleTables.ts`, and the file panel's captured
+action calls. Keep the app's own tables, permissions and UI. Use the authorization helpers for
+the matching plane at both upload finalization and download checks; see
+[organization context](organization-context.md).
 
 Apps with sharing need an explicit authorization/refcount model before adding aliases. Keep
 one immutable object owner, authorize all readers, and delete bytes only after authorized final

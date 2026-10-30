@@ -6,6 +6,10 @@ class MockBroadcastChannel {
   name: string;
   onmessage: ((event: { data: unknown }) => void) | null = null;
   closed = false;
+  listeners = new Set<(event: { data: unknown }) => void>();
+  errors: unknown[] = [];
+  addEventListener(_type: string, listener: (event: { data: unknown }) => void) { this.listeners.add(listener); }
+  removeEventListener(_type: string, listener: (event: { data: unknown }) => void) { this.listeners.delete(listener); }
 
   constructor(name: string) {
     this.name = name;
@@ -15,8 +19,11 @@ class MockBroadcastChannel {
   postMessage(data: unknown) {
     // BroadcastChannel excludes the sender object, not other objects in its tab.
     for (const instance of MockBroadcastChannel.instances) {
-      if (instance !== this && instance.name === this.name && !instance.closed && instance.onmessage) {
-        instance.onmessage({ data });
+      if (instance !== this && instance.name === this.name && !instance.closed) {
+        // Native EventTarget reports each listener error without stopping other listeners.
+        for (const listener of [instance.onmessage, ...instance.listeners]) {
+          if (listener) { try { listener({ data }); } catch (error) { instance.errors.push(error); } }
+        }
       }
     }
   }
@@ -122,6 +129,22 @@ describe("onAuthBroadcast", () => {
     expect(third).toHaveBeenCalledTimes(1);
   });
 
+  it("isolates a throwing subscription without hiding its error or dropping other subscribers", () => {
+    const failure = new Error("fixture listener failure");
+    const cleanup = subscribe(() => { throw failure; });
+    const second = mock(() => {});
+    subscribe(second);
+    const receiver = MockBroadcastChannel.instances[0];
+    const sender = new MockBroadcastChannel("auth");
+    sender.postMessage("authenticated");
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(receiver.errors).toEqual([failure]);
+    cleanup(); cleanup();
+    sender.postMessage("authenticated");
+    expect(second).toHaveBeenCalledTimes(2);
+    expect(receiver.errors).toEqual([failure]);
+  });
+
   it("cleans up duplicate callbacks as independent subscriptions", () => {
     const callback = mock(() => {});
     const first = subscribe(callback), second = subscribe(callback);
@@ -173,5 +196,24 @@ describe("onAuthBroadcast", () => {
 
     // @ts-expect-error -- restore
     globalThis.BroadcastChannel = MockBroadcastChannel;
+  });
+  it("does not deliver its own sign-in broadcast to this document", () => {
+    const callback = mock(() => {});
+    subscribe(callback);
+    broadcastAuth();
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("keeps other subscribers active when one guest surface unmounts", () => {
+    const first = mock(() => {});
+    const second = mock(() => {});
+    const cleanup = subscribe(first);
+    subscribe(second);
+    cleanup();
+    const sender = new MockBroadcastChannel("auth");
+    sender.postMessage("authenticated");
+    sender.close();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,3 +1,4 @@
+import { assertOrganizationWriteAllowed } from "./organizationReadiness";
 import { v } from "convex/values";
 import { locales, type Locale } from "@web-app-starter/i18n";
 import { authedMutation, authedQuery, assertMaxLength } from "./functions";
@@ -53,6 +54,7 @@ export const upsert = authedMutation({
     avatarColor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "tenant");
     // Validate locale if provided
     if (args.locale && !isLocale(args.locale)) {
       throw new Error("INVALID_LOCALE");
@@ -107,6 +109,7 @@ export const upsert = authedMutation({
 export const setLocale = authedMutation({
   args: { locale: v.string() },
   handler: async (ctx, args) => {
+    await assertOrganizationWriteAllowed(ctx, "tenant");
     if (!isLocale(args.locale)) {
       throw new Error("INVALID_LOCALE");
     }

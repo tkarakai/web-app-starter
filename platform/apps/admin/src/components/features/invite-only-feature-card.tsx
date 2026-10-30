@@ -76,7 +76,7 @@ export function InviteOnlyFeatureCard() {
             <div>
               <CardTitle className="text-base">Invite Only</CardTitle>
               <CardDescription>
-                Only admins can invite people to onboard
+                Only app operators can invite people to onboard
               </CardDescription>
             </div>
           </div>
@@ -101,7 +101,7 @@ export function InviteOnlyFeatureCard() {
                 </Label>
               </div>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Landing shows only sign-in. Admins can still invite users directly from
+                Landing shows only sign-in. App operators can still invite users directly from
                 the Onboarding page.
               </p>
             </>

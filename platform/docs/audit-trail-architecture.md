@@ -6,7 +6,7 @@ The audit trail is a **general-purpose, single-table event log**. Its job is to:
 
 1. **Capture events** — efficiently and performantly accept event creation requests
 2. **Store events** — persist them reliably in an append-only table
-3. **Surface events** — allow authorized users (admins) to observe and filter events
+3. **Surface events** — allow canonical app operators to observe and filter approved projections
 
 The audit trail does **not**:
 
@@ -42,7 +42,7 @@ boundary as an opaque string, not an app `Id<"auditTrail">`.
 | `happenedAt` | `number` | Yes | Caller / Audit trail | When the event occurred. Caller can provide; defaults to `Date.now()` |
 | `authenticatedUserId` | `string?` | No | Audit trail | Better Auth user ID. Auto-injected from session for web events. Null for unauthenticated or system events |
 | `actor` | `string` | Yes | Caller / Audit trail | Informational display field — email, "system", service name, etc. Auto-populated from session email for web events |
-| `source` | `string` | Yes | Audit trail | Origin of the event. Format: `transport:detail`. Transport (`web`/`server`) is set by the entry point; detail is provided by the caller |
+| `source` | `string` | Yes | Audit trail | Server-classified origin; see [Source Format](#source-format). Clients cannot select an operator classification |
 | `action` | `string` | Yes | Caller | What happened. Must match `AUDIT_ACTIONS` enum. Hierarchical dot notation (e.g. `auth.sign_in`, `admin.user.banned`) |
 | `resource` | `string` | Yes | Caller | What was affected. Convention: `type:id` (e.g. `session:abc123`, `user:xyz`). Accepted as-is |
 | `status` | `string` | Yes | Caller | Outcome of the action. Must match `AUDIT_STATUSES` enum. Hierarchical dot notation (e.g. `succeeded`, `failed.wrong_password`) |
@@ -89,7 +89,7 @@ Used by server-side code: auth hooks, admin mutations, cron jobs, internal servi
 
 - Only callable from Convex actions, HTTP handlers, or other internal functions (enforced by Convex runtime)
 - Caller provides `sourceDetail` (e.g. `"auth-hook"`, `"admin-mutation"`, `"cron-job"`)
-- Audit trail constructs `source = "server:" + sourceDetail`
+- The wrapper classifies the source server-side; see [Source Format](#source-format)
 - `authenticatedUserId` is optional — null for system/cron events
 
 ### `postEvent` — Client-Side (mutation)
@@ -98,20 +98,29 @@ Used by authenticated web clients via the Convex WebSocket.
 
 - Checks `getAuth` under the [live session policy](authentication-and-onboarding.md#86-enrollment-recovery-and-custom-endpoints); unauthorized calls return without writing an event
 - Caller provides `sourceDetail` optionally (e.g. `"dashboard"`, `"settings"`)
-- Audit trail constructs `source = "web:" + (sourceDetail ?? "")`
+- Audit trail constructs `source = "web:private-audit:v1:" + (sourceDetail ?? "")`; client events are never operator-classified
 - `authenticatedUserId` is auto-injected from the session — caller cannot override
 - `actor` is auto-populated from the session user's email — caller cannot override
 
 ### Source Format
 
-The `source` field uses a two-part format: `transport:detail`
+The component validates the `web` or `server` transport prefix. The app wrapper classifies
+new server events using the current canonical app-operator identity and the source/action
+allowlists in [auditPrivacy.ts](../../packages/backend/convex/platform/auditPrivacy.ts).
+Only eligible events receive `APP_OPERATOR_AUDIT_SOURCE` from
+[appOperatorAuditCompatibility.ts](../../packages/backend/convex/platform/appOperatorAuditCompatibility.ts).
+Other wrapper server events use `server:private-audit:v1:<sourceDetail>`; browser events use
+`web:private-audit:v1:<sourceDetail>`. Direct component writers retain their explicit source.
+An email, role-shaped action name or client-supplied text cannot classify an event.
 
-- **Transport** (enum-enforced): `web` | `server`
-- **Detail** (free-form): caller-provided context string
-
-Examples: `server:auth-hook`, `server:admin-mutation`, `server:cron-cleanup`, `web:dashboard`, `web:settings`
-
-The transport prefix is always set by the audit trail based on which entry point was used. This prevents web clients from claiming to be server events.
+`api.platform.auditTrail.list` requires a canonical app operator and paginates only the fixed
+operator-source index. It rechecks actor identity and projects approved action/status fields,
+replacing raw resources with a safe actor resource or validated organization ID/lifecycle.
+Free-text reasons, metadata and historical values are omitted. Other filters apply to projected
+rows, so a page can be empty before pagination is complete. Private and unclassified history,
+including migrated legacy events, stays stored but is not returned or exposed in cursors.
+Do not reclassify retained history by owner or email. Regression coverage:
+[operatorPrivacy.test.ts](../../packages/backend/convex/platform/operatorPrivacy.test.ts).
 
 ---
 
@@ -131,14 +140,15 @@ Requiring authentication for audit logging would create a blind spot over exactl
 
 ### How They Flow
 
-All unauthenticated events go through `insertEvent` (internalMutation) → `server:*` source. They **cannot** go through `postEvent` (which checks authorization as described above).
+Unauthenticated events go through `insertEvent` (internalMutation) and receive a private server
+classification. They **cannot** go through `postEvent` (which checks authorization as described above).
 
 ```
 Unauthenticated user action
   → Server-side code (mutation, action, HTTP handler)
     → scheduleAuditEvent(ctx, { ... }) or runAuditEvent(actionCtx, { ... })
       → insertEvent (internalMutation)
-        → source = "server:{detail}"
+        → source = "server:private-audit:v1:{detail}"
         → authenticatedUserId = undefined
 ```
 
@@ -151,20 +161,26 @@ The meaning of the `actor` field depends on whether `authenticatedUserId` is pre
 | Present | Verified identity — auto-populated from session email | **Verified** by the auth system |
 | Absent | Claimed/informational — the email they typed, an IP address, "anonymous", etc. | **Untrusted** — it's what they claim, not who they are |
 
-The admin UI reflects this distinction with a shield icon next to the actor when `authenticatedUserId` is present.
+These trust levels describe stored evidence. The operator UI receives only the approved
+projection described in [Source Format](#source-format), not all stored actors.
 
 ### Examples
 
-| Event | `authenticatedUserId` | `actor` | `source` | `action` |
+The source details below are writer inputs; stored source classification follows [Source Format](#source-format).
+
+| Event | `authenticatedUserId` | `actor` | `sourceDetail` | `action` |
 |-------|----------------------|---------|----------|----------|
-| User joins waitlist | `undefined` | `"user@example.com"` | `server:waitlist` | `waitlist.joined` |
-| User claims invitation token | `undefined` | `"user@example.com"` | `server:waitlist-token` | `waitlist.token.claimed` |
-| Admin invites waitlist entry | `"admin-user-id"` | `"admin@example.com"` | `server:admin-mutation` | `waitlist.invitation.sent` |
-| Successful sign-in | `"user-id"` | `"user@example.com"` | `server:auth-hook` | `auth.sign_in` |
+| User joins waitlist | `undefined` | `"user@example.com"` | `waitlist` | `waitlist.joined` |
+| User claims invitation token | `undefined` | `"user@example.com"` | `waitlist-token` | `waitlist.token.claimed` |
+| Admin invites waitlist entry | `"admin-user-id"` | `"admin@example.com"` | `admin-mutation` | `waitlist.invitation.sent` |
+| Successful sign-in | `"user-id"` | `"user@example.com"` | `auth-hook` | `auth.sign_in` |
 
 ### Known Gap: Auth Failure Logging
 
-Better Auth's `databaseHooks` only fire on **successful** operations (e.g. `session.create.after` fires when a session is created — which only happens on successful login). Failed login attempts don't create sessions, so the hook never fires.
+Better Auth's `databaseHooks` only fire on **successful** operations (e.g. `session.create.after`
+fires when a session is created). Failed login attempts do not create sessions; their separate
+endpoint-hook records are documented in the
+[event inventory](audit-trail-event-inventory.md#2-better-auth-endpoint-hook-events).
 
 ---
 
@@ -197,7 +213,8 @@ Validation of caller-provided content (e.g. sanitizing user agent strings, verif
 ### Import Pattern
 
 The component owns storage, validation and pagination. App-side wrappers own identity,
-admin authorization and rate limiting. Existing helpers keep their API. App functions consume it via:
+app-operator read authorization, source classification, safe projection and rate limiting.
+Existing helpers keep their API. App functions consume it via:
 
 ```typescript
 // For types and constants

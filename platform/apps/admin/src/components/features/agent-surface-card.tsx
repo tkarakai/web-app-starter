@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Switc
 type Surface = "mcp" | "cli" | "webmcp" | "a2a";
 const labels: Record<Surface, { title: string; description: string }> = {
   mcp: { title: "MCP server", description: "Let authenticated agents discover and use administration capabilities." },
-  cli: { title: "Admin CLI", description: "Administer the application from the authenticated command-line client." },
-  webmcp: { title: "WebMCP", description: "Offer capabilities to browser agents in an authenticated admin page." },
+  cli: { title: "App-operator CLI", description: "Administer the application from the authenticated command-line client." },
+  webmcp: { title: "WebMCP", description: "Offer capabilities to browser agents in an authenticated app-operator page." },
   a2a: { title: "A2A", description: "Let authenticated agents submit administration tasks through Agent2Agent." },
 };
 export function AgentSurfaceCard({ surface, deploymentReady }: { surface: Surface; deploymentReady: boolean }) {
@@ -26,8 +26,8 @@ export function AgentSurfaceCard({ surface, deploymentReady }: { surface: Surfac
     <CardContent className="space-y-4">
       <div className="flex items-center justify-between gap-4"><Label htmlFor={`agent-${surface}-enabled`}>Enable {title}</Label>
         <Switch id={`agent-${surface}-enabled`} checked={value?.enabled ?? false} disabled={busy || !value || (!ready && !value.enabled)} onCheckedChange={change} /></div>
-      <p className="text-sm text-muted-foreground">{surface === "webmcp" ? "Uses the current admin session. Disabling removes browser tools and blocks their backend requests. Browser support is required; this switch does not install a browser extension." : "Disabling stops requests and invalidates this interface's grants. Re-enabling requires new authorization. Other interfaces keep their own controls."}</p>
-      {!ready && <p className="text-sm text-muted-foreground">Configure the canonical admin and separate authorization origins before enabling this interface.</p>}
+      <p className="text-sm text-muted-foreground">{surface === "webmcp" ? "Uses the current app-operator session. Disabling removes browser tools and blocks their backend requests. Browser support is required; this switch does not install a browser extension." : "Disabling stops requests and invalidates this interface's grants. Re-enabling requires new authorization. Other interfaces keep their own controls."}</p>
+      {!ready && <p className="text-sm text-muted-foreground">Configure the canonical app-admin and separate authorization origins before enabling this interface.</p>}
       {surface !== "webmcp" && <a href="/settings/agent-grants" className="text-sm underline">Manage your agent grants</a>}
       {error && <p role="alert" className="text-destructive">{error}</p>}
     </CardContent>

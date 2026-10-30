@@ -10,11 +10,12 @@
 //   playwright test --list --reporter=json --project=chromium > list.json
 //   node-ts.sh platform/tooling/e2e-shard-plan.ts plan --list list.json --shard 2/4 \
 //     [--durations qa/e2e/shard-durations.json] --out shard.txt
-//   playwright test --reporter=json > report.json      # a full run, to refresh durations
+//   bun run test:e2e --reporter=json                   # safe report: qa/safe-e2e-report/report.json
 //   node-ts.sh platform/tooling/e2e-shard-plan.ts record --report report.json --out qa/e2e/shard-durations.json
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { validateReport, type SafeReport } from "./e2e/secret-safe-report.ts";
 
 /** One spec file and how many tests it holds, from `playwright test --list --reporter=json`. */
 export interface SpecFile {
@@ -43,9 +44,14 @@ export function specFiles(report: { suites?: JsonSuite[] }): SpecFile[] {
 }
 
 /** Seconds per spec file from a Playwright JSON report: each test's final attempt. */
-export function recordDurations(report: { suites?: JsonSuite[] }): Record<string, number> {
+export function recordDurations(report: { suites?: JsonSuite[] } | SafeReport): Record<string, number> {
   const seconds = new Map<string, number>();
-  for (const suite of report.suites ?? []) {
+  if ("version" in report) {
+    for (const test of validateReport(report).tests) {
+      const last = test.attempts.at(-1);
+      if (last) seconds.set(test.file, (seconds.get(test.file) ?? 0) + last.durationMs / 1000);
+    }
+  } else for (const suite of report.suites ?? []) {
     walk(suite, (file, tests) => {
       for (const test of tests) {
         const last = test.results?.at(-1);

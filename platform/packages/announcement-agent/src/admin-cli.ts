@@ -6,7 +6,7 @@ import { connectCli } from "./cli-client";
 const args = process.argv.slice(2);
 const option = (name: string) => { const i = args.indexOf(name); return i < 0 ? undefined : args[i + 1]; };
 async function main() {
-  if (args.includes("--help")) { process.stdout.write('Admin CLI: --origin <origin> [--script <JSON file>]\nCommands are JSON objects: {"operation":"search|describe|execute","input":{...}}. Interactive /auth renews access; /quit exits. No tokens are written to disk.\n'); return; }
+  if (args.includes("--help")) { process.stdout.write('App-operator CLI: --origin <origin> [--script <JSON file>]\nCommands are JSON objects: {"operation":"search|describe|execute","input":{...}}. Interactive /auth renews access; /quit exits. No tokens are written to disk.\n'); return; }
   const origin = option("--origin") ?? "http://localhost:3002";
   let client = connectCli(origin, await authenticate(origin, "cli"));
   async function command(value: unknown) {
@@ -27,9 +27,9 @@ async function main() {
   }
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    process.stdout.write("Admin CLI ready. Enter a JSON command, /auth or /quit.\n");
+    process.stdout.write("App-operator CLI ready. Enter a JSON command, /auth or /quit.\n");
     for (;;) {
-      const text = await terminal.question("admin> ");
+      const text = await terminal.question("app-operator> ");
       if (text.trim() === "/quit") break;
       try {
         if (text.trim() === "/auth") client = connectCli(origin, await authenticate(origin, "cli"));

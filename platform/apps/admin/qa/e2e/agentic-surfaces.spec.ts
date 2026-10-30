@@ -11,7 +11,7 @@ async function authorize(page: Page, issuer: string, origin: string, surface: "c
   await expect(page).toHaveURL(/sign-in\?.*agent_return=/);
   await fillStable(page, "#email", user.email); await page.locator('form:has(#email) button[type="submit"]').click();
   await fillStable(page, "#password", user.password); await page.locator('form:has(#password) button[type="submit"]').click();
-  await page.getByRole("button", { name: "Authorize admin agent" }).click();
+  await page.getByRole("button", { name: "Authorize app-operator agent" }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:45998\/callback\?.*code=/);
   const code = new URL(page.url()).searchParams.get("code")!;
   const response = await page.request.post(issuer + "/api/agent/token", { form: { grant_type: "authorization_code", code, code_verifier: verifier, client_id: "pi-announcements", redirect_uri: redirectUri, resource } });
@@ -22,7 +22,7 @@ test("CLI and A2A independently authenticate, execute native CRUD and enforce pr
   const origin = new URL(baseURL!).origin;
   const issuer = (await (await request.get(origin + "/.well-known/oauth-protected-resource/api/mcp")).json()).authorization_servers[0] as string;
   const user = await signInAsAdmin(page); await page.goto("/configure/features");
-  for (const title of ["Admin CLI", "A2A"]) { const control = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(control).toBeEnabled(); if (!await control.isChecked()) await control.click(); await expect(control).toBeChecked(); }
+  for (const title of ["App-operator CLI", "A2A"]) { const control = page.getByRole("switch", { name: `Enable ${title}`, exact: true }); await expect(control).toBeEnabled(); if (!await control.isChecked()) await control.click(); await expect(control).toBeChecked(); }
   const card = await request.get(origin + "/.well-known/agent-card.json"); expect(card.status()).toBe(200); expect((await card.json()).supportedInterfaces).toContainEqual(expect.objectContaining({ protocolVersion: "1.0", protocolBinding: "JSONRPC" }));
   expect((await request.post(origin + "/api/a2a", { data: {} })).status()).toBe(401);
   expect((await request.post(origin + "/api/agent/cli", { data: {} })).status()).toBe(401);
@@ -48,7 +48,7 @@ test("CLI and A2A independently authenticate, execute native CRUD and enforce pr
   expect((await (await rpc("CancelTask", { id: waiting.id })).json()).result.status.state).toBe("TASK_STATE_CANCELED");
   expect((await (await rpc("GetTask", { id: "not-owned-or-missing" })).json()).error.code).toBe(-32001);
   await page.goto(origin + "/configure/features");
-  await page.getByRole("switch", { name: "Enable Admin CLI", exact: true }).click();
+  await page.getByRole("switch", { name: "Enable App-operator CLI", exact: true }).click();
   await expect.poll(async () => (await request.post(origin + "/api/agent/cli", { headers: { Authorization: `Bearer ${cliToken}` }, data: { operation: "search", input: {} } })).status()).toBe(503);
   expect((await rpc("ListTasks", {})).status()).toBe(200);
   await page.getByRole("switch", { name: "Enable A2A", exact: true }).click();

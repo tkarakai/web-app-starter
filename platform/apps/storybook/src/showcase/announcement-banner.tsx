@@ -9,7 +9,7 @@ const LEARN_MORE_HTML = `
   <main style="font-family: Arial, sans-serif; padding: 16px; color: #111827;">
     <h2 style="margin: 0 0 8px;">Public Beta Is Live</h2>
     <p style="margin: 0 0 12px; line-height: 1.5;">
-      We launched public beta with shared workspaces, audit trail, and new onboarding modes.
+      We launched public beta with organization membership management, audit trail, and new onboarding modes.
       Visit <a href="{{webAppUrl}}" target="_blank" rel="noopener noreferrer">the app</a>
       or read details on <a href="{{landingPageUrl}}" target="_blank" rel="noopener noreferrer">the landing page</a>.
     </p>
@@ -51,7 +51,7 @@ export default function AnnouncementBannerShowcase() {
       >
         <AnnouncementBanner
           name="Public Beta"
-          bannerText="Public beta is now open, including new collaboration tools."
+          bannerText="Public beta is now open, including organization membership management."
           callToActionName="Try It"
           callToActionUrl="https://example.com/beta"
           learnMoreName="Learn More"

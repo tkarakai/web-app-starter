@@ -53,7 +53,10 @@ No magic link option for admins.
 
 ### 3.3 Admin-Controlled Security Policies for Users
 
-Admins configure these from the admin app's security settings. All policies are stored in the `appSettings` table and read at request time.
+Admins configure these from the admin app's security settings. Policies are read at request time.
+`adminPasskeyPolicy` is canonical in the auth component so policy changes and last-org-admin
+protection commit together; other settings remain in `appSettings`. Use the public settings APIs,
+including for this key; see [organization security and storage compatibility](organization-security.md).
 
 | Setting | Key | Options | Default |
 |---|---|---|---|
@@ -209,7 +212,7 @@ User enters their email and creates a password that meets the shared policy in Â
 On submit, Better Auth's `signUp.email()` creates the credential account and sends a verification email (if email verification is enabled by admin policy).
 
 Server-authorized new-customer signup also provisions one
-invisible personal organization with the customer as `org-admin`, without granting platform-admin
+invisible personal organization with the initial user as `org-admin`, without granting app-operator
 role or requiring administrator factor enrollment. Customer onboarding invitations remain new-customer
 admission, not membership invitations. See [organization primitives and authority](architecture.md#organization-primitives-and-authority)
 for durable admission, sign-in recovery, legacy/operator exclusions and current integration limits.
@@ -403,7 +406,7 @@ seven-day lifetime. Expired, revoked or banned sessions fail live backend checks
 using an earlier Convex JWT. An already delivered response cannot be withdrawn from a client;
 subsequent requests and reactive queries that rerun check the live policy again.
 
-Administrative HTTP operations and platform administrative mutations, password/profile/factor
+App-operator HTTP/control mutations and password/profile/factor
 changes and recovery-code export require authentication within **five minutes**. When an enrolled
 or required factor exists, that must be recent strong proof; a password alone cannot substitute.
 Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the
@@ -440,7 +443,8 @@ content resumes with its in-memory state; no setup secrets are persisted in brow
 
 For app endpoints, use `authedQuery`, `authedMutation` or `getAuth` from
 `packages/backend/convex/platform/functions.ts`. These enforce the full live policy. For app-owned
-administrative writes, use `adminMutation`, which adds the admin-role and recent-proof checks.
+app-operator writes and organization-owned data, follow the
+[builder and authority boundaries](organization-context.md).
 Actions should authorize through an internal query using the same helper and recheck before
 committing sensitive side effects. `auth.getCurrentUser` and `sessionAssurance.status` intentionally
 return limited self-service identity/status and are **not authorization helpers**. Never authorize

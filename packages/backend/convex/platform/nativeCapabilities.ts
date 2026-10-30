@@ -1,7 +1,6 @@
 /** Explicit opt-in to native definitions, without impersonating ctx.auth or running wrappers twice. */
 import { v, type PropertyValidators, type ValidatorJSON } from "convex/values";
-import { validate } from "convex-helpers/validators";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { operationExposure } from "./agentExposure";
 
 export type NativeKind = "query" | "mutation";
 interface NativeDefinition {
@@ -10,6 +9,20 @@ interface NativeDefinition {
   kind: NativeKind;
 }
 const definitions = new WeakMap<object, NativeDefinition>();
+const operations = new WeakMap<object, string>();
+/** Explicit binding to a reviewed inventory entry, separate from capturing a handler. */
+export function classifyNative(registered: object, operation: string) {
+  if (!operationExposure(operation).native) throw new Error("NATIVE_OPERATION_DENIED");
+  const previous = operations.get(registered);
+  if (previous && previous !== operation) throw new Error("NATIVE_OPERATION_CONFLICT");
+  nativeDefinition(registered);
+  operations.set(registered, operation);
+}
+export function nativeOperation(registered: object) {
+  const operation = operations.get(registered);
+  if (!operation) throw new Error("NATIVE_OPERATION_DENIED");
+  return operation;
+}
 export function rememberNative<T extends object>(registered: T, definition: unknown, kind: NativeKind): T {
   const value = definition as { args?: PropertyValidators; handler?: unknown };
   if (value.args && typeof value.handler === "function") {
@@ -25,11 +38,6 @@ export function nativeDefinition(registered: object) {
   const definition = definitions.get(registered);
   if (!definition) throw new Error("NATIVE_CAPABILITY_NOT_REGISTERED");
   return definition;
-}
-export async function invokeNative(registered: object, ctx: QueryCtx | MutationCtx, auth: unknown, input: unknown) {
-  const definition = nativeDefinition(registered);
-  validate(v.object(definition.args), input, { throw: true, db: ctx.db });
-  return await definition.handler({ ...ctx, ...(auth as Record<string, unknown>) }, input);
 }
 /** JSON Schema is documentation; Convex validators above remain the execution authority. */
 export function validatorSchema(validator: ValidatorJSON): Record<string, unknown> {

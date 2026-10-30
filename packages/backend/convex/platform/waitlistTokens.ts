@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
 
-import { authedQuery } from "./functions";
+import { appOperatorQuery } from "./functions";
 import { rateLimit } from "./rateLimits";
 import { sha256Hex } from "./tokenHash";
 export const create = internalMutation({
@@ -64,7 +64,7 @@ export const hasValidInvitation = internalQuery({
   },
 });
 
-export const listByEntry = authedQuery({
+export const listByEntry = appOperatorQuery({
   args: { waitlistEntryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;

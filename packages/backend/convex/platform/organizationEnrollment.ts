@@ -6,18 +6,20 @@ import { authorizedSession, evaluateOrganizationEnrollment, identitySession, rea
 import { decodeBackupCodes } from "./recoveryCodes";
 import { sha256Hex } from "./tokenHash";
 import { validatePasswordStrength } from "./passwordStrength";
+import { requireOrganizationReadiness } from "./organizationReadiness";
+import { initializeAdminPasskeyPolicy } from "./organizationPolicy";
 
 const contextArgs = { organizationId: v.string() };
 const boundArgs = { ...contextArgs, userId: v.string(), sessionId: v.string() };
 
-/** Setup only. No collaboration activation or member-management API is exposed before cutover. */
+/** Setup preserves personal access; completion additionally requires verified preserving cutover. */
 export const begin = mutation({
   args: { ...contextArgs, name: v.string(), slug: v.string() },
   handler: async (ctx, args) => {
     const pair = await authorizedSession(ctx, true);
     if (!pair) throw new Error("NOT_AUTHENTICATED");
     if (pair.assurance.scope !== "user") throw new Error("NOT_CUSTOMER");
-    return ctx.runMutation(components.betterAuth.organizations.beginCollaboration, { ...args, userId: pair.user._id });
+    return ctx.runMutation(components.betterAuth.organizations.beginMembershipManagement, { ...args, userId: pair.user._id });
   },
 });
 
@@ -28,6 +30,21 @@ export const status = query({
     const pair = await identitySession(ctx);
     if (!pair || pair.session.authPurpose === "mcp-authorization") throw new Error("NOT_AUTHENTICATED");
     return evaluateOrganizationEnrollment(ctx, pair, organizationId);
+  },
+});
+
+export const complete = mutation({
+  args: contextArgs,
+  handler: async (ctx, { organizationId }) => {
+    const pair = await identitySession(ctx);
+    if (!pair || pair.session.authPurpose === "mcp-authorization") throw new Error("NOT_AUTHENTICATED");
+    await requireOrganizationReadiness(ctx);
+    await initializeAdminPasskeyPolicy(ctx);
+    const assurance = await evaluateOrganizationEnrollment(ctx, pair, organizationId);
+    if (!assurance.allowed || !assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+    return ctx.runMutation(components.betterAuth.organizations.completeEnrollment, {
+      organizationId, userId: pair.user._id, requirePasskey: assurance.passkeyPolicy === "required",
+    });
   },
 });
 

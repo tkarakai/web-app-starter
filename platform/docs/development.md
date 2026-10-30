@@ -39,6 +39,9 @@ bun run dev:admin            # Convex + admin app
 bun run dev:landing          # Landing + Convex
 bun run dev:storybook        # Component storybook only (no Convex)
 
+# Verify a populated local backend without starting apps
+bun run dev --prepare-only --app=web
+
 # Check service status
 bun run dev:status           # Shows running processes
 
@@ -47,6 +50,14 @@ bun run dev:stop
 ```
 
 > **Note**: Do NOT use `turbo dev` directly. The custom `dev-start.sh` script handles Convex setup, port management, and environment configuration.
+
+`--prepare-only` runs the normal local backend setup and preserving organization verification,
+then stops only the backend it started and exits before starting any app. Select an installed
+backend-dependent app (`web`, `admin` or `landing`). Stop this checkout's managed services first;
+preparation refuses to replace a running managed service. A backend-free selection exits without
+starting services. The mode preserves the database and all deployment readiness checks; a
+verification or cleanup failure returns a nonzero status. Full local CI uses this phase before
+its bounded browser startup; see [local CI](ci-pre-push.md).
 
 Before starting any Next listener, the launcher selects distinct available ports and stages
 app configuration, cross-app links and optional MCP origins. When a linked app is started,

@@ -51,8 +51,8 @@ const dashboardSections = [
         icon: ListChecks,
       },
       {
-        title: "Users",
-        description: "Manage user accounts, session access, and role permissions.",
+        title: "App operators",
+        description: "Manage app operator accounts and session access.",
         href: "/manage/users",
         icon: Users,
       },
@@ -63,7 +63,7 @@ const dashboardSections = [
     items: [
       {
         title: "Audit Trail",
-        description: "View authentication events and admin actions across the system.",
+        description: "View app-operator authentication events and app control-plane actions.",
         href: "/monitor/audit-trail",
         icon: ScrollText,
       },
@@ -74,7 +74,7 @@ const dashboardSections = [
 export default function DashboardPage() {
   return (
     <div className="space-y-10">
-      <h1 className="text-3xl font-semibold tracking-tight">Welcome back, Admin</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Welcome back, app operator</h1>
 
       {dashboardSections.map((section) => (
         <section key={section.title} className="space-y-4">

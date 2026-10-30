@@ -39,15 +39,15 @@ export function AgentAccess({ request }: { request: AuthorizationRequest }) {
           </div>
           <div className="min-w-0">
             <p className="break-words text-base font-semibold leading-snug">{appConfig.identity.productName}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Administration · Agent authorization</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">App administration · Agent authorization</p>
           </div>
         </div>
-        <AlertDialogTitle>Authorize admin agent</AlertDialogTitle>
+        <AlertDialogTitle>Authorize app-operator agent</AlertDialogTitle>
         <AlertDialogDescription>Allow this agent to administer the application as you?</AlertDialogDescription>
       </AlertDialogHeader>
       <div className="space-y-4 text-sm">
-        <p className="font-medium">Interface: {request.resource.endsWith("/api/a2a") ? "Agent2Agent (A2A)" : request.resource.endsWith("/api/agent/cli") ? "Admin CLI" : "MCP"}</p>
-        <p>It can use all available administration capabilities as you, including reading private admin data, managing users and invitations, changing settings and security policy, and publishing or permanently deleting content. Native permissions and security requirements still apply.</p>
+        <p className="font-medium">Interface: {request.resource.endsWith("/api/a2a") ? "Agent2Agent (A2A)" : request.resource.endsWith("/api/agent/cli") ? "App-operator CLI" : "MCP"}</p>
+        <p>It can manage organization availability and current org-admin contacts, app operator accounts, customer admission, global settings and security policy, and public content as you. Organization-user identities, credentials, sessions, member directories and private tenant data are excluded. Current app-operator permissions and security requirements apply to every call.</p>
         <p>Access lasts up to 15 minutes and uses the verification completed for this request. Writes require authentication within the last five minutes.</p>
         <p className="text-muted-foreground">Only approve if you started and trust this agent yourself. Your decision returns to the agent on this computer.</p>
         {availability && !availability.enabled && <p role="alert">This agent surface is disabled. You can deny this request.</p>}
@@ -55,7 +55,7 @@ export function AgentAccess({ request }: { request: AuthorizationRequest }) {
       </div>
       <AlertDialogFooter className="gap-2">
         <Button ref={denyButton} variant="outline" disabled={busy} onClick={() => void decide("deny")}>Deny access</Button>
-        <Button onClick={() => void decide("approve")} disabled={busy || !availability?.enabled}>{busy ? "Authorizing…" : "Authorize admin agent"}</Button>
+        <Button onClick={() => void decide("approve")} disabled={busy || !availability?.enabled}>{busy ? "Authorizing…" : "Authorize app-operator agent"}</Button>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>;

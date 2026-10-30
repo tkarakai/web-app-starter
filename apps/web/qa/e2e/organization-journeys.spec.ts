@@ -1,0 +1,184 @@
+import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { expect } from "@playwright/test";
+import { signIn, markConvexLogPosition, waitForAuthEmail, toRelativeUrl } from "./helpers/auth";
+import { createDisposableUser, disposableEmail, disposablePassword } from "./helpers/fixtures";
+import { organizationTest as test, addOrganizationAuthenticator as authenticator, completeOrganizationEnrollment as enroll, issueOrganizationInvitation as invite, expectOrganizationTransition } from "./helpers/organizations";
+
+test.describe.configure({ mode: "default", timeout: 180_000 });
+test.use({ actionTimeout: 20_000, trace: "off", screenshot: "off", video: "off" });
+
+test("organization page requires sign-in", async ({ page }) => {
+  await page.goto("/en/dashboard/organization");
+  await expect(page).toHaveURL(/\/en\/sign-in/);
+});
+
+test("preserves personal data through resumable enrollment and real invited signup; isolates member data and tab selection", async ({ page, browser }) => {
+  await authenticator(page);
+  const owner = await createDisposableUser();
+  await signIn(page, owner.email, owner.password);
+  await page.getByTitle("New project", { exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Owner private project");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("tab", { name: "Attachments", exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: "preserved.txt", mimeType: "text/plain", buffer: Buffer.from("Private original bytes") });
+  await expect(page.getByText("preserved.txt", { exact: true })).toBeVisible();
+  const originalProjectId = await page.locator("[data-project-id]").getAttribute("data-project-id");
+  const originalUploadId = await page.locator("[data-upload-id]").getAttribute("data-upload-id");
+  expect(originalProjectId).toBeTruthy(); expect(originalUploadId).toBeTruthy();
+  await page.goto("/en/dashboard/organization");
+  await expect(page.getByText("Start an organization", { exact: true })).toBeVisible();
+  const organizationId = await page.locator("[data-organization-id]").getAttribute("data-organization-id");
+  expect(organizationId).toBeTruthy();
+  await page.locator("#organization-name").fill("Journey organization");
+  await page.locator("#organization-slug").fill(`journey-${randomUUID().slice(0, 8)}`);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByText("Administrator security setup", { exact: true })).toBeVisible();
+  await page.reload(); // Resume the persisted enrollment, never create another organization.
+  await expect(page.locator("[data-organization-id]")).toHaveAttribute("data-organization-id", organizationId!);
+  await enroll(page, owner.password);
+  await expect(page.locator("[data-organization-id]")).toHaveAttribute("data-organization-id", organizationId!);
+  await page.goto("/en/dashboard");
+  await page.getByText("Owner private project", { exact: true }).first().click();
+  await page.getByRole("tab", { name: "Attachments", exact: true }).click();
+  await expect(page.getByText("preserved.txt", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-project-id]")).toHaveAttribute("data-project-id", originalProjectId!);
+  await expect(page.locator("[data-upload-id]")).toHaveAttribute("data-upload-id", originalUploadId!);
+  const downloadReady = page.waitForEvent("download"); await page.getByRole("button", { name: "View", exact: true }).click();
+  const download = await downloadReady; expect(await readFile((await download.path())!)).toEqual(Buffer.from("Private original bytes"));
+  await page.goto("/en/dashboard/organization");
+
+  const memberEmail = disposableEmail(); const memberPassword = disposablePassword();
+  const invitation = await invite(page, memberEmail);
+  const memberContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  const member = await memberContext.newPage();
+  try {
+    await member.goto(invitation);
+    await expect(member.getByText("Journey organization", { exact: true })).toBeVisible();
+    expect(new URL(member.url()).hash).toBe("");
+    await member.getByRole("button", { name: "Create an account", exact: true }).click();
+    await member.locator("#invitation-name").fill("Invited member");
+    await member.locator("#invitation-password").fill(memberPassword);
+    const verifyOffset = markConvexLogPosition();
+    await member.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(member.getByText("Verification email sent! Check your inbox.")).toBeVisible();
+    const verification = await waitForAuthEmail("verification", verifyOffset);
+    await member.goto(toRelativeUrl(verification));
+    await member.getByRole("link", { name: "Return to your organization invitation", exact: true }).click();
+    await member.locator("#invitation-password").fill(memberPassword);
+    await member.locator("form:has(#invitation-password)").getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(member.getByRole("button", { name: "Accept invitation", exact: true })).toBeEnabled();
+    await member.getByRole("button", { name: "Accept invitation", exact: true }).click();
+    await expectOrganizationTransition(member, organizationId, () => expect(member).toHaveURL(new RegExp(`/en/dashboard\\?organizationId=${organizationId}`)));
+    await expect(member.getByText("Owner private project", { exact: true })).toHaveCount(0);
+    await member.goto(`/en/dashboard/organization?organizationId=${organizationId}`);
+    await expect(member.getByText("You can use your own private projects here.", { exact: false })).toBeVisible();
+    await expect(member.locator("#member-email")).toHaveCount(0);
+
+    // Existing account keeps its personal organization and accepts a second context.
+    const existing = await createDisposableUser();
+    const existingLink = await invite(page, existing.email);
+    const existingContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const existingPage = await existingContext.newPage();
+    try {
+      await signIn(existingPage, existing.email, existing.password);
+      await existingPage.goto("/en/dashboard/organization");
+      const personalId = await existingPage.locator("[data-organization-id]").getAttribute("data-organization-id");
+      await existingPage.goto(existingLink);
+      await existingPage.getByRole("button", { name: "Accept invitation", exact: true }).click();
+      await expectOrganizationTransition(existingPage, organizationId, () => expect(existingPage.getByLabel("Organization context", { exact: true }).first()).toHaveValue(organizationId!));
+      const otherTab = await existingContext.newPage();
+      await otherTab.goto(`/en/dashboard?organizationId=${personalId}`);
+      await expectOrganizationTransition(otherTab, personalId, () => expect(otherTab.getByLabel("Organization context", { exact: true }).first()).toHaveValue(personalId!));
+      await expectOrganizationTransition(existingPage, organizationId, () => expect(existingPage.getByLabel("Organization context", { exact: true }).first()).toHaveValue(organizationId!));
+      await existingPage.reload();
+      await expectOrganizationTransition(existingPage, organizationId, () => expect(existingPage.getByLabel("Organization context", { exact: true }).first()).toHaveValue(organizationId!));
+      await otherTab.close();
+      const membership = page.locator("[data-member-id]").filter({ has: page.getByText(existing.email, { exact: true }) });
+      await membership.getByRole("button", { name: "Remove member", exact: true }).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Continue", exact: true }).click();
+      await expect(existingPage.locator('div[data-personal-data-state="unavailable"]')).toBeVisible();
+      // No implicit fallback after live revocation: the now-single valid context remains selectable.
+      await expectOrganizationTransition(existingPage, organizationId, () => expect(existingPage.getByLabel("Organization context", { exact: true }).first()).toHaveValue(organizationId!));
+      await existingPage.getByLabel("Organization context", { exact: true }).first().selectOption(personalId!);
+      await expect(existingPage.locator('[data-personal-data-state="unavailable"]')).toHaveCount(0);
+    } finally { await existingContext.close(); }
+    await member.getByRole("button", { name: "Leave organization", exact: true }).click();
+    await member.getByRole("alertdialog").getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(member.getByText("You have no available organization.", { exact: false })).toBeVisible();
+  } finally { await memberContext.close(); }
+});
+
+test("cancels/resends invitations, switches wrong accounts and completes promotion before contact and membership changes", async ({ page, browser }) => {
+  await authenticator(page);
+  const owner = await createDisposableUser();
+  await signIn(page, owner.email, owner.password);
+  await page.goto("/en/dashboard/organization");
+  await page.locator("#organization-name").fill("Membership journey");
+  await page.locator("#organization-slug").fill(`membership-${randomUUID().slice(0, 8)}`);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await enroll(page, owner.password);
+  const organizationId = await page.locator("[data-organization-id]").getAttribute("data-organization-id");
+  const existing = await createDisposableUser();
+  const wrong = await createDisposableUser();
+  const canceledEmail = disposableEmail();
+  const canceledLink = await invite(page, canceledEmail);
+  const canceledRow = page.locator("[data-invitation-id]").filter({ has: page.getByText(canceledEmail, { exact: true }) });
+  await canceledRow.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(canceledRow).toContainText("Canceled");
+  const oldLink = await invite(page, existing.email);
+  const invitationRow = page.locator("[data-invitation-id]").filter({ has: page.getByText(existing.email, { exact: true }) });
+  const resendOffset = markConvexLogPosition();
+  await invitationRow.getByRole("button", { name: "Resend", exact: true }).click();
+  const resent = new URL(await waitForAuthEmail("custom", resendOffset));
+  const currentLink = `${resent.pathname}${resent.search}${resent.hash}`;
+  expect(currentLink === oldLink).toBe(false);
+
+  const memberContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  const member = await memberContext.newPage();
+  await authenticator(member);
+  try {
+    await member.goto(canceledLink);
+    await expect(member.getByText("This invitation is unavailable, expired or replaced.", { exact: false })).toBeVisible();
+    await member.goto(oldLink);
+    await expect(member.getByText("This invitation is unavailable, expired or replaced.", { exact: false })).toBeVisible();
+    await signIn(member, wrong.email, wrong.password);
+    await member.goto(currentLink);
+    await expect(member.getByText("This invitation belongs to a different email address.", { exact: false })).toBeVisible();
+    await expect(member.getByRole("button", { name: "Accept invitation", exact: true })).toHaveCount(0);
+    await member.getByRole("button", { name: "Switch account", exact: true }).click();
+    await member.locator("#invitation-password").fill(existing.password);
+    await member.locator("form:has(#invitation-password)").getByRole("button", { name: "Sign in", exact: true }).click();
+    await member.getByRole("button", { name: "Accept invitation", exact: true }).click();
+    await expectOrganizationTransition(member, organizationId, () => expect(member).toHaveURL(new RegExp(`/en/dashboard\\?organizationId=${organizationId}`)));
+
+    const memberRow = page.locator("[data-member-id]").filter({ has: page.getByText(existing.email, { exact: true }) });
+    await memberRow.getByRole("button", { name: "Invite to admin role", exact: true }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(memberRow).toContainText("Pending");
+    await member.goto(`/en/dashboard/organization?organizationId=${organizationId}`);
+    await expect(member.getByText("Administrator security setup", { exact: true })).toBeVisible();
+    await expect(member.locator("#member-email")).toHaveCount(0);
+    await enroll(member, existing.password);
+    await expectOrganizationTransition(page, organizationId, () => expect(memberRow).not.toContainText("Pending"), memberRow);
+    await memberRow.getByRole("button", { name: "Make contact", exact: true }).click();
+    await expectOrganizationTransition(page, organizationId, () => expect(memberRow).toContainText("Current contact"), memberRow);
+
+    const originalAdmin = page.locator("[data-member-id]").filter({ has: page.getByText(owner.email, { exact: true }) });
+    await originalAdmin.getByRole("button", { name: "Remove admin role", exact: true }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Continue", exact: true }).click();
+    await expectOrganizationTransition(page, organizationId, () => expect(page.locator("#member-email")).toHaveCount(0));
+    await expect(page.getByText("You can use your own private projects here.", { exact: false })).toBeVisible();
+    const formerAdmin = member.locator("[data-member-id]").filter({ has: member.getByText(owner.email, { exact: true }) });
+    await formerAdmin.getByRole("button", { name: "Remove member", exact: true }).click();
+    await member.getByRole("alertdialog").getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(formerAdmin).toHaveCount(0);
+    await expect(page.getByText("You have no available organization.", { exact: false })).toBeVisible();
+
+    await member.getByRole("button", { name: "Leave organization", exact: true }).click();
+    await member.getByRole("alertdialog").getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(member.getByRole("alertdialog").getByRole("alert")).toContainText("The organization must keep an enrolled administrator and a valid contact.");
+    await member.getByRole("alertdialog").getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(member.locator("#member-email")).toBeVisible();
+  } finally { await memberContext.close(); }
+});

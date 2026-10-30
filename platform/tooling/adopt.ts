@@ -204,7 +204,8 @@ export function removeSample(root: string): void {
     .replace(/ {2}\/\/ Sample domain[^\n]*\n {2}\.\.\.sampleTables,\n/, "");
   writeFileSync(at(`${backend}schema.ts`), schema);
   for (const file of ["sampleTables.ts", "projects.ts", "tasks.ts", "files.ts", "projectAccess.ts", "fileAccess.ts",
-    "projects.test.ts", "tasks.test.ts", "files.test.ts", "authorization-contract.test.ts", "file-ownership.test.ts"]) {
+    "tenantProjects.ts", "tenantTasks.ts", "tenantFiles.ts", "tenantAccess.ts",
+    "projects.test.ts", "tasks.test.ts", "files.test.ts", "authorization-contract.test.ts", "file-ownership.test.ts", "tenantIsolation.test.ts"]) {
     rmSync(at(`${backend}${file}`), { force: true });
   }
   for (const file of ["apps/web/src/components/projects", "apps/web/src/lib/projects.ts", "apps/web/qa/tests/projects.test.ts",
@@ -222,17 +223,28 @@ export function removeSample(root: string): void {
     ["dashboard-client.tsx", `${dashboard}dashboard-client.tsx`],
     ["auth-security.test.ts", `${backend}auth-security.test.ts`],
     ["input-validation.test.ts", `${backend}input-validation.test.ts`],
+    ["organizationMigration.ts", `${backend}organizationMigration.ts`],
+    ["organizationMigrationRegistry.ts", `${backend}organizationMigrationRegistry.ts`],
+    ["organizationMigration.test.ts", `${backend}organizationMigration.test.ts`],
+    ["organizationMigration.independentReview.test.ts", `${backend}organizationMigration.independentReview.test.ts`],
+    ["use-personal-data.ts", "apps/web/src/hooks/use-personal-data.ts"],
+    ["personal-data.test.tsx", "apps/web/qa/tests/personal-data.test.tsx"],
+    ["organization-journeys.spec.ts", "apps/web/qa/e2e/organization-journeys.spec.ts"],
     ["localized-controls.test.tsx", "apps/web/qa/tests/localized-controls.test.tsx"],
   ]) {
+    mkdirSync(path.dirname(at(destination)), { recursive: true });
     writeFileSync(at(destination), readFileSync(at(`platform/templates/adopt/${template}.txt`), "utf8"));
   }
-  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`]) {
+  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`,
+    "apps/web/src/components/organizations/organization-client.tsx"]) {
     let content = readFileSync(at(file), "utf8")
       .replaceAll("@/components/projects/app-sidebar", "@/components/app-sidebar")
-      .replace(/\s*selectedProjectId=\{null\}\n/, "\n")
+      .replace(/ selectedProjectId=\{null\}/g, "")
       .replaceAll("onSelectProject=", "onNavigateHome=")
       .replaceAll('td("projects")', 'tc("backToHome")');
-    if (file.endsWith("sessions-client.tsx")) content = content.replace('  const td = useTranslations("dashboard");\n', "");
+    if (file.endsWith("sessions-client.tsx") || file.endsWith("organization-client.tsx")) {
+      content = content.replace(/ *const td = useTranslations\("dashboard"\);\n?/g, "");
+    }
     writeFileSync(at(file), content);
   }
   for (const file of readdirSync(at("packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {

@@ -6,11 +6,14 @@ import french from "@web-app-starter/i18n/messages/fr.json";
 import { SessionAccessGate } from "../../src/components/session-access-gate";
 
 const mocks = vi.hoisted(() => ({ status: null as Record<string, unknown> | null, verify: vi.fn(), totp: vi.fn(), backup: vi.fn(), passkey: vi.fn() }));
-vi.mock("convex/react", () => ({ useQuery: () => mocks.status }));
+vi.mock("@repo/backend", () => ({ api: { platform: { sessionAssurance: { status: "assurance" }, auth: { getCurrentUser: "user" } } } }));
+vi.mock("convex/react", () => ({ useQuery: (query: string) => query === "assurance" ? mocks.status : { _id: "actor", email: "actor@example.test" } }));
 vi.mock("@web-app-starter/auth/client", () => ({ authClient: {
+  useSession: () => ({ data: { user: { id: "actor" } }, isPending: false }),
   $fetch: mocks.verify, twoFactor: { verifyTotp: mocks.totp, verifyBackupCode: mocks.backup }, signIn: { passkey: mocks.passkey }, signOut: vi.fn(),
 } }));
 vi.mock("../../src/settings/two-factor-section", () => ({ TwoFactorSection: ({ recover, onComplete }: { recover?: boolean; onComplete: () => void }) => <div><p>{recover ? "Replace authenticator" : "Enroll authenticator"}</p><button onClick={onComplete}>Save backup codes</button></div> }));
+vi.mock("../../src/settings/organization-factor-replacement", () => ({ OrganizationFactorReplacement: ({ onComplete }: { onComplete: () => void }) => <div><p>Stage replacement authenticator</p><button onClick={onComplete}>Save backup codes</button></div> }));
 vi.mock("../../src/settings/passkey-section", () => ({ PasskeySection: () => <p>Add authenticator passkey</p> }));
 function ready() {
   return { reason: "ready", allowed: true, scope: "user", hasTotp: false, hasPasskey: false, strongForChanges: false, recent: true,
@@ -56,17 +59,17 @@ describe("server-directed session access", () => {
     mocks.status = { ...ready(), reason: "recovery", allowed: false, hasTotp: true, strongForChanges: true };
     const result = render(view());
     fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.twoFactor.enable }));
-    expect(screen.getByText("Replace authenticator")).toBeVisible();
+    expect(screen.getByText("Stage replacement authenticator")).toBeVisible();
     mocks.status = null;
     result.rerender(view());
-    expect(screen.getByText("Replace authenticator")).not.toBeVisible();
+    expect(screen.getByText("Stage replacement authenticator")).not.toBeVisible();
     mocks.status = ready(); result.rerender(view());
     expect(screen.queryByLabelText("Work in progress")).not.toBeInTheDocument();
     await act(async () => vi.advanceTimersByTime(300001));
-    expect(screen.getByText("Replace authenticator")).not.toBeVisible();
+    expect(screen.getByText("Stage replacement authenticator")).not.toBeVisible();
     expect(screen.getByLabelText(english.accountSecurity.changePassword.currentPassword)).toBeVisible();
     mocks.status = ready(); result.rerender(view());
-    expect(screen.getByText("Replace authenticator")).toBeVisible();
+    expect(screen.getByText("Stage replacement authenticator")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Save backup codes" }));
     expect(screen.getByLabelText("Work in progress")).toBeVisible();
   });
@@ -147,4 +150,12 @@ it("authorization-only factor verification excludes backup codes and retains pas
   await act(async () => fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.session.usePasskey })));
   expect(mocks.passkey).toHaveBeenCalledOnce();
   expect(mocks.backup).not.toHaveBeenCalled();
+});
+
+it("keeps operator recovery in its own ceremony", () => {
+  mocks.status = { ...ready(), scope: "admin", reason: "recovery", allowed: false, hasTotp: true, strongForChanges: true };
+  render(view());
+  fireEvent.click(screen.getByRole("button", { name: english.accountSecurity.twoFactor.enable }));
+  expect(screen.getByText("Replace authenticator")).toBeVisible();
+  expect(screen.queryByText("Stage replacement authenticator")).not.toBeInTheDocument();
 });

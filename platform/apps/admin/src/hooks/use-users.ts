@@ -1,127 +1,94 @@
 "use client";
 
 import * as React from "react";
-import { fetchUsers, type AdminUser, type FetchUsersParams } from "@/lib/admin-api";
+import { useConvex } from "convex/react";
+import { fetchAppOperators, type AppOperatorUser, type FetchAppOperatorsParams } from "@/lib/admin-api";
 
 const PAGE_SIZE = 50;
+export type AppOperatorFilters = Pick<FetchAppOperatorsParams, "searchValue" | "status" | "sortBy" | "sortDirection">;
+type SearchStream = { searchField: "name" | "email"; cursor: string | null; done: boolean };
 
-type FilterParams = {
-  searchValue?: string;
-  filterField?: string;
-  filterValue?: string;
-  filterOperator?: "eq" | "ne";
-  sortBy?: string;
-  sortDirection?: "asc" | "desc";
-};
-
-type UseUsersReturn = {
-  users: AdminUser[];
-  total: number;
-  loading: boolean;
-  loadingMore: boolean;
-  hasMore: boolean;
-  loadMore: () => void;
-  refresh: () => void;
-};
-
-export function useUsers(filters: FilterParams): UseUsersReturn {
-  const [users, setUsers] = React.useState<AdminUser[]>([]);
-  const [total, setTotal] = React.useState(0);
+export function useAppOperators(filters: AppOperatorFilters) {
+  const client = useConvex();
+  const { searchValue, status, sortDirection = "desc" } = filters;
+  const [users, setUsers] = React.useState<AppOperatorUser[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
-  const [offset, setOffset] = React.useState(0);
+  const [hasMore, setHasMore] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const generation = React.useRef(0);
+  const state = React.useRef<{ streams: SearchStream[]; users: AppOperatorUser[]; pending: boolean }>({ streams: [], users: [], pending: false });
 
-  // Track the current filter identity to detect changes.
-  const filterKey = JSON.stringify(filters);
-  const prevFilterKey = React.useRef(filterKey);
-
-  const fetchPage = React.useCallback(
-    async (pageOffset: number, append: boolean) => {
-      const baseParams: FetchUsersParams = {
-        limit: PAGE_SIZE,
-        offset: pageOffset,
-      };
-
-      if (filters.filterField) {
-        baseParams.filterField = filters.filterField;
-        baseParams.filterValue = filters.filterValue;
-        baseParams.filterOperator = filters.filterOperator ?? "eq";
-      }
-
-      if (filters.sortBy) {
-        baseParams.sortBy = filters.sortBy;
-        baseParams.sortDirection = filters.sortDirection ?? "asc";
-      }
-
-      if (filters.searchValue) {
-        // Search both name and email in parallel, then merge & dedupe.
-        const [byName, byEmail] = await Promise.all([
-          fetchUsers({ ...baseParams, searchValue: filters.searchValue, searchField: "name", searchOperator: "contains" }),
-          fetchUsers({ ...baseParams, searchValue: filters.searchValue, searchField: "email", searchOperator: "contains" }),
-        ]);
-        const seen = new Set<string>();
-        const merged: AdminUser[] = [];
-        for (const u of [...byName.users, ...byEmail.users]) {
-          if (!seen.has(u.id)) {
-            seen.add(u.id);
-            merged.push(u);
-          }
+  const fetchPage = React.useCallback(async (requestGeneration: number, append: boolean) => {
+    if (state.current.pending) return;
+    state.current.pending = true;
+    const pendingStreams = state.current.streams.filter(stream => !stream.done);
+    try {
+      const results = await Promise.all(pendingStreams.map(stream => fetchAppOperators(client, {
+        limit: PAGE_SIZE, cursor: stream.cursor, searchField: stream.searchField,
+        searchValue, status, sortBy: "createdAt", sortDirection,
+      })));
+      if (requestGeneration !== generation.current) return;
+      const merged = new Map((append ? state.current.users : []).map(user => [user.id, user]));
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (!result.isDone && (!result.continueCursor || result.continueCursor === pendingStreams[i].cursor)) {
+          throw new Error("INVALID_OPERATOR_CURSOR");
         }
-        setUsers((prev) => (append ? [...prev, ...merged] : merged));
-        // Upper-bound total (may include overlap — acceptable for admin panel).
-        setTotal(Math.max(byName.total, byEmail.total, merged.length));
-        setOffset(pageOffset + PAGE_SIZE);
-      } else {
-        const result = await fetchUsers(baseParams);
-        setUsers((prev) => (append ? [...prev, ...result.users] : result.users));
-        setTotal(result.total);
-        setOffset(pageOffset + result.users.length);
       }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filterKey],
-  );
-
-  // Initial load or filter change: reset and fetch from offset 0.
-  React.useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        await fetchPage(0, false);
-      } finally {
-        if (!cancelled) setLoading(false);
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        pendingStreams[i].cursor = result.continueCursor;
+        pendingStreams[i].done = result.isDone;
+        for (const user of result.users) merged.set(user.id, user);
       }
-    };
-
-    prevFilterKey.current = filterKey;
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchPage, filterKey]);
-
-  const loadMore = React.useCallback(async () => {
-    setLoadingMore(true);
-    try {
-      await fetchPage(offset, true);
+      const direction = sortDirection === "asc" ? 1 : -1;
+      const nextUsers = [...merged.values()].sort((a, b) =>
+        direction * (a.createdAt.getTime() - b.createdAt.getTime()) || a.id.localeCompare(b.id));
+      state.current.users = nextUsers;
+      setUsers(nextUsers);
+      setHasMore(state.current.streams.some(stream => !stream.done));
+      setError(null);
+    } catch {
+      if (requestGeneration === generation.current) setError("Could not load app operators. Try again.");
     } finally {
-      setLoadingMore(false);
+      if (requestGeneration === generation.current) {
+        state.current.pending = false;
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, [fetchPage, offset]);
+  }, [client, searchValue, status, sortDirection]);
 
-  const refresh = React.useCallback(async () => {
+  const refresh = React.useCallback(() => {
+    const requestGeneration = ++generation.current;
+    state.current = { users: [], pending: false, streams: searchValue
+      ? [{ searchField: "name", cursor: null, done: false }, { searchField: "email", cursor: null, done: false }]
+      : [{ searchField: "name", cursor: null, done: false }] };
+    setUsers([]);
+    setHasMore(false);
     setLoading(true);
-    try {
-      await fetchPage(0, false);
-    } finally {
-      setLoading(false);
-    }
+    setLoadingMore(false);
+    setError(null);
+    void fetchPage(requestGeneration, false);
+  }, [searchValue, fetchPage]);
+
+  React.useEffect(() => {
+    const requests = generation;
+    refresh();
+    return () => { requests.current++; };
+  }, [refresh]);
+
+  const loadMore = React.useCallback(() => {
+    if (state.current.pending || state.current.streams.every(stream => stream.done)) return;
+    setLoadingMore(true);
+    void fetchPage(generation.current, true);
   }, [fetchPage]);
 
-  const hasMore = users.length < total;
-
-  return { users, total, loading, loadingMore, hasMore, loadMore, refresh };
+  return { users, total: users.length, loading, loadingMore, hasMore, loadMore, refresh, error };
 }
+
+/** @deprecated Use useAppOperators. */
+export const useUsers = useAppOperators;
+/** @deprecated Use AppOperatorFilters. */
+export type OperatorFilters = AppOperatorFilters;

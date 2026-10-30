@@ -19,6 +19,16 @@ over an existing app. Existing deployments with legacy platform tables must also
 
 For initial adoption into an existing repository, use [the existing-repository guide](README.md#existing-repositories). For a missing or invalid baseline, read this guide from the **target published tag**; the installed copy may predate the repair. Never invent a baseline or run adoption over an already adopted app.
 
+## Organization cutover
+
+A release introducing the organization contract requires the deployment-specific
+[organization data migration](docs/organization-data-migration.md). Run the registration codemod
+named in Action required, classify custom tables/functions/jobs/components and supply their bounded
+backfills. Preserve IDs, ownership, storage and historical authority evidence. Source upgrade and
+successful generic migrations do not establish organization readiness. New empty deployments use
+the same prepare/deploy/verify path. Never reset data, manufacture readiness, or roll back to source
+that can execute retired legacy authority; use the documented forward recovery.
+
 ## Apps adopted before the first published release
 
 A checkout can say `2.0.0` without containing the published `v2.0.0` commit. Earlier adoption

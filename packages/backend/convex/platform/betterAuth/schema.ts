@@ -14,6 +14,7 @@
  */
 
 import { defineSchema, defineTable } from "convex/server";
+import { MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE } from "./organizationVocabulary";
 import { v } from "convex/values";
 
 export const tables = {
@@ -42,7 +43,8 @@ export const tables = {
     .index("name", ["name"])
     .index("userId", ["userId"])
     .index("username", ["username"])
-    .index("phoneNumber", ["phoneNumber"]),
+    .index("phoneNumber", ["phoneNumber"])
+    .index("role_createdAt", ["role", "createdAt"]),
   session: defineTable({
     expiresAt: v.number(),
     token: v.string(),
@@ -64,6 +66,8 @@ export const tables = {
     strongFactorType: v.optional(v.union(v.null(), v.string())),
     recoveryOnly: v.optional(v.union(v.null(), v.boolean())),
     recoveryFactorId: v.optional(v.union(v.null(), v.string())),
+    recoverySourceFactorId: v.optional(v.union(v.null(), v.string())),
+    recoverySourceFactorProof: v.optional(v.union(v.null(), v.string())),
   })
     .index("expiresAt", ["expiresAt"])
     .index("expiresAt_userId", ["expiresAt","userId"])
@@ -177,7 +181,9 @@ export const tables = {
     experience: v.optional(v.union(v.null(), v.string())),
     lifecycle: v.optional(v.union(v.null(), v.string())),
     personalOwnerId: v.optional(v.union(v.null(), v.string())),
-  }).index("slug", ["slug"]).index("personalOwnerId", ["personalOwnerId"]),
+    primaryContactMemberId: v.optional(v.string()),
+  }).index("slug", ["slug"]).index("personalOwnerId", ["personalOwnerId"])
+    .index("lifecycle_experience", ["lifecycle", "experience"]),
   member: defineTable({
     organizationId: v.string(),
     userId: v.string(),
@@ -202,9 +208,14 @@ export const tables = {
     tokenHash: v.optional(v.string()),
     acceptedUserId: v.optional(v.string()),
     acceptedMemberId: v.optional(v.id("member")),
+    deliveryState: v.optional(v.union(v.literal("pending"), v.literal("sent"), v.literal("failed"))),
+    deliveryVersion: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    deliveryError: v.optional(v.string()),
   }).index("organizationId", ["organizationId"])
     .index("email", ["email"])
     .index("email_organizationId_status", ["email", "organizationId", "status"])
+    .index("acceptedUserId_organizationId_status_createdAt", ["acceptedUserId", "organizationId", "status", "createdAt"])
     .index("organizationId_status", ["organizationId", "status"])
     .index("tokenHash", ["tokenHash"]),
   // Registration capability receipts only; invitation/member remain canonical.
@@ -215,23 +226,43 @@ export const tables = {
     expiresAt: v.number(),
     userId: v.optional(v.id("user")),
     createdAt: v.number(),
-  }).index("capabilityHash", ["capabilityHash"]),
+  }).index("capabilityHash", ["capabilityHash"])
+    .index("userId", ["userId"]),
   // Platform state, not a duplicate editable membership/role model.
   organizationEnrollments: defineTable({
     organizationId: v.string(),
     userId: v.string(),
     memberId: v.id("member"),
-    purpose: v.union(v.literal("collaboration"), v.literal("promotion"), v.literal("invitation")),
+    purpose: v.union(v.literal(MEMBERSHIP_MANAGEMENT_ENROLLMENT_PURPOSE), v.literal("promotion"), v.literal("invitation")),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     passwordProof: v.optional(v.string()),
+    passwordEmail: v.optional(v.string()),
     passwordVerifiedAt: v.optional(v.number()),
     backupAcknowledgedAt: v.optional(v.number()),
     backupFactorId: v.optional(v.string()),
+    factorSecretProof: v.optional(v.string()),
     backupCodesProof: v.optional(v.string()),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("memberId", ["memberId"]).index("userId", ["userId"]),
+  organizationSecurityPolicy: defineTable({
+    key: v.literal("admin"),
+    passkeyPolicy: v.union(v.literal("disabled"), v.literal("optional"), v.literal("required")),
+  }).index("key", ["key"]),
+  organizationMigrationBarrier: defineTable({
+    key: v.literal("organization-v1"), blocked: v.boolean(), deploymentVersion: v.string(),
+  }).index("key", ["key"]),
+  organizationSecurityChanges: defineTable({
+    userId: v.string(), sessionId: v.string(),
+    credentialProof: v.string(), factorId: v.string(), factorSecretProof: v.string(),
+    secret: v.string(), backupCodes: v.string(), expiresAt: v.number(),
+  }).index("userId", ["userId"]),
+  organizationAudit: defineTable({
+    organizationId: v.string(), actorId: v.string(), action: v.string(),
+    targetId: v.optional(v.string()), happenedAt: v.number(),
+  }).index("organizationId_happenedAt", ["organizationId", "happenedAt"])
+    .index("action_actorId_organizationId_happenedAt", ["action", "actorId", "organizationId", "happenedAt"]),
   jwks: defineTable({
     publicKey: v.string(),
     privateKey: v.string(),

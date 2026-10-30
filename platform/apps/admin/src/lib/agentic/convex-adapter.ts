@@ -25,7 +25,7 @@ export function convexAdapter(client: ConvexHttpClient, token: string, resource:
     const args = { token, resource, name, input: definition.schema.parse(input) };
     if (definition.effect === "browser") {
       await client.query(api.platform.agentAccess.inspect, { token, resource });
-      return { status: "requires_browser", executed: false, instructions: "This capability controls live page state. Use WebMCP in an authenticated admin page with its feature enabled; a remote data connection cannot manipulate an unconnected browser." };
+      return { status: "requires_browser", executed: false, instructions: "This capability controls live page state. Use WebMCP in an authenticated app-operator page with its feature enabled; a remote data connection cannot manipulate an unconnected browser." };
     }
     return definition.effect === "write" ? client.mutation(api.platform.agentCapabilities.write, args) : client.query(api.platform.agentCapabilities.read, args);
   } };

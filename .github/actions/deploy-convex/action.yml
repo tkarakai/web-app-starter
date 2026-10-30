@@ -25,6 +25,13 @@ runs:
         CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
       run: ./platform/tooling/node-ts.sh platform/tooling/check-component-migration.ts
 
+    - name: Fence organization writes and reject unsafe historical sources
+      shell: bash
+      env:
+        CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
+        ORGANIZATION_DEPLOY_GUARD: ${{ github.action_path }}/organization-target.ts
+      run: node "$ORGANIZATION_DEPLOY_GUARD" prepare
+
     - name: Deploy Convex functions
       shell: bash
       env:
@@ -57,3 +64,10 @@ runs:
         echo "### Convex Deployment (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
         echo "SHA: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
         echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Verify preserving organization cutover before frontend deployment
+      shell: bash
+      env:
+        CONVEX_DEPLOY_KEY: ${{ inputs.deploy-key }}
+        ORGANIZATION_DEPLOY_GUARD: ${{ github.action_path }}/organization-target.ts
+      run: node "$ORGANIZATION_DEPLOY_GUARD" verify

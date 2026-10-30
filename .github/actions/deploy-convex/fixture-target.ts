@@ -26,7 +26,15 @@ export function withTarget(root: string, target: Env, operation: (command: Conve
     for (const key of [...TARGET_KEYS, "CONVEX_DEPLOYMENT", "CONVEX_AGENT_MODE"]) delete environment[key];
     const command: ConvexCommand = (args, input) => {
       const result = spawnSync(cliVersion ? "bunx" : path.join(root, "packages/backend/node_modules/.bin/convex"), [...(cliVersion ? [`convex@${cliVersion}`] : []), ...args, "--env-file", envFile], { cwd: cliVersion ? directory : path.join(root, "packages/backend"), env: environment, input, timeout: 60_000, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
-      if (result.error || result.status !== 0) throw new Error("Convex fixture configuration check failed; verify target access and connectivity. No deployment changes should proceed.");
+      if (result.error || result.status !== 0) {
+        if (args[0] === "run" && /^organizationMigration:[a-zA-Z]+$/.test(args[1] ?? "")) {
+          // These internal migration errors contain reviewed reason codes/row IDs,
+          // not credentials. Never echo env commands, raw responses or provider errors.
+          const reason = result.stderr?.match(/Uncaught Error: ((?:ORGANIZATION_[A-Z_]+|LAST_ORGANIZATION_ADMIN)(?::[A-Za-z0-9_:.@/-]+)?)/)?.[1];
+          throw new Error(`Organization cutover ${args[1].split(":")[1]} failed${reason ? `: ${reason}` : "; inspect the target backend logs"}. Readiness was not granted; keep writers stopped and repair the named mapping or resume a compatible source.`);
+        }
+        throw new Error("Convex fixture configuration check failed; verify target access and connectivity. No deployment changes should proceed.");
+      }
       return result.stdout;
     };
     operation(command);

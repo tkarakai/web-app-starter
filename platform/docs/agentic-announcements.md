@@ -56,11 +56,35 @@ Loopback refers to that container, not the Docker host. Keep the separate author
 origin; DNS setup does not change authentication or combine it with the normal admin origin.
 
 Remote clients discover protected-resource metadata, open the auth-only origin, and request
-blanket **`admin:manage`** permission. Consent describes broad administration: private data,
-users/sessions, invitations, policy/settings, publishing and deletion. It does not list every
-operation. Native role checks, validation, current security policy and recent verification still
-apply. Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
+**`admin:manage`** permission for the versioned operator control-plane contract. Consent covers
+organization lifecycle/current administrator contacts, operator accounts, customer admission,
+global policy/settings and public content. Organization users' identity/security records, ordinary org-member directories,
+private tenant data and enrollment secrets are excluded. Native dispatch independently resolves
+the current canonical operator, proof and target policy before executing captured handlers.
+Earlier `announcements:manage` grants are rejected; restart the tester to load the gateway
 contract, then authorize again.
+
+The operator directory sorts by the stored `createdAt` value and uses a role index so ordinary
+customer accounts do not consume its page scan budget. Ordinary pages accept `numItems` from
+1 to 100. Reactive range replay with `endCursor` can return more than `numItems`; every call
+still examines at most 200 role-matching candidates. A page that cannot establish a safe
+boundary within that budget fails with `OPERATOR_DIRECTORY_SCAN_LIMIT`. Treat that as an
+incomplete read; do not accept partial results or substitute a different cursor. Continuation
+cursors belong to the acting operator and exact query;
+restart from the first page when changing filters, sort direction or account, or after upgrading
+from the earlier raw-cursor format. Do not parse or persist cursors across those changes.
+
+Protected-email reads preserve their complete result and ordering. Canonical identity checks run
+in component-local batches of 100 inputs, including a separate check of native output. Total work
+still grows with the protected-address population; batching reduces cross-component calls without
+caching authority or admitting pending addresses, organization members or personal-organization owners.
+
+`security_listAdminPasskeyUserIds` accepts at most 100 input IDs, counting duplicates. It returns
+only operator IDs with an enrolled passkey, deduplicated in first-occurrence order. Every target
+must be a canonical app operator; any ordinary, mixed, deleted or unknown identity rejects the
+whole request before factor reads. Component-local validation keeps the native policy and the
+operation body independently guarded without one cross-component call per identity lookup.
+Passkey names, credential IDs and key material are never returned by this operation.
 
 The registered public test client remains `pi-announcements` for compatibility. Redirects must
 be `http://127.0.0.1:<port>/callback`. Authorization uses S256 PKCE and state; one-minute codes
@@ -99,10 +123,17 @@ invoke the dashboard or its normal APIs, even by entering a route in the address
 `packages/backend/convex/platform/agentRegistry.ts` explicitly selects native definitions.
 Input JSON schemas derive from their existing Convex validators. Native handlers preserve
 business validation, scheduling and audit identity; the native builders and agent entry points
-resolve their respective real session/delegation before calling the shared bodies. User/session
-adapters use the existing Better Auth component, protected-admin checks and safe result DTOs:
+resolve their respective real session/delegation before calling the shared bodies. Operator identity/session
+adapters use the existing Better Auth component, canonical operator-target checks and safe result DTOs:
 opaque session IDs replace login tokens. Private factor material and token hashes are excluded.
-Only selected definitions can execute; there is no arbitrary Convex-function invocation.
+Only selected, classified definitions can execute; unknown captured definitions fail closed.
+Retained `users_*` wire names target app operators only; these compatibility names do not denote organization users. `users_remove` and
+`users_setPassword` are absent from the catalogue; generic Better Auth `/admin/*` routes are
+denied in favor of the guarded operator APIs. Customer enrollment stays a bound human workflow.
+`platform/agentCapabilities:exposure` reports the executable operation inventory and selected
+capability policies. Strict tenant APIs and legacy private APIs are classified but denied through
+operator dispatch. Organization tools call guarded parent list/get/setLifecycle wrappers using
+the same immutable organizationId as the direct API; component primitives are never tools.
 
 `@web-app-starter/agentic/adapter` defines the common `execute(name, input, signal)` boundary.
 MCP and WebMCP advertise three stable tools, also used by the CLI/pi adapters:
@@ -121,8 +152,8 @@ untrusted data. Destructive operations require the user's explicit intent.
 Reads over 12,000 characters return JSON chunks and `nextOffset`. Pass that value as
 `resultOffset` to continue. This repeats a read and is not a snapshot; native paginated operations
 should use their own cursor. Paging a write is rejected before execution. Native pages and bulk
-inputs are capped at 100; user listings support role, status and email-verification filters
-(email search normalizes to lowercase; name search uses native case-sensitive semantics). inspect descriptions for value conventions. Existing direct
+inputs are capped at 100; operator listings exclude customers and mixed customer/operator identities. Inspect descriptions
+for supported filters and value conventions. Existing direct
 `announcements_*` MCP tool calls now use `capabilities_execute`; their capability names remain.
 
 Credential, biometric, backup-code and invitation-bound enrollment operations are explicit
@@ -207,7 +238,7 @@ It does not run a server-side LLM.
     "message": {
       "messageId": "unique-message-1",
       "role": "ROLE_USER",
-      "parts": [{"data": {"operation": "search", "input": {"query": "users"}}, "mediaType": "application/json"}]
+      "parts": [{"data": {"operation": "search", "input": {"query": "organizations"}}, "mediaType": "application/json"}]
     },
     "configuration": {"returnImmediately": true, "historyLength": 0}
   }
@@ -223,19 +254,42 @@ writes and task completion commit atomically. A watchdog retries interrupted wor
 delivery cannot repeat a committed operation. Canceling before commit prevents execution;
 completed operations cannot be canceled or undone through `CancelTask`.
 
-Task results are owned by the authorizing user and retained for 24 hours, with a maximum of 200
+Current-contract task results are owned by the authorizing operator and retained for 24 hours, with a maximum of 200
 unexpired tasks per user and 12 messages per task. Listings default to 50 entries and omit
 artifacts; artifact-inclusive pages are capped at three. Polling/continuation requires a valid
-A2A grant. `SendMessage` waits for a terminal/interrupted state unless `returnImmediately` is
+A2A grant. Contract epoch 2 invalidates older broad delegations/codes/grants and quarantines
+older tasks/message mappings, including artifacts, errors and list counts. Rows are preserved;
+a renewed narrow grant cannot disclose or resume them. Fresh consent is required after cutover.
+`SendMessage` waits for a terminal/interrupted state unless `returnImmediately` is
 true; a server timeout reports the task ID so clients can inspect it before retrying.
+
+## Preserving the authority contract during upgrade
+
+Use the [organization cutover procedure](organization-data-migration.md) to classify every
+legacy code, delegation, grant, task/message/artifact and queued job before readiness. Old broad
+authority remains retired, while private or unclassified historical artifacts remain quarantined.
+Fresh operator consent does not reauthorize old artifacts. Do not rewrite their contract epoch,
+guess tenant IDs from JSON, or replay old queued work. The deployment guard rejects source
+without the cutover contract and supports explicit compatible forward recovery.
+
+A customized app with tenant-capable agents must register those entry points/jobs and supply
+its own immutable tenant/owner validation and preserving migration. The shipped four transports
+remain operator-only. Rehearse a shared identity in two organizations, different membership
+roles, member removal, lifecycle changes, stale continuations and private-owner negatives before
+allowing that extension to execute. Classifying a component or function is review evidence, not
+a replacement for its live authorization checks.
 
 ## Extending the catalogue
 
-Select an existing native definition in `agentRegistry.ts` and add a description/effect. Its
+Classify the operation in `agentExposure.ts`, then select its native definition in
+`agentRegistry.ts` and add a description/effect. Only operator control/identity and operator-own
+self-service operations can be selected into this operator catalogue. Its
 input schema comes from the same validators used by the native UI endpoint; the transport
 adapters need no per-operation changes. The shared builders capture the handler body, but
-only the explicit registry can execute it. Keep session/delegation resolution outside that
-body; never fabricate `ctx.auth`. Update the endpoint authorization classification and
+only the explicit registry can execute it. Keep canonical actor/target checks in the shared body as well as dispatch; never fabricate
+`ctx.auth`. Use `requireAppOperator(ctx, { write: true })` for operator writes and
+`requireAppOperatorTarget(ctx, userId)` for identity targets. Tenant builders must stay outside
+this catalogue and carry their explicit immutable organization boundary. Update the endpoint authorization classification and
 exercise meaningful granted/denied behavior. Authentication-store operations require explicit
 safe DTOs, native policy/protected-identity checks and audit events; credential ceremonies
 remain secure workflows. Browser primitives operate the existing page rather than duplicate
@@ -255,12 +309,24 @@ AGENT_LLM_SMOKE=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e agentic-testers.spec.ts
 CI=true E2E_BASE_URL=http://localhost:3002 AGENT_MCP_ENABLED=true \
   bun run --cwd platform/apps/admin test:e2e agentic-mcp.spec.ts agentic-surfaces.spec.ts agentic-webmcp-native.spec.ts
+# Cross-app reference acceptance (requires apps/web with the shipped project/task/file sample):
+CI=true E2E_ORGANIZATION_AGENTS=true AGENT_MCP_ENABLED=true \
+  bun run --cwd platform/apps/admin test:e2e organization-agent-surfaces.spec.ts
 bun run --cwd packages/backend test:convex agentAccess endpoint-authorization
 bun run --cwd platform/packages/agentic test
 ```
 
 The simulator checks every discoverable schema, representative reads, disposable draft CRUD,
 bootstrap size and request latency. Its report contains no application data or credentials.
+`E2E_ORGANIZATION_AGENTS=true` explicitly opts into the shipped reference-app cross-surface
+acceptance and starts both customer and admin apps. These cases require the retained sample
+tenant APIs and project/task/file UI; an app adopted with `--remove-sample` must not opt in
+unchanged. Adopted or customized apps retain the default operator/admin and native-policy
+coverage and should supply their own app-domain cross-surface privacy and authority cases.
+The opt-in fails when its required sample is absent; it does not silently skip those checks.
+Operator-only tests remain usable when the optional customer app is removed. For an already
+running target, set `E2E_BASE_URL` to the admin origin and `E2E_WEB_BASE_URL` to the customer
+origin; local managed tests read the launcher-written customer origin and configured port.
 Browser tests cover actual OAuth/one-use consent/PKCE, audience/disable controls, native CRUD,
 A2A lifecycle and WebMCP registration/page bindings. Unit/backend tests cover policy changes,
 expiry, replay, schema bounds, protected identities, safe results and durable task behavior.

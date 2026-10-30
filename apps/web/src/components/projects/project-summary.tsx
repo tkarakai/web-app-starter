@@ -1,11 +1,11 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { Paperclip } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
+import { usePersonalDataContext, usePersonalProjectStats } from "@/hooks/use-personal-data";
+import { PersonalDataNotReady } from "./personal-data-not-ready";
 import {
   Badge,
   Card,
@@ -21,9 +21,12 @@ type ProjectSummaryProps = {
 };
 
 export function ProjectSummary({ onSelectProject }: ProjectSummaryProps) {
-  const projects = useQuery(api.projects.listWithStats) ?? [];
+  const projects = usePersonalProjectStats();
+  const context = usePersonalDataContext();
   const t = useTranslations("tasks");
   const tu = useTranslations("uploads");
+
+  if (projects === undefined) return <PersonalDataNotReady state={context.state === "unavailable" ? "unavailable" : "loading"} />;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

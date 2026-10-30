@@ -31,7 +31,7 @@ function makeInsertArgs(overrides: Record<string, unknown> = {}) {
 }
 
 describe("platform/auditTrail wrappers", () => {
-  test("identity and rate limits stay in the wrapper; only admins can read component rows", async () => {
+  test("identity and rate limits stay in the wrapper; operators cannot read private customer events", async () => {
     const t = createTestEnv();
     t.registerComponent("betterAuth", authSchema, import.meta.glob("./platform/betterAuth/**/*.*s"));
     async function caller(name: string, role: string) {
@@ -54,16 +54,24 @@ describe("platform/auditTrail wrappers", () => {
       happenedAt: 123, action: "auth.sign_in", sourceDetail: "settings", resource: "session",
     });
     const [row] = await allComponentRows(t);
-    expect(row).toMatchObject({ actor: "member@example.test", authenticatedUserId: member.user._id, source: "web:settings" });
+    expect(row).toMatchObject({ actor: "member@example.test", authenticatedUserId: member.user._id, source: "web:private-audit:v1:settings" });
     const limits = await t.run((ctx) => ctx.db.query("rateLimits").collect());
     expect(limits.some((r) => r.key === member.user._id)).toBe(true);
     const args = { paginationOpts: { numItems: 10, cursor: null } };
     expect((await member.client.query(api.platform.auditTrail.list, args)).page).toEqual([]);
     const admin = await caller("admin", "admin");
-    expect((await admin.client.query(api.platform.auditTrail.list, args)).page).toEqual([row]);
+    expect((await admin.client.query(api.platform.auditTrail.list, args)).page).toEqual([]);
+    await t.mutation(internal.platform.auditTrail.insertEvent, makeInsertArgs({
+      actor: admin.user.email, authenticatedUserId: admin.user._id, sourceDetail: "auth-hook",
+    }));
+    const visible = (await admin.client.query(api.platform.auditTrail.list, args)).page;
+    expect(visible).toHaveLength(1);
+    expect(visible[0]).toMatchObject({ authenticatedUserId: admin.user._id, source: "server:operator-audit:v1", resource: `operator:${admin.user._id}` });
+    expect(await allComponentRows(t)).toHaveLength(2);
+    expect((await allComponentRows(t)).find(event => event._id === row._id)).toEqual(row);
   });
 
-  test("insertEvent writes to the component with the server: prefix", async () => {
+  test("unclassified insertEvent preserves private evidence in the component", async () => {
     const t = createTestEnv();
     await t.mutation(
       internal.platform.auditTrail.insertEvent,
@@ -71,7 +79,7 @@ describe("platform/auditTrail wrappers", () => {
     );
     const rows = await allComponentRows(t);
     expect(rows).toHaveLength(1);
-    expect(rows[0].source).toBe("server:auth-hook");
+    expect(rows[0].source).toBe("server:private-audit:v1:auth-hook");
     expect(rows[0].authenticatedUserId).toBe("u1");
     // Nothing lands in the legacy app table any more.
     const legacy = await t.run((ctx) => ctx.db.query("auditTrail").collect());

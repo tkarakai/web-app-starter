@@ -10,9 +10,6 @@ import {
   Check,
   Monitor,
   MoreHorizontal,
-  Shield,
-  ShieldOff,
-  Trash2,
   Unlock,
   X,
 } from "lucide-react";
@@ -36,7 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@web-app-starter/design-system";
-import type { AdminUser } from "@/lib/admin-api";
+import type { AppOperatorUser } from "@/lib/admin-api";
 import { useUserActions } from "./user-actions-context";
 import { BanDetailsCard } from "./ban-details-card";
 
@@ -102,7 +99,7 @@ function ActionsCell({
   currentUserId,
   protectedEmails,
 }: {
-  user: AdminUser;
+  user: AppOperatorUser;
   currentUserId?: string;
   protectedEmails: Set<string>;
 }) {
@@ -110,10 +107,7 @@ function ActionsCell({
   const isBanned = user.banned === true;
   const isSelf = currentUserId != null && user.id === currentUserId;
   const isProtected = protectedEmails.has(user.email);
-  const isAdmin = user.role === "admin";
-
-  const canBanOrDelete = !isSelf && !isProtected;
-  const canChangeRole = !isSelf && !isProtected;
+  const canBan = !isSelf && !isProtected;
 
   return (
     <DropdownMenu>
@@ -131,48 +125,20 @@ function ActionsCell({
         <DropdownMenuSeparator />
         {isBanned ? (
           <DropdownMenuItem
-            disabled={!canBanOrDelete}
             onSelect={() => onAction("unban", [user])}
           >
             <Unlock className="mr-2 h-4 w-4" />
-            Unban user
+            Unban app operator
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem
-            disabled={!canBanOrDelete}
+            disabled={!canBan}
             onSelect={() => onAction("ban", [user])}
           >
             <Ban className="mr-2 h-4 w-4" />
-            Ban user
+            Ban app operator
           </DropdownMenuItem>
         )}
-        <DropdownMenuSeparator />
-        {isAdmin ? (
-          <DropdownMenuItem
-            disabled={!canChangeRole}
-            onSelect={() => onAction("removeAdmin", [user])}
-          >
-            <ShieldOff className="mr-2 h-4 w-4" />
-            Remove admin
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            disabled={!canChangeRole}
-            onSelect={() => onAction("makeAdmin", [user])}
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            Make admin
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={!canBanOrDelete}
-          className="text-destructive focus:text-destructive"
-          onSelect={() => onAction("delete", [user])}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete user
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -198,7 +164,7 @@ type ColumnsConfig = {
   searchTerm?: string;
 };
 
-export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTableFeatures, AdminUser>[] {
+export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTableFeatures, AppOperatorUser>[] {
   const { currentUserId, protectedEmails, searchTerm } = config;
 
   return [
@@ -266,19 +232,8 @@ export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTabl
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        const sorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
-            onClick={() => column.toggleSorting(sorted === "asc")}
-          >
-            Name
-            {renderSortIcon(sorted)}
-          </Button>
-        );
-      },
+      header: "Name",
+      enableSorting: false,
       cell: ({ row }) => {
         const isSelf =
           currentUserId != null && row.original.id === currentUserId;
@@ -295,46 +250,17 @@ export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTabl
     },
     {
       accessorKey: "email",
-      header: ({ column }) => {
-        const sorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
-            onClick={() => column.toggleSorting(sorted === "asc")}
-          >
-            Email
-            {renderSortIcon(sorted)}
-          </Button>
-        );
-      },
+      header: "Email",
+      enableSorting: false,
       cell: ({ row }) => (
         <HighlightText text={row.getValue("email") as string} highlight={searchTerm} />
       ),
     },
     {
       accessorKey: "role",
-      header: ({ column }) => {
-        const sorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
-            onClick={() => column.toggleSorting(sorted === "asc")}
-          >
-            Role
-            {renderSortIcon(sorted)}
-          </Button>
-        );
-      },
-      cell: ({ row }) => {
-        const role = row.getValue("role") as string | null;
-        return (
-          <Badge variant={role === "admin" ? "default" : "secondary"}>
-            {role ?? "user"}
-          </Badge>
-        );
-      },
+      header: "Account",
+      enableSorting: false,
+      cell: () => <Badge>App operator</Badge>,
     },
     {
       id: "status",
@@ -393,19 +319,8 @@ export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTabl
     },
     {
       accessorKey: "updatedAt",
-      header: ({ column }) => {
-        const sorted = column.getIsSorted();
-        return (
-          <Button
-            variant="ghost"
-            className={sorted ? "-ml-3 text-foreground" : "-ml-3"}
-            onClick={() => column.toggleSorting(sorted === "asc")}
-          >
-            Updated
-            {renderSortIcon(sorted)}
-          </Button>
-        );
-      },
+      header: "Updated",
+      enableSorting: false,
       cell: ({ row }) => <DateCell date={row.getValue("updatedAt") as Date} />,
     },
     {
@@ -415,30 +330,6 @@ export function createColumns(config: ColumnsConfig): ColumnDef<typeof usersTabl
       enableSorting: false,
       cell: ({ row }) => {
         return row.original.emailVerified ? (
-          <Check className="h-4 w-4 text-green-600" />
-        ) : (
-          <X className="h-4 w-4 text-muted-foreground" />
-        );
-      },
-    },
-    {
-      accessorKey: "phoneNumber",
-      header: "Phone",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <span className="text-sm">
-          {row.original.phoneNumber || "—"}
-        </span>
-      ),
-    },
-    {
-      id: "phoneNumberVerified",
-      header: "Phone Verified",
-      accessorFn: (row) => row.phoneNumberVerified,
-      enableSorting: false,
-      cell: ({ row }) => {
-        if (!row.original.phoneNumber) return <span className="text-muted-foreground">—</span>;
-        return row.original.phoneNumberVerified ? (
           <Check className="h-4 w-4 text-green-600" />
         ) : (
           <X className="h-4 w-4 text-muted-foreground" />

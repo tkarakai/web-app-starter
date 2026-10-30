@@ -153,9 +153,16 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 | `@web-app-starter/i18n` | Locale config and navigation; translations via `next-intl` (`useTranslations`, `getTranslations`) |
 | `@web-app-starter/edge-rate-limit` | Edge rate limiting in `proxy.ts` |
 
-For administrator onboarding, use the platform admin wizard and its bound enrollment actions.
+For administrator onboarding, use the app-operator onboarding wizard and its bound enrollment actions.
 Never grant roles or email verification from an email allowlist, or implement claim-then-public-signup.
 See [administrator onboarding](docs/authentication-and-onboarding.md#6-admin-onboarding-flow).
+For organization-owned customer data, use explicit context and tenant builders, not a global admin
+role or owner-only fallback; see [organization context](docs/organization-context.md).
+Register every new table/function/job/component in the app-owned organization migration registry
+and preserve its bounded backfill/verification contract. Strict tenant APIs require verified
+[deployment readiness](docs/organization-data-migration.md); setup or generic migrations are insufficient.
+`appOperatorQuery`/`appOperatorMutation` mean canonical app operator, never org-admin;
+`adminQuery`/`adminMutation` are legacy compatibility aliases.
 
 For account security, compose `SecuritySection` (or `ChangePasswordForm`, `TwoFactorSection`,
 `PasskeySection` and `SessionsList`) from `@web-app-starter/auth-ui` under the protected layout.

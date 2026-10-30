@@ -1,5 +1,11 @@
 # Convex Migrations
 
+Organization cutover has the stricter [preserving migration contract](organization-data-migration.md).
+Do not use resets, guessed tenant fallbacks or source rollback for that procedure. Its app-owned
+registry, bounded reconciliation, old-writer barrier and deployment-bound receipt must all pass;
+a generic migration marker is insufficient.
+
+
 How to safely change database schemas when existing data doesn't match the new shape.
 
 The v2 component move is a separate, operator-run cutover. Follow

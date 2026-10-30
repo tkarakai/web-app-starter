@@ -30,6 +30,6 @@ test("anonymous CI launcher bounds query execution without changing interactive 
   ] as const) {
     const result = spawnSync("bash", [path.join(directory,"platform/tooling/dev-convex.sh")], { cwd: directory, env: { ...clean, ...environment }, encoding: "utf8" });
     assert.equal(result.status, 19, result.stderr);
-    assert.equal(result.stdout, `convex dev${"CONVEX_LOCAL_BACKEND_VERSION" in environment ? " --local-backend-version test-backend" : ""}\nanonymous\n${expected}\n`);
+    assert.equal(result.stdout, `convex dev --tail-logs always${"CONVEX_LOCAL_BACKEND_VERSION" in environment ? " --local-backend-version test-backend" : ""}\nanonymous\n${expected}\n`);
   }
 });
