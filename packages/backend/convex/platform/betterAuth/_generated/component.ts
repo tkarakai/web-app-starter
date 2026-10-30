@@ -196,8 +196,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               }
             | {
                 data: {
-                  acceptedMemberId?: string;
-                  acceptedUserId?: string;
                   createdAt: number;
                   email: string;
                   expiresAt: number;
@@ -206,20 +204,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   organizationId: string;
                   role?: null | string;
                   status: string;
-                  tokenHash?: string;
                 };
                 model: "invitation";
-              }
-            | {
-                data: {
-                  capabilityHash: string;
-                  createdAt: number;
-                  expiresAt: number;
-                  invitationId: string;
-                  invitationTokenHash: string;
-                  userId?: string;
-                };
-                model: "organizationInvitationClaims";
               }
             | {
                 data: {
@@ -233,7 +219,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   organizationId: string;
                   passwordProof?: string;
                   passwordVerifiedAt?: number;
-                  purpose: "collaboration" | "promotion" | "invitation";
+                  purpose: "collaboration" | "promotion";
                   slug?: string;
                   userId: string;
                 };
@@ -698,43 +684,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "inviterId"
                     | "createdAt"
                     | "intendedRole"
-                    | "tokenHash"
-                    | "acceptedUserId"
-                    | "acceptedMemberId"
-                    | "_id";
-                  mode?: "sensitive" | "insensitive";
-                  operator?:
-                    | "lt"
-                    | "lte"
-                    | "gt"
-                    | "gte"
-                    | "eq"
-                    | "in"
-                    | "not_in"
-                    | "ne"
-                    | "contains"
-                    | "starts_with"
-                    | "ends_with";
-                  value:
-                    | string
-                    | number
-                    | boolean
-                    | Array<string>
-                    | Array<number>
-                    | null;
-                }>;
-              }
-            | {
-                model: "organizationInvitationClaims";
-                where?: Array<{
-                  connector?: "AND" | "OR";
-                  field:
-                    | "invitationId"
-                    | "invitationTokenHash"
-                    | "capabilityHash"
-                    | "expiresAt"
-                    | "userId"
-                    | "createdAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1307,43 +1256,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "inviterId"
                     | "createdAt"
                     | "intendedRole"
-                    | "tokenHash"
-                    | "acceptedUserId"
-                    | "acceptedMemberId"
-                    | "_id";
-                  mode?: "sensitive" | "insensitive";
-                  operator?:
-                    | "lt"
-                    | "lte"
-                    | "gt"
-                    | "gte"
-                    | "eq"
-                    | "in"
-                    | "not_in"
-                    | "ne"
-                    | "contains"
-                    | "starts_with"
-                    | "ends_with";
-                  value:
-                    | string
-                    | number
-                    | boolean
-                    | Array<string>
-                    | Array<number>
-                    | null;
-                }>;
-              }
-            | {
-                model: "organizationInvitationClaims";
-                where?: Array<{
-                  connector?: "AND" | "OR";
-                  field:
-                    | "invitationId"
-                    | "invitationTokenHash"
-                    | "capabilityHash"
-                    | "expiresAt"
-                    | "userId"
-                    | "createdAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1491,7 +1403,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "organization"
             | "member"
             | "invitation"
-            | "organizationInvitationClaims"
             | "organizationEnrollments"
             | "jwks"
             | "rateLimit";
@@ -1552,7 +1463,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "organization"
             | "member"
             | "invitation"
-            | "organizationInvitationClaims"
             | "organizationEnrollments"
             | "jwks"
             | "rateLimit";
@@ -2155,8 +2065,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "invitation";
                 update: {
-                  acceptedMemberId?: string;
-                  acceptedUserId?: string;
                   createdAt?: number;
                   email?: string;
                   expiresAt?: number;
@@ -2165,7 +2073,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   organizationId?: string;
                   role?: null | string;
                   status?: string;
-                  tokenHash?: string;
                 };
                 where?: Array<{
                   connector?: "AND" | "OR";
@@ -2178,51 +2085,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "inviterId"
                     | "createdAt"
                     | "intendedRole"
-                    | "tokenHash"
-                    | "acceptedUserId"
-                    | "acceptedMemberId"
-                    | "_id";
-                  mode?: "sensitive" | "insensitive";
-                  operator?:
-                    | "lt"
-                    | "lte"
-                    | "gt"
-                    | "gte"
-                    | "eq"
-                    | "in"
-                    | "not_in"
-                    | "ne"
-                    | "contains"
-                    | "starts_with"
-                    | "ends_with";
-                  value:
-                    | string
-                    | number
-                    | boolean
-                    | Array<string>
-                    | Array<number>
-                    | null;
-                }>;
-              }
-            | {
-                model: "organizationInvitationClaims";
-                update: {
-                  capabilityHash?: string;
-                  createdAt?: number;
-                  expiresAt?: number;
-                  invitationId?: string;
-                  invitationTokenHash?: string;
-                  userId?: string;
-                };
-                where?: Array<{
-                  connector?: "AND" | "OR";
-                  field:
-                    | "invitationId"
-                    | "invitationTokenHash"
-                    | "capabilityHash"
-                    | "expiresAt"
-                    | "userId"
-                    | "createdAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2259,7 +2121,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   organizationId?: string;
                   passwordProof?: string;
                   passwordVerifiedAt?: number;
-                  purpose?: "collaboration" | "promotion" | "invitation";
+                  purpose?: "collaboration" | "promotion";
                   slug?: string;
                   userId?: string;
                 };
@@ -2943,8 +2805,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "invitation";
                 update: {
-                  acceptedMemberId?: string;
-                  acceptedUserId?: string;
                   createdAt?: number;
                   email?: string;
                   expiresAt?: number;
@@ -2953,7 +2813,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   organizationId?: string;
                   role?: null | string;
                   status?: string;
-                  tokenHash?: string;
                 };
                 where?: Array<{
                   connector?: "AND" | "OR";
@@ -2966,51 +2825,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "inviterId"
                     | "createdAt"
                     | "intendedRole"
-                    | "tokenHash"
-                    | "acceptedUserId"
-                    | "acceptedMemberId"
-                    | "_id";
-                  mode?: "sensitive" | "insensitive";
-                  operator?:
-                    | "lt"
-                    | "lte"
-                    | "gt"
-                    | "gte"
-                    | "eq"
-                    | "in"
-                    | "not_in"
-                    | "ne"
-                    | "contains"
-                    | "starts_with"
-                    | "ends_with";
-                  value:
-                    | string
-                    | number
-                    | boolean
-                    | Array<string>
-                    | Array<number>
-                    | null;
-                }>;
-              }
-            | {
-                model: "organizationInvitationClaims";
-                update: {
-                  capabilityHash?: string;
-                  createdAt?: number;
-                  expiresAt?: number;
-                  invitationId?: string;
-                  invitationTokenHash?: string;
-                  userId?: string;
-                };
-                where?: Array<{
-                  connector?: "AND" | "OR";
-                  field:
-                    | "invitationId"
-                    | "invitationTokenHash"
-                    | "capabilityHash"
-                    | "expiresAt"
-                    | "userId"
-                    | "createdAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -3047,7 +2861,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   organizationId?: string;
                   passwordProof?: string;
                   passwordVerifiedAt?: number;
-                  purpose?: "collaboration" | "promotion" | "invitation";
+                  purpose?: "collaboration" | "promotion";
                   slug?: string;
                   userId?: string;
                 };
@@ -3162,76 +2976,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               };
           onUpdateHandle?: string;
         },
-        any,
-        Name
-      >;
-    };
-    memberInvitations: {
-      accept: FunctionReference<
-        "mutation",
-        "internal",
-        { organizationId: string; tokenHash: string; userId: string },
-        any,
-        Name
-      >;
-      cancel: FunctionReference<
-        "mutation",
-        "internal",
-        { actorId: string; invitationId: string; organizationId: string },
-        any,
-        Name
-      >;
-      exchange: FunctionReference<
-        "mutation",
-        "internal",
-        { capabilityHash: string; organizationId: string; tokenHash: string },
-        any,
-        Name
-      >;
-      issue: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          actorId: string;
-          email: string;
-          expiresAt: number;
-          organizationId: string;
-          role: "member" | "org-admin";
-          tokenHash: string;
-        },
-        any,
-        Name
-      >;
-      preview: FunctionReference<
-        "query",
-        "internal",
-        { organizationId: string; tokenHash: string },
-        any,
-        Name
-      >;
-      register: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          capabilityHash: string;
-          email: string;
-          name: string;
-          passwordHash: string;
-        },
-        any,
-        Name
-      >;
-      registration: FunctionReference<
-        "query",
-        "internal",
-        { capabilityHash: string; email: string },
-        any,
-        Name
-      >;
-      verificationRecipient: FunctionReference<
-        "query",
-        "internal",
-        { organizationId: string; tokenHash: string; userId: string },
         any,
         Name
       >;
