@@ -35,7 +35,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   banReason?: null | string;
                   banned?: null | boolean;
                   createdAt: number;
-                  customerAdmission?: null | string;
                   displayUsername?: null | string;
                   email: string;
                   emailVerified: boolean;
@@ -272,7 +271,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
-                    | "customerAdmission"
                     | "banned"
                     | "banReason"
                     | "banExpires"
@@ -844,7 +842,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
-                    | "customerAdmission"
                     | "banned"
                     | "banReason"
                     | "banExpires"
@@ -1519,7 +1516,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   banReason?: null | string;
                   banned?: null | boolean;
                   createdAt?: number;
-                  customerAdmission?: null | string;
                   displayUsername?: null | string;
                   email?: string;
                   emailVerified?: boolean;
@@ -1551,7 +1547,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
-                    | "customerAdmission"
                     | "banned"
                     | "banReason"
                     | "banExpires"
@@ -2259,7 +2254,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   banReason?: null | string;
                   banned?: null | boolean;
                   createdAt?: number;
-                  customerAdmission?: null | string;
                   displayUsername?: null | string;
                   email?: string;
                   emailVerified?: boolean;
@@ -2291,7 +2285,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
-                    | "customerAdmission"
                     | "banned"
                     | "banReason"
                     | "banExpires"
@@ -3069,13 +3062,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         { credentialProof: string; organizationId: string; userId: string },
-        any,
-        Name
-      >;
-      resumeCustomerProvisioning: FunctionReference<
-        "mutation",
-        "internal",
-        { userId: string },
         any,
         Name
       >;

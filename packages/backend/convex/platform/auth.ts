@@ -28,8 +28,6 @@ import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 import { readBackupCodes } from "./recoveryCodes";
 import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields } from "./sessionFields";
-import { customerAdmissionFields } from "./customerAdmissionFields";
-import { assertLocalFixtures } from "./localFixtures";
 import { identitySession } from "./sessionPolicy";
 
 /** Truncate a string to at most `max` characters. */
@@ -441,9 +439,7 @@ const emailVerifiedOnResetPlugin = (
 
 export const createAuthOptions = (
   ctx: GenericCtx<DataModel>,
-  options: { localOperatorSignup?: boolean } = {},
 ) => {
-  if (options.localOperatorSignup) assertLocalFixtures();
   const { siteUrl, siteUrls } = getSiteUrls();
   const passkeyRpId = getPasskeyRpId();
   const assurance = createAssuranceHooks(ctx);
@@ -466,7 +462,6 @@ export const createAuthOptions = (
       });
       return adapter;
     },
-    user: { additionalFields: customerAdmissionFields },
     session: {
       // Spec §8.3: user sessions = 7 days / refresh every 1 hour.
       // The backend policy also enforces an absolute four-hour administrator lifetime.
@@ -620,12 +615,7 @@ export const createAuthOptions = (
     databaseHooks: {
       session: {
         create: {
-          before: async (session, endpoint) => {
-            // The persisted admission survives a failed signup after-hook. Retry only
-            // explicitly admitted customers, never every identity that signs in.
-            await requireActionCtx(ctx).runMutation(components.betterAuth.organizations.resumeCustomerProvisioning, { userId: session.userId });
-            return assurance.beforeCreate?.(session, endpoint);
-          },
+          before: assurance.beforeCreate,
           after: async (session) => {
             const actionCtx = requireActionCtx(ctx);
             const s = session as Record<string, unknown>;
@@ -712,12 +702,11 @@ export const createAuthOptions = (
             if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
               throw new Error("ADMIN_ENROLLMENT_REQUIRED");
             }
-            return { data: { ...user, customerAdmission: options.localOperatorSignup ? null : hasWaitlistInvitation ? "customer-invitation" : "public-signup" } };
+            return { data: user };
           },
           after: async (user) => {
             const actionCtx = requireActionCtx(ctx);
             const userId = (user as Record<string, unknown>).id as string ?? "";
-            await actionCtx.runMutation(components.betterAuth.organizations.resumeCustomerProvisioning, { userId });
 
             await runAuditEvent(actionCtx, {
               happenedAt: Date.now(),
@@ -807,8 +796,8 @@ export const createAuthOptions = (
   } satisfies BetterAuthOptions;
 };
 
-export const createAuth = (ctx: GenericCtx<DataModel>, options: { localOperatorSignup?: boolean } = {}) => {
-  return betterAuth(createAuthOptions(ctx, options));
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  return betterAuth(createAuthOptions(ctx));
 };
 
 export const getCurrentUser = query({
