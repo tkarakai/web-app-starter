@@ -45,12 +45,17 @@ export function DashboardClient() {
   const [selection, setSelection] = React.useState<{ realm: string; id: Id<"projects"> } | null>(null);
   const selectedProjectId = selection?.realm === realm ? selection.id : null;
   const setSelectedProjectId = (id: Id<"projects"> | null) => setSelection(id ? { realm, id } : null);
+  // Remount (discarding drafts and open menus) only when one resolved identity replaces another;
+  // loading or a transient reload of the same identity keeps the mounted dashboard.
+  const resolved = context.state === "ready" ? realm : null;
+  const [mounted, setMounted] = React.useState<{ realm: string | null; generation: number }>({ realm: null, generation: 0 });
+  if (resolved !== null && resolved !== mounted.realm) setMounted({ realm: resolved, generation: mounted.realm === null ? mounted.generation : mounted.generation + 1 });
 
   const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
 
   return (
-    <SidebarProvider key={realm}>
+    <SidebarProvider key={mounted.generation}>
       <AppSidebar
         displayName={displayName}
         displayEmail={displayEmail ?? undefined}
