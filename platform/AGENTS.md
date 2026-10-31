@@ -161,12 +161,15 @@ For account security, compose `SecuritySection` (or `ChangePasswordForm`, `TwoFa
 `PasskeySection` and `SessionsList`) from `@web-app-starter/auth-ui` under the protected layout.
 These components own the auth operations and localized feedback; your app owns the page around them.
 
-App data belongs to **organizations** (Better Auth's organization plugin): every user gets a
-personal one and can create or be invited to others. Scope app tables with `orgQuery` and
-`orgMutation` (`ctx.organizationId`, `ctx.organizationRole`), never take an organization ID
-as an argument, and delete their rows in `convex/organizationData.ts`. Accounts can have zero
-memberships: keep account controls and invitations available, hide organization workspace
-controls, and show `NoOrganization`. `orgMutation` refuses `NO_ORGANIZATION`; it never
+Choose each table's [data access model](docs/data-access-models.md): user-owned (`authed*` plus
+owner checks), organization-shared (`org*` plus org checks), organization-private (`org*` plus
+org and owner checks), or a composition. Builders provide verified context; handlers enforce
+row and list access. Better Auth manages organizations: signup creates a personal one, and
+users can create or join others. Org builders resolve organization IDs from the session, never
+arguments. Delete org-owned rows in `convex/organizationData.ts`, keeping user-owned data separate.
+Accounts can have zero memberships: keep account controls and invitations available. For
+org workspaces, hide organization workspace controls and show `NoOrganization`; user-owned
+pages can still render their data. `orgMutation` refuses `NO_ORGANIZATION`; it never
 creates a replacement. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
 and `AcceptInvitationView` from `@web-app-starter/auth-ui`. See [docs/organizations.md](docs/organizations.md).
 
@@ -274,6 +277,7 @@ environment-specific and silently breaks artifact reuse
 | Trying authenticated announcement MCP and the pi test agent | [docs/agentic-announcements.md](docs/agentic-announcements.md) |
 | Writing components, Convex functions or styles | [docs/code-style.md](docs/code-style.md) |
 | Organizations, members, invitations, or scoping app data to them | [docs/organizations.md](docs/organizations.md) |
+| Individual accounts, shared workspaces, private data per org member, or private/shared composition | [docs/data-access-models.md](docs/data-access-models.md) |
 | Working on auth, route protection, rate limiting or React patterns | [docs/architecture.md](docs/architecture.md), [docs/authentication-and-onboarding.md](docs/authentication-and-onboarding.md), [docs/rate-limiting-architecture.md](docs/rate-limiting-architecture.md) |
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |
 | Working on i18n, locales, translations or RTL | [docs/i18n-architecture.md](docs/i18n-architecture.md) |

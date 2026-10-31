@@ -1,0 +1,221 @@
+import { makeFunctionReference, type PaginationOptions, type PaginationResult } from "convex/server";
+import { describe, expect, test } from "vitest";
+import type { Doc, Id } from "./_generated/dataModel";
+import { components } from "./_generated/api";
+import { organizationFixture } from "./platform/organizations.test-helpers";
+import authSchema from "./platform/betterAuth/schema";
+import { MAX_DESCRIPTION_LENGTH } from "./platform/functions";
+import { createTestEnv } from "./test.modules";
+
+function notes<Table extends "personalNotes" | "privateNotes" | "teamNotes">(table: Table) {
+  return {
+    list: makeFunctionReference<"query", { paginationOpts: PaginationOptions }, PaginationResult<Doc<Table>> | null>(`${table}:list`),
+    get: makeFunctionReference<"query", { id: Id<Table> }, Doc<Table> | null>(`${table}:get`),
+    add: makeFunctionReference<"mutation", { body: string }, Id<Table>>(`${table}:add`),
+    update: makeFunctionReference<"mutation", { id: Id<Table>; body: string }, null>(`${table}:update`),
+    remove: makeFunctionReference<"mutation", { id: Id<Table> }, null>(`${table}:remove`),
+  };
+}
+const personal = notes("personalNotes");
+const privateNotes = notes("privateNotes");
+const team = notes("teamNotes");
+const publish = makeFunctionReference<"mutation", { id: Id<"privateNotes"> }, Id<"teamNotes">>("notePublishing:publish");
+const cleanup = makeFunctionReference<"mutation", { organizationId: string }, { done: boolean }>("organizationData:deleteOrganizationData");
+const firstPage = { paginationOpts: { numItems: 2, cursor: null } };
+
+function fixture() {
+  const t = createTestEnv();
+  t.registerComponent("betterAuth", authSchema, import.meta.glob("./platform/betterAuth/**/*.*s"));
+  return organizationFixture(t);
+}
+
+describe("documented individual accounts", () => {
+  test("works without org membership and denies another user on list, get, update and delete", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const id = await alice.caller.mutation(personal.add, { body: "personal" });
+    expect(await bob.caller.query(personal.list, firstPage)).toMatchObject({ page: [] });
+    expect(await bob.caller.query(personal.get, { id })).toBeNull();
+    await expect(bob.caller.mutation(personal.update, { id, body: "stolen" })).rejects.toThrow("NOTE_NOT_FOUND");
+    await expect(bob.caller.mutation(personal.remove, { id })).rejects.toThrow("NOTE_NOT_FOUND");
+    await alice.caller.mutation(personal.update, { id, body: "updated" });
+    expect(await alice.caller.query(personal.get, { id })).toMatchObject({ body: "updated", ownerId: alice.userId });
+    expect(await f.members("missing-org")).toEqual([]);
+    await alice.caller.mutation(personal.remove, { id });
+    expect(await alice.caller.query(personal.get, { id })).toBeNull();
+  });
+
+  test("preserves canonical legacy ownership and ignores organization switching", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice", { userId: "legacy-alice" });
+    const bob = await f.user("bob");
+    const id = await alice.caller.mutation(personal.add, { body: "mine" });
+    const acme = await bob.provision();
+    await f.addMember(acme, alice.userId, "member");
+    await alice.switchTo(acme);
+    expect(await alice.caller.query(personal.get, { id })).toMatchObject({ ownerId: "legacy-alice" });
+    expect(await bob.caller.query(personal.get, { id })).toBeNull();
+    await alice.switchTo(null);
+    expect(await alice.caller.query(personal.get, { id })).not.toBeNull();
+  });
+});
+
+describe("documented org access", () => {
+  test.each(["member", "admin", "owner"])("%s can collaborate but cannot access or publish a peer's private notes", async role => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.provision();
+    await f.addMember(acme, bob.userId, role);
+    await bob.switchTo(acme);
+    const own = await alice.caller.mutation(privateNotes.add, { body: "private" });
+    const personalId = await alice.caller.mutation(personal.add, { body: "personal" });
+    expect(await bob.caller.query(privateNotes.list, firstPage)).toMatchObject({ page: [] });
+    expect(await bob.caller.query(privateNotes.get, { id: own })).toBeNull();
+    expect(await bob.caller.query(personal.get, { id: personalId })).toBeNull();
+    await expect(bob.caller.mutation(privateNotes.update, { id: own, body: "stolen" })).rejects.toThrow("NOTE_NOT_FOUND");
+    await expect(bob.caller.mutation(privateNotes.remove, { id: own })).rejects.toThrow("NOTE_NOT_FOUND");
+    await expect(bob.caller.mutation(publish, { id: own })).rejects.toThrow("NOTE_NOT_FOUND");
+    expect(await f.t.run(ctx => ctx.db.query("teamNotes").collect())).toEqual([]);
+
+    const shared = await alice.caller.mutation(publish, { id: own });
+    expect(await bob.caller.query(team.list, firstPage)).toMatchObject({ page: [{ _id: shared }] });
+    await bob.caller.mutation(team.update, { id: shared, body: "team edit" });
+    expect(await alice.caller.query(team.get, { id: shared })).toMatchObject({ body: "team edit" });
+    expect(await alice.caller.query(privateNotes.get, { id: own })).toMatchObject({ body: "private" });
+    await bob.caller.mutation(team.remove, { id: shared });
+    expect(await alice.caller.query(privateNotes.get, { id: own })).not.toBeNull();
+  });
+
+  test("cross-org IDs and switching deny even the creator's private record outside its org", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    await alice.provision();
+    const bobsOrg = await bob.provision();
+    const id = await alice.caller.mutation(privateNotes.add, { body: "private" });
+    const shared = await alice.caller.mutation(team.add, { body: "shared" });
+    for (const endpoint of [privateNotes, team]) {
+      const target = endpoint === privateNotes ? id : shared;
+      expect(await bob.caller.query(endpoint.list, firstPage)).toMatchObject({ page: [] });
+      expect(await bob.caller.query(endpoint.get, { id: target } as never)).toBeNull();
+      await expect(bob.caller.mutation(endpoint.update, { id: target, body: "stolen" } as never)).rejects.toThrow("NOTE_NOT_FOUND");
+      await expect(bob.caller.mutation(endpoint.remove, { id: target } as never)).rejects.toThrow("NOTE_NOT_FOUND");
+    }
+    await f.addMember(bobsOrg, alice.userId, "member");
+    await alice.switchTo(bobsOrg);
+    expect(await alice.caller.query(privateNotes.get, { id })).toBeNull();
+    await expect(alice.caller.mutation(publish, { id })).rejects.toThrow("NOTE_NOT_FOUND");
+  });
+
+  test("removal revokes stale-session access, fallback uses another org, rejoining restores retained private notes", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.provision();
+    const bobsOrg = await bob.provision();
+    const member = await f.addMember(acme, bob.userId, "member");
+    await bob.switchTo(acme);
+    const id = await bob.caller.mutation(privateNotes.add, { body: "retained" });
+    const shared = await alice.caller.mutation(team.add, { body: "shared" });
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: member._id }] } });
+    expect(await bob.caller.query(privateNotes.get, { id })).toBeNull();
+    expect(await bob.caller.query(team.get, { id: shared })).toBeNull();
+    await expect(bob.caller.mutation(publish, { id })).rejects.toThrow("NOTE_NOT_FOUND");
+    const newNote = await bob.caller.mutation(privateNotes.add, { body: "other org" });
+    expect(await bob.caller.query(privateNotes.get, { id: newNote })).toMatchObject({ organizationId: bobsOrg });
+    await f.addMember(acme, bob.userId, "member");
+    await bob.switchTo(acme);
+    expect(await bob.caller.query(privateNotes.get, { id })).toMatchObject({ body: "retained" });
+  });
+
+  test("zero memberships refuse org writes without provisioning and still allow personal writes", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    expect(await alice.caller.query(team.list, firstPage)).toBeNull();
+    expect(await alice.caller.query(privateNotes.list, firstPage)).toBeNull();
+    await expect(alice.caller.mutation(team.add, { body: "x" })).rejects.toThrow("NO_ORGANIZATION");
+    await expect(alice.caller.mutation(privateNotes.add, { body: "x" })).rejects.toThrow("NO_ORGANIZATION");
+    await alice.caller.mutation(personal.add, { body: "works" });
+    expect(await f.t.query(components.betterAuth.adapter.findMany, { model: "organization", paginationOpts: { numItems: 100, cursor: null } })).toMatchObject({ page: [] });
+  });
+});
+
+describe("documented collection and input boundaries", () => {
+  test("every pagination page contains only the authorized user and org", async () => {
+    for (const api of [personal, privateNotes, team]) {
+      // A fresh deployment per model keeps the real mutation budget in force.
+      const f = await fixture();
+      const alice = await f.user("alice");
+      const bob = await f.user("bob");
+      const acme = await alice.provision();
+      await f.addMember(acme, bob.userId, "member");
+      await bob.switchTo(acme);
+      for (let i = 0; i < 5; i++) {
+        await alice.caller.mutation(api.add, { body: `alice-${i}` });
+        await bob.caller.mutation(api.add, { body: `bob-${i}` });
+      }
+      let cursor: string | null = null;
+      const ids: string[] = [];
+      for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
+        const page = await alice.caller.query(api.list, { paginationOpts: { numItems: 2, cursor } });
+        expect(page).not.toBeNull();
+        for (const note of page!.page) {
+          if (api !== team) expect(note.ownerId).toBe(alice.userId);
+          if ("organizationId" in note) expect(note.organizationId).toBe(acme);
+          ids.push(note._id);
+        }
+        if (page!.isDone) break;
+        cursor = page!.continueCursor;
+        expect(pageNumber).toBeLessThan(9);
+      }
+      expect(ids).toHaveLength(api === team ? 10 : 5);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  test.each(["anonymous", "limited"])("%s sessions cannot read or write any recipe", async mode => {
+    const f = await fixture();
+    const caller = mode === "anonymous" ? f.t : (await f.user("limited", { emailVerified: false })).caller;
+    for (const api of [personal, privateNotes, team]) {
+      expect(await caller.query(api.list, firstPage)).toBeNull();
+      await expect(caller.mutation(api.add, { body: "x" })).rejects.toThrow();
+    }
+    expect(await f.t.run(ctx => ctx.db.query("personalNotes").collect())).toEqual([]);
+  });
+
+  test("validators reject forged owner/scope and excessive text without creating rows", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    await alice.provision();
+    for (const api of [personal, privateNotes, team]) {
+      await expect(alice.caller.mutation(api.add, { body: "forged", ownerId: "bob" } as never)).rejects.toThrow();
+      await expect(alice.caller.mutation(api.add, { body: "forged", organizationId: "other" } as never)).rejects.toThrow();
+      await expect(alice.caller.mutation(api.add, { body: "x".repeat(MAX_DESCRIPTION_LENGTH + 1) })).rejects.toThrow();
+      expect(await alice.caller.query(api.list, firstPage)).toMatchObject({ page: [] });
+    }
+  });
+
+  test("bounded org cleanup deletes private/shared data across batches and preserves personal/other-org data", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.provision();
+    const other = await bob.provision();
+    const personalId = await alice.caller.mutation(personal.add, { body: "keep" });
+    const keptPrivate = await bob.caller.mutation(privateNotes.add, { body: "keep" });
+    const keptShared = await bob.caller.mutation(team.add, { body: "keep" });
+    await f.t.run(async ctx => {
+      for (let i = 0; i < 205; i++) await ctx.db.insert("privateNotes", { organizationId: acme, ownerId: alice.userId, body: "delete", createdAt: Date.now() });
+      for (let i = 0; i < 105; i++) await ctx.db.insert("teamNotes", { organizationId: acme, ownerId: alice.userId, body: "delete", createdAt: Date.now() });
+    });
+    expect(await f.t.mutation(cleanup, { organizationId: acme })).toEqual({ done: false });
+    expect(await f.t.run(ctx => ctx.db.query("privateNotes").withIndex("by_organization", q => q.eq("organizationId", acme)).collect())).toHaveLength(105);
+    for (let i = 0; i < 3; i++) await f.t.mutation(cleanup, { organizationId: acme });
+    expect(await f.t.mutation(cleanup, { organizationId: acme })).toEqual({ done: true });
+    expect(await f.t.run(ctx => ctx.db.query("privateNotes").collect())).toMatchObject([{ _id: keptPrivate, organizationId: other }]);
+    expect(await f.t.run(ctx => ctx.db.query("teamNotes").collect())).toMatchObject([{ _id: keptShared }]);
+    expect(await alice.caller.query(personal.get, { id: personalId })).not.toBeNull();
+  });
+});

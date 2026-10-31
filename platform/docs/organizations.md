@@ -1,7 +1,10 @@
 # Organizations
 
-The app's data belongs to **organizations**, and everyone in an organization shares its data.
-Accounts can stay signed in without any organization memberships. It is built on Better Auth's
+The reference app's projects belong to **organizations**, and everyone in an organization
+shares those projects. Your app chooses its own data audience: see
+[individual, shared, organization-private and mixed models](data-access-models.md) for
+recipes using the existing builders. Accounts can stay signed in without any organization
+memberships. Organization management is built on Better Auth's
 [organization plugin](https://www.better-auth.com/docs/plugins/organization), configured in
 `packages/backend/convex/platform/organizationPlugin.ts`.
 
@@ -54,8 +57,10 @@ Someone who is not the last owner may leave even their only organization. When a
 deleted, an organization it owned alone passes to its longest-standing admin (or member).
 Only owners can delete an organization; deleting one never deletes its members' accounts.
 
-All three roles read and write the same app data. If your app needs finer rules (for example,
-only admins delete projects), check `ctx.organizationRole` in your functions.
+All three roles read and write the same sample project data. Your app's private-record checks
+need not grant an exception to owners/admins. If only admins should delete a shared record,
+check `ctx.organizationRole` after checking its organization. These are rules using the three
+built-in roles; custom roles are not currently supported.
 
 ## How it works
 
@@ -147,7 +152,8 @@ simply stay in the database, unreachable.
 
 ## Scoping your data
 
-Use the organization builders from `./platform/functions` for every table of app data:
+For organization-owned app data, use the organization builders from `./platform/functions`.
+Choose shared or member-private audience explicitly using the [data access recipes](data-access-models.md):
 
 - `orgQuery` gives the handler `ctx.organizationId` and `ctx.organizationRole` (as well as
   `ctx.user` and `ctx.ownerId`). It returns `null` when signed out or without an organization.
@@ -169,8 +175,9 @@ The rules:
    uploads have no `organizationId`, and every access goes through
    `requireProjectAccess(ctx, projectId)`.
 
-Use `authedQuery`/`authedMutation` (user-scoped, `ctx.ownerId`) only for data that is
-deliberately personal and follows the user across organizations, such as preferences.
+Use `authedQuery`/`authedMutation` for data that belongs to the individual and follows them
+across organizations, including an entire [individual service](data-access/individual-accounts.md).
+The builders provide `ctx.ownerId`; your functions enforce the row ownership check.
 `orgQuery` and `orgMutation` are not exposed to agent surfaces.
 
 The `platform-add-table` skill does all of this.
