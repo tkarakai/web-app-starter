@@ -17,7 +17,7 @@ export { redirectWithUserLocale } from "./lib/auth-locale";
 export { parseOnboardingStatus, type OnboardingType } from "./lib/onboarding";
 export { usePasswordStrength } from "./lib/use-password-strength";
 export { useSignOut } from "./lib/use-sign-out";
-export { AcceptInvitation } from "./components/accept-invitation";
+export { AcceptInvitation, ResumeInvitation } from "./components/accept-invitation";
 export { CreateOrganizationDialog } from "./components/create-organization-dialog";
 export { EnsureOrganization, OrganizationInvitations } from "./components/organization-invitations";
 export { OrganizationSwitcher } from "./components/organization-switcher";

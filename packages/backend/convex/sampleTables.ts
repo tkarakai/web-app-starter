@@ -8,7 +8,7 @@ import { v } from "convex/values";
  * `schema.ts` spreads them in. Delete this file, its spread in `schema.ts`, and
  * `projects.ts`, `tasks.ts`, `files.ts`, `projectAccess.ts`, `fileAccess.ts` and
  * `sampleMigrations.ts` (and its entry in `migrations.ts`),
- * along with their sample tests, to strip the sample backend.
+ * along with their sample tests, and empty `organizationData.ts`, to strip the sample backend.
  */
 export const sampleTables = {
   projects: defineTable({

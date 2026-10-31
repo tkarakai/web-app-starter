@@ -179,3 +179,67 @@ describe("upgrade migration", () => {
   });
 });
 
+describe("deleting an organization", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubEnv("BETTER_AUTH_SECRET", "organization-projects-test-secret-at-least-32-characters");
+    vi.stubEnv("SITE_URL", "http://localhost:3001");
+    vi.stubEnv("CONVEX_SITE_URL", "http://localhost:3211");
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  test("removes its projects, tasks and files in batches, and nothing of any other organization", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const doomed = await alice.caller.mutation(api.projects.create, { name: "Doomed", description: "" });
+    const alsoDoomed = await alice.caller.mutation(api.projects.create, { name: "Also doomed", description: "" });
+    const kept = await bob.caller.mutation(api.projects.create, { name: "Kept", description: "" });
+    const acme = await activeOrganization(alice.caller);
+    const addFiles = (projectId: Id<"projects">, count: number) => f.t.run(async (ctx) => {
+      const stored = [];
+      for (let i = 0; i < count; i++) {
+        const storageId = await ctx.storage.store(new Blob([`file ${i}`]));
+        await ctx.db.insert("uploads", {
+          storageId, name: `f${i}.txt`, contentType: "text/plain", size: 6, projectId, ownerId: "x", createdAt: Date.now(), ownershipVersion: 1,
+        });
+        stored.push(storageId);
+      }
+      return stored;
+    });
+    await f.t.run(async (ctx) => {
+      for (let i = 0; i < 150; i++) {
+        await ctx.db.insert("tasks", { title: `T${i}`, description: "", status: "todo", projectId: doomed, ownerId: "x", createdAt: Date.now() });
+      }
+    });
+    const doomedFiles = await addFiles(doomed, 3);
+    const keptFiles = await addFiles(kept, 1);
+    await bob.caller.mutation(api.tasks.create, { projectId: kept, title: "Stays", description: "", status: "todo" });
+
+    // The owner deletes it through Better Auth; the platform then runs organizationData.ts.
+    const response = await f.t.fetch("/api/auth/organization/delete", {
+      method: "POST",
+      headers: { origin: "http://localhost:3001", "content-type": "application/json", authorization: "Bearer alice-session" },
+      body: JSON.stringify({ organizationId: acme }),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const left = await f.t.run(async (ctx) => ({
+      projects: (await ctx.db.query("projects").collect()).map((project) => project._id),
+      tasks: (await ctx.db.query("tasks").collect()).map((task) => task.projectId),
+      uploads: (await ctx.db.query("uploads").collect()).map((upload) => upload.projectId),
+      doomedFiles: await Promise.all(doomedFiles.map((id) => ctx.storage.getUrl(id))),
+      keptFiles: await Promise.all(keptFiles.map((id) => ctx.storage.getUrl(id))),
+    }));
+    expect(left.projects).toEqual([kept]);
+    expect(left.projects).not.toContain(alsoDoomed);
+    expect(left.tasks).toEqual([kept]);
+    expect(left.uploads).toEqual([kept]);
+    expect(left.doomedFiles).toEqual([null, null, null]);
+    expect(left.keptFiles[0]).not.toBeNull();
+  });
+});

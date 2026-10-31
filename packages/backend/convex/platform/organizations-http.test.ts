@@ -107,6 +107,47 @@ describe("organization routes", () => {
   });
 });
 
+describe("deleting an organization", () => {
+  test("only an owner who signed in recently may delete; members and invitations go with it", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    await f.addMember(acme, bob.userId, "admin");
+    await f.t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId: acme, email: "carol@example.test", role: "member", status: "pending",
+        inviterId: alice.userId, createdAt: Date.now(), expiresAt: Date.now() + 86_400_000,
+      } },
+    });
+
+    const asAdmin = await f.post("/organization/delete", { organizationId: acme }, f.token("bob"));
+    expect(asAdmin.status).toBe(403);
+
+    // A session that authenticated more than a few minutes ago must confirm who it is first.
+    const earlier = Date.now() - 10 * 60_000;
+    await f.t.mutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "session", where: [{ field: "_id", value: alice.sessionId }], update: { authenticatedAt: earlier, primaryVerifiedAt: earlier } },
+    });
+    const stale = await f.post("/organization/delete", { organizationId: acme }, f.token("alice"));
+    expect(stale.status).toBe(403);
+    expect(await stale.json()).toMatchObject({ code: "RECENT_AUTHENTICATION_REQUIRED" });
+    expect(await f.members(acme)).toHaveLength(2);
+
+    await f.t.mutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "session", where: [{ field: "_id", value: alice.sessionId }], update: { authenticatedAt: Date.now(), primaryVerifiedAt: Date.now() } },
+    });
+    const deleted = await f.post("/organization/delete", { organizationId: acme }, f.token("alice"));
+    expect(deleted.status, await deleted.clone().text()).toBe(200);
+    expect(await f.members(acme)).toEqual([]);
+    expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "carol@example.test" })).toBe(false);
+    // Nobody is left in it, so nothing resolves to it; each user is given a new organization.
+    expect(await bob.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    const fresh = await bob.caller.mutation(api.platform.organizations.ensure, {});
+    expect(fresh).not.toBe(acme);
+  });
+});
+
 describe("invitation lookups", () => {
   test("a pending invitation is found however many old invitations the address has", async () => {
     const f = await fixture();
@@ -138,7 +179,7 @@ describe("invitation lookups", () => {
     // The default policy requires a verified email, so Bob's session isn't fully assured yet.
     expect(await bob.caller.query(api.platform.organizations.myInvitations, {})).toBeNull();
     expect(await bob.caller.query(api.platform.organizations.invitation, { id: invitation._id }))
-      .toMatchObject({ isRecipient: true, emailVerified: false, ready: false, organizationName: "alice" });
+      .toMatchObject({ state: "verify", organizationName: "alice", email: "bob@example.test" });
     expect(await f.t.query(api.platform.organizations.invitation, { id: invitation._id })).toBeNull();
   });
 });

@@ -1,59 +1,81 @@
 import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { markConvexLogPosition, signIn, toRelativeUrl, waitForAuthEmail } from "./helpers/auth";
-import { createDisposableUser } from "./helpers/fixtures";
+import { fillStable, markConvexLogPosition, signIn, toRelativeUrl, waitForAuthEmail } from "./helpers/auth";
+import { createDisposableUser, disposableEmail, disposablePassword } from "./helpers/fixtures";
+import { test as onboardingTest } from "./helpers/onboarding";
 
-async function openOrganizationSettings(page: Page): Promise<void> {
-  await page.goto("/en/dashboard/settings?tab=organization");
+/** Open the organization page the way a user does: the account menu's Organization entry. */
+async function openOrganizationPage(page: Page): Promise<void> {
+  await page.goto("/en/dashboard");
+  await page.locator('[data-slot="sidebar-footer"] button').first().click();
+  await page.getByRole("menuitem", { name: "Organization", exact: true }).click();
+  await page.waitForURL(/\/dashboard\/organization$/);
   await expect(page.getByTestId("organization-settings")).toBeVisible();
 }
 
-test("an owner invites a teammate who joins, shares the organization's projects, switches back and loses access when removed", async ({ page, browser }) => {
-  test.setTimeout(120_000);
+async function renameOrganization(page: Page, name: string): Promise<void> {
+  await openOrganizationPage(page);
+  await page.getByLabel("Organization name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page.getByTestId("organization-settings").getByText(name, { exact: true }).first()).toBeVisible();
+}
+
+/** Invite an address from the organization page; returns the emailed link. */
+async function invite(page: Page, email: string): Promise<string> {
+  await openOrganizationPage(page);
+  const logPosition = markConvexLogPosition();
+  await page.getByLabel("Email address", { exact: true }).fill(email);
+  await page.getByRole("button", { name: "Send invitation", exact: true }).click();
+  await expect(page.getByTestId("organization-invitations").getByText(email)).toBeVisible();
+  const url = toRelativeUrl(await waitForAuthEmail("custom", logPosition));
+  expect(url).toMatch(/^\/accept-invitation\//);
+  return url;
+}
+
+async function withPage<T>(browser: Browser, run: (page: Page) => Promise<T>): Promise<T> {
+  const context = await browser.newContext();
+  try {
+    return await run(await context.newPage());
+  } finally {
+    await context.close();
+  }
+}
+
+test("an invited teammate signs in from the link, joins, shares the organization's projects and loses access when removed", async ({ page, browser }) => {
+  test.setTimeout(150_000);
   const owner = await createDisposableUser();
   const teammate = await createDisposableUser();
   const organization = `Org ${randomUUID().slice(0, 8)}`;
 
-  // The owner names their personal organization and creates a project in it.
   await signIn(page, owner.email, owner.password);
-  await openOrganizationSettings(page);
-  await page.getByLabel("Organization name", { exact: true }).fill(organization);
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByRole("heading", { name: organization, exact: true })).toBeVisible();
-
+  await renameOrganization(page, organization);
   await page.goto("/en/dashboard");
   await page.getByTitle("New project", { exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill("Shared roadmap");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Shared roadmap", level: 1 })).toBeVisible();
+  const invitationUrl = await invite(page, teammate.email);
 
-  // Invite the teammate.
-  await openOrganizationSettings(page);
-  const logPosition = markConvexLogPosition();
-  await page.getByLabel("Email address", { exact: true }).fill(teammate.email);
-  await page.getByRole("button", { name: "Send invitation", exact: true }).click();
-  await expect(page.getByTestId("organization-invitations").getByText(teammate.email)).toBeVisible();
-  const invitationUrl = toRelativeUrl(await waitForAuthEmail("custom", logPosition));
-  expect(invitationUrl).toMatch(/^\/accept-invitation\//);
-
-  // The teammate sees the invitation on their dashboard and accepts it from the email link.
-  const teammateContext = await browser.newContext();
-  const teammatePage = await teammateContext.newPage();
-  try {
-    await signIn(teammatePage, teammate.email, teammate.password);
-    await expect(teammatePage.getByTestId("organization-invitations-banner"))
-      .toContainText(`invited you to join ${organization}`);
-    await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toHaveCount(0);
-
+  await withPage(browser, async (teammatePage) => {
+    // Signed out, the link reveals nothing; after signing in, the teammate is brought back to it.
     await teammatePage.goto(invitationUrl);
+    await expect(teammatePage.getByTestId("accept-invitation")).toHaveAttribute("data-state", "signedOut");
+    await expect(teammatePage.getByText(organization)).toHaveCount(0);
+    await signIn(teammatePage, teammate.email, teammate.password);
+    await teammatePage.waitForURL(/\/accept-invitation\//);
     await expect(teammatePage.getByRole("heading", { name: `Join ${organization}` })).toBeVisible();
     await teammatePage.getByRole("button", { name: "Accept invitation", exact: true }).click();
     await teammatePage.waitForURL(/\/dashboard$/);
     await expect(teammatePage.getByTestId("active-organization")).toHaveText(organization);
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toBeVisible();
 
-    // Two organizations: the header is a switcher. The personal organization has no projects.
+    // The spent link now just says they're a member.
+    await teammatePage.goto(invitationUrl);
+    await expect(teammatePage.getByTestId("accept-invitation")).toHaveAttribute("data-state", "member");
+
+    // Switch to the personal organization (no projects) and back.
+    await teammatePage.goto("/en/dashboard");
     await teammatePage.getByRole("button", { name: "Switch organization" }).click();
     await teammatePage.getByRole("menuitem", { name: "E2E User", exact: true }).click();
     await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
@@ -62,18 +84,109 @@ test("an owner invites a teammate who joins, shares the organization's projects,
     await teammatePage.getByRole("menuitem", { name: organization, exact: true }).click();
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toBeVisible();
 
-    // The owner sees the new member and removes them; the teammate's view loses the organization live.
-    await page.reload();
+    // The owner removes them; the teammate's view drops the organization live and says why.
+    await openOrganizationPage(page);
     const members = page.getByTestId("organization-members");
     await expect(members.getByText(teammate.email, { exact: false })).toBeVisible();
     await members.getByRole("button", { name: /^Remove / }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
     await expect(members.getByText(teammate.email, { exact: false })).toHaveCount(0);
 
+    await expect(teammatePage.getByText(`You no longer have access to ${organization}.`)).toBeVisible();
     await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toHaveCount(0);
-    await expect(teammatePage.getByRole("button", { name: "Switch organization" })).toHaveCount(0);
-  } finally {
-    await teammateContext.close();
+  });
+});
+
+test("an invitation answers only its own address; a declined one is spent and shows as declined; an owner can delete the organization", async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  const owner = await createDisposableUser();
+  const invitee = await createDisposableUser();
+  const stranger = await createDisposableUser();
+  const organization = `Org ${randomUUID().slice(0, 8)}`;
+
+  await signIn(page, owner.email, owner.password);
+  await renameOrganization(page, organization);
+  const invitationUrl = await invite(page, invitee.email);
+
+  await withPage(browser, async (strangerPage) => {
+    // Someone else who opens the link and signs in is told, kindly, that it isn't theirs.
+    await strangerPage.goto(invitationUrl);
+    await signIn(strangerPage, stranger.email, stranger.password);
+    await strangerPage.waitForURL(/\/accept-invitation\//);
+    const card = strangerPage.getByTestId("accept-invitation");
+    await expect(card).toHaveAttribute("data-state", "wrongAccount");
+    await expect(card).toContainText(`You're signed in as ${stranger.email}`);
+    await expect(card).not.toContainText(organization);
+    await expect(card).not.toContainText(invitee.email);
+    await expect(strangerPage.getByRole("button", { name: "Accept invitation" })).toHaveCount(0);
+    // The same when they open it while already signed in.
+    await strangerPage.reload();
+    await expect(card).toHaveAttribute("data-state", "wrongAccount");
+  });
+
+  await withPage(browser, async (inviteePage) => {
+    // An existing user also finds the invitation on their dashboard.
+    await signIn(inviteePage, invitee.email, invitee.password);
+    await expect(inviteePage.getByTestId("organization-invitations-banner")).toContainText(`invited you to join ${organization}`);
+    await inviteePage.goto(invitationUrl);
+    await inviteePage.getByRole("button", { name: "Decline", exact: true }).click();
+    await inviteePage.waitForURL(/\/dashboard$/);
+    await inviteePage.goto(invitationUrl);
+    await expect(inviteePage.getByTestId("accept-invitation")).toHaveAttribute("data-state", "invalid");
+    await expect(inviteePage.getByText("This invitation is no longer valid")).toBeVisible();
+  });
+
+  // The inviter sees the answer, and can invite again.
+  await openOrganizationPage(page);
+  const declined = page.getByTestId("organization-invitations").locator('[data-status="declined"]');
+  await expect(declined).toContainText(invitee.email);
+  await expect(declined.getByRole("button", { name: "Invite again" })).toBeVisible();
+
+  // Deleting needs the name typed; the owner then continues in a new, empty organization.
+  await page.getByRole("button", { name: "Delete organization", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(`Type ${organization} to confirm`).fill(organization);
+  await dialog.getByRole("button", { name: "Delete permanently", exact: true }).click();
+  await page.waitForURL(/\/dashboard$/);
+  await expect(page.getByTestId("active-organization")).toHaveText("E2E User");
+  await expect(page.getByText(`You no longer have access to ${organization}.`)).toHaveCount(0);
+});
+
+onboardingTest("a new person creates an account from the link while sign-up is closed, and comes back to it to join", async ({ page, browser, onboarding }) => {
+  onboardingTest.setTimeout(150_000);
+  await onboarding.setMode("inviteOnly");
+  const owner = await createDisposableUser();
+  const newcomer = { name: "New Person", email: disposableEmail(), password: disposablePassword() };
+  const organization = `Org ${randomUUID().slice(0, 8)}`;
+
+  const invitationUrl = await withPage(browser, async (ownerPage) => {
+    await signIn(ownerPage, owner.email, owner.password);
+    await renameOrganization(ownerPage, organization);
+    return await invite(ownerPage, newcomer.email);
+  });
+
+  await page.goto(invitationUrl);
+  await page.getByRole("link", { name: "Create account", exact: true }).click();
+  await page.waitForURL(/\/sign-up\?invitation=/);
+  await expect(page.getByTestId("organization-invitation-signup")).toBeVisible();
+  await fillStable(page, "#name", newcomer.name);
+  await fillStable(page, "#email", newcomer.email);
+  await fillStable(page, "#password", newcomer.password);
+  await fillStable(page, "#confirm-password", newcomer.password);
+  const logPosition = markConvexLogPosition();
+  await page.locator('form:has(#confirm-password) button[type="submit"]').click();
+  await page.waitForURL(/\/(verify-email|dashboard|accept-invitation)/);
+
+  // With email verification on, confirm the address, then sign in if the link didn't.
+  if (page.url().includes("/verify-email")) {
+    await page.goto(toRelativeUrl(await waitForAuthEmail("verification", logPosition)));
+    await page.goto("/en/dashboard");
+    if (page.url().includes("/sign-in")) await signIn(page, newcomer.email, newcomer.password);
   }
+  await page.waitForURL(/\/accept-invitation\//);
+  await expect(page.getByRole("heading", { name: `Join ${organization}` })).toBeVisible();
+  await page.getByRole("button", { name: "Accept invitation", exact: true }).click();
+  await page.waitForURL(/\/dashboard$/);
+  await expect(page.getByTestId("active-organization")).toHaveText(organization);
 });

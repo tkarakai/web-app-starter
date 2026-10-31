@@ -228,19 +228,21 @@ export function removeSample(root: string): void {
   for (const [template, destination] of [
     ["app-sidebar.tsx", "apps/web/src/components/app-sidebar.tsx"],
     ["dashboard-client.tsx", `${dashboard}dashboard-client.tsx`],
+    ["organizationData.ts", `${backend}organizationData.ts`],
     ["auth-security.test.ts", `${backend}auth-security.test.ts`],
     ["input-validation.test.ts", `${backend}input-validation.test.ts`],
     ["localized-controls.test.tsx", "apps/web/qa/tests/localized-controls.test.tsx"],
   ]) {
     writeFileSync(at(destination), readFileSync(at(`platform/templates/adopt/${template}.txt`), "utf8"));
   }
-  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`]) {
+  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`,
+    `${dashboard}organization/organization-client.tsx`]) {
     let content = readFileSync(at(file), "utf8")
       .replaceAll("@/components/projects/app-sidebar", "@/components/app-sidebar")
       .replace(/\s*selectedProjectId=\{null\}\n/, "\n")
       .replaceAll("onSelectProject=", "onNavigateHome=")
       .replaceAll('td("projects")', 'tc("backToHome")');
-    if (file.endsWith("sessions-client.tsx")) content = content.replace('  const td = useTranslations("dashboard");\n', "");
+    if (!file.endsWith("account-client.tsx")) content = content.replace('  const td = useTranslations("dashboard");\n', "");
     writeFileSync(at(file), content);
   }
   for (const file of readdirSync(at("packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {

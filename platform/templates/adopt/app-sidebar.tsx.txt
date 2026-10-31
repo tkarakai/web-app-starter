@@ -36,7 +36,7 @@ export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
             <SidebarMenuButton asChild><Link href="/dashboard/settings">{td("account")}</Link></SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild><Link href="/dashboard/settings?tab=organization">{to("label")}</Link></SidebarMenuButton>
+            <SidebarMenuButton asChild><Link href="/dashboard/organization">{to("label")}</Link></SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>

@@ -1,12 +1,14 @@
 /**
  * Better Auth organization plugin, configured for the platform's organizations:
- * three built-in roles (owner, admin, member), email invitations, no teams, no custom
- * roles, and no organization deletion (app data would need a cascade). The
+ * three built-in roles (owner, admin, member), email invitations, no teams and no custom
+ * roles. Owners may delete an organization; the app's own data is then removed by its
+ * `organizationData.ts` cleanup. The
  * session-assurance plugin admits only the `/organization/*` routes listed in
  * `authAssurance.ts`. See platform/docs/organizations.md.
  */
 import type { GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
+import { internal } from "../_generated/api";
 import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
@@ -48,7 +50,9 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
     cancelPendingInvitationsOnReInvite: true,
     // Only an account that has proved it owns the invited address can accept.
     requireEmailVerificationOnInvitation: true,
-    disableOrganizationDeletion: true,
+    // Only owners may delete (Better Auth's default roles), after recent authentication
+    // (authAssurance.ts). App data is removed afterwards, see afterDeleteOrganization.
+    disableOrganizationDeletion: false,
     teams: { enabled: false },
     sendInvitationEmail: async ({ id, email, organization: org, inviter }) => {
       const url = `${siteUrl}/accept-invitation/${encodeURIComponent(id)}`;
@@ -78,6 +82,12 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
       },
       afterUpdateOrganization: async ({ organization: org, user }) => {
         if (org) await audit("organization.updated", user, `organization:${org.id}`);
+      },
+      afterDeleteOrganization: async ({ organization: org, user }) => {
+        await audit("organization.deleted", user, `organization:${org.id}`);
+        await requireActionCtx(ctx).scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, {
+          organizationId: org.id,
+        });
       },
       afterCreateInvitation: async ({ invitation, inviter, organization: org }) => {
         await audit("organization.invitation.sent", inviter, `organization:${org.id}`, {

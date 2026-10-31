@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Building2, LogOut, Mail, Plus, RotateCw, UserMinus, X } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { Building2, LogOut, Mail, RotateCw, Trash2, UserMinus, X } from "lucide-react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
@@ -24,6 +25,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   Select,
@@ -35,21 +41,20 @@ import {
   toast,
 } from "@web-app-starter/design-system";
 
-import { CreateOrganizationDialog } from "../components/create-organization-dialog";
-import { organizationErrorKey, useOrganizations, type OrganizationRole } from "../lib/organization";
+import { SessionAccessGate } from "../components/session-access-gate";
+import { expectOrganizationDeparture, organizationErrorKey, takeExpectedDeparture, useOrganizations, type OrganizationRole } from "../lib/organization";
 
 type Result = { error?: { status?: number; code?: string } | null };
 
 /**
- * Settings for the active organization: its name, members and roles, invitations, and
- * leaving or creating an organization. Every member sees it; owners and admins get the
- * controls. Better Auth checks every change server-side, whatever this UI shows.
+ * The active organization's page: its name, members and roles, invitations, and for owners
+ * the danger zone. Every member sees it; owners and admins get the controls. Better Auth
+ * checks every change server-side, whatever this UI shows.
  */
 export function OrganizationSection() {
   const t = useTranslations("organization");
   const organization = useQuery(api.platform.organizations.active);
   const mine = useOrganizations();
-  const [createOpen, setCreateOpen] = React.useState(false);
 
   /** Run a Better Auth organization call with toast feedback; true on success. */
   const run = React.useCallback(async (call: () => Promise<Result>, success?: string) => {
@@ -79,35 +84,23 @@ export function OrganizationSection() {
 
   const canManage = organization.role !== "member";
   const roleLabel = (role: OrganizationRole) => t(`roles.${role}`);
+  const onlyOne = mine.organizations.length < 2;
 
   return (
     <div className="space-y-6" data-testid="organization-settings">
       <NameCard organization={organization} canManage={canManage} run={run} roleLabel={roleLabel} />
-      <MembersCard organization={organization} run={run} roleLabel={roleLabel} />
+      <MembersCard organization={organization} run={run} roleLabel={roleLabel} onlyOne={onlyOne} />
       {canManage && <InvitationsCard organization={organization} run={run} roleLabel={roleLabel} />}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("create.title")}</CardTitle>
-          <CardDescription>{t("create.description")}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={() => setCreateOpen(true)}>
-            <Plus className="me-2 h-4 w-4" />
-            {t("create.action")}
-          </Button>
-          <LeaveButton organization={organization} onlyOne={mine.organizations.length < 2} run={run} />
-        </CardContent>
-      </Card>
-      <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {organization.role === "owner" && <DangerZoneCard organization={organization} run={run} onlyOne={onlyOne} />}
     </div>
   );
 }
 
 type ActiveOrganization = NonNullable<ReturnType<typeof useQuery<typeof api.platform.organizations.active>>>;
+type Run = (call: () => Promise<Result>, success?: string) => Promise<boolean>;
 type CardProps = {
   organization: ActiveOrganization;
-  run: (call: () => Promise<Result>, success?: string) => Promise<boolean>;
+  run: Run;
   roleLabel: (role: OrganizationRole) => string;
 };
 
@@ -148,8 +141,8 @@ function NameCard({ organization, canManage, run, roleLabel }: CardProps & { can
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">{t("settings.description", { name: organization.name })}</p>
         {canManage && (
-          <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={save}>
-            <div className="flex-1 space-y-2">
+          <form className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end sm:gap-3" onSubmit={save}>
+            <div className="grid gap-2">
               <Label htmlFor="organization-name">{t("settings.nameLabel")}</Label>
               <Input id="organization-name" value={name} maxLength={100} onChange={(event) => setName(event.target.value)} required />
             </div>
@@ -163,13 +156,15 @@ function NameCard({ organization, canManage, run, roleLabel }: CardProps & { can
   );
 }
 
-function MembersCard({ organization, run, roleLabel }: CardProps) {
+function MembersCard({ organization, run, roleLabel, onlyOne }: CardProps & { onlyOne: boolean }) {
   const t = useTranslations("organization");
   const tc = useTranslations("common");
   const format = useFormatter();
   const youAreOwner = organization.role === "owner";
   const canManage = organization.role !== "member";
   const roles: OrganizationRole[] = youAreOwner ? ["member", "admin", "owner"] : ["member", "admin"];
+  // The last owner can't leave (Better Auth refuses): they promote someone or delete instead.
+  const lastOwner = youAreOwner && organization.members.filter((member) => member.role === "owner").length === 1;
 
   return (
     <Card>
@@ -182,11 +177,12 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
           {organization.members.map((member) => {
             // Only owners may change or remove an owner; nobody manages themselves here.
             const manageable = canManage && !member.isYou && (youAreOwner || member.role !== "owner");
+            const name = member.name || member.email;
             return (
               <li key={member.memberId} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {member.name || member.email}
+                    {name}
                     {member.isYou && <span className="ms-2 text-xs text-muted-foreground">({t("settings.you")})</span>}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
@@ -200,10 +196,10 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
                       () => authClient.organization.updateMemberRole({
                         organizationId: organization.id, memberId: member.memberId, role: role as OrganizationRole,
                       }),
-                      t("settings.roleChanged", { name: member.name || member.email, role: roleLabel(role as OrganizationRole) }),
+                      t("settings.roleChanged", { name, role: roleLabel(role as OrganizationRole) }),
                     )}
                   >
-                    <SelectTrigger className="w-32" aria-label={t("settings.changeRole", { name: member.name || member.email })}>
+                    <SelectTrigger className="w-32" aria-label={t("settings.changeRole", { name })}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -216,15 +212,15 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
                 {manageable && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label={t("settings.removeLabel", { name: member.name || member.email })}>
+                      <Button variant="ghost" size="icon" aria-label={t("settings.removeLabel", { name })}>
                         <UserMinus className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{t("settings.removeTitle", { name: member.name || member.email })}</AlertDialogTitle>
+                        <AlertDialogTitle>{t("settings.removeTitle", { name })}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {t("settings.removeDescription", { name: member.name || member.email, organization: organization.name })}
+                          {t("settings.removeDescription", { name, organization: organization.name })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -232,7 +228,7 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
                         <AlertDialogAction
                           onClick={() => void run(
                             () => authClient.organization.removeMember({ organizationId: organization.id, memberIdOrEmail: member.memberId }),
-                            t("settings.removed", { name: member.name || member.email }),
+                            t("settings.removed", { name }),
                           )}
                         >
                           {t("settings.remove")}
@@ -241,6 +237,7 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
+                {member.isYou && !onlyOne && !lastOwner && <LeaveButton organization={organization} run={run} />}
               </li>
             );
           })}
@@ -281,75 +278,87 @@ function InvitationsCard({ organization, run, roleLabel }: CardProps) {
         <CardDescription>{t("invite.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={invite}>
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="invite-email">{t("invite.email")}</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              autoComplete="off"
-              placeholder={t("invite.emailPlaceholder")}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="invite-role">{t("invite.role")}</Label>
-            <Select value={role} onValueChange={(value) => setRole(value as OrganizationRole)}>
-              <SelectTrigger id="invite-role" className="w-full sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((option) => <SelectItem key={option} value={option}>{roleLabel(option)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button type="submit" disabled={sending || !email.trim()}>
-            <Mail className="me-2 h-4 w-4" />
-            {sending ? t("invite.sending") : t("invite.send")}
-          </Button>
-        </form>
-        <p className="text-xs text-muted-foreground">{t(`roleHelp.${role}`)}</p>
+        <div className="grid gap-2">
+          <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem_auto] sm:items-end" onSubmit={invite}>
+            <div className="grid gap-2">
+              <Label htmlFor="invite-email">{t("invite.email")}</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                autoComplete="off"
+                placeholder={t("invite.emailPlaceholder")}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="invite-role">{t("invite.role")}</Label>
+              <Select value={role} onValueChange={(value) => setRole(value as OrganizationRole)}>
+                <SelectTrigger id="invite-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((option) => <SelectItem key={option} value={option}>{roleLabel(option)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={sending || !email.trim()}>
+              <Mail className="me-2 h-4 w-4" />
+              {sending ? t("invite.sending") : t("invite.send")}
+            </Button>
+          </form>
+          <p className="text-xs text-muted-foreground">{t(`roleHelp.${role}`)}</p>
+        </div>
 
         {organization.invitations.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-medium">{t("pending.title")}</h3>
             <ul className="divide-y divide-border/60 rounded-md border border-border/60" data-testid="organization-invitations">
               {organization.invitations.map((invitation) => (
-                <li key={invitation.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
+                <li key={invitation.id} className="flex flex-wrap items-center gap-3 px-3 py-2" data-status={invitation.status}>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{invitation.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {roleLabel(invitation.role)} · {invitation.expired
-                        ? t("pending.expired")
-                        : t("pending.expires", { date: format.dateTime(invitation.expiresAt, { dateStyle: "medium" }) })}
+                      {roleLabel(invitation.role)} · {t("pending.sent", { date: format.dateTime(invitation.sentAt, { dateStyle: "medium" }) })}
+                      {invitation.status === "pending" && (
+                        <> · {t("pending.expires", { date: format.dateTime(invitation.expiresAt, { dateStyle: "medium" }) })}</>
+                      )}
                     </p>
                   </div>
+                  {invitation.status !== "pending" && (
+                    <Badge variant={invitation.status === "declined" ? "outline" : "secondary"}>
+                      {t(`pending.${invitation.status}`)}
+                    </Badge>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => void run(
+                      // A declined invitation is final; inviting again sends a new one.
                       () => authClient.organization.inviteMember({
-                        organizationId: organization.id, email: invitation.email, role: invitation.role, resend: true,
+                        organizationId: organization.id, email: invitation.email, role: invitation.role,
+                        resend: invitation.status !== "declined",
                       }),
                       t("pending.resent", { email: invitation.email }),
                     )}
                   >
                     <RotateCw className="me-1 h-3.5 w-3.5" />
-                    {t("pending.resend")}
+                    {invitation.status === "declined" ? t("pending.inviteAgain") : t("pending.resend")}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("pending.cancel")}
-                    onClick={() => void run(
-                      () => authClient.organization.cancelInvitation({ invitationId: invitation.id }),
-                      t("pending.canceled", { email: invitation.email }),
-                    )}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  {invitation.status !== "declined" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("pending.cancel")}
+                      onClick={() => void run(
+                        () => authClient.organization.cancelInvitation({ invitationId: invitation.id }),
+                        t("pending.canceled", { email: invitation.email }),
+                      )}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -360,19 +369,15 @@ function InvitationsCard({ organization, run, roleLabel }: CardProps) {
   );
 }
 
-function LeaveButton({ organization, onlyOne, run }: Omit<CardProps, "roleLabel"> & { onlyOne: boolean }) {
+function LeaveButton({ organization, run }: { organization: ActiveOrganization; run: Run }) {
   const t = useTranslations("organization");
   const tc = useTranslations("common");
-
-  if (onlyOne) {
-    return <p className="self-center text-xs text-muted-foreground">{t("leave.onlyOrganization")}</p>;
-  }
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" className="text-destructive hover:text-destructive">
-          <LogOut className="me-2 h-4 w-4" />
-          {t("leave.title")}
+        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+          <LogOut className="me-1 h-3.5 w-3.5" />
+          {t("leave.action")}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -383,15 +388,89 @@ function LeaveButton({ organization, onlyOne, run }: Omit<CardProps, "roleLabel"
         <AlertDialogFooter>
           <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => void run(
-              () => authClient.organization.leave({ organizationId: organization.id }),
-              t("leave.left", { name: organization.name }),
-            )}
+            onClick={() => {
+              expectOrganizationDeparture(organization.id);
+              void run(
+                () => authClient.organization.leave({ organizationId: organization.id }),
+                t("leave.left", { name: organization.name }),
+              ).then((ok) => { if (!ok) takeExpectedDeparture(organization.id); });
+            }}
           >
             {t("leave.action")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/** Owners only: delete the organization, after typing its name and confirming who they are. */
+function DangerZoneCard({ organization, run, onlyOne }: { organization: ActiveOrganization; run: Run; onlyOne: boolean }) {
+  const t = useTranslations("organization.danger");
+  const tc = useTranslations("common");
+  const router = useRouter();
+  const locale = useLocale();
+  const [open, setOpen] = React.useState(false);
+  const [typed, setTyped] = React.useState("");
+  const [deleting, setDeleting] = React.useState(false);
+  const confirmId = React.useId();
+  const matches = typed.trim() === organization.name.trim();
+
+  const remove = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!matches) return;
+    setDeleting(true);
+    expectOrganizationDeparture(organization.id);
+    const ok = await run(
+      () => authClient.organization.delete({ organizationId: organization.id }),
+      t("deleted", { name: organization.name }),
+    );
+    setDeleting(false);
+    if (!ok) takeExpectedDeparture(organization.id);
+    if (ok) {
+      setOpen(false);
+      router.push(`/${locale}/dashboard`);
+    }
+  };
+
+  return (
+    <Card className="border-destructive/40" data-testid="organization-danger-zone">
+      <CardHeader>
+        <CardTitle className="text-base text-destructive">{t("title")}</CardTitle>
+        <CardDescription>{t("description", { name: organization.name })}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button variant="destructive" onClick={() => { setTyped(""); setOpen(true); }}>
+          <Trash2 className="me-2 h-4 w-4" />
+          {t("delete")}
+        </Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent closeLabel={tc("close")}>
+            <DialogHeader>
+              <DialogTitle>{t("confirmTitle", { name: organization.name })}</DialogTitle>
+              <DialogDescription>
+                {t("confirmDescription", { name: organization.name })}
+                {onlyOne && <> {t("onlyOrganization")}</>}
+              </DialogDescription>
+            </DialogHeader>
+            {/* Deleting needs recent authentication; the gate asks for it first when needed. */}
+            <SessionAccessGate requireRecent>
+              <form className="grid gap-4" onSubmit={remove}>
+                <div className="grid gap-2">
+                  <Label htmlFor={confirmId}>{t("confirmLabel", { name: organization.name })}</Label>
+                  <Input id={confirmId} autoComplete="off" value={typed} onChange={(event) => setTyped(event.target.value)} />
+                </div>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>{tc("cancel")}</Button>
+                  <Button type="submit" variant="destructive" disabled={!matches || deleting}>
+                    {deleting ? t("deleting") : t("confirm")}
+                  </Button>
+                </div>
+              </form>
+            </SessionAccessGate>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }

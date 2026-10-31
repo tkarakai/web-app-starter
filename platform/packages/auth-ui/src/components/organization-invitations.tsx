@@ -9,7 +9,7 @@ import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited } from "@web-app-starter/auth/client";
 import { Alert, AlertDescription, Button, toast } from "@web-app-starter/design-system";
 
-import { organizationErrorKey, useOrganizations } from "../lib/organization";
+import { organizationErrorKey, takeExpectedDeparture, useOrganizations } from "../lib/organization";
 
 /**
  * Invitations waiting for the signed-in user's address, with Accept and Decline. Put it at
@@ -116,19 +116,34 @@ export function SendVerificationButton({ email, callbackURL, size, className, ch
 }
 
 /**
- * Gives a signed-in user who belongs to no organization a personal one: after an upgrade,
- * before the data migration reaches them, or after leaving every organization. Renders nothing.
+ * Keeps a signed-in user's organizations in order. Gives one who belongs to no organization a
+ * personal one: after an upgrade, before the data migration reaches them, or after leaving or
+ * deleting their last one. Tells them when an organization disappears from their list without
+ * their doing (they were removed, or an owner deleted it). Renders nothing.
  */
 export function EnsureOrganization() {
+  const t = useTranslations("organization");
   const organizations = useOrganizations();
   const ensure = useMutation(api.platform.organizations.ensure);
   const requested = React.useRef(false);
+  const known = React.useRef<Map<string, string> | null>(null);
 
   React.useEffect(() => {
-    if (!organizations || organizations.organizations.length > 0 || requested.current) return;
+    if (!organizations) return;
+    const current = new Map<string, string>(organizations.organizations.map((organization) => [organization.id, organization.name]));
+    for (const [id, name] of known.current ?? []) {
+      if (!current.has(id) && !takeExpectedDeparture(id)) toast.info(t("access.lost", { organization: name }));
+    }
+    known.current = current;
+
+    if (current.size > 0) {
+      requested.current = false;
+      return;
+    }
+    if (requested.current) return;
     requested.current = true;
     void ensure({}).catch(() => { requested.current = false; });
-  }, [organizations, ensure]);
+  }, [organizations, ensure, t]);
 
   return null;
 }

@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "יכול לעשות כל מה שמנהל יכול, וגם למנות בעלים נוספים.",
       "admin": "מזמין ומסיר אנשים, משנה תפקידים ומשנה את שם הארגון.",
-      "member": "עובד על הפרויקטים של הארגון."
+      "member": "יכול לראות את כל מה שבארגון ולעבוד עליו."
     },
     "switcher": {
       "label": "החלפת ארגון",
       "heading": "הארגונים שלך",
-      "create": "יצירת ארגון",
-      "settings": "הגדרות ארגון"
+      "create": "יצירת ארגון"
     },
     "settings": {
       "title": "ארגון",
-      "description": "כל חברי {name} משתפים את הפרויקטים שלו. בעלים ומנהלים מחליטים מי שייך אליו.",
+      "description": "החברים ב-{name} חולקים את כל מה שיש בו. הבעלים והמנהלים מחליטים מי שייך אליו.",
       "nameLabel": "שם הארגון",
       "renamed": "שם הארגון שונה.",
       "yourRole": "התפקיד שלך: {role}",
@@ -510,8 +509,9 @@
       "remove": "הסרה",
       "removeLabel": "הסרת {name}",
       "removeTitle": "להסיר את {name}?",
-      "removeDescription": "{name} מאבד מיד את הגישה אל {organization} ואל הפרויקטים שלו. מה שנוצר על ידו נשאר.",
-      "removed": "{name} הוסר."
+      "removeDescription": "{name} מאבד מיד את הגישה ל-{organization}. מה שיצר נשאר בארגון.",
+      "removed": "{name} הוסר.",
+      "pageDescription": "השם, החברים וההזמנות של הארגון שבו אתם עובדים."
     },
     "invite": {
       "title": "הזמנת אנשים",
@@ -524,25 +524,26 @@
       "sent": "ההזמנה נשלחה אל {email}."
     },
     "pending": {
-      "title": "הזמנות ממתינות",
+      "title": "הזמנות",
       "expires": "פג תוקף ב-{date}",
       "expired": "פג תוקף",
       "resend": "שליחה מחדש",
       "resent": "ההזמנה נשלחה שוב אל {email}.",
       "cancel": "ביטול הזמנה",
-      "canceled": "ההזמנה ל-{email} בוטלה."
+      "canceled": "ההזמנה ל-{email} בוטלה.",
+      "sent": "נשלחה ב-{date}",
+      "declined": "נדחתה",
+      "inviteAgain": "הזמנה מחדש"
     },
     "leave": {
-      "title": "עזיבת הארגון",
-      "description": "תאבד את הגישה אל {name} ואל הפרויקטים שלו. רק הזמנה חדשה תאפשר לך לחזור.",
+      "description": "תאבדו את הגישה ל-{name} ולכל מה שבו. רק הזמנה חדשה תאפשר לכם לחזור.",
       "action": "עזיבה",
       "confirmTitle": "לעזוב את {name}?",
-      "left": "עזבת את {name}.",
-      "onlyOrganization": "זה הארגון היחיד שלך, ולכן אי אפשר לעזוב אותו."
+      "left": "עזבת את {name}."
     },
     "create": {
       "title": "ארגון חדש",
-      "description": "צור ארגון נפרד עם חברים ופרויקטים משלו. אתה תהיה הבעלים שלו.",
+      "description": "צרו ארגון נפרד עם חברים ונתונים משלו. אתם תהיו הבעלים שלו.",
       "action": "יצירת ארגון",
       "nameLabel": "שם",
       "namePlaceholder": "אקמי בע״מ",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "הוזמנת",
-      "pageDescription": "הצטרף לארגון כדי לעבוד עם הצוות שלך על הפרויקטים שלו.",
+      "pageDescription": "הצטרפו לארגון כדי לעבוד יחד עם הצוות שלכם.",
       "title": "הצטרפות אל {organization}",
       "description": "{inviter} הזמין אותך להצטרף אל {organization} בתפקיד {role}.",
       "accept": "אישור ההזמנה",
       "accepting": "מצטרף...",
       "decline": "דחייה",
       "declined": "דחית את ההזמנה.",
-      "signedOutTitle": "התחבר כדי לאשר את ההזמנה",
-      "signedOutDescription": "השתמש בכתובת האימייל שאליה נשלחה ההזמנה. חדש כאן? צור חשבון עם הכתובת הזו; ההזמנה שלך תמתין בלוח הבקרה.",
+      "signedOutTitle": "התחברו כדי לראות את ההזמנה",
+      "signedOutDescription": "התחברו או צרו חשבון עם כתובת האימייל שאליה נשלחה ההזמנה. לאחר מכן תחזרו לכאן.",
       "signIn": "התחברות",
       "signUp": "צור חשבון",
       "signUpHint": "הוזמנת להצטרף לארגון. צור את החשבון שלך עם כתובת האימייל שאליה נשלחה ההזמנה.",
       "wrongAccountTitle": "ההזמנה הזו מיועדת לחשבון אחר",
-      "wrongAccountDescription": "היא נשלחה אל {email}, אבל אתה מחובר בתור {current}. התנתק והתחבר עם {email} כדי לאשר אותה.",
+      "wrongAccountDescription": "אתם מחוברים בתור {current}, אבל ההזמנה הזו נשלחה לכתובת אימייל אחרת. אם היא מיועדת לכם, התנתקו והתחברו עם הכתובת שאליה נשלחה.",
       "securityTitle": "סיימו את הגדרת החשבון",
-      "securityDescription": "החשבון שלכם צריך שלב אבטחה נוסף לפני ההצטרפות אל {organization}. השלימו אותו בלוח הבקרה ואז חזרו לקישור הזה.",
+      "securityDescription": "החשבון שלכם צריך עוד שלב אבטחה אחד לפני שתוכלו להצטרף ל-{organization}. השלימו אותו ותחזרו לכאן.",
       "verifyTitle": "אמת קודם את האימייל שלך",
       "verifyDescription": "כדי להצטרף אל {organization}, אשר ש-{email} היא הכתובת שלך.",
       "verify": "אימות אימייל",
-      "notFoundTitle": "ההזמנה לא נמצאה",
-      "notFoundDescription": "ייתכן שהקישור חלקי. בקש ממי שהזמין אותך לשלוח הזמנה חדשה.",
-      "usedTitle": "ההזמנה הזו כבר אינה תקפה",
-      "usedDescription": "היא כבר אושרה, נדחתה או בוטלה. בקש הזמנה חדשה אם אתה עדיין צריך גישה.",
-      "expiredTitle": "תוקף ההזמנה פג",
-      "expiredDescription": "ההזמנות תקפות ל-7 ימים. בקש מ-{inviter} לשלוח הזמנה חדשה.",
       "alreadyMemberTitle": "אתה כבר ב-{organization}",
-      "alreadyMemberDescription": "פתח את לוח הבקרה ובחר בו ממחליף הארגונים.",
-      "openDashboard": "מעבר ללוח הבקרה"
+      "alreadyMemberDescription": "אתם כבר חברים, אין צורך לעשות דבר נוסף.",
+      "openDashboard": "מעבר ללוח הבקרה",
+      "switchAccount": "התנתקות והחלפת חשבון",
+      "invalidTitle": "ההזמנה הזו כבר אינה בתוקף",
+      "invalidDescription": "ייתכן שתוקפה פג, שכבר נעשה בה שימוש או שבוטלה. אם אתם עדיין צריכים גישה, בקשו הזמנה חדשה מהאדם שהזמין אתכם.",
+      "continueSetup": "המשך",
+      "openOrganization": "פתיחת {organization}",
+      "joined": "הצטרפתם ל-{organization}."
+    },
+    "danger": {
+      "title": "אזור מסוכן",
+      "description": "מחיקת {name} מסירה אותו, עם כל מה שבו, עבור כל החברים. לא ניתן לבטל פעולה זו.",
+      "delete": "מחיקת הארגון",
+      "confirmTitle": "למחוק את {name}?",
+      "confirmDescription": "פעולה זו מוחקת לצמיתות את {name} ואת כל מה שבו, עבור כל החברים. לא ניתן לבטל אותה.",
+      "onlyOrganization": "זה הארגון היחיד שלכם, לכן תקבלו ארגון חדש וריק.",
+      "confirmLabel": "הקלידו {name} לאישור",
+      "confirm": "מחיקה לצמיתות",
+      "deleting": "מוחק...",
+      "deleted": "{name} נמחק."
+    },
+    "access": {
+      "lost": "אין לכם עוד גישה ל-{organization}."
     }
   }
 }

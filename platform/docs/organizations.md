@@ -14,11 +14,15 @@ to individual users. Everyone in an organization shares its data. It is built on
   dashboard. A new user creates an account from the link, even when public sign-up is closed
   (waitlist or invite-only). Invitations expire after 7 days; inviting the same address again
   replaces the pending invitation.
-- **Several organizations per user.** Users can create organizations and accept invitations to
-  others. The sidebar header shows the active organization. It becomes a switcher for anyone in
-  more than one. A new sign-in starts in the organization the user last switched to.
-- **Settings → Organization**: rename, members and roles, invite, resend or cancel pending
-  invitations, leave, create another organization.
+- **Several organizations per user.** The sidebar header shows the active organization and opens
+  a menu to switch between the user's organizations or create one. A new sign-in starts in the
+  organization the user last switched to.
+- **An organization page** (the account menu's **Organization** entry, `/dashboard/organization`
+  in the reference app): rename; members and roles; invite; the invitations sent, each pending,
+  expired or declined, with resend, cancel or invite again; leave (from your own row); and for
+  owners a **danger zone** to delete the organization.
+- **Notice of lost access.** When someone is removed, or an owner deletes the organization, the
+  member's view drops it live and says "You no longer have access to …".
 
 ### Roles
 
@@ -31,8 +35,10 @@ Better Auth's three built-in roles, used as they are:
 | `member` | Use the organization's data |
 
 An organization always keeps at least one owner. Better Auth refuses to remove, demote or let
-the last owner leave. When an account is deleted, an organization it owned alone passes to its
-longest-standing admin (or member). Users can't leave their only organization.
+the last owner leave, so the page doesn't offer the last owner **Leave**: they promote someone or
+delete the organization. When an account is deleted, an organization it owned alone passes to its
+longest-standing admin (or member). Users can't leave their only organization. Only owners can
+delete an organization.
 
 All three roles read and write the same app data. If your app needs finer rules (for example,
 only admins delete projects), check `ctx.organizationRole` in your functions.
@@ -48,7 +54,8 @@ only admins delete projects), check `ctx.organizationRole` in your functions.
 - **Writes go through Better Auth** (`authClient.organization.*`), which checks the roles. The
   session-assurance plugin admits only these routes: `create`, `update`, `set-active`,
   `invite-member`, `cancel-invitation`, `accept-invitation`, `reject-invitation`,
-  `remove-member`, `update-member-role` and `leave`. Roles must be exactly one of `owner`, `admin` or `member`;
+  `remove-member`, `update-member-role`, `leave` and `delete`; `delete` also needs recent
+  authentication, which the page asks for first. Roles must be exactly one of `owner`, `admin` or `member`;
   Better Auth's comma-separated role lists are refused. `update` may change only the name. Each needs a fully assured session (email
   verification, MFA and passkey policy met). Platform administrators can't use them, just as
   they can't use the web app.
@@ -60,11 +67,60 @@ only admins delete projects), check `ctx.organizationRole` in your functions.
   enrollment sees what is missing on the invitation page instead of the invitation.
 - **Limits:** 10 invitations at once and 30 an hour per inviter (resends included), plus the platform's auth email
   budgets. Up to 100 members per organization and 50 organizations per user.
-- **Audited:** creating, renaming, invitation sent, canceled, accepted or rejected, member
-  removed, member left and role changed (`organization.*` audit actions).
-- **Not included:** deleting an organization (app data would need a cascade), teams, custom
-  roles, billing, organization management in the admin app, and organization-scoped agent
-  capabilities.
+- **Audited:** creating, renaming, deleting, invitation sent, canceled, accepted or rejected,
+  member removed, member left and role changed (`organization.*` audit actions).
+- **Not included:** teams, custom roles, billing, organization management in the admin app, and
+  organization-scoped agent capabilities.
+
+## The invitation, step by step
+
+The invitation page (`/accept-invitation/<id>`) shows exactly one state, decided by the
+backend. Only the invited address ever sees the organization's name, the inviter or the role.
+
+| The person opening the link | Sees |
+|---|---|
+| Signed out | "Sign in to view your invitation", with **Sign in** and **Create account**. Nothing about the invitation. The link is remembered, and after sign-in or sign-up (password, passkey, MFA, email verification, security setup) they are brought back to it |
+| The invited address, ready | Who invited them, to which organization, as what role: **Accept** (opens the dashboard in it) or **Decline** |
+| The invited address, email not yet verified | **Verify email**, which sends the email in place; its link returns here |
+| The invited address, security setup outstanding | **Continue**: the dashboard asks for the step, then returns here |
+| The invited address, already a member | "You're already in …", with **Open …** |
+| Anyone else signed in, including someone who just signed in with the wrong account | "This invitation is for a different account", naming only the account they're signed in with, with **Sign out and switch account** |
+| Anyone, once the invitation was accepted, declined, canceled, replaced or expired, or for an unknown link | "This invitation is no longer valid", without saying which |
+
+An existing user also sees pending invitations as a banner on the dashboard, with **Accept** or
+**Decline** (or **Verify email** first).
+
+On the inviting side, the organization page lists each invited address once, with its latest
+invitation: **pending** (with its expiry; resend or cancel), **expired** (resend or cancel), or
+**declined** for 30 days (invite again). An accepted invitation shows as a new member.
+
+## Deleting an organization
+
+Owners delete an organization from the danger zone, typing its name to confirm and
+re-authenticating if they last signed in more than a few minutes ago. Better Auth removes the
+organization, its members and its invitations at once, so nobody can reach anything in it from
+then on. Members who had it open see the notice of lost access; anyone left without an
+organization, including an owner who deleted their only one, gets a new personal one.
+
+The app's own rows are removed afterwards by **`convex/organizationData.ts`**, which the platform
+calls until it reports that nothing is left:
+
+```ts
+import { organizationDataCleanup } from "./platform/functions";
+
+export const deleteOrganizationData = organizationDataCleanup(async (ctx, organizationId) => {
+  const rows = await ctx.db.query("bookmarks")
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .take(100);
+  for (const row of rows) await ctx.db.delete(row._id);
+  return rows.length === 0; // true once nothing is left
+});
+```
+
+Delete a bounded batch per call, cover every table that belongs to an organization (and their
+child rows and stored files), and return `true` only when none remain. The sample's version
+removes projects with their tasks and uploads. Without the file, a deleted organization's rows
+simply stay in the database, unreachable.
 
 ## Scoping your data
 
@@ -102,15 +158,16 @@ From `@web-app-starter/auth-ui`:
 
 | Export | Use |
 |---|---|
-| `OrganizationSwitcher` | Sidebar header: product mark and name, active organization; switcher for multi-organization users. `onSwitch` lets you clear state that belongs to the old organization |
-| `OrganizationSection` | The Settings → Organization tab |
+| `OrganizationSwitcher` | Sidebar header: product mark and name, active organization, and a menu to switch or create. `onSwitch` lets you clear state that belongs to the old organization |
+| `OrganizationSection` | The organization page's content: name, members, invitations, danger zone |
 | `OrganizationInvitations` | Pending-invitation banner for the dashboard |
 | `CreateOrganizationDialog` | The create dialog, if you want it elsewhere |
 | `useOrganizations()` | The caller's organizations and the active one |
 | `AcceptInvitationView` (`/views`) | The `/accept-invitation/[id]` page; re-export it from the route |
 
 `ProtectedLayout` also includes `EnsureOrganization`, which gives a signed-in user without an
-organization a personal one. The sign-up view shows the account form for `?invitation=` links
+organization a personal one and shows the notice of lost access, and `ResumeInvitation`, which
+returns a user to an invitation link they opened while signed out. The sign-up view shows the account form for `?invitation=` links
 whatever the onboarding mode. The backend admits that sign-up only for an address with a
 pending invitation.
 
@@ -119,12 +176,13 @@ pending invitation.
 The platform side arrives with the upgrade. New accounts get a personal organization; your
 existing functions, which use `authedQuery`/`authedMutation`, keep working per user. To adopt:
 
-1. Mount the UI. Put `OrganizationSwitcher` in your sidebar header, `OrganizationSection` on a
-   settings page (the reference app uses `/dashboard/settings?tab=organization`) and
-   `OrganizationInvitations` at the top of your dashboard. Add the route
+1. Mount the UI. Put `OrganizationSwitcher` in your sidebar header, `OrganizationSection` on its
+   own page linked from your account menu (the reference app uses `/dashboard/organization`)
+   and `OrganizationInvitations` at the top of your dashboard. Add the route
    `src/app/[locale]/(invitation)/accept-invitation/[id]/page.tsx` re-exporting
    `AcceptInvitationView`, as `apps/web` does.
-2. Scope your tables as above, and migrate their existing rows as below.
+2. Scope your tables as above, and migrate their existing rows as below. Add
+   `convex/organizationData.ts` so deleting an organization removes their rows.
 3. Translate any app strings you add (`platform-add-strings`). The platform's own strings ship
    in every platform locale.
 

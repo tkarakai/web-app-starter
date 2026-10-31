@@ -200,7 +200,8 @@ test("sample removal replaces domain UI and retains account messages and platfor
   write(root, "apps/web/qa/e2e/organizations.spec.ts", "sample browser test");
   write(root, "apps/web/qa/e2e/shard-durations.json", JSON.stringify({ "private-files.spec.ts": 20, "organizations.spec.ts": 25, "auth-flow.spec.ts": 13 }));
   write(root, `${dashboard}dashboard-client.tsx`, "sample");
-  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`]) {
+  for (const file of ["apps/web/src/components/settings/account-client.tsx", `${dashboard}settings/sessions/sessions-client.tsx`,
+    `${dashboard}organization/organization-client.tsx`]) {
     write(root, file, 'import { AppSidebar } from "@/components/projects/app-sidebar";\n');
   }
   mkdirSync(path.join(root, "apps/web/qa/tests"), { recursive: true });
@@ -222,6 +223,9 @@ test("sample removal replaces domain UI and retains account messages and platfor
   assert.deepEqual(JSON.parse(readFileSync(path.join(root, "packages/messages/en.json"), "utf8")), { dashboard: { account: "Settings" } });
   assert.equal(readFileSync(path.join(root, `${dashboard}dashboard-client.tsx`), "utf8"), read("platform/templates/adopt/dashboard-client.tsx.txt"));
   assert.equal(existsSync(path.join(root, "apps/web/src/components/app-sidebar.tsx")), true);
+  // The organization-data cleanup stays, emptied of the sample's tables.
+  assert.equal(readFileSync(path.join(root, `${backend}organizationData.ts`), "utf8"), read("platform/templates/adopt/organizationData.ts.txt"));
+  assert.match(readFileSync(path.join(root, `${dashboard}organization/organization-client.tsx`), "utf8"), /@\/components\/app-sidebar"/);
 });
 
 test("sample removal leaves the retained backend suite runnable", (t) => {
@@ -240,6 +244,7 @@ test("sample removal leaves the retained backend suite runnable", (t) => {
   for (const file of [
     "apps/web/src/components/settings/account-client.tsx",
     "apps/web/src/app/[locale]/(dashboard)/dashboard/settings/sessions/sessions-client.tsx",
+    "apps/web/src/app/[locale]/(dashboard)/dashboard/organization/organization-client.tsx",
   ]) write(root, file, 'import { AppSidebar } from "@/components/projects/app-sidebar";\n');
   mkdirSync(path.join(root, "apps/web/qa/tests"), { recursive: true });
   write(root, "packages/messages/en.json", JSON.stringify({ dashboard: { account: "Settings" } }));

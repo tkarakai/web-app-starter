@@ -12,6 +12,7 @@ import type * as fileAccess from "../fileAccess.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
+import type * as organizationData from "../organizationData.js";
 import type * as platform_adminAuth from "../platform/adminAuth.js";
 import type * as platform_adminEmails from "../platform/adminEmails.js";
 import type * as platform_adminInvitationActions from "../platform/adminInvitationActions.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   http: typeof http;
   migrations: typeof migrations;
+  organizationData: typeof organizationData;
   "platform/adminAuth": typeof platform_adminAuth;
   "platform/adminEmails": typeof platform_adminEmails;
   "platform/adminInvitationActions": typeof platform_adminInvitationActions;

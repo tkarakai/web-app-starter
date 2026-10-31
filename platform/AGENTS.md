@@ -163,8 +163,8 @@ These components own the auth operations and localized feedback; your app owns t
 
 App data belongs to **organizations** (Better Auth's organization plugin): every user gets a
 personal one and can create or be invited to others. Scope app tables with `orgQuery` and
-`orgMutation` (`ctx.organizationId`, `ctx.organizationRole`) and never take an organization ID
-as an argument. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
+`orgMutation` (`ctx.organizationId`, `ctx.organizationRole`), never take an organization ID
+as an argument, and delete their rows in `convex/organizationData.ts`. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
 and `AcceptInvitationView` from `@web-app-starter/auth-ui`. See [docs/organizations.md](docs/organizations.md).
 
 Within an app, `@/` is an alias for its `src/`. It is app-internal only; across packages import

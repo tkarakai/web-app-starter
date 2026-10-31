@@ -11,6 +11,49 @@ export function useOrganizations() {
   return useQuery(api.platform.organizations.mine);
 }
 
+const departing = new Set<string>();
+
+/**
+ * Mark an organization the user is leaving or deleting, so its disappearance from their
+ * list reads as their own doing rather than as lost access (`EnsureOrganization`).
+ */
+export function expectOrganizationDeparture(organizationId: string): void {
+  departing.add(organizationId);
+}
+
+/** True, once, for an organization passed to `expectOrganizationDeparture`. */
+export function takeExpectedDeparture(organizationId: string): boolean {
+  return departing.delete(organizationId);
+}
+
+const INVITATION_KEY = "organization-invitation";
+const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Remember an invitation link opened while signed out, so the user returns to it after
+ * signing in or signing up, however many steps that takes (`ResumeInvitation`).
+ */
+export function rememberInvitation(invitationId: string): void {
+  try {
+    window.localStorage.setItem(INVITATION_KEY, JSON.stringify({ id: invitationId, at: Date.now() }));
+  } catch {
+    // Storage unavailable: the invitation still waits on the dashboard banner.
+  }
+}
+
+/** Forget the remembered invitation and return it if it is recent. */
+export function takeRememberedInvitation(): string | null {
+  try {
+    const raw = window.localStorage.getItem(INVITATION_KEY);
+    window.localStorage.removeItem(INVITATION_KEY);
+    const saved = raw ? JSON.parse(raw) as { id?: unknown; at?: unknown } : null;
+    if (typeof saved?.id !== "string" || typeof saved.at !== "number" || saved.at + INVITATION_TTL_MS < Date.now()) return null;
+    return saved.id;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The `organization.errors.*` message key for a Better Auth organization error.
  * Better Auth answers with `{ status, code }`; anything unrecognised is generic.

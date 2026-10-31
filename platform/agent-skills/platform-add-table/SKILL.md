@@ -57,6 +57,9 @@ read `platform/docs/organizations.md`.
 1. **Schema.** Add the table at the end of `packages/backend/convex/schema.ts`, with indexes for
    every query you will run.
 2. **Functions.** Create `packages/backend/convex/<table>.ts` with the queries and mutations.
+   For an organization's table, also delete its rows in `packages/backend/convex/organizationData.ts`
+   (a bounded batch per call; "Deleting an organization" in `platform/docs/organizations.md`), so
+   deleting the organization removes them.
 3. **Generate types.** `convex/_generated/` must list the new module, or `api.<table>` won't
    typecheck. With `bun run dev` running, Convex regenerates it on save. Without it, run once
    from the backend package:

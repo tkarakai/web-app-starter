@@ -6,10 +6,11 @@
  * Better Auth's `/organization/*` endpoints (`authClient.organization.*`), which enforce
  * the roles; these queries update by themselves when those rows change.
  */
+import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 
-import { components } from "../_generated/api";
-import { internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
+import { components, internal } from "../_generated/api";
+import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
 import { authedMutation, authedQuery, orgQuery } from "./functions";
@@ -73,27 +74,9 @@ export const active = orgQuery({
     }))).filter(present);
 
     const canManage = ctx.organizationRole !== "member";
-    let invitations: { id: string; email: string; role: OrganizationRole; expiresAt: number; expired: boolean }[] = [];
-    if (canManage) {
-      const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-        model: "invitation",
-        where: [
-          { field: "organizationId", value: ctx.organizationId },
-          { field: "status", value: "pending" },
-        ],
-        paginationOpts: { numItems: 200, cursor: null },
-      });
-      const now = Date.now();
-      invitations = (result.page as Doc<"invitation">[])
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .map((invitation) => ({
-          id: invitation._id,
-          email: invitation.email,
-          role: parseRole(invitation.role ?? "member"),
-          expiresAt: invitation.expiresAt,
-          expired: invitation.expiresAt <= now,
-        }));
-    }
+    const invitations = canManage
+      ? await organizationInvitations(ctx, ctx.organizationId, new Set(members.map((member) => member.email.toLowerCase())))
+      : [];
 
     return {
       id: organization._id,
@@ -105,6 +88,43 @@ export const active = orgQuery({
     };
   },
 });
+
+/** How long a declined invitation stays listed for the people who manage the organization. */
+const DECLINED_LISTED_MS = 30 * 24 * 60 * 60 * 1000;
+
+export type InvitationStatus = "pending" | "expired" | "declined";
+
+/**
+ * The organization's invitations for its owners and admins: pending ones, expired ones still
+ * pending, and recently declined ones, so the inviter sees what became of each. One row per
+ * address (the latest), leaving out anyone who has since joined.
+ */
+async function organizationInvitations(ctx: Pick<QueryCtx, "runQuery">, organizationId: string, memberEmails: Set<string>) {
+  const byStatus = async (status: string) => (await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "invitation",
+    where: [{ field: "organizationId", value: organizationId }, { field: "status", value: status }],
+    paginationOpts: { numItems: 200, cursor: null },
+  })).page as Doc<"invitation">[];
+  const now = Date.now();
+  const rows = [...await byStatus("pending"), ...(await byStatus("rejected")).filter((row) => row.createdAt > now - DECLINED_LISTED_MS)]
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const seen = new Set<string>();
+  const invitations: { id: string; email: string; role: OrganizationRole; status: InvitationStatus; sentAt: number; expiresAt: number }[] = [];
+  for (const row of rows) {
+    const email = row.email.toLowerCase();
+    if (seen.has(email) || memberEmails.has(email)) continue;
+    seen.add(email);
+    invitations.push({
+      id: row._id,
+      email: row.email,
+      role: parseRole(row.role ?? "member"),
+      status: row.status === "rejected" ? "declined" : row.expiresAt <= now ? "expired" : "pending",
+      sentAt: row.createdAt,
+      expiresAt: row.expiresAt,
+    });
+  }
+  return invitations;
+}
 
 async function invitationView(
   ctx: Pick<QueryCtx, "runQuery"> & { user: Doc<"user"> },
@@ -121,10 +141,6 @@ async function invitationView(
     inviterName: inviter?.name || inviter?.email || "",
     email: invitation.email,
     role: parseRole(invitation.role ?? "member"),
-    status: invitation.status,
-    expired: invitation.expiresAt <= Date.now(),
-    isRecipient: invitation.email.toLowerCase() === ctx.user.email.toLowerCase(),
-    signedInAs: ctx.user.email,
     emailVerified: ctx.user.emailVerified,
     alreadyMember: membership !== null,
   };
@@ -141,21 +157,34 @@ export const myInvitations = authedQuery({
 });
 
 /**
- * One invitation, for the page its email links to. The link carries the invitation ID,
- * so anyone signed in who holds it sees whom it is for; only that address can accept it.
- * Answers any signed-in session, including one that still has to verify its email or finish
- * enrollment, so the page can say what is missing; `ready` is false until it has. Accepting
- * still requires a fully assured session.
+ * One invitation, for the page its email links to, as the state the page shows. Only the
+ * invited address learns anything about the invitation; anyone else signed in is told only
+ * that it is for another account. Accepted, declined, canceled, expired and unknown
+ * invitations all read as `invalid`, so the link reveals nothing once it is spent. Answers
+ * any signed-in session, including one that must still verify its email or finish security
+ * setup, so the page can say what is missing. `null` when signed out.
  */
 export const invitation = query({
   args: { id: v.string() },
   handler: async (ctx, args) => {
     const pair = await identitySession(ctx);
     if (!pair || pair.session.authPurpose === "mcp-authorization") return null;
+    const { user } = pair;
     const row = await findById(ctx, "invitation", args.id);
-    if (!row) return null;
-    const ready = (await evaluateSession(ctx, pair)).allowed;
-    return { ...await invitationView({ ...ctx, user: pair.user }, row), ready };
+    const live = row && row.status === "pending" && row.expiresAt > Date.now();
+    const recipient = row && row.email.toLowerCase() === user.email.toLowerCase();
+    if (row && recipient && await findMembership(ctx, user._id, row.organizationId)) {
+      const organization = await findById(ctx, "organization", row.organizationId);
+      if (organization) return { state: "member" as const, organizationId: organization._id, organizationName: organization.name };
+    }
+    if (!live) return { state: "invalid" as const };
+    if (!recipient) return { state: "wrongAccount" as const, signedInAs: user.email };
+    const view = await invitationView({ ...ctx, user }, row);
+    if (!view.organizationName) return { state: "invalid" as const };
+    const details = { organizationName: view.organizationName, inviterName: view.inviterName, role: view.role, email: view.email };
+    if (!user.emailVerified) return { state: "verify" as const, ...details };
+    if (!(await evaluateSession(ctx, pair)).allowed) return { state: "security" as const, ...details };
+    return { state: "open" as const, ...details };
   },
 });
 
@@ -215,5 +244,37 @@ export const rememberActive = internalMutation({
         update: { lastActiveOrganizationId: args.organizationId },
       },
     });
+  },
+});
+
+/** The app's cleanup for a deleted organization's data (`organizationDataCleanup`). */
+const deleteOrganizationData = makeFunctionReference<"mutation", { organizationId: string }, { done: boolean }>(
+  "organizationData:deleteOrganizationData",
+);
+const CLEANUP_BATCHES_PER_RUN = 50;
+
+/**
+ * After an organization is deleted, run the app's cleanup until it reports done. Its rows are
+ * already unreachable (nobody is a member), so this only frees storage. Without the app's
+ * `organizationData.ts` there is nothing to run.
+ */
+export const deleteOrganizationAppData = internalAction({
+  args: { organizationId: v.string() },
+  handler: async (ctx, args) => {
+    for (let batch = 0; batch < CLEANUP_BATCHES_PER_RUN; batch++) {
+      let result: { done: boolean };
+      try {
+        result = await ctx.runMutation(deleteOrganizationData, args);
+      } catch (error) {
+        // The app has no organizationData.ts: Convex can't resolve the function.
+        if (error instanceof Error && /Couldn't resolve|Could not find/i.test(error.message)) {
+          console.warn(`No organizationData:deleteOrganizationData; data of deleted organization ${args.organizationId} is kept.`);
+          return;
+        }
+        throw error;
+      }
+      if (result.done) return;
+    }
+    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, args);
   },
 });

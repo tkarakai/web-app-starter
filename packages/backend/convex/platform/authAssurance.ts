@@ -35,13 +35,14 @@ const SENSITIVE = new Set([
 ]);
 const PASSWORD_PROOF = new Set(["/verify-password", "/change-password", "/delete-user", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes"]);
 const ACTIVE_SESSION_ROTATION = new Set(["/change-password", "/two-factor/disable", "/two-factor/enable", "/two-factor/verify-totp", "/two-factor/verify-otp"]);
-// The organization writes the platform UI uses. Reads are Convex queries; deletion,
-// teams and access-control routes stay disabled.
+// The organization writes the platform UI uses. Reads are Convex queries; teams,
+// access-control and list routes stay disabled.
 const ORGANIZATION = new Set([
   "/organization/create", "/organization/update", "/organization/set-active",
   "/organization/invite-member", "/organization/cancel-invitation",
   "/organization/accept-invitation", "/organization/reject-invitation",
   "/organization/remove-member", "/organization/update-member-role", "/organization/leave",
+  "/organization/delete",
 ]);
 const ROLE_CHANGE = new Set(["/organization/invite-member", "/organization/update-member-role"]);
 const ORGANIZATION_ROLES = new Set<unknown>(["owner", "admin", "member"]);
@@ -167,6 +168,8 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
         const data: unknown = endpoint.body?.data;
         if (!data || typeof data !== "object" || Object.keys(data).some((key) => key !== "name")) refuse("ONLY_NAME_CAN_CHANGE");
       }
+      // Deleting takes everything with it: confirm who is at the keyboard, as for account changes.
+      if (path === "/organization/delete" && !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
       // Every invitation email counts against the inviter, resends included.
       if (path === "/organization/invite-member") {
         const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "organizationInvite", key: pair.user._id });

@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Building2, Check, ChevronsUpDown, Plus, Settings } from "lucide-react";
+import { Building2, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { authClient } from "@web-app-starter/auth/client";
@@ -28,23 +27,15 @@ interface OrganizationSwitcherProps {
   productName: string;
   /** Called before a switch, e.g. to clear a selection that belongs to the old organization. */
   onSwitch?: () => void;
-  /** Where "Organization settings" leads. */
-  settingsHref?: string;
 }
 
 /**
- * The sidebar header: product name and the active organization. For a user in more than
- * one organization it opens a menu to switch, create one or open its settings. Switching
- * updates the session; every organization-scoped query then refreshes by itself.
+ * The sidebar header: product name and the active organization. It opens a menu to switch
+ * between the user's organizations or create one. Switching updates the session; every
+ * organization-scoped query then refreshes by itself.
  */
-export function OrganizationSwitcher({
-  logo,
-  productName,
-  onSwitch,
-  settingsHref = "/dashboard/settings?tab=organization",
-}: OrganizationSwitcherProps) {
+export function OrganizationSwitcher({ logo, productName, onSwitch }: OrganizationSwitcherProps) {
   const t = useTranslations("organization");
-  const router = useRouter();
   const data = useOrganizations();
   const [createOpen, setCreateOpen] = React.useState(false);
 
@@ -63,7 +54,7 @@ export function OrganizationSwitcher({
     </>
   );
 
-  if (!data || data.organizations.length < 2) {
+  if (!data) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -113,10 +104,6 @@ export function OrganizationSwitcher({
               <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
                 <Plus className="me-2 size-4" />
                 {t("switcher.create")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push(settingsHref)}>
-                <Settings className="me-2 size-4" />
-                {t("switcher.settings")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

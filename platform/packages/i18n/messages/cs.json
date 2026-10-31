@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "Může vše, co správce, a může jmenovat další vlastníky.",
       "admin": "Zve a odebírá lidi, mění role a přejmenovává organizaci.",
-      "member": "Pracuje na projektech organizace."
+      "member": "Může vidět vše v organizaci a pracovat na tom."
     },
     "switcher": {
       "label": "Přepnout organizaci",
       "heading": "Vaše organizace",
-      "create": "Vytvořit organizaci",
-      "settings": "Nastavení organizace"
+      "create": "Vytvořit organizaci"
     },
     "settings": {
       "title": "Organizace",
-      "description": "Všichni v organizaci {name} sdílejí její projekty. O členství rozhodují vlastníci a správci.",
+      "description": "Členové {name} sdílejí vše, co obsahuje. Vlastníci a správci rozhodují, kdo do ní patří.",
       "nameLabel": "Název organizace",
       "renamed": "Organizace byla přejmenována.",
       "yourRole": "Vaše role: {role}",
@@ -510,8 +509,9 @@
       "remove": "Odebrat",
       "removeLabel": "Odebrat uživatele {name}",
       "removeTitle": "Odebrat uživatele {name}?",
-      "removeDescription": "Uživatel {name} okamžitě ztratí přístup k organizaci {organization} a jejím projektům. To, co vytvořil, zůstane.",
-      "removed": "Uživatel {name} byl odebrán."
+      "removeDescription": "{name} okamžitě ztratí přístup k {organization}. Co vytvořil(a), v organizaci zůstane.",
+      "removed": "Uživatel {name} byl odebrán.",
+      "pageDescription": "Název, členové a pozvánky organizace, ve které pracujete."
     },
     "invite": {
       "title": "Pozvat lidi",
@@ -524,25 +524,26 @@
       "sent": "Pozvánka odeslána na adresu {email}."
     },
     "pending": {
-      "title": "Čekající pozvánky",
+      "title": "Pozvánky",
       "expires": "Vyprší {date}",
       "expired": "Vypršela",
       "resend": "Odeslat znovu",
       "resent": "Pozvánka byla znovu odeslána na adresu {email}.",
       "cancel": "Zrušit pozvánku",
-      "canceled": "Pozvánka pro {email} byla zrušena."
+      "canceled": "Pozvánka pro {email} byla zrušena.",
+      "sent": "Odesláno {date}",
+      "declined": "Odmítnuto",
+      "inviteAgain": "Pozvat znovu"
     },
     "leave": {
-      "title": "Opustit organizaci",
-      "description": "Ztratíte přístup k organizaci {name} a jejím projektům. Zpět se dostanete jen s novou pozvánkou.",
+      "description": "Ztratíte přístup k {name} a všemu, co obsahuje. Vrátit se můžete jen s novou pozvánkou.",
       "action": "Opustit",
       "confirmTitle": "Opustit organizaci {name}?",
-      "left": "Opustili jste organizaci {name}.",
-      "onlyOrganization": "Toto je vaše jediná organizace, proto ji nemůžete opustit."
+      "left": "Opustili jste organizaci {name}."
     },
     "create": {
       "title": "Nová organizace",
-      "description": "Založte samostatnou organizaci s vlastními členy a projekty. Budete jejím vlastníkem.",
+      "description": "Založte samostatnou organizaci s vlastními členy a daty. Stanete se jejím vlastníkem.",
       "action": "Vytvořit organizaci",
       "nameLabel": "Název",
       "namePlaceholder": "Acme s.r.o.",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "Máte pozvánku",
-      "pageDescription": "Připojte se k organizaci a pracujte se svým týmem na jejích projektech.",
+      "pageDescription": "Připojte se k organizaci a spolupracujte se svým týmem.",
       "title": "Připojit se k organizaci {organization}",
       "description": "{inviter} vás pozval(a) do organizace {organization} v roli: {role}.",
       "accept": "Přijmout pozvánku",
       "accepting": "Připojování...",
       "decline": "Odmítnout",
       "declined": "Pozvánku jste odmítli.",
-      "signedOutTitle": "Přihlaste se a přijměte pozvánku",
-      "signedOutDescription": "Použijte e-mailovou adresu, na kterou byla pozvánka odeslána. Jste tu poprvé? Vytvořte si účet s touto adresou; pozvánka na vás bude čekat v panelu.",
+      "signedOutTitle": "Přihlaste se a zobrazte si pozvánku",
+      "signedOutDescription": "Přihlaste se nebo si vytvořte účet s e-mailovou adresou, na kterou byla pozvánka odeslána. Potom se sem vrátíte.",
       "signIn": "Přihlásit se",
       "signUp": "Vytvořit účet",
       "signUpHint": "Byli jste pozváni do organizace. Vytvořte si účet s e-mailovou adresou, na kterou byla pozvánka odeslána.",
-      "wrongAccountTitle": "Tato pozvánka patří jinému účtu",
-      "wrongAccountDescription": "Byla odeslána na adresu {email}, ale vy jste přihlášeni jako {current}. Odhlaste se a pro přijetí se přihlaste adresou {email}.",
+      "wrongAccountTitle": "Tato pozvánka je pro jiný účet",
+      "wrongAccountDescription": "Jste přihlášeni jako {current}, ale tato pozvánka byla odeslána na jinou e-mailovou adresu. Pokud je určena vám, odhlaste se a přihlaste se s adresou, na kterou byla odeslána.",
       "securityTitle": "Dokončete nastavení účtu",
-      "securityDescription": "Než se připojíte k organizaci {organization}, musí váš účet projít ještě jedním bezpečnostním krokem. Dokončete ho na nástěnce a pak se k tomuto odkazu vraťte.",
+      "securityDescription": "Váš účet potřebuje ještě jeden bezpečnostní krok, než se připojíte k {organization}. Dokončete ho a vrátíte se sem.",
       "verifyTitle": "Nejprve ověřte svůj e-mail",
       "verifyDescription": "Pro připojení k organizaci {organization} potvrďte, že {email} je vaše adresa.",
       "verify": "Ověřit e-mail",
-      "notFoundTitle": "Pozvánka nenalezena",
-      "notFoundDescription": "Odkaz může být neúplný. Požádejte osobu, která vás pozvala, o novou pozvánku.",
-      "usedTitle": "Tato pozvánka už neplatí",
-      "usedDescription": "Už byla přijata, odmítnuta nebo zrušena. Pokud stále potřebujete přístup, požádejte o novou pozvánku.",
-      "expiredTitle": "Platnost pozvánky vypršela",
-      "expiredDescription": "Pozvánky platí 7 dní. Požádejte uživatele {inviter} o novou.",
       "alreadyMemberTitle": "Už jste v organizaci {organization}",
-      "alreadyMemberDescription": "Otevřete panel a vyberte ji v přepínači organizací.",
-      "openDashboard": "Přejít do panelu"
+      "alreadyMemberDescription": "Už jste členem, není potřeba nic dalšího dělat.",
+      "openDashboard": "Přejít do panelu",
+      "switchAccount": "Odhlásit se a přepnout účet",
+      "invalidTitle": "Tato pozvánka už není platná",
+      "invalidDescription": "Mohla vypršet, už být použita nebo zrušena. Pokud stále potřebujete přístup, požádejte toho, kdo vás pozval, o novou pozvánku.",
+      "continueSetup": "Pokračovat",
+      "openOrganization": "Otevřít {organization}",
+      "joined": "Připojili jste se k {organization}."
+    },
+    "danger": {
+      "title": "Nebezpečná zóna",
+      "description": "Smazáním {name} ji odstraníte i se vším obsahem pro všechny členy. Tuto akci nelze vrátit.",
+      "delete": "Smazat organizaci",
+      "confirmTitle": "Smazat {name}?",
+      "confirmDescription": "Tím trvale smažete {name} i se vším obsahem, a to pro všechny členy. Tuto akci nelze vrátit.",
+      "onlyOrganization": "Je to vaše jediná organizace, proto dostanete novou, prázdnou.",
+      "confirmLabel": "Pro potvrzení napište {name}",
+      "confirm": "Trvale smazat",
+      "deleting": "Mazání...",
+      "deleted": "{name} byla smazána."
+    },
+    "access": {
+      "lost": "K {organization} už nemáte přístup."
     }
   }
 }

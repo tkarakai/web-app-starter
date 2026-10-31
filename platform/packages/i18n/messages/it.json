@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "Può fare tutto ciò che fa un admin e nominare altri proprietari.",
       "admin": "Invita e rimuove persone, cambia i ruoli e rinomina l'organizzazione.",
-      "member": "Lavora sui progetti dell'organizzazione."
+      "member": "Può vedere e lavorare su tutto ciò che si trova nell'organizzazione."
     },
     "switcher": {
       "label": "Cambia organizzazione",
       "heading": "Le tue organizzazioni",
-      "create": "Crea organizzazione",
-      "settings": "Impostazioni dell'organizzazione"
+      "create": "Crea organizzazione"
     },
     "settings": {
       "title": "Organizzazione",
-      "description": "Tutti i membri di {name} condividono i suoi progetti. Proprietari e admin decidono chi ne fa parte.",
+      "description": "I membri di {name} ne condividono tutto il contenuto. Proprietari e amministratori decidono chi ne fa parte.",
       "nameLabel": "Nome dell'organizzazione",
       "renamed": "Organizzazione rinominata.",
       "yourRole": "Il tuo ruolo: {role}",
@@ -510,8 +509,9 @@
       "remove": "Rimuovi",
       "removeLabel": "Rimuovi {name}",
       "removeTitle": "Rimuovere {name}?",
-      "removeDescription": "{name} perde subito l'accesso a {organization} e ai suoi progetti. Ciò che ha creato resta.",
-      "removed": "{name} è stato rimosso."
+      "removeDescription": "{name} perde subito l'accesso a {organization}. Ciò che ha creato resta nell'organizzazione.",
+      "removed": "{name} è stato rimosso.",
+      "pageDescription": "Nome, membri e inviti dell'organizzazione in cui stai lavorando."
     },
     "invite": {
       "title": "Invita persone",
@@ -524,25 +524,26 @@
       "sent": "Invito inviato a {email}."
     },
     "pending": {
-      "title": "Inviti in sospeso",
+      "title": "Inviti",
       "expires": "Scade il {date}",
       "expired": "Scaduto",
       "resend": "Invia di nuovo",
       "resent": "Invito inviato di nuovo a {email}.",
       "cancel": "Annulla invito",
-      "canceled": "Invito a {email} annullato."
+      "canceled": "Invito a {email} annullato.",
+      "sent": "Inviato il {date}",
+      "declined": "Rifiutato",
+      "inviteAgain": "Invita di nuovo"
     },
     "leave": {
-      "title": "Esci dall'organizzazione",
-      "description": "Perdi l'accesso a {name} e ai suoi progetti. Solo un nuovo invito ti permetterà di rientrare.",
+      "description": "Perdi l'accesso a {name} e a tutto il suo contenuto. Solo un nuovo invito ti consentirà di rientrare.",
       "action": "Esci",
       "confirmTitle": "Uscire da {name}?",
-      "left": "Sei uscito da {name}.",
-      "onlyOrganization": "È la tua unica organizzazione, quindi non puoi uscirne."
+      "left": "Sei uscito da {name}."
     },
     "create": {
       "title": "Nuova organizzazione",
-      "description": "Crea un'organizzazione separata con i propri membri e progetti. Ne sarai il proprietario.",
+      "description": "Crea un'organizzazione separata con membri e dati propri. Ne sarai il proprietario.",
       "action": "Crea organizzazione",
       "nameLabel": "Nome",
       "namePlaceholder": "Acme S.r.l.",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "Sei stato invitato",
-      "pageDescription": "Unisciti a un'organizzazione per lavorare con il tuo team ai suoi progetti.",
+      "pageDescription": "Unisciti a un'organizzazione per lavorare insieme al tuo team.",
       "title": "Unisciti a {organization}",
       "description": "{inviter} ti ha invitato a unirti a {organization} come {role}.",
       "accept": "Accetta l'invito",
       "accepting": "Iscrizione in corso...",
       "decline": "Rifiuta",
       "declined": "Hai rifiutato l'invito.",
-      "signedOutTitle": "Accedi per accettare il tuo invito",
-      "signedOutDescription": "Usa l'indirizzo email a cui è stato inviato l'invito. Nuovo qui? Crea un account con quell'indirizzo; il tuo invito ti aspetterà nella dashboard.",
+      "signedOutTitle": "Accedi per vedere il tuo invito",
+      "signedOutDescription": "Accedi o crea un account con l'indirizzo email a cui è stato inviato l'invito. Poi tornerai qui.",
       "signIn": "Accedi",
       "signUp": "Crea account",
       "signUpHint": "Sei stato invitato a unirti a un'organizzazione. Crea il tuo account con l'indirizzo email a cui è stato inviato l'invito.",
       "wrongAccountTitle": "Questo invito è per un altro account",
-      "wrongAccountDescription": "È stato inviato a {email}, ma hai effettuato l'accesso come {current}. Esci, poi accedi con {email} per accettarlo.",
+      "wrongAccountDescription": "Hai effettuato l'accesso come {current}, ma questo invito è stato inviato a un altro indirizzo email. Se è destinato a te, esci e accedi con l'indirizzo a cui è stato inviato.",
       "securityTitle": "Completa la configurazione del tuo account",
-      "securityDescription": "Il tuo account richiede un ulteriore passaggio di sicurezza prima di unirti a {organization}. Completalo dalla dashboard, poi torna a questo link.",
+      "securityDescription": "Il tuo account richiede un ulteriore passaggio di sicurezza prima di unirti a {organization}. Completalo e tornerai qui.",
       "verifyTitle": "Verifica prima la tua email",
       "verifyDescription": "Per unirti a {organization}, conferma che {email} è il tuo indirizzo.",
       "verify": "Verifica email",
-      "notFoundTitle": "Invito non trovato",
-      "notFoundDescription": "Il link potrebbe essere incompleto. Chiedi a chi ti ha invitato di inviare un nuovo invito.",
-      "usedTitle": "Questo invito non è più valido",
-      "usedDescription": "È già stato accettato, rifiutato o annullato. Chiedi un nuovo invito se hai ancora bisogno di accedere.",
-      "expiredTitle": "Questo invito è scaduto",
-      "expiredDescription": "Gli inviti sono validi per 7 giorni. Chiedi a {inviter} di inviarne uno nuovo.",
       "alreadyMemberTitle": "Sei già in {organization}",
-      "alreadyMemberDescription": "Apri la dashboard e selezionala dal selettore delle organizzazioni.",
-      "openDashboard": "Vai alla dashboard"
+      "alreadyMemberDescription": "Sei già membro, quindi non c'è altro da fare.",
+      "openDashboard": "Vai alla dashboard",
+      "switchAccount": "Esci e cambia account",
+      "invalidTitle": "Questo invito non è più valido",
+      "invalidDescription": "Potrebbe essere scaduto, già stato usato o ritirato. Se hai ancora bisogno di accedere, chiedi un nuovo invito alla persona che ti ha invitato.",
+      "continueSetup": "Continua",
+      "openOrganization": "Apri {organization}",
+      "joined": "Ti sei unito a {organization}."
+    },
+    "danger": {
+      "title": "Zona pericolosa",
+      "description": "Eliminare {name} la rimuove, con tutto il suo contenuto, per tutti i membri. L'operazione è irreversibile.",
+      "delete": "Elimina organizzazione",
+      "confirmTitle": "Eliminare {name}?",
+      "confirmDescription": "Questa operazione elimina definitivamente {name} e tutto il suo contenuto, per tutti i membri. È irreversibile.",
+      "onlyOrganization": "È la tua unica organizzazione, quindi ne riceverai una nuova e vuota.",
+      "confirmLabel": "Digita {name} per confermare",
+      "confirm": "Elimina definitivamente",
+      "deleting": "Eliminazione...",
+      "deleted": "{name} è stata eliminata."
+    },
+    "access": {
+      "lost": "Non hai più accesso a {organization}."
     }
   }
 }

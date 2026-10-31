@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "Mindent megtehet, amit egy admin, és másokat is tulajdonossá tehet.",
       "admin": "Embereket hív meg és távolít el, szerepeket módosít, és átnevezi a szervezetet.",
-      "member": "A szervezet projektjein dolgozik."
+      "member": "Mindent láthat a szervezetben, és dolgozhat rajta."
     },
     "switcher": {
       "label": "Szervezet váltása",
       "heading": "Szervezeteid",
-      "create": "Szervezet létrehozása",
-      "settings": "Szervezet beállításai"
+      "create": "Szervezet létrehozása"
     },
     "settings": {
       "title": "Szervezet",
-      "description": "A(z) {name} minden tagja közösen használja a projekteket. A tulajdonosok és az adminok döntik el, ki tartozik hozzá.",
+      "description": "A(z) {name} tagjai mindenen osztoznak, ami benne van. A tulajdonosok és adminisztrátorok döntik el, ki tartozik bele.",
       "nameLabel": "Szervezet neve",
       "renamed": "A szervezet átnevezve.",
       "yourRole": "Szerepköröd: {role}",
@@ -510,8 +509,9 @@
       "remove": "Eltávolítás",
       "removeLabel": "{name} eltávolítása",
       "removeTitle": "Eltávolítod: {name}?",
-      "removeDescription": "{name} azonnal elveszíti a hozzáférését a(z) {organization} szervezethez és projektjeihez. Amit létrehozott, megmarad.",
-      "removed": "{name} eltávolítva."
+      "removeDescription": "{name} azonnal elveszíti a hozzáférést a(z) {organization} szervezethez. Amit létrehozott, a szervezetben marad.",
+      "removed": "{name} eltávolítva.",
+      "pageDescription": "Annak a szervezetnek a neve, tagjai és meghívói, amelyben dolgozik."
     },
     "invite": {
       "title": "Emberek meghívása",
@@ -524,25 +524,26 @@
       "sent": "Meghívó elküldve ide: {email}."
     },
     "pending": {
-      "title": "Függőben lévő meghívók",
+      "title": "Meghívók",
       "expires": "Lejár: {date}",
       "expired": "Lejárt",
       "resend": "Újraküldés",
       "resent": "A meghívó újra elküldve ide: {email}.",
       "cancel": "Meghívó visszavonása",
-      "canceled": "A(z) {email} címre szóló meghívó visszavonva."
+      "canceled": "A(z) {email} címre szóló meghívó visszavonva.",
+      "sent": "Elküldve: {date}",
+      "declined": "Elutasítva",
+      "inviteAgain": "Újbóli meghívás"
     },
     "leave": {
-      "title": "Kilépés a szervezetből",
-      "description": "Elveszíted a hozzáférést a(z) {name} szervezethez és projektjeihez. Csak új meghívóval juthatsz vissza.",
+      "description": "Elveszíti a hozzáférést a(z) {name} szervezethez és mindenhez, ami benne van. Csak új meghívóval térhet vissza.",
       "action": "Kilépés",
       "confirmTitle": "Kilépsz innen: {name}?",
-      "left": "Kiléptél innen: {name}.",
-      "onlyOrganization": "Ez az egyetlen szervezeted, ezért nem léphetsz ki belőle."
+      "left": "Kiléptél innen: {name}."
     },
     "create": {
       "title": "Új szervezet",
-      "description": "Hozz létre egy különálló szervezetet saját tagokkal és projektekkel. Te leszel a tulajdonosa.",
+      "description": "Hozzon létre külön szervezetet saját tagokkal és adatokkal. Ön lesz a tulajdonosa.",
       "action": "Szervezet létrehozása",
       "nameLabel": "Név",
       "namePlaceholder": "Acme Kft.",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "Meghívást kaptál",
-      "pageDescription": "Csatlakozz egy szervezethez, hogy a csapatoddal együtt dolgozhass a projektjein.",
+      "pageDescription": "Csatlakozzon egy szervezethez, hogy együtt dolgozzon a csapatával.",
       "title": "Csatlakozás: {organization}",
       "description": "{inviter} meghívott a(z) {organization} szervezetbe {role} szerepkörrel.",
       "accept": "Meghívó elfogadása",
       "accepting": "Csatlakozás...",
       "decline": "Elutasítás",
       "declined": "Elutasítottad a meghívót.",
-      "signedOutTitle": "Jelentkezz be a meghívó elfogadásához",
-      "signedOutDescription": "Használd azt az e-mail-címet, amelyre a meghívó érkezett. Új vagy itt? Hozz létre fiókot ezzel a címmel; a meghívód a vezérlőpulton vár majd.",
+      "signedOutTitle": "Jelentkezzen be a meghívó megtekintéséhez",
+      "signedOutDescription": "Jelentkezzen be, vagy hozzon létre fiókot azzal az e-mail-címmel, amelyre a meghívót küldték. Utána ide tér vissza.",
       "signIn": "Bejelentkezés",
       "signUp": "Fiók létrehozása",
       "signUpHint": "Meghívást kaptál egy szervezetbe. Hozd létre a fiókodat azzal az e-mail-címmel, amelyre a meghívó érkezett.",
-      "wrongAccountTitle": "Ez a meghívó egy másik fiókhoz tartozik",
-      "wrongAccountDescription": "A(z) {email} címre érkezett, de te {current} fiókkal vagy bejelentkezve. Jelentkezz ki, majd az elfogadáshoz jelentkezz be a(z) {email} címmel.",
+      "wrongAccountTitle": "Ez a meghívó egy másik fióknak szól",
+      "wrongAccountDescription": "{current} néven van bejelentkezve, de ezt a meghívót egy másik e-mail-címre küldték. Ha Önnek szól, jelentkezzen ki, és jelentkezzen be azzal a címmel, amelyre küldték.",
       "securityTitle": "Fejezd be a fiókod beállítását",
-      "securityDescription": "A fiókodnak még egy biztonsági lépésre van szüksége, mielőtt csatlakozhatsz ehhez: {organization}. Fejezd be az irányítópulton, majd térj vissza ehhez a hivatkozáshoz.",
+      "securityDescription": "A fiókjának még egy biztonsági lépésre van szüksége, mielőtt csatlakozhatna a(z) {organization} szervezethez. Végezze el, és ide tér vissza.",
       "verifyTitle": "Előbb erősítsd meg az e-mail-címedet",
       "verifyDescription": "A(z) {organization} szervezethez való csatlakozáshoz erősítsd meg, hogy a(z) {email} a te címed.",
       "verify": "E-mail megerősítése",
-      "notFoundTitle": "A meghívó nem található",
-      "notFoundDescription": "A hivatkozás hiányos lehet. Kérd meg a meghívódat küldő személyt, hogy küldjön új meghívót.",
-      "usedTitle": "Ez a meghívó már nem érvényes",
-      "usedDescription": "Már elfogadták, elutasították vagy visszavonták. Ha még szükséged van hozzáférésre, kérj új meghívót.",
-      "expiredTitle": "Ez a meghívó lejárt",
-      "expiredDescription": "A meghívók 7 napig érvényesek. Kérd meg {inviter} felhasználót, hogy küldjön újat.",
       "alreadyMemberTitle": "Már tagja vagy a(z) {organization} szervezetnek",
-      "alreadyMemberDescription": "Nyisd meg a vezérlőpultot, és válaszd ki a szervezetváltóban.",
-      "openDashboard": "Ugrás a vezérlőpultra"
+      "alreadyMemberDescription": "Már tag, így nincs további teendője.",
+      "openDashboard": "Ugrás a vezérlőpultra",
+      "switchAccount": "Kijelentkezés és fiókváltás",
+      "invalidTitle": "Ez a meghívó már nem érvényes",
+      "invalidDescription": "Lehet, hogy lejárt, már felhasználták vagy visszavonták. Ha továbbra is hozzáférésre van szüksége, kérjen új meghívót attól, aki meghívta.",
+      "continueSetup": "Tovább",
+      "openOrganization": "{organization} megnyitása",
+      "joined": "Csatlakozott a(z) {organization} szervezethez."
+    },
+    "danger": {
+      "title": "Veszélyzóna",
+      "description": "A(z) {name} törlése mindenestül eltávolítja a szervezetet minden tag számára. Ez nem vonható vissza.",
+      "delete": "Szervezet törlése",
+      "confirmTitle": "Törli a(z) {name} szervezetet?",
+      "confirmDescription": "Ez véglegesen törli a(z) {name} szervezetet mindenestül, minden tag számára. Ez nem vonható vissza.",
+      "onlyOrganization": "Ez az egyetlen szervezete, ezért kap egy új, üreset.",
+      "confirmLabel": "A megerősítéshez írja be: {name}",
+      "confirm": "Végleges törlés",
+      "deleting": "Törlés...",
+      "deleted": "A(z) {name} törölve."
+    },
+    "access": {
+      "lost": "Már nincs hozzáférése a(z) {organization} szervezethez."
     }
   }
 }

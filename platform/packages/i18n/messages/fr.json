@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "Peut tout ce que peut un admin et peut nommer d'autres propriétaires.",
       "admin": "Invite et retire des personnes, modifie les rôles et renomme l'organisation.",
-      "member": "Travaille sur les projets de l'organisation."
+      "member": "Peut voir et travailler sur tout ce que contient l'organisation."
     },
     "switcher": {
       "label": "Changer d'organisation",
       "heading": "Vos organisations",
-      "create": "Créer une organisation",
-      "settings": "Paramètres de l'organisation"
+      "create": "Créer une organisation"
     },
     "settings": {
       "title": "Organisation",
-      "description": "Toutes les personnes de {name} partagent ses projets. Les propriétaires et les admins décident qui en fait partie.",
+      "description": "Les membres de {name} en partagent tout le contenu. Les propriétaires et les administrateurs décident qui en fait partie.",
       "nameLabel": "Nom de l'organisation",
       "renamed": "Organisation renommée.",
       "yourRole": "Votre rôle : {role}",
@@ -510,8 +509,9 @@
       "remove": "Retirer",
       "removeLabel": "Retirer {name}",
       "removeTitle": "Retirer {name} ?",
-      "removeDescription": "{name} perd immédiatement l'accès à {organization} et à ses projets. Ce qu'elle a créé est conservé.",
-      "removed": "{name} a été retiré."
+      "removeDescription": "{name} perd immédiatement l'accès à {organization}. Ce que cette personne a créé reste dans l'organisation.",
+      "removed": "{name} a été retiré.",
+      "pageDescription": "Nom, membres et invitations de l'organisation dans laquelle vous travaillez."
     },
     "invite": {
       "title": "Inviter des personnes",
@@ -524,25 +524,26 @@
       "sent": "Invitation envoyée à {email}."
     },
     "pending": {
-      "title": "Invitations en attente",
+      "title": "Invitations",
       "expires": "Expire le {date}",
       "expired": "Expirée",
       "resend": "Renvoyer",
       "resent": "Invitation renvoyée à {email}.",
       "cancel": "Annuler l'invitation",
-      "canceled": "Invitation à {email} annulée."
+      "canceled": "Invitation à {email} annulée.",
+      "sent": "Envoyée le {date}",
+      "declined": "Refusée",
+      "inviteAgain": "Inviter à nouveau"
     },
     "leave": {
-      "title": "Quitter l'organisation",
-      "description": "Vous perdez l'accès à {name} et à ses projets. Seule une nouvelle invitation vous permettra d'y revenir.",
+      "description": "Vous perdez l'accès à {name} et à tout son contenu. Seule une nouvelle invitation vous permettra d'y revenir.",
       "action": "Quitter",
       "confirmTitle": "Quitter {name} ?",
-      "left": "Vous avez quitté {name}.",
-      "onlyOrganization": "C'est votre seule organisation, vous ne pouvez donc pas la quitter."
+      "left": "Vous avez quitté {name}."
     },
     "create": {
       "title": "Nouvelle organisation",
-      "description": "Créez une organisation distincte, avec ses propres membres et projets. Vous en serez le propriétaire.",
+      "description": "Créez une organisation distincte avec ses propres membres et données. Vous en serez le propriétaire.",
       "action": "Créer une organisation",
       "nameLabel": "Nom",
       "namePlaceholder": "Acme SAS",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "Vous êtes invité",
-      "pageDescription": "Rejoignez une organisation pour travailler avec votre équipe sur ses projets.",
+      "pageDescription": "Rejoignez une organisation pour travailler avec votre équipe.",
       "title": "Rejoindre {organization}",
       "description": "{inviter} vous a invité à rejoindre {organization} en tant que {role}.",
       "accept": "Accepter l'invitation",
       "accepting": "Inscription en cours...",
       "decline": "Refuser",
       "declined": "Vous avez refusé l'invitation.",
-      "signedOutTitle": "Connectez-vous pour accepter votre invitation",
-      "signedOutDescription": "Utilisez l'adresse e-mail à laquelle l'invitation a été envoyée. Nouveau ici ? Créez un compte avec cette adresse ; votre invitation vous attendra sur votre tableau de bord.",
+      "signedOutTitle": "Connectez-vous pour voir votre invitation",
+      "signedOutDescription": "Connectez-vous ou créez un compte avec l'adresse e-mail à laquelle l'invitation a été envoyée. Vous reviendrez ici ensuite.",
       "signIn": "Se connecter",
       "signUp": "Créer un compte",
       "signUpHint": "Vous avez été invité à rejoindre une organisation. Créez votre compte avec l'adresse e-mail à laquelle l'invitation a été envoyée.",
-      "wrongAccountTitle": "Cette invitation est destinée à un autre compte",
-      "wrongAccountDescription": "Elle a été envoyée à {email}, mais vous êtes connecté en tant que {current}. Déconnectez-vous, puis connectez-vous avec {email} pour l'accepter.",
+      "wrongAccountTitle": "Cette invitation concerne un autre compte",
+      "wrongAccountDescription": "Vous êtes connecté en tant que {current}, mais cette invitation a été envoyée à une autre adresse e-mail. Si elle vous est destinée, déconnectez-vous et connectez-vous avec l'adresse à laquelle elle a été envoyée.",
       "securityTitle": "Terminez la configuration de votre compte",
-      "securityDescription": "Votre compte nécessite une étape de sécurité supplémentaire avant de rejoindre {organization}. Terminez-la depuis le tableau de bord, puis revenez à ce lien.",
+      "securityDescription": "Votre compte nécessite encore une étape de sécurité avant de pouvoir rejoindre {organization}. Terminez-la et vous reviendrez ici.",
       "verifyTitle": "Vérifiez d'abord votre e-mail",
       "verifyDescription": "Pour rejoindre {organization}, confirmez que {email} est bien votre adresse.",
       "verify": "Vérifier l'e-mail",
-      "notFoundTitle": "Invitation introuvable",
-      "notFoundDescription": "Le lien est peut-être incomplet. Demandez à la personne qui vous a invité d'envoyer une nouvelle invitation.",
-      "usedTitle": "Cette invitation n'est plus valide",
-      "usedDescription": "Elle a déjà été acceptée, refusée ou annulée. Demandez une nouvelle invitation si vous avez toujours besoin d'un accès.",
-      "expiredTitle": "Cette invitation a expiré",
-      "expiredDescription": "Les invitations sont valables 7 jours. Demandez à {inviter} d'en envoyer une nouvelle.",
       "alreadyMemberTitle": "Vous êtes déjà dans {organization}",
-      "alreadyMemberDescription": "Ouvrez le tableau de bord et sélectionnez-la dans le sélecteur d'organisation.",
-      "openDashboard": "Aller au tableau de bord"
+      "alreadyMemberDescription": "Vous êtes déjà membre, il n'y a rien d'autre à faire.",
+      "openDashboard": "Aller au tableau de bord",
+      "switchAccount": "Se déconnecter et changer de compte",
+      "invalidTitle": "Cette invitation n'est plus valide",
+      "invalidDescription": "Elle a peut-être expiré, déjà été utilisée ou été retirée. Si vous avez toujours besoin d'accès, demandez une nouvelle invitation à la personne qui vous a invité.",
+      "continueSetup": "Continuer",
+      "openOrganization": "Ouvrir {organization}",
+      "joined": "Vous avez rejoint {organization}."
+    },
+    "danger": {
+      "title": "Zone de danger",
+      "description": "Supprimer {name} la retire, avec tout son contenu, pour tous les membres. Cette action est irréversible.",
+      "delete": "Supprimer l'organisation",
+      "confirmTitle": "Supprimer {name} ?",
+      "confirmDescription": "Cela supprime définitivement {name} et tout son contenu, pour tous les membres. Cette action est irréversible.",
+      "onlyOrganization": "C'est votre seule organisation : vous en recevrez une nouvelle, vide.",
+      "confirmLabel": "Saisissez {name} pour confirmer",
+      "confirm": "Supprimer définitivement",
+      "deleting": "Suppression...",
+      "deleted": "{name} a été supprimée."
+    },
+    "access": {
+      "lost": "Vous n'avez plus accès à {organization}."
     }
   }
 }

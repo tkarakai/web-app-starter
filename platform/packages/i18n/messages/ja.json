@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "管理者ができることはすべてでき、他のユーザーをオーナーにできます。",
       "admin": "ユーザーの招待と削除、ロールの変更、組織名の変更ができます。",
-      "member": "組織のプロジェクトで作業します。"
+      "member": "組織内のすべてを閲覧し、作業できます。"
     },
     "switcher": {
       "label": "組織を切り替える",
       "heading": "あなたの組織",
-      "create": "組織を作成",
-      "settings": "組織の設定"
+      "create": "組織を作成"
     },
     "settings": {
       "title": "組織",
-      "description": "{name} の全員がプロジェクトを共有します。参加できる人はオーナーと管理者が決めます。",
+      "description": "{name} のメンバーは、その中のすべてを共有します。参加者はオーナーと管理者が決めます。",
       "nameLabel": "組織名",
       "renamed": "組織名を変更しました。",
       "yourRole": "あなたのロール: {role}",
@@ -510,8 +509,9 @@
       "remove": "削除",
       "removeLabel": "{name} を削除",
       "removeTitle": "{name} を削除しますか？",
-      "removeDescription": "{name} は {organization} とそのプロジェクトにすぐアクセスできなくなります。作成したものは残ります。",
-      "removed": "{name} を削除しました。"
+      "removeDescription": "{name} は {organization} へのアクセスをすぐに失います。作成したものは組織に残ります。",
+      "removed": "{name} を削除しました。",
+      "pageDescription": "作業中の組織の名前、メンバー、招待です。"
     },
     "invite": {
       "title": "ユーザーを招待",
@@ -524,25 +524,26 @@
       "sent": "{email} に招待を送信しました。"
     },
     "pending": {
-      "title": "保留中の招待",
+      "title": "招待",
       "expires": "有効期限: {date}",
       "expired": "期限切れ",
       "resend": "再送信",
       "resent": "{email} に招待を再送信しました。",
       "cancel": "招待を取り消す",
-      "canceled": "{email} への招待を取り消しました。"
+      "canceled": "{email} への招待を取り消しました。",
+      "sent": "{date} に送信",
+      "declined": "辞退",
+      "inviteAgain": "再度招待"
     },
     "leave": {
-      "title": "組織から退出",
-      "description": "{name} とそのプロジェクトにアクセスできなくなります。再び参加するには新しい招待が必要です。",
+      "description": "{name} とその中のすべてへのアクセスを失います。戻るには新しい招待が必要です。",
       "action": "退出",
       "confirmTitle": "{name} から退出しますか？",
-      "left": "{name} から退出しました。",
-      "onlyOrganization": "これはあなたの唯一の組織のため、退出できません。"
+      "left": "{name} から退出しました。"
     },
     "create": {
       "title": "新しい組織",
-      "description": "独自のメンバーとプロジェクトを持つ別の組織を作成します。あなたがオーナーになります。",
+      "description": "独自のメンバーとデータを持つ別の組織を作成します。あなたがオーナーになります。",
       "action": "組織を作成",
       "nameLabel": "名前",
       "namePlaceholder": "株式会社Acme",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "招待されています",
-      "pageDescription": "組織に参加して、チームでプロジェクトに取り組みましょう。",
+      "pageDescription": "組織に参加して、チームと一緒に作業しましょう。",
       "title": "{organization} に参加",
       "description": "{inviter} さんが、{role} として {organization} への参加に招待しています。",
       "accept": "招待を承諾",
       "accepting": "参加中...",
       "decline": "辞退",
       "declined": "招待を辞退しました。",
-      "signedOutTitle": "招待を承諾するにはログインしてください",
-      "signedOutDescription": "招待の送信先メールアドレスを使用してください。初めての方は、そのアドレスでアカウントを作成してください。招待はダッシュボードに表示されます。",
+      "signedOutTitle": "サインインして招待を確認",
+      "signedOutDescription": "招待が送信されたメールアドレスでサインインするか、アカウントを作成してください。その後、このページに戻ります。",
       "signIn": "ログイン",
       "signUp": "アカウント作成",
       "signUpHint": "組織への参加に招待されています。招待の送信先メールアドレスでアカウントを作成してください。",
       "wrongAccountTitle": "この招待は別のアカウント宛てです",
-      "wrongAccountDescription": "招待の送信先は {email} ですが、現在 {current} でログインしています。ログアウトしてから {email} でログインし、承諾してください。",
+      "wrongAccountDescription": "{current} としてサインインしていますが、この招待は別のメールアドレスに送信されました。あなた宛ての場合は、サインアウトして送信先のアドレスでサインインしてください。",
       "securityTitle": "アカウントの設定を完了してください",
-      "securityDescription": "{organization} に参加する前に、アカウントでもう 1 つセキュリティの手順が必要です。ダッシュボードで完了してから、このリンクに戻ってください。",
+      "securityDescription": "{organization} に参加するには、アカウントでもう 1 つセキュリティ手順を完了する必要があります。完了すると、このページに戻ります。",
       "verifyTitle": "まずメールを確認してください",
       "verifyDescription": "{organization} に参加するには、{email} があなたのアドレスであることを確認してください。",
       "verify": "メールを確認",
-      "notFoundTitle": "招待が見つかりません",
-      "notFoundDescription": "リンクが途中で切れている可能性があります。招待した人に新しい招待の送信を依頼してください。",
-      "usedTitle": "この招待は無効です",
-      "usedDescription": "すでに承諾、辞退、または取り消されています。引き続きアクセスが必要な場合は、新しい招待を依頼してください。",
-      "expiredTitle": "この招待は期限切れです",
-      "expiredDescription": "招待の有効期間は7日間です。{inviter} さんに新しい招待の送信を依頼してください。",
       "alreadyMemberTitle": "すでに {organization} に参加しています",
-      "alreadyMemberDescription": "ダッシュボードを開き、組織スイッチャーから選択してください。",
-      "openDashboard": "ダッシュボードへ"
+      "alreadyMemberDescription": "すでにメンバーのため、これ以上の操作は不要です。",
+      "openDashboard": "ダッシュボードへ",
+      "switchAccount": "サインアウトしてアカウントを切り替える",
+      "invalidTitle": "この招待は無効になりました",
+      "invalidDescription": "期限切れ、使用済み、または取り消された可能性があります。引き続きアクセスが必要な場合は、招待した人に新しい招待を依頼してください。",
+      "continueSetup": "続行",
+      "openOrganization": "{organization} を開く",
+      "joined": "{organization} に参加しました。"
+    },
+    "danger": {
+      "title": "危険な操作",
+      "description": "{name} を削除すると、その中のすべてとともに全メンバーから削除されます。元に戻すことはできません。",
+      "delete": "組織を削除",
+      "confirmTitle": "{name} を削除しますか？",
+      "confirmDescription": "{name} とその中のすべてが、全メンバーについて完全に削除されます。元に戻すことはできません。",
+      "onlyOrganization": "これが唯一の組織のため、新しい空の組織が作成されます。",
+      "confirmLabel": "確認のため {name} と入力してください",
+      "confirm": "完全に削除",
+      "deleting": "削除しています...",
+      "deleted": "{name} を削除しました。"
+    },
+    "access": {
+      "lost": "{organization} にアクセスできなくなりました。"
     }
   }
 }

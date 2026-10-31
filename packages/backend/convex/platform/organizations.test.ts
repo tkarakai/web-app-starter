@@ -57,10 +57,77 @@ describe("organizations", () => {
     });
 
     const asOwner = await alice.caller.query(api.platform.organizations.active, {});
-    expect(asOwner).toMatchObject({ id: acme, role: "owner", memberCount: 2, invitations: [{ email: "carol@example.test", expired: false }] });
+    expect(asOwner).toMatchObject({ id: acme, role: "owner", memberCount: 2, invitations: [{ email: "carol@example.test", status: "pending" }] });
     expect(asOwner!.members.map((m) => [m.name, m.role, m.isYou])).toEqual([["alice", "owner", true], ["bob", "member", false]]);
     const asMember = await bob.caller.query(api.platform.organizations.active, {});
     expect(asMember).toMatchObject({ role: "member", memberCount: 2, invitations: [] });
+  });
+
+  test("the invitation list shows what became of each address: pending, expired or declined", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    await f.addMember(acme, bob.userId, "member");
+    const day = 86_400_000;
+    const invite = (email: string, status: string, sentDaysAgo: number) => f.t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId: acme, email, role: "member", status, inviterId: alice.userId,
+        createdAt: Date.now() - sentDaysAgo * day, expiresAt: Date.now() + (7 - sentDaysAgo) * day,
+      } },
+    });
+    await invite("carol@example.test", "pending", 1);
+    await invite("dave@example.test", "pending", 9);
+    await invite("erin@example.test", "rejected", 2);
+    // Superseded by a later invitation to the same address.
+    await invite("frank@example.test", "rejected", 5);
+    await invite("frank@example.test", "pending", 1);
+    // Declined long ago, joined since, or canceled: not listed.
+    await invite("gina@example.test", "rejected", 40);
+    await invite("bob@example.test", "rejected", 3);
+    await invite("hank@example.test", "canceled", 1);
+
+    const { invitations } = (await alice.caller.query(api.platform.organizations.active, {}))!;
+    expect(invitations.map((i) => [i.email, i.status]).sort()).toEqual([
+      ["carol@example.test", "pending"], ["dave@example.test", "expired"],
+      ["erin@example.test", "declined"], ["frank@example.test", "pending"],
+    ]);
+  });
+
+  test("the invitation page tells only the invited address about the invitation", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const carol = await f.user("carol");
+    const mallory = await f.user("mallory");
+    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const create = (status: string, expiresAt = Date.now() + 86_400_000) => f.t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId: acme, email: "carol@example.test", role: "admin", status, inviterId: alice.userId, createdAt: Date.now(), expiresAt,
+      } },
+    });
+    const pending = await create("pending");
+    const view = (who: { caller: typeof carol.caller }, id: string) => who.caller.query(api.platform.organizations.invitation, { id });
+
+    expect(await view(carol, pending._id)).toEqual({
+      state: "open", organizationName: "alice", inviterName: "alice", role: "admin", email: "carol@example.test",
+    });
+    // Someone else holding the link learns only that it isn't theirs.
+    expect(await view(mallory, pending._id)).toEqual({ state: "wrongAccount", signedInAs: "mallory@example.test" });
+    expect(await f.t.query(api.platform.organizations.invitation, { id: pending._id })).toBeNull();
+
+    // Spent, expired and unknown links all read the same, for the recipient too.
+    for (const id of [(await create("rejected"))._id, (await create("canceled"))._id, (await create("pending", Date.now() - 1))._id, "not-an-id"]) {
+      expect(await view(carol, id)).toEqual({ state: "invalid" });
+      expect(await view(mallory, id)).toEqual({ state: "invalid" });
+    }
+
+    // Once the recipient has joined, the link just says so.
+    await f.addMember(acme, carol.userId, "admin");
+    await f.t.mutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "invitation", where: [{ field: "_id", value: pending._id }], update: { status: "accepted" } },
+    });
+    expect(await view(carol, pending._id)).toEqual({ state: "member", organizationId: acme, organizationName: "alice" });
+    expect(await view(mallory, pending._id)).toEqual({ state: "invalid" });
   });
 
   test("invitations are shown to their recipient only as theirs, and admit the address to sign up", async () => {
@@ -77,12 +144,9 @@ describe("organizations", () => {
     });
 
     expect(await carol.caller.query(api.platform.organizations.myInvitations, {})).toMatchObject([
-      { id: invitation._id, organizationName: "alice", inviterName: "alice", role: "admin", isRecipient: true },
+      { id: invitation._id, organizationName: "alice", inviterName: "alice", role: "admin" },
     ]);
     expect(await mallory.caller.query(api.platform.organizations.myInvitations, {})).toEqual([]);
-    expect(await mallory.caller.query(api.platform.organizations.invitation, { id: invitation._id }))
-      .toMatchObject({ isRecipient: false, email: "carol@example.test" });
-    expect(await carol.caller.query(api.platform.organizations.invitation, { id: "not-an-id" })).toBeNull();
 
     expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: " Carol@Example.test " })).toBe(true);
     await f.t.mutation(components.betterAuth.adapter.updateOne, {
@@ -122,10 +186,10 @@ describe("organizations", () => {
   });
 
   test("only the organization routes the UI uses pass the session-assurance plugin", () => {
-    for (const path of ["/organization/create", "/organization/set-active", "/organization/invite-member", "/organization/accept-invitation", "/organization/leave"]) {
+    for (const path of ["/organization/create", "/organization/set-active", "/organization/invite-member", "/organization/accept-invitation", "/organization/leave", "/organization/delete"]) {
       expect(authRoutePolicy(path)).toBe("organization");
     }
-    for (const path of ["/organization/delete", "/organization/add-member", "/organization/create-team", "/organization/create-role", "/organization/list"]) {
+    for (const path of ["/organization/add-member", "/organization/create-team", "/organization/create-role", "/organization/list"]) {
       expect(authRoutePolicy(path)).toBe("disabled");
     }
   });

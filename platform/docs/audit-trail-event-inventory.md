@@ -171,6 +171,7 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 |---|---|---|---|
 | `organization.created` | `server:auth-organization-hook` | creator | — |
 | `organization.updated` | `server:auth-organization-hook` | user who renamed it | — |
+| `organization.deleted` | `server:auth-organization-hook` | owner who deleted it | — |
 | `organization.invitation.sent` | `server:auth-organization-hook` | inviter | `invitationId`, `role` |
 | `organization.invitation.canceled` | `server:auth-organization-hook` | user who canceled it | `invitationId` |
 | `organization.invitation.accepted` | `server:auth-organization-hook` | new member | `invitationId`, `role` |

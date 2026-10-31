@@ -21,7 +21,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `orgQuery`/`orgMutation` builders (`ctx.organizationId`, re-checked against membership on
   every call). The UI comes from `@web-app-starter/auth-ui`: `OrganizationSwitcher`,
   `OrganizationSection`, `OrganizationInvitations` and `AcceptInvitationView`. An organization
-  invitation admits its address to sign-up even when sign-up is closed. The reference app's
+  invitation admits its address to sign-up even when sign-up is closed; a link opened while
+  signed out brings the user back to it after sign-in or sign-up, and only the invited address
+  learns anything about it. Owners can delete an organization (after recent authentication);
+  the app removes its own rows in `convex/organizationData.ts`. The reference app's
   projects (and their tasks and files) now belong to, and are shared within, the active
   organization; its migration moves existing projects into each creator's personal
   organization. Existing apps keep working unchanged: their per-user tables stay per-user until
@@ -84,6 +87,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- The mobile sidebar drawer starts below the environment banner, as the desktop sidebar does;
+  the banner used to cover the top of the drawer.
 - Admin no longer counts its static icons (`favicon.ico`, `icon.svg`, `apple-touch-icon.png`) against
   the per-IP page rate limit. Every page load and connectivity check fetched them, so active admins
   reached the 100-per-minute limit after about a third as many pages, and fast local E2E runs hit

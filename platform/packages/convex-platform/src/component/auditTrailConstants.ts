@@ -91,6 +91,7 @@ export const AUDIT_ACTIONS = [
   // organization.*
   "organization.created",
   "organization.updated",
+  "organization.deleted",
   "organization.invitation.sent",
   "organization.invitation.canceled",
   "organization.invitation.accepted",

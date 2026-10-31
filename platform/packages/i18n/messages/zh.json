@@ -487,17 +487,16 @@
     "roleHelp": {
       "owner": "可以执行管理员的所有操作，并可将其他人设为所有者。",
       "admin": "邀请和移除成员、更改角色并重命名组织。",
-      "member": "参与组织的项目。"
+      "member": "可以查看并处理组织中的所有内容。"
     },
     "switcher": {
       "label": "切换组织",
       "heading": "你的组织",
-      "create": "创建组织",
-      "settings": "组织设置"
+      "create": "创建组织"
     },
     "settings": {
       "title": "组织",
-      "description": "{name} 中的所有人共享其项目。所有者和管理员决定谁可以加入。",
+      "description": "{name} 的成员共享其中的所有内容。所有者和管理员决定谁可以加入。",
       "nameLabel": "组织名称",
       "renamed": "组织已重命名。",
       "yourRole": "你的角色：{role}",
@@ -510,8 +509,9 @@
       "remove": "移除",
       "removeLabel": "移除 {name}",
       "removeTitle": "移除 {name}？",
-      "removeDescription": "{name} 将立即失去对 {organization} 及其项目的访问权限。其创建的内容会保留。",
-      "removed": "已移除 {name}。"
+      "removeDescription": "{name} 将立即失去对 {organization} 的访问权限。其创建的内容会保留在组织中。",
+      "removed": "已移除 {name}。",
+      "pageDescription": "你当前所在组织的名称、成员和邀请。"
     },
     "invite": {
       "title": "邀请成员",
@@ -524,25 +524,26 @@
       "sent": "已向 {email} 发送邀请。"
     },
     "pending": {
-      "title": "待处理的邀请",
+      "title": "邀请",
       "expires": "过期时间：{date}",
       "expired": "已过期",
       "resend": "重新发送",
       "resent": "已再次向 {email} 发送邀请。",
       "cancel": "取消邀请",
-      "canceled": "已取消发给 {email} 的邀请。"
+      "canceled": "已取消发给 {email} 的邀请。",
+      "sent": "发送于 {date}",
+      "declined": "已拒绝",
+      "inviteAgain": "再次邀请"
     },
     "leave": {
-      "title": "退出组织",
-      "description": "你将失去对 {name} 及其项目的访问权限。只有收到新的邀请才能重新加入。",
+      "description": "你将失去对 {name} 及其所有内容的访问权限。只有新的邀请才能让你重新加入。",
       "action": "退出",
       "confirmTitle": "退出 {name}？",
-      "left": "你已退出 {name}。",
-      "onlyOrganization": "这是你唯一的组织，因此无法退出。"
+      "left": "你已退出 {name}。"
     },
     "create": {
       "title": "新建组织",
-      "description": "创建一个拥有独立成员和项目的组织。你将成为其所有者。",
+      "description": "创建一个拥有自己成员和数据的独立组织。你将成为其所有者。",
       "action": "创建组织",
       "nameLabel": "名称",
       "namePlaceholder": "Acme 有限公司",
@@ -566,34 +567,49 @@
     },
     "invitation": {
       "pageHeading": "你收到了邀请",
-      "pageDescription": "加入组织，与团队一起处理其项目。",
+      "pageDescription": "加入组织，与团队一起工作。",
       "title": "加入 {organization}",
       "description": "{inviter} 邀请你以{role}身份加入 {organization}。",
       "accept": "接受邀请",
       "accepting": "正在加入...",
       "decline": "拒绝",
       "declined": "你已拒绝邀请。",
-      "signedOutTitle": "登录以接受邀请",
-      "signedOutDescription": "请使用收到邀请的电子邮件地址。第一次使用？请用该地址创建账户，你的邀请会显示在控制面板中。",
+      "signedOutTitle": "登录以查看你的邀请",
+      "signedOutDescription": "请使用邀请发送到的电子邮件地址登录或创建账户。完成后你将回到此处。",
       "signIn": "登录",
       "signUp": "创建账户",
       "signUpHint": "你被邀请加入一个组织。请使用收到邀请的电子邮件地址创建账户。",
-      "wrongAccountTitle": "此邀请属于另一个账户",
-      "wrongAccountDescription": "邀请发送至 {email}，但你当前登录的是 {current}。请先退出登录，再使用 {email} 登录以接受邀请。",
+      "wrongAccountTitle": "此邀请属于其他账户",
+      "wrongAccountDescription": "你当前以 {current} 身份登录，但此邀请发送到了另一个电子邮件地址。如果邀请是发给你的，请退出登录，并使用邀请发送到的地址登录。",
       "securityTitle": "完成账户设置",
-      "securityDescription": "加入 {organization} 之前，你的账户还需要完成一项安全步骤。请在控制台中完成，然后返回此链接。",
+      "securityDescription": "在加入 {organization} 之前，你的账户还需要完成一个安全步骤。完成后你将回到此处。",
       "verifyTitle": "请先验证你的邮箱",
       "verifyDescription": "要加入 {organization}，请确认 {email} 是你的地址。",
       "verify": "验证邮箱",
-      "notFoundTitle": "未找到邀请",
-      "notFoundDescription": "链接可能不完整。请让邀请你的人重新发送邀请。",
-      "usedTitle": "此邀请已失效",
-      "usedDescription": "它已被接受、拒绝或取消。如果你仍需要访问权限，请申请新的邀请。",
-      "expiredTitle": "此邀请已过期",
-      "expiredDescription": "邀请的有效期为 7 天。请让 {inviter} 重新发送。",
       "alreadyMemberTitle": "你已在 {organization} 中",
-      "alreadyMemberDescription": "打开控制面板，并在组织切换器中选择它。",
-      "openDashboard": "前往控制面板"
+      "alreadyMemberDescription": "你已经是成员，无需再做任何操作。",
+      "openDashboard": "前往控制面板",
+      "switchAccount": "退出登录并切换账户",
+      "invalidTitle": "此邀请已失效",
+      "invalidDescription": "它可能已过期、已被使用或已被撤回。如果你仍需要访问权限，请让邀请你的人重新发送邀请。",
+      "continueSetup": "继续",
+      "openOrganization": "打开 {organization}",
+      "joined": "你已加入 {organization}。"
+    },
+    "danger": {
+      "title": "危险区域",
+      "description": "删除 {name} 会为所有成员移除该组织及其所有内容。此操作无法撤销。",
+      "delete": "删除组织",
+      "confirmTitle": "删除 {name}？",
+      "confirmDescription": "这将为所有成员永久删除 {name} 及其所有内容。此操作无法撤销。",
+      "onlyOrganization": "这是你唯一的组织，因此你将获得一个新的空组织。",
+      "confirmLabel": "输入 {name} 以确认",
+      "confirm": "永久删除",
+      "deleting": "正在删除...",
+      "deleted": "已删除 {name}。"
+    },
+    "access": {
+      "lost": "你已无法访问 {organization}。"
     }
   }
 }

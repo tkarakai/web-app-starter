@@ -226,7 +226,7 @@ export function AppSidebar({
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings?tab=organization")}>
+                  <DropdownMenuItem onSelect={() => router.push("/dashboard/organization")}>
                     <Building2 className="me-2 h-4 w-4" />
                     {to("label")}
                   </DropdownMenuItem>

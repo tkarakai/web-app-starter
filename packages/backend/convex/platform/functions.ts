@@ -4,7 +4,7 @@ import {
   customCtx,
   customMutation,
 } from "convex-helpers/server/customFunctions";
-import type { ObjectType, PropertyValidators } from "convex/values";
+import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
 import { ensurePersonalOrganization, resolveActiveOrganization, type ActiveOrganization } from "./organizationAccess";
@@ -14,8 +14,8 @@ import {
   getEmailVerificationRequiredKey,
   getPolicyScopeFromRole,
 } from "./securityPolicies";
-import type { QueryCtx } from "../_generated/server";
-import { mutation, query } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { internalMutation, mutation, query } from "../_generated/server";
 
 async function getBooleanSetting(
   ctx: QueryCtx,
@@ -176,6 +176,21 @@ export const orgMutation = customMutation(
     return { ...auth, ...organization };
   }),
 );
+
+/**
+ * Builds the app's cleanup for a deleted organization. Export it as `deleteOrganizationData`
+ * from `convex/organizationData.ts`; the platform runs it after an owner deletes an
+ * organization. Each call deletes one batch of the organization's rows and returns `true`
+ * once none are left; the platform calls it again until then. Without it, a deleted
+ * organization's rows stay in the database, unreachable. See platform/docs/organizations.md.
+ */
+export function organizationDataCleanup(deleteBatch: (ctx: MutationCtx, organizationId: string) => Promise<boolean>) {
+  return internalMutation({
+    args: { organizationId: v.string() },
+    returns: v.object({ done: v.boolean() }),
+    handler: async (ctx, args) => ({ done: await deleteBatch(ctx, args.organizationId) }),
+  });
+}
 
 /** Administrative writes additionally require recent authentication under current policy. */
 export const adminMutation = captureNativeBuilder(customMutation(
