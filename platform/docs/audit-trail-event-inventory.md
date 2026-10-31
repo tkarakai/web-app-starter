@@ -174,7 +174,7 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `organization.deleted` | `server:auth-organization-hook` | owner who deleted it | — |
 | `organization.invitation.sent` | `server:auth-organization-hook` | inviter | `invitationId`, `role` |
 | `organization.invitation.canceled` | `server:auth-organization-hook` | user who canceled it | `invitationId` |
-| `organization.invitation.deleted` | `server:organization-mutation` | owner or admin who deleted it | `invitationId`, `status` |
+| `organization.invitation.deleted` | `server:organization-mutation` | owner or admin who deleted it | `invitationIds`, `statuses` (all unaccepted invitations to the address in that organization) |
 | `organization.invitation.accepted` | `server:auth-organization-hook` | new member | `invitationId`, `role` |
 | `organization.invitation.rejected` | `server:auth-organization-hook` | invitee | `invitationId` |
 | `organization.member.removed` | `server:auth-endpoint-hook` | owner or admin who removed them | `endpoint`, `member` |

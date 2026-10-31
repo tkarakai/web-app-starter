@@ -190,9 +190,12 @@ export const invitation = query({
 });
 
 /**
- * Delete one of the active organization's invitations, whatever its state: owners and admins
- * only. Deleting a pending invitation also stops its link working (it then reads as no longer
- * valid). Better Auth has no route for this; it only cancels pending invitations.
+ * Delete an invitation from the active organization's list, whatever its state: owners and
+ * admins only. The list shows one row per address, so this deletes every invitation to that
+ * address in the organization except accepted ones (which only record how a member joined);
+ * otherwise an older declined or expired invitation would take the deleted one's place.
+ * A deleted pending invitation's link then reads as no longer valid. Better Auth has no route
+ * for this; it only cancels pending invitations.
  */
 export const deleteInvitation = orgMutation({
   args: { invitationId: v.string() },
@@ -200,9 +203,23 @@ export const deleteInvitation = orgMutation({
     if (ctx.organizationRole === "member") throw new Error("NOT_ALLOWED");
     const invitation = await findById(ctx, "invitation", args.invitationId);
     if (!invitation || invitation.organizationId !== ctx.organizationId) throw new Error("INVITATION_NOT_FOUND");
-    await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
-      input: { model: "invitation", where: [{ field: "_id", value: invitation._id }] },
-    });
+    const deleted: Doc<"invitation">[] = [];
+    let cursor: string | null = null;
+    // Read every page before deleting: invitation history can accumulate across re-invites.
+    do {
+      const rows: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+        model: "invitation",
+        where: [{ field: "email", value: invitation.email }, { field: "organizationId", value: ctx.organizationId }],
+        paginationOpts: { numItems: 100, cursor },
+      });
+      deleted.push(...(rows.page as Doc<"invitation">[]).filter((row) => row.status !== "accepted"));
+      cursor = rows.isDone ? null : rows.continueCursor;
+    } while (cursor);
+    for (const row of deleted) {
+      await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+        input: { model: "invitation", where: [{ field: "_id", value: row._id }] },
+      });
+    }
     await scheduleAuditEvent(ctx, {
       actor: ctx.user.email,
       authenticatedUserId: ctx.user._id,
@@ -210,7 +227,7 @@ export const deleteInvitation = orgMutation({
       action: "organization.invitation.deleted",
       resource: `organization:${ctx.organizationId}`,
       status: "succeeded",
-      meta: JSON.stringify({ invitationId: invitation._id, status: invitation.status }),
+      meta: JSON.stringify({ invitationIds: deleted.map((row) => row._id), statuses: deleted.map((row) => row.status) }),
     });
   },
 });

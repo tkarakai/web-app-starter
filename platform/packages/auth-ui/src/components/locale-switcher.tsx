@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useMutation } from "convex/react";
@@ -22,6 +23,7 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
   const user = useAuthUser();
   const setLocale = useMutation(api.platform.userProfiles.setLocale);
   const isOnline = useNetworkStatus();
+  const [changingLocale, setChangingLocale] = useState(false);
 
   const localeOptions = locales.map((code) => ({
     code,
@@ -29,16 +31,16 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
     flag: localeMetadata[code as Locale].flag,
   }));
 
-  const handleLocaleChange = (newLocale: string) => {
+  const handleLocaleChange = async (newLocale: string) => {
+    if (newLocale === locale || changingLocale) return;
+    setChangingLocale(true);
     // Save to localStorage + cookie (immediate, for next-intl middleware)
     persistLocale(newLocale);
 
-    // Save to Convex if authenticated (fire-and-forget, non-blocking)
-    if (user) {
-      setLocale({ locale: newLocale }).catch(() => {
-        // Non-blocking; localStorage will be used as fallback
-      });
-    }
+    // Save to Convex if authenticated, and let it finish before the page reloads: the Convex
+    // client answers a reload during an unfinished mutation with a "Leave site?" prompt,
+    // which leaves the page in the old language. Failure is fine; the cookie still applies.
+    if (user) await setLocale({ locale: newLocale }).catch(() => {});
 
     // Navigate to new locale path, preserving query parameters (e.g. invitation token)
     const segments = pathname.split("/");
@@ -52,11 +54,11 @@ export function LocaleSwitcher({ className, variant }: LocaleSwitcherProps) {
     <LanguageSelector
       currentLocale={locale}
       locales={localeOptions}
-      onSelect={handleLocaleChange}
+      onSelect={(newLocale) => void handleLocaleChange(newLocale)}
       ariaLabel={tl("ariaLabel")}
       className={className}
       variant={variant}
-      disabled={!isOnline}
+      disabled={!isOnline || changingLocale}
     />
   );
 }

@@ -13,7 +13,7 @@ import { PasskeySection } from "../settings/passkey-section";
 
 type Props = {
   children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean;
-  /** Inside a dialog the user can just close it: no page margins and no sign-out escape. */
+  /** Within a page or dialog with its own navigation: no page margins or sign-out escape. */
   embedded?: boolean;
 };
 

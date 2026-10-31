@@ -44,7 +44,7 @@ export function SecuritySection() {
   const enforce = searchParams.get("enforce");
 
   return (
-    <SessionAccessGate requireRecent><Card>
+    <SessionAccessGate requireRecent embedded><Card>
       <CardHeader>
         <CardTitle>{td("security")}</CardTitle>
       </CardHeader>

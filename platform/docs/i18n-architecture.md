@@ -571,6 +571,12 @@ the page to survive a switch) and so still shows the message in development.
 
 #### For Authenticated Users (Cross-Device Sync)
 
+Both the settings language field and `LocaleSwitcher` persist the local choice, then **await
+`userProfiles.setLocale` before loading the new locale URL**. Reloading with an unfinished
+Convex mutation triggers its unsaved-changes prompt, which can leave the old language on screen.
+Do not race the save against a timeout and reload while it is pending. The selector is disabled
+offline and while saving; a rejected save still permits navigation using the local choice.
+
 The `useProfileSync` hook keeps the Convex user profile and localStorage in step. The Convex value wins.
 
 **How it works:**

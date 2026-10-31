@@ -93,8 +93,10 @@ An existing user also sees pending invitations as a banner on the dashboard, wit
 On the inviting side, the organization page lists each invited address once, with its latest
 invitation: **pending** (with its expiry; resend), **expired** (resend), or
 **declined** for 30 days (invite again). Owners and admins can delete an invitation in any
-state, after confirming (`api.platform.organizations.deleteInvitation`); a deleted pending
-invitation's link then reads as no longer valid. An accepted invitation shows as a new member.
+state, after confirming (`api.platform.organizations.deleteInvitation`). Deleting the row removes
+all unaccepted invitations to that address in the active organization, so an older declined or
+expired invitation cannot take its place. Their links then read as no longer valid. Accepted
+records are retained; a current member appears in the members list instead.
 
 ## Deleting an organization
 

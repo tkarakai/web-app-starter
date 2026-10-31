@@ -108,21 +108,33 @@ describe("organizations", () => {
         organizationId, email, role: "member", status, inviterId: alice.userId, createdAt: Date.now(), expiresAt: Date.now() + 86_400_000,
       } },
     });
+    // Dave was invited before and declined: the list shows only his latest invitation.
+    await invite(acme, "dave@example.test", "rejected");
+    for (let i = 0; i < 101; i++) await invite(acme, "dave@example.test", "canceled");
     const pending = await invite(acme, "dave@example.test", "pending");
     const declined = await invite(acme, "erin@example.test", "rejected");
+    // Erin joined through an earlier invitation: that record stays.
+    await invite(acme, "erin@example.test", "accepted");
     const foreign = await invite(other, "frank@example.test", "pending");
+    await invite(other, "erin@example.test", "pending");
 
     await expect(bob.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: pending._id })).rejects.toThrow("NOT_ALLOWED");
     await expect(alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: foreign._id })).rejects.toThrow("INVITATION_NOT_FOUND");
     await expect(alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "not-an-id" })).rejects.toThrow("INVITATION_NOT_FOUND");
 
-    for (const invitation of [pending, declined]) {
-      await alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: invitation._id });
-    }
+    // One delete removes the row: an older invitation to the same address doesn't take its place.
+    await alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: pending._id });
+    expect((await alice.caller.query(api.platform.organizations.active, {}))!.invitations.map((i) => i.email)).toEqual(["erin@example.test"]);
+    await alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: declined._id });
     expect((await alice.caller.query(api.platform.organizations.active, {}))!.invitations).toEqual([]);
+    const left = (await f.t.query(components.betterAuth.adapter.findMany, {
+      model: "invitation", where: [{ field: "organizationId", value: acme }], paginationOpts: { numItems: 100, cursor: null },
+    })).page as { email: string; status: string }[];
+    expect(left.map((row) => [row.email, row.status])).toEqual([["erin@example.test", "accepted"]]);
     // The deleted pending invitation's link no longer works; the other organization's is untouched.
     expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "dave@example.test" })).toBe(false);
     expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "frank@example.test" })).toBe(true);
+    expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "erin@example.test" })).toBe(true);
   });
 
   test("the invitation page tells only the invited address about the invitation", async () => {

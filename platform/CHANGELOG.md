@@ -87,6 +87,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Deleting an invitation removes older unaccepted invitations to the same address in that
+  organization, so its row disappears after one confirmation.
+- Signed-in language changes wait for the preference save before reloading, avoiding an
+  unsaved-changes prompt that could leave Settings in the old language.
+- The identity check inside Security settings omits the redundant Sign out button. Full-page
+  verification, enrollment and recovery gates retain their sign-out escape.
+
 - The mobile sidebar drawer starts below the environment banner, as the desktop sidebar does;
   the banner used to cover the top of the drawer.
 - Admin no longer counts its static icons (`favicon.ico`, `icon.svg`, `apple-touch-icon.png`) against

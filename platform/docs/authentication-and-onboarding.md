@@ -406,6 +406,13 @@ The timer also handles expiry without waiting for a database update. Session rot
 preserves presentation state so successful setup does not discard unsaved backup codes; backend
 checks still apply to every operation throughout that transition.
 
+Full-page gates retain **Sign out** so a user who cannot complete verification, enrollment or
+recovery can end the limited session and return to sign-in. Signing out is an escape, not a
+verification requirement or a way to bypass policy. For a check inside a navigable page or a
+closable dialog, use `SessionAccessGate requireRecent embedded`: Security settings and the
+organization-deletion dialog use this presentation without the redundant sign-out control.
+The enclosing application gate still takes over if the whole session becomes restricted.
+
 ### 8.6 Enrollment, recovery and custom endpoints
 
 A backup-code sign-in creates a **recovery-only session**. Use the current password to replace the

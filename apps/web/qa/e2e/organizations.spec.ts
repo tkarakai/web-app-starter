@@ -142,8 +142,11 @@ test("an invitation answers only its own address; a declined one is spent and sh
   const declined = page.getByTestId("organization-invitations").locator('[data-status="declined"]');
   await expect(declined).toContainText(invitee.email);
   await expect(declined.getByRole("button", { name: "Invite again" })).toBeVisible();
-  // Any invitation can be deleted, after confirming.
-  await declined.getByRole("button", { name: `Delete the invitation to ${invitee.email}` }).click();
+  // Re-invite, then delete once: the older declined invitation must not reappear.
+  await declined.getByRole("button", { name: "Invite again" }).click();
+  const pending = page.getByTestId("organization-invitations").locator('[data-status="pending"]');
+  await expect(pending).toContainText(invitee.email);
+  await pending.getByRole("button", { name: `Delete the invitation to ${invitee.email}` }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByTestId("organization-invitations")).toHaveCount(0);
 
