@@ -142,7 +142,7 @@ describe("organization page", () => {
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) };
     render(wrap(<OrganizationSection />));
     fireEvent.click(screen.getByRole("button", { name: t.danger.delete }));
-    expect(screen.getByText(new RegExp(t.danger.onlyOrganization.replace(/[.,]/g, "\\$&")))).toBeInTheDocument();
+    expect(screen.getByText(t.danger.onlyOrganization, { exact: false })).toBeInTheDocument();
   });
 });
 
