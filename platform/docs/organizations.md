@@ -19,7 +19,7 @@ to individual users. Everyone in an organization shares its data. It is built on
   organization the user last switched to.
 - **An organization page** (the account menu's **Organization** entry, `/dashboard/organization`
   in the reference app): rename; members and roles; invite; the invitations sent, each pending,
-  expired or declined, with resend, cancel or invite again; leave (from your own row); and for
+  expired or declined, with resend or invite again, and delete (with confirmation); leave (from your own row); and for
   owners a **danger zone** to delete the organization.
 - **Notice of lost access.** When someone is removed, or an owner deletes the organization, the
   member's view drops it live and says "You no longer have access to …".
@@ -53,7 +53,7 @@ only admins delete projects), check `ctx.organizationRole` in your functions.
   `.myInvitations`, `.invitation`.
 - **Writes go through Better Auth** (`authClient.organization.*`), which checks the roles. The
   session-assurance plugin admits only these routes: `create`, `update`, `set-active`,
-  `invite-member`, `cancel-invitation`, `accept-invitation`, `reject-invitation`,
+  `invite-member`, `accept-invitation`, `reject-invitation`,
   `remove-member`, `update-member-role`, `leave` and `delete`; `delete` also needs recent
   authentication, which the page asks for first. Roles must be exactly one of `owner`, `admin` or `member`;
   Better Auth's comma-separated role lists are refused. `update` may change only the name. Each needs a fully assured session (email
@@ -67,7 +67,7 @@ only admins delete projects), check `ctx.organizationRole` in your functions.
   enrollment sees what is missing on the invitation page instead of the invitation.
 - **Limits:** 10 invitations at once and 30 an hour per inviter (resends included), plus the platform's auth email
   budgets. Up to 100 members per organization and 50 organizations per user.
-- **Audited:** creating, renaming, deleting, invitation sent, canceled, accepted or rejected,
+- **Audited:** creating, renaming, deleting, invitation sent, canceled, deleted, accepted or rejected,
   member removed, member left and role changed (`organization.*` audit actions).
 - **Not included:** teams, custom roles, billing, organization management in the admin app, and
   organization-scoped agent capabilities.
@@ -85,14 +85,16 @@ backend. Only the invited address ever sees the organization's name, the inviter
 | The invited address, security setup outstanding | **Continue**: the dashboard asks for the step, then returns here |
 | The invited address, already a member | "You're already in …", with **Open …** |
 | Anyone else signed in, including someone who just signed in with the wrong account | "This invitation is for a different account", naming only the account they're signed in with, with **Sign out and switch account** |
-| Anyone, once the invitation was accepted, declined, canceled, replaced or expired, or for an unknown link | "This invitation is no longer valid", without saying which |
+| Anyone, once the invitation was accepted, declined, canceled, deleted, replaced or expired, or for an unknown link | "This invitation is no longer valid", without saying which |
 
 An existing user also sees pending invitations as a banner on the dashboard, with **Accept** or
 **Decline** (or **Verify email** first).
 
 On the inviting side, the organization page lists each invited address once, with its latest
-invitation: **pending** (with its expiry; resend or cancel), **expired** (resend or cancel), or
-**declined** for 30 days (invite again). An accepted invitation shows as a new member.
+invitation: **pending** (with its expiry; resend), **expired** (resend), or
+**declined** for 30 days (invite again). Owners and admins can delete an invitation in any
+state, after confirming (`api.platform.organizations.deleteInvitation`); a deleted pending
+invitation's link then reads as no longer valid. An accepted invitation shows as a new member.
 
 ## Deleting an organization
 

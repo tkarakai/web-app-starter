@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   active: undefined as unknown,
   mine: undefined as { activeOrganizationId: string | null; organizations: Org[] } | undefined,
   ensure: vi.fn(),
+  deleteInvitation: vi.fn(),
   inviteMember: vi.fn(),
   cancelInvitation: vi.fn(),
   leave: vi.fn(),
@@ -27,7 +28,8 @@ vi.mock("convex/react", async () => {
   return {
     useQuery: (query: Parameters<typeof getFunctionName>[0]) =>
       (getFunctionName(query) === "platform/organizations:active" ? mocks.active : mocks.mine),
-    useMutation: () => mocks.ensure,
+    useMutation: (mutation: Parameters<typeof getFunctionName>[0]) =>
+      (getFunctionName(mutation) === "platform/organizations:deleteInvitation" ? mocks.deleteInvitation : mocks.ensure),
   };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
@@ -66,6 +68,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   for (const call of [mocks.inviteMember, mocks.cancelInvitation, mocks.leave, mocks.deleteOrganization]) call.mockResolvedValue({ data: {} });
   mocks.ensure.mockResolvedValue("org-new");
+  mocks.deleteInvitation.mockResolvedValue(null);
   mocks.active = organization();
   mocks.mine = two;
 });
@@ -88,14 +91,31 @@ describe("organization page", () => {
     expect(rows.map((row) => row.getAttribute("data-status"))).toEqual(["pending", "expired", "declined"]);
     expect(within(rows[1]).getByText(t.pending.expired)).toBeInTheDocument();
     expect(within(rows[2]).getByText(t.pending.declined)).toBeInTheDocument();
-    // A declined invitation can't be resent or canceled, only replaced by a new one.
-    expect(within(rows[2]).queryByRole("button", { name: t.pending.cancel })).not.toBeInTheDocument();
+    // A declined invitation can't be resent, only replaced by a new one.
+    expect(within(rows[2]).queryByRole("button", { name: t.pending.resend })).not.toBeInTheDocument();
     fireEvent.click(within(rows[2]).getByRole("button", { name: t.pending.inviteAgain }));
     await waitFor(() => expect(mocks.inviteMember).toHaveBeenCalledWith({
       organizationId: "org-1", email: "no@example.test", role: "member", resend: false,
     }));
     fireEvent.click(within(rows[1]).getByRole("button", { name: t.pending.resend }));
     await waitFor(() => expect(mocks.inviteMember).toHaveBeenCalledWith(expect.objectContaining({ email: "late@example.test", resend: true })));
+  });
+
+  it("deletes an invitation in any state, only after confirming", async () => {
+    mocks.active = organization({
+      invitations: [invitation("new@example.test", "pending"), invitation("late@example.test", "expired"), invitation("no@example.test", "declined")],
+    });
+    render(wrap(<OrganizationSection />));
+    for (const email of ["new@example.test", "late@example.test", "no@example.test"]) {
+      expect(screen.getByRole("button", { name: `Delete the invitation to ${email}` })).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Delete the invitation to no@example.test" }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Delete the invitation to no@example.test?")).toBeInTheDocument();
+    expect(mocks.deleteInvitation).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: t.pending.delete }));
+    await waitFor(() => expect(mocks.deleteInvitation).toHaveBeenCalledWith({ invitationId: "inv-no@example.test" }));
+    expect(mocks.success).toHaveBeenCalledWith("Invitation to no@example.test deleted.");
   });
 
   it("has no create button; the last section is the owners' danger zone", () => {

@@ -9,10 +9,8 @@ import { useTranslations } from "next-intl";
 
 import {
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
   Separator,
   SidebarInset,
   SidebarProvider,
@@ -67,15 +65,6 @@ export function AccountClient() {
           />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  {td("projects")}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbPage>{td("account")}</BreadcrumbPage>
               </BreadcrumbItem>

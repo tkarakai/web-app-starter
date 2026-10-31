@@ -529,11 +529,14 @@
       "expired": "Verlopen",
       "resend": "Opnieuw versturen",
       "resent": "Uitnodiging opnieuw verstuurd naar {email}.",
-      "cancel": "Uitnodiging intrekken",
-      "canceled": "Uitnodiging voor {email} ingetrokken.",
       "sent": "Verzonden op {date}",
       "declined": "Afgewezen",
-      "inviteAgain": "Opnieuw uitnodigen"
+      "inviteAgain": "Opnieuw uitnodigen",
+      "delete": "Verwijderen",
+      "deleteLabel": "Uitnodiging aan {email} verwijderen",
+      "deleteTitle": "Uitnodiging aan {email} verwijderen?",
+      "deleteDescription": "Ze verdwijnt uit deze lijst. Staat ze nog open, dan werkt de link niet meer. Dit kan niet ongedaan worden gemaakt.",
+      "deleted": "Uitnodiging aan {email} verwijderd."
     },
     "leave": {
       "description": "Je verliest de toegang tot {name} en alles erin. Alleen een nieuwe uitnodiging laat je weer toe.",
@@ -566,8 +569,8 @@
       "joined": "Je bent lid geworden van {organization}."
     },
     "invitation": {
-      "pageHeading": "Je bent uitgenodigd",
-      "pageDescription": "Word lid van een organisatie om samen met je team te werken.",
+      "pageHeading": "Een uitnodiging voor een organisatie",
+      "pageDescription": "Met uitnodigingen worden mensen lid van een organisatie en werken ze samen.",
       "title": "Word lid van {organization}",
       "description": "{inviter} heeft je uitgenodigd voor {organization} als {role}.",
       "accept": "Uitnodiging accepteren",

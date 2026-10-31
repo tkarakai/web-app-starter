@@ -104,6 +104,7 @@ const ACCESS: Record<string, Access> = {
   "platform/passwordStrength:evaluate": "public",
   "platform/userProfiles:get": "user",
   "platform/organizations:active": "user",
+  "platform/organizations:deleteInvitation": "user",
   "platform/organizations:ensure": "user",
   "platform/organizations:invitation": "user",
   "platform/organizations:mine": "user",

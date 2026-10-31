@@ -62,9 +62,9 @@ export function SessionsClient() {
               <BreadcrumbItem>
                 <BreadcrumbLink
                   className="cursor-pointer"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => router.push("/dashboard/settings")}
                 >
-                  {td("projects")}
+                  {td("account")}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />

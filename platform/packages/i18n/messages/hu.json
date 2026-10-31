@@ -529,11 +529,14 @@
       "expired": "Lejárt",
       "resend": "Újraküldés",
       "resent": "A meghívó újra elküldve ide: {email}.",
-      "cancel": "Meghívó visszavonása",
-      "canceled": "A(z) {email} címre szóló meghívó visszavonva.",
       "sent": "Elküldve: {date}",
       "declined": "Elutasítva",
-      "inviteAgain": "Újbóli meghívás"
+      "inviteAgain": "Újbóli meghívás",
+      "delete": "Törlés",
+      "deleteLabel": "A(z) {email} címre küldött meghívó törlése",
+      "deleteTitle": "Törli a(z) {email} címre küldött meghívót?",
+      "deleteDescription": "Eltűnik ebből a listából. Ha még függőben van, a hivatkozása nem működik tovább. Ez nem vonható vissza.",
+      "deleted": "A(z) {email} címre küldött meghívó törölve."
     },
     "leave": {
       "description": "Elveszíti a hozzáférést a(z) {name} szervezethez és mindenhez, ami benne van. Csak új meghívóval térhet vissza.",
@@ -566,8 +569,8 @@
       "joined": "Csatlakoztál a(z) {organization} szervezethez."
     },
     "invitation": {
-      "pageHeading": "Meghívást kaptál",
-      "pageDescription": "Csatlakozzon egy szervezethez, hogy együtt dolgozzon a csapatával.",
+      "pageHeading": "Meghívó egy szervezetbe",
+      "pageDescription": "A meghívókkal csatlakozhatnak egy szervezethez, és együtt dolgozhatnak.",
       "title": "Csatlakozás: {organization}",
       "description": "{inviter} meghívott a(z) {organization} szervezetbe {role} szerepkörrel.",
       "accept": "Meghívó elfogadása",

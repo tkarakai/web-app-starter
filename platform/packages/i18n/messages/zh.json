@@ -529,11 +529,14 @@
       "expired": "已过期",
       "resend": "重新发送",
       "resent": "已再次向 {email} 发送邀请。",
-      "cancel": "取消邀请",
-      "canceled": "已取消发给 {email} 的邀请。",
       "sent": "发送于 {date}",
       "declined": "已拒绝",
-      "inviteAgain": "再次邀请"
+      "inviteAgain": "再次邀请",
+      "delete": "删除",
+      "deleteLabel": "删除发送给 {email} 的邀请",
+      "deleteTitle": "删除发送给 {email} 的邀请？",
+      "deleteDescription": "它将从此列表中消失。如果仍在等待回应，其链接将失效。此操作无法撤销。",
+      "deleted": "已删除发送给 {email} 的邀请。"
     },
     "leave": {
       "description": "你将失去对 {name} 及其所有内容的访问权限。只有新的邀请才能让你重新加入。",
@@ -566,8 +569,8 @@
       "joined": "你已加入 {organization}。"
     },
     "invitation": {
-      "pageHeading": "你收到了邀请",
-      "pageDescription": "加入组织，与团队一起工作。",
+      "pageHeading": "组织邀请",
+      "pageDescription": "通过邀请，成员可以加入组织并一起工作。",
       "title": "加入 {organization}",
       "description": "{inviter} 邀请你以{role}身份加入 {organization}。",
       "accept": "接受邀请",

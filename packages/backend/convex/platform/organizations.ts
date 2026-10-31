@@ -13,7 +13,8 @@ import { components, internal } from "../_generated/api";
 import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
-import { authedMutation, authedQuery, orgQuery } from "./functions";
+import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { authedMutation, authedQuery, orgMutation, orgQuery } from "./functions";
 import {
   ensurePersonalOrganization,
   removeMemberships,
@@ -185,6 +186,32 @@ export const invitation = query({
     if (!user.emailVerified) return { state: "verify" as const, ...details };
     if (!(await evaluateSession(ctx, pair)).allowed) return { state: "security" as const, ...details };
     return { state: "open" as const, ...details };
+  },
+});
+
+/**
+ * Delete one of the active organization's invitations, whatever its state: owners and admins
+ * only. Deleting a pending invitation also stops its link working (it then reads as no longer
+ * valid). Better Auth has no route for this; it only cancels pending invitations.
+ */
+export const deleteInvitation = orgMutation({
+  args: { invitationId: v.string() },
+  handler: async (ctx, args) => {
+    if (ctx.organizationRole === "member") throw new Error("NOT_ALLOWED");
+    const invitation = await findById(ctx, "invitation", args.invitationId);
+    if (!invitation || invitation.organizationId !== ctx.organizationId) throw new Error("INVITATION_NOT_FOUND");
+    await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+      input: { model: "invitation", where: [{ field: "_id", value: invitation._id }] },
+    });
+    await scheduleAuditEvent(ctx, {
+      actor: ctx.user.email,
+      authenticatedUserId: ctx.user._id,
+      sourceDetail: "organization-mutation",
+      action: "organization.invitation.deleted",
+      resource: `organization:${ctx.organizationId}`,
+      status: "succeeded",
+      meta: JSON.stringify({ invitationId: invitation._id, status: invitation.status }),
+    });
   },
 });
 

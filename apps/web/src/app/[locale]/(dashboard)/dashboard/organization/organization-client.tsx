@@ -8,10 +8,8 @@ import { useTranslations } from "next-intl";
 
 import {
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
   Separator,
   SidebarInset,
   SidebarProvider,
@@ -26,7 +24,6 @@ export function OrganizationClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
   const to = useTranslations("organization");
-  const td = useTranslations("dashboard");
 
   return (
     <SidebarProvider>
@@ -46,15 +43,6 @@ export function OrganizationClient() {
           />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  {td("projects")}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbPage>{to("label")}</BreadcrumbPage>
               </BreadcrumbItem>

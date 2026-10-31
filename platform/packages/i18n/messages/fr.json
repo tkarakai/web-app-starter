@@ -529,11 +529,14 @@
       "expired": "Expirée",
       "resend": "Renvoyer",
       "resent": "Invitation renvoyée à {email}.",
-      "cancel": "Annuler l'invitation",
-      "canceled": "Invitation à {email} annulée.",
       "sent": "Envoyée le {date}",
       "declined": "Refusée",
-      "inviteAgain": "Inviter à nouveau"
+      "inviteAgain": "Inviter à nouveau",
+      "delete": "Supprimer",
+      "deleteLabel": "Supprimer l'invitation envoyée à {email}",
+      "deleteTitle": "Supprimer l'invitation envoyée à {email} ?",
+      "deleteDescription": "Elle disparaît de cette liste. Si elle est encore en attente, son lien ne fonctionne plus. Cette action est irréversible.",
+      "deleted": "Invitation envoyée à {email} supprimée."
     },
     "leave": {
       "description": "Vous perdez l'accès à {name} et à tout son contenu. Seule une nouvelle invitation vous permettra d'y revenir.",
@@ -566,8 +569,8 @@
       "joined": "Vous avez rejoint {organization}."
     },
     "invitation": {
-      "pageHeading": "Vous êtes invité",
-      "pageDescription": "Rejoignez une organisation pour travailler avec votre équipe.",
+      "pageHeading": "Une invitation à rejoindre une organisation",
+      "pageDescription": "Les invitations permettent de rejoindre une organisation et de travailler ensemble.",
       "title": "Rejoindre {organization}",
       "description": "{inviter} vous a invité à rejoindre {organization} en tant que {role}.",
       "accept": "Accepter l'invitation",

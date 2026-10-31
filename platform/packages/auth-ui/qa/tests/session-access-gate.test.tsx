@@ -148,3 +148,12 @@ it("authorization-only factor verification excludes backup codes and retains pas
   expect(mocks.passkey).toHaveBeenCalledOnce();
   expect(mocks.backup).not.toHaveBeenCalled();
 });
+
+it("offers no sign-out inside a dialog, where the user can just close it", async () => {
+  mocks.status = { ...ready(), recent: false, recentUntil: Date.now() - 1 };
+  const { rerender } = render(view({ requireRecent: true }));
+  expect(screen.getByRole("button", { name: english.common.signOut })).toBeInTheDocument();
+  rerender(<NextIntlClientProvider locale="en" messages={english}><SessionAccessGate requireRecent embedded><input aria-label="Work in progress" /></SessionAccessGate></NextIntlClientProvider>);
+  expect(screen.getByLabelText(english.accountSecurity.changePassword.currentPassword)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: english.common.signOut })).not.toBeInTheDocument();
+});

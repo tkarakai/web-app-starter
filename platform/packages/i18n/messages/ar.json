@@ -529,11 +529,14 @@
       "expired": "منتهية الصلاحية",
       "resend": "إعادة الإرسال",
       "resent": "أُعيد إرسال الدعوة إلى {email}.",
-      "cancel": "إلغاء الدعوة",
-      "canceled": "تم إلغاء الدعوة المرسلة إلى {email}.",
       "sent": "أُرسلت في {date}",
       "declined": "مرفوضة",
-      "inviteAgain": "دعوة مرة أخرى"
+      "inviteAgain": "دعوة مرة أخرى",
+      "delete": "حذف",
+      "deleteLabel": "حذف الدعوة المرسلة إلى {email}",
+      "deleteTitle": "هل تريد حذف الدعوة المرسلة إلى {email}؟",
+      "deleteDescription": "ستختفي من هذه القائمة. إذا كانت لا تزال معلّقة، فسيتوقف رابطها عن العمل. لا يمكن التراجع عن ذلك.",
+      "deleted": "تم حذف الدعوة المرسلة إلى {email}."
     },
     "leave": {
       "description": "ستفقد الوصول إلى {name} وكل ما فيها. لا يمكنك العودة إلا بدعوة جديدة.",
@@ -566,8 +569,8 @@
       "joined": "لقد انضممت إلى {organization}."
     },
     "invitation": {
-      "pageHeading": "تمت دعوتك",
-      "pageDescription": "انضم إلى مؤسسة للعمل مع فريقك.",
+      "pageHeading": "دعوة إلى مؤسسة",
+      "pageDescription": "تتيح الدعوات للأشخاص الانضمام إلى مؤسسة والعمل معًا.",
       "title": "الانضمام إلى {organization}",
       "description": "دعاك {inviter} للانضمام إلى {organization} بدور {role}.",
       "accept": "قبول الدعوة",

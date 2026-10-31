@@ -529,11 +529,14 @@
       "expired": "פג תוקף",
       "resend": "שליחה מחדש",
       "resent": "ההזמנה נשלחה שוב אל {email}.",
-      "cancel": "ביטול הזמנה",
-      "canceled": "ההזמנה ל-{email} בוטלה.",
       "sent": "נשלחה ב-{date}",
       "declined": "נדחתה",
-      "inviteAgain": "הזמנה מחדש"
+      "inviteAgain": "הזמנה מחדש",
+      "delete": "מחיקה",
+      "deleteLabel": "מחיקת ההזמנה ל-{email}",
+      "deleteTitle": "למחוק את ההזמנה ל-{email}?",
+      "deleteDescription": "היא תיעלם מהרשימה הזו. אם היא עדיין ממתינה, הקישור שלה יפסיק לעבוד. לא ניתן לבטל פעולה זו.",
+      "deleted": "ההזמנה ל-{email} נמחקה."
     },
     "leave": {
       "description": "תאבדו את הגישה ל-{name} ולכל מה שבו. רק הזמנה חדשה תאפשר לכם לחזור.",
@@ -566,8 +569,8 @@
       "joined": "הצטרפת אל {organization}."
     },
     "invitation": {
-      "pageHeading": "הוזמנת",
-      "pageDescription": "הצטרפו לארגון כדי לעבוד יחד עם הצוות שלכם.",
+      "pageHeading": "הזמנה לארגון",
+      "pageDescription": "הזמנות מאפשרות להצטרף לארגון ולעבוד יחד.",
       "title": "הצטרפות אל {organization}",
       "description": "{inviter} הזמין אותך להצטרף אל {organization} בתפקיד {role}.",
       "accept": "אישור ההזמנה",

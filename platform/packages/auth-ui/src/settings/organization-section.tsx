@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Building2, LogOut, Mail, RotateCw, Trash2, UserMinus, X } from "lucide-react";
+import { Building2, LogOut, Mail, RotateCw, Trash2, UserMinus } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { authClient } from "@web-app-starter/auth/client";
@@ -346,19 +346,7 @@ function InvitationsCard({ organization, run, roleLabel }: CardProps) {
                     <RotateCw className="me-1 h-3.5 w-3.5" />
                     {invitation.status === "declined" ? t("pending.inviteAgain") : t("pending.resend")}
                   </Button>
-                  {invitation.status !== "declined" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("pending.cancel")}
-                      onClick={() => void run(
-                        () => authClient.organization.cancelInvitation({ invitationId: invitation.id }),
-                        t("pending.canceled", { email: invitation.email }),
-                      )}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <DeleteInvitationButton email={invitation.email} invitationId={invitation.id} />
                 </li>
               ))}
             </ul>
@@ -366,6 +354,40 @@ function InvitationsCard({ organization, run, roleLabel }: CardProps) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** Delete an invitation in any state, after confirming. A pending one's link stops working. */
+function DeleteInvitationButton({ email, invitationId }: { email: string; invitationId: string }) {
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
+  const deleteInvitation = useMutation(api.platform.organizations.deleteInvitation);
+  const confirm = async () => {
+    try {
+      await deleteInvitation({ invitationId });
+      toast.success(t("pending.deleted", { email }));
+    } catch {
+      toast.error(t("errors.generic"));
+    }
+  };
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label={t("pending.deleteLabel", { email })}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("pending.deleteTitle", { email })}</AlertDialogTitle>
+          <AlertDialogDescription>{t("pending.deleteDescription")}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => void confirm()}>{t("pending.delete")}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -454,7 +476,7 @@ function DangerZoneCard({ organization, run, onlyOne }: { organization: ActiveOr
               </DialogDescription>
             </DialogHeader>
             {/* Deleting needs recent authentication; the gate asks for it first when needed. */}
-            <SessionAccessGate requireRecent>
+            <SessionAccessGate requireRecent embedded>
               <form className="grid gap-4" onSubmit={remove}>
                 <div className="grid gap-2">
                   <Label htmlFor={confirmId}>{t("confirmLabel", { name: organization.name })}</Label>

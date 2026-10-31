@@ -39,7 +39,7 @@ const ACTIVE_SESSION_ROTATION = new Set(["/change-password", "/two-factor/disabl
 // access-control and list routes stay disabled.
 const ORGANIZATION = new Set([
   "/organization/create", "/organization/update", "/organization/set-active",
-  "/organization/invite-member", "/organization/cancel-invitation",
+  "/organization/invite-member",
   "/organization/accept-invitation", "/organization/reject-invitation",
   "/organization/remove-member", "/organization/update-member-role", "/organization/leave",
   "/organization/delete",

@@ -529,11 +529,14 @@
       "expired": "Vypršela",
       "resend": "Odeslat znovu",
       "resent": "Pozvánka byla znovu odeslána na adresu {email}.",
-      "cancel": "Zrušit pozvánku",
-      "canceled": "Pozvánka pro {email} byla zrušena.",
       "sent": "Odesláno {date}",
       "declined": "Odmítnuto",
-      "inviteAgain": "Pozvat znovu"
+      "inviteAgain": "Pozvat znovu",
+      "delete": "Smazat",
+      "deleteLabel": "Smazat pozvánku pro {email}",
+      "deleteTitle": "Smazat pozvánku pro {email}?",
+      "deleteDescription": "Zmizí z tohoto seznamu. Pokud ještě čeká, její odkaz přestane fungovat. Tuto akci nelze vrátit.",
+      "deleted": "Pozvánka pro {email} byla smazána."
     },
     "leave": {
       "description": "Ztratíte přístup k {name} a všemu, co obsahuje. Vrátit se můžete jen s novou pozvánkou.",
@@ -566,8 +569,8 @@
       "joined": "Připojili jste se k organizaci {organization}."
     },
     "invitation": {
-      "pageHeading": "Máte pozvánku",
-      "pageDescription": "Připojte se k organizaci a spolupracujte se svým týmem.",
+      "pageHeading": "Pozvánka do organizace",
+      "pageDescription": "Pozvánky umožňují připojit se k organizaci a spolupracovat.",
       "title": "Připojit se k organizaci {organization}",
       "description": "{inviter} vás pozval(a) do organizace {organization} v roli: {role}.",
       "accept": "Přijmout pozvánku",

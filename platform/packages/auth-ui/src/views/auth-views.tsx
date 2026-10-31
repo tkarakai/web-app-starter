@@ -40,11 +40,13 @@ interface AuthPageShellProps {
   headerActions?: ReactNode;
   /** Use `min-h-screen` instead of the banner-aware height. */
   fullScreen?: boolean;
+  /** Keep short content near the top on wide screens instead of centring it vertically. */
+  alignTop?: boolean;
   children: ReactNode;
 }
 
 /** The two-column layout every auth page shares: product intro left, form right. */
-export async function AuthPageShell({ namespace, background, headerActions, fullScreen, children }: AuthPageShellProps) {
+export async function AuthPageShell({ namespace, background, headerActions, fullScreen, alignTop, children }: AuthPageShellProps) {
   const t = await getTranslations(namespace);
   const productName = appConfig.identity.productName;
 
@@ -58,7 +60,7 @@ export async function AuthPageShell({ namespace, background, headerActions, full
         homeHref={landingUrl()}
         actions={<>{headerActions}<LocaleSwitcher /></>}
       />
-      <div className="mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 pb-16 pt-[calc(6rem+var(--announcement-banner-h,0px))] lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:justify-items-stretch">
+      <div className={`mx-auto grid flex-1 max-w-6xl items-start justify-items-center gap-12 px-6 pb-16 pt-[calc(6rem+var(--announcement-banner-h,0px))] lg:grid-cols-[1.1fr_0.9fr] lg:justify-items-stretch ${alignTop ? "lg:content-start lg:items-start" : "lg:items-center"}`}>
         <section className="w-full max-w-md space-y-6 lg:max-w-none">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
             {productName}
@@ -211,7 +213,7 @@ interface AcceptInvitationViewProps {
 export async function AcceptInvitationView({ params }: AcceptInvitationViewProps) {
   const { id } = await params;
   return (
-    <AuthPageShell namespace="organization.invitation" background="var(--glow-cool)">
+    <AuthPageShell namespace="organization.invitation" background="var(--glow-cool)" alignTop>
       <AcceptInvitation invitationId={id} />
     </AuthPageShell>
   );

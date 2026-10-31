@@ -94,6 +94,37 @@ describe("organizations", () => {
     ]);
   });
 
+  test("owners and admins delete an invitation in any state; nobody else, and only their organization's", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const carol = await f.user("carol");
+    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    await f.addMember(acme, bob.userId, "member");
+    await bob.switchTo(acme);
+    const other = await carol.caller.mutation(api.platform.organizations.ensure, {});
+    const invite = (organizationId: string, email: string, status: string) => f.t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId, email, role: "member", status, inviterId: alice.userId, createdAt: Date.now(), expiresAt: Date.now() + 86_400_000,
+      } },
+    });
+    const pending = await invite(acme, "dave@example.test", "pending");
+    const declined = await invite(acme, "erin@example.test", "rejected");
+    const foreign = await invite(other, "frank@example.test", "pending");
+
+    await expect(bob.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: pending._id })).rejects.toThrow("NOT_ALLOWED");
+    await expect(alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: foreign._id })).rejects.toThrow("INVITATION_NOT_FOUND");
+    await expect(alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "not-an-id" })).rejects.toThrow("INVITATION_NOT_FOUND");
+
+    for (const invitation of [pending, declined]) {
+      await alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: invitation._id });
+    }
+    expect((await alice.caller.query(api.platform.organizations.active, {}))!.invitations).toEqual([]);
+    // The deleted pending invitation's link no longer works; the other organization's is untouched.
+    expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "dave@example.test" })).toBe(false);
+    expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "frank@example.test" })).toBe(true);
+  });
+
   test("the invitation page tells only the invited address about the invitation", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
@@ -189,7 +220,7 @@ describe("organizations", () => {
     for (const path of ["/organization/create", "/organization/set-active", "/organization/invite-member", "/organization/accept-invitation", "/organization/leave", "/organization/delete"]) {
       expect(authRoutePolicy(path)).toBe("organization");
     }
-    for (const path of ["/organization/add-member", "/organization/create-team", "/organization/create-role", "/organization/list"]) {
+    for (const path of ["/organization/cancel-invitation", "/organization/add-member", "/organization/create-team", "/organization/create-role", "/organization/list"]) {
       expect(authRoutePolicy(path)).toBe("disabled");
     }
   });

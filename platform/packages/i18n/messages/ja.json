@@ -529,11 +529,14 @@
       "expired": "期限切れ",
       "resend": "再送信",
       "resent": "{email} に招待を再送信しました。",
-      "cancel": "招待を取り消す",
-      "canceled": "{email} への招待を取り消しました。",
       "sent": "{date} に送信",
       "declined": "辞退",
-      "inviteAgain": "再度招待"
+      "inviteAgain": "再度招待",
+      "delete": "削除",
+      "deleteLabel": "{email} への招待を削除",
+      "deleteTitle": "{email} への招待を削除しますか？",
+      "deleteDescription": "この一覧から削除されます。保留中の場合は、そのリンクも使えなくなります。元に戻すことはできません。",
+      "deleted": "{email} への招待を削除しました。"
     },
     "leave": {
       "description": "{name} とその中のすべてへのアクセスを失います。戻るには新しい招待が必要です。",
@@ -566,8 +569,8 @@
       "joined": "{organization} に参加しました。"
     },
     "invitation": {
-      "pageHeading": "招待されています",
-      "pageDescription": "組織に参加して、チームと一緒に作業しましょう。",
+      "pageHeading": "組織への招待",
+      "pageDescription": "招待を受けると、組織に参加して一緒に作業できます。",
       "title": "{organization} に参加",
       "description": "{inviter} さんが、{role} として {organization} への参加に招待しています。",
       "accept": "招待を承諾",

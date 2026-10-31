@@ -242,7 +242,8 @@ export function removeSample(root: string): void {
       .replace(/\s*selectedProjectId=\{null\}\n/, "\n")
       .replaceAll("onSelectProject=", "onNavigateHome=")
       .replaceAll('td("projects")', 'tc("backToHome")');
-    if (!file.endsWith("account-client.tsx")) content = content.replace('  const td = useTranslations("dashboard");\n', "");
+    // Drop the dashboard translator where the sample's "Projects" breadcrumb was its only use.
+    if (!/\btd\(/.test(content)) content = content.replace('  const td = useTranslations("dashboard");\n', "");
     writeFileSync(at(file), content);
   }
   for (const file of readdirSync(at("packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {

@@ -529,11 +529,14 @@
       "expired": "Expirado",
       "resend": "Reenviar",
       "resent": "Convite reenviado para {email}.",
-      "cancel": "Cancelar convite",
-      "canceled": "Convite para {email} cancelado.",
       "sent": "Enviado em {date}",
       "declined": "Recusado",
-      "inviteAgain": "Convidar novamente"
+      "inviteAgain": "Convidar novamente",
+      "delete": "Eliminar",
+      "deleteLabel": "Eliminar o convite para {email}",
+      "deleteTitle": "Eliminar o convite para {email}?",
+      "deleteDescription": "Desaparece desta lista. Se ainda estiver pendente, a sua ligação deixa de funcionar. Não é possível anular.",
+      "deleted": "Convite para {email} eliminado."
     },
     "leave": {
       "description": "Perde o acesso a {name} e a tudo o que contém. Só um novo convite lhe permite voltar.",
@@ -566,8 +569,8 @@
       "joined": "Você entrou em {organization}."
     },
     "invitation": {
-      "pageHeading": "Você foi convidado",
-      "pageDescription": "Junte-se a uma organização para trabalhar em conjunto com a sua equipa.",
+      "pageHeading": "Um convite para uma organização",
+      "pageDescription": "Os convites permitem juntar-se a uma organização e trabalhar em conjunto.",
       "title": "Entrar em {organization}",
       "description": "{inviter} convidou você para entrar em {organization} como {role}.",
       "accept": "Aceitar convite",

@@ -529,11 +529,14 @@
       "expired": "Expired",
       "resend": "Resend",
       "resent": "Invitation sent again to {email}.",
-      "cancel": "Cancel invitation",
-      "canceled": "Invitation to {email} canceled.",
       "sent": "Sent {date}",
       "declined": "Declined",
-      "inviteAgain": "Invite again"
+      "inviteAgain": "Invite again",
+      "delete": "Delete",
+      "deleteLabel": "Delete the invitation to {email}",
+      "deleteTitle": "Delete the invitation to {email}?",
+      "deleteDescription": "It disappears from this list. If it's still pending, its link stops working. This can't be undone.",
+      "deleted": "Invitation to {email} deleted."
     },
     "leave": {
       "description": "You lose access to {name} and everything in it. Only a new invitation lets you back in.",
@@ -566,8 +569,8 @@
       "joined": "You joined {organization}."
     },
     "invitation": {
-      "pageHeading": "You're invited",
-      "pageDescription": "Join an organization to work together with your team.",
+      "pageHeading": "An invitation to an organization",
+      "pageDescription": "Invitations let people join an organization and work together.",
       "title": "Join {organization}",
       "description": "{inviter} invited you to join {organization} as {role}.",
       "accept": "Accept invitation",

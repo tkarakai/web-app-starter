@@ -142,6 +142,10 @@ test("an invitation answers only its own address; a declined one is spent and sh
   const declined = page.getByTestId("organization-invitations").locator('[data-status="declined"]');
   await expect(declined).toContainText(invitee.email);
   await expect(declined.getByRole("button", { name: "Invite again" })).toBeVisible();
+  // Any invitation can be deleted, after confirming.
+  await declined.getByRole("button", { name: `Delete the invitation to ${invitee.email}` }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByTestId("organization-invitations")).toHaveCount(0);
 
   // Deleting needs the name typed; the owner then continues in a new, empty organization.
   await page.getByRole("button", { name: "Delete organization", exact: true }).click();
@@ -189,4 +193,21 @@ onboardingTest("a new person creates an account from the link while sign-up is c
   await page.getByRole("button", { name: "Accept invitation", exact: true }).click();
   await page.waitForURL(/\/dashboard$/);
   await expect(page.getByTestId("active-organization")).toHaveText(organization);
+});
+
+test("on a phone, choosing the page that is already open from the account menu still closes the drawer", async ({ page }) => {
+  const user = await createDisposableUser();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, user.email, user.password);
+  await page.goto("/en/dashboard/organization");
+  await expect(page.getByTestId("organization-settings")).toBeVisible();
+
+  const drawer = page.locator('[data-sidebar="sidebar"][data-mobile="true"]');
+  await page.getByRole("button", { name: "Toggle sidebar" }).click();
+  await expect(drawer).toBeVisible();
+  await drawer.locator('[data-slot="sidebar-footer"] button').first().click();
+  await expect(page.getByRole("menuitem", { name: "Language" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Organization", exact: true }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByTestId("organization-settings")).toBeVisible();
 });

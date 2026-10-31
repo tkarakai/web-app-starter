@@ -9,7 +9,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { LocaleSwitcher, OrganizationSwitcher, useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationSwitcher, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -71,7 +71,7 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const router = useRouter();
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const tc = useTranslations("common");
   const tp = useTranslations("projects");
@@ -124,6 +124,11 @@ export function AppSidebar({
   };
 
   const handleSignOut = useSignOut("/");
+  // Close the mobile drawer even when the page is already open, so the choice is visible.
+  const openPage = (href: string) => {
+    setOpenMobile(false);
+    router.push(href);
+  };
 
   return (
     <>
@@ -220,13 +225,12 @@ export function AppSidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-56">
                   <ThemeToggle className="my-1 w-full" labels={themeLabels} />
-                  <LocaleSwitcher variant="submenu" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings")}>
+                  <DropdownMenuItem onSelect={() => openPage("/dashboard/settings")}>
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => router.push("/dashboard/organization")}>
+                  <DropdownMenuItem onSelect={() => openPage("/dashboard/organization")}>
                     <Building2 className="me-2 h-4 w-4" />
                     {to("label")}
                   </DropdownMenuItem>

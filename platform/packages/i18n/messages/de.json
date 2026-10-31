@@ -529,11 +529,14 @@
       "expired": "Abgelaufen",
       "resend": "Erneut senden",
       "resent": "Einladung erneut an {email} gesendet.",
-      "cancel": "Einladung zurückziehen",
-      "canceled": "Einladung an {email} zurückgezogen.",
       "sent": "Gesendet am {date}",
       "declined": "Abgelehnt",
-      "inviteAgain": "Erneut einladen"
+      "inviteAgain": "Erneut einladen",
+      "delete": "Löschen",
+      "deleteLabel": "Einladung an {email} löschen",
+      "deleteTitle": "Einladung an {email} löschen?",
+      "deleteDescription": "Sie verschwindet aus dieser Liste. Ist sie noch offen, funktioniert ihr Link nicht mehr. Das kann nicht rückgängig gemacht werden.",
+      "deleted": "Einladung an {email} gelöscht."
     },
     "leave": {
       "description": "Sie verlieren den Zugriff auf {name} und alles darin. Nur eine neue Einladung bringt Sie zurück.",
@@ -566,8 +569,8 @@
       "joined": "Sie sind {organization} beigetreten."
     },
     "invitation": {
-      "pageHeading": "Sie sind eingeladen",
-      "pageDescription": "Treten Sie einer Organisation bei, um mit Ihrem Team zusammenzuarbeiten.",
+      "pageHeading": "Eine Einladung in eine Organisation",
+      "pageDescription": "Mit Einladungen treten Personen einer Organisation bei und arbeiten zusammen.",
       "title": "{organization} beitreten",
       "description": "{inviter} hat Sie eingeladen, {organization} als {role} beizutreten.",
       "accept": "Einladung annehmen",

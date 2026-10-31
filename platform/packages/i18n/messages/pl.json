@@ -529,11 +529,14 @@
       "expired": "Wygasło",
       "resend": "Wyślij ponownie",
       "resent": "Zaproszenie ponownie wysłane na adres {email}.",
-      "cancel": "Anuluj zaproszenie",
-      "canceled": "Zaproszenie dla {email} zostało anulowane.",
       "sent": "Wysłano {date}",
       "declined": "Odrzucono",
-      "inviteAgain": "Zaproś ponownie"
+      "inviteAgain": "Zaproś ponownie",
+      "delete": "Usuń",
+      "deleteLabel": "Usuń zaproszenie dla {email}",
+      "deleteTitle": "Usunąć zaproszenie dla {email}?",
+      "deleteDescription": "Zniknie z tej listy. Jeśli nadal oczekuje, jego link przestanie działać. Tej operacji nie można cofnąć.",
+      "deleted": "Usunięto zaproszenie dla {email}."
     },
     "leave": {
       "description": "Stracisz dostęp do {name} i całej jej zawartości. Wrócić możesz tylko dzięki nowemu zaproszeniu.",
@@ -566,8 +569,8 @@
       "joined": "Dołączono do organizacji {organization}."
     },
     "invitation": {
-      "pageHeading": "Masz zaproszenie",
-      "pageDescription": "Dołącz do organizacji, aby pracować razem ze swoim zespołem.",
+      "pageHeading": "Zaproszenie do organizacji",
+      "pageDescription": "Zaproszenia pozwalają dołączyć do organizacji i pracować razem.",
       "title": "Dołącz do organizacji {organization}",
       "description": "{inviter} zaprasza Cię do organizacji {organization} w roli: {role}.",
       "accept": "Zaakceptuj zaproszenie",
