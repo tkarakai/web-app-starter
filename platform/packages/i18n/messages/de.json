@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Organisation wechseln",
       "heading": "Ihre Organisationen",
-      "create": "Organisation erstellen"
+      "create": "Organisation erstellen",
+      "none": "Keine Organisation"
     },
     "settings": {
       "title": "Organisation",
@@ -542,7 +543,8 @@
       "description": "Sie verlieren den Zugriff auf {name} und alles darin. Nur eine neue Einladung bringt Sie zurück.",
       "action": "Verlassen",
       "confirmTitle": "{name} verlassen?",
-      "left": "Sie haben {name} verlassen."
+      "left": "Sie haben {name} verlassen.",
+      "lastOwner": "Du bist der einzige Inhaber. Lade einen weiteren Inhaber ein und warte, bis die Einladung angenommen wurde, bevor du die Organisation verlässt."
     },
     "create": {
       "title": "Neue Organisation",
@@ -605,7 +607,7 @@
       "delete": "Organisation löschen",
       "confirmTitle": "{name} löschen?",
       "confirmDescription": "Damit werden {name} und alles darin für alle Mitglieder endgültig gelöscht. Das kann nicht rückgängig gemacht werden.",
-      "onlyOrganization": "Es ist Ihre einzige Organisation, daher erhalten Sie eine neue, leere.",
+      "onlyOrganization": "Du bleibst ohne Organisation angemeldet. Du kannst später eine Organisation erstellen oder eine Einladung annehmen.",
       "confirmLabel": "Geben Sie zur Bestätigung {name} ein",
       "confirm": "Endgültig löschen",
       "deleting": "Wird gelöscht...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "Sie haben keinen Zugriff mehr auf {organization}."
+    },
+    "empty": {
+      "title": "Du gehörst keiner Organisation an",
+      "description": "Erstelle eine Organisation oder nimm eine Einladung an, um loszulegen."
     }
   }
 }

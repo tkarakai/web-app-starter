@@ -87,6 +87,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Accounts remain signed in without an organization after losing their last membership.
+  Organization and workspace navigation disappears, while account settings, theme, sign-out
+  and invitations remain usable. Creation is explicit; backend writes refuse `NO_ORGANIZATION`
+  instead of provisioning a replacement. The last owner sees guidance to invite another
+  owner and wait for acceptance before leaving; other members may leave their only organization.
+
 - Deleting an invitation removes older unaccepted invitations to the same address in that
   organization, so its row disappears after one confirmation.
 - Signed-in language changes wait for the preference save before reloading, avoiding an

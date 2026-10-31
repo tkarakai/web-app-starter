@@ -42,6 +42,7 @@ import {
 } from "@web-app-starter/design-system";
 
 import { SessionAccessGate } from "../components/session-access-gate";
+import { NoOrganization } from "../components/no-organization";
 import { expectOrganizationDeparture, organizationErrorKey, takeExpectedDeparture, useOrganizations, type OrganizationRole } from "../lib/organization";
 
 type Result = { error?: { status?: number; code?: string } | null };
@@ -80,7 +81,8 @@ export function OrganizationSection() {
       </div>
     );
   }
-  if (!organization || !mine) return null;
+  if (!mine) return null;
+  if (!organization) return <NoOrganization />;
 
   const canManage = organization.role !== "member";
   const roleLabel = (role: OrganizationRole) => t(`roles.${role}`);
@@ -89,7 +91,7 @@ export function OrganizationSection() {
   return (
     <div className="space-y-6" data-testid="organization-settings">
       <NameCard organization={organization} canManage={canManage} run={run} roleLabel={roleLabel} />
-      <MembersCard organization={organization} run={run} roleLabel={roleLabel} onlyOne={onlyOne} />
+      <MembersCard organization={organization} run={run} roleLabel={roleLabel} />
       {canManage && <InvitationsCard organization={organization} run={run} roleLabel={roleLabel} />}
       {organization.role === "owner" && <DangerZoneCard organization={organization} run={run} onlyOne={onlyOne} />}
     </div>
@@ -156,7 +158,7 @@ function NameCard({ organization, canManage, run, roleLabel }: CardProps & { can
   );
 }
 
-function MembersCard({ organization, run, roleLabel, onlyOne }: CardProps & { onlyOne: boolean }) {
+function MembersCard({ organization, run, roleLabel }: CardProps) {
   const t = useTranslations("organization");
   const tc = useTranslations("common");
   const format = useFormatter();
@@ -237,7 +239,8 @@ function MembersCard({ organization, run, roleLabel, onlyOne }: CardProps & { on
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
-                {member.isYou && !onlyOne && !lastOwner && <LeaveButton organization={organization} run={run} />}
+                {member.isYou && !lastOwner && <LeaveButton organization={organization} run={run} />}
+                {member.isYou && lastOwner && <p className="w-full text-sm text-muted-foreground">{t("leave.lastOwner")}</p>}
               </li>
             );
           })}

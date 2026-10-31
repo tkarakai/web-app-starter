@@ -24,8 +24,9 @@ read `platform/docs/organizations.md`.
 - **Organization-scoped by default.** Use `orgQuery` and `orgMutation` from `./platform/functions`:
   handlers get `ctx.organizationId` (the caller's active organization, membership re-checked on
   every call), `ctx.organizationRole` (`owner`, `admin` or `member`) and `ctx.ownerId`. `orgQuery`
-  returns `null` when signed out (safe for `useQuery`); `orgMutation` throws `NOT_AUTHENTICATED`
-  and applies the global mutation rate limit. Both enforce live session assurance and current
+  returns `null` when signed out or without a membership (safe for `useQuery`); `orgMutation`
+  throws `NO_ORGANIZATION` for a signed-in user without a membership and `NOT_AUTHENTICATED`
+  when signed out, and applies the global mutation rate limit. Both enforce live session assurance and current
   verification/MFA/passkey/enrollment policy. Use `authedQuery`/`authedMutation` (user-scoped,
   `ctx.ownerId` only) just for deliberately personal data that follows a user across
   organizations, such as preferences.

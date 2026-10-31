@@ -15,27 +15,34 @@ function fixture() {
 }
 
 describe("organization projects", () => {
-  test("a user without an organization gets a personal one on first write, named after them", async () => {
+  test("a user without an organization stays signed in but cannot write app data or create one implicitly", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
     expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
     expect(await alice.caller.query(api.projects.list, {})).toBeNull();
 
+    await expect(alice.caller.mutation(api.projects.create, { name: "Launch", description: "" })).rejects.toThrow("NO_ORGANIZATION");
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+
+    // The initial sign-up hook provisions a personal organization, not ordinary app writes.
+    await alice.provision();
     await alice.caller.mutation(api.projects.create, { name: "Launch", description: "" });
     const mine = await alice.caller.query(api.platform.organizations.mine, {});
     expect(mine!.organizations).toEqual([{ id: mine!.activeOrganizationId, name: "alice", role: "owner" }]);
     expect(await alice.caller.query(api.projects.list, {})).toMatchObject([{ name: "Launch", organizationId: mine!.activeOrganizationId }]);
-    // `ensure` is idempotent.
-    expect(await alice.caller.mutation(api.platform.organizations.ensure, {})).toBe(mine!.activeOrganizationId);
+    // Initial provisioning is idempotent.
+    expect(await alice.provision()).toBe(mine!.activeOrganizationId);
   });
 
   test("organizations are isolated: no read or write reaches another organization's project", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
+    await alice.provision();
     const projectId = await alice.caller.mutation(api.projects.create, { name: "Secret", description: "" });
     const taskId = await alice.caller.mutation(api.tasks.create, { projectId, title: "T", description: "", status: "todo" });
-    await bob.caller.mutation(api.platform.organizations.ensure, {});
+    await bob.provision();
 
     expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
     expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
@@ -55,9 +62,10 @@ describe("organization projects", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
+    await alice.provision();
     const projectId = await alice.caller.mutation(api.projects.create, { name: "Shared", description: "" });
     const acme = await activeOrganization(alice.caller);
-    const bobsOwn = await bob.caller.mutation(api.platform.organizations.ensure, {});
+    const bobsOwn = await bob.provision();
     const membership = await f.addMember(acme, bob.userId, "member");
 
     // Bob still works in his own organization until he switches.
@@ -122,7 +130,7 @@ describe("upgrade migration", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     // Bob joined Acme before the migration reached his old project.
     await f.addMember(acme, bob.userId, "member");
     const bobsProject = await legacyProject(f, bob.userId);
@@ -140,7 +148,7 @@ describe("upgrade migration", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     // Bob was invited into Acme as an owner before the migration reached his old project.
     await f.addMember(acme, bob.userId, "owner");
     const bobsProject = await legacyProject(f, bob.userId);
@@ -157,7 +165,7 @@ describe("upgrade migration", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     // Bob became an owner of Acme; Alice invited someone and then left, so Bob is its only member.
     await f.addMember(acme, bob.userId, "owner");
     await f.t.mutation(components.betterAuth.adapter.create, {
@@ -195,6 +203,8 @@ describe("deleting an organization", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
+    await alice.provision();
+    await bob.provision();
     const doomed = await alice.caller.mutation(api.projects.create, { name: "Doomed", description: "" });
     const alsoDoomed = await alice.caller.mutation(api.projects.create, { name: "Also doomed", description: "" });
     const kept = await bob.caller.mutation(api.projects.create, { name: "Kept", description: "" });

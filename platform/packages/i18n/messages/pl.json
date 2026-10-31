@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Przełącz organizację",
       "heading": "Twoje organizacje",
-      "create": "Utwórz organizację"
+      "create": "Utwórz organizację",
+      "none": "Brak organizacji"
     },
     "settings": {
       "title": "Organizacja",
@@ -542,7 +543,8 @@
       "description": "Stracisz dostęp do {name} i całej jej zawartości. Wrócić możesz tylko dzięki nowemu zaproszeniu.",
       "action": "Opuść",
       "confirmTitle": "Opuścić organizację {name}?",
-      "left": "Opuszczono organizację {name}."
+      "left": "Opuszczono organizację {name}.",
+      "lastOwner": "Jesteś jedynym właścicielem. Zaproś kolejnego właściciela i przed odejściem poczekaj, aż przyjmie zaproszenie."
     },
     "create": {
       "title": "Nowa organizacja",
@@ -605,7 +607,7 @@
       "delete": "Usuń organizację",
       "confirmTitle": "Usunąć {name}?",
       "confirmDescription": "Spowoduje to trwałe usunięcie {name} i całej jej zawartości dla wszystkich członków. Tej operacji nie można cofnąć.",
-      "onlyOrganization": "To Twoja jedyna organizacja, więc otrzymasz nową, pustą.",
+      "onlyOrganization": "Pozostaniesz zalogowany bez organizacji. Możesz później utworzyć organizację lub przyjąć zaproszenie.",
       "confirmLabel": "Wpisz {name}, aby potwierdzić",
       "confirm": "Usuń trwale",
       "deleting": "Usuwanie...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "Nie masz już dostępu do {organization}."
+    },
+    "empty": {
+      "title": "Nie należysz do żadnej organizacji",
+      "description": "Utwórz organizację lub przyjmij zaproszenie, aby rozpocząć."
     }
   }
 }

@@ -12,7 +12,7 @@ import { Button } from "@web-app-starter/design-system";
 
 import { ResumeInvitation } from "../components/accept-invitation";
 import { AuthGuard } from "../components/auth-guard";
-import { EnsureOrganization } from "../components/organization-invitations";
+import { OrganizationAccessNotice } from "../components/organization-invitations";
 import { ForceSystemTheme } from "../components/force-system-theme";
 import { GuestGuard } from "../components/guest-guard";
 
@@ -78,7 +78,7 @@ export async function ProtectedLayout({ children }: { children: ReactNode }) {
 
   return (
     <AuthGuard preloadedUser={preloadedUser}>
-      <EnsureOrganization />
+      <OrganizationAccessNotice />
       <ResumeInvitation />
       {children}
     </AuthGuard>

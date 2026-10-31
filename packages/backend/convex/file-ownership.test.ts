@@ -25,6 +25,8 @@ async function fixture() {
       } },
     });
     const caller = t.withIdentity({ subject: account._id, sessionId: session._id });
+    // Adapter-created fixture accounts skip the real sign-up provisioning hook.
+    await t.mutation(internal.platform.organizations.provisionPersonal, { userId: account._id });
     const projectId = await caller.mutation(api.projects.create, { name, description: "" });
     return { caller, projectId, userId: account._id };
   }

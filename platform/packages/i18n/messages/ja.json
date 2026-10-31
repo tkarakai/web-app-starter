@@ -492,7 +492,8 @@
     "switcher": {
       "label": "組織を切り替える",
       "heading": "あなたの組織",
-      "create": "組織を作成"
+      "create": "組織を作成",
+      "none": "組織なし"
     },
     "settings": {
       "title": "組織",
@@ -542,7 +543,8 @@
       "description": "{name} とその中のすべてへのアクセスを失います。戻るには新しい招待が必要です。",
       "action": "退出",
       "confirmTitle": "{name} から退出しますか？",
-      "left": "{name} から退出しました。"
+      "left": "{name} から退出しました。",
+      "lastOwner": "あなたは唯一のオーナーです。別のオーナーを招待し、その人が招待を承認してから退出してください。"
     },
     "create": {
       "title": "新しい組織",
@@ -605,7 +607,7 @@
       "delete": "組織を削除",
       "confirmTitle": "{name} を削除しますか？",
       "confirmDescription": "{name} とその中のすべてが、全メンバーについて完全に削除されます。元に戻すことはできません。",
-      "onlyOrganization": "これが唯一の組織のため、新しい空の組織が作成されます。",
+      "onlyOrganization": "組織に所属していなくてもログイン状態は維持されます。後から組織を作成するか、招待を承認できます。",
       "confirmLabel": "確認のため {name} と入力してください",
       "confirm": "完全に削除",
       "deleting": "削除しています...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "{organization} にアクセスできなくなりました。"
+    },
+    "empty": {
+      "title": "所属している組織はありません",
+      "description": "組織を作成するか、招待を承認して始めましょう。"
     }
   }
 }

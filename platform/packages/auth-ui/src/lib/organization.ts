@@ -15,7 +15,7 @@ const departing = new Set<string>();
 
 /**
  * Mark an organization the user is leaving or deleting, so its disappearance from their
- * list reads as their own doing rather than as lost access (`EnsureOrganization`).
+ * list reads as their own doing rather than as lost access (`OrganizationAccessNotice`).
  */
 export function expectOrganizationDeparture(organizationId: string): void {
   departing.add(organizationId);

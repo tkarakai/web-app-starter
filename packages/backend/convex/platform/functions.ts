@@ -7,7 +7,7 @@ import {
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
-import { ensurePersonalOrganization, resolveActiveOrganization, type ActiveOrganization } from "./organizationAccess";
+import { resolveActiveOrganization, type ActiveOrganization } from "./organizationAccess";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -156,8 +156,8 @@ export function orgQuery<
 /**
  * Organization-scoped mutation builder: use it for every write of app data.
  * Like `authedMutation`, plus `ctx.organizationId` and `ctx.organizationRole`. Stamp new
- * rows with `ctx.organizationId`. A user who belongs to no organization (only possible
- * while an upgrade migrates, or after leaving every organization) gets a personal one.
+ * rows with `ctx.organizationId`. A signed-in user with no membership gets
+ * `NO_ORGANIZATION`; ordinary app operations never create an organization.
  */
 export const orgMutation = customMutation(
   mutation,
@@ -171,8 +171,8 @@ export const orgMutation = customMutation(
       throws: true,
     });
 
-    const organization = await resolveActiveOrganization(ctx, auth.user, auth.session)
-      ?? await ensurePersonalOrganization(ctx, auth.user);
+    const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
+    if (!organization) throw new Error("NO_ORGANIZATION");
     return { ...auth, ...organization };
   }),
 );

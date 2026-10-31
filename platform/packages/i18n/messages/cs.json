@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Přepnout organizaci",
       "heading": "Vaše organizace",
-      "create": "Vytvořit organizaci"
+      "create": "Vytvořit organizaci",
+      "none": "Žádná organizace"
     },
     "settings": {
       "title": "Organizace",
@@ -542,7 +543,8 @@
       "description": "Ztratíte přístup k {name} a všemu, co obsahuje. Vrátit se můžete jen s novou pozvánkou.",
       "action": "Opustit",
       "confirmTitle": "Opustit organizaci {name}?",
-      "left": "Opustili jste organizaci {name}."
+      "left": "Opustili jste organizaci {name}.",
+      "lastOwner": "Jste jediným vlastníkem. Pozvěte dalšího vlastníka a před odchodem počkejte, až pozvánku přijme."
     },
     "create": {
       "title": "Nová organizace",
@@ -605,7 +607,7 @@
       "delete": "Smazat organizaci",
       "confirmTitle": "Smazat {name}?",
       "confirmDescription": "Tím trvale smažete {name} i se vším obsahem, a to pro všechny členy. Tuto akci nelze vrátit.",
-      "onlyOrganization": "Je to vaše jediná organizace, proto dostanete novou, prázdnou.",
+      "onlyOrganization": "Zůstanete přihlášeni bez organizace. Později můžete vytvořit organizaci nebo přijmout pozvánku.",
       "confirmLabel": "Pro potvrzení napište {name}",
       "confirm": "Trvale smazat",
       "deleting": "Mazání...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "K {organization} už nemáte přístup."
+    },
+    "empty": {
+      "title": "Nejste členem žádné organizace",
+      "description": "Začněte vytvořením organizace nebo přijetím pozvánky."
     }
   }
 }

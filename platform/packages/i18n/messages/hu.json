@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Szervezet váltása",
       "heading": "Szervezeteid",
-      "create": "Szervezet létrehozása"
+      "create": "Szervezet létrehozása",
+      "none": "Nincs szervezet"
     },
     "settings": {
       "title": "Szervezet",
@@ -542,7 +543,8 @@
       "description": "Elveszíti a hozzáférést a(z) {name} szervezethez és mindenhez, ami benne van. Csak új meghívóval térhet vissza.",
       "action": "Kilépés",
       "confirmTitle": "Kilépsz innen: {name}?",
-      "left": "Kiléptél innen: {name}."
+      "left": "Kiléptél innen: {name}.",
+      "lastOwner": "Te vagy az egyetlen tulajdonos. Hívj meg egy másik tulajdonost, és a kilépés előtt várd meg, amíg elfogadja a meghívást."
     },
     "create": {
       "title": "Új szervezet",
@@ -605,7 +607,7 @@
       "delete": "Szervezet törlése",
       "confirmTitle": "Törli a(z) {name} szervezetet?",
       "confirmDescription": "Ez véglegesen törli a(z) {name} szervezetet mindenestül, minden tag számára. Ez nem vonható vissza.",
-      "onlyOrganization": "Ez az egyetlen szervezete, ezért kap egy új, üreset.",
+      "onlyOrganization": "Szervezet nélkül is bejelentkezve maradsz. Később létrehozhatsz egyet, vagy elfogadhatsz egy meghívást.",
       "confirmLabel": "A megerősítéshez írja be: {name}",
       "confirm": "Végleges törlés",
       "deleting": "Törlés...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "Már nincs hozzáférése a(z) {organization} szervezethez."
+    },
+    "empty": {
+      "title": "Nem vagy egyetlen szervezet tagja sem",
+      "description": "A kezdéshez hozz létre egy szervezetet, vagy fogadj el egy meghívást."
     }
   }
 }

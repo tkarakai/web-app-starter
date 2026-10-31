@@ -16,17 +16,17 @@ function fixture() {
 }
 
 describe("organizations", () => {
-  test("signed-in users get a personal organization; the active one follows membership, never just the session", async () => {
+  test("initial sign-up provisions a personal organization; the active one follows membership, never just the session", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
-    expect(await alice.caller.mutation(api.platform.organizations.ensure, {})).toBe(acme);
+    const acme = await alice.provision();
+    expect(await alice.provision()).toBe(acme);
     expect((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations)
       .toEqual([{ id: acme, name: "alice", role: "owner" }]);
 
-    const bobsOwn = await bob.caller.mutation(api.platform.organizations.ensure, {});
+    const bobsOwn = await bob.provision();
     // A session pointing at an organization Bob doesn't belong to is ignored.
     await bob.switchTo(acme);
     expect(await activeOrganization(bob.caller)).toBe(bobsOwn);
@@ -46,7 +46,7 @@ describe("organizations", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     await f.addMember(acme, bob.userId, "member");
     await bob.switchTo(acme);
     await f.t.mutation(components.betterAuth.adapter.create, {
@@ -67,7 +67,7 @@ describe("organizations", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     await f.addMember(acme, bob.userId, "member");
     const day = 86_400_000;
     const invite = (email: string, status: string, sentDaysAgo: number) => f.t.mutation(components.betterAuth.adapter.create, {
@@ -99,10 +99,10 @@ describe("organizations", () => {
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     const carol = await f.user("carol");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     await f.addMember(acme, bob.userId, "member");
     await bob.switchTo(acme);
-    const other = await carol.caller.mutation(api.platform.organizations.ensure, {});
+    const other = await carol.provision();
     const invite = (organizationId: string, email: string, status: string) => f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
         organizationId, email, role: "member", status, inviterId: alice.userId, createdAt: Date.now(), expiresAt: Date.now() + 86_400_000,
@@ -142,7 +142,7 @@ describe("organizations", () => {
     const alice = await f.user("alice");
     const carol = await f.user("carol");
     const mallory = await f.user("mallory");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     const create = (status: string, expiresAt = Date.now() + 86_400_000) => f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
         organizationId: acme, email: "carol@example.test", role: "admin", status, inviterId: alice.userId, createdAt: Date.now(), expiresAt,
@@ -178,7 +178,7 @@ describe("organizations", () => {
     const alice = await f.user("alice");
     const carol = await f.user("carol");
     const mallory = await f.user("mallory");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     const invitation = await f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
         organizationId: acme, email: "carol@example.test", role: "admin", status: "pending",
@@ -203,8 +203,8 @@ describe("organizations", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
-    await bob.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
+    await bob.provision();
     await f.addMember(acme, bob.userId, "member");
 
     await f.t.mutation(internal.platform.organizations.rememberActive, { userId: bob.userId, organizationId: acme });
@@ -219,7 +219,7 @@ describe("organizations", () => {
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     const carol = await f.user("carol");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     await f.addMember(acme, bob.userId, "member");
     await f.addMember(acme, carol.userId, "admin");
 

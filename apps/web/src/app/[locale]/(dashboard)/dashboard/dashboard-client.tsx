@@ -22,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
+import { NoOrganization, OrganizationInvitations, useAuthUser, useOrganizations } from "@web-app-starter/auth-ui";
 import { useProfileSync } from "@/hooks/useProfileSync";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
@@ -38,9 +38,16 @@ export function DashboardClient() {
   useProfileSync();
 
   const authUser = useAuthUser();
+  const organizations = useOrganizations();
+  const hasOrganization = Boolean(organizations?.activeOrganizationId);
   const tc = useTranslations("common");
+  const to = useTranslations("organization");
 
-  const [selectedProjectId, setSelectedProjectId] = React.useState<Id<"projects"> | null>(null);
+  const [selection, setSelection] = React.useState<{ organizationId: string; projectId: Id<"projects"> } | null>(null);
+  const selectedProjectId = selection?.organizationId === organizations?.activeOrganizationId ? selection?.projectId ?? null : null;
+  const setSelectedProjectId = (projectId: Id<"projects"> | null) => {
+    setSelection(projectId && organizations?.activeOrganizationId ? { organizationId: organizations.activeOrganizationId, projectId } : null);
+  };
 
   const displayName = authUser?.name ?? tc("anonymous");
   const displayEmail = authUser?.email;
@@ -61,17 +68,21 @@ export function DashboardClient() {
             orientation="vertical"
             className="me-2 data-[orientation=vertical]:h-4"
           />
-          <DashboardBreadcrumbs
+          {hasOrganization ? <DashboardBreadcrumbs
             selectedProjectId={selectedProjectId}
             onNavigateToProjects={() => setSelectedProjectId(null)}
-          />
+          /> : <span className="text-sm text-muted-foreground">{organizations ? to("switcher.none") : tc("loading")}</span>}
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl px-6 pt-4 empty:hidden">
             <OrganizationInvitations onAccepted={() => setSelectedProjectId(null)} />
           </div>
-          {selectedProjectId ? (
+          {organizations === undefined ? (
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{tc("loading")}</div>
+          ) : !hasOrganization ? (
+            <NoOrganization />
+          ) : selectedProjectId ? (
             <ProjectContent
               projectId={selectedProjectId}
               onDeleted={() => setSelectedProjectId(null)}

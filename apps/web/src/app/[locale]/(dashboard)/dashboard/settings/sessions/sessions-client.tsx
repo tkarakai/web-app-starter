@@ -17,7 +17,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@web-app-starter/design-system";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { SessionsList } from "@/components/settings/sessions-list";
@@ -77,6 +77,7 @@ export function SessionsClient() {
 
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
+            <OrganizationInvitations />
             {/* Page header */}
             <div className="space-y-1">
               <div className="flex items-center gap-3">

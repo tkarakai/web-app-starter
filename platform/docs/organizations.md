@@ -1,7 +1,7 @@
 # Organizations
 
-Every user works inside an **organization**, and the app's data belongs to organizations, not
-to individual users. Everyone in an organization shares its data. It is built on Better Auth's
+The app's data belongs to **organizations**, and everyone in an organization shares its data.
+Accounts can stay signed in without any organization memberships. It is built on Better Auth's
 [organization plugin](https://www.better-auth.com/docs/plugins/organization), configured in
 `packages/backend/convex/platform/organizationPlugin.ts`.
 
@@ -23,6 +23,12 @@ to individual users. Everyone in an organization shares its data. It is built on
   owners a **danger zone** to delete the organization.
 - **Notice of lost access.** When someone is removed, or an owner deletes the organization, the
   member's view drops it live and says "You no longer have access to …".
+- **No organization is a supported account state.** After losing or deleting the last
+  organization, the account stays signed in. The selector shows **No organization** and its
+  menu contains only **Create organization**. Organization navigation and app workspace
+  controls disappear; Profile, Security, Theme, Sign out and pending invitations remain.
+  Creating an organization or accepting an invitation restores the workspace. Reloading,
+  signing in again and ordinary backend operations never create a replacement organization.
 
 ### Roles
 
@@ -35,10 +41,11 @@ Better Auth's three built-in roles, used as they are:
 | `member` | Use the organization's data |
 
 An organization always keeps at least one owner. Better Auth refuses to remove, demote or let
-the last owner leave, so the page doesn't offer the last owner **Leave**: they promote someone or
-delete the organization. When an account is deleted, an organization it owned alone passes to its
-longest-standing admin (or member). Users can't leave their only organization. Only owners can
-delete an organization.
+the last owner leave. The page explains that they must invite another owner and wait for the
+invitation to be accepted before leaving; a pending invitation does not count as an owner.
+Someone who is not the last owner may leave even their only organization. When an account is
+deleted, an organization it owned alone passes to its longest-standing admin (or member).
+Only owners can delete an organization; deleting one never deletes its members' accounts.
 
 All three roles read and write the same app data. If your app needs finer rules (for example,
 only admins delete projects), check `ctx.organizationRole` in your functions.
@@ -104,7 +111,8 @@ Owners delete an organization from the danger zone, typing its name to confirm a
 re-authenticating if they last signed in more than a few minutes ago. Better Auth removes the
 organization, its members and its invitations at once, so nobody can reach anything in it from
 then on. Members who had it open see the notice of lost access; anyone left without an
-organization, including an owner who deleted their only one, gets a new personal one.
+organization, including an owner who deleted their only one, stays signed in without one.
+If the user still belongs to another organization, it becomes active instead.
 
 The app's own rows are removed afterwards by **`convex/organizationData.ts`**, which the platform
 calls until it reports that nothing is left:
@@ -132,8 +140,8 @@ Use the organization builders from `./platform/functions` for every table of app
 
 - `orgQuery` gives the handler `ctx.organizationId` and `ctx.organizationRole` (as well as
   `ctx.user` and `ctx.ownerId`). It returns `null` when signed out or without an organization.
-- `orgMutation` adds the same to `authedMutation`. A user with no organization gets a personal
-  one first.
+- `orgMutation` adds the same to `authedMutation`. A signed-in user with no membership gets
+  `NO_ORGANIZATION`; the mutation never creates an organization as a side effect.
 - `getOrgAuth(ctx)` resolves the same thing inside an internal function called from an action.
 
 The rules:
@@ -164,13 +172,14 @@ From `@web-app-starter/auth-ui`:
 |---|---|
 | `OrganizationSwitcher` | Sidebar header: product mark and name, active organization, and a menu to switch or create. `onSwitch` lets you clear state that belongs to the old organization |
 | `OrganizationSection` | The organization page's content: name, members, invitations, danger zone |
-| `OrganizationInvitations` | Pending-invitation banner for the dashboard |
+| `OrganizationInvitations` | Pending-invitation banner; keep it reachable without a membership, including from account settings |
+| `NoOrganization` | Empty workspace with guidance and an explicit create action; account navigation remains outside it |
 | `CreateOrganizationDialog` | The create dialog, if you want it elsewhere |
 | `useOrganizations()` | The caller's organizations and the active one |
 | `AcceptInvitationView` (`/views`) | The `/accept-invitation/[id]` page; re-export it from the route |
 
-`ProtectedLayout` also includes `EnsureOrganization`, which gives a signed-in user without an
-organization a personal one and shows the notice of lost access, and `ResumeInvitation`, which
+`ProtectedLayout` also includes `OrganizationAccessNotice`, which shows the notice of lost
+access without creating organizations, and `ResumeInvitation`, which
 returns a user to an invitation link they opened while signed out. The sign-up view shows the account form for `?invitation=` links
 whatever the onboarding mode. The backend admits that sign-up only for an address with a
 pending invitation.
@@ -185,6 +194,9 @@ existing functions, which use `authedQuery`/`authedMutation`, keep working per u
    and `OrganizationInvitations` at the top of your dashboard. Add the route
    `src/app/[locale]/(invitation)/accept-invitation/[id]/page.tsx` re-exporting
    `AcceptInvitationView`, as `apps/web` does.
+   Use `useOrganizations()` to hide workspace and organization navigation when
+   `activeOrganizationId` is null, and render `NoOrganization` instead of app data. Keep
+   account controls and invitations reachable in that state, including from Settings.
 2. Scope your tables as above, and migrate their existing rows as below. Add
    `convex/organizationData.ts` so deleting an organization removes their rows.
 3. Translate any app strings you add (`platform-add-strings`). The platform's own strings ship

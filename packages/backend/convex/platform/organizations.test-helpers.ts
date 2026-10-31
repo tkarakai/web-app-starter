@@ -1,7 +1,7 @@
 // Shared by the organization tests. The extra dot keeps this file out of Convex deployment.
 import type { TestConvex } from "convex-test";
 
-import { api, components } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import type schema from "../schema";
 
 /**
@@ -27,6 +27,8 @@ export async function organizationFixture(t: TestConvex<typeof schema>) {
       caller,
       userId: account._id,
       sessionId: session._id,
+      /** Run the initial sign-up hook; adapter-created fixture users skip that hook. */
+      provision: async () => (await t.mutation(internal.platform.organizations.provisionPersonal, { userId: account._id }))!,
       /** What Better Auth's `organization.setActive` does to the session row. */
       switchTo: (organizationId: string | null) => t.mutation(components.betterAuth.adapter.updateOne, {
         input: { model: "session", where: [{ field: "_id", value: session._id }], update: { activeOrganizationId: organizationId } },

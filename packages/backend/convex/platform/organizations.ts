@@ -14,7 +14,7 @@ import { internalAction, internalMutation, internalQuery, query, type QueryCtx }
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { authedMutation, authedQuery, orgMutation, orgQuery } from "./functions";
+import { authedQuery, orgMutation, orgQuery } from "./functions";
 import {
   ensurePersonalOrganization,
   removeMemberships,
@@ -229,18 +229,6 @@ export const deleteInvitation = orgMutation({
       status: "succeeded",
       meta: JSON.stringify({ invitationIds: deleted.map((row) => row._id), statuses: deleted.map((row) => row.status) }),
     });
-  },
-});
-
-/**
- * Give a signed-in user with no organization a personal one. The protected layout calls
- * this when `mine` comes back empty: after an upgrade (before the data migration reaches
- * them), for accounts created outside sign-up, or after leaving every organization.
- */
-export const ensure = authedMutation({
-  args: {},
-  handler: async (ctx) => {
-    return (await ensurePersonalOrganization(ctx, ctx.user)).organizationId;
   },
 });
 

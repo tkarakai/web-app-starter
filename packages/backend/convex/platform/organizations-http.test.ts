@@ -40,7 +40,7 @@ describe("organization routes", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     const admin = await f.addMember(acme, bob.userId, "admin");
 
     for (const role of ["admin, owner", "owner,admin", ["admin", "owner"], "superuser"]) {
@@ -63,7 +63,7 @@ describe("organization routes", () => {
   test("an organization can be renamed, but its slug and metadata stay platform-managed", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     for (const data of [{ slug: "taken" }, { name: "Acme", metadata: { personal: false } }, { logo: "https://example.test/x.png" }]) {
       const update = await f.post("/organization/update", { organizationId: acme, data }, f.token("alice"));
       expect(update.status, JSON.stringify(data)).toBe(403);
@@ -76,7 +76,7 @@ describe("organization routes", () => {
   test("every invitation email counts against the inviter, resends included", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     for (let i = 0; i < 10; i++) {
       const invite = await f.post("/organization/invite-member", { organizationId: acme, email: `person${i}@example.test`, role: "member" }, f.token("alice"));
       expect(invite.status, await invite.clone().text()).toBe(200);
@@ -91,7 +91,7 @@ describe("organization routes", () => {
     const alice = await f.user("alice");
     await f.user("bob", { emailVerified: false });
     await f.t.mutation(components.platform.appSettings.putRaw, { key: "userEmailVerificationRequired", value: "false" });
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     const invitation = await f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
         organizationId: acme, email: "bob@example.test", role: "member", status: "pending",
@@ -112,7 +112,7 @@ describe("deleting an organization", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     await f.addMember(acme, bob.userId, "admin");
     await f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
@@ -141,10 +141,40 @@ describe("deleting an organization", () => {
     expect(deleted.status, await deleted.clone().text()).toBe(200);
     expect(await f.members(acme)).toEqual([]);
     expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "carol@example.test" })).toBe(false);
-    // Nobody is left in it, so nothing resolves to it; each user is given a new organization.
+    // Accounts survive without memberships; ordinary organization operations never recreate one.
     expect(await bob.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
-    const fresh = await bob.caller.mutation(api.platform.organizations.ensure, {});
-    expect(fresh).not.toBe(acme);
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    await expect(bob.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "unknown" })).rejects.toThrow("NO_ORGANIZATION");
+    await bob.caller.mutation(api.platform.userProfiles.setLocale, { locale: "de" });
+    expect(await bob.caller.query(api.platform.userProfiles.get, {})).toMatchObject({ locale: "de" });
+    expect(await bob.caller.query(api.platform.organizations.active, {})).toBeNull();
+    expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
+
+    const created = await f.post("/organization/create", { name: "Chosen", slug: "chosen" }, f.token("bob"));
+    expect(created.status, await created.clone().text()).toBe(200);
+    expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toMatchObject([{ name: "Chosen", role: "owner" }]);
+  });
+
+  test("the last owner cannot leave until an invited owner accepts; either owner can then leave their last organization", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.provision();
+    const leave = () => f.post("/organization/leave", { organizationId: acme }, f.token("alice"));
+    expect((await leave()).status).toBe(400);
+
+    const sent = await f.post("/organization/invite-member", { organizationId: acme, email: "bob@example.test", role: "owner" }, f.token("alice"));
+    expect(sent.status, await sent.clone().text()).toBe(200);
+    const invitation = await sent.json() as { id: string };
+    const pending = await leave();
+    expect(pending.status).toBe(400);
+    expect(await pending.json()).toMatchObject({ code: "YOU_CANNOT_LEAVE_THE_ORGANIZATION_AS_THE_ONLY_OWNER" });
+
+    const accepted = await f.post("/organization/accept-invitation", { invitationId: invitation.id }, f.token("bob"));
+    expect(accepted.status, await accepted.clone().text()).toBe(200);
+    expect((await leave()).status).toBe(200);
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await f.members(acme)).toMatchObject([{ userId: bob.userId, role: "owner" }]);
   });
 });
 
@@ -152,7 +182,7 @@ describe("invitation lookups", () => {
   test("a pending invitation is found however many old invitations the address has", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     const invite = (status: string) => f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
         organizationId: acme, email: "new@example.test", role: "member", status,
@@ -169,7 +199,7 @@ describe("invitation lookups", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob", { emailVerified: false });
-    const acme = await alice.caller.mutation(api.platform.organizations.ensure, {});
+    const acme = await alice.provision();
     const invitation = await f.t.mutation(components.betterAuth.adapter.create, {
       input: { model: "invitation", data: {
         organizationId: acme, email: "bob@example.test", role: "member", status: "pending",

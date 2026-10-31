@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Building2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import { authClient, isAuthRateLimited } from "@web-app-starter/auth/client";
@@ -116,16 +116,13 @@ export function SendVerificationButton({ email, callbackURL, size, className, ch
 }
 
 /**
- * Keeps a signed-in user's organizations in order. Gives one who belongs to no organization a
- * personal one: after an upgrade, before the data migration reaches them, or after leaving or
- * deleting their last one. Tells them when an organization disappears from their list without
- * their doing (they were removed, or an owner deleted it). Renders nothing.
+ * Tells a signed-in user when an organization disappears without their doing (they were
+ * removed, or an owner deleted it). Losing every membership leaves the account signed in
+ * with no organization; this observer never creates one. Renders nothing.
  */
-export function EnsureOrganization() {
+export function OrganizationAccessNotice() {
   const t = useTranslations("organization");
   const organizations = useOrganizations();
-  const ensure = useMutation(api.platform.organizations.ensure);
-  const requested = React.useRef(false);
   const known = React.useRef<Map<string, string> | null>(null);
 
   React.useEffect(() => {
@@ -136,14 +133,7 @@ export function EnsureOrganization() {
     }
     known.current = current;
 
-    if (current.size > 0) {
-      requested.current = false;
-      return;
-    }
-    if (requested.current) return;
-    requested.current = true;
-    void ensure({}).catch(() => { requested.current = false; });
-  }, [organizations, ensure, t]);
+  }, [organizations, t]);
 
   return null;
 }

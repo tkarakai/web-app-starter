@@ -14,7 +14,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@web-app-starter/design-system";
-import { OrganizationSection, useAuthUser } from "@web-app-starter/auth-ui";
+import { OrganizationInvitations, OrganizationSection, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 
@@ -52,6 +52,7 @@ export function OrganizationClient() {
 
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
+            <OrganizationInvitations />
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                 <Building2 className="h-5 w-5 text-muted-foreground" />

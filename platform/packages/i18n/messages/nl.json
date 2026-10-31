@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Van organisatie wisselen",
       "heading": "Je organisaties",
-      "create": "Organisatie aanmaken"
+      "create": "Organisatie aanmaken",
+      "none": "Geen organisatie"
     },
     "settings": {
       "title": "Organisatie",
@@ -542,7 +543,8 @@
       "description": "Je verliest de toegang tot {name} en alles erin. Alleen een nieuwe uitnodiging laat je weer toe.",
       "action": "Verlaten",
       "confirmTitle": "{name} verlaten?",
-      "left": "Je hebt {name} verlaten."
+      "left": "Je hebt {name} verlaten.",
+      "lastOwner": "Je bent de enige eigenaar. Nodig een andere eigenaar uit en wacht tot die de uitnodiging accepteert voordat je vertrekt."
     },
     "create": {
       "title": "Nieuwe organisatie",
@@ -605,7 +607,7 @@
       "delete": "Organisatie verwijderen",
       "confirmTitle": "{name} verwijderen?",
       "confirmDescription": "Hiermee worden {name} en alles erin definitief verwijderd, voor alle leden. Dit kan niet ongedaan worden gemaakt.",
-      "onlyOrganization": "Het is je enige organisatie, dus je krijgt een nieuwe, lege organisatie.",
+      "onlyOrganization": "Je blijft ingelogd zonder organisatie. Je kunt later een organisatie aanmaken of een uitnodiging accepteren.",
       "confirmLabel": "Typ {name} om te bevestigen",
       "confirm": "Definitief verwijderen",
       "deleting": "Verwijderen...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "Je hebt geen toegang meer tot {organization}."
+    },
+    "empty": {
+      "title": "Je bent geen lid van een organisatie",
+      "description": "Maak een organisatie aan of accepteer een uitnodiging om te beginnen."
     }
   }
 }

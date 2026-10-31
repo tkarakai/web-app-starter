@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Switch organization",
       "heading": "Your organizations",
-      "create": "Create organization"
+      "create": "Create organization",
+      "none": "No organization"
     },
     "settings": {
       "title": "Organization",
@@ -542,7 +543,8 @@
       "description": "You lose access to {name} and everything in it. Only a new invitation lets you back in.",
       "action": "Leave",
       "confirmTitle": "Leave {name}?",
-      "left": "You left {name}."
+      "left": "You left {name}.",
+      "lastOwner": "You're the only owner. Invite another owner and wait for them to accept before leaving."
     },
     "create": {
       "title": "New organization",
@@ -605,7 +607,7 @@
       "delete": "Delete organization",
       "confirmTitle": "Delete {name}?",
       "confirmDescription": "This permanently deletes {name} and everything in it, for every member. It can't be undone.",
-      "onlyOrganization": "It's your only organization, so you'll get a new, empty one.",
+      "onlyOrganization": "You'll stay signed in without an organization. You can create one or accept an invitation later.",
       "confirmLabel": "Type {name} to confirm",
       "confirm": "Delete permanently",
       "deleting": "Deleting...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "You no longer have access to {organization}."
+    },
+    "empty": {
+      "title": "You don't belong to an organization",
+      "description": "Create an organization or accept an invitation to get started."
     }
   }
 }

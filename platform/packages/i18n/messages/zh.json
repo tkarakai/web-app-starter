@@ -492,7 +492,8 @@
     "switcher": {
       "label": "切换组织",
       "heading": "你的组织",
-      "create": "创建组织"
+      "create": "创建组织",
+      "none": "无组织"
     },
     "settings": {
       "title": "组织",
@@ -542,7 +543,8 @@
       "description": "你将失去对 {name} 及其所有内容的访问权限。只有新的邀请才能让你重新加入。",
       "action": "退出",
       "confirmTitle": "退出 {name}？",
-      "left": "你已退出 {name}。"
+      "left": "你已退出 {name}。",
+      "lastOwner": "你是唯一的所有者。请邀请另一位所有者，并等待对方接受邀请后再退出。"
     },
     "create": {
       "title": "新建组织",
@@ -605,7 +607,7 @@
       "delete": "删除组织",
       "confirmTitle": "删除 {name}？",
       "confirmDescription": "这将为所有成员永久删除 {name} 及其所有内容。此操作无法撤销。",
-      "onlyOrganization": "这是你唯一的组织，因此你将获得一个新的空组织。",
+      "onlyOrganization": "你将保持登录，但不属于任何组织。之后可以创建组织或接受邀请。",
       "confirmLabel": "输入 {name} 以确认",
       "confirm": "永久删除",
       "deleting": "正在删除...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "你已无法访问 {organization}。"
+    },
+    "empty": {
+      "title": "你尚未加入任何组织",
+      "description": "创建组织或接受邀请即可开始。"
     }
   }
 }

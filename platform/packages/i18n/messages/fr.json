@@ -492,7 +492,8 @@
     "switcher": {
       "label": "Changer d'organisation",
       "heading": "Vos organisations",
-      "create": "Créer une organisation"
+      "create": "Créer une organisation",
+      "none": "Aucune organisation"
     },
     "settings": {
       "title": "Organisation",
@@ -542,7 +543,8 @@
       "description": "Vous perdez l'accès à {name} et à tout son contenu. Seule une nouvelle invitation vous permettra d'y revenir.",
       "action": "Quitter",
       "confirmTitle": "Quitter {name} ?",
-      "left": "Vous avez quitté {name}."
+      "left": "Vous avez quitté {name}.",
+      "lastOwner": "Vous êtes le seul propriétaire. Invitez un autre propriétaire et attendez qu’il accepte avant de partir."
     },
     "create": {
       "title": "Nouvelle organisation",
@@ -605,7 +607,7 @@
       "delete": "Supprimer l'organisation",
       "confirmTitle": "Supprimer {name} ?",
       "confirmDescription": "Cela supprime définitivement {name} et tout son contenu, pour tous les membres. Cette action est irréversible.",
-      "onlyOrganization": "C'est votre seule organisation : vous en recevrez une nouvelle, vide.",
+      "onlyOrganization": "Vous resterez connecté sans organisation. Vous pourrez en créer une ou accepter une invitation plus tard.",
       "confirmLabel": "Saisissez {name} pour confirmer",
       "confirm": "Supprimer définitivement",
       "deleting": "Suppression...",
@@ -613,6 +615,10 @@
     },
     "access": {
       "lost": "Vous n'avez plus accès à {organization}."
+    },
+    "empty": {
+      "title": "Vous n’appartenez à aucune organisation",
+      "description": "Créez une organisation ou acceptez une invitation pour commencer."
     }
   }
 }

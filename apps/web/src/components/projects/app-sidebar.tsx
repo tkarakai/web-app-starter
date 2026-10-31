@@ -9,7 +9,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { OrganizationSwitcher, useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationSwitcher, useOrganizations, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -78,12 +78,16 @@ export function AppSidebar({
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
   const to = useTranslations("organization");
+  const organizations = useOrganizations();
+  const hasOrganization = Boolean(organizations?.activeOrganizationId);
 
-  const projects: Project[] = useQuery(api.projects.list) ?? [];
+  const projects: Project[] = useQuery(api.projects.list, hasOrganization ? {} : "skip") ?? [];
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogOrganizationId, setDialogOrganizationId] = React.useState<string | null>(null);
+  const dialogOpen = hasOrganization && dialogOrganizationId === organizations?.activeOrganizationId;
+  const setDialogOpen = (open: boolean) => setDialogOrganizationId(open ? organizations?.activeOrganizationId ?? null : null);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
@@ -143,7 +147,7 @@ export function AppSidebar({
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
+          {hasOrganization && <SidebarGroup>
             <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="group/projects">
               <div className="flex items-center">
                 <CollapsibleTrigger asChild>
@@ -187,7 +191,7 @@ export function AppSidebar({
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>
-          </SidebarGroup>
+          </SidebarGroup>}
         </SidebarContent>
 
         <SidebarFooter>
@@ -230,10 +234,10 @@ export function AppSidebar({
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => openPage("/dashboard/organization")}>
+                  {hasOrganization && <DropdownMenuItem onSelect={() => openPage("/dashboard/organization")}>
                     <Building2 className="me-2 h-4 w-4" />
                     {to("label")}
-                  </DropdownMenuItem>
+                  </DropdownMenuItem>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                     <LogOut className="me-2 h-4 w-4" />

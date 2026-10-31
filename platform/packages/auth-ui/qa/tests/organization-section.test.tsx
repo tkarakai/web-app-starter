@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "@web-app-starter/i18n/messages/en.json";
 import { SidebarProvider } from "@web-app-starter/design-system";
-import { EnsureOrganization } from "../../src/components/organization-invitations";
+import { OrganizationAccessNotice } from "../../src/components/organization-invitations";
 import { OrganizationSwitcher } from "../../src/components/organization-switcher";
 import { OrganizationSection } from "../../src/settings/organization-section";
 
@@ -133,15 +133,16 @@ describe("organization page", () => {
     expect(screen.getByRole("button", { name: t.leave.action })).toBeInTheDocument();
   });
 
-  it("offers Leave on your own row, except as the last owner or in your only organization", () => {
+  it("offers Leave even in your only organization, but explains why the last owner cannot leave", () => {
     const { rerender } = render(wrap(<OrganizationSection />));
     expect(screen.queryByRole("button", { name: t.leave.action })).not.toBeInTheDocument();
+    expect(screen.getByText(t.leave.lastOwner)).toBeVisible();
     mocks.active = organization({ members: [you, { ...bob, role: "owner" }] });
     rerender(wrap(<OrganizationSection />));
     expect(screen.getByRole("button", { name: t.leave.action })).toBeInTheDocument();
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) };
     rerender(wrap(<OrganizationSection />));
-    expect(screen.queryByRole("button", { name: t.leave.action })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t.leave.action })).toBeInTheDocument();
   });
 
   it("deletes only once the owner types the organization's name", async () => {
@@ -158,7 +159,7 @@ describe("organization page", () => {
     expect(mocks.push).toHaveBeenCalledWith("/en/dashboard");
   });
 
-  it("warns that deleting the only organization leaves a new, empty one", () => {
+  it("explains that deleting the only organization keeps the account signed in without one", () => {
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) };
     render(wrap(<OrganizationSection />));
     fireEvent.click(screen.getByRole("button", { name: t.danger.delete }));
@@ -167,6 +168,15 @@ describe("organization page", () => {
 });
 
 describe("organization switcher", () => {
+  it("shows No organization and only Create organization when memberships are empty", async () => {
+    mocks.mine = { activeOrganizationId: null, organizations: [] };
+    render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
+    expect(screen.getByTestId("active-organization")).toHaveTextContent(t.switcher.none);
+    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(1);
+    expect(screen.getByRole("menuitem", { name: t.switcher.create })).toBeVisible();
+  });
+
   it("opens a menu to create an organization even with only one, and has no settings entry", async () => {
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) };
     render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
@@ -179,9 +189,9 @@ describe("organization switcher", () => {
 
 describe("lost access", () => {
   it("tells the user when an organization disappears without their doing", () => {
-    const { rerender } = render(wrap(<EnsureOrganization />));
+    const { rerender } = render(wrap(<OrganizationAccessNotice />));
     mocks.mine = { activeOrganizationId: "org-1", organizations: two.organizations.slice(0, 1) };
-    act(() => rerender(wrap(<EnsureOrganization />)));
+    act(() => rerender(wrap(<OrganizationAccessNotice />)));
     expect(mocks.info).toHaveBeenCalledWith("You no longer have access to Ada.");
   });
 
@@ -189,7 +199,7 @@ describe("lost access", () => {
     // Its own ID: other tests leave departures of org-1 behind.
     mocks.mine = { activeOrganizationId: "org-3", organizations: [{ id: "org-3", name: "Left", role: "member" }, two.organizations[1]] };
     mocks.active = organization({ id: "org-3", name: "Left", members: [you, { ...bob, role: "owner" }] });
-    const page = () => wrap(<><EnsureOrganization /><OrganizationSection /></>);
+    const page = () => wrap(<><OrganizationAccessNotice /><OrganizationSection /></>);
     const { rerender } = render(page());
     fireEvent.click(screen.getByRole("button", { name: t.leave.action }));
     fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: t.leave.action }));
@@ -200,9 +210,17 @@ describe("lost access", () => {
     expect(mocks.info).not.toHaveBeenCalled();
   });
 
-  it("gives a user left with no organization a new personal one", () => {
+  it("leaves a user with no organization signed in without provisioning one", () => {
     mocks.mine = { activeOrganizationId: null, organizations: [] };
-    render(wrap(<EnsureOrganization />));
-    expect(mocks.ensure).toHaveBeenCalledWith({});
+    render(wrap(<OrganizationAccessNotice />));
+    expect(mocks.ensure).not.toHaveBeenCalled();
+  });
+
+  it("shows an actionable empty state on a saved organization-settings URL", () => {
+    mocks.mine = { activeOrganizationId: null, organizations: [] };
+    mocks.active = null;
+    render(wrap(<OrganizationSection />));
+    expect(screen.getByTestId("no-organization")).toHaveTextContent(t.empty.title);
+    expect(screen.getByRole("button", { name: t.create.action })).toBeVisible();
   });
 });

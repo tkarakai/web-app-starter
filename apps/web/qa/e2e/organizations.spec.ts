@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { fillStable, markConvexLogPosition, signIn, toRelativeUrl, waitForAuthEmail } from "./helpers/auth";
+import { fillStable, markConvexLogPosition, signIn, signOut, toRelativeUrl, waitForAuthEmail } from "./helpers/auth";
 import { createDisposableUser, disposableEmail, disposablePassword } from "./helpers/fixtures";
 import { test as onboardingTest } from "./helpers/onboarding";
 
 /** Open the organization page the way a user does: the account menu's Organization entry. */
 async function openOrganizationPage(page: Page): Promise<void> {
+  await page.bringToFront();
   await page.goto("/en/dashboard");
   await page.locator('[data-slot="sidebar-footer"] button').first().click();
   await page.getByRole("menuitem", { name: "Organization", exact: true }).click();
@@ -150,14 +151,82 @@ test("an invitation answers only its own address; a declined one is spent and sh
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByTestId("organization-invitations")).toHaveCount(0);
 
-  // Deleting needs the name typed; the owner then continues in a new, empty organization.
+  // Deleting needs the name typed; the account stays signed in without an organization.
   await page.getByRole("button", { name: "Delete organization", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(`Type ${organization} to confirm`).fill(organization);
   await dialog.getByRole("button", { name: "Delete permanently", exact: true }).click();
   await page.waitForURL(/\/dashboard$/);
-  await expect(page.getByTestId("active-organization")).toHaveText("E2E User");
+  await expect(page.getByTestId("active-organization")).toHaveText("No organization");
+  await expect(page.getByTestId("no-organization")).toBeVisible();
   await expect(page.getByText(`You no longer have access to ${organization}.`)).toHaveCount(0);
+});
+
+test("deleting the last organization keeps account controls and invitations, persists across sign-in, and allows joining or creating explicitly", async ({ page, browser }) => {
+  test.setTimeout(180_000);
+  const owner = await createDisposableUser();
+  const host = await createDisposableUser();
+  const doomed = `Delete ${randomUUID().slice(0, 8)}`;
+  const invited = `Join ${randomUUID().slice(0, 8)}`;
+  const created = `Create ${randomUUID().slice(0, 8)}`;
+  await signIn(page, owner.email, owner.password);
+  await renameOrganization(page, doomed);
+  await withPage(browser, async hostPage => {
+    await signIn(hostPage, host.email, host.password);
+    await renameOrganization(hostPage, invited);
+    await invite(hostPage, owner.email);
+  });
+
+  await page.bringToFront();
+  await page.getByRole("button", { name: "Delete organization", exact: true }).click();
+  await page.getByRole("dialog").getByLabel(`Type ${doomed} to confirm`).fill(doomed);
+  await page.getByRole("dialog").getByRole("button", { name: "Delete permanently", exact: true }).click();
+  await page.waitForURL(/\/dashboard$/);
+  await expect(page.getByTestId("active-organization")).toHaveText("No organization");
+  await expect(page.getByTestId("no-organization")).toBeVisible();
+  await expect(page.getByTitle("New project", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Projects", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("organization-invitations-banner")).toContainText(invited);
+  await page.getByRole("button", { name: "Switch organization" }).click();
+  await expect(page.getByRole("menuitem")).toHaveCount(1);
+  await expect(page.getByRole("menuitem", { name: "Create organization" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.locator('[data-slot="sidebar-footer"] button').first().click();
+  await expect(page.getByRole("menuitem", { name: "Organization", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Sign out", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dark theme", exact: true })).toBeVisible();
+  const settings = page.getByRole("menuitem", { name: "Settings", exact: true });
+  await expect(settings).toBeVisible();
+  await settings.click();
+  await page.waitForURL(/\/dashboard\/settings$/);
+  await expect(page.getByRole("tab", { name: "Profile", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Security", exact: true })).toBeVisible();
+  await expect(page.getByTestId("organization-invitations-banner")).toContainText(invited);
+  await expect(page.locator("#profile-name")).toBeVisible();
+  await page.getByRole("tab", { name: "Security", exact: true }).click();
+  await expect(page.locator("#current-password")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByTestId("active-organization")).toHaveText("No organization");
+  await signOut(page);
+  await signIn(page, owner.email, owner.password);
+  await expect(page.getByTestId("active-organization")).toHaveText("No organization");
+  await page.getByTestId("organization-invitations-banner").getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(page.getByTestId("active-organization")).toHaveText(invited);
+  await expect(page.getByTitle("New project", { exact: true })).toBeVisible();
+
+  // A member can leave their only organization; another owner's organization survives.
+  await openOrganizationPage(page);
+  await page.getByRole("button", { name: "Leave", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Leave", exact: true }).click();
+  await expect(page.getByTestId("active-organization")).toHaveText("No organization");
+  await page.getByRole("button", { name: "Switch organization" }).click();
+  await page.getByRole("menuitem", { name: "Create organization" }).click();
+  await page.getByRole("dialog").getByLabel("Name", { exact: true }).fill(created);
+  await page.getByRole("dialog").getByRole("button", { name: "Create organization", exact: true }).click();
+  await expect(page.getByTestId("active-organization")).toHaveText(created);
+  await expect(page.getByText("You're the only owner. Invite another owner and wait for them to accept before leaving.")).toBeVisible();
 });
 
 onboardingTest("a new person creates an account from the link while sign-up is closed, and comes back to it to join", async ({ page, browser, onboarding }) => {

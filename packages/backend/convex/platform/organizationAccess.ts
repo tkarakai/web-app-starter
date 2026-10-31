@@ -4,7 +4,7 @@
  * Organizations, members and invitations are Better Auth organization-plugin rows in the
  * Better Auth component. Writes go through Better Auth's endpoints, which check roles;
  * this file only reads them, plus `ensurePersonalOrganization`, which gives a user with
- * no membership their own organization. See platform/docs/organizations.md.
+ * no membership their initial organization at sign-up. See platform/docs/organizations.md.
  */
 import { components } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -112,8 +112,8 @@ export function personalOrganizationName(user: Pick<Doc<"user">, "name" | "email
 
 /**
  * Give a user with no membership their own organization, as its owner. Idempotent: returns
- * the oldest existing membership's organization when there is one. Runs at sign-up and
- * whenever a signed-in user turns out to have no organization.
+ * the oldest existing membership's organization when there is one. Only used for initial
+ * sign-up provisioning; losing the last membership does not create a replacement.
  */
 export async function ensurePersonalOrganization(
   ctx: Writer,

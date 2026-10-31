@@ -45,9 +45,9 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
       {logo}
       <span className="grid flex-1 text-start leading-tight">
         <span className="truncate font-semibold">{productName}</span>
-        {active && (
+        {data && (
           <span className="truncate text-xs text-muted-foreground" data-testid="active-organization">
-            {active.name}
+            {active?.name ?? t("switcher.none")}
           </span>
         )}
       </span>
@@ -90,9 +90,9 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="bottom" className="w-64">
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              {data.organizations.length > 0 && <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                 {t("switcher.heading")}
-              </DropdownMenuLabel>
+              </DropdownMenuLabel>}
               {data.organizations.map((organization) => (
                 <DropdownMenuItem key={organization.id} onSelect={() => void switchTo(organization.id)}>
                   <Building2 className="me-2 size-4 shrink-0 text-muted-foreground" />
@@ -100,7 +100,7 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
                   {organization.id === data.activeOrganizationId && <Check className="ms-2 size-4" />}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
+              {data.organizations.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
                 <Plus className="me-2 size-4" />
                 {t("switcher.create")}
