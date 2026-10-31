@@ -11,7 +11,7 @@ async function openOrganizationPage(page: Page): Promise<void> {
   await page.goto("/en/dashboard");
   await page.locator('[data-slot="sidebar-footer"] button').first().click();
   await page.getByRole("menuitem", { name: "Organization", exact: true }).click();
-  await page.waitForURL(/\/dashboard\/organization$/);
+  await page.waitForURL(url => url.pathname.endsWith("/dashboard/organization"));
   await expect(page.getByTestId("organization-settings")).toBeVisible();
 }
 
@@ -168,6 +168,7 @@ test("deleting the last organization keeps account controls and invitations, per
   const host = await createDisposableUser();
   const doomed = `Delete ${randomUUID().slice(0, 8)}`;
   const invited = `Join ${randomUUID().slice(0, 8)}`;
+  const secondInvited = `Other ${randomUUID().slice(0, 8)}`;
   const created = `Create ${randomUUID().slice(0, 8)}`;
   await signIn(page, owner.email, owner.password);
   await renameOrganization(page, doomed);
@@ -185,6 +186,8 @@ test("deleting the last organization keeps account controls and invitations, per
   await expect(page.getByTestId("active-organization")).toHaveText("No organization");
   await expect(page.getByTestId("no-organization")).toBeVisible();
   await expect(page.getByTitle("New project", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("no-organization")).toContainText("Create an organization or accept an invitation to get started.");
+  await expect(page.locator("main header").getByText("No organization", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Projects", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("organization-invitations-banner")).toContainText(invited);
   await page.getByRole("button", { name: "Switch organization" }).click();
@@ -199,10 +202,30 @@ test("deleting the last organization keeps account controls and invitations, per
   const settings = page.getByRole("menuitem", { name: "Settings", exact: true });
   await expect(settings).toBeVisible();
   await settings.click();
-  await page.waitForURL(/\/dashboard\/settings$/);
+  await page.waitForURL(url => url.pathname.endsWith("/dashboard/settings"));
   await expect(page.getByRole("tab", { name: "Profile", exact: true })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Security", exact: true })).toBeVisible();
   await expect(page.getByTestId("organization-invitations-banner")).toContainText(invited);
+  // A second invitation arrives while this user remains in Settings, without navigation.
+  await withPage(browser, async hostPage => {
+    await signIn(hostPage, host.email, host.password);
+    await hostPage.getByRole("button", { name: "Switch organization" }).click();
+    await hostPage.getByRole("menuitem", { name: "Create organization" }).click();
+    await hostPage.getByRole("dialog").getByLabel("Name", { exact: true }).fill(secondInvited);
+    await hostPage.getByRole("dialog").getByRole("button", { name: "Create organization", exact: true }).click();
+    await expect(hostPage.getByTestId("active-organization")).toHaveText(secondInvited);
+    await invite(hostPage, owner.email);
+  });
+  await page.bringToFront();
+  const invitations = page.getByRole("list", { name: "Invitations", exact: true });
+  await expect(invitations.getByRole("listitem")).toHaveCount(2);
+  await expect(invitations).toContainText(secondInvited);
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/dashboard$/);
+  await expect(page.getByTestId("no-organization")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Invitations", exact: true }).getByRole("listitem")).toHaveCount(2);
+  await page.locator('[data-slot="sidebar-footer"] button').first().click();
+  await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   await expect(page.locator("#profile-name")).toBeVisible();
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await expect(page.locator("#current-password")).toBeVisible();
@@ -212,8 +235,11 @@ test("deleting the last organization keeps account controls and invitations, per
   await signOut(page);
   await signIn(page, owner.email, owner.password);
   await expect(page.getByTestId("active-organization")).toHaveText("No organization");
-  await page.getByTestId("organization-invitations-banner").getByRole("button", { name: "Accept", exact: true }).click();
+  await page.getByRole("list", { name: "Invitations", exact: true }).getByRole("listitem").filter({ hasText: invited })
+    .getByRole("button", { name: "Accept", exact: true }).click();
   await expect(page.getByTestId("active-organization")).toHaveText(invited);
+  await expect(page.getByRole("list", { name: "Invitations", exact: true }).getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "Invitations", exact: true })).toContainText(secondInvited);
   await expect(page.getByTitle("New project", { exact: true })).toBeVisible();
 
   // A member can leave their only organization; another owner's organization survives.
@@ -221,12 +247,57 @@ test("deleting the last organization keeps account controls and invitations, per
   await page.getByRole("button", { name: "Leave", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Leave", exact: true }).click();
   await expect(page.getByTestId("active-organization")).toHaveText("No organization");
+  await page.getByRole("list", { name: "Invitations", exact: true }).getByRole("button", { name: "Decline", exact: true }).click();
+  await expect(page.getByTestId("organization-invitations-banner")).toHaveCount(0);
+  await expect(page.getByTestId("no-organization")).toContainText("Create an organization to get started.");
+  await expect(page.getByTestId("no-organization")).not.toContainText("or accept an invitation");
   await page.getByRole("button", { name: "Switch organization" }).click();
   await page.getByRole("menuitem", { name: "Create organization" }).click();
   await page.getByRole("dialog").getByLabel("Name", { exact: true }).fill(created);
   await page.getByRole("dialog").getByRole("button", { name: "Create organization", exact: true }).click();
   await expect(page.getByTestId("active-organization")).toHaveText(created);
   await expect(page.getByText("You're the only owner. Invite another owner and wait for them to accept before leaving.")).toBeVisible();
+});
+
+test("Settings and Organization close back to the original project and tab, with a safe home fallback", async ({ page }) => {
+  test.setTimeout(120_000);
+  const user = await createDisposableUser();
+  await signIn(page, user.email, user.password);
+  const project = `Return ${randomUUID().slice(0, 8)}`;
+  await page.getByTitle("New project", { exact: true }).click();
+  await page.getByRole("dialog").getByLabel("Name", { exact: true }).fill(project);
+  await page.getByRole("dialog").getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page.getByRole("heading", { name: project, level: 1 })).toBeVisible();
+  await page.getByRole("tab", { name: "Attachments", exact: true }).click();
+  await expect(page).toHaveURL(/tab=attachments/);
+  const origin = page.url();
+  const open = async (name: "Settings" | "Organization") => {
+    await page.locator('[data-slot="sidebar-footer"] button').first().click();
+    await page.getByRole("menuitem", { name, exact: true }).click();
+    await expect(page.getByRole("button", { name: "Close", exact: true })).toBeVisible();
+  };
+  const close = async () => {
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(page).toHaveURL(origin);
+    await expect(page.getByRole("heading", { name: project, level: 1 })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Attachments", exact: true })).toHaveAttribute("data-state", "active");
+  };
+  await open("Settings");
+  await page.reload();
+  await close();
+  await open("Organization");
+  await close();
+  await open("Settings");
+  await open("Organization");
+  await close();
+  await open("Organization");
+  await open("Settings");
+  await close();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/en/dashboard/settings");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/dashboard$/);
 });
 
 onboardingTest("a new person creates an account from the link while sign-up is closed, and comes back to it to join", async ({ page, browser, onboarding }) => {

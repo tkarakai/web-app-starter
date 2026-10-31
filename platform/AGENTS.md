@@ -170,6 +170,11 @@ controls, and show `NoOrganization`. `orgMutation` refuses `NO_ORGANIZATION`; it
 creates a replacement. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
 and `AcceptInvitationView` from `@web-app-starter/auth-ui`. See [docs/organizations.md](docs/organizations.md).
 
+Open Settings and Organization through `useAccountNavigation()` and mount
+`AccountPageCloseButton` in their headers. Close returns to the original app location, including
+across account-page navigation or reloads; a direct link falls back to app home. Keep the
+`OrganizationInvitations` list reachable on those pages, even with zero memberships.
+
 Within an app, `@/` is an alias for its `src/`. It is app-internal only; across packages import
 by package name (`@web-app-starter/*` for the platform, `@repo/backend` for the backend).
 

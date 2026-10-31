@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "你尚未加入任何组织",
-      "description": "创建组织或接受邀请即可开始。"
+      "description": "创建组织或接受邀请即可开始。",
+      "createDescription": "创建组织即可开始。"
     }
   }
 }

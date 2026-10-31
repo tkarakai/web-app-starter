@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "Não pertence a nenhuma organização",
-      "description": "Crie uma organização ou aceite um convite para começar."
+      "description": "Crie uma organização ou aceite um convite para começar.",
+      "createDescription": "Crie uma organização para começar."
     }
   }
 }

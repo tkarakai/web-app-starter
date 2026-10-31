@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "Nem vagy egyetlen szervezet tagja sem",
-      "description": "A kezdéshez hozz létre egy szervezetet, vagy fogadj el egy meghívást."
+      "description": "A kezdéshez hozz létre egy szervezetet, vagy fogadj el egy meghívást.",
+      "createDescription": "A kezdéshez hozz létre egy szervezetet."
     }
   }
 }

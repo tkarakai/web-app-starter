@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "Du gehörst keiner Organisation an",
-      "description": "Erstelle eine Organisation oder nimm eine Einladung an, um loszulegen."
+      "description": "Erstelle eine Organisation oder nimm eine Einladung an, um loszulegen.",
+      "createDescription": "Erstelle eine Organisation, um loszulegen."
     }
   }
 }

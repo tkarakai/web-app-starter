@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "Je bent geen lid van een organisatie",
-      "description": "Maak een organisatie aan of accepteer een uitnodiging om te beginnen."
+      "description": "Maak een organisatie aan of accepteer een uitnodiging om te beginnen.",
+      "createDescription": "Maak een organisatie aan om te beginnen."
     }
   }
 }

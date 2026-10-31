@@ -10,6 +10,7 @@ import { OrganizationSection } from "../../src/settings/organization-section";
 type Org = { id: string; name: string; role: string };
 const mocks = vi.hoisted(() => ({
   active: undefined as unknown,
+  incoming: [] as unknown[],
   mine: undefined as { activeOrganizationId: string | null; organizations: Org[] } | undefined,
   ensure: vi.fn(),
   deleteInvitation: vi.fn(),
@@ -27,7 +28,8 @@ vi.mock("convex/react", async () => {
   const { getFunctionName } = await import("convex/server");
   return {
     useQuery: (query: Parameters<typeof getFunctionName>[0]) =>
-      (getFunctionName(query) === "platform/organizations:active" ? mocks.active : mocks.mine),
+      (getFunctionName(query) === "platform/organizations:active" ? mocks.active
+        : getFunctionName(query) === "platform/organizations:myInvitations" ? mocks.incoming : mocks.mine),
     useMutation: (mutation: Parameters<typeof getFunctionName>[0]) =>
       (getFunctionName(mutation) === "platform/organizations:deleteInvitation" ? mocks.deleteInvitation : mocks.ensure),
   };
@@ -70,6 +72,7 @@ beforeEach(() => {
   mocks.ensure.mockResolvedValue("org-new");
   mocks.deleteInvitation.mockResolvedValue(null);
   mocks.active = organization();
+  mocks.incoming = [];
   mocks.mine = two;
 });
 
@@ -222,5 +225,19 @@ describe("lost access", () => {
     render(wrap(<OrganizationSection />));
     expect(screen.getByTestId("no-organization")).toHaveTextContent(t.empty.title);
     expect(screen.getByRole("button", { name: t.create.action })).toBeVisible();
+  });
+
+  it("only suggests accepting an invitation while one is actually pending", () => {
+    mocks.mine = { activeOrganizationId: null, organizations: [] };
+    mocks.active = null;
+    const result = render(wrap(<OrganizationSection />));
+    expect(screen.getByText(t.empty.createDescription)).toBeVisible();
+    expect(screen.queryByText(t.empty.description)).not.toBeInTheDocument();
+    mocks.incoming = [{ id: "pending" }];
+    result.rerender(wrap(<OrganizationSection />));
+    expect(screen.getByText(t.empty.description)).toBeVisible();
+    mocks.incoming = [];
+    result.rerender(wrap(<OrganizationSection />));
+    expect(screen.getByText(t.empty.createDescription)).toBeVisible();
   });
 });

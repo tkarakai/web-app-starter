@@ -87,6 +87,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Settings and Organization can be closed back to the original app view, including the sample's
+  selected project and tab. Switching account screens and reloading retain that return target;
+  direct links fall back to app home. Multiple pending invitations remain a reactive list on
+  the app and account pages, each with independent Accept and Decline actions. The no-org
+  app header has no breadcrumb, and empty-state guidance only mentions invitations when
+  an active one is available.
+
 - Accounts remain signed in without an organization after losing their last membership.
   Organization and workspace navigation disappears, while account settings, theme, sign-out
   and invitations remain usable. Creation is explicit; backend writes refuse `NO_ORGANIZATION`

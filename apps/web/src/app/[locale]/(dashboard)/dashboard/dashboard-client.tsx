@@ -2,7 +2,7 @@
 
 import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
 
-import * as React from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
@@ -41,12 +41,20 @@ export function DashboardClient() {
   const organizations = useOrganizations();
   const hasOrganization = Boolean(organizations?.activeOrganizationId);
   const tc = useTranslations("common");
-  const to = useTranslations("organization");
 
-  const [selection, setSelection] = React.useState<{ organizationId: string; projectId: Id<"projects"> } | null>(null);
-  const selectedProjectId = selection?.organizationId === organizations?.activeOrganizationId ? selection?.projectId ?? null : null;
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const router = useRouter();
+  const projects = useQuery(api.projects.list, hasOrganization ? {} : "skip");
+  // Resolve the URL selection against this organization's actual IDs before querying a project.
+  const selectedProjectId = projects?.find(project => project._id === search.get("project"))?._id ?? null;
+  const tab = search.get("tab") === "attachments" ? "attachments" : "tasks";
+  const replaceSearch = (params: URLSearchParams) => router.replace(`${pathname}${params.size ? `?${params}` : ""}`, { scroll: false });
   const setSelectedProjectId = (projectId: Id<"projects"> | null) => {
-    setSelection(projectId && organizations?.activeOrganizationId ? { organizationId: organizations.activeOrganizationId, projectId } : null);
+    const params = new URLSearchParams(search.toString());
+    if (projectId) params.set("project", projectId); else params.delete("project");
+    params.delete("tab");
+    replaceSearch(params);
   };
 
   const displayName = authUser?.name ?? tc("anonymous");
@@ -64,21 +72,21 @@ export function DashboardClient() {
         <AnnouncementBannerHost className="shrink-0" />
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background px-4">
           <SidebarTrigger className="-ms-1" />
-          <Separator
+          {hasOrganization && <Separator
             orientation="vertical"
             className="me-2 data-[orientation=vertical]:h-4"
-          />
-          {hasOrganization ? <DashboardBreadcrumbs
+          />}
+          {hasOrganization && <DashboardBreadcrumbs
             selectedProjectId={selectedProjectId}
             onNavigateToProjects={() => setSelectedProjectId(null)}
-          /> : <span className="text-sm text-muted-foreground">{organizations ? to("switcher.none") : tc("loading")}</span>}
+          />}
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl px-6 pt-4 empty:hidden">
             <OrganizationInvitations onAccepted={() => setSelectedProjectId(null)} />
           </div>
-          {organizations === undefined ? (
+          {organizations === undefined || hasOrganization && search.has("project") && projects === undefined ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{tc("loading")}</div>
           ) : !hasOrganization ? (
             <NoOrganization />
@@ -86,6 +94,12 @@ export function DashboardClient() {
             <ProjectContent
               projectId={selectedProjectId}
               onDeleted={() => setSelectedProjectId(null)}
+              tab={tab}
+              onTabChange={(value) => {
+                const params = new URLSearchParams(search.toString());
+                if (value === "attachments") params.set("tab", value); else params.delete("tab");
+                replaceSearch(params);
+              }}
             />
           ) : (
             <ProjectsOverview onSelectProject={setSelectedProjectId} />
@@ -174,9 +188,13 @@ function ProjectsOverview({
 function ProjectContent({
   projectId,
   onDeleted,
+  tab,
+  onTabChange,
 }: {
   projectId: Id<"projects">;
   onDeleted: () => void;
+  tab: "tasks" | "attachments";
+  onTabChange: (tab: string) => void;
 }) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
@@ -202,7 +220,7 @@ function ProjectContent({
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
       <ProjectHeader project={project} onDeleted={onDeleted} />
-      <Tabs defaultValue="tasks">
+      <Tabs value={tab} onValueChange={onTabChange}>
         <TabsList>
           <TabsTrigger value="tasks">{td("tabs.tasks")}</TabsTrigger>
           <TabsTrigger value="attachments">{td("tabs.attachments")}</TabsTrigger>

@@ -3,13 +3,12 @@
 import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-controls";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { OrganizationSwitcher, useOrganizations, useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationSwitcher, useAccountNavigation, useOrganizations, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -70,7 +69,7 @@ export function AppSidebar({
   onSelectProject,
   ...props
 }: AppSidebarProps) {
-  const router = useRouter();
+  const accountNavigation = useAccountNavigation();
   const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const tc = useTranslations("common");
@@ -129,9 +128,9 @@ export function AppSidebar({
 
   const handleSignOut = useSignOut("/");
   // Close the mobile drawer even when the page is already open, so the choice is visible.
-  const openPage = (href: string) => {
+  const openPage = (page: "settings" | "organization") => {
     setOpenMobile(false);
-    router.push(href);
+    accountNavigation.open(page);
   };
 
   return (
@@ -230,11 +229,11 @@ export function AppSidebar({
                 <DropdownMenuContent side="top" align="start" className="w-56">
                   <ThemeToggle className="my-1 w-full" labels={themeLabels} />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => openPage("/dashboard/settings")}>
+                  <DropdownMenuItem onSelect={() => openPage("settings")}>
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
-                  {hasOrganization && <DropdownMenuItem onSelect={() => openPage("/dashboard/organization")}>
+                  {hasOrganization && <DropdownMenuItem onSelect={() => openPage("organization")}>
                     <Building2 className="me-2 h-4 w-4" />
                     {to("label")}
                   </DropdownMenuItem>}

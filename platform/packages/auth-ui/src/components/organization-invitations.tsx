@@ -40,42 +40,44 @@ export function OrganizationInvitations({ onAccepted }: { onAccepted?: () => voi
   };
 
   return (
-    <div className="space-y-2" data-testid="organization-invitations-banner">
+    <ul className="space-y-2" aria-label={t("pending.title")} data-testid="organization-invitations-banner">
       {invitations.map((invitation) => (
-        <Alert key={invitation.id} className="flex flex-wrap items-center gap-3">
-          <Building2 className="h-4 w-4" />
-          <AlertDescription className="flex-1 text-sm text-foreground">
-            {t("banner.message", { inviter: invitation.inviterName, organization: invitation.organizationName })}
-            {!invitation.emailVerified && (
-              <span className="block text-xs text-muted-foreground">{t("banner.verifyFirst")}</span>
-            )}
-          </AlertDescription>
-          <div className="flex gap-2">
-            {invitation.emailVerified ? (
+        <li key={invitation.id}>
+          <Alert className="flex flex-wrap items-center gap-3">
+            <Building2 className="h-4 w-4" />
+            <AlertDescription className="flex-1 text-sm text-foreground">
+              {t("banner.message", { inviter: invitation.inviterName, organization: invitation.organizationName })}
+              {!invitation.emailVerified && (
+                <span className="block text-xs text-muted-foreground">{t("banner.verifyFirst")}</span>
+              )}
+            </AlertDescription>
+            <div className="flex gap-2">
+              {invitation.emailVerified ? (
+                <Button
+                  size="sm"
+                  disabled={pending !== null}
+                  onClick={() => void respond(invitation.id, invitation.organizationName, true)}
+                >
+                  {t("banner.accept")}
+                </Button>
+              ) : (
+                <SendVerificationButton email={invitation.email} callbackURL={`/${locale}/dashboard`} size="sm">
+                  {t("banner.verify")}
+                </SendVerificationButton>
+              )}
               <Button
                 size="sm"
+                variant="ghost"
                 disabled={pending !== null}
-                onClick={() => void respond(invitation.id, invitation.organizationName, true)}
+                onClick={() => void respond(invitation.id, invitation.organizationName, false)}
               >
-                {t("banner.accept")}
+                {t("banner.decline")}
               </Button>
-            ) : (
-              <SendVerificationButton email={invitation.email} callbackURL={`/${locale}/dashboard`} size="sm">
-                {t("banner.verify")}
-              </SendVerificationButton>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={pending !== null}
-              onClick={() => void respond(invitation.id, invitation.organizationName, false)}
-            >
-              {t("banner.decline")}
-            </Button>
-          </div>
-        </Alert>
+            </div>
+          </Alert>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 

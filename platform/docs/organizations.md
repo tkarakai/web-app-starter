@@ -23,10 +23,17 @@ Accounts can stay signed in without any organization memberships. It is built on
   owners a **danger zone** to delete the organization.
 - **Notice of lost access.** When someone is removed, or an owner deletes the organization, the
   member's view drops it live and says "You no longer have access to …".
+- **Closeable account pages.** Settings and Organization have a header Close control. Opening
+  either records the original app location; moving between account pages keeps that location.
+  Closing returns there, including after a reload. A direct link with no app origin returns to
+  app home. In the sample, the selected project and its tab are part of the URL and restored
+  only if that project still belongs to the active organization.
 - **No organization is a supported account state.** After losing or deleting the last
   organization, the account stays signed in. The selector shows **No organization** and its
-  menu contains only **Create organization**. Organization navigation and app workspace
-  controls disappear; Profile, Security, Theme, Sign out and pending invitations remain.
+  menu contains only **Create organization**. The empty app header has no organization
+  breadcrumb. Empty-state guidance mentions accepting an invitation only when one is pending.
+  Organization navigation and app workspace controls disappear; Profile, Security, Theme,
+  Sign out and pending invitations remain.
   Creating an organization or accepting an invitation restores the workspace. Reloading,
   signing in again and ordinary backend operations never create a replacement organization.
 
@@ -96,6 +103,10 @@ backend. Only the invited address ever sees the organization's name, the inviter
 
 An existing user also sees pending invitations as a banner on the dashboard, with **Accept** or
 **Decline** (or **Verify email** first).
+Multiple invitations appear as a vertical list of separate cards, each naming the inviter and
+organization with its own actions. The same reactive list remains visible on account pages,
+so new invitations arrive even while the user stays in Settings. Responding to one leaves the
+others available.
 
 On the inviting side, the organization page lists each invited address once, with its latest
 invitation: **pending** (with its expiry; resend), **expired** (resend), or
@@ -174,6 +185,8 @@ From `@web-app-starter/auth-ui`:
 | `OrganizationSection` | The organization page's content: name, members, invitations, danger zone |
 | `OrganizationInvitations` | Pending-invitation banner; keep it reachable without a membership, including from account settings |
 | `NoOrganization` | Empty workspace with guidance and an explicit create action; account navigation remains outside it |
+| `useAccountNavigation()` | `open("settings" | "organization")`, account-page hrefs and `close()`, preserving a validated original app location |
+| `AccountPageCloseButton` | Localized header Close control using that return location; direct links fall back to app home |
 | `CreateOrganizationDialog` | The create dialog, if you want it elsewhere |
 | `useOrganizations()` | The caller's organizations and the active one |
 | `AcceptInvitationView` (`/views`) | The `/accept-invitation/[id]` page; re-export it from the route |
@@ -197,6 +210,10 @@ existing functions, which use `authedQuery`/`authedMutation`, keep working per u
    Use `useOrganizations()` to hide workspace and organization navigation when
    `activeOrganizationId` is null, and render `NoOrganization` instead of app data. Keep
    account controls and invitations reachable in that state, including from Settings.
+   Open account pages through `useAccountNavigation()` (or its hrefs) and put
+   `AccountPageCloseButton` in their headers. The return location is carried in `returnTo`,
+   restricted to app routes under `/dashboard`, and cannot target another account screen or
+   an external site. Locale changes keep the return location in the current locale.
 2. Scope your tables as above, and migrate their existing rows as below. Add
    `convex/organizationData.ts` so deleting an organization removes their rows.
 3. Translate any app strings you add (`platform-add-strings`). The platform's own strings ship
@@ -204,8 +221,9 @@ existing functions, which use `authedQuery`/`authedMutation`, keep working per u
 
 ## Upgrading existing data
 
-Releases before organizations stored app data per user (`ownerId`). Existing users get a
-personal organization on their next visit, or when a migration needs one. Their data must move
+Releases before organizations stored app data per user (`ownerId`). The backfill chooses or
+creates a private organization when assigning their legacy rows; visiting the app does not
+provision a new one. Their data must move
 into it, so that they keep it and nobody else sees it. Convex refuses to deploy a schema that
 existing rows violate, so this takes two releases
 ([widen, migrate, narrow](convex-migrations.md)):

@@ -14,7 +14,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@web-app-starter/design-system";
-import { OrganizationInvitations, OrganizationSection, useAuthUser } from "@web-app-starter/auth-ui";
+import { AccountPageCloseButton, OrganizationInvitations, OrganizationSection, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 
@@ -48,6 +48,7 @@ export function OrganizationClient() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <AccountPageCloseButton />
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">

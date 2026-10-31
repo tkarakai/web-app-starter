@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "You don't belong to an organization",
-      "description": "Create an organization or accept an invitation to get started."
+      "description": "Create an organization or accept an invitation to get started.",
+      "createDescription": "Create an organization to get started."
     }
   }
 }

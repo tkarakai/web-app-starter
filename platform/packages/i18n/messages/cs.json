@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "Nejste členem žádné organizace",
-      "description": "Začněte vytvořením organizace nebo přijetím pozvánky."
+      "description": "Začněte vytvořením organizace nebo přijetím pozvánky.",
+      "createDescription": "Začněte vytvořením organizace."
     }
   }
 }

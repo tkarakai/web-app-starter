@@ -19,7 +19,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
+import { AccountPageCloseButton, OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ProfileSection } from "@/components/settings/profile-section";
@@ -70,6 +70,7 @@ export function AccountClient() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <AccountPageCloseButton />
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">

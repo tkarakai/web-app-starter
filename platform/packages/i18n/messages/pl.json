@@ -618,7 +618,8 @@
     },
     "empty": {
       "title": "Nie należysz do żadnej organizacji",
-      "description": "Utwórz organizację lub przyjmij zaproszenie, aby rozpocząć."
+      "description": "Utwórz organizację lub przyjmij zaproszenie, aby rozpocząć.",
+      "createDescription": "Utwórz organizację, aby rozpocząć."
     }
   }
 }
