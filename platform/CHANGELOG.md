@@ -15,6 +15,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- Guides for individual accounts, shared workspaces, organization-private data and private/shared
+  composition using the existing auth/org builders, with indexed pagination, explicit publication,
+  lifecycle guidance and executable isolation checks. The table skill selects ownership and audience
+  instead of assuming every app table is shared. See [data access models](docs/data-access-models.md).
+
 - **Organizations** (multi-tenancy) on Better Auth's organization plugin. Every user gets a
   personal organization at sign-up and can create more or be invited to others, with the
   built-in `owner`, `admin` and `member` roles. App functions scope data with the new
