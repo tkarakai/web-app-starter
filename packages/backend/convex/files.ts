@@ -6,7 +6,7 @@ import type { Id } from "./_generated/dataModel";
 import { action, internalMutation, internalQuery } from "./_generated/server";
 import { hasExclusiveFileOwnership, requireFileAccess } from "./fileAccess";
 import {
-  authedMutation, authedQuery, getAuth, assertMaxLength, MAX_NAME_LENGTH,
+  orgMutation, orgQuery, getOrgAuth, assertMaxLength, MAX_NAME_LENGTH,
 } from "./platform/functions";
 import { rateLimit } from "./platform/rateLimits";
 import { requireProjectAccess } from "./projectAccess";
@@ -27,12 +27,12 @@ export const ALLOWED_CONTENT_TYPES = new Set([
 ]);
 
 // Compatibility tombstones: even previously issued upload URLs cannot confer ownership.
-export const generateUploadUrl = authedMutation({
+export const generateUploadUrl = orgMutation({
   args: {},
   handler: async (): Promise<never> => { throw new Error("USE_AUTHENTICATED_UPLOAD"); },
 });
 
-export const saveUpload = authedMutation({
+export const saveUpload = orgMutation({
   args: { storageId: v.id("_storage"), name: v.string(), projectId: v.id("projects") },
   handler: async (ctx, args): Promise<never> => {
     await requireProjectAccess(ctx, args.projectId);
@@ -43,7 +43,7 @@ export const saveUpload = authedMutation({
 export const beginUpload = internalMutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args): Promise<string> => {
-    const auth = await getAuth(ctx);
+    const auth = await getOrgAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
     await requireProjectAccess({ ...ctx, ...auth }, args.projectId);
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
@@ -57,7 +57,7 @@ export const finishUpload = internalMutation({
     contentType: v.string(), size: v.number(), ownerId: v.string(),
   },
   handler: async (ctx, args): Promise<Id<"uploads">> => {
-    const auth = await getAuth(ctx);
+    const auth = await getOrgAuth(ctx);
     if (!auth || auth.ownerId !== args.ownerId) throw new Error("NOT_AUTHENTICATED");
     await requireProjectAccess({ ...ctx, ...auth }, args.projectId);
     const existing = await ctx.db.query("uploads")
@@ -102,7 +102,7 @@ export const uploadFile = action({
 export const authorizeDownload = internalQuery({
   args: { id: v.id("uploads") },
   handler: async (ctx, args) => {
-    const auth = await getAuth(ctx);
+    const auth = await getOrgAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
     const upload = await ctx.db.get(args.id);
     if (!upload) throw new Error("UPLOAD_NOT_FOUND");
@@ -125,7 +125,7 @@ export const downloadFile = action({
   },
 });
 
-export const listUploads = authedQuery({
+export const listUploads = orgQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.projectId);
@@ -138,7 +138,7 @@ export const listUploads = authedQuery({
   },
 });
 
-export const deleteUpload = authedMutation({
+export const deleteUpload = orgMutation({
   args: { id: v.id("uploads") },
   handler: async (ctx, args) => {
     const upload = await ctx.db.get(args.id);

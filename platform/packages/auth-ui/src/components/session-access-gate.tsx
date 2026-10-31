@@ -11,10 +11,14 @@ import { PasswordInput, OtpInput } from "./localized-controls";
 import { TwoFactorSection } from "../settings/two-factor-section";
 import { PasskeySection } from "../settings/passkey-section";
 
-type Props = { children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean };
+type Props = {
+  children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean;
+  /** Within a page or dialog with its own navigation: no page margins or sign-out escape. */
+  embedded?: boolean;
+};
 
 /** Presentation of the server's decision; every API enforces that decision independently. */
-export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, authorizationOnly = false }: Props) {
+export function SessionAccessGate({ children, requireRecent = false, enrollment = false, admin = false, authorizationOnly = false, embedded = false }: Props) {
   const currentStatus = useQuery(api.platform.sessionAssurance.status, {});
   const [lastStatus, setLastStatus] = React.useState(currentStatus);
   React.useEffect(() => {
@@ -53,6 +57,7 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   const purposeAllowed = authorizationOnly ? status?.authPurpose === "mcp-authorization" : status?.authPurpose !== "mcp-authorization";
   const allowed = purposeAllowed && live && (status.allowed || enrolling) && (!requireRecent || recent);
   const [admitted, setAdmitted] = React.useState(false);
+  const cardClass = embedded ? "w-full" : "mx-auto my-8 w-full max-w-lg";
   React.useEffect(() => { if (allowed && (!panel || authorizationOnly)) setAdmitted(true); }, [allowed, panel, authorizationOnly]);
   const sendVerification = async () => {
     if (!user?.email) return;
@@ -82,10 +87,10 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
     || status.reason === "recovery" && panel === "recovery"
     || status.reason === "mfa_enrollment" && !hasFactor && status.primaryRecentUntil > now
   );
-  const panelContent = !authorizationOnly && panel && status && <Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
+  const panelContent = !authorizationOnly && panel && status && <Card className={cardClass}><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
     {panel === "passkey" ? <><PasskeySection />{hasPasskey && !allowed && <Button disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}<Button disabled={!allowed} onClick={() => setPanel(null)}>{t("continue")}</Button></>
       : <TwoFactorSection recover={panel === "recovery"} onComplete={() => setPanel(null)} onCancel={() => setPanel(null)} />}
-    <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>
+    {!embedded && <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>}
   </CardContent></Card>;
   const display = (content: React.ReactNode, granted = false) => <>
     <React.Activity mode={granted ? "visible" : "hidden"}>
@@ -100,7 +105,7 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   if (panelAllowed) return display(null);
   if (allowed && (!panel || authorizationOnly)) return display(null, true);
   const needsPassword = status.reason === "reauthenticate" || status.reason === "method_disabled" || !status.strongForChanges || ((status.reason === "mfa_enrollment" || status.reason === "passkey_enrollment") && status.primaryRecentUntil <= now && !hasFactor) || (enrolling && !hasFactor);
-  return display(<Card className="mx-auto my-8 w-full max-w-lg"><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
+  return display(<Card className={cardClass}><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
     <p>{t(live ? "description" : "expired")}</p>
     {error && <p role="alert" className="text-destructive">{t("failed")}</p>}
     {live && authorizationOnly && ["email_verification", "enrollment", "recovery", "mfa_enrollment", "passkey_enrollment"].includes(status.reason) ? <p>Complete account verification and security setup in the normal admin app, then restart authorization.</p>
@@ -126,7 +131,7 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
         </form> : null}
         {hasPasskey && <Button variant="outline" disabled={busy} onClick={() => void verify("passkey")}>{t("usePasskey")}</Button>}
       </> : null}
-    <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>
+    {!embedded && <Button variant="ghost" onClick={signOut}>{tc("signOut")}</Button>}
   </CardContent></Card>);
 }
 

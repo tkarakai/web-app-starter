@@ -17,12 +17,13 @@ import {
   oidcProvider,
   oneTap,
   oneTimeToken,
+  organization,
   phoneNumber,
   twoFactor,
   username,
 } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
-import { sessionFields } from "../sessionFields";
+import { sessionFields, userFields } from "../sessionFields";
 
 export const auth = betterAuth({
   database: convexAdapter({} as never, {} as never),
@@ -33,6 +34,7 @@ export const auth = betterAuth({
     enabled: true,
   },
   session: { additionalFields: sessionFields },
+  user: { additionalFields: userFields },
   plugins: [
     // Plugins from @convex-dev/better-auth built-in config (for schema compat)
     twoFactor(),
@@ -55,5 +57,6 @@ export const auth = betterAuth({
     }),
     // Our custom plugins
     admin(),
+    organization(),
   ],
 } as BetterAuthOptions);

@@ -35,19 +35,31 @@ const SENSITIVE = new Set([
 ]);
 const PASSWORD_PROOF = new Set(["/verify-password", "/change-password", "/delete-user", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes"]);
 const ACTIVE_SESSION_ROTATION = new Set(["/change-password", "/two-factor/disable", "/two-factor/enable", "/two-factor/verify-totp", "/two-factor/verify-otp"]);
+// The organization writes the platform UI uses. Reads are Convex queries; teams,
+// access-control and list routes stay disabled.
+const ORGANIZATION = new Set([
+  "/organization/create", "/organization/update", "/organization/set-active",
+  "/organization/invite-member",
+  "/organization/accept-invitation", "/organization/reject-invitation",
+  "/organization/remove-member", "/organization/update-member-role", "/organization/leave",
+  "/organization/delete",
+]);
+const ROLE_CHANGE = new Set(["/organization/invite-member", "/organization/update-member-role"]);
+const ORGANIZATION_ROLES = new Set<unknown>(["owner", "admin", "member"]);
 // These methods have no supported platform flow. Installing a plugin is not authorization.
 const DISABLED = new Set([
   "/sign-in/email-otp", "/sign-in/social", "/callback/:id", "/link-social", "/unlink-account",
   "/refresh-token", "/get-access-token", "/account-info", "/list-accounts",
   "/admin/impersonate-user", "/admin/stop-impersonating",
 ]);
-export function authRoutePolicy(path: string): "public" | "self" | "factor" | "enroll" | "sensitive" | "admin" | "disabled" {
+export function authRoutePolicy(path: string): "public" | "self" | "factor" | "enroll" | "sensitive" | "organization" | "admin" | "disabled" {
   if (DISABLED.has(path)) return "disabled";
   if (PUBLIC.has(path) || /^\/reset-password\/[^/]+$/.test(path)) return "public";
   if (SELF.has(path)) return "self";
   if (FACTOR.has(path)) return "factor";
   if (ENROLL.has(path)) return "enroll";
   if (SENSITIVE.has(path)) return "sensitive";
+  if (ORGANIZATION.has(path)) return "organization";
   if (path.startsWith("/admin/")) return "admin";
   return "disabled";
 }
@@ -145,6 +157,26 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       return;
     }
     if (!assurance.allowed) refuse("SECURITY_ENROLLMENT_REQUIRED");
+    // Organizations are for application users; administrators cannot use the web app.
+    if (policy === "organization") {
+      if (assurance.scope === "admin") refuse("NOT_APPLICATION_USER");
+      // Exactly one built-in role. Better Auth trims role lists when validating but not when
+      // checking for the owner role, so "admin, owner" would let an admin mint an owner.
+      if (ROLE_CHANGE.has(path) && !ORGANIZATION_ROLES.has(endpoint.body?.role)) refuse("INVALID_ROLE");
+      // Renaming only: the slug and metadata are platform-managed, and the platform has no logos.
+      if (path === "/organization/update") {
+        const data: unknown = endpoint.body?.data;
+        if (!data || typeof data !== "object" || Object.keys(data).some((key) => key !== "name")) refuse("ONLY_NAME_CAN_CHANGE");
+      }
+      // Deleting takes everything with it: confirm who is at the keyboard, as for account changes.
+      if (path === "/organization/delete" && !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
+      // Every invitation email counts against the inviter, resends included.
+      if (path === "/organization/invite-member") {
+        const limit = await actionCtx().runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "organizationInvite", key: pair.user._id });
+        if (!limit.ok) throw new APIError("TOO_MANY_REQUESTS", { code: "RATE_LIMITED", message: "Too many invitations." });
+      }
+      return;
+    }
     if (policy === "admin" && assurance.scope !== "admin") refuse("NOT_ADMIN");
     if (!assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
   });

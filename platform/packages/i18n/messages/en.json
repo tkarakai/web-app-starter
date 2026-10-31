@@ -476,5 +476,150 @@
       "verify": "Verify",
       "continue": "Continue"
     }
+  },
+  "organization": {
+    "label": "Organization",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member"
+    },
+    "roleHelp": {
+      "owner": "Everything an admin can do, and can make others owners.",
+      "admin": "Invites and removes people, changes roles and renames the organization.",
+      "member": "Can see and work on everything in the organization."
+    },
+    "switcher": {
+      "label": "Switch organization",
+      "heading": "Your organizations",
+      "create": "Create organization",
+      "none": "No organization"
+    },
+    "settings": {
+      "title": "Organization",
+      "description": "Members of {name} share everything in it. Owners and admins decide who belongs.",
+      "nameLabel": "Organization name",
+      "renamed": "Organization renamed.",
+      "yourRole": "Your role: {role}",
+      "members": "Members",
+      "memberCount": "{count, plural, one {# member} other {# members}}",
+      "you": "You",
+      "joined": "Joined {date}",
+      "changeRole": "Change role for {name}",
+      "roleChanged": "{name} is now {role}.",
+      "remove": "Remove",
+      "removeLabel": "Remove {name}",
+      "removeTitle": "Remove {name}?",
+      "removeDescription": "{name} loses access to {organization} right away. What they created stays in the organization.",
+      "removed": "{name} was removed.",
+      "pageDescription": "Name, members and invitations of the organization you're working in."
+    },
+    "invite": {
+      "title": "Invite people",
+      "description": "They get an email with a link to join. Invitations expire after 7 days.",
+      "email": "Email address",
+      "emailPlaceholder": "name@company.com",
+      "role": "Role",
+      "send": "Send invitation",
+      "sending": "Sending...",
+      "sent": "Invitation sent to {email}."
+    },
+    "pending": {
+      "title": "Invitations",
+      "expires": "Expires {date}",
+      "expired": "Expired",
+      "resend": "Resend",
+      "resent": "Invitation sent again to {email}.",
+      "sent": "Sent {date}",
+      "declined": "Declined",
+      "inviteAgain": "Invite again",
+      "delete": "Delete",
+      "deleteLabel": "Delete the invitation to {email}",
+      "deleteTitle": "Delete the invitation to {email}?",
+      "deleteDescription": "It disappears from this list. If it's still pending, its link stops working. This can't be undone.",
+      "deleted": "Invitation to {email} deleted."
+    },
+    "leave": {
+      "description": "You lose access to {name} and everything in it. Only a new invitation lets you back in.",
+      "action": "Leave",
+      "confirmTitle": "Leave {name}?",
+      "left": "You left {name}.",
+      "lastOwner": "You're the only owner. Invite another owner and wait for them to accept before leaving."
+    },
+    "create": {
+      "title": "New organization",
+      "description": "Start a separate organization with its own members and data. You'll be its owner.",
+      "action": "Create organization",
+      "nameLabel": "Name",
+      "namePlaceholder": "Acme Inc.",
+      "created": "{name} created. You're now working in it."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "rateLimited": "Too many requests. Please wait a moment and try again.",
+      "notAllowed": "You don't have permission to do that.",
+      "alreadyMember": "That person is already a member.",
+      "lastOwner": "An organization needs at least one owner. Make someone else an owner first.",
+      "invalidEmail": "Enter a valid email address."
+    },
+    "banner": {
+      "message": "{inviter} invited you to join {organization}.",
+      "accept": "Accept",
+      "decline": "Decline",
+      "verifyFirst": "Verify your email address to accept.",
+      "verify": "Verify email",
+      "joined": "You joined {organization}."
+    },
+    "invitation": {
+      "pageHeading": "An invitation to an organization",
+      "pageDescription": "Invitations let people join an organization and work together.",
+      "title": "Join {organization}",
+      "description": "{inviter} invited you to join {organization} as {role}.",
+      "accept": "Accept invitation",
+      "accepting": "Joining...",
+      "decline": "Decline",
+      "declined": "You declined the invitation.",
+      "signedOutTitle": "Sign in to view your invitation",
+      "signedOutDescription": "Sign in or create an account with the email address the invitation was sent to. You'll come back here afterwards.",
+      "signIn": "Sign in",
+      "signUp": "Create account",
+      "signUpHint": "You were invited to join an organization. Create your account with the email address the invitation was sent to.",
+      "wrongAccountTitle": "This invitation is for a different account",
+      "wrongAccountDescription": "You're signed in as {current}, but this invitation was sent to another email address. If it's meant for you, sign out and sign in with the address it was sent to.",
+      "securityTitle": "Finish setting up your account",
+      "securityDescription": "Your account needs one more security step before you can join {organization}. Complete it, and you'll come back here.",
+      "verifyTitle": "Verify your email first",
+      "verifyDescription": "To join {organization}, confirm that {email} is your address.",
+      "verify": "Verify email",
+      "alreadyMemberTitle": "You're already in {organization}",
+      "alreadyMemberDescription": "You're a member already, so there's nothing more to do.",
+      "openDashboard": "Go to dashboard",
+      "switchAccount": "Sign out and switch account",
+      "invalidTitle": "This invitation is no longer valid",
+      "invalidDescription": "It may have expired, been used already or been withdrawn. If you still need access, ask the person who invited you for a new invitation.",
+      "continueSetup": "Continue",
+      "openOrganization": "Open {organization}",
+      "joined": "You joined {organization}."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "Deleting {name} removes it and everything in it for every member. This can't be undone.",
+      "delete": "Delete organization",
+      "confirmTitle": "Delete {name}?",
+      "confirmDescription": "This permanently deletes {name} and everything in it, for every member. It can't be undone.",
+      "onlyOrganization": "You'll stay signed in without an organization. You can create one or accept an invitation later.",
+      "confirmLabel": "Type {name} to confirm",
+      "confirm": "Delete permanently",
+      "deleting": "Deleting...",
+      "deleted": "{name} was deleted."
+    },
+    "access": {
+      "lost": "You no longer have access to {organization}."
+    },
+    "empty": {
+      "title": "You don't belong to an organization",
+      "description": "Create an organization or accept an invitation to get started.",
+      "createDescription": "Create an organization to get started."
+    }
   }
 }

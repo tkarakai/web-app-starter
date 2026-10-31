@@ -43,6 +43,10 @@ it.each([false, true])("continues with the same backup codes through nested time
   expect(codes).toHaveValue("same-first-code\nsame-second-code");
   await act(async () => vi.advanceTimersByTime(300001));
   expect(codes).not.toBeVisible();
+  // Web's local step-up leaves its dashboard usable. Admin's outer gate requires fresh proof
+  // for the entire application, so it must still offer an escape.
+  if (admin) expect(screen.getByRole("button", { name: english.common.signOut })).toBeVisible();
+  else expect(screen.queryByRole("button", { name: english.common.signOut })).not.toBeInTheDocument();
   const password = screen.getAllByLabelText(english.accountSecurity.changePassword.currentPassword).find(field => !isInaccessible(field))!;
   fireEvent.change(password, { target: { value: "secret" } });
   await act(async () => fireEvent.submit(password.closest("form")!));
@@ -54,4 +58,11 @@ it.each([false, true])("continues with the same backup codes through nested time
   expect(codes).toBeVisible(); expect(codes).toHaveValue("same-first-code\nsame-second-code");
   fireEvent.click(screen.getByRole("button", { name: english.common.save }));
   expect(screen.queryByLabelText("Issued backup codes")).not.toBeInTheDocument();
+});
+
+it("keeps sign-out available when the outer gate blocks the whole application", () => {
+  mocks.status = { ...ready(), allowed: false, reason: "recovery" };
+  render(<NextIntlClientProvider locale="en" messages={english}><AuthGuard preloadedUser={{} as never}><SecuritySection /></AuthGuard></NextIntlClientProvider>);
+  expect(screen.getByRole("button", { name: english.common.signOut })).toBeVisible();
+  expect(screen.queryByRole("tab")).not.toBeInTheDocument();
 });

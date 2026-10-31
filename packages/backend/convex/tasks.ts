@@ -1,15 +1,15 @@
 import { v } from "convex/values";
 
 import {
-  authedMutation,
-  authedQuery,
+  orgMutation,
+  orgQuery,
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
 } from "./platform/functions";
 import { requireProjectAccess } from "./projectAccess";
 
-export const listByProject = authedQuery({
+export const listByProject = orgQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.projectId);
@@ -22,7 +22,7 @@ export const listByProject = authedQuery({
   },
 });
 
-export const create = authedMutation({
+export const create = orgMutation({
   args: {
     title: v.string(),
     description: v.string(),
@@ -51,7 +51,7 @@ export const create = authedMutation({
   },
 });
 
-export const update = authedMutation({
+export const update = orgMutation({
   args: {
     id: v.id("tasks"),
     title: v.optional(v.string()),
@@ -94,7 +94,7 @@ export const update = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = orgMutation({
   args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.id);

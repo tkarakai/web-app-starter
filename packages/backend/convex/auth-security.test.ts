@@ -88,13 +88,14 @@ describe("authorization — cross-tenant isolation", () => {
           name: "Alice's Project",
           description: "Owned by Alice",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
       });
 
       const result = await t.run(async (ctx) => {
         return requireProjectAccess(
-          { db: ctx.db, ownerId: "alice-id" },
+          { db: ctx.db, organizationId: "alice-org" },
           projectId
         );
       });
@@ -110,6 +111,7 @@ describe("authorization — cross-tenant isolation", () => {
           name: "Alice's Project",
           description: "Confidential",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
       });
@@ -117,7 +119,7 @@ describe("authorization — cross-tenant isolation", () => {
       await expect(
         t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "bob-id" },
+            { db: ctx.db, organizationId: "bob-org" },
             projectId
           );
         })
@@ -134,6 +136,7 @@ describe("authorization — cross-tenant isolation", () => {
           name: "Alice's Project",
           description: "",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
         await ctx.db.insert("tasks", {
@@ -152,7 +155,7 @@ describe("authorization — cross-tenant isolation", () => {
       await expect(
         t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "bob-id" },
+            { db: ctx.db, organizationId: "bob-org" },
             aliceProjectId
           );
         })
@@ -167,6 +170,7 @@ describe("authorization — cross-tenant isolation", () => {
           name: "Alice's Project",
           description: "",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
         await ctx.db.insert("tasks", {
@@ -183,7 +187,7 @@ describe("authorization — cross-tenant isolation", () => {
       // Alice passes the project access check
       const project = await t.run(async (ctx) => {
         return requireProjectAccess(
-          { db: ctx.db, ownerId: "alice-id" },
+          { db: ctx.db, organizationId: "alice-org" },
           aliceProjectId
         );
       });
@@ -210,6 +214,7 @@ describe("authorization — cross-tenant isolation", () => {
           name: "Alice's Project",
           description: "",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
         const storageId = await ctx.storage.store(new Blob(["secret"]));
@@ -229,7 +234,7 @@ describe("authorization — cross-tenant isolation", () => {
       await expect(
         t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "bob-id" },
+            { db: ctx.db, organizationId: "bob-org" },
             aliceProjectId
           );
         })
@@ -244,6 +249,7 @@ describe("authorization — cross-tenant isolation", () => {
           name: "Alice's Project",
           description: "",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
         const storageId = await ctx.storage.store(new Blob(["file"]));
@@ -268,7 +274,7 @@ describe("authorization — cross-tenant isolation", () => {
       await expect(
         t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "bob-id" },
+            { db: ctx.db, organizationId: "bob-org" },
             upload!.projectId
           );
         })

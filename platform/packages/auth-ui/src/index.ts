@@ -1,6 +1,7 @@
 // Client-side auth UI and helpers. Server Components are in "./views", the proxy
 // helper in "./proxy", and route handlers in "./routes".
 export { AuthForm } from "./components/auth-form";
+export { AccountPageCloseButton } from "./components/account-page-close-button";
 export { AuthGuard, useAuthUser } from "./components/auth-guard";
 export { ConvexErrorToast, errorMessageKey, PLATFORM_ERROR_KEYS } from "./components/convex-error-toast";
 export { ForceSystemTheme } from "./components/force-system-theme";
@@ -17,6 +18,14 @@ export { redirectWithUserLocale } from "./lib/auth-locale";
 export { parseOnboardingStatus, type OnboardingType } from "./lib/onboarding";
 export { usePasswordStrength } from "./lib/use-password-strength";
 export { useSignOut } from "./lib/use-sign-out";
+export { useAccountNavigation } from "./lib/use-account-navigation";
+export { AcceptInvitation, ResumeInvitation } from "./components/accept-invitation";
+export { CreateOrganizationDialog } from "./components/create-organization-dialog";
+export { OrganizationAccessNotice, OrganizationInvitations } from "./components/organization-invitations";
+export { NoOrganization } from "./components/no-organization";
+export { OrganizationSwitcher } from "./components/organization-switcher";
+export { organizationErrorKey, useOrganizations, type OrganizationRole } from "./lib/organization";
+export { OrganizationSection } from "./settings/organization-section";
 export { ChangePasswordForm } from "./settings/change-password-form";
 export { PasskeySection } from "./settings/passkey-section";
 export { TwoFactorSection } from "./settings/two-factor-section";

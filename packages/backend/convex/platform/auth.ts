@@ -16,7 +16,7 @@ import type { DataModel } from "../_generated/dataModel";
 import { action, query } from "../_generated/server";
 import authConfig from "./auth.config";
 import { runAuditEvent } from "./auditTrailHelpers";
-import type { AuditStatus } from "./auditTrailConstants";
+import type { AuditAction, AuditStatus } from "./auditTrailConstants";
 import authSchema from "./betterAuth/schema";
 import { convexRateLimitPlugin, sendAuthOtp, sendLimitedAuthEmail } from "./authRateLimits";
 import type { EmailTemplate } from "./emailTemplates";
@@ -26,8 +26,9 @@ import { validatePasswordStrength } from "./passwordStrength";
 import { USER_EMAIL_VERIFICATION_REQUIRED_KEY } from "./securityPolicies";
 import { readBackupCodes } from "./recoveryCodes";
 import { createAssuranceHooks } from "./authAssurance";
-import { sessionFields } from "./sessionFields";
+import { sessionFields, userFields } from "./sessionFields";
 import { identitySession } from "./sessionPolicy";
+import { organizationPlugin } from "./organizationPlugin";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -324,6 +325,22 @@ const AUTH_ENDPOINT_AUDIT_CONFIG: Record<string, AuthEndpointAuditConfig> = {
   },
 };
 
+/** Organization changes audited here, where the acting session is known. */
+const ORGANIZATION_ENDPOINT_AUDIT: Record<string, AuditAction> = {
+  "/organization/remove-member": "organization.member.removed",
+  "/organization/update-member-role": "organization.member.role_changed",
+  "/organization/leave": "organization.member.left",
+};
+
+/** The organization an endpoint left the session in, so the next sign-in starts there. */
+function activatedOrganizationId(path: string, returned: unknown): string | undefined {
+  const value = returned as { id?: unknown; member?: { organizationId?: unknown } } | null;
+  const id = path === "/organization/accept-invitation" ? value?.member?.organizationId
+    : path === "/organization/set-active" || path === "/organization/create" ? value?.id
+    : undefined;
+  return typeof id === "string" ? id : undefined;
+}
+
 type ApiErrorLike = {
   statusCode: number;
   message?: string;
@@ -468,6 +485,9 @@ export const createAuthOptions = (
       updateAge: 60 * 60,            // 1 hour
       additionalFields: sessionFields,
     },
+    user: {
+      additionalFields: userFields,
+    },
     emailAndPassword: {
       enabled: true,
       revokeSessionsOnPasswordReset: true,
@@ -493,15 +513,18 @@ export const createAuthOptions = (
       // create or refresh an authenticated session from the verification link.
       autoSignInAfterVerification: false,
       expiresIn: EMAIL_VERIFICATION_EXPIRY_SECONDS,
-      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }, request?: Request) => {
         // Read settings per-request — callbacks are async and have ctx.
         const actionCtx = requireActionCtx(ctx);
         const emailVerifRequired = await actionCtx.runQuery(
           internal.platform.appSettings.getInternal,
           { key: USER_EMAIL_VERIFICATION_REQUIRED_KEY }
         );
-        // If the admin has disabled email verification, skip sending.
-        if (emailVerifRequired === false) return;
+        // If the admin has disabled email verification, skip the automatic sign-up email. A
+        // user who asks for one still gets it: accepting an organization invitation needs a
+        // verified address whatever the policy.
+        const requested = request ? new URL(request.url).pathname.endsWith("/send-verification-email") : false;
+        if (emailVerifRequired === false && !requested) return;
 
         const verificationTemplateSetting = await actionCtx.runQuery(
           internal.platform.appSettings.getInternal,
@@ -567,6 +590,40 @@ export const createAuthOptions = (
         const rawPath =
           typeof middlewareCtx.path === "string" ? middlewareCtx.path : "";
         const path = normalizeAuthPath(rawPath);
+
+        if (path.startsWith("/organization/")) {
+          const returned = middlewareCtx.context?.returned;
+          const actor = middlewareCtx.context?.session?.user as { id?: unknown; email?: unknown } | undefined;
+          if (getApiErrorLike(returned) || typeof actor?.id !== "string") return {};
+          const actionCtx = requireActionCtx(ctx);
+          const activated = activatedOrganizationId(path, returned);
+          if (activated) {
+            await actionCtx.runMutation(internal.platform.organizations.rememberActive, {
+              userId: actor.id, organizationId: activated,
+            });
+          }
+          const action = ORGANIZATION_ENDPOINT_AUDIT[path];
+          const body = (middlewareCtx.body ?? {}) as Record<string, unknown>;
+          if (action) {
+            await runAuditEvent(actionCtx, {
+              happenedAt: Date.now(),
+              actor: normalizeEmail(actor.email) ?? "unknown",
+              authenticatedUserId: actor.id,
+              sourceDetail: "auth-endpoint-hook",
+              action,
+              resource: `organization:${String(body.organizationId ?? "active")}`,
+              status: "succeeded",
+              meta: JSON.stringify({
+                endpoint: path,
+                ...(typeof body.memberId === "string" ? { memberId: body.memberId } : {}),
+                ...(typeof body.memberIdOrEmail === "string" ? { member: body.memberIdOrEmail } : {}),
+                ...(typeof body.role === "string" ? { role: body.role } : {}),
+              }),
+            });
+          }
+          return {};
+        }
+
         const config = AUTH_ENDPOINT_AUDIT_CONFIG[path];
         if (!config) return {};
 
@@ -614,7 +671,16 @@ export const createAuthOptions = (
     databaseHooks: {
       session: {
         create: {
-          before: assurance.beforeCreate,
+          before: async (session, endpoint) => {
+            const result = await assurance.beforeCreate(session, endpoint);
+            if (!result || typeof result !== "object") return result;
+            // Start where the user last worked; organization reads re-check membership.
+            const startIn = await requireActionCtx(ctx).runQuery(
+              internal.platform.organizations.startingOrganization,
+              { userId: session.userId },
+            );
+            return { data: { ...result.data, activeOrganizationId: result.data.activeOrganizationId ?? startIn } };
+          },
           after: async (session) => {
             const actionCtx = requireActionCtx(ctx);
             const s = session as Record<string, unknown>;
@@ -692,7 +758,12 @@ export const createAuthOptions = (
               internal.platform.adminInvitations.hasValidAdminInvitation,
               { email: user.email },
             );
-            if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation) {
+            // An organization admin vouched for this address; sign-up still verifies it.
+            const hasOrganizationInvitation = await actionCtx.runQuery(
+              internal.platform.organizations.hasPendingInvitation,
+              { email: user.email },
+            );
+            if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation && !hasOrganizationInvitation) {
               throw new Error("SIGNUP_DISABLED");
             }
 
@@ -716,6 +787,18 @@ export const createAuthOptions = (
               resource: `user:${userId}`,
               status: "succeeded",
             });
+
+            // Every account starts with its own organization.
+            if (userId) {
+              await actionCtx.runMutation(internal.platform.organizations.provisionPersonal, { userId });
+            }
+          },
+        },
+        delete: {
+          after: async (user) => {
+            const userId = (user as Record<string, unknown>).id;
+            if (typeof userId !== "string") return;
+            await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId });
           },
         },
       },
@@ -774,6 +857,7 @@ export const createAuthOptions = (
         },
       }),
       haveIBeenPwned(),
+      organizationPlugin(ctx, siteUrl),
       convex({ authConfig }),
     ],
     // Better Auth's built-in rate limiting is disabled because neither storage

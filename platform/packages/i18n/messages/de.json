@@ -476,5 +476,150 @@
       "verify": "Bestätigen",
       "continue": "Weiter"
     }
+  },
+  "organization": {
+    "label": "Organisation",
+    "roles": {
+      "owner": "Inhaber",
+      "admin": "Admin",
+      "member": "Mitglied"
+    },
+    "roleHelp": {
+      "owner": "Kann alles, was ein Admin kann, und weitere Personen zu Inhabern machen.",
+      "admin": "Lädt Personen ein und entfernt sie, ändert Rollen und benennt die Organisation um.",
+      "member": "Kann alles in der Organisation sehen und bearbeiten."
+    },
+    "switcher": {
+      "label": "Organisation wechseln",
+      "heading": "Ihre Organisationen",
+      "create": "Organisation erstellen",
+      "none": "Keine Organisation"
+    },
+    "settings": {
+      "title": "Organisation",
+      "description": "Die Mitglieder von {name} teilen alles darin. Inhaber und Admins entscheiden, wer dazugehört.",
+      "nameLabel": "Name der Organisation",
+      "renamed": "Organisation umbenannt.",
+      "yourRole": "Ihre Rolle: {role}",
+      "members": "Mitglieder",
+      "memberCount": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+      "you": "Sie",
+      "joined": "Beigetreten am {date}",
+      "changeRole": "Rolle von {name} ändern",
+      "roleChanged": "{name} ist jetzt {role}.",
+      "remove": "Entfernen",
+      "removeLabel": "{name} entfernen",
+      "removeTitle": "{name} entfernen?",
+      "removeDescription": "{name} verliert sofort den Zugriff auf {organization}. Was die Person erstellt hat, bleibt in der Organisation.",
+      "removed": "{name} wurde entfernt.",
+      "pageDescription": "Name, Mitglieder und Einladungen der Organisation, in der Sie arbeiten."
+    },
+    "invite": {
+      "title": "Personen einladen",
+      "description": "Sie erhalten eine E-Mail mit einem Link zum Beitreten. Einladungen laufen nach 7 Tagen ab.",
+      "email": "E-Mail-Adresse",
+      "emailPlaceholder": "name@firma.de",
+      "role": "Rolle",
+      "send": "Einladung senden",
+      "sending": "Wird gesendet...",
+      "sent": "Einladung an {email} gesendet."
+    },
+    "pending": {
+      "title": "Einladungen",
+      "expires": "Läuft ab am {date}",
+      "expired": "Abgelaufen",
+      "resend": "Erneut senden",
+      "resent": "Einladung erneut an {email} gesendet.",
+      "sent": "Gesendet am {date}",
+      "declined": "Abgelehnt",
+      "inviteAgain": "Erneut einladen",
+      "delete": "Löschen",
+      "deleteLabel": "Einladung an {email} löschen",
+      "deleteTitle": "Einladung an {email} löschen?",
+      "deleteDescription": "Sie verschwindet aus dieser Liste. Ist sie noch offen, funktioniert ihr Link nicht mehr. Das kann nicht rückgängig gemacht werden.",
+      "deleted": "Einladung an {email} gelöscht."
+    },
+    "leave": {
+      "description": "Sie verlieren den Zugriff auf {name} und alles darin. Nur eine neue Einladung bringt Sie zurück.",
+      "action": "Verlassen",
+      "confirmTitle": "{name} verlassen?",
+      "left": "Sie haben {name} verlassen.",
+      "lastOwner": "Du bist der einzige Inhaber. Lade einen weiteren Inhaber ein und warte, bis die Einladung angenommen wurde, bevor du die Organisation verlässt."
+    },
+    "create": {
+      "title": "Neue Organisation",
+      "description": "Gründen Sie eine separate Organisation mit eigenen Mitgliedern und Daten. Sie werden ihr Inhaber.",
+      "action": "Organisation erstellen",
+      "nameLabel": "Name",
+      "namePlaceholder": "Acme GmbH",
+      "created": "{name} wurde erstellt. Sie arbeiten jetzt darin."
+    },
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+      "notAllowed": "Dafür fehlt Ihnen die Berechtigung.",
+      "alreadyMember": "Diese Person ist bereits Mitglied.",
+      "lastOwner": "Eine Organisation braucht mindestens einen Inhaber. Machen Sie zuerst eine andere Person zum Inhaber.",
+      "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse ein."
+    },
+    "banner": {
+      "message": "{inviter} hat Sie eingeladen, {organization} beizutreten.",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "verifyFirst": "Verifizieren Sie Ihre E-Mail-Adresse, um anzunehmen.",
+      "verify": "E-Mail verifizieren",
+      "joined": "Sie sind {organization} beigetreten."
+    },
+    "invitation": {
+      "pageHeading": "Eine Einladung in eine Organisation",
+      "pageDescription": "Mit Einladungen treten Personen einer Organisation bei und arbeiten zusammen.",
+      "title": "{organization} beitreten",
+      "description": "{inviter} hat Sie eingeladen, {organization} als {role} beizutreten.",
+      "accept": "Einladung annehmen",
+      "accepting": "Beitritt läuft...",
+      "decline": "Ablehnen",
+      "declined": "Sie haben die Einladung abgelehnt.",
+      "signedOutTitle": "Melden Sie sich an, um Ihre Einladung zu sehen",
+      "signedOutDescription": "Melden Sie sich mit der E-Mail-Adresse an, an die die Einladung gesendet wurde, oder erstellen Sie damit ein Konto. Danach kommen Sie hierher zurück.",
+      "signIn": "Anmelden",
+      "signUp": "Konto erstellen",
+      "signUpHint": "Sie wurden eingeladen, einer Organisation beizutreten. Erstellen Sie Ihr Konto mit der E-Mail-Adresse, an die die Einladung gesendet wurde.",
+      "wrongAccountTitle": "Diese Einladung gilt für ein anderes Konto",
+      "wrongAccountDescription": "Sie sind als {current} angemeldet, aber diese Einladung wurde an eine andere E-Mail-Adresse gesendet. Wenn sie für Sie bestimmt ist, melden Sie sich ab und mit der Adresse an, an die sie gesendet wurde.",
+      "securityTitle": "Schließen Sie die Einrichtung Ihres Kontos ab",
+      "securityDescription": "Ihr Konto benötigt noch einen Sicherheitsschritt, bevor Sie {organization} beitreten können. Schließen Sie ihn ab, dann kommen Sie hierher zurück.",
+      "verifyTitle": "Verifizieren Sie zuerst Ihre E-Mail",
+      "verifyDescription": "Um {organization} beizutreten, bestätigen Sie, dass {email} Ihre Adresse ist.",
+      "verify": "E-Mail verifizieren",
+      "alreadyMemberTitle": "Sie sind bereits in {organization}",
+      "alreadyMemberDescription": "Sie sind bereits Mitglied, es ist nichts weiter zu tun.",
+      "openDashboard": "Zum Dashboard",
+      "switchAccount": "Abmelden und Konto wechseln",
+      "invalidTitle": "Diese Einladung ist nicht mehr gültig",
+      "invalidDescription": "Sie ist möglicherweise abgelaufen, wurde bereits verwendet oder zurückgezogen. Wenn Sie weiterhin Zugriff benötigen, bitten Sie die einladende Person um eine neue Einladung.",
+      "continueSetup": "Weiter",
+      "openOrganization": "{organization} öffnen",
+      "joined": "Sie sind {organization} beigetreten."
+    },
+    "danger": {
+      "title": "Gefahrenbereich",
+      "description": "Wenn Sie {name} löschen, wird die Organisation mit allem darin für alle Mitglieder entfernt. Das kann nicht rückgängig gemacht werden.",
+      "delete": "Organisation löschen",
+      "confirmTitle": "{name} löschen?",
+      "confirmDescription": "Damit werden {name} und alles darin für alle Mitglieder endgültig gelöscht. Das kann nicht rückgängig gemacht werden.",
+      "onlyOrganization": "Du bleibst ohne Organisation angemeldet. Du kannst später eine Organisation erstellen oder eine Einladung annehmen.",
+      "confirmLabel": "Geben Sie zur Bestätigung {name} ein",
+      "confirm": "Endgültig löschen",
+      "deleting": "Wird gelöscht...",
+      "deleted": "{name} wurde gelöscht."
+    },
+    "access": {
+      "lost": "Sie haben keinen Zugriff mehr auf {organization}."
+    },
+    "empty": {
+      "title": "Du gehörst keiner Organisation an",
+      "description": "Erstelle eine Organisation oder nimm eine Einladung an, um loszulegen.",
+      "createDescription": "Erstelle eine Organisation, um loszulegen."
+    }
   }
 }

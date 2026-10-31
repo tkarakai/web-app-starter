@@ -77,7 +77,7 @@ describe("input validation", () => {
   });
 
   describe("requireProjectAccess", () => {
-    test("returns project when ownerId matches", async () => {
+    test("returns project when the organization matches", async () => {
       const t = createTestEnv();
 
       const projectId = await t.run(async (ctx) => {
@@ -85,13 +85,14 @@ describe("input validation", () => {
           name: "Alice's Project",
           description: "Owned by Alice",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
       });
 
       const result = await t.run(async (ctx) => {
         return requireProjectAccess(
-          { db: ctx.db, ownerId: "alice-id" },
+          { db: ctx.db, organizationId: "alice-org" },
           projectId
         );
       });
@@ -101,7 +102,7 @@ describe("input validation", () => {
       expect(result.ownerId).toBe("alice-id");
     });
 
-    test("throws PROJECT_NOT_FOUND when ownerId does not match", async () => {
+    test("throws PROJECT_NOT_FOUND when the organization does not match", async () => {
       const t = createTestEnv();
 
       const projectId = await t.run(async (ctx) => {
@@ -109,6 +110,7 @@ describe("input validation", () => {
           name: "Alice's Project",
           description: "Private",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
       });
@@ -116,7 +118,30 @@ describe("input validation", () => {
       await expect(
         t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "bob-id" },
+            { db: ctx.db, organizationId: "bob-org" },
+            projectId
+          );
+        })
+      ).rejects.toThrow("PROJECT_NOT_FOUND");
+    });
+
+    test("throws PROJECT_NOT_FOUND for a project not yet assigned to an organization", async () => {
+      const t = createTestEnv();
+
+      const projectId = await t.run(async (ctx) => {
+        return ctx.db.insert("projects", {
+          name: "Pre-organization project",
+          description: "",
+          ownerId: "alice-id",
+          createdAt: Date.now(),
+        });
+      });
+
+      await expect(
+        t.run(async (ctx) => {
+          // A caller without an organization must not match a project without one.
+          return requireProjectAccess(
+            { db: ctx.db, organizationId: undefined as unknown as string },
             projectId
           );
         })
@@ -132,6 +157,7 @@ describe("input validation", () => {
           name: "Temp",
           description: "",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
         await ctx.db.delete(id);
@@ -141,7 +167,7 @@ describe("input validation", () => {
       await expect(
         t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "alice-id" },
+            { db: ctx.db, organizationId: "alice-org" },
             projectId
           );
         })
@@ -156,6 +182,7 @@ describe("input validation", () => {
           name: "Secret Project",
           description: "Very confidential",
           ownerId: "alice-id",
+          organizationId: "alice-org",
           createdAt: Date.now(),
         });
       });
@@ -164,7 +191,7 @@ describe("input validation", () => {
       try {
         await t.run(async (ctx) => {
           return requireProjectAccess(
-            { db: ctx.db, ownerId: "bob-id" },
+            { db: ctx.db, organizationId: "bob-org" },
             projectId
           );
         });

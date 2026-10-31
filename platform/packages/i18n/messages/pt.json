@@ -476,5 +476,150 @@
       "verify": "Verificar",
       "continue": "Continuar"
     }
+  },
+  "organization": {
+    "label": "Organização",
+    "roles": {
+      "owner": "Proprietário",
+      "admin": "Administrador",
+      "member": "Membro"
+    },
+    "roleHelp": {
+      "owner": "Pode fazer tudo o que um administrador faz e tornar outras pessoas proprietárias.",
+      "admin": "Convida e remove pessoas, altera funções e renomeia a organização.",
+      "member": "Pode ver e trabalhar em tudo o que existe na organização."
+    },
+    "switcher": {
+      "label": "Trocar de organização",
+      "heading": "Suas organizações",
+      "create": "Criar organização",
+      "none": "Sem organização"
+    },
+    "settings": {
+      "title": "Organização",
+      "description": "Os membros de {name} partilham tudo o que ela contém. Proprietários e administradores decidem quem faz parte.",
+      "nameLabel": "Nome da organização",
+      "renamed": "Organização renomeada.",
+      "yourRole": "Sua função: {role}",
+      "members": "Membros",
+      "memberCount": "{count, plural, one {# membro} other {# membros}}",
+      "you": "Você",
+      "joined": "Entrou em {date}",
+      "changeRole": "Alterar a função de {name}",
+      "roleChanged": "{name} agora é {role}.",
+      "remove": "Remover",
+      "removeLabel": "Remover {name}",
+      "removeTitle": "Remover {name}?",
+      "removeDescription": "{name} perde imediatamente o acesso a {organization}. O que criou permanece na organização.",
+      "removed": "{name} foi removido.",
+      "pageDescription": "Nome, membros e convites da organização em que está a trabalhar."
+    },
+    "invite": {
+      "title": "Convidar pessoas",
+      "description": "Elas recebem um e-mail com um link para entrar. Os convites expiram após 7 dias.",
+      "email": "Endereço de e-mail",
+      "emailPlaceholder": "nome@empresa.com",
+      "role": "Função",
+      "send": "Enviar convite",
+      "sending": "Enviando...",
+      "sent": "Convite enviado para {email}."
+    },
+    "pending": {
+      "title": "Convites",
+      "expires": "Expira em {date}",
+      "expired": "Expirado",
+      "resend": "Reenviar",
+      "resent": "Convite reenviado para {email}.",
+      "sent": "Enviado em {date}",
+      "declined": "Recusado",
+      "inviteAgain": "Convidar novamente",
+      "delete": "Eliminar",
+      "deleteLabel": "Eliminar o convite para {email}",
+      "deleteTitle": "Eliminar o convite para {email}?",
+      "deleteDescription": "Desaparece desta lista. Se ainda estiver pendente, a sua ligação deixa de funcionar. Não é possível anular.",
+      "deleted": "Convite para {email} eliminado."
+    },
+    "leave": {
+      "description": "Perde o acesso a {name} e a tudo o que contém. Só um novo convite lhe permite voltar.",
+      "action": "Sair",
+      "confirmTitle": "Sair de {name}?",
+      "left": "Você saiu de {name}.",
+      "lastOwner": "É o único proprietário. Convide outro proprietário e espere que aceite o convite antes de sair."
+    },
+    "create": {
+      "title": "Nova organização",
+      "description": "Crie uma organização separada com os seus próprios membros e dados. Será o proprietário.",
+      "action": "Criar organização",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Acme Ltda.",
+      "created": "{name} criada. Agora você está trabalhando nela."
+    },
+    "errors": {
+      "generic": "Algo deu errado. Tente novamente.",
+      "rateLimited": "Muitas solicitações. Aguarde um instante e tente novamente.",
+      "notAllowed": "Você não tem permissão para fazer isso.",
+      "alreadyMember": "Essa pessoa já é membro.",
+      "lastOwner": "Uma organização precisa de pelo menos um proprietário. Torne outra pessoa proprietária primeiro.",
+      "invalidEmail": "Digite um endereço de e-mail válido."
+    },
+    "banner": {
+      "message": "{inviter} convidou você para entrar em {organization}.",
+      "accept": "Aceitar",
+      "decline": "Recusar",
+      "verifyFirst": "Verifique seu e-mail para aceitar.",
+      "verify": "Verificar e-mail",
+      "joined": "Você entrou em {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Um convite para uma organização",
+      "pageDescription": "Os convites permitem juntar-se a uma organização e trabalhar em conjunto.",
+      "title": "Entrar em {organization}",
+      "description": "{inviter} convidou você para entrar em {organization} como {role}.",
+      "accept": "Aceitar convite",
+      "accepting": "Entrando...",
+      "decline": "Recusar",
+      "declined": "Você recusou o convite.",
+      "signedOutTitle": "Inicie sessão para ver o seu convite",
+      "signedOutDescription": "Inicie sessão ou crie uma conta com o endereço de email para o qual o convite foi enviado. Depois volta aqui.",
+      "signIn": "Entrar",
+      "signUp": "Criar conta",
+      "signUpHint": "Você foi convidado para entrar em uma organização. Crie sua conta com o endereço de e-mail para o qual o convite foi enviado.",
+      "wrongAccountTitle": "Este convite é para outra conta",
+      "wrongAccountDescription": "Tem sessão iniciada como {current}, mas este convite foi enviado para outro endereço de email. Se for para si, termine sessão e inicie sessão com o endereço para o qual foi enviado.",
+      "securityTitle": "Conclua a configuração da sua conta",
+      "securityDescription": "A sua conta precisa de mais um passo de segurança antes de se juntar a {organization}. Conclua-o e voltará aqui.",
+      "verifyTitle": "Verifique seu e-mail primeiro",
+      "verifyDescription": "Para entrar em {organization}, confirme que {email} é o seu endereço.",
+      "verify": "Verificar e-mail",
+      "alreadyMemberTitle": "Você já está em {organization}",
+      "alreadyMemberDescription": "Já é membro, por isso não há mais nada a fazer.",
+      "openDashboard": "Ir para o painel",
+      "switchAccount": "Terminar sessão e mudar de conta",
+      "invalidTitle": "Este convite já não é válido",
+      "invalidDescription": "Pode ter expirado, já ter sido usado ou ter sido retirado. Se ainda precisar de acesso, peça um novo convite à pessoa que o convidou.",
+      "continueSetup": "Continuar",
+      "openOrganization": "Abrir {organization}",
+      "joined": "Juntou-se a {organization}."
+    },
+    "danger": {
+      "title": "Zona de perigo",
+      "description": "Eliminar {name} remove-a, com tudo o que contém, para todos os membros. Não é possível anular.",
+      "delete": "Eliminar organização",
+      "confirmTitle": "Eliminar {name}?",
+      "confirmDescription": "Isto elimina permanentemente {name} e tudo o que contém, para todos os membros. Não é possível anular.",
+      "onlyOrganization": "Continuará com a sessão iniciada sem uma organização. Poderá criar uma ou aceitar um convite mais tarde.",
+      "confirmLabel": "Escreva {name} para confirmar",
+      "confirm": "Eliminar permanentemente",
+      "deleting": "A eliminar...",
+      "deleted": "{name} foi eliminada."
+    },
+    "access": {
+      "lost": "Já não tem acesso a {organization}."
+    },
+    "empty": {
+      "title": "Não pertence a nenhuma organização",
+      "description": "Crie uma organização ou aceite um convite para começar.",
+      "createDescription": "Crie uma organização para começar."
+    }
   }
 }

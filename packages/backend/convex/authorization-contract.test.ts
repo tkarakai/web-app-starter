@@ -2,7 +2,7 @@ import { TextEncoder } from "node:util";
 import { createTestEnv as createPlatformTest } from "./test.modules";
 import { describe, expect, test } from "vitest";
 
-import { api, components } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import authSchema from "./platform/betterAuth/schema";
 
 const authModules = import.meta.glob("./platform/betterAuth/**/*.*s");
@@ -39,6 +39,8 @@ async function createFixture() {
         },
       },
     });
+    // Adapter-created fixture accounts skip the real sign-up provisioning hook.
+    await t.mutation(internal.platform.organizations.provisionPersonal, { userId: user._id });
     return t.withIdentity({ subject: user._id, sessionId: session._id });
   }
 
@@ -127,7 +129,7 @@ describe("registered backend authorization contract", () => {
 
   test("a signed-in non-owner cannot read project, task or upload details", async () => {
     const f = await createFixture();
-    await expect(f.nonOwner.query(api.projects.get, { id: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    expect(await f.nonOwner.query(api.projects.get, { id: f.projectId })).toBeNull();
     await expect(f.nonOwner.query(api.tasks.listByProject, { projectId: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(f.nonOwner.query(api.files.listUploads, { projectId: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
   });

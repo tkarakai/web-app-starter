@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 
 import {
-  authedMutation,
-  authedQuery,
+  orgMutation,
+  orgQuery,
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
@@ -10,23 +10,23 @@ import {
 import { requireFileAccess } from "./fileAccess";
 import { requireProjectAccess } from "./projectAccess";
 
-export const list = authedQuery({
+export const list = orgQuery({
   args: {},
   handler: async (ctx) => {
     return ctx.db
       .query("projects")
-      .withIndex("by_owner", (q) => q.eq("ownerId", ctx.ownerId))
+      .withIndex("by_organization", (q) => q.eq("organizationId", ctx.organizationId))
       .order("desc")
       .collect();
   },
 });
 
-export const listWithStats = authedQuery({
+export const listWithStats = orgQuery({
   args: {},
   handler: async (ctx) => {
     const projects = await ctx.db
       .query("projects")
-      .withIndex("by_owner", (q) => q.eq("ownerId", ctx.ownerId))
+      .withIndex("by_organization", (q) => q.eq("organizationId", ctx.organizationId))
       .order("desc")
       .collect();
 
@@ -53,14 +53,16 @@ export const listWithStats = authedQuery({
   },
 });
 
-export const get = authedQuery({
+/** `null` when the project is gone or belongs to another organization (a teammate may delete it). */
+export const get = orgQuery({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    return requireProjectAccess(ctx, args.id);
+    const project = await ctx.db.get(args.id);
+    return project?.organizationId && project.organizationId === ctx.organizationId ? project : null;
   },
 });
 
-export const create = authedMutation({
+export const create = orgMutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -73,12 +75,13 @@ export const create = authedMutation({
       name: args.name,
       description: args.description,
       ownerId: ctx.ownerId,
+      organizationId: ctx.organizationId,
       createdAt: Date.now(),
     });
   },
 });
 
-export const update = authedMutation({
+export const update = orgMutation({
   args: {
     id: v.id("projects"),
     name: v.optional(v.string()),
@@ -97,7 +100,7 @@ export const update = authedMutation({
   },
 });
 
-export const remove = authedMutation({
+export const remove = orgMutation({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.id);

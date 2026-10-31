@@ -161,6 +161,20 @@ For account security, compose `SecuritySection` (or `ChangePasswordForm`, `TwoFa
 `PasskeySection` and `SessionsList`) from `@web-app-starter/auth-ui` under the protected layout.
 These components own the auth operations and localized feedback; your app owns the page around them.
 
+App data belongs to **organizations** (Better Auth's organization plugin): every user gets a
+personal one and can create or be invited to others. Scope app tables with `orgQuery` and
+`orgMutation` (`ctx.organizationId`, `ctx.organizationRole`), never take an organization ID
+as an argument, and delete their rows in `convex/organizationData.ts`. Accounts can have zero
+memberships: keep account controls and invitations available, hide organization workspace
+controls, and show `NoOrganization`. `orgMutation` refuses `NO_ORGANIZATION`; it never
+creates a replacement. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
+and `AcceptInvitationView` from `@web-app-starter/auth-ui`. See [docs/organizations.md](docs/organizations.md).
+
+Open Settings and Organization through `useAccountNavigation()` and mount
+`AccountPageCloseButton` in their headers. Close returns to the original app location, including
+across account-page navigation or reloads; a direct link falls back to app home. Keep the
+`OrganizationInvitations` list reachable on those pages, even with zero memberships.
+
 Within an app, `@/` is an alias for its `src/`. It is app-internal only; across packages import
 by package name (`@web-app-starter/*` for the platform, `@repo/backend` for the backend).
 
@@ -259,6 +273,7 @@ environment-specific and silently breaks artifact reuse
 | Sharing one prepared local CI pool across private apps in a GitHub organization | [docs/ci-org-runners.md](docs/ci-org-runners.md) |
 | Trying authenticated announcement MCP and the pi test agent | [docs/agentic-announcements.md](docs/agentic-announcements.md) |
 | Writing components, Convex functions or styles | [docs/code-style.md](docs/code-style.md) |
+| Organizations, members, invitations, or scoping app data to them | [docs/organizations.md](docs/organizations.md) |
 | Working on auth, route protection, rate limiting or React patterns | [docs/architecture.md](docs/architecture.md), [docs/authentication-and-onboarding.md](docs/authentication-and-onboarding.md), [docs/rate-limiting-architecture.md](docs/rate-limiting-architecture.md) |
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |
 | Working on i18n, locales, translations or RTL | [docs/i18n-architecture.md](docs/i18n-architecture.md) |

@@ -31,7 +31,8 @@ type SendAuthEmailOptions =
       subject: string;
       html: string;
       text: string;
-      urlOrCode?: never;
+      /** Shown in the local development log in place of the rendered email. */
+      urlOrCode?: string;
       linkExpiry?: never;
     };
 
@@ -47,7 +48,7 @@ export async function sendAuthEmail(opts: SendAuthEmailOptions): Promise<void> {
       ? { subject: opts.subject, html: opts.html, text: opts.text }
       : withTextFooter(buildEmailContent(type, opts.urlOrCode, opts.linkExpiry));
 
-  const urlOrCode = type !== "custom" ? opts.urlOrCode : undefined;
+  const urlOrCode = opts.urlOrCode;
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     assertMockEmailAllowed();
@@ -163,6 +164,33 @@ function buildEmailContent(
           `This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.`,
       };
   }
+}
+
+/**
+ * The organization invitation email. Sent with `type: "custom"`; it carries the
+ * inviter's and organization's names, which the fixed templates above don't take.
+ */
+export function organizationInvitationEmail(opts: {
+  inviterName: string;
+  organizationName: string;
+  productName: string;
+  url: string;
+  expiresInDays: number;
+}): { subject: string; html: string; text: string } {
+  const { inviterName, organizationName, productName, url, expiresInDays } = opts;
+  const lead = `${inviterName} invited you to join ${organizationName} on ${productName}.`;
+  const note = `The invitation expires in ${expiresInDays} days. If you weren't expecting it, you can safely ignore this email.`;
+  return withTextFooter({
+    subject: `${inviterName} invited you to join ${organizationName}`,
+    html: wrapHtml(
+      `Join ${organizationName}`,
+      `<p style="${pStyle}">${escapeHtml(lead)}</p>` +
+        ctaButton("View invitation", url) +
+        `<p style="${smallStyle}">${escapeHtml(note)}</p>` +
+        fallbackUrl(url),
+    ),
+    text: `Join ${organizationName}\n\n${lead}\n\nOpen the invitation:\n\n${url}\n\n${note}`,
+  });
 }
 
 // ---------------------------------------------------------------------------

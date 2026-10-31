@@ -2,7 +2,9 @@ import { expect, test } from "@playwright/test";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createTranslator } from "next-intl";
-import { defaultLocale, getLocaleDirection, locales, mergeMessages, type Messages } from "@web-app-starter/i18n";
+import { defaultLocale, getLocaleDirection, locales, localeMetadata, mergeMessages, type Messages } from "@web-app-starter/i18n";
+import { signIn } from "./helpers/auth";
+import { createDisposableUser } from "./helpers/fixtures";
 
 // Read JSON directly: Playwright runs in Node, outside the app bundler.
 function loadMessages(locale: string): Messages {
@@ -15,6 +17,27 @@ function loadMessages(locale: string): Messages {
     typeof overrides === "object" ? overrides : {},
   );
 }
+
+test("changing the language in Settings applies immediately without an unsaved-changes prompt", async ({ page }) => {
+  const alternate = locales.find(locale => locale === "de") ?? locales.find(locale => locale !== "en");
+  test.skip(!alternate, "The app ships only English");
+  if (!alternate) return;
+  const user = await createDisposableUser();
+  await signIn(page, user.email, user.password);
+  await page.goto("/en/dashboard/settings?tab=profile");
+  const dialogs: string[] = [];
+  page.on("dialog", async dialog => {
+    dialogs.push(dialog.type());
+    await dialog.dismiss();
+  });
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: `${localeMetadata[alternate].flag} ${localeMetadata[alternate].nativeName}`, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/${alternate}/dashboard/settings\\?tab=profile$`));
+  await expect(page.locator("html")).toHaveAttribute("lang", alternate);
+  const t = createTranslator({ locale: alternate, messages: loadMessages(alternate) });
+  await expect(page.getByText(t("dashboard.profile.description"), { exact: true }).first()).toBeVisible();
+  expect(dialogs).toEqual([]);
+});
 
 for (const locale of locales) {
   test(`${locale} sign-in renders the multi-step messages rather than missing keys`, async ({ page }) => {

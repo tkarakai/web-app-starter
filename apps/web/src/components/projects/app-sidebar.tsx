@@ -3,13 +3,12 @@
 import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-controls";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
+import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { LocaleSwitcher, useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationSwitcher, useAccountNavigation, useOrganizations, useSignOut } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -70,19 +69,24 @@ export function AppSidebar({
   onSelectProject,
   ...props
 }: AppSidebarProps) {
-  const router = useRouter();
-  const { state } = useSidebar();
+  const accountNavigation = useAccountNavigation();
+  const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const tc = useTranslations("common");
   const tp = useTranslations("projects");
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
+  const to = useTranslations("organization");
+  const organizations = useOrganizations();
+  const hasOrganization = Boolean(organizations?.activeOrganizationId);
 
-  const projects: Project[] = useQuery(api.projects.list) ?? [];
+  const projects: Project[] = useQuery(api.projects.list, hasOrganization ? {} : "skip") ?? [];
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogOrganizationId, setDialogOrganizationId] = React.useState<string | null>(null);
+  const dialogOpen = hasOrganization && dialogOrganizationId === organizations?.activeOrganizationId;
+  const setDialogOpen = (open: boolean) => setDialogOrganizationId(open ? organizations?.activeOrganizationId ?? null : null);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
@@ -123,23 +127,26 @@ export function AppSidebar({
   };
 
   const handleSignOut = useSignOut("/");
+  // Close the mobile drawer even when the page is already open, so the choice is visible.
+  const openPage = (page: "settings" | "organization") => {
+    setOpenMobile(false);
+    accountNavigation.open(page);
+  };
 
   return (
     <>
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip={appConfig.identity.productName} className="font-semibold">
-                <AppLogo size={20} />
-                <span>{appConfig.identity.productName}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <OrganizationSwitcher
+            logo={<AppLogo size={20} />}
+            productName={appConfig.identity.productName}
+            // A project selected in one organization doesn't exist in the next.
+            onSwitch={() => { if (selectedProjectId) onSelectProject(null); }}
+          />
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
+          {hasOrganization && <SidebarGroup>
             <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="group/projects">
               <div className="flex items-center">
                 <CollapsibleTrigger asChild>
@@ -183,7 +190,7 @@ export function AppSidebar({
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>
-          </SidebarGroup>
+          </SidebarGroup>}
         </SidebarContent>
 
         <SidebarFooter>
@@ -221,12 +228,15 @@ export function AppSidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-56">
                   <ThemeToggle className="my-1 w-full" labels={themeLabels} />
-                  <LocaleSwitcher variant="submenu" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => router.push("/dashboard/settings")}>
+                  <DropdownMenuItem onSelect={() => openPage("settings")}>
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
+                  {hasOrganization && <DropdownMenuItem onSelect={() => openPage("organization")}>
+                    <Building2 className="me-2 h-4 w-4" />
+                    {to("label")}
+                  </DropdownMenuItem>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
                     <LogOut className="me-2 h-4 w-4" />

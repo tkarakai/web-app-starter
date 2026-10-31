@@ -1,6 +1,7 @@
 // Server Components for an app's auth routes. Re-export them from the route files:
 //   export { SignInView as default } from "@web-app-starter/auth-ui/views";
 export {
+  AcceptInvitationView,
   AuthPageShell,
   ForgotPasswordView,
   InvitationSignupView,

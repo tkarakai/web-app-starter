@@ -35,6 +35,8 @@ export const tables = {
     banned: v.optional(v.union(v.null(), v.boolean())),
     banReason: v.optional(v.union(v.null(), v.string())),
     banExpires: v.optional(v.union(v.null(), v.number())),
+    // Hand-added: the organization a new session starts in (organizations).
+    lastActiveOrganizationId: v.optional(v.union(v.null(), v.string())),
   })
     .index("email_name", ["email","name"])
     .index("name", ["name"])
@@ -61,6 +63,8 @@ export const tables = {
     strongFactorType: v.optional(v.union(v.null(), v.string())),
     recoveryOnly: v.optional(v.union(v.null(), v.boolean())),
     recoveryFactorId: v.optional(v.union(v.null(), v.string())),
+    // Hand-added: Better Auth organization plugin.
+    activeOrganizationId: v.optional(v.union(v.null(), v.string())),
   })
     .index("expiresAt", ["expiresAt"])
     .index("expiresAt_userId", ["expiresAt","userId"])
@@ -164,6 +168,40 @@ export const tables = {
   })
     .index("clientId_userId", ["clientId","userId"])
     .index("userId", ["userId"]),
+  // Hand-added: Better Auth organization plugin (no teams, no dynamic access control).
+  // Compound indexes match the plugin's where-clause order; the adapter needs an exact prefix.
+  organization: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    logo: v.optional(v.union(v.null(), v.string())),
+    createdAt: v.number(),
+    metadata: v.optional(v.union(v.null(), v.string())),
+  })
+    .index("name", ["name"])
+    .index("slug", ["slug"]),
+  member: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    role: v.string(),
+    createdAt: v.number(),
+  })
+    .index("organizationId_userId", ["organizationId","userId"])
+    .index("userId_organizationId", ["userId","organizationId"])
+    .index("role", ["role"]),
+  invitation: defineTable({
+    organizationId: v.string(),
+    email: v.string(),
+    role: v.optional(v.union(v.null(), v.string())),
+    status: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    inviterId: v.string(),
+  })
+    .index("organizationId_status", ["organizationId","status"])
+    .index("email_organizationId_status", ["email","organizationId","status"])
+    .index("email_status", ["email","status"])
+    .index("status", ["status"])
+    .index("inviterId", ["inviterId"]),
   jwks: defineTable({
     publicKey: v.string(),
     privateKey: v.string(),

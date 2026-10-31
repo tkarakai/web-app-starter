@@ -17,7 +17,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@web-app-starter/design-system";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { AccountPageCloseButton, OrganizationInvitations, useAccountNavigation, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { SessionsList } from "@/components/settings/sessions-list";
@@ -33,6 +33,7 @@ import { SessionsList } from "@/components/settings/sessions-list";
  */
 export function SessionsClient() {
   const router = useRouter();
+  const accountNavigation = useAccountNavigation();
   const authUser = useAuthUser();
   const tc = useTranslations("common");
   const ts = useTranslations("accountSecurity.sessions");
@@ -62,9 +63,9 @@ export function SessionsClient() {
               <BreadcrumbItem>
                 <BreadcrumbLink
                   className="cursor-pointer"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => accountNavigation.open("settings")}
                 >
-                  {td("projects")}
+                  {td("account")}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -73,10 +74,12 @@ export function SessionsClient() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <AccountPageCloseButton />
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
+            <OrganizationInvitations />
             {/* Page header */}
             <div className="space-y-1">
               <div className="flex items-center gap-3">
@@ -101,7 +104,7 @@ export function SessionsClient() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/dashboard")}
+                onClick={accountNavigation.close}
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 {ts("backToDashboard")}

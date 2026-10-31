@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { appConfig } from "@web-app-starter/app-config";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { NoOrganization, OrganizationInvitations, useAuthUser, useOrganizations } from "@web-app-starter/auth-ui";
 import { SidebarInset, SidebarProvider } from "@web-app-starter/design-system";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
@@ -12,6 +12,7 @@ import { useProfileSync } from "@/hooks/useProfileSync";
 export function DashboardClient() {
   useProfileSync();
   const user = useAuthUser();
+  const organizations = useOrganizations();
   const tc = useTranslations("common");
   return (
     <SidebarProvider>
@@ -22,6 +23,10 @@ export function DashboardClient() {
           <SidebarTrigger />
           <h1 className="font-semibold">{appConfig.identity.productName}</h1>
         </header>
+        <div className="p-4 empty:hidden">
+          <OrganizationInvitations />
+        </div>
+        {organizations && !organizations.activeOrganizationId && <NoOrganization />}
       </SidebarInset>
     </SidebarProvider>
   );

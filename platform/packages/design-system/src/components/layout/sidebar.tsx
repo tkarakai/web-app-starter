@@ -251,7 +251,8 @@ function Sidebar({
             <SheetTitle>{labels.title}</SheetTitle>
             <SheetDescription>{labels.description}</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          {/* Like the desktop sidebar, start below the environment banner when one shows. */}
+          <div className="flex h-full w-full flex-col pt-[var(--env-banner-h,0px)]">{children}</div>
         </SheetContent>
       </Sheet>
     );

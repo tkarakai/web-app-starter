@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
   toast,
+  useNetworkStatus,
 } from "@web-app-starter/design-system";
 import { ThemeToggle } from "@web-app-starter/design-patterns";
 import { locales, localeMetadata, navigateToLocalePath, persistLocale, type Locale } from "@web-app-starter/i18n";
@@ -65,6 +66,8 @@ export function ProfileSection() {
   const [avatarColor, setAvatarColor] = React.useState<string>("");
   const [timezone, setTimezone] = React.useState<string>("");
   const [saving, setSaving] = React.useState(false);
+  const [changingLocale, setChangingLocale] = React.useState(false);
+  const isOnline = useNetworkStatus();
 
   // Sync form state when profile data loads
   React.useEffect(() => {
@@ -138,13 +141,16 @@ export function ProfileSection() {
     }
   };
 
-  const handleLocaleChange = (newLocale: string) => {
+  const handleLocaleChange = async (newLocale: string) => {
+    if (newLocale === locale || changingLocale) return;
+    setChangingLocale(true);
     persistLocale(newLocale);
-    setLocale({ locale: newLocale }).catch(() => {});
+    // Reloading while the save is in flight makes the Convex client ask "Leave site?".
+    await setLocale({ locale: newLocale }).catch(() => {});
     const segments = pathname.split("/");
     segments[1] = newLocale;
     const newPath = segments.join("/") || `/${newLocale}`;
-    navigateToLocalePath(newPath);
+    navigateToLocalePath(`${newPath}${window.location.search}`);
   };
 
   return (
@@ -206,7 +212,7 @@ export function ProfileSection() {
         {/* Language */}
         <div className="space-y-2">
           <Label>{tp("language")}</Label>
-          <Select value={locale} onValueChange={handleLocaleChange}>
+          <Select value={locale} onValueChange={(value) => void handleLocaleChange(value)} disabled={!isOnline || changingLocale}>
             <SelectTrigger className="w-full sm:max-w-xs">
               <SelectValue placeholder={tl("ariaLabel")} />
             </SelectTrigger>

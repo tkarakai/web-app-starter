@@ -1,0 +1,115 @@
+/**
+ * Better Auth organization plugin, configured for the platform's organizations:
+ * three built-in roles (owner, admin, member), email invitations, no teams and no custom
+ * roles. Owners may delete an organization; the app's own data is then removed by its
+ * `organizationData.ts` cleanup. The
+ * session-assurance plugin admits only the `/organization/*` routes listed in
+ * `authAssurance.ts`. See platform/docs/organizations.md.
+ */
+import type { GenericCtx } from "@convex-dev/better-auth";
+import { requireActionCtx } from "@convex-dev/better-auth/utils";
+import { internal } from "../_generated/api";
+import { APIError } from "better-auth/api";
+import { organization } from "better-auth/plugins";
+import { appConfig } from "@web-app-starter/app-config";
+
+import type { DataModel } from "../_generated/dataModel";
+import type { AuditAction } from "./auditTrailConstants";
+import { runAuditEvent } from "./auditTrailHelpers";
+import { sendLimitedAuthEmail } from "./authRateLimits";
+import { organizationInvitationEmail } from "./sendAuthEmail";
+
+const INVITATION_EXPIRY_DAYS = 7;
+
+export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) {
+  const audit = async (
+    action: AuditAction,
+    actor: { id: string; email: string },
+    resource: string,
+    meta?: Record<string, string>,
+  ) => {
+    await runAuditEvent(requireActionCtx(ctx), {
+      happenedAt: Date.now(),
+      actor: actor.email,
+      authenticatedUserId: actor.id,
+      sourceDetail: "auth-organization-hook",
+      action,
+      resource,
+      status: "succeeded",
+      meta: meta ? JSON.stringify(meta) : undefined,
+    });
+  };
+
+  return organization({
+    allowUserToCreateOrganization: true,
+    organizationLimit: 50,
+    membershipLimit: 100,
+    invitationLimit: 100,
+    invitationExpiresIn: INVITATION_EXPIRY_DAYS * 24 * 60 * 60,
+    // Re-inviting an address replaces its pending invitation (a fresh link and expiry).
+    cancelPendingInvitationsOnReInvite: true,
+    // Only an account that has proved it owns the invited address can accept.
+    requireEmailVerificationOnInvitation: true,
+    // Only owners may delete (Better Auth's default roles), after recent authentication
+    // (authAssurance.ts). App data is removed afterwards, see afterDeleteOrganization.
+    disableOrganizationDeletion: false,
+    teams: { enabled: false },
+    sendInvitationEmail: async ({ id, email, organization: org, inviter }) => {
+      const url = `${siteUrl}/accept-invitation/${encodeURIComponent(id)}`;
+      await sendLimitedAuthEmail(ctx, {
+        to: email,
+        type: "custom",
+        urlOrCode: url,
+        ...organizationInvitationEmail({
+          inviterName: inviter.user.name || inviter.user.email,
+          organizationName: org.name,
+          productName: appConfig.identity.productName,
+          url,
+          expiresInDays: INVITATION_EXPIRY_DAYS,
+        }),
+      });
+    },
+    organizationHooks: {
+      // The session-assurance plugin already admits only one canonical role and charges the
+      // inviter's budget; this keeps a stored invitation canonical whatever the entry point.
+      beforeCreateInvitation: async ({ invitation }) => {
+        if (!["owner", "admin", "member"].includes(invitation.role)) {
+          throw new APIError("BAD_REQUEST", { code: "INVALID_ROLE", message: "INVALID_ROLE" });
+        }
+      },
+      afterCreateOrganization: async ({ organization: org, user }) => {
+        await audit("organization.created", user, `organization:${org.id}`);
+      },
+      afterUpdateOrganization: async ({ organization: org, user }) => {
+        if (org) await audit("organization.updated", user, `organization:${org.id}`);
+      },
+      afterDeleteOrganization: async ({ organization: org, user }) => {
+        await audit("organization.deleted", user, `organization:${org.id}`);
+        await requireActionCtx(ctx).scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, {
+          organizationId: org.id,
+        });
+      },
+      afterCreateInvitation: async ({ invitation, inviter, organization: org }) => {
+        await audit("organization.invitation.sent", inviter, `organization:${org.id}`, {
+          invitationId: invitation.id, role: invitation.role,
+        });
+      },
+      afterCancelInvitation: async ({ invitation, cancelledBy, organization: org }) => {
+        await audit("organization.invitation.canceled", cancelledBy, `organization:${org.id}`, {
+          invitationId: invitation.id,
+        });
+      },
+      afterAcceptInvitation: async ({ invitation, user, organization: org }) => {
+        await audit("organization.invitation.accepted", user, `organization:${org.id}`, {
+          invitationId: invitation.id, role: invitation.role,
+        });
+      },
+      afterRejectInvitation: async ({ invitation, user, organization: org }) => {
+        await audit("organization.invitation.rejected", user, `organization:${org.id}`, {
+          invitationId: invitation.id,
+        });
+      },
+      // Removal, leaving and role changes are audited in auth.ts's after-hook, which knows who acted.
+    },
+  });
+}

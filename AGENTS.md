@@ -9,9 +9,14 @@ when you build your own. This file is the app guide (it starts from
 
 ## What this product is
 
-A sample SaaS: users sign up, create projects with tasks and file uploads, and manage their
-account security. Admins onboard users and other admins, set security policy and read the audit
-trail. A marketing site and a component showcase complete it.
+A sample SaaS: users sign up, work in organizations (a personal one, plus any they create or
+are invited to), create projects with tasks and file uploads that their organization shares, and
+manage their account security. Admins onboard users and other admins, set security policy and
+read the audit trail. A marketing site and a component showcase complete it.
+
+After losing every organization membership, an account stays signed in with Profile, Security,
+Theme and invitations available. Creating an organization or accepting an invitation restores
+the workspace; ordinary app operations never create a replacement organization.
 
 ## Apps
 

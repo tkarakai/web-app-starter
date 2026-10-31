@@ -12,6 +12,7 @@ import {
 export const PLATFORM_ERROR_KEYS: Readonly<Record<string, string>> = {
   RATE_LIMITED: "errors.convex.rateLimited",
   NOT_AUTHENTICATED: "errors.convex.notAuthenticated",
+  NO_ORGANIZATION: "organization.empty.title",
   CONNECTION_LOST: "errors.convex.connectionLost",
   SERVER_ERROR: "errors.convex.serverError",
 };

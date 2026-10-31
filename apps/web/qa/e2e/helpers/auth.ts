@@ -302,7 +302,9 @@ const CONVEX_LOG =
   // them to infra/aws/local/.state/convex.log).
   process.env.E2E_CONVEX_LOG ?? path.join(__dirname, "../../../../../.convex-dev.log");
 
-export type AuthEmailType = "reset-password" | "verification" | "magic-link" | "email-otp";
+export type AuthEmailType = "reset-password" | "verification" | "magic-link" | "email-otp"
+  // Emails with their own template, such as organization invitations; the log shows their link.
+  | "custom";
 
 function readConvexLog(): string {
   try {

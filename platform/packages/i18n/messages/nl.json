@@ -476,5 +476,150 @@
       "verify": "Verifiëren",
       "continue": "Doorgaan"
     }
+  },
+  "organization": {
+    "label": "Organisatie",
+    "roles": {
+      "owner": "Eigenaar",
+      "admin": "Beheerder",
+      "member": "Lid"
+    },
+    "roleHelp": {
+      "owner": "Kan alles wat een beheerder kan en kan anderen eigenaar maken.",
+      "admin": "Nodigt mensen uit en verwijdert ze, wijzigt rollen en hernoemt de organisatie.",
+      "member": "Kan alles in de organisatie zien en eraan werken."
+    },
+    "switcher": {
+      "label": "Van organisatie wisselen",
+      "heading": "Je organisaties",
+      "create": "Organisatie aanmaken",
+      "none": "Geen organisatie"
+    },
+    "settings": {
+      "title": "Organisatie",
+      "description": "Leden van {name} delen alles erin. Eigenaren en beheerders bepalen wie erbij hoort.",
+      "nameLabel": "Naam van de organisatie",
+      "renamed": "Organisatie hernoemd.",
+      "yourRole": "Jouw rol: {role}",
+      "members": "Leden",
+      "memberCount": "{count, plural, one {# lid} other {# leden}}",
+      "you": "Jij",
+      "joined": "Lid sinds {date}",
+      "changeRole": "Rol van {name} wijzigen",
+      "roleChanged": "{name} is nu {role}.",
+      "remove": "Verwijderen",
+      "removeLabel": "{name} verwijderen",
+      "removeTitle": "{name} verwijderen?",
+      "removeDescription": "{name} verliest direct de toegang tot {organization}. Wat diegene heeft gemaakt, blijft in de organisatie.",
+      "removed": "{name} is verwijderd.",
+      "pageDescription": "Naam, leden en uitnodigingen van de organisatie waarin je werkt."
+    },
+    "invite": {
+      "title": "Mensen uitnodigen",
+      "description": "Ze krijgen een e-mail met een link om lid te worden. Uitnodigingen verlopen na 7 dagen.",
+      "email": "E-mailadres",
+      "emailPlaceholder": "naam@bedrijf.nl",
+      "role": "Rol",
+      "send": "Uitnodiging versturen",
+      "sending": "Versturen...",
+      "sent": "Uitnodiging verstuurd naar {email}."
+    },
+    "pending": {
+      "title": "Uitnodigingen",
+      "expires": "Verloopt op {date}",
+      "expired": "Verlopen",
+      "resend": "Opnieuw versturen",
+      "resent": "Uitnodiging opnieuw verstuurd naar {email}.",
+      "sent": "Verzonden op {date}",
+      "declined": "Afgewezen",
+      "inviteAgain": "Opnieuw uitnodigen",
+      "delete": "Verwijderen",
+      "deleteLabel": "Uitnodiging aan {email} verwijderen",
+      "deleteTitle": "Uitnodiging aan {email} verwijderen?",
+      "deleteDescription": "Ze verdwijnt uit deze lijst. Staat ze nog open, dan werkt de link niet meer. Dit kan niet ongedaan worden gemaakt.",
+      "deleted": "Uitnodiging aan {email} verwijderd."
+    },
+    "leave": {
+      "description": "Je verliest de toegang tot {name} en alles erin. Alleen een nieuwe uitnodiging laat je weer toe.",
+      "action": "Verlaten",
+      "confirmTitle": "{name} verlaten?",
+      "left": "Je hebt {name} verlaten.",
+      "lastOwner": "Je bent de enige eigenaar. Nodig een andere eigenaar uit en wacht tot die de uitnodiging accepteert voordat je vertrekt."
+    },
+    "create": {
+      "title": "Nieuwe organisatie",
+      "description": "Begin een aparte organisatie met eigen leden en gegevens. Jij wordt de eigenaar.",
+      "action": "Organisatie aanmaken",
+      "nameLabel": "Naam",
+      "namePlaceholder": "Acme B.V.",
+      "created": "{name} aangemaakt. Je werkt nu in deze organisatie."
+    },
+    "errors": {
+      "generic": "Er ging iets mis. Probeer het opnieuw.",
+      "rateLimited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+      "notAllowed": "Je hebt hiervoor geen toestemming.",
+      "alreadyMember": "Die persoon is al lid.",
+      "lastOwner": "Een organisatie heeft minstens één eigenaar nodig. Maak eerst iemand anders eigenaar.",
+      "invalidEmail": "Voer een geldig e-mailadres in."
+    },
+    "banner": {
+      "message": "{inviter} heeft je uitgenodigd voor {organization}.",
+      "accept": "Accepteren",
+      "decline": "Weigeren",
+      "verifyFirst": "Verifieer je e-mailadres om te accepteren.",
+      "verify": "E-mail verifiëren",
+      "joined": "Je bent lid geworden van {organization}."
+    },
+    "invitation": {
+      "pageHeading": "Een uitnodiging voor een organisatie",
+      "pageDescription": "Met uitnodigingen worden mensen lid van een organisatie en werken ze samen.",
+      "title": "Word lid van {organization}",
+      "description": "{inviter} heeft je uitgenodigd voor {organization} als {role}.",
+      "accept": "Uitnodiging accepteren",
+      "accepting": "Lid worden...",
+      "decline": "Weigeren",
+      "declined": "Je hebt de uitnodiging geweigerd.",
+      "signedOutTitle": "Meld je aan om je uitnodiging te bekijken",
+      "signedOutDescription": "Meld je aan of maak een account met het e-mailadres waarnaar de uitnodiging is verzonden. Daarna kom je hier terug.",
+      "signIn": "Inloggen",
+      "signUp": "Account aanmaken",
+      "signUpHint": "Je bent uitgenodigd voor een organisatie. Maak je account aan met het e-mailadres waarnaar de uitnodiging is gestuurd.",
+      "wrongAccountTitle": "Deze uitnodiging is voor een ander account",
+      "wrongAccountDescription": "Je bent aangemeld als {current}, maar deze uitnodiging is naar een ander e-mailadres verzonden. Is ze voor jou bedoeld, meld je dan af en meld je aan met het adres waarnaar ze is verzonden.",
+      "securityTitle": "Rond het instellen van je account af",
+      "securityDescription": "Je account heeft nog één beveiligingsstap nodig voordat je lid kunt worden van {organization}. Rond die af en je komt hier terug.",
+      "verifyTitle": "Verifieer eerst je e-mail",
+      "verifyDescription": "Om lid te worden van {organization} moet je bevestigen dat {email} jouw adres is.",
+      "verify": "E-mail verifiëren",
+      "alreadyMemberTitle": "Je zit al in {organization}",
+      "alreadyMemberDescription": "Je bent al lid, er hoeft niets meer te gebeuren.",
+      "openDashboard": "Naar dashboard",
+      "switchAccount": "Afmelden en van account wisselen",
+      "invalidTitle": "Deze uitnodiging is niet meer geldig",
+      "invalidDescription": "Ze is mogelijk verlopen, al gebruikt of ingetrokken. Heb je nog steeds toegang nodig, vraag dan de persoon die je heeft uitgenodigd om een nieuwe uitnodiging.",
+      "continueSetup": "Doorgaan",
+      "openOrganization": "{organization} openen",
+      "joined": "Je bent lid geworden van {organization}."
+    },
+    "danger": {
+      "title": "Gevarenzone",
+      "description": "Als je {name} verwijdert, verdwijnt de organisatie met alles erin voor alle leden. Dit kan niet ongedaan worden gemaakt.",
+      "delete": "Organisatie verwijderen",
+      "confirmTitle": "{name} verwijderen?",
+      "confirmDescription": "Hiermee worden {name} en alles erin definitief verwijderd, voor alle leden. Dit kan niet ongedaan worden gemaakt.",
+      "onlyOrganization": "Je blijft ingelogd zonder organisatie. Je kunt later een organisatie aanmaken of een uitnodiging accepteren.",
+      "confirmLabel": "Typ {name} om te bevestigen",
+      "confirm": "Definitief verwijderen",
+      "deleting": "Verwijderen...",
+      "deleted": "{name} is verwijderd."
+    },
+    "access": {
+      "lost": "Je hebt geen toegang meer tot {organization}."
+    },
+    "empty": {
+      "title": "Je bent geen lid van een organisatie",
+      "description": "Maak een organisatie aan of accepteer een uitnodiging om te beginnen.",
+      "createDescription": "Maak een organisatie aan om te beginnen."
+    }
   }
 }

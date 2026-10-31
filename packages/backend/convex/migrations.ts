@@ -27,9 +27,13 @@
  *
  * @module
  */
-import { startMigrationsSerially } from "convex-helpers/server/migrations";
+import { makeMigration, startMigrationsSerially } from "convex-helpers/server/migrations";
 
+import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
+
+/** Define a migration: `export const myMigration = migration({ table, migrateOne })`. */
+export const migration = makeMigration(internalMutation, { migrationTable: "migrations" });
 
 // ---------------------------------------------------------------------------
 // Default export: run all pending migrations in series.
@@ -38,6 +42,7 @@ import { internalMutation } from "./_generated/server";
 
 export default internalMutation(async (ctx) => {
   await startMigrationsSerially(ctx, [
+    internal.sampleMigrations.projectsToOrganizations, // Sample domain; removed with the sample.
     // Add future migrations here, in order.
   ]);
 });

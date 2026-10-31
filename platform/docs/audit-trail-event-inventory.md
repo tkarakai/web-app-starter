@@ -162,6 +162,28 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 `adminInvitations.registerAccount` schedules the success event directly with
 `source: server:admin-enrollment`, using the same actor, user ID and resource fields above.
 
+### Organizations
+
+`status`: `succeeded` only; a refused request leaves no `organization.*` event. `resource` is
+`organization:<organizationId>`. See [organizations](organizations.md).
+
+| Action | Source | Actor | `meta` |
+|---|---|---|---|
+| `organization.created` | `server:auth-organization-hook` | creator | — |
+| `organization.updated` | `server:auth-organization-hook` | user who renamed it | — |
+| `organization.deleted` | `server:auth-organization-hook` | owner who deleted it | — |
+| `organization.invitation.sent` | `server:auth-organization-hook` | inviter | `invitationId`, `role` |
+| `organization.invitation.canceled` | `server:auth-organization-hook` | user who canceled it | `invitationId` |
+| `organization.invitation.deleted` | `server:organization-mutation` | owner or admin who deleted it | `invitationIds`, `statuses` (all unaccepted invitations to the address in that organization) |
+| `organization.invitation.accepted` | `server:auth-organization-hook` | new member | `invitationId`, `role` |
+| `organization.invitation.rejected` | `server:auth-organization-hook` | invitee | `invitationId` |
+| `organization.member.removed` | `server:auth-endpoint-hook` | owner or admin who removed them | `endpoint`, `member` |
+| `organization.member.role_changed` | `server:auth-endpoint-hook` | owner or admin who changed it | `endpoint`, `memberId`, `role` |
+| `organization.member.left` | `server:auth-endpoint-hook` | member who left | `endpoint` |
+
+Personal organizations created at sign-up, by the upgrade migration or for a signed-in user
+with none are not audited separately; `auth.sign_up` covers the sign-up case.
+
 ---
 
 ## 4. Authenticated user settings

@@ -9,10 +9,8 @@ import { useTranslations } from "next-intl";
 
 import {
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
   Separator,
   SidebarInset,
   SidebarProvider,
@@ -21,7 +19,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { useAuthUser } from "@web-app-starter/auth-ui";
+import { AccountPageCloseButton, OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ProfileSection } from "@/components/settings/profile-section";
@@ -68,23 +66,16 @@ export function AccountClient() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  {td("projects")}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
                 <BreadcrumbPage>{td("account")}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <AccountPageCloseButton />
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
+            <OrganizationInvitations />
             <div className="space-y-1">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">

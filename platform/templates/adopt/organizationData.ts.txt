@@ -1,0 +1,9 @@
+import { organizationDataCleanup } from "./platform/functions";
+
+/**
+ * Removes a deleted organization's data. The platform calls this after an owner deletes an
+ * organization, again and again until it returns `true`; by then nobody can reach the rows,
+ * so this only frees storage. When you add a table that belongs to an organization, delete a
+ * bounded batch of its rows here (platform/docs/organizations.md#deleting-an-organization).
+ */
+export const deleteOrganizationData = organizationDataCleanup(async () => true);

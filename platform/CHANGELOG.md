@@ -15,6 +15,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- **Organizations** (multi-tenancy) on Better Auth's organization plugin. Every user gets a
+  personal organization at sign-up and can create more or be invited to others, with the
+  built-in `owner`, `admin` and `member` roles. App functions scope data with the new
+  `orgQuery`/`orgMutation` builders (`ctx.organizationId`, re-checked against membership on
+  every call). The UI comes from `@web-app-starter/auth-ui`: `OrganizationSwitcher`,
+  `OrganizationSection`, `OrganizationInvitations` and `AcceptInvitationView`. An organization
+  invitation admits its address to sign-up even when sign-up is closed; a link opened while
+  signed out brings the user back to it after sign-in or sign-up, and only the invited address
+  learns anything about it. Owners can delete an organization (after recent authentication);
+  the app removes its own rows in `convex/organizationData.ts`. The reference app's
+  projects (and their tasks and files) now belong to, and are shared within, the active
+  organization; its migration moves existing projects into each creator's personal
+  organization. Existing apps keep working unchanged: their per-user tables stay per-user until
+  they adopt organizations. See [organizations](docs/organizations.md), including "Adopting
+  organizations in an existing app".
+
 - Adoption refuses work on the live default branch unless explicitly overridden with
   `--allow-default-branch`; `--yes` alone is not an override. Root and adopted agent guides
   require task branches, early draft PRs and the existing E2E ready/label policy.
@@ -71,6 +87,28 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Settings and Organization can be closed back to the original app view, including the sample's
+  selected project and tab. Switching account screens and reloading retain that return target;
+  direct links fall back to app home. Multiple pending invitations remain a reactive list on
+  the app and account pages, each with independent Accept and Decline actions. The no-org
+  app header has no breadcrumb, and empty-state guidance only mentions invitations when
+  an active one is available.
+
+- Accounts remain signed in without an organization after losing their last membership.
+  Organization and workspace navigation disappears, while account settings, theme, sign-out
+  and invitations remain usable. Creation is explicit; backend writes refuse `NO_ORGANIZATION`
+  instead of provisioning a replacement. The last owner sees guidance to invite another
+  owner and wait for acceptance before leaving; other members may leave their only organization.
+
+- Deleting an invitation removes older unaccepted invitations to the same address in that
+  organization, so its row disappears after one confirmation.
+- Signed-in language changes wait for the preference save before reloading, avoiding an
+  unsaved-changes prompt that could leave Settings in the old language.
+- The identity check inside Security settings omits the redundant Sign out button. Full-page
+  verification, enrollment and recovery gates retain their sign-out escape.
+
+- The mobile sidebar drawer starts below the environment banner, as the desktop sidebar does;
+  the banner used to cover the top of the drawer.
 - Admin no longer counts its static icons (`favicon.ico`, `icon.svg`, `apple-touch-icon.png`) against
   the per-IP page rate limit. Every page load and connectivity check fetched them, so active admins
   reached the 100-per-minute limit after about a third as many pages, and fast local E2E runs hit
